@@ -25,6 +25,12 @@ pub mod rg_boundary {
         pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
             self.0.downcast_ref()
         }
+        pub fn try_unwrap<T: Any + Send + Sync>(self) -> Result<T, Self> {
+            match Arc::downcast::<T>(self.0) {
+                Ok(owner) => Arc::try_unwrap(owner).map_err(|owner| Self(owner)),
+                Err(owner) => Err(Self(owner)),
+            }
+        }
     }
     impl fmt::Debug for ResourceLease {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -37,6 +43,23 @@ pub mod rg_boundary {
         }
     }
     impl Eq for ResourceLease {}
+    #[cfg(test)]
+    mod lease_ownership_tests {
+        use super::*;
+        #[test]
+        fn exclusive_recovery_preserves_wrong_type_and_shared_owners() {
+            let owner = Arc::new(vec![7u8; 128]);
+            let pointer = owner.as_ptr();
+            let shared = ResourceLease::new(owner.clone());
+            let shared = shared.try_unwrap::<Vec<u8>>().unwrap_err();
+            assert_eq!(shared.downcast_ref::<Vec<u8>>().unwrap().as_ptr(), pointer);
+            drop(owner);
+            let wrong = shared.try_unwrap::<Vec<u32>>().unwrap_err();
+            let recovered = wrong.try_unwrap::<Vec<u8>>().unwrap();
+            assert_eq!(recovered.as_ptr(), pointer);
+            assert_eq!(recovered, vec![7u8; 128]);
+        }
+    }
 
     /// `add_resource_access` 的访问码（O：立即数 0x34；位含义 U，按“传输写”使用）。
     pub const ACCESS_TRANSFER_WRITE: u8 = 0x34;

@@ -333,9 +333,9 @@ pub struct ShaderReflection {
 
 /// 帧内动态常量块（`DynamicConstants::allocate` + `into_uniform_buffer_binding_and_data`）。
 /// 原版持有可写映射切片 + GPU 绑定；这里用拥有的字节缓冲代表该切片。
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct DynamicConstantsBinding {
-    pub data: Vec<u8>,
+    pub data: rhapsody::resource::CpuBytes,
     /// `HashMap::insert(BindingIndex, GpuOwned<_>)` 的键（`reflection.+0x140`）。
     pub binding_index: u32,
     pub keepalive: ManagedHandle,
@@ -436,6 +436,7 @@ pub struct DeferredBuffer {
 /// Owned output of a contiguous draw range. Contains no host, graph or World.
 /// This is the only declaration result that crosses a worker boundary.
 pub struct DrawBatch {
+    collect_error: Option<rhapsody::Error>,
     // Preserve mock-host API observations across worker ownership, so existing
     // layer/view assertions test the same calls after Collect migration.
     #[cfg(test)]
@@ -447,6 +448,13 @@ pub struct DrawBatch {
     accesses: Vec<PassAccess>,
     binding_accesses: Vec<usize>,
     deferred: Vec<DeferredBuffer>,
+}
+
+#[cfg(any(test, feature = "test-support"))]
+impl DrawBatch {
+    pub fn collect_error_kind_for_test(&self) -> Option<rhapsody::ErrorKind> {
+        self.collect_error.as_ref().map(rhapsody::Error::kind)
+    }
 }
 
 /// `GraphicsDeviceResource` / `PassResources(7 个指针)` / 游戏资源库在本模块被读取的全部外部调用面
@@ -468,6 +476,12 @@ pub trait PassHost {
 
     /// Logical SSBO references recorded by a graph-free collector, in lookup order.
     fn take_deferred_buffers(&mut self) -> Vec<DeferredBuffer> { Vec::new() }
+    /// Admission failure travels with the existing task result, outside logs.
+    fn take_collect_error(&mut self) -> Option<rhapsody::Error> { None }
+    /// The real owner enters its existing frame rejection/retry channel.
+    fn record_collect_error(&mut self, error: rhapsody::Error) {
+        panic!("Collect admission failed: {error}")
+    }
 
     /// Move constant bytes to the host. Collectors retain ownership until Commit.
     fn finish_dynamic_constants(&mut self, constants: DynamicConstantsBinding, _packet: &mut DrawPacket) {
@@ -478,6 +492,9 @@ pub trait PassHost {
 
     /// Resolve owned CPU constants after Collect, on the graph's owning thread.
     fn commit_collected_draw(&mut self, _packet: &mut DrawPacket) {}
+    fn commit_collected_draws(&mut self, packets: &mut [DrawPacket]) {
+        for packet in packets { self.commit_collected_draw(packet); }
+    }
 
     /// `FrozenMap<Handle<RasterShaderProgram>, Box<RasterShaderProgram>>::get` + `variants[variant].compiled`
     /// （`PassResources +0x1a8`）。缺失返回 `None`。
@@ -667,6 +684,7 @@ impl RasterPass {
         assert!(self.colors.is_empty() && self.depth.is_none(), "only a collector can become a batch");
         self.rendered.0 = true;
         DrawBatch {
+            collect_error: self.host.take_collect_error(),
             #[cfg(test)]
             image_views: self.host.take_collected_image_views(),
             draws: self.body.draws,
@@ -682,6 +700,10 @@ impl RasterPass {
     /// Stable Commit. Keep unbound and discarded-draw accesses, eliminate only
     /// accesses that the original per-pass binding caches would have skipped.
     pub fn commit_draw_batch(&mut self, mut batch: DrawBatch) {
+        if let Some(error) = batch.collect_error.take() {
+            self.host.record_collect_error(error);
+            return;
+        }
         #[cfg(test)]
         self.host.commit_collected_image_views(core::mem::take(&mut batch.image_views));
         let mut resolved = HashMap::new();
@@ -755,8 +777,8 @@ impl RasterPass {
                 DrawKind::IndexedIndirectCount { buffer, count_buffer, .. } => { resolve(buffer); resolve(count_buffer); }
                 _ => {}
             }
-            self.host.commit_collected_draw(draw);
         }
+        self.host.commit_collected_draws(&mut batch.draws);
         if self.body.draws.is_empty() { self.body.draws = batch.draws; }
         else { self.body.draws.extend(batch.draws); }
     }
@@ -924,6 +946,7 @@ pub(crate) mod test_host {
         pub created_passes: Vec<RasterRenderPassDesc>,
         pub submissions: Vec<RasterPassSubmission>,
         pub constants_requests: u32,
+        pub collect_errors: usize,
         pub image_views: Vec<(u64, Option<TextureViewDesc>)>,
         /// `flush_dynamic_constants` 收到的（`keepalive`, 字节）。
         pub flushed_constants: Vec<(u64, Vec<u8>)>,
@@ -941,6 +964,7 @@ pub(crate) mod test_host {
         pub cache: HashMap<RasterRenderPassDesc, ManagedHandle>,
         pub next_handle: u64,
         pub constants: Option<usize>,
+        constants_budget: Arc<rhapsody::device::AllocatorStats>,
         /// `ssbo_instance_count`（`SsboId` → 实际实例数量）。
         pub buffer_words: HashMap<u64, u32>,
         /// `rg_resources`：记录型渲染图（`None` = 不接渲染图）。
@@ -963,6 +987,7 @@ pub(crate) mod test_host {
                     cache: HashMap::new(),
                     next_handle: 100,
                     constants: None,
+                    constants_budget: Arc::new(Default::default()),
                     buffer_words: HashMap::new(),
                     rg: None,
                 },
@@ -989,17 +1014,19 @@ pub(crate) mod test_host {
             let textures_by_name = self.textures_by_name.clone();
             let presets = self.presets.clone();
             let constants = self.constants;
+            let constants_budget = self.constants_budget.clone();
             let buffer_words = self.buffer_words.clone();
             Arc::new(move || {
                 let (mut host, _) = MockHost::new();
                 host.shaders = shaders.clone(); host.rg_buffers = rg_buffers.clone();
                 host.placement = placement.clone(); host.vk_buffers = vk_buffers.clone();
                 host.textures_by_name = textures_by_name.clone(); host.presets = presets.clone();
-                host.constants = constants; host.buffer_words = buffer_words.clone();
+                host.constants = constants; host.constants_budget = constants_budget.clone(); host.buffer_words = buffer_words.clone();
                 host.boxed()
             })
         }
         fn take_deferred_buffers(&mut self) -> Vec<DeferredBuffer> { core::mem::take(&mut self.deferred) }
+        fn record_collect_error(&mut self, _: rhapsody::Error) { self.log.borrow_mut().collect_errors += 1; }
         fn raster_shader(
             &self,
             shader: &Handle<RasterShaderProgram>,
@@ -1014,7 +1041,7 @@ pub(crate) mod test_host {
             self.log.borrow_mut().constants_requests += 1;
             let size = self.constants.unwrap_or(r.uniform_block_size as usize);
             Some(DynamicConstantsBinding {
-                data: alloc::vec![0u8; size],
+                data: rhapsody::resource::CpuBytes::new(&self.constants_budget, size).unwrap(),
                 binding_index: r.uniform_block_binding,
                 keepalive: ManagedHandle(7),
                 lease: None,
@@ -1073,7 +1100,7 @@ pub(crate) mod test_host {
             self.log
                 .borrow_mut()
                 .flushed_constants
-                .push((c.keepalive.0, c.data.clone()));
+                .push((c.keepalive.0, c.data.to_vec()));
         }
         fn ssbo_instance_count(&self, h: u64) -> Option<u32> {
             self.buffer_words.get(&h).copied()
@@ -1116,6 +1143,7 @@ mod tests {
             draw.accesses.push(ResourceAccess { binding_index: 3, slot: 0 });
             draw.kind = DrawKind::MultiDrawIndirect { buffer: DEFERRED_BUFFER_BASE, arg_50: 0, arg_58: 1 };
             DrawBatch {
+                collect_error: None,
                 image_views: Vec::new(),
                 draws: vec![draw],
                 bindings: vec![RenderPassBinding { resource_index: DEFERRED_BUFFER_BASE, access_type: 0x10, view: None }],
@@ -1140,6 +1168,21 @@ mod tests {
             assert_eq!(draw.accesses[0].slot, 0);
             assert_eq!(draw.kind, DrawKind::MultiDrawIndirect { buffer: 5, arg_50: 0, arg_58: 1 });
         }
+        owner.render();
+    }
+
+    #[test]
+    fn admission_error_rejects_task_batch_without_publishing_its_draws() {
+        let (host, log) = MockHost::new();
+        let mut owner = RasterPass::new("owner", &[], None, host.boxed());
+        let (host, _) = MockHost::new();
+        let mut worker = RasterPass::collector(host.boxed(), [1, 1]);
+        worker.body.draws.push(DrawPacket::new(Handle::gap_new(), [73, 0], RasterState(0)));
+        let mut batch = worker.into_draw_batch();
+        batch.collect_error = Some(rhapsody::Error::OutOfHostMemory);
+        owner.commit_draw_batch(batch);
+        assert_eq!(log.borrow().collect_errors, 1);
+        assert!(owner.body.draws.is_empty());
         owner.render();
     }
 

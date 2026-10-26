@@ -447,6 +447,8 @@ pub struct RasterShared {
     programs: Arc<AssetShaderLibrary>,
     reflections: Mutex<crate::draw_template_cache::ReflectionCache>,
     constant_pool: Arc<crate::draw_constant_pool::ConstantPool>,
+    #[cfg(test)]
+    fail_constant_write: std::sync::atomic::AtomicUsize,
     zero_vertex: ZeroVertexBuffer,
     collect_chunk_draws: usize,
     vao_refresh_timing: Mutex<VaoRefreshTiming>,
@@ -645,6 +647,30 @@ impl RasterShared {
     /// scoped VAO wrapper reuse. Does not change the original 13 counter fields.
     pub fn draw_management_modes(&self) -> [bool; 3] {
         [self.management_mode(0), self.management_mode(1), self.management_mode(2)]
+    }
+
+    pub fn constant_batch_enabled(&self) -> bool { self.constant_pool.batch_enabled() }
+
+    #[cfg(feature = "cpu-probe")]
+    pub fn constant_pool_bill(&self) -> serde_json::Value {
+        let bill = self.constant_pool.bill();
+        serde_json::json!({
+            "batch_constants": bill.batch_constants, "lock_acquisitions": bill.lock_acquisitions,
+            "scanned_idle_entries": bill.scanned_idle_entries, "batch_checkouts": bill.batch_checkouts,
+            "batch_returns": bill.batch_returns, "idle_blocks": bill.idle_blocks,
+            "idle_bytes": bill.idle_bytes, "metadata_bytes": bill.metadata_bytes,
+            "duration_estimates": false,
+        })
+    }
+
+    fn write_collected_constants(&self, chunk: &DynamicConstantsChunk, bytes: &[u8]) -> rhapsody::Result<()> {
+        #[cfg(test)] {
+            let prior = self.fail_constant_write.fetch_update(
+                std::sync::atomic::Ordering::Relaxed, std::sync::atomic::Ordering::Relaxed,
+                |value| value.checked_sub(1));
+            if matches!(prior, Ok(1)) { return Err(rhapsody::Error::OutOfHostMemory); }
+        }
+        chunk.write_bytes(bytes)
     }
 
     fn count_management(&self, index: usize, amount: u64) {
@@ -926,6 +952,9 @@ impl RasterShared {
         shaders: Arc<ShaderHost>,
         library: Arc<AssetShaderLibrary>,
     ) -> Result<Arc<Self>, rhapsody::Error> {
+        let constant_pool = crate::draw_constant_pool::ConstantPool::new(device.allocator_stats().clone())?;
+        let evictable: Arc<dyn rhapsody::device::Evictable> = constant_pool.clone();
+        device.register_evictable(Arc::downgrade(&evictable), rhapsody::device::EvictionPriority::Transient);
         Ok(Arc::new(Self {
             attachments: Mutex::new(AttachmentCache::new(device.clone())?),
             dynamic: Arc::new(Mutex::new(DynamicConstants::new(device.clone())?)),
@@ -936,7 +965,9 @@ impl RasterShared {
             shaders,
             programs: library,
             reflections: Mutex::new(Default::default()),
-            constant_pool: Arc::new(Default::default()),
+            constant_pool,
+            #[cfg(test)]
+            fail_constant_write: Default::default(),
             zero_vertex: ZeroVertexBuffer::default(),
             collect_chunk_draws: std::env::var("TG_DRAW_COLLECT_CHUNK").ok()
                 .and_then(|value| value.parse::<usize>().ok()).unwrap_or(64).clamp(1, 4096),
@@ -1060,10 +1091,16 @@ impl RasterPassHost {
         let shared = self.shared.clone();
         let assets = shared.assets.lock().collect.clone();
         let reflections = self.scope_reflections.borrow().clone();
-        Arc::new(move || Box::new(RasterCollectHost {
-            shared: shared.clone(), assets: assets.clone(), reflections: reflections.clone(),
-            deferred: RefCell::new(Vec::new()),
-        }))
+        Arc::new(move || {
+            let (constants, collect_error) = match shared.constant_pool.task() {
+                Ok(task) => (Some(task), None),
+                Err(error) => (None, Some(error)),
+            };
+            Box::new(RasterCollectHost {
+                shared: shared.clone(), assets: assets.clone(), reflections: reflections.clone(),
+                constants, collect_error, deferred: RefCell::new(Vec::new()),
+            })
+        })
     }
     pub fn with_resource_graph_factory(
         mut self,
@@ -1113,6 +1150,8 @@ struct RasterCollectHost {
     shared: Arc<RasterShared>,
     assets: Arc<CollectAssets>,
     reflections: Option<Arc<crate::draw_template_cache::ReflectionScope>>,
+    constants: Option<crate::draw_constant_pool::ConstantTask>,
+    collect_error: Option<rhapsody::Error>,
     deferred: RefCell<Vec<country_core::render::pass_builder::draw_stream::DeferredBuffer>>,
 }
 
@@ -1206,31 +1245,36 @@ impl PassHost for RasterCollectHost {
         RasterState(ORIGINAL_DEFAULT_RASTER_STATE)
     }
     fn allocate_dynamic_constants(&mut self, reflection: &CoreReflection) -> Option<DynamicConstantsBinding> {
+        self.shared.count_management(2, 1);
+        if self.collect_error.is_some() { return None; }
+        let data = match self.constants.as_mut()?.take(reflection.uniform_block_size as usize) {
+            Ok(data) => data,
+            Err(error) => { self.collect_error = Some(error); return None; }
+        };
         Some(DynamicConstantsBinding {
-            data: {
-                self.shared.count_management(2, 1);
-                self.shared.constant_pool.take(reflection.uniform_block_size as usize)
-            },
-            binding_index: reflection.uniform_block_binding,
-            keepalive: ManagedHandle(0),
-            lease: None,
+            data, binding_index: reflection.uniform_block_binding,
+            keepalive: ManagedHandle(0), lease: None,
         })
     }
     fn finish_dynamic_constants(&mut self, constants: DynamicConstantsBinding, packet: &mut DrawPacket) {
-        // A material can overwrite the uniform binding. Preserve that operation.
         if let Some(binding) = packet.bindings.get_mut(&constants.binding_index) {
             if let CoreBinding::UniformBuffer { keepalive, lease, .. } = &mut binding.binding {
                 if keepalive.0 == 0 && lease.is_none() {
-                    *lease = Some(ResourceLease::new(Arc::new(self.shared.constant_pool.own(constants.data))));
+                    let task = self.constants.as_mut().expect("admitted CPU constants task");
+                    match task.own(constants.data) {
+                        Ok(owner) => { *lease = Some(ResourceLease::new(Arc::new(owner))); }
+                        Err((error, data)) => { self.collect_error.get_or_insert(error); task.recycle(data); }
+                    }
                     return;
                 }
             }
         }
-        self.shared.constant_pool.recycle(constants.data);
+        self.constants.as_mut().expect("admitted CPU constants task").recycle(constants.data);
     }
     fn discard_dynamic_constants(&mut self, constants: DynamicConstantsBinding) {
-        self.shared.constant_pool.recycle(constants.data);
+        self.constants.as_mut().expect("admitted CPU constants task").recycle(constants.data);
     }
+    fn take_collect_error(&mut self) -> Option<rhapsody::Error> { self.collect_error.take() }
     fn rg_buffer_resource(&self, hash: u64) -> Option<u32> {
         let assets = &self.assets;
         let id = assets.rg_buffers.get(&hash).copied()?;
@@ -1282,6 +1326,10 @@ impl PassHost for RasterPassHost {
             self.shared.device.allocator_stats()).ok().map(Arc::new);
     }
 
+    fn record_collect_error(&mut self, error: rhapsody::Error) {
+        self.constants_error.get_or_insert(error);
+    }
+
     fn collect_factory(&self) -> Arc<dyn Fn() -> Box<dyn PassHost> + Send + Sync> {
         self.prepare_draw_collection()
     }
@@ -1290,13 +1338,78 @@ impl PassHost for RasterPassHost {
         self.shared.collect_chunk_draws
     }
 
+    fn commit_collected_draws(&mut self, packets: &mut [DrawPacket]) {
+        #[cfg(feature = "cpu-probe")]
+        if !self.shared.constant_pool.batch_enabled() {
+            for packet in packets { self.commit_collected_draw(packet); }
+            return;
+        }
+        const LIMIT: usize = 64;
+        // All temporary indices/chunks/return owners stay inline and bounded. The
+        // page's host budget is not silently charged by an unbounded scratch spill.
+        for page in packets.chunks_mut(LIMIT) {
+            let mut keys = smallvec::SmallVec::<[(usize, u32); LIMIT]>::new();
+            let mut overflow = false;
+            'scan: for (draw_index, packet) in page.iter().enumerate() {
+                for (&binding_index, binding) in &packet.bindings {
+                    let CoreBinding::UniformBuffer { lease, .. } = &binding.binding else { continue };
+                    if lease.as_ref().and_then(ResourceLease::downcast_ref::<CollectedConstants>).is_none() { continue; }
+                    if keys.len() == LIMIT { overflow = true; break 'scan; }
+                    keys.push((draw_index, binding_index));
+                }
+            }
+            if overflow {
+                for packet in page { self.commit_collected_draw(packet); }
+                continue;
+            }
+            if keys.is_empty() { continue; }
+            let mut chunks = smallvec::SmallVec::<[(usize, u32, rhapsody::Result<DynamicConstantsChunk>); LIMIT]>::new();
+            {
+                let mut allocator = self.shared.dynamic.lock();
+                for (draw_index, binding_index) in keys {
+                    let CoreBinding::UniformBuffer { lease, .. } = &page[draw_index].bindings[&binding_index].binding
+                        else { unreachable!("collected constants binding changed without a host call") };
+                    let bytes = lease.as_ref().and_then(ResourceLease::downcast_ref::<CollectedConstants>)
+                        .expect("collected CPU constant owner changed");
+                    chunks.push((draw_index, binding_index, allocator.allocate(bytes.bytes.len() as u64)));
+                }
+            }
+            let mut returned = smallvec::SmallVec::<[rhapsody::resource::CpuBytes; LIMIT]>::new();
+            for (draw_index, binding_index, allocation) in chunks {
+                let chunk = match allocation {
+                    Ok(chunk) => chunk,
+                    Err(error) => { self.constants_error.get_or_insert(error); continue; }
+                };
+                let CoreBinding::UniformBuffer { keepalive, lease, .. } = &mut page[draw_index]
+                    .bindings.get_mut(&binding_index).expect("collected binding disappeared").binding
+                    else { unreachable!("collected uniform binding changed") };
+                let bytes = lease.as_ref().and_then(ResourceLease::downcast_ref::<CollectedConstants>)
+                    .expect("collected CPU constant owner disappeared");
+                if let Err(error) = self.shared.write_collected_constants(&chunk, &bytes.bytes) {
+                    self.constants_error.get_or_insert(error);
+                    continue; // Keep the original CPU lease; retry/error semantics unchanged.
+                }
+                self.shared.count_management(3, bytes.bytes.len() as u64);
+                *keepalive = ManagedHandle(ash::vk::Handle::as_raw(chunk.buffer.raw_handle()));
+                let old = lease.replace(ResourceLease::new(Arc::new(chunk)))
+                    .expect("CPU constant lease exists until its successful replacement");
+                // Shared CPU owners can escape Commit. They keep their exact old
+                // lifetime; only an exclusive owner returns storage immediately.
+                if let Ok(mut constants) = old.try_unwrap::<CollectedConstants>() {
+                    returned.push(std::mem::take(&mut constants.bytes));
+                }
+            }
+            self.shared.constant_pool.recycle_batch(returned);
+        }
+    }
+
     fn commit_collected_draw(&mut self, packet: &mut DrawPacket) {
         for binding in packet.bindings.values_mut() {
             let CoreBinding::UniformBuffer { keepalive, lease, .. } = &mut binding.binding else { continue };
             let Some(bytes) = lease.as_ref().and_then(ResourceLease::downcast_ref::<CollectedConstants>) else { continue };
             let allocation = { self.shared.dynamic.lock().allocate(bytes.bytes.len() as u64) };
             let result = allocation.and_then(|chunk| {
-                    chunk.write_bytes(&bytes.bytes)?;
+                    self.shared.write_collected_constants(&chunk, &bytes.bytes)?;
                     self.shared.count_management(3, bytes.bytes.len() as u64);
                     Ok(Arc::new(chunk))
                 });
@@ -1342,13 +1455,10 @@ impl PassHost for RasterPassHost {
                 return None;
             }
         };
-        let mut data = Vec::new();
-        if data.try_reserve_exact(size as usize).is_err() {
-            self.constants_error
-                .get_or_insert(rhapsody::Error::OutOfHostMemory);
-            return None;
-        }
-        data.resize(size as usize, 0);
+        let data = match rhapsody::resource::CpuBytes::new(self.shared.device.allocator_stats(), size as usize) {
+            Ok(data) => data,
+            Err(error) => { self.constants_error.get_or_insert(error); return None; }
+        };
         Some(DynamicConstantsBinding {
             data,
             binding_index: reflection.uniform_block_binding,
@@ -3847,5 +3957,176 @@ mod raster_attachment_range_tests {
             .is_err()
         );
         assert!(compute_view_range(depth_desc(), &plans[0].view.base_layer(3)).is_err());
+    }
+}
+
+// Append as a cfg(test) child module of raster_host.rs after strict host
+// integration. The host owner agent applies it; this file is not compiled here.
+#[cfg(test)]
+mod constant_batch_gpu_tests {
+    use super::*;
+    use country_core::render::pass_builder::draw_stream::GpuOwned;
+
+    fn shared() -> Option<Arc<RasterShared>> {
+        let device = match rhapsody::device::Device::new_headless(
+            &rhapsody::device::DeviceConfig::headless(),
+        ) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(
+                    !std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"),
+                    "strict constants batch GPU initialization failed: {error}"
+                );
+                eprintln!("SKIP constants batch GPU initialization: {error}");
+                return None;
+            }
+        };
+        let buffers = Arc::new(BufferHost::new(device.clone()));
+        let textures = Arc::new(TextureHost::new(device.clone()));
+        let shaders = Arc::new(ShaderHost::new(device.clone(), std::env::temp_dir()).unwrap());
+        Some(
+            RasterShared::new_with_shader_library(
+                device,
+                buffers,
+                textures,
+                shaders,
+                Arc::new(AssetShaderLibrary::new()),
+            )
+            .unwrap(),
+        )
+    }
+    fn packet(shared: &Arc<RasterShared>, size: usize, marker: u8) -> DrawPacket {
+        let mut task = shared.constant_pool.task().unwrap();
+        let mut bytes = task.take(size).unwrap();
+        bytes.fill(marker);
+        let owner = task.own(bytes).ok().unwrap();
+        let mut packet = DrawPacket::new(Handle::gap_new(), [0, 0], RasterState(0));
+        packet.bindings.insert(
+            0,
+            GpuOwned::new(CoreBinding::UniformBuffer {
+                size: size as u32,
+                keepalive: ManagedHandle(0),
+                lease: Some(ResourceLease::new(Arc::new(owner))),
+            }),
+        );
+        packet
+    }
+    fn cpu(packet: &DrawPacket) -> Option<&CollectedConstants> {
+        let CoreBinding::UniformBuffer { lease, .. } = &packet.bindings[&0].binding else {
+            return None;
+        };
+        lease.as_ref()?.downcast_ref()
+    }
+    fn gpu(packet: &DrawPacket) -> Option<&DynamicConstantsChunk> {
+        let CoreBinding::UniformBuffer { lease, .. } = &packet.bindings[&0].binding else {
+            return None;
+        };
+        lease.as_ref()?.downcast_ref()
+    }
+    #[test]
+    fn mid_batch_chunk_admission_error_preserves_original_cpu_owner_and_next_owner_recovers() {
+        let Some(shared) = shared() else {
+            return;
+        };
+        let invalid = rhapsody::resource::DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES as usize + 1;
+        let mut packets = [packet(&shared, 16, 0xab), packet(&shared, invalid, 0xcd)];
+        let pointer = cpu(&packets[1]).unwrap().bytes.as_ptr();
+        let capacity = cpu(&packets[1]).unwrap().bytes.capacity();
+        let mut host = shared.pass_host(Rc::new(RefCell::new(RhGraph::new())), None);
+        host.commit_collected_draws(&mut packets);
+        assert_eq!(
+            gpu(&packets[0]).expect("first allocation published").size,
+            16
+        );
+        let retained = cpu(&packets[1]).expect("rejected allocation retains CPU owner");
+        assert_eq!(pointer, retained.bytes.as_ptr());
+        assert_eq!(retained.bytes.accounted_bytes(), capacity as u64);
+        assert!(retained.bytes.iter().all(|v| *v == 0xcd));
+        assert!(host.constants_error.is_some());
+        drop(packets);
+        drop(host);
+        let mut recovered = shared.pass_host(Rc::new(RefCell::new(RhGraph::new())), None);
+        let mut packets = [packet(&shared, 16, 0xef)];
+        recovered.commit_collected_draws(&mut packets);
+        assert!(recovered.constants_error.is_none());
+        assert_eq!(gpu(&packets[0]).expect("same allocator recovers").size, 16);
+        drop(packets);
+        drop(recovered);
+        shared.device.wait_idle_and_collect().unwrap();
+    }
+
+    #[test]
+    fn escaped_cpu_constant_owner_is_not_stolen_by_successful_commit() {
+        let Some(shared) = shared() else {
+            return;
+        };
+        let mut packets = [packet(&shared, 16, 0xa5)];
+        let CoreBinding::UniformBuffer {
+            lease: Some(escaped),
+            ..
+        } = &packets[0].bindings[&0].binding
+        else {
+            unreachable!()
+        };
+        let escaped = escaped.clone();
+        let pointer = escaped
+            .downcast_ref::<CollectedConstants>()
+            .unwrap()
+            .bytes
+            .as_ptr();
+        let mut host = shared.pass_host(Rc::new(RefCell::new(RhGraph::new())), None);
+        host.commit_collected_draws(&mut packets);
+        assert!(host.constants_error.is_none());
+        assert_eq!(gpu(&packets[0]).unwrap().size, 16);
+        let original = escaped.downcast_ref::<CollectedConstants>().unwrap();
+        assert_eq!(pointer, original.bytes.as_ptr());
+        assert!(original.bytes.iter().all(|v| *v == 0xa5));
+        assert_eq!(
+            original.bytes.accounted_bytes(),
+            original.bytes.capacity() as u64
+        );
+        drop(escaped);
+        drop(packets);
+        drop(host);
+        shared.device.wait_idle_and_collect().unwrap();
+    }
+
+    #[test]
+    fn mid_batch_write_refusal_preserves_cpu_credit_and_next_owner_recovers() {
+        let Some(shared) = shared() else {
+            return;
+        };
+        let mut packets = [packet(&shared, 16, 0x51), packet(&shared, 16, 0x62)];
+        let pointer = cpu(&packets[1]).unwrap().bytes.as_ptr();
+        let credit = cpu(&packets[1]).unwrap().bytes.accounted_bytes();
+        shared
+            .fail_constant_write
+            .store(2, std::sync::atomic::Ordering::Relaxed);
+        let mut host = shared.pass_host(Rc::new(RefCell::new(RhGraph::new())), None);
+        host.commit_collected_draws(&mut packets);
+        assert_eq!(gpu(&packets[0]).expect("first write completed").size, 16);
+        let retained = cpu(&packets[1]).expect("write refusal keeps original CPU bytes");
+        assert_eq!(pointer, retained.bytes.as_ptr());
+        assert_eq!(credit, retained.bytes.accounted_bytes());
+        assert!(retained.bytes.iter().all(|v| *v == 0x62));
+        assert!(matches!(
+            host.constants_error,
+            Some(rhapsody::Error::OutOfHostMemory)
+        ));
+        drop(packets);
+        drop(host);
+        let mut recovered = shared.pass_host(Rc::new(RefCell::new(RhGraph::new())), None);
+        let mut packets = [packet(&shared, 16, 0x73)];
+        recovered.commit_collected_draws(&mut packets);
+        assert!(recovered.constants_error.is_none());
+        assert_eq!(
+            gpu(&packets[0])
+                .expect("same allocator recovers after write refusal")
+                .size,
+            16
+        );
+        drop(packets);
+        drop(recovered);
+        shared.device.wait_idle_and_collect().unwrap();
     }
 }
