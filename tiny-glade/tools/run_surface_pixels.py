@@ -21,7 +21,7 @@ def dump(path, value):
 def frozen_identity(metadata):
     metadata = Path(metadata).resolve(strict=True)
     frozen = json.loads(metadata.read_text(encoding='utf-8'))
-    if frozen.get('schema') not in ('surface-frozen-build-v1', 'headless-frozen-build-v1'):
+    if frozen.get('schema') not in ('surface-frozen-build-v1', 'headless-frozen-build-v1', 'surface-frozen-build-v2'):
         raise ValueError('unsupported frozen metadata schema')
     if (not isinstance(frozen.get('source_commit'), str) or
             not re.fullmatch('[0-9a-fA-F]{40}|[0-9a-fA-F]{64}', frozen['source_commit']) or
@@ -48,11 +48,15 @@ def frozen_identity(metadata):
         if value.lower() != expected.lower():
             raise ValueError('frozen artifact changed: ' + name)
         actual[name] = value
-    return {'metadata': str(metadata), 'metadata_sha256': sha256(metadata),
+    identity = {'metadata': str(metadata), 'metadata_sha256': sha256(metadata),
             'executable': str(exe), 'executable_sha256': actual[exe.name], 'files': actual,
             'source_commit': frozen['source_commit'], 'source_content_sha256': frozen['source_content_sha256'],
             'fixture_expected_binary_blake3': frozen.get('binary_blake3'),
             'source_identity_scope': 'Build metadata records source identity; this runner does not rebuild or rehash a live checkout.'}
+    if frozen['schema'] == 'surface-frozen-build-v2':
+        from surface_frozen_v2 import validate
+        identity['build_evidence'] = validate(metadata, frozen, exe)
+    return identity
 
 
 def environment(install, mode, destination, source):
