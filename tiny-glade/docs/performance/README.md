@@ -45,3 +45,22 @@ Current checks: source-only workspace all-target check passed; recorder 10 tests
 passed; ETW accounting 5 tests passed; real-window probe target check passed.
 Release runtime, probe/ETW overhead, Windows workload baseline, optimization
 benefit and final long runs remain unverified until raw run records exist.
+
+## Current gates (2026-10-26)
+
+The production window was actually attempted. It exits with Unsupported because
+this UHD 630 driver exposes neither swapchainMaintenance1 nor present_wait/id.
+AcquireOnly cannot present and is not a performance substitute. Four-scene
+baseline and stages 3-6 therefore remain open. A release j2 build also failed
+with a country-core rustc allocation failure; the tool now defaults to j1.
+System paging, drivers and release optimization settings were not changed.
+
+The scheduler parser was independently compared with Microsoft's xperf cswitch
+integrator on a busy/sleep validation workload: relative difference 0.00855%.
+GetThreadTimes differs by 7.28% on that workload; both readings are preserved.
+The independent check validates the integration, not probe/ETW overhead or game
+performance. The official integrator uses the same OS trace, independently of
+our interval implementation; it is not a second independent trace capture.
+
+See status.json for exact gates and evidence hashes, and
+ownership-audit-20261026.md for the read-only agent's prioritized candidates.

@@ -147,7 +147,7 @@ def distribution(values):
             'p50_ms': percentile(.50), 'p95_ms': percentile(.95), 'p99_ms': percentile(.99)}
 
 
-def account(report, csv_path):
+def account(report, csv_path, independent_totals=None):
     render = report['render']
     timelines, errors, trace_start, trace_end = read_trace(csv_path, render['process_id'], render['qpc_frequency'])
     results = {}
@@ -183,9 +183,14 @@ def account(report, csv_path):
         stats = distribution([frame['cpu_ms'] for frame in frames])
         etw_total_ns = timeline.between(start, end) * 1_000_000_000/frequency
         os_total_ns = points[-1]['cumulative_cpu_ns']-points[0]['cumulative_cpu_ns']
-        error = abs(etw_total_ns-os_total_ns)/max(etw_total_ns, 1)
+        coarse_error = abs(etw_total_ns-os_total_ns)/max(etw_total_ns, 1)
+        reference = independent_totals[name] if independent_totals is not None else os_total_ns
+        error = abs(etw_total_ns-reference)/max(etw_total_ns, 1)
         process_ms = sum(thread.between(start, end) for thread in timelines.values())*1000/frequency
         results[name] = {**stats, 'os_cpu_ns': os_total_ns, 'etw_cpu_ns': etw_total_ns,
+            'coarse_os_relative_error': coarse_error,
+            'independent_reference': 'xperf cswitch -thread -exc_dpcisr' if independent_totals is not None else 'GetThreadTimes',
+            'independent_reference_cpu_ns': reference,
             'os_crosscheck_relative_error': error, 'crosscheck_passed': error <= .02,
             'process_cpu_work_ms_per_frame': process_ms/len(frames), 'frames': frames}
     return {'schema': 'windows-etw-cpu-v1', 'source': 'CSwitch QPC with unioned DPC/ISR subtraction',
