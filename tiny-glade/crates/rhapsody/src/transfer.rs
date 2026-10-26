@@ -1024,7 +1024,7 @@ impl Uploader<'_> {
             }
         }
         command.end()?;
-        self.device
+        let mut acquire_reservation = self.device
             .reserve_pending_acquires(groups.iter().map(|group| group.3.len()).sum())?;
         let submitted = command.submit_to(target.queue, &[], &[])?;
         #[cfg(feature = "cpu-probe")]
@@ -1034,6 +1034,7 @@ impl Uploader<'_> {
         for group in groups {
             record::queue_acquires(
                 self.device,
+                &mut acquire_reservation,
                 &crate::device::AcquireTarget::buffer(group.0),
                 &group.3,
                 submitted.point,
@@ -1197,13 +1198,14 @@ fn record_transfer_textures(
         released.push(pieces);
     }
     command.end()?;
-    device.reserve_pending_acquires(released.iter().map(Vec::len).sum())?;
+    let mut acquire_reservation = device.reserve_pending_acquires(released.iter().map(Vec::len).sum())?;
     let point = command.submit_to(transfer.queue, &[], &[])?.point;
     *submitted = Some(point);
     recorded.submitted();
     for (upload, pieces) in uploads.iter().zip(&released) {
         record::queue_acquires(
             device,
+            &mut acquire_reservation,
             &crate::device::AcquireTarget::image(upload.texture),
             pieces,
             point,
@@ -1235,7 +1237,7 @@ impl<'a> RecordedAcquires<'a> {
     }
     /// The command was submitted: its acquires are no longer pending.
     fn submitted(mut self) {
-        self.drained.clear();
+        self.drained.submitted();
     }
 }
 impl Drop for RecordedAcquires<'_> {
@@ -1330,10 +1332,11 @@ mod tests {
             let uploads: Vec<_> = (0..count)
                 .map(|_| released_buffer_with(device, release, usage))
                 .collect();
-            device.reserve_pending_acquires(count).unwrap();
+            let mut acquire_reservation = device.reserve_pending_acquires(count).unwrap();
             for (buffer, transfer) in &uploads {
                 record::queue_acquires(
                     device,
+                    &mut acquire_reservation,
                     &crate::device::AcquireTarget::buffer(buffer),
                     std::slice::from_ref(transfer),
                     release,

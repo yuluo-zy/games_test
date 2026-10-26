@@ -330,12 +330,13 @@ pub(super) fn image_transfer(
 /// was submitted.
 pub(super) fn queue_acquires(
     device: &Device,
+    reservation: &mut crate::device::PendingAcquireReservation,
     target: &AcquireTarget,
     released: &[RangeTransfer],
     release_point: SyncPoint,
 ) -> Result<()> {
     for transfer in released {
-        device.queue_pending_acquire(PendingAcquire {
+        device.queue_pending_acquire(reservation, PendingAcquire {
             target: target.clone(),
             transfer: *transfer,
             release_point,

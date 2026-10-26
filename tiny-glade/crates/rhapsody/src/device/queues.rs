@@ -3,8 +3,9 @@
 //!
 //! Locks owned here: one external-synchronization lock per queue (inside
 //! [`Timelines`]; `with_all_queues` takes them in queue-index order) and the
-//! pending-acquire list. Neither is held while taking another device lock,
-//! except that draining pending acquires reads resource sync cells.
+//! pending-acquire list. Pre-submit pending storage growth can admit CPU
+//! budget under that list lock; resource gates, recording and native submission
+//! happen after releasing it. Cancellation/publication never grow its storage.
 use ash::vk;
 
 use crate::sync::timeline::Timelines;

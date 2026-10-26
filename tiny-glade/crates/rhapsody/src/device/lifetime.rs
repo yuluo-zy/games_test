@@ -98,10 +98,15 @@ impl Device {
         if let Err(error) = self.refresh_memory_budget_if_due() {
             log::warn!("memory budget refresh failed: {error}");
         }
-        let budget = self
-            .lifetime
-            .reclamation
-            .budget(self.memory.stats.budget_action());
+        let action = self.memory.stats.budget_action();
+        if action != crate::device::BudgetAction::None {
+            // This O(1) empty-queue check releases only idle CPU backing.
+            // It neither polls again nor spends/refreshes the native retirement
+            // scan/destroy quota. The return value below still counts native
+            // retirement entries, even when this releases nonzero CPU credit.
+            self.queues.pending_acquires.trim_empty_if_pressure();
+        }
+        let budget = self.lifetime.reclamation.budget(action);
         let count = self
             .lifetime
             .retirement

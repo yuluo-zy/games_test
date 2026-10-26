@@ -29,6 +29,7 @@ pub(crate) mod pending_acquire;
 mod queues;
 mod submission;
 pub use pending_acquire::{AcquireTarget, DrainedAcquires, PendingAcquire, PendingAcquires};
+pub(crate) use pending_acquire::PendingAcquireReservation;
 pub use submission::{Signal, SubmitBatch, Wait};
 
 pub use budget::{

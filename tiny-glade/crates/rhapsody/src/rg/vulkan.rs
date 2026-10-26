@@ -1647,8 +1647,7 @@ impl ExecutionBackend for VulkanGraphBackend {
         let count = drained.len() as u32;
         self.drained_acquires
             .try_reserve(1)
-            .map_err(|_| crate::Error::OutOfHostMemory)
-            .inspect_err(|_| self.device.requeue_pending_acquires(drained.clone()))?;
+            .map_err(|_| crate::Error::OutOfHostMemory)?; // drained Drop restores its prepaid slots.
         self.drained_acquires.push((handle, drained));
         Ok(count)
     }
@@ -1937,10 +1936,11 @@ impl ExecutionBackend for VulkanGraphBackend {
             prepared_states.publish(point);
             self.queue_submitted(point);
             // Coalesced acquires in these commands are now committed.
-            self.drained_acquires.retain(|(command, _)| {
-                !prepared
-                    .iter()
-                    .any(|batch| batch.commands.iter().any(|c| c.as_raw() == *command))
+            self.drained_acquires.retain_mut(|(command, drained)| {
+                let submitted = prepared.iter()
+                    .any(|batch| batch.commands.iter().any(|c| c.as_raw() == *command));
+                if submitted { drained.submitted(); }
+                !submitted
             });
             for semaphore in semaphores.iter() {
                 semaphore.last_use.insert_overall(point);
