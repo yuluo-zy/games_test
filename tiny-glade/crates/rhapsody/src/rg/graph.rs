@@ -237,6 +237,9 @@ impl std::error::Error for BuildError {}
 /// 一帧的渲染图声明：资源、pass、回调与导出。
 pub struct RenderGraph {
     pub(crate) graph_id: super::resource::GraphId,
+    // Committed-pass versions, indexed by logical resource. None preserves an
+    // overflow error even if a later invalid explicit write resets its number.
+    pub(crate) current_versions: Vec<Option<u32>>,
     pub(crate) declaration: GraphDeclaration,
     pub(crate) callbacks: Vec<RenderCallback>,
     retire_callbacks: Vec<RetireCallback>,
@@ -250,6 +253,7 @@ impl Default for RenderGraph {
     fn default() -> Self {
         Self {
             graph_id: super::resource::GraphId::next(),
+            current_versions: Vec::new(),
             declaration: GraphDeclaration::default(),
             callbacks: Vec::new(),
             retire_callbacks: Vec::new(),
@@ -286,6 +290,7 @@ impl RenderGraph {
         if origin.source != OriginSource::Create {
             self.foreign_imports.push(handle.raw());
         }
+        self.current_versions.push(Some(0));
         self.declaration.resources.push(ResourceDeclaration {
             sharing: crate::resource::ResourceSharing::Exclusive,
             name: name.into(),
@@ -320,6 +325,21 @@ impl RenderGraph {
         let handle = super::resource::ResourceHandle::scoped(self.graph_id, index);
         self.check_handle(handle)?;
         Ok(handle)
+    }
+
+    pub(crate) fn advance_versions(versions: &mut [Option<u32>], accesses: &[AccessDeclaration]) {
+        use super::resource::AccessVersion;
+        for access in accesses {
+            // Malformed replay declarations are rejected by compilation. Do
+            // not let an invalid index alter any valid resource's version.
+            let Some(slot) = versions.get_mut(access.resource_index as usize) else { continue };
+            let Some(version) = *slot else { continue };
+            *slot = match access.version {
+                AccessVersion::Write { current, .. } => Some(current),
+                AccessVersion::Automatic if crate::raw::access_table::is_write(access.access_code) => version.checked_add(1),
+                _ => Some(version),
+            };
+        }
     }
 
     pub fn graph_id(&self) -> super::resource::GraphId {
@@ -456,6 +476,7 @@ impl RenderGraph {
         self.declaration.passes = definition.passes.clone();
         for pass in &mut self.declaration.passes {
             pass.graph_id = Some(self.graph_id);
+            Self::advance_versions(&mut self.current_versions, &pass.accesses);
         }
         self.declaration.batch_per_pass = definition.batch_per_pass;
         for &index in &definition.gated_resources {
@@ -506,8 +527,15 @@ impl RenderGraph {
 
 impl BuiltGraph {
     pub(crate) fn into_graph(self) -> RenderGraph {
+        // BuiltGraph.declaration is public and may have been edited. Rebuild
+        // once at this boundary rather than trusting a stale private index.
+        let mut current_versions = vec![Some(0); self.declaration.resources.len()];
+        for pass in &self.declaration.passes {
+            RenderGraph::advance_versions(&mut current_versions, &pass.accesses);
+        }
         RenderGraph {
             graph_id: self.graph_id,
+            current_versions,
             declaration: self.declaration,
             callbacks: self.callbacks,
             retire_callbacks: self.retire_callbacks,

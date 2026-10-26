@@ -389,6 +389,9 @@ impl PassBuilder<'_> {
             // 首次执行前取出闭包，避免错误重试再次消费原闭包。
             callback.take().is_some_and(|render| render(context))
         });
+        // A dropped builder contributes no writes. Publish the index only
+        // alongside the finished immutable pass declaration.
+        RenderGraph::advance_versions(&mut self.graph.current_versions, &self.declaration.accesses);
         self.graph.declaration.passes.push(self.declaration);
         self.graph.callbacks.push(callback);
     }
