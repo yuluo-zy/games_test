@@ -7,6 +7,8 @@
 //! 本层只是资源身份的**基础**：它不绑定具体资源类型（`Buffer`/`Texture` 等），也不
 //! 负责线程同步或退役——这些由后续的 `resource::tracked` 与 `Device::retire` 组合完成。
 
+mod cpu_bytes;
+pub use cpu_bytes::CpuBytes;
 pub mod name;
 pub use name::ResourceName;
 

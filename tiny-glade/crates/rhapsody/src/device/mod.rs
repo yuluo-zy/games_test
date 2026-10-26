@@ -4,6 +4,8 @@ pub use crate::raw::allocator::AllocatorStats;
 pub use crate::raw::graveyard::RetirementStats;
 pub use crate::raw::stats::{RenderStats, StatsSnapshot};
 pub use memory::GpuMemoryUsage;
+mod cpu_storage;
+pub use cpu_storage::CpuStorageReservation;
 internal_mod!(
     budget,
     caps,

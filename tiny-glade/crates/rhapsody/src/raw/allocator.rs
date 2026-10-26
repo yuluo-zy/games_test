@@ -625,6 +625,13 @@ fn sub_cpu(usage: &mut crate::device::BudgetUsage, category: BudgetCategory, byt
     }
 }
 impl CpuMemoryReservation {
+    pub(crate) fn bytes(&self) -> u64 { self.bytes }
+    pub(crate) fn belongs_to(&self, budget: &std::sync::Arc<AllocatorStats>) -> bool { std::sync::Arc::ptr_eq(&self.stats, budget) }
+    pub(crate) fn split_off(&mut self, bytes: u64) -> Result<Self> {
+        if bytes > self.bytes { return Err(Error::invalid_usage("CPU credit split exceeds reservation")); }
+        self.bytes -= bytes;
+        Ok(Self { stats: self.stats.clone(), bytes, category: self.category })
+    }
     pub(crate) fn resize(&mut self, bytes: u64) -> Result<()> {
         if bytes == self.bytes {
             return Ok(());
