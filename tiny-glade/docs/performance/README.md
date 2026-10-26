@@ -1,5 +1,52 @@
 # Windows performance work
 
+## Latest evidence: 2026-10-27 / native f39dc61; engineering fa98f8d
+
+Native verification checkpoint `f39dc61eef85edebda2f491b4d31d9ff9e85c144` commits pending-acquire W2,
+same-prefix original-format surface comparison, Drop heap diagnostics and optional
+owner-preserving canonical layout preparation. These implementations still need
+final-source Tiny/workspace compilation and native acceptance.
+Engineering HEAD is now `fa98f8d4367cc6ce24fd5d7a5e03cc82b36008d7`;
+f39's native evidence does not verify subsequent tools or EffectsHost changes.
+
+Two Rhapsody observer tests passed on clean 6d1cf8a with a valid empty private Job;
+the original Job-cleanup failure is retained. Integrated Rhapsody all-target
+cpu-probe/default checks passed in 30.87s/29.91s before the canonical getters.
+Final f39 Rhapsody all-target typechecks subsequently passed in 31.52s/31.00s;
+this does not cover Tiny, country-core, the workspace or new native tests.
+Python 63 tests passed in 13.846s. Tiny fresh observer build and final canonical
+metadata check failed on compiler allocations of 14,942,224 / 262,144 bytes;
+neither ran GPU. New canonical 5 / local-surface 6 / pending-acquire 9 tests remain
+unexecuted, plus the two Tiny observer tests. Pending9's libtest build failed
+allocating 2,097,152 bytes, without tests/GPU. The heap2 native diagnostics did run:
+cached round2 is valid (2 passed / 0 ignored); round1 passed its assertions but
+remains invalid due to owned-Job drain timeout. Default suballocation still
+allocates 1/64B at unused Drop and 33/2,640B at fragmented reclaim;
+this is no CPU-ms claim. EffectsHost's separate history-validity fix adds one
+8-step native lifecycle test, still unexecuted and not Tiny-typechecked.
+
+New tool-only rounds passed 135/44/94 Python tests; the original surface 91-test
+round with two errors is retained. Qualified tool/importer byte identities were
+preserved. Installed diagnostic tools do not activate an isolated common4
+baseline or accept a new binary/GPU run.
+
+The c98 whole-scene water/ice strict pixels still fail; Nani GPU bytes were
+Unavailable, so complete GPU-input equality is unproven. Wall 3-vs-4 sparse ranges
+explain the c98 trace's two-pass dispatch difference, without a receipt join or
+CPU-gain evidence. No old invalid run is reclassified. Common4's isolated baseline
+is inactive; fatal-OOM/automatic retry are not implemented. Fully bounded stage 5, formal CPU/16ms, pixels,
+long runs, macOS and deferred WSI remain open. No settings changes or push occurred.
+Latest available commit is about 1.13GiB; further native/heavy Tiny builds are
+stopped, awaiting the user's manual memory-release response.
+
+See [scoped evidence](C:/game/docs/performance/evidence-update-f39dc61-20261027.md),
+[remaining work](C:/game/docs/performance/remaining-tasks-20261026.md) and
+[status.json](C:/game/docs/performance/status.json), active section
+`latest_progress_20261027_f39dc61`. Earlier sections below are historical.
+
+## Previous checkpoint (preserved verbatim)
+
+
 ## Latest checkpoint: 2026-10-27 / c98be8e
 
 Native Collect's isolated strict GPU recovery test passed (1/0/0, 0.87s,

@@ -1,0 +1,169 @@
+{
+  "schema": "trace-source-wall-layout-v1",
+  "date": "2026-10-27",
+  "series": "rich-workload-debug-c98be8e-trace-1",
+  "source_commit": "c98be8eafd524c6a66215b91603cd7fd1f349be1",
+  "source_content_sha256": "3ba1628503802a31bc83e90850aa9729d80a8d8b43491d430fd58f71e8f5d855",
+  "profile": "debug",
+  "frozen_files_sha256": {
+    "original_gameplay_chain-2654367002312a69.exe": "064462bf22ced894f19848bf7dffc81f726cde663e9fb8f5207847450141092a",
+    "original_gameplay_chain-2654367002312a69.pdb": "b35671b6d6c92c53651119102ac1aa23559909971ad1f4931b5cdc4513772f8f",
+    "fmod.dll": "d563ad96042c096985735b0d1fdab80fe5c7f27663171ff1550ac8ebf4c7eba6",
+    "fmodstudio.dll": "dc61fae2e70ec3a16fa78b678a0fc9ff1852491077a21c2b9c11bf4d160207ff"
+  },
+  "build_json_sha256": "19da973efd7caeb873805d9b60631493be265017332c88a70e8ead1095685ad2",
+  "source_inventory_sha256": "4163af8b341f4eae42ddb3090d223f942e54beaeb05bdac593a04d21ee6330c5",
+  "requested_test_target_completed": true,
+  "entire_cargo_build_passed": false,
+  "protocol": {
+    "scene": "static",
+    "warmup": 60,
+    "sample_intervals": 30,
+    "observations_including_baseline": 31,
+    "binding_order": [
+      "off",
+      "on"
+    ],
+    "cpu_bill": true,
+    "submit_trace": true,
+    "ETW": false
+  },
+  "summary": {
+    "path": "C:\\game\\.perf\\binding-trace-source\\rich-workload-debug-c98be8e-trace-1\\summary.json",
+    "sha256": "4384d58f4506d06853f5a3013203a8330525055fab7e08d3e9a716ac48d31725",
+    "diagnostic_structure_valid": true
+  },
+  "input_manifest_sha256": "1f7faae359e05c49b1ac65bfbbe9c321cc7fb6abb93648eeff4811fcc9f317fc",
+  "evidence": {
+    "off": {
+      "root": "C:\\game\\.perf\\headless-runs\\rich-workload-debug-c98be8e-trace-1-off",
+      "raw_run_valid": false,
+      "session_valid": true,
+      "trace_valid": true,
+      "strict_test": {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "VUID_diagnostics": 0
+      },
+      "sha256": {
+        "trace-source-artifacts.json": "9f02ae199eea2a2f27f5687957f34233f9ada377219365721794aaddc9899a4e",
+        "run.json": "7ef9bbb5e4f64c307e552d6b218854b26783c0f3f137d01114bf212593f7277f",
+        "session.json": "31fca3bb0d0dae55c97e571e1353d41c892fa25191709bbc2ef4b2d9ece37579",
+        "fixture.log": "b8c136d352fa93ffcb95fce5fa6555d34ace5efb7a74f6051c00fd5410ab225a",
+        "native-pass-trace.json": "d2dc3780f5e7fc3e53ad5e1879a30dc181f0f82dd2aeea6d4838ca8b03397c05"
+      }
+    },
+    "on": {
+      "root": "C:\\game\\.perf\\headless-runs\\rich-workload-debug-c98be8e-trace-1-on",
+      "raw_run_valid": false,
+      "session_valid": true,
+      "trace_valid": true,
+      "strict_test": {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "VUID_diagnostics": 0
+      },
+      "sha256": {
+        "trace-source-artifacts.json": "cec3eefb5cb8994dc6b1e27e6a556ef5709524bbfeb7852fe76168ee72aaba12",
+        "run.json": "becba657afe727b37b2f3a36dd0e3fecb53b20060d1f81c1203aec262b15219b",
+        "session.json": "ad5ae9fa395db932fd312a9f50d31fcfba8de8aa26e8103a709d1f5a7387d39b",
+        "fixture.log": "b5c815f3bf7046517b871f2b59a37002b4e59fe410d1842d1c13fa2442a55f88",
+        "native-pass-trace.json": "b68ddb33f9dab1485c7bf882877c97b5b105ad1a78f861df4fe51074d33e9eb9"
+      }
+    }
+  },
+  "findings": {
+    "wall_instances_each": 502,
+    "wall_ranges": {
+      "off": [
+        [
+          640,
+          65
+        ],
+        [
+          736,
+          47
+        ],
+        [
+          896,
+          390
+        ]
+      ],
+      "on": [
+        [
+          448,
+          303
+        ],
+        [
+          768,
+          6
+        ],
+        [
+          1056,
+          65
+        ],
+        [
+          1216,
+          128
+        ]
+      ]
+    },
+    "actual_direct_dispatch_each_observation": {
+      "off": 355,
+      "on": 357
+    },
+    "wall_passes": {
+      "Generate wall draw lists": {
+        "scopes_each_role": 92,
+        "off_calls_each_scope": 3,
+        "on_calls_each_scope": 4
+      },
+      "Generate wall draw lists OC/2": {
+        "scopes_each_role": 92,
+        "off_calls_each_scope": 3,
+        "on_calls_each_scope": 4
+      }
+    },
+    "all_trace_direct_dispatch": {
+      "off": 32656,
+      "on": 32840,
+      "on_minus_off": 184,
+      "wall_scope_contribution": 184
+    },
+    "display_name_profiles": {
+      "total_each": 113,
+      "unchanged": 111,
+      "only_changed": [
+        "Generate wall draw lists",
+        "Generate wall draw lists OC/2"
+      ],
+      "Nani_profiles_unchanged": true,
+      "grouping_is_semantic_matching": false
+    },
+    "management_differences": {
+      "observations_with_graph_command_difference": 14,
+      "observations_with_graph_chunk_difference": 14,
+      "total_trace_chunks": {
+        "off": 705,
+        "on": 718
+      },
+      "management_costs_retained": true
+    }
+  },
+  "acceptance": {
+    "cpu_gain_evidence": false,
+    "production_16ms": false,
+    "equal_GPU_payload_proven": false,
+    "equal_pixels_proven": false,
+    "trace_receipt_join_available": false,
+    "previous_5767_pair_reclassified": false
+  },
+  "open": [
+    "Exact upstream initial wall owner/allocation order cause remains unproven.",
+    "Canonical/common fixture with controlled real startup allocation order is planned, not implemented or accepted here.",
+    "New common source must preserve real brick payloads/effects and freeze both variants; preserve exact raw ranges/native proof, do not normalize indices or credit startup layout changes as binding gains."
+  ],
+  "status_reference": "status.json#latest_progress_20261027"
+}

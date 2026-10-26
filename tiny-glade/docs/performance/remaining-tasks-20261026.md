@@ -1,5 +1,22 @@
 # 当前进度与未完成任务（最新证据更新：2026-10-27）
 
+## 最新进展：2026-10-27 / native f39dc61；engineering fa98f8d
+
+此次 native 验证 checkpoint 是 clean `f39dc61eef85edebda2f491b4d31d9ff9e85c144`，当前工程 HEAD 已为 `fa98f8d4367cc6ce24fd5d7a5e03cc82b36008d7`，不能把 f39 证据扩大到后续改动。最终 Tiny/workspace 类型检查或全部原生验收仍未完成。
+
+- 已通过范围：clean 6d1cf8a 的 Rhapsody observer 2 tests、有效且清空的 private Job；canonical getters 之前集成 Rhapsody cpu-probe/default all-target 检查 30.87s / 29.91s；之后 clean f39 同两种 Rhapsody all-target 类型检查 31.52s / 31.00s 也通过，但不覆盖 Tiny、country-core、workspace 或新原生执行。Python 63 tests / 13.846s。旧 Job 清理失败保留。
+- 编译阻塞：Tiny observer build 申请 14,942,224 bytes 失败，最新 Tiny cpu/surface metadata 检查在 country-core 申请 262,144 bytes 失败；均未运行 GPU，也没有最终类型检查通过结论。
+- 待运行：canonical 5 tests、local surface Rust 6 tests、pending-acquire 9 tests，以及未执行的 Tiny observer 2 tests。pending9 libtest 编译申请 2,097,152 bytes 失败、artifact/test_exit=null，没执行 tests/GPU。suballocation Drop 2 tests 已原生运行：round1 断言通过但 Job drain 超时整体无效，cached round2 同 EXE/PDB、2 passed / 0 ignored、自然空 Job、valid=true。默认 unused Drop 仍有 1 次/64B Rust 分配，fragmented reclaim 33 次/2,640B；不据此声称无分配或 CPU 收益。先解除资源约束再串行补验；ignored/零命中不计通过。
+- c98 严格水冰像素仍失败。记录输入/常量/history/order 相等，但 Nani DEVICE_LOCAL GPU bytes 不可读，不能宣称 GPU 输入全等。新 canonical / 同前缀定位不得改判旧失败。
+- c98 trace 的 502 bricks 分为 OFF 3 段 / ON 4 段，两个 Wall pass 各 92 scopes 解释 184 次 dispatch 差值；111 个其他 pass 分布与 Nani 不变。无 receipt join，raw CPU 两轮仍无效，未取得收益。14 行 graph-command 与 14 行 graph-chunk 差异仍保留。
+- `b0c7a3d` 工具 Python 135/44 tests、`fa98f8d` surface LF 修复后 94 tests 通过；旧 91 tests / 2 ERROR 另保留。工具安装不是 common4 隔离基线激活或新 binary/GPU 通过。`c1dd0b3` EffectsHost history-valid 极性修复另增 1 个 8-step native 生命周期测试，只有源审/语法解析，未 Tiny 类型检查或 GPU，加入待验清单。
+- fatal-OOM/automatic retry 未应用，Painterly Ready/progress、menu/LUT 事务仍开放。阶段 5 完全有界、Release ETW/≤1% 开销、四场景 600/3000 AB/BA/AB、16ms、严格像素、压力长跑、macOS 和用户暂缓 WSI 继续开放。
+
+控制会话早期 commit 1.4–1.8GiB 和后续 4,824,317,952 bytes 样本作为历史保留；最新 reader 样本仅 1,208,508,416 bytes（约 1.13GiB），主线程已停止进一步 native/重 Tiny 构建。immediate Job 无配置内存限额不代表所有祖先，也不能当失败 compiler peak。请用户手动关闭不用的高内存程序、释放约 8GB 可提交内存的问题待答复，没有请求或应用 pagefile 更改，未终止无关应用或推送。OOM [设计说明](C:/game/docs/performance/recoverable-compile-oom-design-20261027.txt)/[源锚点](C:/game/docs/performance/recoverable-compile-oom-source-anchors-20261027.json)只是设计，不是恢复实现。详细范围及 SHA 见[本次证据](C:/game/docs/performance/evidence-update-f39dc61-20261027.md)和 [status](C:/game/docs/performance/status.json) 的 `latest_progress_20261027_f39dc61`。
+
+## 前一轮进度快照（原文保留）
+
+
 ## 最新进展：2026-10-27 / c98be8e
 
 **最新 checkpoint：c98be8e。Native Collect 真实恢复夹具已通过；新 trace/Wall/Nani 定向检查通过，正式 CPU 收益、16ms 与严格水冰像素仍未验收。**
