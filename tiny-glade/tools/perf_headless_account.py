@@ -28,7 +28,7 @@ def signature(value):
 def accounting_tools():
     root = Path(__file__).resolve().parent
     result = {}
-    for name in ('perf_headless_account.py', 'perf_etw.py'):
+    for name in ('perf_headless_account.py', 'perf_etw.py', 'perf_trace_archive.py'):
         with (root/name).open('rb') as source:
             result[name] = hashlib.file_digest(source, 'sha256').hexdigest()
     return result

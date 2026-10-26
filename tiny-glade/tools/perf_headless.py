@@ -19,6 +19,7 @@ import time
 from perf_windows import ROOT, PERF, INSTALL, XPERF, digest, dump, git, label
 from perf_headless_account import account, diagnostic_summary, paired_overhead, signature, validate, input_identity, SCENES
 from perf_build_target import run_requested_test
+from perf_trace_archive import archive_run_csv, open_trace_text
 
 TEST = 'cpu_measurement::profile_shipped_session_cpu'
 
@@ -243,7 +244,7 @@ def start_trace(destination, xperf=XPERF):
 
 def official_owner_total(report, csv_path, etl_path, destination, xperf=XPERF):
     origin = None
-    with csv_path.open(encoding='utf-8-sig', errors='replace') as source:
+    with open_trace_text(csv_path) as source:
         for line in source:
             match = re.match(r'^#\s+\d+\s+#\s+(0x[0-9a-fA-F]+)', line)
             if match:
@@ -271,6 +272,8 @@ def official_owner_total(report, csv_path, etl_path, destination, xperf=XPERF):
 
 
 def capture(args, run_label=None, mode=None, build_label=None):
+    if getattr(args, 'archive_trace_csv', False) and args.without_etw:
+        raise ValueError('--archive-trace-csv requires an ETW capture')
     frozen = load_build(build_label or args.label)
     mode = mode or args.mode
     feature = 'cpu-probe' in frozen['features']
@@ -298,7 +301,7 @@ def capture(args, run_label=None, mode=None, build_label=None):
                TG_CPU_PROBE_MODE=mode, TG_CPU_PROBE_WARMUP=str(args.warmup),
                TG_CPU_PROBE_SAMPLES=str(args.samples))
     measurement_tools = {name: digest(Path(__file__).resolve().parent/name) for name in
-                         ('perf_headless.py', 'perf_headless_account.py', 'perf_etw.py')}
+                         ('perf_headless.py', 'perf_headless_account.py', 'perf_etw.py', 'perf_trace_archive.py')}
     record = {'measurement_tools': measurement_tools, 'measurement_tools_sha256': signature(measurement_tools),
               'schema': 'headless-capture-v1', 'valid': False, 'mode': mode,
               'scenario': scene, 'warmup': args.warmup, 'samples': args.samples, 'diagnostic': args.diagnostic,
@@ -312,7 +315,8 @@ def capture(args, run_label=None, mode=None, build_label=None):
               'settings_sha256': signature(settings), 'session_path': str(session_path),
               'start_utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
               'etw': not args.without_etw, 'trace_started_by_this_run': False,
-              'production_16ms_acceptance': False}
+              'production_16ms_acceptance': False,
+              'archive_trace_csv_requested': bool(getattr(args, 'archive_trace_csv', False))}
     process = None
     started = False
     try:
@@ -408,6 +412,15 @@ def finish_capture(args, record, destination, session_path, frozen, mode):
         dump(destination/'cpu.json', precise)
         record['account'] = precise
         record['trace_csv_sha256'] = digest(csv_path)
+        record['trace_csv_path'] = str(csv_path)
+        # All OS capture, optional Microsoft analysis and CPU accounting are
+        # complete. Archive even a numerically invalid result without changing
+        # its acceptance status. Preserve the raw hash before removing CSV.
+        if getattr(args, 'archive_trace_csv', False):
+            dump(destination/'run.json', record)
+            record['trace_csv_archive'] = archive_run_csv(
+                destination, PERF/'headless-runs', record['trace_csv_sha256'])
+            record['trace_csv_path'] = record['trace_csv_archive']['path']
         # Accounting validity is distinct from a clean frozen release candidate.
         record['valid'] = precise['valid'] and not args.diagnostic
         record['clean_release_candidate'] = (record['valid'] and not frozen['dirty'] and frozen['profile'] == 'release'
@@ -484,6 +497,8 @@ def measurement_options(parser):
     parser.add_argument('--diagnostic', action='store_true')
     parser.add_argument('--without-etw', action='store_true')
     parser.add_argument('--official', action='store_true', help='also compare Microsoft CSwitch integrator')
+    parser.add_argument('--archive-trace-csv', action='store_true',
+                        help='after accounting, verify lossless gzip then remove only this run CSV; retain ETL')
 
 
 def main():

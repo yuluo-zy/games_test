@@ -9,6 +9,7 @@ import csv
 import math
 import re
 from collections import defaultdict
+from perf_trace_archive import open_trace_text
 
 RAW = re.compile(r'^#\s+(\d+)\s+#\s+(0x[0-9a-fA-F]+)')
 PID = re.compile(r'\(\s*(\d+)\s*\)\s*$')
@@ -77,7 +78,7 @@ def read_trace(path, process_id, frequency):
     lost_checked = False
     raw_time = None
     first = last = None
-    with open(path, encoding='utf-8-sig', errors='replace') as source:
+    with open_trace_text(path) as source:
         for line in source:
             raw = RAW.match(line)
             if raw:
