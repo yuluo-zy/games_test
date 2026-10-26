@@ -10,7 +10,6 @@
 //! 保留内容、上一帧不泄漏）和 image→buffer 读回。没有 Vulkan 设备时跳过。
 #[path = "support/mod.rs"]
 mod test_support;
-use test_support::ShaderTestDriver as _;
 use ash::vk::{self, Handle};
 use country_core::render::load_texture::boundary::TextureDevice;
 use country_core::{
@@ -48,6 +47,7 @@ use shader_pipeline::{
     shader_defines::ShaderDefines,
 };
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
+use test_support::ShaderTestDriver as _;
 use tiny_glade::{
     raster_host::{GraphDeclarer, RasterShared},
     render_host::{BufferHost, GraphHost, ShaderHost, TextureHost, graph_token},
@@ -560,11 +560,19 @@ impl Env {
             }
             RasterShaderProgram::new_draw(name, desc, &*shaders)
         };
-        let shader_library = Arc::new(country_core::asset_libraries::shader_library::AssetShaderLibrary::new());
+        let shader_library =
+            Arc::new(country_core::asset_libraries::shader_library::AssetShaderLibrary::new());
         let program = shader_library.add_raster(make("tri", "test/tri", false), false);
-        let color_program = shader_library.add_raster(make("tri_color", "test/tri_color", true), false);
-        let program = CoreHandle(country_core::rhapsody_contract::ManagedHandle(program.id().raw()), core::marker::PhantomData);
-        let color_program = CoreHandle(country_core::rhapsody_contract::ManagedHandle(color_program.id().raw()), core::marker::PhantomData);
+        let color_program =
+            shader_library.add_raster(make("tri_color", "test/tri_color", true), false);
+        let program = CoreHandle(
+            country_core::rhapsody_contract::ManagedHandle(program.id().raw()),
+            core::marker::PhantomData,
+        );
+        let color_program = CoreHandle(
+            country_core::rhapsody_contract::ManagedHandle(color_program.id().raw()),
+            core::marker::PhantomData,
+        );
         let raster = RasterShared::new_with_shader_library(
             gd.clone(),
             buffers.clone(),
@@ -794,7 +802,9 @@ fn core_raster_pass_draws_a_triangle_into_a_core_texture_and_reads_back() {
 
     // core 的链：RasterPass（tag1 = CLEAR 附件）→ DrawBuilder.uniform → draw_no_vao(3) → render。
     let angle = 20f32.to_radians();
-    let host = env.raster.pass_host(graph.clone(), Some(env.session.clone()));
+    let host = env
+        .raster
+        .pass_host(graph.clone(), Some(env.session.clone()));
     raster_single_object(
         "core triangle",
         &[ColorAttachment::View {
@@ -850,8 +860,23 @@ fn core_raster_pass_draws_a_triangle_into_a_core_texture_and_reads_back() {
 
     // 宿主缓存：一个渲染通道、变体 0 一条管线。
     assert_eq!(env.shaders.passes().len(), 1);
-    assert_eq!(env.shader_library.get_raster_by_id(env.program.0.0).unwrap().variants[0].cached(), 1);
-    assert_eq!(env.shader_library.get_raster_by_id(env.program.0.0).unwrap().variants[1].cached(), 0, "没用深度变体");
+    assert_eq!(
+        env.shader_library
+            .get_raster_by_id(env.program.0.0)
+            .unwrap()
+            .variants[0]
+            .cached(),
+        1
+    );
+    assert_eq!(
+        env.shader_library
+            .get_raster_by_id(env.program.0.0)
+            .unwrap()
+            .variants[1]
+            .cached(),
+        0,
+        "没用深度变体"
+    );
     println!(
         "单帧：三角形像素 {}（理论 512），与参考光栅化不一致 {}，质心误差 {:.3}px",
         check.filled, check.mismatches, check.centroid_error
@@ -979,14 +1004,14 @@ fn owned_external_draw_resources_are_declared_before_recording_and_outlive_host_
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, compiled_external_container().encode().unwrap()).unwrap();
     }
-    let program = env
-        .shader_library
-        .add_raster(RasterShaderProgram::new_draw(
-            "owned-external",
-            desc,
-            &*env.shaders,
-        ), false);
-    let program = CoreHandle(country_core::rhapsody_contract::ManagedHandle(program.id().raw()), core::marker::PhantomData);
+    let program = env.shader_library.add_raster(
+        RasterShaderProgram::new_draw("owned-external", desc, &*env.shaders),
+        false,
+    );
+    let program = CoreHandle(
+        country_core::rhapsody_contract::ManagedHandle(program.id().raw()),
+        core::marker::PhantomData,
+    );
     let color_bytes: Vec<_> = [1.0_f32, 0.0, 0.0, 1.0]
         .into_iter()
         .flat_map(f32::to_ne_bytes)
@@ -1202,7 +1227,9 @@ fn core_raster_pass_chain_animates_over_frames_with_two_in_flight() {
         env.add_clear_pass(&graph, color.resource, clear);
         // core 的链：tag0 = LOAD 附件（访问 0x36 读写）→ 清除色保留、三角形叠上去。
         let angle = frame as f32 * STEP_DEG.to_radians();
-        let host = env.raster.pass_host(graph.clone(), Some(env.session.clone()));
+        let host = env
+            .raster
+            .pass_host(graph.clone(), Some(env.session.clone()));
         raster_single_object(
             "core triangle",
             &[ColorAttachment::Texture(attachment_texture(color.resource))],
@@ -1250,7 +1277,11 @@ fn core_raster_pass_chain_animates_over_frames_with_two_in_flight() {
     // 宿主缓存：30 帧共用一个渲染通道、一条管线（不是每帧新建）。
     assert_eq!(env.shaders.passes().len(), 1, "渲染通道按 0x98B 键去重");
     assert_eq!(
-        env.shader_library.get_raster_by_id(env.program.0.0).unwrap().variants[0].cached(),
+        env.shader_library
+            .get_raster_by_id(env.program.0.0)
+            .unwrap()
+            .variants[0]
+            .cached(),
         1,
         "管线按 (通道, 状态位域) 缓存"
     );
@@ -1323,7 +1354,9 @@ fn run_depth_frame_collected(env: &Env, draws: &[DepthDraw], collected: bool) ->
         },
         clear: DepthClear::Clear(1.0),
     };
-    let host = env.raster.pass_host(graph.clone(), Some(env.session.clone()));
+    let host = env
+        .raster
+        .pass_host(graph.clone(), Some(env.session.clone()));
     let collect_factory = host.prepare_draw_collection();
     let mut pass = RasterPass::new(
         "core depth pass",
@@ -1352,20 +1385,32 @@ fn run_depth_frame_collected(env: &Env, draws: &[DepthDraw], collected: bool) ->
     };
     if collected {
         let batches = std::thread::scope(|scope| {
-            let handles: Vec<_> = draws.chunks(2).map(|chunk| {
-                let factory = &collect_factory;
-                let emit = &emit;
-                scope.spawn(move || {
-                    let mut local = RasterPass::collector(factory(), [SIZE, SIZE]);
-                    for d in chunk { emit(&mut local, d); }
-                    local.into_draw_batch()
+            let handles: Vec<_> = draws
+                .chunks(2)
+                .map(|chunk| {
+                    let factory = &collect_factory;
+                    let emit = &emit;
+                    scope.spawn(move || {
+                        let mut local = RasterPass::collector(factory(), [SIZE, SIZE]);
+                        for d in chunk {
+                            emit(&mut local, d);
+                        }
+                        local.into_draw_batch()
+                    })
                 })
-            }).collect();
-            handles.into_iter().map(|handle| handle.join().unwrap()).collect::<Vec<_>>()
+                .collect();
+            handles
+                .into_iter()
+                .map(|handle| handle.join().unwrap())
+                .collect::<Vec<_>>()
         });
-        for batch in batches { pass.commit_draw_batch(batch); }
+        for batch in batches {
+            pass.commit_draw_batch(batch);
+        }
     } else {
-        for d in draws { emit(&mut pass, d); }
+        for d in draws {
+            emit(&mut pass, d);
+        }
     }
     pass.render();
     env.add_readback_pass(&graph, color.resource, rb.resource as u32);
@@ -1506,6 +1551,9 @@ fn consumer_resource_errors_keep_device_loss_including_cached_texture_views() {
         .create_texture("cached terminal view", &desc, &[])
         .unwrap();
     env.textures.default_view(texture.id).unwrap();
+    // This injects logical DeviceLost into a physically healthy device. Finish
+    // the real setup upload before claiming every dependency is completed.
+    env.device.wait_idle_and_collect().unwrap();
     env.device.timelines().mark_device_lost();
     assert!(matches!(
         env.textures.default_view(texture.id),
@@ -1615,7 +1663,9 @@ fn mesh_draw_without_an_actual_vao_is_rejected_without_submission() {
         return;
     };
     let graph = env.begin();
-    let host = env.raster.pass_host(graph.clone(), Some(env.session.clone()));
+    let host = env
+        .raster
+        .pass_host(graph.clone(), Some(env.session.clone()));
     let mut pass = RasterPass::new(
         "unverified",
         &[ColorAttachment::Texture(attachment_texture(0))],
@@ -1703,7 +1753,9 @@ fn host_temporal_validity_tracks_submitted_history_resize_and_cancellation() {
             continue;
         }
         for texture in [slot.texture, pair.current] {
-            let host = env.raster.pass_host(graph.clone(), Some(env.session.clone()));
+            let host = env
+                .raster
+                .pass_host(graph.clone(), Some(env.session.clone()));
             let mut attachment = attachment_texture(texture.resource);
             attachment.extent = (desc.extent[0], desc.extent[1]);
             raster_single_object(
@@ -1760,19 +1812,40 @@ fn host_temporal_validity_tracks_submitted_history_resize_and_cancellation() {
 
 #[test]
 fn collected_constants_and_stable_depth_draws_match_inline_pixels() {
-    let Some(env) = Env::new("collected-depth-equivalence") else { return; };
+    let Some(env) = Env::new("collected-depth-equivalence") else {
+        return;
+    };
     let draws = [
-        DepthDraw { dx: -0.15, z: 0.7, rgb: [1.0, 0.0, 0.0] },
-        DepthDraw { dx: 0.15, z: 0.5, rgb: [0.0, 1.0, 0.0] },
-        DepthDraw { dx: 0.0, z: 0.3, rgb: [0.0, 0.0, 1.0] },
-        DepthDraw { dx: 0.0, z: 0.3, rgb: [1.0, 1.0, 0.0] },
+        DepthDraw {
+            dx: -0.15,
+            z: 0.7,
+            rgb: [1.0, 0.0, 0.0],
+        },
+        DepthDraw {
+            dx: 0.15,
+            z: 0.5,
+            rgb: [0.0, 1.0, 0.0],
+        },
+        DepthDraw {
+            dx: 0.0,
+            z: 0.3,
+            rgb: [0.0, 0.0, 1.0],
+        },
+        DepthDraw {
+            dx: 0.0,
+            z: 0.3,
+            rgb: [1.0, 1.0, 0.0],
+        },
     ];
     let inline = run_depth_frame(&env, &draws);
     // Each frame allocates a new tagged external readback handle while the
     // internal color/depth allocations remain eligible for cache/pool reuse.
     for collected in [true, false, true] {
         let pixels = run_depth_frame_collected(&env, &draws, collected);
-        assert_eq!(pixels, inline, "moved constants and stable Commit must preserve every pixel");
+        assert_eq!(
+            pixels, inline,
+            "moved constants and stable Commit must preserve every pixel"
+        );
     }
     assert!(inline.chunks_exact(4).any(|pixel| pixel != [0, 0, 0, 0]));
     env.raster.clear_attachment_cache();
