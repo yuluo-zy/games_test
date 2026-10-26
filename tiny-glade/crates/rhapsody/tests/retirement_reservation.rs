@@ -320,3 +320,57 @@ fn rejected_registration_and_independent_heap_peaks_preserve_peak_evidence() {
     );
     stats.release(third).unwrap();
 }
+
+#[test]
+fn image_view_and_second_command_ticket_refusals_restore_credits_and_recover() {
+    use rhapsody::raw::texture::{Texture, TextureDesc, TextureView, TextureViewDesc};
+    let Some(device) = gpu_test_support::initialize(
+        "image view and dual-command retirement admission",
+        Device::new_headless(&DeviceConfig::headless()),
+    ) else { return; };
+    let stats = device.allocator_stats();
+    let shared_bytes = |layout: std::alloc::Layout| -> u64 {
+        std::alloc::Layout::new::<[usize; 2]>().extend(layout).unwrap().0.pad_to_align().size() as u64
+    };
+    let sync_bytes = shared_bytes(std::alloc::Layout::new::<rhapsody::resource::SyncCell>());
+    // A real ordinary sampler owns only SyncCell storage and one retirement
+    // node. Calibrate the actual charged node capacity, not a mirrored Node
+    // layout or fake native handle. This is not native-create instrumentation.
+    let initial = stats.cpu_memory_usage().total();
+    let sampler = Sampler::new(device.clone(), &vk::SamplerCreateInfo::default()).unwrap();
+    let ticket_bytes = stats.cpu_memory_usage().total().checked_sub(initial + sync_bytes).unwrap();
+    assert!(ticket_bytes > 0);
+    drop(sampler);
+    assert_eq!(stats.cpu_memory_usage().total(), initial);
+
+    let desc = TextureDesc::new_2d(4, 4, vk::Format::R8G8B8A8_UNORM).usage(vk::ImageUsageFlags::SAMPLED);
+    stats.set_host_budget(initial + sync_bytes + shared_bytes(std::alloc::Layout::new::<Texture>())).unwrap();
+    assert!(matches!(Texture::new(device.clone(), &desc), Err(rhapsody::Error::OutOfHostMemory)));
+    assert_eq!(stats.cpu_memory_usage().total(), initial);
+    stats.set_host_budget(0).unwrap();
+    let image = Arc::new(Texture::new(device.clone(), &desc).unwrap());
+    let view_desc = TextureViewDesc::new(&desc).unwrap();
+    let with_image = stats.cpu_memory_usage().total();
+    stats.set_host_budget(with_image + shared_bytes(std::alloc::Layout::new::<TextureView>())).unwrap();
+    assert!(matches!(image.image_view(&view_desc), Err(rhapsody::Error::OutOfHostMemory)));
+    assert_eq!(stats.cpu_memory_usage().total(), with_image);
+    stats.set_host_budget(0).unwrap();
+    drop(image.image_view(&view_desc).unwrap());
+    assert_eq!(stats.cpu_memory_usage().total(), with_image);
+    drop(image);
+
+    let pool = VulkanCommandPool::new(device.clone()).unwrap();
+    // Warm the existing pool's separate reusable recording storage before
+    // measuring a denied allocation. One node fits, the second cannot fit.
+    drop(pool.allocate().unwrap());
+    let with_pool = stats.cpu_memory_usage().total();
+    let pending = device.retirement_stats().pending;
+    stats.set_host_budget(with_pool + ticket_bytes).unwrap();
+    assert!(matches!(pool.allocate(), Err(rhapsody::Error::OutOfHostMemory)));
+    assert_eq!(stats.cpu_memory_usage().total(), with_pool);
+    assert_eq!(device.retirement_stats().pending, pending);
+    stats.set_host_budget(0).unwrap();
+    drop(pool.allocate().unwrap());
+    assert_eq!(stats.cpu_memory_usage().total(), with_pool);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
+}
