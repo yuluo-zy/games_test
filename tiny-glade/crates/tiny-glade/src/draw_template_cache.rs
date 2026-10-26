@@ -40,6 +40,9 @@ impl ReflectionCache {
         Self { entries: HashMap::new(), value_bytes: 0, budget, clock: 0 }
     }
 
+    #[cfg(feature = "cpu-probe")]
+    pub(crate) fn diagnostic_len(&self) -> usize { self.entries.len() }
+
     pub(crate) fn get(&mut self, key: &Key) -> Option<Arc<ShaderReflection>> {
         self.clock = self.clock.saturating_add(1);
         let entry = self.entries.get_mut(key)?;

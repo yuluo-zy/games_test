@@ -412,6 +412,8 @@ pub struct RasterShared {
     /// Bumped every time the VAO snapshot table is replaced.
     vao_table_revision: std::sync::atomic::AtomicU64,
     vao_snapshot_allocations: std::sync::atomic::AtomicU64,
+    #[cfg(feature = "cpu-probe")]
+    management_counts: [std::sync::atomic::AtomicU64; 6],
     /// The global texture table's (resource, range) reads for the graph being
     /// declared. Every raster pass of one graph reads the same table, so it is
     /// imported and range-declared once per graph instead of once per pass.
@@ -476,9 +478,32 @@ impl RasterShared {
     fn buffer_host(&self) -> Arc<BufferHost> {
         self.frame_buffers.lock().as_ref().unwrap_or(&self.buffers).clone()
     }
+    fn count_management(&self, index: usize, amount: u64) {
+        #[cfg(feature = "cpu-probe")]
+        if crate::render_cpu_probe::management_enabled() {
+            self.management_counts[index].fetch_add(amount, std::sync::atomic::Ordering::Relaxed);
+        }
+        #[cfg(not(feature = "cpu-probe"))]
+        let _ = (index, amount);
+    }
+    /// App-owned cumulative counts. Diagnostic-only; serialization stays outside frames.
+    #[cfg(feature = "cpu-probe")]
+    pub fn draw_management_counts(&self) -> [u64; 13] {
+        let mut result = [0; 13];
+        for (index, counter) in self.management_counts.iter().enumerate() {
+            result[index] = counter.load(std::sync::atomic::Ordering::Relaxed);
+        }
+        let vao = self.vao_refresh_timing();
+        result[6] = vao.calls; result[7] = vao.list_entries;
+        result[8] = vao.queried_entities; result[9] = vao.unique_vaos;
+        result[10] = self.vao_table_revision(); result[11] = self.vao_snapshot_allocations();
+        result[12] = self.reflections.lock().diagnostic_len() as u64;
+        result
+    }
     fn reflection(&self, shader: u64, variant: u8) -> Option<Arc<CoreReflection>> {
+        self.count_management(0, 1);
         let key = (shader, variant);
-        if let Some(hit) = self.reflections.lock().get(&key) { return Some(hit); }
+        if let Some(hit) = self.reflections.lock().get(&key) { self.count_management(1, 1); return Some(hit); }
         let reflection = core_reflection(self.programs.get_raster_by_id(shader)?, variant)?;
         self.reflections.lock().insert(key, reflection.clone());
         Some(reflection)
@@ -499,7 +524,10 @@ impl RasterShared {
     ) -> rhapsody::Result<()> {
         use country_core::asset_libraries::{Handle as AssetHandle, vao_library::AssetVAOLibrary};
         use country_core::render::vao::Vao;
-        let mut timing = crate::game_loop::frame_timing_enabled().then(|| VaoRefreshMeasurement {
+        let timing_enabled = crate::game_loop::frame_timing_enabled();
+        #[cfg(feature = "cpu-probe")]
+        let timing_enabled = timing_enabled || crate::render_cpu_probe::management_enabled();
+        let mut timing = timing_enabled.then(|| VaoRefreshMeasurement {
             totals: &self.vao_refresh_timing,
             started: std::time::Instant::now(),
             counts: VaoRefreshTiming::default(),
@@ -734,6 +762,8 @@ impl RasterShared {
             vao_refresh_timing: Mutex::new(VaoRefreshTiming::default()),
             vao_table_revision: std::sync::atomic::AtomicU64::new(0),
             vao_snapshot_allocations: std::sync::atomic::AtomicU64::new(0),
+            #[cfg(feature = "cpu-probe")]
+            management_counts: [const { std::sync::atomic::AtomicU64::new(0) }; 6],
             table_reads: Mutex::new(None),
             frame_constants: Mutex::new(None),
             vao_scope: Mutex::new(None),
@@ -987,7 +1017,10 @@ impl PassHost for RasterCollectHost {
     }
     fn allocate_dynamic_constants(&mut self, reflection: &CoreReflection) -> Option<DynamicConstantsBinding> {
         Some(DynamicConstantsBinding {
-            data: self.shared.constant_pool.take(reflection.uniform_block_size as usize),
+            data: {
+                self.shared.count_management(2, 1);
+                self.shared.constant_pool.take(reflection.uniform_block_size as usize)
+            },
             binding_index: reflection.uniform_block_binding,
             keepalive: ManagedHandle(0),
             lease: None,
@@ -1064,6 +1097,7 @@ impl PassHost for RasterPassHost {
             let allocation = { self.shared.dynamic.lock().allocate(bytes.bytes.len() as u64) };
             let result = allocation.and_then(|chunk| {
                     chunk.write_bytes(&bytes.bytes)?;
+                    self.shared.count_management(3, bytes.bytes.len() as u64);
                     Ok(Arc::new(chunk))
                 });
             match result {
@@ -2580,6 +2614,7 @@ fn bindless_parameters(
     globals: Option<Arc<crate::frame_setup::FrameGlobals>>,
     parameter_chunk: &rhapsody::resource::DynamicConstantsChunk,
 ) -> rhapsody::Result<rhapsody::bindless::PreparedBindlessParameters> {
+    shared.count_management(5, 1);
     let probe_resources = country_core::render::declare_probe::start();
     let mut resources = Vec::new();
     for (binding, owned) in &draw.packet.bindings {
@@ -2615,6 +2650,7 @@ fn bindless_parameters(
                 }
             }
         };
+        shared.count_management(4, 1);
         upsert_shader_resource(&mut resources, *binding, value)?;
     }
     for binding in draw.external.as_slice() {
@@ -2639,6 +2675,7 @@ fn bindless_parameters(
                 size: crate::render_host::clamp_storage_binding_range(&shared.device, size),
             }
         };
+        shared.count_management(4, 1);
         upsert_shader_resource(&mut resources, binding.binding, value)?;
     }
     for access in &draw.packet.accesses {
@@ -2674,6 +2711,7 @@ fn bindless_parameters(
                 ),
             }
         };
+        shared.count_management(4, 1);
         upsert_shader_resource(&mut resources, access.binding_index, resource)?;
     }
     // B EguiBackend::draw 0x1400def7e..0x1400defd0 stores the 8-byte

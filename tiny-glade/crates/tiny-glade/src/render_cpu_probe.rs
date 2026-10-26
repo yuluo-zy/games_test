@@ -27,6 +27,8 @@
 
 use serde_json::{Value, json};
 
+pub use crate::cpu_clock::{current_thread_id, process_cpu_ns, read_thread_cpu_ns, wall_frequency, wall_ticks};
+
 /// Why a completion point did not yield a clean gameplay CPU sample. A recorded
 /// sample is either [`Clean`](SampleKind::Clean) or one of these error kinds;
 /// error kinds still advance the baseline so the next clean interval does not
@@ -113,36 +115,11 @@ impl CpuIntervalRecorder {
         self.baseline = None;
     }
 
-    /// Read the thread CPU clock. Returns cumulative owner CPU nanoseconds, or
-    /// `None` on a `clock_gettime` failure. Only macOS has the owner-CPU path;
-    /// other hosts return `None` so the sample is recorded as a clock error.
-    #[cfg(target_os = "macos")]
+    /// Cumulative owner CPU nanoseconds from the shared platform clock.
+    /// Retained here for compatibility with existing recorder consumers.
     pub fn read_thread_cpu_ns() -> Option<u64> {
-        let mut stamp = libc::timespec {
-            tv_sec: 0,
-            tv_nsec: 0,
-        };
-        // SAFETY: `stamp` is a valid, fully-initialized timespec; clock_gettime
-        // only writes through the pointer on success.
-        if unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut stamp) } != 0 {
-            return None;
-        }
-        Some(stamp.tv_sec as u64 * 1_000_000_000 + stamp.tv_nsec as u64)
+        crate::cpu_clock::read_thread_cpu_ns()
     }
-
-    #[cfg(windows)]
-    pub fn read_thread_cpu_ns() -> Option<u64> {
-        use winapi::{shared::minwindef::FILETIME,
-            um::processthreadsapi::{GetCurrentThread, GetThreadTimes}};
-        let mut times = [FILETIME { dwLowDateTime: 0, dwHighDateTime: 0 }; 4];
-        let [create, exit, kernel, user] = &mut times;
-        if unsafe { GetThreadTimes(GetCurrentThread(), create, exit, kernel, user) } == 0 { return None; }
-        let raw = |time: FILETIME| (u64::from(time.dwHighDateTime) << 32) | u64::from(time.dwLowDateTime);
-        raw(times[2]).checked_add(raw(times[3]))?.checked_mul(100)
-    }
-
-    #[cfg(not(any(windows, target_os = "macos")))]
-    pub fn read_thread_cpu_ns() -> Option<u64> { None }
 
     /// Record a completion point for a real observed frame. Reads the clock and
     /// stores the interval since the previous completion. Call exactly once per
@@ -469,61 +446,6 @@ impl CpuProbeSession {
     }
 }
 
-pub fn current_thread_id() -> u64 {
-    #[cfg(windows)]
-    { unsafe { winapi::um::processthreadsapi::GetCurrentThreadId() as u64 } }
-    #[cfg(target_os = "macos")]
-    {
-        let mut id = 0;
-        unsafe { libc::pthread_threadid_np(0, &mut id); }
-        id
-    }
-    #[cfg(not(any(windows, target_os = "macos")))]
-    { 0 }
-}
-
-pub fn wall_ticks() -> u64 {
-    #[cfg(windows)]
-    {
-        let mut value = unsafe { std::mem::zeroed::<winapi::shared::ntdef::LARGE_INTEGER>() };
-        if unsafe { winapi::um::profileapi::QueryPerformanceCounter(&mut value) } == 0 { return 0; }
-        unsafe { *value.QuadPart() as u64 }
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let mut stamp = libc::timespec { tv_sec: 0, tv_nsec: 0 };
-        if unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut stamp) } != 0 { return 0; }
-        stamp.tv_sec as u64 * 1_000_000_000 + stamp.tv_nsec as u64
-    }
-    #[cfg(not(any(windows, target_os = "macos")))]
-    { 0 }
-}
-
-pub fn wall_frequency() -> u64 {
-    #[cfg(windows)]
-    {
-        let mut value = unsafe { std::mem::zeroed::<winapi::shared::ntdef::LARGE_INTEGER>() };
-        if unsafe { winapi::um::profileapi::QueryPerformanceFrequency(&mut value) } == 0 { return 0; }
-        unsafe { *value.QuadPart() as u64 }
-    }
-    #[cfg(not(windows))]
-    { 1_000_000_000 }
-}
-
-pub fn process_cpu_ns() -> Option<u64> {
-    #[cfg(windows)]
-    {
-        use winapi::{shared::minwindef::FILETIME, um::processthreadsapi::{GetCurrentProcess, GetProcessTimes}};
-        let mut times = [FILETIME { dwLowDateTime: 0, dwHighDateTime: 0 }; 4];
-        let [create, exit, kernel, user] = &mut times;
-        if unsafe { GetProcessTimes(GetCurrentProcess(), create, exit, kernel, user) } == 0 { return None; }
-        let raw = |time: FILETIME| (u64::from(time.dwHighDateTime) << 32) | u64::from(time.dwLowDateTime);
-        raw(times[2]).checked_add(raw(times[3]))?.checked_mul(100)
-    }
-    #[cfg(not(windows))]
-    { None }
-}
-
 #[cfg(test)]
 mod session_tests {
     use super::*;
@@ -702,5 +624,41 @@ mod tests {
             .filter(|s| s.kind == SampleKind::NotObserved)
             .count();
         assert_eq!(unobserved, 2);
+    }
+}
+
+
+thread_local! {
+    static FRAME_STAGES: std::cell::Cell<Option<[u64; 3]>> = const { std::cell::Cell::new(None) };
+}
+/// Owner-only fixed storage; does not publish a graph pointer to workers.
+pub fn begin_stages() { FRAME_STAGES.with(|slot| slot.set(Some([0; 3]))); }
+pub fn take_stages() -> Option<[u64; 3]> { FRAME_STAGES.with(|slot| slot.take()) }
+pub(crate) fn stage_boundary(index: usize) {
+    FRAME_STAGES.with(|slot| {
+        if let Some(mut times) = slot.get() { times[index] = wall_ticks(); slot.set(Some(times)); }
+    });
+}
+pub(crate) fn management_enabled() -> bool {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ENABLED.get_or_init(|| std::env::var("TG_CPU_BILL").is_ok_and(|value| value == "1"))
+}
+
+
+#[cfg(test)]
+mod stage_tests {
+    use super::*;
+    #[test]
+    fn stage_storage_is_owner_local_and_clears_after_take() {
+        assert!(take_stages().is_none());
+        begin_stages();
+        stage_boundary(0);
+        assert!(std::thread::spawn(take_stages).join().unwrap().is_none());
+        let times = take_stages().unwrap();
+        if cfg!(any(windows, target_os = "macos")) { assert!(times[0] > 0); }
+        assert_eq!(times[1..], [0,0]);
+        assert!(take_stages().is_none());
+        stage_boundary(1);
+        assert!(take_stages().is_none());
     }
 }

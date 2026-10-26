@@ -162,24 +162,40 @@ pub fn prepare_headless_gameplay_frame(
     bridge: &mut crate::render_bridge::CoreRenderBridge,
     world: &mut World,
 ) -> Result<PreparedHeadlessGameplayFrame> {
+    prepare_headless_gameplay_frame_with_lists(bridge, world, &mut DrawLists::new())
+}
+
+/// Reuse the caller-owned lists, matching the resident production renderer.
+/// Measurement uses the same graph preparation and physical resource protocol.
+pub fn prepare_headless_gameplay_frame_with_lists(
+    bridge: &mut crate::render_bridge::CoreRenderBridge,
+    world: &mut World,
+    lists: &mut DrawLists,
+) -> Result<PreparedHeadlessGameplayFrame> {
     let started = std::time::Instant::now();
-    let mut lists = DrawLists::new();
-    build_draw_lists(world, bridge.shader_library().as_ref(), &mut lists);
+    lists.clear();
+    build_draw_lists(world, bridge.shader_library().as_ref(), lists);
     lists.sort();
-    bridge.raster_resources().refresh_draw_vaos(world, &lists).context("refresh draw VAOs")?;
+    bridge.raster_resources().refresh_draw_vaos(world, lists).context("refresh draw VAOs")?;
     let draw_lists = started.elapsed();
+    #[cfg(feature = "cpu-probe")]
+    crate::render_cpu_probe::stage_boundary(0);
     let extent = world_extent(world, None, None)?;
     let started = std::time::Instant::now();
     let (output, built) = bridge.build_frame(|frame| {
         frame.with_main_prelude(world, |frame, world| {
-            build_full_world_stage(frame, world, &lists, extent, None, None)
+            build_full_world_stage(frame, world, lists, extent, None, None)
         })
     }).context("declare world graph")?;
     let declare = started.elapsed();
+    #[cfg(feature = "cpu-probe")]
+    crate::render_cpu_probe::stage_boundary(1);
     let started = std::time::Instant::now();
     let capture_graph_id = built.graph_id();
     let compiled = bridge.compile_built(built).context("compile world graph")?;
     let compile = started.elapsed();
+    #[cfg(feature = "cpu-probe")]
+    crate::render_cpu_probe::stage_boundary(2);
     Ok(PreparedHeadlessGameplayFrame { compiled, capture_graph_id, output: output.texture,
         draw_lists, declare, compile })
 }

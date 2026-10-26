@@ -83,8 +83,8 @@ pub mod gameplay_startup;
 
 mod render_control;
 
-// Clean per-frame render-thread CPU sampling. Built under `cpu-probe` (implied
-// by `profile`); the actual CLOCK_THREAD_CPUTIME_ID read is macOS-only inside
-// the module. A normal build carries no recorder type and no clock overhead.
+// Pure platform clocks are shared with feature-off benchmark envelopes.
+// Production hot paths still call the recorder only under `cpu-probe`.
+pub mod cpu_clock;
 #[cfg(feature = "cpu-probe")]
 pub mod render_cpu_probe;

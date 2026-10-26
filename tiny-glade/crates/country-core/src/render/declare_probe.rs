@@ -27,7 +27,7 @@ static COLLECT_PASSES: AtomicU64 = AtomicU64::new(0);
 static COLLECT_TASKS: AtomicU64 = AtomicU64::new(0);
 
 /// Totals accumulated since the previous [`take`].
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize)]
 pub struct DeclareProbe {
     pub cross_pass_tasks: u64,
     pub collect_passes: u64,
@@ -57,7 +57,7 @@ pub struct DeclareProbe {
     pub rec_bind_ns: u64,
     pub rec_draw_ns: u64,
     /// `submit_raster_pass` stages: 0 pipeline resolve, 1 imports, 2 intents and
-    /// ranges, 3 texture table, 4 draw accesses (also counted above), 5 rest.
+    /// ranges, 3 texture table, 4 session import time, 5 session import count (not nanoseconds).
     pub stage_ns: [u64; 6],
     /// `ShaderBindingSnapshot::prepare` phases (summed over threads): requirements,
     /// globals page, sampler page, reserve+new, sampler write, globals write,

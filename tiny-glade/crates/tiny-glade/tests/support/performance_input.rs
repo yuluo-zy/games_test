@@ -139,3 +139,50 @@ pub fn scene_manifest(world: &mut World, draw_lists: &[usize]) -> Result<Value> 
     let session = world.resource::<country_core::resources::session::ActiveSession>();
     Ok(json!({"schema":2,"session":session.meta,"draw_lists":draw_lists,"meshes":meshes,"nani":subsets}))
 }
+
+/// Optional workload-verification observer, enabled identically in paired
+/// probe-off/on binaries. Build outside measurement. Does no locking, mesh
+/// scan, serialization or allocation in observe(). It retains every transform
+/// bit for the captured ordinary mesh population (not Nani instance payloads).
+pub struct TransformTrajectory {
+    entities: Vec<Entity>,
+    initial_manifest_blake3: String,
+    hash: blake3::Hasher,
+    samples: usize,
+}
+
+impl TransformTrajectory {
+    pub fn capture(world: &mut World) -> Result<Self> {
+        let candidates = candidates(world)?;
+        let manifest: Vec<_> = candidates.iter().map(|c|&c.manifest).collect();
+        let bytes = serde_json::to_vec(&manifest)?;
+        let digest = blake3::hash(&bytes).to_hex().to_string();
+        let mut hash = blake3::Hasher::new();
+        hash.update(b"ordinary-mesh-transform-trajectory-v1");
+        hash.update(&bytes);
+        Ok(Self { entities: candidates.into_iter().map(|c|c.entity).collect(),
+            initial_manifest_blake3:digest, hash, samples:0 })
+    }
+
+    pub fn observe(&mut self, world: &World, ordinal: u64) -> Result<()> {
+        self.hash.update(&ordinal.to_le_bytes());
+        for &entity in &self.entities {
+            let transform = world.get::<Transform>(entity)
+                .context("captured benchmark entity or Transform disappeared; workload changed")?;
+            for part in transform.rotation.to_array().into_iter()
+                .chain(transform.translation.to_array()).chain(transform.scale.to_array()) {
+                self.hash.update(&part.to_bits().to_le_bytes());
+            }
+        }
+        self.samples += 1;
+        Ok(())
+    }
+
+    pub fn summary(&self) -> Value {
+        json!({"schema":"ordinary-mesh-transform-trajectory-v1",
+            "entities":self.entities.len(),"samples":self.samples,
+            "initial_manifest_blake3":self.initial_manifest_blake3,
+            "trajectory_blake3":self.hash.finalize().to_hex().to_string(),
+            "scope":"Captured ordinary mesh entities only; retain full input_before/input_after and Nani proof independently"})
+    }
+}

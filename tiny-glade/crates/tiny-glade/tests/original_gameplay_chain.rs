@@ -3,6 +3,7 @@
 //! A temporary account prevents writes to the player's actual saves.
 #[path = "support/mod.rs"]
 mod test_support;
+mod cpu_measurement;
 use test_support::BridgeTestDriver as _;
 use std::{path::PathBuf, time::Duration};
 
