@@ -470,6 +470,116 @@ impl Drop for VaoRefreshMeasurement<'_> {
     }
 }
 
+/// Resolve actual typed handles once per unique VAO, using the entity already
+/// carried by the list builder. Legacy explicit lists keep the original scan
+/// fallback; native host/generation validation still happens after this step.
+fn draw_vao_handles(
+    world: &mut bevy_ecs::world::World,
+    lists: &country_core::systems::render_loop::draw_passes::draw_lists::DrawLists,
+    mut timing: Option<&mut VaoRefreshTiming>,
+) -> rhapsody::Result<Vec<country_core::asset_libraries::Handle<country_core::render::vao::Vao>>> {
+    use country_core::asset_libraries::Handle as AssetHandle;
+    use country_core::render::vao::Vao;
+    let mut wanted = std::collections::BTreeSet::new();
+    let mut handles = HashMap::new();
+    for index in 0..country_core::systems::render_loop::draw_passes::draw_lists::DRAW_LIST_COUNT {
+        for (item, _) in lists.list(index) {
+            if let Some(counts) = timing.as_mut() { counts.list_entries += 1; }
+            if wanted.insert(item.vao) {
+                if let Some(counts) = timing.as_mut() { counts.queried_entities += 1; }
+                if let Some(handle) = world.get::<AssetHandle<Vao>>(item.params.entity)
+                    && handle.id().raw() == item.vao {
+                    handles.insert(item.vao, *handle);
+                }
+            }
+        }
+    }
+    if let Some(counts) = timing.as_mut() { counts.unique_vaos = wanted.len() as u64; }
+    if handles.len() != wanted.len() {
+        let mut query = world.query::<&AssetHandle<Vao>>();
+        for handle in query.iter(world) {
+            if let Some(counts) = timing.as_mut() { counts.queried_entities += 1; }
+            if wanted.contains(&handle.id().raw()) {
+                handles.entry(handle.id().raw()).or_insert(*handle);
+            }
+        }
+    }
+    wanted.into_iter().map(|id| handles.get(&id).copied().ok_or_else(||
+        rhapsody::Error::invalid_usage("draw-list VAO has no matching typed ECS handle")
+    )).collect()
+}
+
+#[cfg(test)]
+mod vao_handle_resolution_tests {
+    use super::*;
+    use bevy_ecs::world::World;
+    use country_core::{
+        asset_libraries::Handle as AssetHandle,
+        render::{vao::Vao, pass_builder::{draw_builder::DrawBuilder, draw_list::EntityDrawParams}},
+        systems::render_loop::draw_passes::draw_lists::{DrawItem, DrawLists, DRAW_LIST_COUNT},
+    };
+
+    fn unused(_: DrawBuilder<'_>, _: &EntityDrawParams, _: &World) {}
+
+    #[test]
+    fn production_entities_resolve_unique_vaos_without_scanning_unrelated_entities() {
+        let mut world = World::new();
+        for _ in 0..1000 { world.spawn(AssetHandle::<Vao>::new()); }
+        let handle = AssetHandle::<Vao>::new();
+        let entity = world.spawn(handle).id();
+        let mut lists = DrawLists::new();
+        for list in 0..DRAW_LIST_COUNT {
+            for _ in 0..64 {
+                let mut item = DrawItem::new(1, 0);
+                item.vao = handle.id().raw();
+                item.params.entity = entity;
+                lists.list_mut(list).push((item, unused));
+            }
+        }
+        let mut counts = VaoRefreshTiming::default();
+        assert_eq!(draw_vao_handles(&mut world, &lists, Some(&mut counts)).unwrap(), [handle]);
+        assert_eq!(counts.list_entries, (DRAW_LIST_COUNT * 64) as u64);
+        assert_eq!(counts.unique_vaos, 1);
+        assert_eq!(counts.queried_entities, 1, "one typed lookup rather than 1001-row ECS scan");
+    }
+
+    #[test]
+    fn explicit_lists_keep_scan_fallback_and_missing_typed_handles_stay_errors() {
+        let mut world = World::new();
+        let handle = AssetHandle::<Vao>::new();
+        world.spawn(handle);
+        let mut lists = DrawLists::new();
+        let mut item = DrawItem::new(1, 0);
+        item.vao = handle.id().raw();
+        lists.list_mut(0).push((item, unused));
+        let mut counts = VaoRefreshTiming::default();
+        assert_eq!(draw_vao_handles(&mut world, &lists, Some(&mut counts)).unwrap(), [handle]);
+        assert_eq!(counts.queried_entities, 2, "failed entity lookup plus legacy scan");
+        let invalid = AssetHandle::<Vao>::new();
+        lists.list_mut(0)[0].0.vao = invalid.id().raw();
+        assert!(draw_vao_handles(&mut world, &lists, None).is_err());
+    }
+
+    #[test]
+    fn stale_entity_does_not_alias_a_different_live_vao_and_results_stay_sorted() {
+        let mut world = World::new();
+        let first = AssetHandle::<Vao>::new();
+        let second = AssetHandle::<Vao>::new();
+        world.spawn(first);
+        let second_entity = world.spawn(second).id();
+        let mut lists = DrawLists::new();
+        for handle in [second, first, second] {
+            let mut item = DrawItem::new(1, 0);
+            item.vao = handle.id().raw();
+            item.params.entity = second_entity;
+            lists.list_mut(0).push((item, unused));
+        }
+        assert_eq!(draw_vao_handles(&mut world, &lists, None).unwrap(), [first, second]);
+        world.despawn(second_entity);
+        assert!(draw_vao_handles(&mut world, &lists, None).is_err());
+    }
+}
+
 impl RasterShared {
     pub(crate) fn set_frame_buffers(&self, buffers: Option<Arc<BufferHost>>) {
         *self.frame_buffers.lock() = buffers;
@@ -522,8 +632,6 @@ impl RasterShared {
         world: &mut bevy_ecs::world::World,
         lists: &country_core::systems::render_loop::draw_passes::draw_lists::DrawLists,
     ) -> rhapsody::Result<()> {
-        use country_core::asset_libraries::{Handle as AssetHandle, vao_library::AssetVAOLibrary};
-        use country_core::render::vao::Vao;
         let timing_enabled = crate::game_loop::frame_timing_enabled();
         #[cfg(feature = "cpu-probe")]
         let timing_enabled = timing_enabled || crate::render_cpu_probe::management_enabled();
@@ -532,38 +640,8 @@ impl RasterShared {
             started: std::time::Instant::now(),
             counts: VaoRefreshTiming::default(),
         });
-        let wanted = (0
-            ..country_core::systems::render_loop::draw_passes::draw_lists::DRAW_LIST_COUNT)
-            .flat_map(|index| lists.list(index))
-            .map(|entry| {
-                if let Some(timing) = timing.as_mut() {
-                    timing.counts.list_entries += 1;
-                }
-                entry.0.vao
-            })
-            .collect::<std::collections::BTreeSet<_>>();
-        if let Some(timing) = timing.as_mut() {
-            timing.counts.unique_vaos = wanted.len() as u64;
-        }
-        let mut query = world.query::<&AssetHandle<Vao>>();
-        let handles = query
-            .iter(world)
-            .inspect(|_| {
-                if let Some(timing) = timing.as_mut() {
-                    timing.counts.queried_entities += 1;
-                }
-            })
-            .filter(|handle| wanted.contains(&handle.id().raw()))
-            .map(|handle| (handle.id().raw(), *handle))
-            .collect::<HashMap<_, _>>();
-        let handles = wanted
-            .into_iter()
-            .map(|id| {
-                handles.get(&id).copied().ok_or_else(|| {
-                    rhapsody::Error::invalid_usage("draw-list VAO has no matching typed ECS handle")
-                })
-            })
-            .collect::<rhapsody::Result<Vec<_>>>()?;
+        let handles = draw_vao_handles(world, lists,
+            timing.as_mut().map(|measurement| &mut measurement.counts))?;
         self.refresh_vao_handles(world, &handles)
     }
 
