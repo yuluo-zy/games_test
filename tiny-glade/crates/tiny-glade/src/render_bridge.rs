@@ -39,6 +39,7 @@ pub struct CoreRenderBridge {
     /// A built graph still owns this session's declaration/specification state.
     /// A BuiltCoreGraph guard releases it on cancellation or abandonment.
     pending_build: Rc<Cell<Option<GraphId>>>,
+    headless_readbacks: Option<crate::gpu_readback::ReadbackPublisher>,
 }
 
 /// This App's exact physical handle namespaces and their retained owners.
@@ -61,6 +62,16 @@ pub struct CompletedGameplayWarmup {
 
 
 impl CoreRenderBridge {
+    pub(crate) fn publish_headless_readbacks(&mut self, world: &mut bevy_ecs::world::World, submitted: rhapsody::sync::SyncSet)
+        -> anyhow::Result<()> {
+        let publisher = self.headless_readbacks.get_or_insert_with(||
+            crate::gpu_readback::ReadbackPublisher::new(self.tables.buffers.graphics_device().clone()));
+        let mut feedback = crate::render_thread::FrameFeedback::default();
+        publisher.finish_frame(world, &self.tables.buffers, (!submitted.is_empty()).then_some(submitted), &mut feedback);
+        for apply in feedback.apply { apply(world); }
+        if let Some(error) = feedback.error { return Err(error); }
+        Ok(())
+    }
     pub fn new(
         device: Arc<rhapsody::device::Device>,
         compiled_shader_root: impl AsRef<Path>,
@@ -90,6 +101,7 @@ impl CoreRenderBridge {
             raster,
             shaders,
             pending_build: Rc::new(Cell::new(None)),
+            headless_readbacks: None,
         })
     }
 
@@ -120,6 +132,7 @@ impl CoreRenderBridge {
             raster: owners.raster,
             shaders: owners.shaders,
             pending_build: Rc::new(Cell::new(None)),
+            headless_readbacks: None,
         })
     }
 
@@ -271,18 +284,6 @@ impl CoreRenderBridge {
         self.session.borrow().chain.plan_cache_stats()
     }
 
-    /// Build core consumers and execute only after every construction phase succeeds.
-    /// The caller must declare exports/side effects; rhapsody controls culling and
-    /// publication. The receipt is submission evidence, not GPU completion.
-    pub fn render_frame<T>(
-        &mut self,
-        build: impl FnOnce(&mut CoreGraphFrame<'_>) -> rhapsody::Result<T>,
-    ) -> rhapsody::Result<(T, SessionFrameReceipt)> {
-        let (value, graph) = self.build_frame(build)?;
-        let receipt = self.execute_built(graph)?;
-        Ok((value, receipt))
-    }
-
     /// Opens one display frame on this bridge's session and throttles once. The
     /// main and presentation graphs declared before [`Self::end_display_frame`]
     /// share a single in-flight slot, so CPU work for the next frame overlaps
@@ -333,7 +334,6 @@ impl CoreRenderBridge {
         }
         // Every host write of this declaration is submitted now, ahead of the
         // graph that reads it, without waiting for it to complete.
-        self.tables.buffers.flush_pending_uploads()?;
         let graph = frame.take_graph()?;
         Ok((
             value,
@@ -343,17 +343,6 @@ impl CoreRenderBridge {
                 graph: Some(graph.build()),
             },
         ))
-    }
-
-    pub fn execute_built(
-        &mut self,
-        graph: BuiltCoreGraph,
-    ) -> rhapsody::Result<SessionFrameReceipt> {
-        let graph = self.claim_built(graph)?;
-        self.tables.buffers.flush_pending_uploads()?;
-        // Shared-pool recording runs concurrently with Update: producers no
-        // longer wait on this graph's read lease (render_upload_boundary).
-        self.session.borrow_mut().execute_frame(graph)
     }
 
     /// Reject a different App's graph before consuming its declaration.
@@ -379,6 +368,9 @@ impl CoreRenderBridge {
         })
     }
 
+    /// Execute after the frame owner has admitted its uploads. The render
+    /// driver polls them while Pending; presentation must never drain writes
+    /// accepted from the next game frame.
     pub fn execute_compiled(
         &mut self,
         mut compiled: CompiledCoreGraph,
@@ -388,7 +380,6 @@ impl CoreRenderBridge {
                 "compiled frame belongs to another bridge",
             ));
         }
-        self.tables.buffers.flush_pending_uploads()?;
         self.session.borrow_mut()
             .execute_prepared(compiled.frame.take().expect("compiled graph consumed once"))
     }
@@ -580,7 +571,7 @@ impl CoreGraphFrame<'_> {
 
     pub fn with_compute<T>(
         &mut self,
-        build: impl FnOnce(&mut CoreComputeFrame<'_, '_>) -> rhapsody::Result<T>,
+        build: impl FnOnce(&mut CoreComputeFrame<'_>) -> rhapsody::Result<T>,
     ) -> rhapsody::Result<T> {
         let result = (|| {
             let device = self.bridge.session.borrow().backend.device().clone();
@@ -891,6 +882,19 @@ impl CoreGraphFrame<'_> {
         result
     }
 
+    /// Full native description with the session's existing persistent owner
+    /// and GPU access tracking, rather than a new export each frame.
+    pub fn declare_named_native_image(
+        &mut self,
+        name: &str,
+        desc: rhapsody::resource::TextureDesc,
+    ) -> rhapsody::Result<u32> {
+        let result = self.declarer.named_texture(&mut self.graph().borrow_mut(), name, desc)
+            .map(|texture| texture.texture.raw().raw());
+        self.failed |= result.is_err();
+        result
+    }
+
     pub fn import_texture(
         &mut self,
         texture: &Texture,
@@ -988,10 +992,6 @@ impl country_core::rhapsody_types::BufferGraphBackend for FrameBufferGraph {
             .graph
             .try_borrow_mut()
             .expect("lazy resource graph is already borrowed");
-        self.declarer
-            .scope
-            .validate(&graph)
-            .expect("lazy import belongs to a closed frame");
         let handle = if id & crate::render_host::TEXTURE_ID_TAG != 0 {
             let texture = self
                 .tables
@@ -1131,20 +1131,14 @@ impl GraphDeclarer for FrameDeclarer {
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
     m.resource::<country_core::asset_libraries::runtime::AssetLibraryRuntime>();
-    m.resource_with_revision::<country_core::asset_libraries::texture_library::AssetTextureLibrary>(<country_core::asset_libraries::texture_library::AssetTextureLibrary>::descriptor_revision);
-    m.resource_incremental::<country_core::asset_libraries::vao_library::AssetVAOLibrary>(
-        country_core::asset_libraries::vao_library::AssetVAOLibrary::snapshot_revision,
-        country_core::asset_libraries::vao_library::AssetVAOLibrary::update_render_snapshot);
-    m.resource_incremental::<country_core::asset_libraries::mesh_library::AssetMeshLibrary>(
-        country_core::asset_libraries::mesh_library::AssetMeshLibrary::snapshot_revision,
-        country_core::asset_libraries::mesh_library::AssetMeshLibrary::update_render_snapshot);
-    m.resource_incremental::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>(
-        country_core::asset_libraries::ssbo_library::AssetSsboLibrary::snapshot_revision,
-        country_core::asset_libraries::ssbo_library::AssetSsboLibrary::update_render_snapshot);
+    m.asset_library::<country_core::asset_libraries::texture_library::AssetTextureLibrary>();
+    m.asset_library::<country_core::asset_libraries::vao_library::AssetVAOLibrary>();
+    m.asset_library::<country_core::asset_libraries::mesh_library::AssetMeshLibrary>();
+    m.asset_library::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
     m.resource::<country_core::geometry::runtime::WallBrickUploadStatus>();
     m.resource::<country_core::render::nani::gpu_world::GpuWorld>();
     m.resource::<country_core::resources::gpu_lut::GpuLutTracker>();
-    m.resource::<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>();
+    m.asset_library::<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>();
 }
 
 #[cfg(test)]
@@ -1197,26 +1191,32 @@ pub fn warm_up_gameplay_with_world_builder(
     bridge.raster_resources().refresh_draw_vaos(world, &lists)?;
     let (output, built) = bridge.build_frame(|frame| build_world(frame, world, &lists))?;
     let cancel = world.get_resource::<crate::run_game::GameplayWarmupCancellation>().cloned();
-    let prewarm = if let Some(cancel) = cancel {
-        let started = std::time::Instant::now();
-        loop {
-            // A terminal compiler error takes precedence over concurrent cancel.
-            match bridge.shader_backend().poll_preparation() {
-                Err(error) => break Err(error),
-                state => {
-                    if cancel.0.load(std::sync::atomic::Ordering::Acquire) {
-                        break Err(rhapsody::Error::InvalidUsage { what: "gameplay GPU warmup cancelled".into(),
-                            source: Some(Box::new(crate::run_game::GameplayPreparationCancelled)) });
-                    }
-                    if matches!(state, Ok(true)) { break Ok(()); }
-                    if started.elapsed() >= crate::production_renderer::PIPELINE_PREWARM_TIMEOUT {
-                        break Err(rhapsody::Error::Timeout);
-                    }
-                    std::thread::sleep(std::time::Duration::from_millis(1));
-                }
-            }
+    let started = std::time::Instant::now();
+    let prewarm = loop {
+        // The loading worker owns startup progress. The frame executor never
+        // waits for uploads, including when no cancellation token was installed.
+        let pipelines = match bridge.shader_backend().poll_preparation() {
+            Ok(ready) => ready,
+            Err(error) => break Err(error),
+        };
+        let uploads = match bridge.hosts().buffers.poll_pending_uploads() {
+            Ok(ready) => ready,
+            Err(error) => break Err(error),
+        };
+        let textures = match bridge.hosts().textures.poll_pending_uploads() {
+            Ok(ready) => ready,
+            Err(error) => break Err(error),
+        };
+        if cancel.as_ref().is_some_and(|cancel| cancel.0.load(std::sync::atomic::Ordering::Acquire)) {
+            break Err(rhapsody::Error::InvalidUsage { what: "gameplay GPU warmup cancelled".into(),
+                source: Some(Box::new(crate::run_game::GameplayPreparationCancelled)) });
         }
-    } else { bridge.shader_backend().prewarm(crate::production_renderer::PIPELINE_PREWARM_TIMEOUT) };
+        if pipelines && uploads && textures { break Ok(()); }
+        if started.elapsed() >= crate::production_renderer::PIPELINE_PREWARM_TIMEOUT {
+            break Err(rhapsody::Error::Timeout);
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    };
     if let Err(error) = prewarm {
         crate::screenshot::shared_texture_capture::cancel_unsubmitted(world, built.graph_id());
         if let Err(cleanup) = bridge.cancel_built(built) {

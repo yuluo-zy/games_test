@@ -170,6 +170,7 @@ pub fn run_event_loop_threaded(
                 }
                 let _wake = WakeMain(&target);
                 let mut game = build(window)?;
+                game.set_event_loop_proxy(target.wake.clone());
                 game.run_on_game_thread(receiver, &target)
             }
         })?;
@@ -183,6 +184,7 @@ pub fn run_event_loop_threaded(
             Event::WindowEvent { event: WindowEvent::RedrawRequested, .. } => {}
             Event::WindowEvent { .. }
             | Event::DeviceEvent { event: DeviceEvent::MouseMotion { .. }, .. }
+            | Event::UserEvent(())
             | Event::Suspended
             | Event::Resumed => {
                 let _ = sender.send(event);
@@ -235,6 +237,12 @@ fn coalesce_pointer_motion(batch: &mut Vec<winit::event::Event<()>>) {
 }
 
 impl crate::game_loop::GameLoop {
+    /// Bind before manually driving main_loop (run() binds automatically).
+    /// A proxy posts asynchronously even while AppKit's main thread is busy.
+    pub fn set_event_loop_proxy(&mut self, proxy: winit::event_loop::EventLoopProxy<()>) {
+        let proxy = parking_lot::Mutex::new(proxy);
+        self.render.set_wake(std::sync::Arc::new(move || { let _ = proxy.lock().send_event(()); }));
+    }
     /// Body of the game thread: the same event handling and frame code as the
     /// main-thread loop, driven by forwarded events plus a frame every iteration
     /// (the `RedrawRequested` the OS loop would otherwise request).
@@ -251,10 +259,11 @@ impl crate::game_loop::GameLoop {
             let background_pending = crate::loading_graph::is_background_preparation_pending(
                 self.driver.app().world(),
             );
-            // Suspended: nothing to render, block for the next OS event. Background
-            // loading: at most one frame per display tick, woken early by events.
-            // Otherwise poll, so frames are only paced by the limiter and present.
-            let first = if self.suspended {
+            // A pending renderer wakes this channel through the forwarded user
+            // event. Do not spin redraws while it still owns the frame.
+            // Background loading has no proxy and retains its bounded timer.
+            let waiting_for_render = !self.render_ready_for_redraw();
+            let first = if self.suspended || waiting_for_render {
                 events.recv().map_err(|_| RecvTimeoutError::Disconnected)
             } else {
                 let wait = if background_pending {
@@ -312,6 +321,7 @@ impl crate::game_loop::GameLoop {
     }
 
     pub fn run(mut self, event_loop: winit::event_loop::EventLoop<()>) -> anyhow::Result<()> {
+        self.set_event_loop_proxy(event_loop.create_proxy());
         let lifecycle = self.lifecycle.clone();
         self.refresh_monitors(&*event_loop);
         let loop_result = event_loop.run(move |event, target| {
@@ -364,8 +374,11 @@ impl crate::game_loop::GameLoop {
                     if !self.suspended {
                         let previous_frame_count = self.frame_count;
                         let running = self.frame(target)?;
-                        if self.driver.any_present_successful() || self.frame_count > 1 {
+                        if !self.window_shown
+                            && (self.driver.any_present_successful() || self.frame_count > 1)
+                        {
                             self.window.set_visible(true);
+                            self.window_shown = true;
                         }
                         if self.frame_count != previous_frame_count && self.frame_count % 30 == 0 {
                             log::info!(
@@ -515,10 +528,7 @@ impl crate::game_loop::GameLoop {
                 if !self.suspended && !background_pending {
                     // Completion publishes its result before requesting redraw.
                     // Recheck before waiting to cover completion during this event.
-                    let ready = if self.driver.waiting_for_preparation {
-                        self.render.poll() || self.render.update_allowed()
-                    } else { !self.driver.awaiting_render() || self.render.poll() };
-                    if ready { self.window.request_redraw(); }
+                    if self.render_ready_for_redraw() { self.window.request_redraw(); }
                 }
             }
             Event::NewEvents(winit::event::StartCause::ResumeTimeReached { .. }) => {
@@ -677,25 +687,16 @@ impl crate::game_loop::GameLoop {
                     repeat: event.repeat,
                     window: Entity::PLACEHOLDER,
                 };
-                // 原始事件交给 Bevy；核心的数字键码资源复用同一张物理键映射表。
-                if let winit::keyboard::PhysicalKey::Code(code) = event.physical_key {
-                    let code = code as u16 + 1;
-                    if let Some(mut keys) =
-                        self.app_mut()
-                            .world_mut()
-                            .get_resource_mut::<input::button_input::KeyButtonInput>()
-                    {
-                        if state == ButtonState::Pressed {
-                            keys.press(code);
-                        } else {
-                            keys.release(code);
-                        }
-                    }
+                // 同一个真实事件同时更新core facade；保留Unidentified平台载荷。
+                if let Some(mut keys) = self.app_mut().world_mut()
+                    .get_resource_mut::<input::button_input::KeyButtonInput>()
+                {
+                    keys.apply_event(&keyboard_event);
                 }
                 self.app_mut().world_mut().send_event(keyboard_event);
             }
             OsWindowEvent::CursorAbsolute(position) => {
-                // The OS producer already wrote the mapped SSBO before this
+                // The OS producer already published the owned SSBO write before this
                 // batch was captured. Only the game event is confirmation-gated.
                 if self.cursor_requests.is_fully_confirmed() {
                     self.app_mut().world_mut().send_event(
@@ -713,18 +714,18 @@ impl crate::game_loop::GameLoop {
                 );
             }
             OsWindowEvent::MouseButton(state, button) => {
-                let (button, raw) = match button {
-                    winit::event::MouseButton::Left => (bevy_input::mouse::MouseButton::Left, 0),
-                    winit::event::MouseButton::Right => (bevy_input::mouse::MouseButton::Right, 1),
+                let button = match button {
+                    winit::event::MouseButton::Left => bevy_input::mouse::MouseButton::Left,
+                    winit::event::MouseButton::Right => bevy_input::mouse::MouseButton::Right,
                     winit::event::MouseButton::Middle => {
-                        (bevy_input::mouse::MouseButton::Middle, 2)
+                        bevy_input::mouse::MouseButton::Middle
                     }
-                    winit::event::MouseButton::Back => (bevy_input::mouse::MouseButton::Back, 3),
+                    winit::event::MouseButton::Back => bevy_input::mouse::MouseButton::Back,
                     winit::event::MouseButton::Forward => {
-                        (bevy_input::mouse::MouseButton::Forward, 4)
+                        bevy_input::mouse::MouseButton::Forward
                     }
                     winit::event::MouseButton::Other(n) => {
-                        (bevy_input::mouse::MouseButton::Other(n), n)
+                        bevy_input::mouse::MouseButton::Other(n)
                     }
                 };
                 let state = if state == winit::event::ElementState::Pressed {
@@ -732,22 +733,13 @@ impl crate::game_loop::GameLoop {
                 } else {
                     ButtonState::Released
                 };
-                if let Some(mut mouse) =
-                    self.app_mut()
-                        .world_mut()
-                        .get_resource_mut::<input::button_input::MouseButtonInput>()
+                let event = MouseButtonInput { button, state, window: Entity::PLACEHOLDER };
+                if let Some(mut mouse) = self.app_mut().world_mut()
+                    .get_resource_mut::<input::button_input::MouseButtonInput>()
                 {
-                    if state == ButtonState::Pressed {
-                        mouse.press(raw);
-                    } else {
-                        mouse.release(raw);
-                    }
+                    mouse.apply_event(&event);
                 }
-                self.app_mut().world_mut().send_event(MouseButtonInput {
-                    button,
-                    state,
-                    window: Entity::PLACEHOLDER,
-                });
+                self.app_mut().world_mut().send_event(event);
             }
             OsWindowEvent::CursorConfirmed(id) => self.cursor_requests.on_confirmation(id),
             OsWindowEvent::LineMouseWheel([x, y]) => {
@@ -802,18 +794,13 @@ pub(crate) fn apply_display_config(
         .or_else(|| window.current_monitor());
     if !display.fullscreen {
         window.set_fullscreen(None);
-        let [width, height] = display.windowed_resolution;
-        let _ = window.request_inner_size(winit::dpi::PhysicalSize::new(width, height));
-    } else if display.allow_exclusive_fullscreen
-        && matches!(
-            display.fullscreen_config,
-            FullscreenConfig::Exclusive { .. }
-        )
-    {
+    } else if display.allow_exclusive_fullscreen {
         if let Some(monitor) = monitor {
-            // Reuse the recovered desktop-mode selection. Do not invent a
-            // bit depth/refresh rate to fill the original Windows VideoMode.
-            let mut mode = None;
+            // 原ClosestMatch保留完整VideoMode；Best复用当前桌面模式选择入口。
+            let mut mode = match display.fullscreen_config {
+                FullscreenConfig::Best=>None,
+                FullscreenConfig::ClosestMatch(mode)=>Some(mode),
+            };
             if let Some(mode) = crate::setup::find_best_fullscreen_video_mode(&monitor, &mut mode) {
                 window.set_fullscreen(Some(Fullscreen::Exclusive(mode)));
             } else {

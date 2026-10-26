@@ -228,7 +228,7 @@ mod native_regressions {
     }
     #[test]
     fn configured_cpu_chain_completes_profile_and_requests_settings_once_per_event() {
-        use country_core::resources::events::WriteSettingsFileCmd;
+        use country_core::game_profile::SaveGameProfileCmd;
         let mut world = World::new();
         world.insert_resource(GameProfile::default());
         world.insert_resource(AppMode::Terrain);
@@ -242,11 +242,11 @@ mod native_regressions {
         assert!(profile.terrain_layering_completed);
         assert!(profile.terrain_focus_completed);
         assert!(profile.terrain_steepness_completed);
-        assert_eq!(world.resource::<Events<WriteSettingsFileCmd>>().len(), 3);
+        assert_eq!(world.resource::<Events<SaveGameProfileCmd>>().len(), 3);
         world.resource_mut::<HintTerrainConditions>().count = 9;
         schedule.run(&mut world);
         assert_eq!(world.resource::<HintTerrainConditions>().count, 9);
-        assert_eq!(world.resource::<Events<WriteSettingsFileCmd>>().len(), 3);
+        assert_eq!(world.resource::<Events<SaveGameProfileCmd>>().len(), 3);
     }
 
     #[test]

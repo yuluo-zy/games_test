@@ -243,7 +243,10 @@ pub(crate) fn attach_loading_mei(
     anyhow::ensure!(!world.contains_resource::<LoadingGpuResources>(), "loading GPU resources already initialized");
     let library = world.get_resource::<AssetSsboLibrary>()
         .context("loading App AssetSsboLibrary producer has not run")?;
-    let mei = MeiHost::from_library(device, hosts.buffers.clone(), hosts.textures.clone(), library)?;
+    let mut mei = MeiHost::from_library(device, hosts.buffers.clone(), hosts.textures.clone(), library)?;
+    let files = toolbar::mei::widgets::FileImageCache::new(hosts.textures.clone());
+    mei.retain_file_images(files.retained_textures());
+    world.insert_resource(files);
     world.insert_resource(LoadingGpuResources { mei,
         background_preparation: background_prepare::BackgroundPreparation::default() });
     Ok(())
@@ -360,7 +363,7 @@ fn build_loading(
     // Disk textures remain actual host handles, not graph indices.
     let textures = world.get_resource::<AssetTextureLibrary>().ok_or_else(|| fail("AssetTextureLibrary"))?;
     let blue = textures.get_by_name(NameHash(0x579f_39ab_91a0_1865));
-    raster.assets.lock().textures_by_name.insert(0x579f_39ab_91a0_1865,
+    Arc::make_mut(&mut raster.assets.lock().collect).textures_by_name.insert(0x579f_39ab_91a0_1865,
         (country_core::rhapsody_contract::ManagedHandle(blue.id), country_core::render::pass_builder::framebuffer_binding::AttachmentTexture::from(blue)));
     let lookup = LibraryShaders(shaders);
     frame.with_raster(|host| {
@@ -383,7 +386,7 @@ fn build_loading(
             render::pass_builder::pass_resource_access::SsboType};
         let ssbos = world.get_resource::<AssetSsboLibrary>().ok_or_else(|| fail("AssetSsboLibrary"))?;
         let buffer = ssbos.get_rg_buffer::<ColorLibrarySsbo>(&mut frame.resource_graph());
-        raster.assets.lock().rg_buffers.insert(<ColorLibrarySsbo as SsboType>::rg_buffer_hash(),
+        Arc::make_mut(&mut raster.assets.lock().collect).rg_buffers.insert(<ColorLibrarySsbo as SsboType>::rg_buffer_hash(),
             u32::try_from(buffer.resource).map_err(|_| fail("ColorLibrary graph index overflow"))?);
     }
     frame.with_raster(|host| {
@@ -407,6 +410,12 @@ impl ShaderLookup for LibraryShaders<'_> {
 }
 
 
+/// Retry the already consumed frame without advancing text or simulation.
+pub(crate) fn poll_mei_uploads(world: &mut World) -> Result<bool> {
+    world.get_resource_mut::<LoadingGpuResources>()
+        .map_or(Ok(true), |mut gpu| gpu.mei.poll_pending_uploads())
+}
+
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
     m.resource::<SavedLoadingBackgroundTexture>();
@@ -414,15 +423,15 @@ pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract)
     m.resource::<country_core::render::device::GraphicsDeviceResource>();
     m.resource::<LoadingGpuResources>();
     m.resource::<SavedSessionList>();
-    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
+    m.asset_library::<AssetSsboLibrary>();
     m.resource::<country_core::asset_libraries::color_library::ColorLibrarySsbo>();
-    m.resource_with_revision::<AssetTextureLibrary>(<AssetTextureLibrary>::descriptor_revision);
+    m.asset_library::<AssetTextureLibrary>();
     m.resource::<country_core::resources::grading_lut::GradingLuts>();
     m.resource::<WindowSize>();
     m.presence::<tg_text::TextRenderer>();
     m.resource::<bevy_time::Time>();
-    m.resource_incremental::<AssetVAOLibrary>(AssetVAOLibrary::snapshot_revision, AssetVAOLibrary::update_render_snapshot);
-    m.resource::<AssetPlacementDataLibrary>();
+    m.asset_library::<AssetVAOLibrary>();
+    m.asset_library::<AssetPlacementDataLibrary>();
 }
 
 #[cfg(test)]

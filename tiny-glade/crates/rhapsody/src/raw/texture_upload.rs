@@ -1,9 +1,9 @@
 //! Texture region uploads: command recording helpers (no submit or wait) and
 //! pure region generation for initial data and updates.
+use crate::{Error, Result};
 use super::{
     buffer::Buffer,
     command_buffer::VulkanCommandBuffer,
-    error::{Error, Result},
     format::vk_format_info,
     resource_access::{buffer_access_borrowed, image_access_borrowed},
     texture::{Texture, TextureDesc},
@@ -427,7 +427,8 @@ pub fn linear_regions(
     let template = MipChainIter::new(extent, mip_levels, bytes_per_block, block)?;
     let mut rest = data;
     let mut regions = Vec::new();
-    for layer in 0..layers.max(1) {
+    if layers == 0 { return Err(Error::invalid_usage("texture layer count must be nonzero")); }
+    for layer in 0..layers {
         for item in template {
             if rest.is_empty() {
                 return Err(Error::invalid_usage("Texture initial data underflow"));
@@ -483,6 +484,7 @@ pub fn per_mip_regions<'a>(
             array_layer: 0,
         });
     }
+    if regions.len() != slices.len() { return Err(Error::invalid_usage("mip slices exceed the full texture chain")); }
     Ok(regions)
 }
 

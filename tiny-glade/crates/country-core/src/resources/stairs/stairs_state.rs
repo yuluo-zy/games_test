@@ -7,11 +7,7 @@
 use bevy_ecs::resource::Resource;
 use hashbrown::{HashMap, HashSet};
 use petgraph::{graphmap::UnGraphMap, visit::Bfs};
-use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
-    sync::atomic::AtomicBool,
-};
+use std::{hash::Hash, sync::atomic::AtomicBool};
 
 /// Original B release byte@14362c011 is 01 in initialized .data (RVA362b000,
 /// raw size9c00; byte offset1011). load_game applies the actual save-version
@@ -427,9 +423,7 @@ fn mark_missing(
 }
 fn hash_edges(edges: &[(u32, u32)]) -> u64 {
     // B 0x14145b330: len as usize, then a and b via Hash<u32>; std owns SipHash.
-    let mut state = DefaultHasher::new();
-    edges.hash(&mut state);
-    state.finish()
+    ::utils::calculate_hash(edges)
 }
 
 use crate::resources::walls::decorator::DecoratorId;

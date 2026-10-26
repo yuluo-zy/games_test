@@ -71,11 +71,12 @@ impl<T: StorageElement> ShadowedBuffer<T> {
     ///  * 成功后窗口重置为 (usize::MAX, 0)。
     /// 原版另有 puffin profile scope（作用域名 `...ShadowedBuffer::gpu_flush<T>`，数据为 `dirty` 的 Debug），
     /// 属外部库行为，这里不复现。
-    pub fn gpu_flush(&mut self, device: &dyn GraphicsDevice) {
+    pub fn gpu_flush(&mut self, device: &dyn GraphicsDevice)
+        -> Result<(), crate::render::ssbo::rhapsody_boundary::BackendError> {
         use core::sync::atomic::Ordering::Relaxed;
         let (start, end) = (self.dirty.start.load(Relaxed), self.dirty.end.load(Relaxed));
         if start > end {
-            return;
+            return Ok(());
         }
         let end_excl = end + 1;
         let es = core::mem::size_of::<T>();
@@ -93,9 +94,10 @@ impl<T: StorageElement> ShadowedBuffer<T> {
                     &[0..n_bytes],
                     start * es,
                 )
-                .expect("called `Result::unwrap()` on an `Err` value: update_buffer_bytes");
+                ?;
         }
         self.dirty.clear();
+        Ok(())
     }
 }
 
@@ -122,7 +124,7 @@ mod tests {
     fn flush_without_dirty_is_noop() {
         let dev = MockDevice::default();
         let mut b = ShadowedBuffer::new(&dev, rows(4));
-        b.gpu_flush(&dev);
+        b.gpu_flush(&dev).unwrap();
         assert!(dev.writes.borrow().is_empty());
     }
 
@@ -135,7 +137,7 @@ mod tests {
             (b.dirty.start.load(Relaxed), b.dirty.end.load(Relaxed)),
             (2, 3)
         );
-        b.gpu_flush(&dev);
+        b.gpu_flush(&dev).unwrap();
         let w = dev.writes.borrow();
         assert_eq!(w.len(), 1);
         assert_eq!(w[0], (vec![0..32], 2 * 16, 32)); // 范围相对于子切片，偏移为 start*es
@@ -151,7 +153,7 @@ mod tests {
         let dev = MockDevice::default();
         let mut b = ShadowedBuffer::new(&dev, rows(4));
         b.get_mut()[0] = Dyn([42.0; 4]);
-        b.gpu_flush(&dev); // 旧实现：end 记为 len（排他），+1 后越界 panic
+        b.gpu_flush(&dev).unwrap(); // 旧实现：end 记为 len（排他），+1 后越界 panic
         assert_eq!(&dev.mem.borrow()[0..4], &42.0f32.to_le_bytes());
     }
 
@@ -162,7 +164,7 @@ mod tests {
         b.copy(4, 0, 2);
         assert_eq!(b.data[4], Dyn([0.0; 4]));
         assert_eq!(b.data[5], Dyn([1.0; 4]));
-        b.gpu_flush(&dev);
+        b.gpu_flush(&dev).unwrap();
         assert_eq!(&dev.mem.borrow()[5 * 16..5 * 16 + 4], &1.0f32.to_le_bytes());
     }
 }

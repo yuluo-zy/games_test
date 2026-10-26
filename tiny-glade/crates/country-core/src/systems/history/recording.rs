@@ -196,7 +196,7 @@ pub fn history_finish_recording_system<S: Send + Sync + 'static>(
     // Third reader is visited even after an earlier trigger succeeds.
     let forced = finishes.read().count() != 0;
     if instant || ui_finished || forced {
-        let decorator_diff = archivist.extract_diff();
+        let decorator_diff = archivist.extract_diff(&storage, false);
         let stairs_diff = stairs.extract_diff_and_make_backup();
         // Reuse the current add_decorator_diff API. Its temporary set mutates
         // only removals; retain those removals in the existing map owner.

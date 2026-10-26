@@ -19,20 +19,21 @@ country-core.workspace = true
 glam.workspace = true
 lang-lib.workspace = true
 log.workspace = true
-once_cell.workspace = true
-relative-path.workspace = true
 ron.workspace = true
 serde = { workspace = true, features = ["derive"] }
 tg-text = { path = "../../tg-text" }
 walkdir = "=2.3.2"
-# External-dep ledger (§3 external-dep): B-lock versions, consumed by
-# taffy_layout/toolbar_systems/credits/photomode/lut_gallery/feedback-reporter/build-id.
+# External-dep ledger (§3 external-dep): B-lock identity pins. taffy/open
+# are used directly here; hotwatch/image/webbrowser resolve through country-core/tiny-glade.
 hotwatch.workspace = true
 image.workspace = true
 open.workspace = true
 taffy.workspace = true
-tiny_http.workspace = true
 webbrowser.workspace = true
+
+[dev-dependencies]
+paths.workspace = true
+tempfile = "=3.20.0"
 
 [lints]
 workspace = true

@@ -44,7 +44,8 @@ fn core_perf_probe() {
     let bytes = [7u8; 64];
     let started = Instant::now();
     for index in 0..WRITES {
-        host.write_bytes(((index % 1000) * 64) as u64, &bytes).unwrap();
+        host.write_bytes(((index % 1000) * 64) as u64, &bytes)
+            .unwrap();
     }
     let write = started.elapsed();
     println!(

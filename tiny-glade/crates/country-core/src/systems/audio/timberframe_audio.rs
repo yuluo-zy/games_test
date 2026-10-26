@@ -17,6 +17,7 @@ use crate::{
 use crate::systems::audio::PlayTimberframeSound;
 use bevy_ecs::prelude::*;
 use glam::Vec3;
+use ::utils::scalar::clamp01;
 
 /// Timberframe loop events (O: rne-read; frame-end slots: state+0x00 = Move,
 /// +0x38 = Length, +0x70 = Width. Kind 3 arms Move, kind 1 arms Length,
@@ -152,10 +153,6 @@ pub fn timberframe_audio<S: Studio + Send + Sync + 'static>(
         width_size,
         None,
     );
-}
-
-fn clamp01(value: f32) -> f32 {
-    value.max(0.0).min(1.0)
 }
 
 /// O: `start_if_not_playing → set_position → set_parameter("editing_speed") →

@@ -11,6 +11,8 @@ pub struct FollowMouse(pub bool);
 
 /// 使对象进入半透明绘制路径。
 #[derive(Clone, Component, Debug, Default)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct SemiTransparent;
 
 /// 使用平面光照。
@@ -21,34 +23,54 @@ pub struct FlatLighting;
 ///
 /// B 注册入口 0x140849b70，载荷为一个 f32。
 #[derive(Clone, Component, Debug, Default, PartialEq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct DashedLineLength(pub f32);
 
 /// 背景地形；绘制端按该标记选择背景纹理。
 #[derive(Clone, Component, Debug, Default, PartialEq, Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct BackgroundTerrain;
 
 /// 禁止对象接收接触阴影。
 #[derive(Clone, Component, Debug, Default, PartialEq, Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct DontReceiveContactShadows;
 
 /// 对象的粗糙度覆盖值；未挂此组件时由绘制端使用 0.8。
 ///
 /// Default 的零值仅用于显式构造，不等于缺少组件时的回退值。
 #[derive(Clone, Component, Debug, Default, PartialEq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct OverwriteRoughness(pub f32);
 
 /// Original B components::StairsStep. startup_terrain writes flags0 for step
 /// geometry (@14092732a) and flags1 for stairs pebbles (@1409275e2).
 /// Default Bevy clone behavior is retained by not deriving Clone/Copy.
 #[derive(Clone, Component, Debug, PartialEq, Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct StairsStep {
     pub flags: u8,
 }
 
 /// Original components::NormalMap: one eight-byte disk-texture name hash.
 #[derive(Clone, Component,Debug,PartialEq,Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct NormalMap(pub u64);
 
 /// Original zero-sized query filter marker; no independent runtime owner.
 #[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
 pub struct MeshFollowTerrain;
+
+impl crate::render::extract::JournaledComponent for StairsStep {}
+impl crate::render::extract::JournaledComponent for NormalMap {}
+impl crate::render::extract::JournaledComponent for SemiTransparent {}
+impl crate::render::extract::JournaledComponent for BackgroundTerrain {}
+impl crate::render::extract::JournaledComponent for OverwriteRoughness {}
+impl crate::render::extract::JournaledComponent for DontReceiveContactShadows {}
+impl crate::render::extract::JournaledComponent for DashedLineLength {}

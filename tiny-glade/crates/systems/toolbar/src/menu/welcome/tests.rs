@@ -256,10 +256,10 @@ impl country_core::resources::steam::SteamSdk for DeckSdk {
     fn digital_action_handle(&self, _: &str) -> Option<u64> {
         unreachable!()
     }
-    fn analog_action_data(&self, _: u64) -> country_core::resources::steam::AnalogActionData {
+    fn analog_action_data(&self, _: u64, _: u64) -> country_core::resources::steam::AnalogActionData {
         unreachable!()
     }
-    fn digital_action_data(&self, _: u64) -> country_core::resources::steam::DigitalActionData {
+    fn digital_action_data(&self, _: u64, _: u64) -> country_core::resources::steam::DigitalActionData {
         unreachable!()
     }
     fn activate_action_set(&self, _: u64, _: u64) {
@@ -280,10 +280,10 @@ impl country_core::resources::steam::SteamSdk for DeckSdk {
     fn show_floating_gamepad_text_input(&self, _: u32, _: i32, _: i32, _: i32, _: i32) {
         unreachable!()
     }
-    fn analog_action_origins(&self, _: u64, _: u64) -> Vec<u64> {
+    fn analog_action_origins(&self, _: u64, _: u64, _: u64) -> Vec<u64> {
         unreachable!()
     }
-    fn digital_action_origins(&self, _: u64, _: u64) -> Vec<u64> {
+    fn digital_action_origins(&self, _: u64, _: u64, _: u64) -> Vec<u64> {
         unreachable!()
     }
     fn glyph_for_action_origin(&self, _: u64) -> String {

@@ -32,7 +32,7 @@ impl TimelineSemaphore {
         let memory =
             super::allocator::reserve_shared_cpu_metadata::<Self>(&device.memory.stats, 0)?;
         let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
-        let handle = super::error::observe_vulkan(&device, unsafe {
+        let handle = crate::error::observe_vulkan(&device, unsafe {
             device.core.device.create_semaphore(&info, None)
         })?;
         Ok(Arc::new(Self {
@@ -76,7 +76,7 @@ impl TimelineSemaphore {
                 .poll()
                 .map(|done| done.get(queue));
         }
-        super::error::observe_vulkan(&self.device, unsafe {
+        crate::error::observe_vulkan(&self.device, unsafe {
             self.device
                 .core
                 .device
@@ -98,7 +98,7 @@ impl TimelineSemaphore {
         let info = vk::SemaphoreWaitInfo::default()
             .semaphores(&semaphores)
             .values(&values);
-        super::error::observe_vulkan(&self.device, unsafe {
+        crate::error::observe_vulkan(&self.device, unsafe {
             self.device.core.device.wait_semaphores(&info, timeout)
         })
     }
@@ -117,8 +117,6 @@ impl Drop for TimelineSemaphore {
 
 impl crate::resource::GpuUse for TimelineSemaphore {
     fn visit_uses(&self, visitor: &mut crate::resource::UseVisitor<'_>) -> crate::Result<()> {
-        visitor(&self.last_use)?;
-
-        Ok(())
+        crate::resource::tracked::visit_cells(visitor, [&self.last_use])
     }
 }

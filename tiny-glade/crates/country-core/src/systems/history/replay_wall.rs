@@ -1,5 +1,5 @@
 //! Original wall replay groups applied to the one live wall authority.
-use crate::resources::color_id::{WallColorIds, MAX_NUMBER_OF_WALLS};
+use crate::resources::color_id::{MAX_NUMBER_OF_WALLS, WallColorIds};
 use crate::resources::history::HistoryReplayError;
 use crate::resources::history::ReplayBuffer;
 use crate::resources::history::ReplayCommand;
@@ -8,11 +8,11 @@ use crate::resources::history::wall_edit::WallHistoryEdit;
 use crate::resources::history::wall_edit::WallReplayAudio;
 use crate::resources::history::wall_edit::WallRestoreColorRequest;
 use crate::resources::time::GameTime;
-use crate::systems::audio::PlayWallAudio;
 use crate::resources::walls::InnerWalls;
 use crate::resources::walls::WallId;
 use crate::resources::walls::WallState;
 use crate::resources::walls::publication_fields::WallId as RecoveredWallId;
+use crate::systems::audio::PlayWallAudio;
 use crate::systems::history::HistoryReplayFailed;
 use crate::systems::history::wall_replay_interpreter::WallReplayError;
 use crate::systems::history::wall_replay_interpreter::advance_wall_groups_observed;
@@ -239,7 +239,9 @@ pub fn replay_wall(
             }
         }
     }
-    bucket.retain_commands_mut(|command| !matches!(command, ReplayCommand::Wall(groups) if groups.is_empty()));
+    bucket.retain_commands_mut(
+        |command| !matches!(command, ReplayCommand::Wall(groups) if groups.is_empty()),
+    );
 }
 
 #[cfg(test)]
@@ -399,9 +401,7 @@ mod tests {
         world.init_resource::<WallColorIds>();
         world.init_resource::<crate::resources::color_id::GateColorIds>();
         world.init_resource::<Events<PlayWallAudio>>();
-        schedule.add_systems(
-            (apply_wall_replay_color, apply_wall_replay_audio).after(replay_wall),
-        );
+        schedule.add_systems((apply_wall_replay_color, apply_wall_replay_audio).after(replay_wall));
         let edit = record_new_wall(RecoveredWallId(9), state.snapshot(), 7).unwrap();
         push(&mut world, 0, &edit, false, true);
         schedule.run(&mut world);
@@ -466,10 +466,19 @@ mod tests {
                 observed_special_owner: false,
             }));
         schedule.run(&mut world);
-        assert_eq!(world.resource::<crate::resources::color_id::GateColorIds>().0[5], 11);
+        assert_eq!(
+            world
+                .resource::<crate::resources::color_id::GateColorIds>()
+                .0[5],
+            11
+        );
         assert_eq!(world.resource::<WallColorIds>().0[5], 0);
         assert_eq!(world.resource::<WallColorIds>().0[6], 3);
-        assert_eq!(world.resource::<crate::resources::color_id::GateColorIds>().0[6], 0);
+        assert_eq!(
+            world
+                .resource::<crate::resources::color_id::GateColorIds>()
+                .0[6],
+            0
+        );
     }
-
 }

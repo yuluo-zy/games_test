@@ -61,7 +61,7 @@ pub fn sheep_umbrellas(
         (Entity, &Transform, &CritterLocomotion, &mut UmbrellaHolder),
         With<Sheep>,
     >,
-    mut accessories: Query<(&mut SheepAccessory, &mut Transform), Without<Sheep>>,
+    mut accessories: Query<(&mut SheepAccessory, ComponentWrite<Transform>), Without<Sheep>>,
 ) {
     let dt = time.delta;
 
@@ -147,3 +147,5 @@ pub struct SheepUmbrella {
     pub phase: f32,
     pub owner: Option<Entity>,
 }
+
+use country_core::render::extract::ComponentWrite;

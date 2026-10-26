@@ -354,23 +354,17 @@ fn mapped_slice_is_full_length_and_follows_slot_pointer() {
 }
 
 #[test]
-fn create_mapped_buffer_requires_host_visible_locations() {
+fn canonical_managed_host_locations_support_visible_roundtrips() {
     let Some(gd) = device() else { return };
-    for location in [MemoryLocation::CpuToGpu, MemoryLocation::GpuToCpu] {
+    for location in [MemoryLocation::CpuToGpu, MemoryLocation::GpuToCpu, MemoryLocation::CpuToGpuLowPrio] {
         let desc = BufferDesc::new(64, vk::BufferUsageFlags::TRANSFER_SRC, location);
-        let (buffer, parts) = gd.create_mapped_buffer(&desc, "mapped").unwrap();
-        assert_eq!(parts.len, 64);
-        assert!(!parts.ptr.is_null());
+        let buffer = gd.create_buffer(&desc, "managed mapped roundtrip", ()).unwrap();
+        assert!(buffer.persistent_host_ptr().is_some());
         assert_eq!(buffer.size, 64);
-    }
-    let low = BufferDesc::new_cpu_to_gpu_low_prio(8, vk::BufferUsageFlags::TRANSFER_SRC);
-    let gpu = BufferDesc::new_gpu_only(8, vk::BufferUsageFlags::TRANSFER_SRC);
-    for bad in [low, gpu] {
-        let error = gd
-            .create_mapped_buffer(&bad, "bad")
-            .err()
-            .expect("无效memory_location必须返回错误");
-        assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
+        buffer.write_bytes(0, &[37; 64]).unwrap();
+        let mut bytes = [0; 64];
+        buffer.read_bytes(0, &mut bytes).unwrap();
+        assert_eq!(bytes, [37; 64]);
     }
 }
 

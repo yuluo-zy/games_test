@@ -49,7 +49,7 @@ impl SheepControl {
     }
 }
 
-type SheepQuery<'w, 's> = Query<'w, 's, (Entity, &'static mut Transform, &'static mut Sheep, &'static mut CritterGoal)>;
+type SheepQuery<'w, 's> = Query<'w, 's, (Entity, ComponentWrite<Transform>, ComponentWrite<Sheep>, &'static mut CritterGoal)>;
 
 /// Original helper@1416f24f0: query-order zip to the shorter sequence.
 pub fn apply_sheep_snapshot(sheep: &mut SheepQuery<'_, '_>, snapshot: &SheepControlSnapshot) {
@@ -357,3 +357,5 @@ mod original_control_tests {
         assert!(world.resource::<UiState>().widget(WidgetId::from_name("sheep_selection_0")).is_some());
     }
 }
+
+use crate::render::extract::ComponentWrite;

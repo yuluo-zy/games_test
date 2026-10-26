@@ -23,38 +23,239 @@ fn device() -> Option<Arc<Device>> {
 }
 
 #[test]
-fn recoverable_submit_oom_keeps_original_ticket_payload_and_fifo_position() {
+fn distinct_target_batch_uses_one_slot_and_retains_fifo_priority_holes_and_oom_retry() {
     use rhapsody::transfer::{UploadKey, UploadMode, UploadOptions, UploadPriority, UploadStatus};
     let Some(device) = device() else { return };
-    let mut transfers = TransferManager::new(device.clone(), TransferConfig {
-        slots: 1, chunk_bytes: 256, max_bytes: 16384,
-    }).unwrap();
-    let target = Arc::new(Buffer::new(device.clone(), &BufferDesc::new_gpu_only(32,
-        vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST)).unwrap());
-    let first = transfers.enqueue_upload_owned(target.clone(), 0, vec![7; 32],
-        UploadOptions { key: UploadKey(91), epoch: 1, priority: UploadPriority::High },
-        UploadMode::OrderedDelta).unwrap();
+    let mut transfers = TransferManager::new(
+        device.clone(),
+        TransferConfig {
+            slots: 1,
+            chunk_bytes: 256,
+            max_bytes: 16384,
+        },
+    )
+    .unwrap();
+    let idle = device.retirement_stats().idle_waits;
+    let targets = (0..9)
+        .map(|_| {
+            let target = Arc::new(
+                Buffer::new(
+                    device.clone(),
+                    &BufferDesc::new_gpu_only(
+                        256,
+                        vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST,
+                    ),
+                )
+                .unwrap(),
+            );
+            gpu_test_support::submit_upload(&mut transfers, target.clone(), 0, &[7; 256])
+                .unwrap()
+                .wait(5_000_000_000)
+                .unwrap();
+            target
+        })
+        .collect::<Vec<_>>();
+    let options = |key, priority| UploadOptions {
+        key: UploadKey(key),
+        epoch: 1,
+        priority,
+    };
+    let mut tickets = Vec::new();
+    for (index, target) in targets[..8].iter().enumerate() {
+        tickets.push(
+            transfers
+                .enqueue_upload_owned(
+                    target.clone(),
+                    16,
+                    vec![index as u8 + 1; 8],
+                    options(index as u64, UploadPriority::High),
+                    UploadMode::OrderedDelta,
+                )
+                .unwrap(),
+        );
+    }
+    let later = transfers
+        .enqueue_upload_owned(
+            targets[0].clone(),
+            20,
+            vec![99; 4],
+            options(100, UploadPriority::High),
+            UploadMode::OrderedDelta,
+        )
+        .unwrap();
+    let low = transfers
+        .enqueue_upload_owned(
+            targets[8].clone(),
+            16,
+            vec![9; 8],
+            options(101, UploadPriority::Normal),
+            UploadMode::OrderedDelta,
+        )
+        .unwrap();
     let before = transfers.upload_queue_stats();
     let budget = device.allocator_stats();
     let limit = budget.host_budget_limit();
-    budget.set_host_budget(budget.cpu_memory_usage().total()).unwrap();
-    let failed = transfers.flush_uploads_preserving_oom(1);
+    budget
+        .set_host_budget(budget.cpu_memory_usage().total())
+        .unwrap();
+    let failed = transfers.flush_uploads(1);
+    budget.set_host_budget(limit).unwrap();
+    assert_eq!(failed.unwrap_err().kind(), rhapsody::ErrorKind::OutOfMemory);
+    assert!(
+        tickets
+            .iter()
+            .all(|ticket| matches!(ticket.status(), UploadStatus::Pending))
+    );
+    assert_eq!(
+        (
+            transfers.upload_queue_stats().queued_jobs,
+            transfers.upload_queue_stats().queued_bytes
+        ),
+        (before.queued_jobs, before.queued_bytes)
+    );
+    let batch = transfers.flush_uploads(1).unwrap();
+    assert_eq!(
+        (
+            batch.submitted_jobs,
+            batch.submitted_bytes,
+            batch.remaining_jobs
+        ),
+        (8, 64, 2)
+    );
+    let point = tickets[0].try_submitted().unwrap().unwrap();
+    for ticket in &tickets {
+        assert_eq!(ticket.try_submitted().unwrap().unwrap().point, point.point);
+    }
+    assert!(matches!(later.status(), UploadStatus::Pending));
+    assert!(matches!(low.status(), UploadStatus::Pending));
+    point.wait(5_000_000_000).unwrap();
+    assert_eq!(transfers.flush_uploads(1).unwrap().submitted_jobs, 1);
+    later
+        .try_submitted()
+        .unwrap()
+        .unwrap()
+        .wait(5_000_000_000)
+        .unwrap();
+    assert!(matches!(low.status(), UploadStatus::Pending));
+    assert_eq!(transfers.flush_uploads(1).unwrap().submitted_jobs, 1);
+    low.try_submitted()
+        .unwrap()
+        .unwrap()
+        .wait(5_000_000_000)
+        .unwrap();
+    for (index, target) in targets.into_iter().enumerate() {
+        let read = transfers.read_buffer(target, 0, 256).unwrap();
+        read.wait(5_000_000_000).unwrap();
+        let mut actual = [0; 256];
+        assert_eq!(read.try_read(&mut actual).unwrap(), Some(256));
+        let mut expected = [7; 256];
+        expected[16..24].fill(index as u8 + 1);
+        if index == 0 {
+            expected[20..24].fill(99);
+        }
+        assert_eq!(
+            actual, expected,
+            "target {index}, including every untouched hole"
+        );
+    }
+    assert_eq!(transfers.upload_queue_stats().cancelled_jobs, 0);
+    assert_eq!(device.retirement_stats().idle_waits, idle);
+}
+
+#[test]
+fn recoverable_submit_oom_keeps_original_ticket_payload_and_fifo_position() {
+    use rhapsody::transfer::{UploadKey, UploadMode, UploadOptions, UploadPriority, UploadStatus};
+    let Some(device) = device() else { return };
+    let mut transfers = TransferManager::new(
+        device.clone(),
+        TransferConfig {
+            slots: 1,
+            chunk_bytes: 256,
+            max_bytes: 16384,
+        },
+    )
+    .unwrap();
+    let target = Arc::new(
+        Buffer::new(
+            device.clone(),
+            &BufferDesc::new_gpu_only(
+                32,
+                vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST,
+            ),
+        )
+        .unwrap(),
+    );
+    let first = transfers
+        .enqueue_upload_owned(
+            target.clone(),
+            0,
+            vec![7; 32],
+            UploadOptions {
+                key: UploadKey(91),
+                epoch: 1,
+                priority: UploadPriority::High,
+            },
+            UploadMode::OrderedDelta,
+        )
+        .unwrap();
+    let before = transfers.upload_queue_stats();
+    let budget = device.allocator_stats();
+    let limit = budget.host_budget_limit();
+    budget
+        .set_host_budget(budget.cpu_memory_usage().total())
+        .unwrap();
+    let failed = transfers.flush_uploads(1);
     budget.set_host_budget(limit).unwrap();
     assert_eq!(failed.unwrap_err().kind(), rhapsody::ErrorKind::OutOfMemory);
     assert!(matches!(first.status(), UploadStatus::Pending));
     assert!(first.try_submitted().unwrap().is_none());
     let after = transfers.upload_queue_stats();
-    assert_eq!((after.queued_jobs, after.queued_bytes), (before.queued_jobs, before.queued_bytes));
+    assert_eq!(
+        (after.queued_jobs, after.queued_bytes),
+        (before.queued_jobs, before.queued_bytes)
+    );
     assert!(after.known_cpu_bytes <= before.known_cpu_bytes);
-    let second = transfers.enqueue_upload_owned(target.clone(), 8, vec![9; 8],
-        UploadOptions { key: UploadKey(92), epoch: 2, priority: UploadPriority::High },
-        UploadMode::OrderedDelta).unwrap();
+    let second = transfers
+        .enqueue_upload_owned(
+            target.clone(),
+            8,
+            vec![9; 8],
+            UploadOptions {
+                key: UploadKey(92),
+                epoch: 2,
+                priority: UploadPriority::High,
+            },
+            UploadMode::OrderedDelta,
+        )
+        .unwrap();
     // Distinct logical keys still cannot reorder writes to one physical owner.
-    assert_eq!(transfers.flush_uploads_preserving_oom(1).unwrap().submitted_jobs, 1);
-    first.try_submitted().unwrap().unwrap().wait(5_000_000_000).unwrap();
+    assert_eq!(
+        transfers
+            .flush_uploads(1)
+            .unwrap()
+            .submitted_jobs,
+        1
+    );
+    first
+        .try_submitted()
+        .unwrap()
+        .unwrap()
+        .wait(5_000_000_000)
+        .unwrap();
     assert!(matches!(second.status(), UploadStatus::Pending));
-    assert_eq!(transfers.flush_uploads_preserving_oom(1).unwrap().submitted_jobs, 1);
-    second.try_submitted().unwrap().unwrap().wait(5_000_000_000).unwrap();
+    assert_eq!(
+        transfers
+            .flush_uploads(1)
+            .unwrap()
+            .submitted_jobs,
+        1
+    );
+    second
+        .try_submitted()
+        .unwrap()
+        .unwrap()
+        .wait(5_000_000_000)
+        .unwrap();
     let read = transfers.read_buffer(target, 0, 32).unwrap();
     read.wait(5_000_000_000).unwrap();
     let mut actual = [0; 32];
@@ -68,24 +269,62 @@ fn recoverable_submit_oom_keeps_original_ticket_payload_and_fifo_position() {
 fn owned_frame_deltas_preserve_disjoint_and_overlapping_updates_on_gpu() {
     use rhapsody::transfer::{UploadKey, UploadMode, UploadOptions, UploadPriority, UploadStatus};
     let Some(device) = device() else { return };
-    let mut transfers = TransferManager::new(device.clone(), TransferConfig {
-        slots: 1, chunk_bytes: 256, max_bytes: 16384,
-    }).unwrap();
-    let target = Arc::new(Buffer::new(device, &BufferDesc::new_gpu_only(32,
-        vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST)).unwrap());
-    transfers.upload_buffer(target.clone(), 0, &[7; 32]).unwrap().wait(5_000_000_000).unwrap();
+    let mut transfers = TransferManager::new(
+        device.clone(),
+        TransferConfig {
+            slots: 1,
+            chunk_bytes: 256,
+            max_bytes: 16384,
+        },
+    )
+    .unwrap();
+    let target = Arc::new(
+        Buffer::new(
+            device,
+            &BufferDesc::new_gpu_only(
+                32,
+                vk::BufferUsageFlags::TRANSFER_SRC | vk::BufferUsageFlags::TRANSFER_DST,
+            ),
+        )
+        .unwrap(),
+    );
+    gpu_test_support::submit_upload(&mut transfers, target.clone(), 0, &[7; 32])
+        .unwrap()
+        .wait(5_000_000_000)
+        .unwrap();
     let mut tickets = Vec::new();
     for (epoch, offset, value) in [(1, 0, 1), (2, 16, 2), (3, 4, 3)] {
-        tickets.push(transfers.enqueue_upload_owned(target.clone(), offset, vec![value; 8],
-            UploadOptions { key: UploadKey(1), epoch, priority: UploadPriority::Normal },
-            UploadMode::OrderedDelta).unwrap());
+        tickets.push(
+            transfers
+                .enqueue_upload_owned(
+                    target.clone(),
+                    offset,
+                    vec![value; 8],
+                    UploadOptions {
+                        key: UploadKey(1),
+                        epoch,
+                        priority: UploadPriority::Normal,
+                    },
+                    UploadMode::OrderedDelta,
+                )
+                .unwrap(),
+        );
     }
     assert_eq!(transfers.upload_queue_stats().queued_jobs, 3);
-    assert!(tickets.iter().all(|ticket| matches!(ticket.status(), UploadStatus::Pending)));
+    assert!(
+        tickets
+            .iter()
+            .all(|ticket| matches!(ticket.status(), UploadStatus::Pending))
+    );
     // Submit/wait one at a time to exercise bounded reuse of the sole slot.
     for ticket in tickets {
         assert_eq!(transfers.flush_uploads(1).unwrap().submitted_jobs, 1);
-        ticket.try_submitted().unwrap().unwrap().wait(5_000_000_000).unwrap();
+        ticket
+            .try_submitted()
+            .unwrap()
+            .unwrap()
+            .wait(5_000_000_000)
+            .unwrap();
     }
     let read = transfers.read_buffer(target, 0, 32).unwrap();
     read.wait(5_000_000_000).unwrap();
@@ -124,8 +363,7 @@ fn bounded_async_uploads_feed_the_graph_and_readbacks_keep_their_slots_leased() 
         .unwrap(),
     );
     let expected = (0..768).map(|i| ((i * 17) % 251) as u8).collect::<Vec<_>>();
-    let uploaded = transfers
-        .upload_buffer(target.clone(), 128, &expected)
+    let uploaded = gpu_test_support::submit_upload(&mut transfers, target.clone(), 128, &expected)
         .unwrap();
     let mut session = VulkanGraphSession::new(
         VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap(),
@@ -304,11 +542,11 @@ fn queued_dirty_uploads_merge_exact_bytes_cancel_old_epochs_and_prioritize_other
     let a = make();
     let b = make();
     let idle = device.retirement_stats().idle_waits;
-    manager
-        .upload_buffer(a.clone(), 0, &[7; 256])
+    gpu_test_support::submit_upload(&mut manager, a.clone(), 0, &[7; 256])
         .unwrap()
         .wait(5_000_000_000)
         .unwrap();
+    let initial_submits = manager.upload_queue_stats().submitted_jobs;
     let opts = |epoch, priority| UploadOptions {
         key: UploadKey(11),
         epoch,
@@ -373,7 +611,7 @@ fn queued_dirty_uploads_merge_exact_bytes_cancel_old_epochs_and_prioritize_other
         "untouched gaps must retain their previous GPU contents"
     );
     let stats = manager.upload_queue_stats();
-    assert_eq!(stats.submitted_jobs, 2);
+    assert_eq!(stats.submitted_jobs - initial_submits, 2);
     assert_eq!(stats.merged_requests, 2);
     assert_eq!(stats.cancelled_jobs, 1);
     assert_eq!(stats.queued_bytes, 0);
@@ -422,7 +660,7 @@ fn queued_upload_full_staging_defers_without_publishing_then_recovers_after_real
             &[],
         )
         .unwrap();
-    let initial = manager.upload_buffer(target.clone(), 0, &[1; 256]).unwrap();
+    let initial = gpu_test_support::submit_upload(&mut manager, target.clone(), 0, &[1; 256]).unwrap();
     let queued = manager
         .enqueue_upload(
             target.clone(),
@@ -552,8 +790,7 @@ fn readback_envelopes_reuse_capacity_and_escaping_tickets_keep_their_actual_cpu_
         )
         .unwrap(),
     );
-    manager
-        .upload_buffer(target.clone(), 0, &[0x31; 256])
+    gpu_test_support::submit_upload(&mut manager, target.clone(), 0, &[0x31; 256])
         .unwrap()
         .wait(5_000_000_000)
         .unwrap();
@@ -616,7 +853,7 @@ fn overwriting_a_range_read_by_earlier_gpu_work_is_ordered_by_tracked_state() {
     let mut previous = None;
     for round in 0..4u8 {
         let bytes = [round + 1; 64];
-        manager.upload_buffer(target.clone(), 32, &bytes).unwrap();
+        gpu_test_support::submit_upload(&mut manager, target.clone(), 32, &bytes).unwrap();
         // The readback reads the range; the next upload must order after it.
         let readback = manager.read_buffer(target.clone(), 32, 64).unwrap();
         readback.wait(10_000_000_000).unwrap();

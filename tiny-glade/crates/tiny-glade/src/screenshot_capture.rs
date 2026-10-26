@@ -55,6 +55,7 @@ enum Capture {
     },
     Buffer {
         buffer: ManagedBuffer,
+        rgba: Option<Vec<u8>>,
         logical: rhapsody::rg::ResourceHandle,
         retired: Arc<AtomicBool>,
         submitted: bool,
@@ -95,6 +96,13 @@ struct Requests {
 
 impl Drop for Requests {
     fn drop(&mut self) {
+        // World replacement can retire an App without a shutdown frame. Its
+        // captures cannot move to the incoming App's graph or lose callbacks.
+        for request in &mut self.active {
+            if let Some(callback) = request.completion.take() {
+                callback(Err("Screenshot cancelled when its App owner was released".to_owned()));
+            }
+        }
         // Per-App ownership is an API adaptation of the original global writer
         // list. Unloading a gameplay World must not detach its disk writes.
         for writer in self.writers.drain(..) {
@@ -651,6 +659,7 @@ fn capture_buffer(
     let retired = retirement_flag(frame)?;
     Ok(Capture::Buffer {
         buffer,
+        rgba: None,
         logical: target,
         retired,
         submitted: false,
@@ -672,7 +681,9 @@ fn capture_texture(
         .create_texture("screenshot target", &desc, &[])
         .map_err(|error| rhapsody::Error::invalid_usage(error.to_string()))?;
     let built = (|| {
-        let target_id = frame.import_texture(&texture, 0x11)?;
+        // TextureHost initializes sampled images to AnyShaderRead. Storage
+        // writes belong to the capture pass, not the image's initial state.
+        let target_id = frame.import_texture(&texture, 0x22)?;
         let target = RgTexture {
             resource: target_id.raw(),
             desc,
@@ -882,7 +893,7 @@ fn finish_owned(owner: &mut Requests) -> rhapsody::Result<()> {
             request.remaining -= 1;
             continue;
         }
-        match &request.capture {
+        match &mut request.capture {
             Capture::Texture { hosts, .. } => {
                 if request.hurry {
                     hosts.buffers.graphics_device().wait_idle()?;
@@ -891,12 +902,26 @@ fn finish_owned(owner: &mut Requests) -> rhapsody::Result<()> {
                     callback(Ok(request.extent));
                 }
             }
-            Capture::Buffer { buffer, .. } => {
+            Capture::Buffer { buffer, rgba, .. } => {
                 if request.hurry {
                     buffer.device().wait_idle()?;
                 }
-                let mut rgba = vec![0; byte_size(request.extent)? as usize];
-                buffer.read_bytes(0, &mut rgba)?;
+                if rgba.is_none() {
+                    let mut pixels = Vec::new();
+                    pixels.try_reserve_exact(buffer.size as usize)
+                        .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+                    pixels.resize(buffer.size as usize, 0);
+                    *rgba = Some(pixels);
+                }
+                let pixels = rgba.as_mut().expect("admitted screenshot pixels");
+                let read = if request.hurry { buffer.read_bytes(0, pixels) }
+                    else { buffer.read_bytes_timeout(0, pixels, 0) };
+                match read {
+                    Ok(()) => {}
+                    Err(rhapsody::Error::Timeout) if !request.hurry => continue,
+                    Err(error) => return Err(error),
+                }
+                let rgba = rgba.take().expect("completed screenshot pixels");
                 let Destination::Pixels(sink) = &request.destination else {
                     unreachable!()
                 };
@@ -1021,6 +1046,97 @@ mod tests {
     use std::sync::Mutex;
 
     #[test]
+    fn pending_gpu_pixels_yield_with_one_cpu_buffer_and_deliver_once_after_completion() {
+        use ash::vk;
+        use rhapsody::{command::VulkanCommandPool, device::{Device, DeviceConfig, DeviceQueue},
+            raw::semaphore::TimelineSemaphore, resource::BufferDesc};
+        struct Release(Option<Arc<TimelineSemaphore>>);
+        impl Release {
+            fn signal(&mut self) {
+                let gate = self.0.take().unwrap();
+                unsafe { gate.device().raw_device().signal_semaphore(
+                    &vk::SemaphoreSignalInfo::default().semaphore(gate.raw_handle()).value(1),
+                ) }.unwrap();
+            }
+        }
+        impl Drop for Release {
+            fn drop(&mut self) {
+                if let Some(gate) = self.0.take() {
+                    let _ = unsafe { gate.device().raw_device().signal_semaphore(
+                        &vk::SemaphoreSignalInfo::default().semaphore(gate.raw_handle()).value(1),
+                    ) };
+                }
+            }
+        }
+        let device = match Device::new_headless(&DeviceConfig::headless()) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"), "{error}");
+                return;
+            }
+        };
+        let buffer = device.create_buffer(&BufferDesc::new_gpu_to_cpu(16,
+            vk::BufferUsageFlags::TRANSFER_DST), "pending screenshot fixture", None).unwrap();
+        let gate = TimelineSemaphore::new(device.clone(), 0).unwrap();
+        let mut release = Release(Some(gate.clone()));
+        let pool = VulkanCommandPool::new(device.clone()).unwrap();
+        let mut command = pool.allocate().unwrap();
+        unsafe { command.retain_opaque_buffer_range(buffer.shared(), 0, 16) }.unwrap();
+        command.begin().unwrap();
+        unsafe {
+            device.raw_device().cmd_fill_buffer(command.raw_handle(), buffer.raw_handle(), 0, 16, 0x44332211);
+            device.raw_device().cmd_pipeline_barrier(command.raw_handle(),
+                vk::PipelineStageFlags::TRANSFER, vk::PipelineStageFlags::HOST, vk::DependencyFlags::empty(), &[],
+                &[vk::BufferMemoryBarrier::default().src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
+                    .dst_access_mask(vk::AccessFlags::HOST_READ).buffer(buffer.raw_handle()).offset(0).size(16)
+                    .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED).dst_queue_family_index(vk::QUEUE_FAMILY_IGNORED)], &[]);
+        }
+        command.end().unwrap();
+        let pending = command.submit_to(DeviceQueue {handle: device.primary_queue(),
+            family: device.queue_family_index(), index: 0},
+            &[(gate, 1, vk::PipelineStageFlags::ALL_COMMANDS)], &[]).unwrap();
+        let mut graph = rhapsody::rg::RenderGraph::new();
+        let logical = graph.create_buffer("screenshot logical owner", rhapsody::rg::graph::BufferDesc {
+            word_at_00: 16, word_at_08: vk::BufferUsageFlags::TRANSFER_DST.as_raw(), bytes_at_0c_through_0e: [2, 0, 0],
+        }).unwrap().raw();
+        let (send, pixels) = std::sync::mpsc::channel();
+        let (done, completions) = std::sync::mpsc::channel();
+        let mut owner = Requests::default();
+        owner.active.push(Request {
+            purpose: 4, dimensions: Some([2, 2]), extent: [2, 2], hurry: false, remaining: 0,
+            destination: Destination::Pixels(ScreenshotSink::Rgba(Arc::new(move |w, h, rgba| {
+                send.send((w, h, rgba)).unwrap();
+            }))),
+            completion: Some(Arc::new(move |result| { done.send(result).unwrap(); })),
+            capture: Capture::Buffer { buffer, rgba: None, logical,
+                retired: Arc::new(AtomicBool::new(false)), submitted: true },
+        });
+        let started = std::time::Instant::now();
+        finish_owned(&mut owner).unwrap();
+        assert!(started.elapsed() < std::time::Duration::from_secs(2));
+        let allocation = |owner: &Requests| match &owner.active[0].capture {
+            Capture::Buffer { rgba: Some(bytes), .. } => (bytes.as_ptr() as usize, bytes.capacity()),
+            _ => panic!("pending screenshot lost its pixel owner"),
+        };
+        let original = allocation(&owner);
+        finish_owned(&mut owner).unwrap();
+        assert_eq!(allocation(&owner), original, "busy retries must reuse their admitted destination");
+        assert!(pixels.try_recv().is_err());
+        assert!(completions.try_recv().is_err());
+        assert!(owner.writers.is_empty());
+        release.signal();
+        pending.wait(10_000_000_000).unwrap();
+        finish_owned(&mut owner).unwrap();
+        for writer in owner.writers.drain(..) { writer.join().unwrap(); }
+        assert_eq!(pixels.recv().unwrap(), (2, 2, [0x11, 0x22, 0x33, 0x44].repeat(4)));
+        assert_eq!(completions.recv().unwrap().unwrap(), [2, 2]);
+        finish_owned(&mut owner).unwrap();
+        assert!(owner.active.is_empty());
+        assert!(pixels.try_recv().is_err());
+        assert!(completions.try_recv().is_err());
+    }
+
+    #[test]
     fn shutdown_settles_unsubmitted_requests_after_render_ownership_transfer_once() {
         let mut game = World::new();
         game.init_resource::<Requests>();
@@ -1042,6 +1158,38 @@ mod tests {
         shutdown(&mut render).unwrap();
         assert!(receive.try_recv().is_err());
         assert!(!has_requests(&render));
+    }
+
+    #[test]
+    fn replacing_render_world_cancels_only_outgoing_app_requests_once() {
+        let (send, receive) = std::sync::mpsc::channel();
+        let mut exchange = crate::render_thread::RenderExchange::default();
+        render_exchange(&mut exchange);
+        let mut render = World::new();
+        let mut apps = [World::new(), World::new()];
+        for (index, game) in apps.iter_mut().enumerate() {
+            game.init_resource::<Requests>();
+            let send = send.clone();
+            enqueue(game, ScreenshotRequest {
+                purpose: ScreenshotPurpose::FinalFrame,
+                dimensions: None,
+                sink: ScreenshotSink::Rgba(Arc::new(|_, _, _| panic!("cancelled request delivered pixels"))),
+                completion: Some(Arc::new(move |result| { send.send((index, result)).unwrap(); })),
+            }).unwrap();
+        }
+        exchange.extract.run(&mut apps[0], &mut render);
+        render = World::new();
+        let (index, result) = receive.try_recv().unwrap();
+        assert_eq!(index, 0);
+        assert!(result.unwrap_err().contains("App owner"));
+        exchange.extract.run(&mut apps[1], &mut render);
+        assert!(has_requests(&render));
+        assert!(receive.try_recv().is_err());
+        shutdown(&mut render).unwrap();
+        assert_eq!(receive.try_recv().unwrap().0, 1);
+        drop(render);
+        drop(apps);
+        assert!(receive.try_recv().is_err());
     }
 
     /// Slot ids are the byte offsets 0xe8/0xf0/0xf8 of the original resource / 8.
@@ -1154,8 +1302,8 @@ mod tests {
         fn action_set_handle(&self, _: &str) -> Option<u64> { None }
         fn analog_action_handle(&self, _: &str) -> Option<u64> { None }
         fn digital_action_handle(&self, _: &str) -> Option<u64> { None }
-        fn analog_action_data(&self, _: u64) -> AnalogActionData { AnalogActionData::default() }
-        fn digital_action_data(&self, _: u64) -> DigitalActionData { DigitalActionData::default() }
+        fn analog_action_data(&self, _: u64, _: u64) -> AnalogActionData { AnalogActionData::default() }
+        fn digital_action_data(&self, _: u64, _: u64) -> DigitalActionData { DigitalActionData::default() }
         fn activate_action_set(&self, _: u64, _: u64) {}
         fn init_input(&self) -> bool { true }
         fn is_steam_running_on_steam_deck(&self) -> bool { false }
@@ -1163,8 +1311,8 @@ mod tests {
         fn activate_game_overlay_to_web_page(&self, _: &str) {}
         fn hook_screenshots(&self, _: bool) {}
         fn show_floating_gamepad_text_input(&self, _: u32, _: i32, _: i32, _: i32, _: i32) {}
-        fn analog_action_origins(&self, _: u64, _: u64) -> Vec<u64> { Vec::new() }
-        fn digital_action_origins(&self, _: u64, _: u64) -> Vec<u64> { Vec::new() }
+        fn analog_action_origins(&self, _: u64, _: u64, _: u64) -> Vec<u64> { Vec::new() }
+        fn digital_action_origins(&self, _: u64, _: u64, _: u64) -> Vec<u64> { Vec::new() }
         fn glyph_for_action_origin(&self, _: u64) -> String { String::new() }
         fn add_screenshot_to_library(&self, path: &Path, width: u32, height: u32) -> Result<(), String> {
             if self.library_error {

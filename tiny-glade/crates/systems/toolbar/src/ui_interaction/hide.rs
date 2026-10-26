@@ -31,7 +31,7 @@ pub fn hide_ui(
     screenshot_message: Res<SteamdeckScreenshotMsgScreen>,
     mut items: Query<(
         Entity,
-        &mut UiInteractionState,
+        ComponentWrite<UiInteractionState>,
         &HideIfMenuIsOpen,
         Option<&ShowOnlyInPhotomode>,
     )>,
@@ -66,3 +66,5 @@ pub fn hide_ui(
 #[cfg(test)]
 #[path = "hide_tests.rs"]
 mod tests;
+
+use country_core::render::extract::ComponentWrite;

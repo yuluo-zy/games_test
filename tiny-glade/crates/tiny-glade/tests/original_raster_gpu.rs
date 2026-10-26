@@ -1,6 +1,10 @@
 //! Explicit GPU validation fixtures, not recovered gameplay geometry. The mesh
 //! test uses a tiny diagnostic SPIR-V shader so instance count changes pixels;
-//! the resolve test uses the actual packaged original resolve shader.
+//! the resolve test uses the current installed presentation shader.
+#[path = "support/mod.rs"]
+mod test_support;
+use test_support::ShaderTestDriver as _;
+use test_support::BridgeTestDriver as _;
 use ash::vk::{self, Handle};
 use bevy_ecs::world::World;
 use country_core::{
@@ -186,10 +190,10 @@ fn pixels(
 ) -> Vec<u8> {
     bridge
         .shader_backend()
-        .prewarm(Duration::from_secs(10))
+        .prepare_test_pipelines(Duration::from_secs(10))
         .unwrap();
     let compiled = bridge.compile_built(built).unwrap();
-    let receipt = bridge.execute_compiled(compiled).unwrap();
+    let receipt = bridge.execute_after_uploads(compiled).unwrap();
     assert!(!receipt.receipts.is_empty());
     bridge.wait_submits_done(10_000_000_000).unwrap();
     let mut bytes = vec![0; readback.desc.size as usize];
@@ -231,6 +235,9 @@ fn vertex_fixture() -> Vec<u32> {
     let inputptr = b.type_pointer(None, StorageClass::Input, v2);
     let input = b.variable(inputptr, None, StorageClass::Input, None);
     b.decorate(input, Decoration::Location, [Operand::LiteralInt32(3)]);
+    let colorptr = b.type_pointer(None, StorageClass::Input, v4);
+    let color = b.variable(colorptr, None, StorageClass::Input, None);
+    b.decorate(color, Decoration::Location, [Operand::LiteralInt32(4)]);
     let iptr = b.type_pointer(None, StorageClass::Input, u);
     let instance = b.variable(iptr, None, StorageClass::Input, None);
     b.decorate(
@@ -253,6 +260,9 @@ fn vertex_fixture() -> Vec<u32> {
     b.begin_block(None).unwrap();
     let p = b.load(v2, None, input, None, []).unwrap();
     let x = b.composite_extract(f, None, p, [0]).unwrap();
+    let color_value = b.load(v4, None, color, None, []).unwrap();
+    let color_x = b.composite_extract(f, None, color_value, [0]).unwrap();
+    let x = b.f_add(f, None, x, color_x).unwrap();
     let y = b.composite_extract(f, None, p, [1]).unwrap();
     let index = b.load(u, None, instance, None, []).unwrap();
     let shift = b.convert_u_to_f(f, None, index).unwrap();
@@ -265,7 +275,7 @@ fn vertex_fixture() -> Vec<u32> {
         ExecutionModel::Vertex,
         main,
         "vs_main",
-        [input, instance, output],
+        [input, color, instance, output],
     );
     b.module().assemble()
 }
@@ -344,6 +354,15 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
                         nscalar: 2,
                     }),
                 },
+            ), (
+                "Vertex_Color".into(),
+                VertexInput {
+                    location: 4,
+                    ty: Type::Vector(VectorType {
+                        scalar_ty: ScalarType::Float(4),
+                        nscalar: 4,
+                    }),
+                },
             )],
         },
     };
@@ -401,7 +420,7 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
     let library = AssetSsboLibrary::new();
     let data = [3, 1, 0, 0, 0, 0, 0, 0, 3, 1, 0, 1, 0, 0, 0, 0].map(FixtureIndirectWord);
     library.add_new_with_data::<FixtureIndirectWord>(bridge.hosts().buffers.as_ref(), &data);
-    bridge.raster_resources().assets.lock().ssbo_leases = Some(
+    Arc::make_mut(&mut bridge.raster_resources().assets.lock().collect).ssbo_leases = Some(
         library
             .snapshot_graph_leases()
             .into_iter()
@@ -661,7 +680,7 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
         let bytes = if mode == 8 {
             bridge
                 .shader_backend()
-                .prewarm(Duration::from_secs(10))
+                .prepare_test_pipelines(Duration::from_secs(10))
                 .unwrap();
             let compiled = bridge.compile_built(built).unwrap();
             let adapted = !device
@@ -683,7 +702,7 @@ fn actual_typed_vao_vertex_index_and_instance_count_change_gpu_pixels() {
                     .iter()
                     .any(|name| name == "fixture actual GPU indirect count")
             );
-            let receipt = bridge.execute_compiled(compiled).unwrap();
+            let receipt = bridge.execute_after_uploads(compiled).unwrap();
             assert!(!receipt.receipts.is_empty());
             bridge.wait_submits_done(10_000_000_000).unwrap();
             let mut bytes = vec![0; output.desc.size as usize];
@@ -730,29 +749,20 @@ impl ShaderLookup for OriginalShaders<'_> {
     }
 }
 #[test]
-fn original_resolve_uses_target_dimensions_for_different_source_extent() {
+fn presentation_resolve_stretches_and_flips_a_different_source_extent() {
     use country_core::render::load_texture::boundary::TextureDevice;
     let Some(device) = device() else {
         return;
     };
-    let root = std::env::var_os("TG_COMPILED_SHADERS")
-        .map(|path| {
-            PathBuf::from(path)
-                .parent()
-                .expect("TG_COMPILED_SHADERS must be an installation's compiled-shaders directory")
-                .to_path_buf()
-        })
-        .unwrap_or_else(|| {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../ljxsj_92385/Tiny Glade")
-        });
+    let root = PathBuf::from(
+        std::env::var_os("TG_INSTALL_ROOT").expect("TG_INSTALL_ROOT must name the installation"),
+    );
     let shaders = Arc::new(AssetShaderLibrary::new());
     let mut bridge = CoreRenderBridge::new(device.clone(), root, shaders.clone()).unwrap();
     country_core::startup::startup_blit::startup_blit(&shaders, bridge.shader_backend());
-    // Original packaged SPIR-V converts FragCoord.xy to integers and uses
-    // OpImageFetch: resolve does not stretch a smaller source to a larger
-    // target. Keep every sampled coordinate in bounds. The lower half of this
-    // larger source is green, so using source.height instead of target.height
-    // for transform_image&1 produces the wrong visible pixels.
+    // The current shader maps target pixel centers into the source extent,
+    // after applying the target-space flip. Check the entire target against
+    // the explicit source, including its edges and the boundary between bands.
     let bytes = (0..16)
         .flat_map(|y| {
             (0..32).flat_map(move |x| {
@@ -809,22 +819,16 @@ fn original_resolve_uses_target_dimensions_for_different_source_extent() {
                 readback(frame, target_id, target.clone())
             })
             .unwrap();
-        let bytes = pixels(&mut bridge, built, output);
-        assert_eq!(
-            &bytes[(2 * 16 + 2) * 4..][..4],
-            if flag == 0 {
-                [255, 0, 0, 255]
-            } else {
-                [255, 255, 0, 255]
+        let actual = pixels(&mut bridge, built, output);
+        for y in 0..8 {
+            for x in 0..16 {
+                let source_y = 2 * if flag == 0 { y } else { 7 - y } + 1;
+                let source_x = 2 * x + 1;
+                let source_offset = (source_y * 32 + source_x) * 4;
+                let target_offset = (y * 16 + x) * 4;
+                assert_eq!(&actual[target_offset..target_offset + 4],
+                    &bytes[source_offset..source_offset + 4], "flag={flag}, pixel=({x},{y})");
             }
-        );
-        assert_eq!(
-            &bytes[(2 * 16 + 13) * 4..][..4],
-            if flag == 0 {
-                [0, 0, 255, 255]
-            } else {
-                [0, 255, 255, 255]
-            }
-        );
+        }
     }
 }

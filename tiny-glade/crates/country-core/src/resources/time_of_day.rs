@@ -64,11 +64,8 @@ pub fn remap_hour_to_fmod_hour(hour: f32, winter: bool) -> f32 {
 pub const TIME_OF_DAY_SPEED: f32 = 0.001_666_666_6;
 
 /// `utils::inverse_lerp(a, b, t) = (t - a) / (b - a)`（O 0x140c904a0，5 条指令，
-/// 无 clamp）。`utils` crate 现有源码未恢复该函数；按机器码等价落地。
-#[inline]
-pub fn inverse_lerp(a: f32, b: f32, t: f32) -> f32 {
-    (t - a) / (b - a)
-}
+/// 无 clamp）。
+pub use ::utils::scalar::inverse_lerp;
 
 /// `utils::time_continuous_lerp_mut(value, target, dt, speed)`（O 0x140c90670）：
 /// `value = (target - value) * (1 - exp(-dt * speed)) + value`。
@@ -149,9 +146,6 @@ impl Default for TimeOfDay {
         }
     }
 }
-
-/// 兼容别名（本域旧接口名）。
-pub type TimeOfDayState = TimeOfDay;
 
 /// `TimeOfDayScreen` 的时相/过渡槽（O：`resources::gui::TimeOfDayScreen`
 /// 在 0x140a73460 中被读写的字段）。

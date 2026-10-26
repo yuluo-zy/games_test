@@ -62,10 +62,6 @@ impl ResourceAccessIndex {
         self.0
     }
 
-    /// 越界转换返回 `None` 而非 panic。
-    pub fn try_index(value: usize) -> Option<Self> {
-        u32::try_from(value).ok().map(Self)
-    }
 
     pub fn valid(self) -> bool {
         self.0 != NO_ACCESS

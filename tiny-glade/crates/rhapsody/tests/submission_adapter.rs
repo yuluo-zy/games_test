@@ -2,7 +2,7 @@
 mod gpu_test_support;
 use ash::vk;
 use rhapsody::{
-    device::{Device, DeviceConfig, Feature, Signal, SubmissionApi, SubmitBatch, Wait},
+    device::{Device, DeviceConfig, Feature, Signal, SubmitBatch, Wait},
     sync::{QueueId, SyncPoint},
 };
 use std::sync::Arc;
@@ -154,34 +154,20 @@ fn known_loss_is_rejected_before_adapter_scratch_admission() {
 }
 
 #[test]
-fn legacy_submission_preserves_supported_caps_and_copies_with_real_timeline_waits() {
+fn synchronization2_copies_with_real_timeline_waits() {
     use rhapsody::raw::{
         buffer::{Buffer, BufferDesc},
         command_buffer::VulkanCommandPool,
     };
     let Some(device) = gpu_test_support::initialize(
-        "legacy timeline submission",
+        "synchronization2 timeline submission",
         Device::new_headless(&DeviceConfig {
-            submission_api: SubmissionApi::Legacy,
             ..DeviceConfig::headless()
         }),
     ) else {
         return;
     };
-    let Some(device) = gpu_test_support::initialize(
-        "supported-but-disabled synchronization2 comparison",
-        if device.caps().is_supported(Feature::Synchronization2) {
-            Ok(device)
-        } else {
-            Err(rhapsody::Error::unsupported(
-                "comparison requires a synchronization2-capable device",
-            ))
-        },
-    ) else {
-        return;
-    };
-    assert!(device.caps().is_supported(Feature::Synchronization2));
-    assert!(!device.caps().is_enabled(Feature::Synchronization2));
+    assert!(device.caps().is_enabled(Feature::Synchronization2));
     for feature in [
         Feature::TimelineSemaphore,
         Feature::DynamicRendering,

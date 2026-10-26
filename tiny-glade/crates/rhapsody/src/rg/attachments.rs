@@ -1,7 +1,7 @@
 //! Dynamic raster attachments and bounded image-view caching.
+use crate::{Error, Result};
 use crate::raw::{
     device::Device,
-    error::{Error, Result},
     shader::DynamicRenderingFormats,
     texture::{Texture, TextureView, TextureViewDesc},
 };
@@ -711,11 +711,6 @@ impl AttachmentCache {
             }
         }
         Ok(())
-    }
-    /// 清理不撤销已经录制命令的拥有权，正在使用的对象由 Prepared/Command 持有。
-    pub fn invalidate_image(&mut self, image: vk::Image, generation: u64) {
-        self.views
-            .retain(|(k, _)| k.image != image.as_raw() || k.generation != generation);
     }
     pub fn clear(&mut self) {
         self.views.clear();

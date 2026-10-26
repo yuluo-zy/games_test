@@ -14,6 +14,159 @@ use std::sync::Arc;
 const TIMEOUT: u64 = 10_000_000_000;
 
 #[test]
+fn recorded_imports_release_admission_while_gpu_commands_keep_the_resources_alive() {
+    exercise_import_lifetime(false);
+}
+
+#[test]
+fn exported_imports_remain_addressable_for_post_submit_consumers_until_retirement() {
+    exercise_import_lifetime(true);
+}
+
+fn exercise_import_lifetime(export_target: bool) {
+    let Some(device) = gpu_test_support::initialize(
+        "completed import admission",
+        Device::new_headless(&DeviceConfig::headless()),
+    ) else {
+        return;
+    };
+    let source = Arc::new(
+        Buffer::new(
+            device.clone(),
+            &BufferDesc::new_cpu_to_gpu(16, vk::BufferUsageFlags::TRANSFER_SRC),
+        )
+        .unwrap(),
+    );
+    let target = Arc::new(
+        Buffer::new(
+            device.clone(),
+            &BufferDesc::new_gpu_to_cpu(16, vk::BufferUsageFlags::TRANSFER_DST),
+        )
+        .unwrap(),
+    );
+    source.write_bytes(0, &[73; 16]).unwrap();
+    let mut session = VulkanGraphSession::new(
+        VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap(),
+    );
+    session
+        .configure_frame_imports(FrameImportConfig {
+            max_imports: 2 + usize::from(export_target),
+        })
+        .unwrap();
+    let mut graph = session.begin_frame().unwrap();
+    let input = session
+        .import_frame_buffer(&mut graph, source.clone(), 0x25)
+        .unwrap();
+    let output = session
+        .import_frame_buffer(&mut graph, target.clone(), 0x26)
+        .unwrap();
+    let mut pass = graph
+        .add_pass("real copy before import admission")
+        .with_side_effect();
+    pass.add_resource_access(input, 0x25, 0).unwrap();
+    pass.add_resource_access(output, 0x34, 0).unwrap();
+    let raw = device.clone();
+    pass.render_with_result_context(move |ctx| {
+        let resources = ctx.managed.unwrap();
+        unsafe {
+            raw.raw_device().cmd_copy_buffer(
+                vk::CommandBuffer::from_raw(ctx.command.handle()),
+                resources.buffer_for(input.raw()).unwrap().raw_handle(),
+                resources.buffer_for(output.raw()).unwrap().raw_handle(),
+                &[vk::BufferCopy {
+                    src_offset: 0,
+                    dst_offset: 0,
+                    size: 16,
+                }],
+            );
+        }
+        Ok(())
+    });
+    if export_target {
+        graph.export(output, 0x26).unwrap();
+    }
+    struct Unblock(Arc<rhapsody::raw::semaphore::TimelineSemaphore>);
+    impl Drop for Unblock {
+        fn drop(&mut self) {
+            unsafe {
+                self.0
+                    .device()
+                    .raw_device()
+                    .signal_semaphore(
+                        &vk::SemaphoreSignalInfo::default()
+                            .semaphore(self.0.raw_handle())
+                            .value(1),
+                    )
+                    .unwrap();
+            }
+        }
+    }
+    let gate = rhapsody::raw::semaphore::TimelineSemaphore::new(device.clone(), 0).unwrap();
+    let unblock = Unblock(gate.clone());
+    session
+        .backend
+        .set_graph_synchronization(
+            vec![(gate, 1, vk::PipelineStageFlags::ALL_COMMANDS)],
+            vec![],
+        )
+        .unwrap();
+    let receipt = session.execute_frame(graph.build()).unwrap();
+    assert_eq!(session.pending_frame_count(), 1);
+    assert_eq!(session.frame_import_count(), usize::from(export_target));
+    let output_token = receipt
+        .snapshot
+        .physical_mapping
+        .iter()
+        .find(|mapping| mapping.logical == output.raw())
+        .unwrap()
+        .token
+        .unwrap();
+    match session.backend.resource_clone(output_token) {
+        Some(GpuResource::Buffer(actual)) if export_target => {
+            assert!(Arc::ptr_eq(&target, &actual))
+        }
+        None if !export_target => {}
+        _ => panic!("only exported bindings survive recording"),
+    }
+    let source_owner = Arc::downgrade(&source);
+    let mut next = session.begin_frame().unwrap();
+    session
+        .import_frame_buffer(&mut next, source, 0x25)
+        .expect("recorded declarations must not consume the next graph's capacity");
+    session
+        .import_frame_buffer(&mut next, target.clone(), 0x26)
+        .unwrap();
+    let extra = Arc::new(
+        Buffer::new(
+            device.clone(),
+            &BufferDesc::new_cpu_to_gpu(16, vk::BufferUsageFlags::TRANSFER_SRC),
+        )
+        .unwrap(),
+    );
+    assert!(matches!(
+        session.import_frame_buffer(&mut next, extra, 0x25),
+        Err(rhapsody::Error::Exhausted(_))
+    ));
+    assert_eq!(session.frame_import_count(), 2 + usize::from(export_target));
+    session.cancel_frame(next.build()).unwrap();
+    assert_eq!(session.frame_import_count(), usize::from(export_target));
+    assert_eq!(session.pending_frame_count(), 1);
+    assert!(
+        source_owner.upgrade().is_some(),
+        "in-flight commands own the input"
+    );
+    assert_eq!(session.collect_completed_frames().unwrap(), 0);
+    drop(unblock);
+    session.wait_frame(receipt.frame, TIMEOUT).unwrap();
+    assert_eq!(session.pending_frame_count(), 0);
+    assert_eq!(session.frame_import_count(), 0);
+    assert!(session.backend.resource_clone(output_token).is_none());
+    let mut actual = [0; 16];
+    target.read_bytes(0, &mut actual).unwrap();
+    assert_eq!(actual, [73; 16]);
+}
+
+#[test]
 fn frame_imports_reuse_existing_physical_declarations_and_release_cancelled_graphs() {
     let Some(device) = gpu_test_support::initialize(
         "frame import declaration lifetime",
@@ -38,9 +191,13 @@ fn frame_imports_reuse_existing_physical_declarations_and_release_cancelled_grap
     let first = session
         .import_frame_buffer(&mut graph, buffer.clone(), 0x25)
         .unwrap();
+    assert!(matches!(
+        session.import_frame_buffer(&mut graph, buffer.clone(), 0x04),
+        Err(rhapsody::Error::InvalidUsage { .. })
+    ));
     assert_eq!(
         session
-            .import_frame_buffer(&mut graph, buffer.clone(), 0x04)
+            .import_frame_buffer(&mut graph, buffer.clone(), 0x25)
             .unwrap(),
         first
     );
@@ -171,7 +328,7 @@ fn declared_frame_sources_copy_real_bytes_and_failed_recording_does_not_leak_bin
         .import_frame_buffer(&mut graph, source, 0x25)
         .unwrap();
     let target = session
-        .import_frame_buffer(&mut graph, output, 0x26)
+        .import_frame_buffer(&mut graph, output.clone(), 0x26)
         .unwrap();
     let mut pass = graph.add_pass("submitted upload prefix");
     pass.add_resource_access_range(
@@ -210,10 +367,16 @@ fn declared_frame_sources_copy_real_bytes_and_failed_recording_does_not_leak_bin
         Err(rhapsody::Error::OutOfHostMemory)
     ));
     assert_eq!(session.pending_frame_count(), 1);
-    assert_eq!(session.frame_import_count(), 2);
+    assert_eq!(session.frame_import_count(), 0);
     session.wait_submits_done(TIMEOUT).unwrap();
     assert_eq!(session.frame_import_count(), 0);
     assert_eq!(session.resource_count(), 0);
+    let mut actual = [0; 16];
+    output.read_bytes(0, &mut actual).unwrap();
+    assert_eq!(
+        actual, [20; 16],
+        "submitted prefix keeps its physical owners"
+    );
 }
 
 #[test]

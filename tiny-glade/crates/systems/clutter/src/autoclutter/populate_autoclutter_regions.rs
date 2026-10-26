@@ -294,11 +294,7 @@ pub fn cell_center_world(x: i32, y: i32) -> (f32, f32) {
 
 /// 格哈希键（`calculate_hash<tuple<GlobalId,u32>>` 0x140fabc80 语义；固定种子）。
 pub fn hash_cell_key(x: i32, y: i32) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    (x as i64).hash(&mut h);
-    (y as u32).hash(&mut h);
-    h.finish()
+    utils::calculate_hash(&((x as i64), (y as u32)))
 }
 
 /// kind → 网格槽表（O：kind 跳表 0x143043818 各 case 写块，wave2 全量反编译逐槽提取；

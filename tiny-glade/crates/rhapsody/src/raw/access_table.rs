@@ -75,7 +75,7 @@ pub static ACCESS_TABLE: [AccessSpec; ACCESS_CODE_COUNT] = [
         L::UNDEFINED,
     ),
     // 0x05 VertexShaderReadUniformBuffer
-    spec(0x05, S::VERTEX_SHADER, A::SHADER_READ, L::UNDEFINED),
+    spec(0x05, S::VERTEX_SHADER, A::UNIFORM_READ, L::UNDEFINED),
     // 0x06 VertexShaderReadSampledImageOrUniformTexelBuffer
     spec(
         0x06,
@@ -436,7 +436,7 @@ pub fn access_info(code: u8) -> Option<AccessSpec> {
     ACCESS_TABLE.get(usize::from(code)).copied()
 }
 
-/// Write codes are exactly `0x28..=0x37`.
+/// Attachment/storage/transfer writes and acceleration-structure writes.
 pub const fn is_write(code: u8) -> bool {
-    code.wrapping_sub(0x28) < 0x10
+    code.wrapping_sub(0x28) < 0x10 || matches!(code, 0x3d | 0x3f)
 }

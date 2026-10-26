@@ -74,6 +74,19 @@ fn query_slot_is_not_reset_until_actual_submission_completes_and_capacity_is_non
     assert_eq!(stats.pending, 1);
     assert_eq!(stats.completed, 0);
     assert_eq!(session.backend.gpu_timings().count(), 0);
+    // Reapplying an unchanged frame setting must retain the blocked query.
+    session
+        .backend
+        .configure_gpu_timing(Some(GpuTimingConfig {
+            pass_spans: false,
+            pending_commands: 1,
+            retained_samples: 2,
+        }))
+        .unwrap();
+    assert_eq!(
+        session.backend.poll_gpu_timings().unwrap().unwrap().pending,
+        1
+    );
     assert!(session.backend.configure_gpu_timing(None).is_err());
     let mut graph = session.begin_frame().unwrap();
     graph
@@ -142,9 +155,8 @@ fn failed_recording_cancels_unsubmitted_query_and_next_frame_can_reuse_it() {
 #[test]
 fn per_pass_pairs_follow_actual_serial_and_worker_submissions_and_cancel_as_a_unit() {
     use rhapsody::rg::parallel::ParallelRecording;
-    for parallel in [ParallelRecording::SERIAL, ParallelRecording::EVERY_PASS] {
+    for parallel in [ParallelRecording::PARALLEL, ParallelRecording::EVERY_PASS] {
         let config = DeviceConfig {
-            recording: rhapsody::device::RecordingPolicy::Adaptive,
             ..DeviceConfig::headless()
         };
         let Some(device) = gpu_test_support::initialize(

@@ -22,7 +22,6 @@
 //! 注意（O）：`bind_ray_tracing` 在两个 pass 里都在 `blue_noise_texture` 之后、输出绑定之前。
 //! U：三个 `*_out_tex`/`candidate_*` 的 `new_2d` 之外的描述字段（`from(desc)` 的用途位）。
 
-use crate::render::pass_builder::bind_resources::BindGameResources;
 use crate::render::pass_builder::compute_pass_builder::{ComputePass, RecordedComputePass};
 use crate::render::pass_builder::pass_resource_access::{RgTexture, WriteTextureUnchecked};
 use crate::resources::texture_presets::TexturePreset;
@@ -69,7 +68,7 @@ fn bind_world_inputs(pass: ComputePass) -> ComputePass {
         .bind_texture(binding::VISUAL_TERRAIN_HEIGHTMAP, &TexturePreset(10), 0x19)
         .bind_texture(binding::TERRAIN_LIGHTING_TEXTURE, &TexturePreset(8), 0x19)
         .bind_texture(binding::BLUE_NOISE_TEXTURE, &BLUE_NOISE, 0x19);
-    BindGameResources::bind_ray_tracing(&mut pass);
+    pass.bind_ray_tracing();
     pass
 }
 

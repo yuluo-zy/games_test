@@ -22,6 +22,7 @@
 use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
 use utils::curve::Curve3;
+use ::utils::scalar::clamp01;
 
 use crate::asset_libraries::Handle;
 use crate::asset_libraries::mesh_library::AssetMeshLibrary;
@@ -60,21 +61,6 @@ pub struct WallHeightSignifier {
     pub cursor: Option<Vec3>,
     /// +0x58。
     pub wall: WallId,
-}
-
-/// SSE `MAXSS dst, src`：返回 `dst > src ? dst : src`（NaN 取 src）。
-fn maxss(dst: f32, src: f32) -> f32 {
-    if dst > src { dst } else { src }
-}
-
-/// SSE `MINSS dst, src`：返回 `dst < src ? dst : src`（NaN 取 src）。
-fn minss(dst: f32, src: f32) -> f32 {
-    if dst < src { dst } else { src }
-}
-
-/// `MINSS(1, MAXSS(0, x))`，NaN 原样传播（与机器码一致）。
-fn clamp01(x: f32) -> f32 {
-    minss(1.0, maxss(0.0, x))
 }
 
 /// `CurveU::new`（0x14085c10f..c17c 内联）：`UCOMISS x,0; JC` / `UCOMISS 1,x; JC`
@@ -212,7 +198,7 @@ mod tests {
         let curve = Curve2::try_new(vec![[0.0, 0.0], [10.0, 0.0]], false).unwrap();
         let wall = inner.new_wall(WallState::new(curve, 4.0, 0, 0, false));
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &terrain());
+        public.consume_with_paths(&mut inner, &terrain(), None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         let mut meshes = AssetMeshLibrary::new();
         let handle = meshes.add(MeshAsset::new(
             crate::utils::geo::mesh_from_pts("t", &[Vec3::ZERO]),

@@ -18,32 +18,11 @@ pub const RANGES: [(f32, f32); 13] = [
     (2.0, 4.0),
 ];
 
-pub fn inverse_lerp(lower: f32, upper: f32, value: f32) -> f32 {
-    (value - lower) / (upper - lower)
-}
-
-/// x86 MAXSS/MINSS source-operand NaN and signed-zero behavior.
-fn maxss(a: f32, b: f32) -> f32 {
-    if a > b {
-        a
-    } else {
-        b
-    }
-}
-fn minss(a: f32, b: f32) -> f32 {
-    if a < b {
-        a
-    } else {
-        b
-    }
-}
-
-pub fn clamp_01(value: f32) -> f32 {
-    minss(1.0, maxss(0.0, value))
-}
+use ::utils::scalar::clamp;
+pub use ::utils::scalar::{clamp01 as clamp_01, inverse_lerp};
 
 pub fn focus_parameter(distance: f32) -> f32 {
-    minss(2.0, maxss(-2.0, distance.log2() + 3.0))
+    clamp(distance.log2() + 3.0, -2.0, 2.0)
 }
 
 pub fn normalized(kind: u8, value: f32) -> Option<f32> {
@@ -60,7 +39,7 @@ pub fn parameter(kind: u8, fraction: f32) -> Option<f32> {
 /// the common 0..1 table. Formation and brush getters deliberately do not.
 pub fn normalized_lens(lower: f32, upper: f32, value: f32) -> f32 {
     let fraction = inverse_lerp(lower, upper, value);
-    inverse_lerp(0.0, 1.0, minss(1.0, maxss(0.0, fraction)))
+    clamp_01(fraction)
 }
 
 pub fn lens_parameter(lower: f32, upper: f32, fraction: f32) -> f32 {

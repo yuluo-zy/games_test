@@ -161,7 +161,7 @@ pub(super) fn associations(
 pub(super) fn spatial(
     mut dirty: EventReader<WallSpatialDirty>,
     walls: Res<PublicWalls>,
-    mut roofs: Query<(Entity, &mut Roof, &mut ObjectTransform), Without<RoofMarkedForDeletion>>,
+    mut roofs: Query<(Entity, ComponentWrite<Roof>, &mut ObjectTransform), Without<RoofMarkedForDeletion>>,
     frame: Res<BuildingFrame>,
     mut geometry: EventWriter<RoofGeometryChanged>,
     mut report: ResMut<BuildingReport>,
@@ -351,7 +351,7 @@ pub(super) fn build_cpu_tiles(
 pub(super) fn switch_directions(
     mut events: EventReader<SwitchRoofDirection>,
     map: Res<WallRoofMap>,
-    mut roofs: Query<&mut Roof>,
+    mut roofs: Query<ComponentWrite<Roof>>,
     frame: Res<BuildingFrame>,
     mut geometry: EventWriter<RoofGeometryChanged>,
     mut gable: EventWriter<WallGableDirty>,
@@ -461,7 +461,7 @@ pub(super) fn customize_roofs(
     mut styles: EventReader<SetFlatRoofStyle>,
     mut rims: EventReader<SetFlatRoofRimStyle>,
     map: Res<WallRoofMap>,
-    mut roofs: Query<&mut Roof>,
+    mut roofs: Query<ComponentWrite<Roof>>,
     frame: Res<BuildingFrame>,
     mut holes: EventWriter<RecalculateWallHoles>,
     mut sounds: EventWriter<RoofSound>,
@@ -536,3 +536,5 @@ pub(super) fn customize_roofs(
         }
     }
 }
+
+use country_core::render::extract::ComponentWrite;

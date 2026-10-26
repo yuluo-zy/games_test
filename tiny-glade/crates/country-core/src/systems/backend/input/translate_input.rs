@@ -4,8 +4,8 @@ use glam::Vec2;
 
 use crate::{
     input::{
-        action_set::{ActionSetValues, ANALOG_SLOTS, DIGITAL_SLOTS},
         ActiveInputModeTracker,
+        action_set::{ANALOG_SLOTS, ActionSetValues, DIGITAL_SLOTS},
     },
     resources::{gui::EscMenuState, time::GameTime},
 };
@@ -39,8 +39,8 @@ pub struct SteamInputActive {
 #[derive(Resource, Clone, Copy, Debug, Default)]
 pub struct DemoModeEnabled(pub bool);
 
-/// The retained table is a numeric projection of the loaded profile, not an
-/// independently configured resource. Slots 0..36 are keys, 37..39 are mouse.
+/// 权威档案的编译投影（0..36键、37..39鼠标），不是独立配置资源。
+/// 常规键沿用数字快路，原生键／歧义鼠标键另存完整typed身份。
 pub const BINDING_SLOTS: usize = 40;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ActionBinding {
@@ -59,15 +59,23 @@ impl ActionBinding {
 #[derive(Resource, Clone, Debug)]
 pub struct BindingsTable {
     pub slots: [ActionBinding; BINDING_SLOTS],
+    native_keys: [Option<bevy_input::keyboard::KeyCode>; 37],
+    low_mouse: [Option<bevy_input::mouse::MouseButton>; 3],
 }
 impl TryFrom<&crate::game_profile::GameKeyBindings> for BindingsTable {
     type Error = anyhow::Error;
     fn try_from(bindings: &crate::game_profile::GameKeyBindings) -> Result<Self, Self::Error> {
         use bevy_input::mouse::MouseButton;
         let mut slots = [ActionBinding::UNBOUND; BINDING_SLOTS];
+        let mut native_keys = [None; 37];
+        let mut low_mouse = [None; 3];
         for (slot, key) in bindings.bindings.iter().copied().enumerate() {
             if let Some(key) = key {
-                slots[slot].key = crate::game_profile::desktop_keycode_index(key)?;
+                if matches!(key, bevy_input::keyboard::KeyCode::Unidentified(_)) {
+                    native_keys[slot] = Some(key);
+                } else {
+                    slots[slot].key = crate::game_profile::desktop_keycode_index(key)?;
+                }
             }
         }
         for (slot, mouse) in bindings.mouse.iter().copied().enumerate() {
@@ -79,11 +87,44 @@ impl TryFrom<&crate::game_profile::GameKeyBindings> for BindingsTable {
                 Some(MouseButton::Back) => Some(3),
                 Some(MouseButton::Forward) => Some(4),
                 Some(MouseButton::Other(button)) if button > 4 => Some(button),
-                Some(MouseButton::Other(button)) => anyhow::bail!(
-                    "mouse Other({button}) collides with a standard button in the desktop u16 facade"),
+                Some(MouseButton::Other(button)) => {
+                    low_mouse[slot] = Some(MouseButton::Other(button));
+                    None
+                }
             };
         }
-        Ok(Self { slots })
+        Ok(Self {
+            slots,
+            native_keys,
+            low_mouse,
+        })
+    }
+}
+impl BindingsTable {
+    /// 普通键保持原数字快速路径，只有原生平台载荷使用typed稀疏集合。
+    fn key_pressed(&self, keyboard: &KeyButtonInput, slot: usize) -> bool {
+        if let Some(key) = self.native_keys.get(slot).copied().flatten() {
+            keyboard.pressed_key(key)
+        } else {
+            self.slots[slot].bound_key() && keyboard.pressed(self.slots[slot].key)
+        }
+    }
+    fn mouse_state(&self, mouse: &MouseButtonInput, slot: usize) -> Option<(bool, bool, bool)> {
+        if let Some(button) = self.low_mouse[slot - 37] {
+            Some((
+                mouse.pressed_button(button),
+                mouse.just_pressed_button(button),
+                mouse.just_released_button(button),
+            ))
+        } else {
+            self.slots[slot].mouse.map(|button| {
+                (
+                    mouse.pressed(button),
+                    mouse.just_pressed(button),
+                    mouse.just_released(button),
+                )
+            })
+        }
     }
 }
 impl Default for BindingsTable {
@@ -236,8 +277,7 @@ fn translate_analog(
     const KEY_SPEED: f32 = 30.0;
     let step = delta * KEY_SPEED;
     for (slot, target) in ANALOG_TARGETS.iter().enumerate() {
-        let binding = &bindings.slots[slot];
-        if binding.bound_key() && key_pressed(keyboard, binding.key) {
+        if bindings.key_pressed(keyboard, slot) {
             let amount = if target.use_raw_delta {
                 delta * target.scalar * target.sign
             } else {
@@ -258,23 +298,28 @@ fn translate_digital(
     mouse: &MouseButtonInput,
     bindings: &BindingsTable,
     out: &mut [bool; DIGITAL_SLOTS],
+    world_input: bool,
 ) {
     for (binding_slot, digital_slot) in DIGITAL_TARGETS {
-        let binding = &bindings.slots[binding_slot];
+        // 原Menu路直接进入UI/全局键公共尾；仅world绑定受菜单门控制。
+        if !world_input && !matches!(binding_slot, 26..=36) {
+            continue;
+        }
         let pressed = if binding_slot >= 37 {
             // 鼠标绑定槽（37=Rotate、38=Move）。
-            binding.mouse.is_some_and(|button| mouse.pressed(button))
+            bindings
+                .mouse_state(mouse, binding_slot)
+                .is_some_and(|state| state.0)
         } else {
-            binding.bound_key() && key_pressed(keyboard, binding.key)
+            bindings.key_pressed(keyboard, binding_slot)
         };
         if pressed {
             out[digital_slot as usize] = true;
         }
     }
-    // 硬编码 ESC 键 0x73 → main_menu（digital[27]@+0xa3，O：0x1417ce01b `or [r14+0xa3]`）。
-    // 注意：DIGITAL_TARGETS 的 (28, 18) 是**槽 28 绑定**的 ui_cancel（+0x9a），与 0x73 不同目标。
+    // 原1417cd224菜单路Escape→ui_cancel18；1417cdf01世界路→main_menu27。
     if key_pressed(keyboard, 0x73) {
-        out[27] = true;
+        out[if world_input { 27 } else { 18 }] = true;
     }
 }
 
@@ -302,16 +347,27 @@ pub fn translate_input(
     mut wheel: EventReader<MouseWheel>,
     mut cursor_delta: EventReader<InputCursorDelta>,
     mut history_buttons: EventReader<UiHistoryButtonPressed>,
+    mut cached_bindings: Local<Option<(crate::game_profile::GameKeyBindings, BindingsTable)>>,
 ) {
-    let bindings = BindingsTable::try_from(&profile.key_bindings)
-        .expect("loaded profile bindings must be representable by the desktop input facade");
+    // 原权威输入仍为GameProfile；常帧复用已编译表，不重复37次线性键码查表。
+    if cached_bindings.is_none()
+        || (profile.is_changed()
+            && cached_bindings
+                .as_ref()
+                .is_some_and(|(snapshot, _)| snapshot != &profile.key_bindings))
+    {
+        let table = BindingsTable::try_from(&profile.key_bindings)
+            .expect("完整KeyCode/MouseButton身份均受支持");
+        *cached_bindings = Some((profile.key_bindings.clone(), table));
+    }
+    let bindings = &cached_bindings.as_ref().expect("已填充权威键位缓存").1;
     // A2（O：LAB_1417cd126）mode-tracker 更新在函数**开头**，按输入事件条件：
     // 无 Steam / 非 Deck → mouse.just_pressed || keyboard.just_pressed（+0x38 计数）；
     // Steam + Deck → 仅 keyboard.just_pressed（0x1417cd082）。只更新
     // `mouse_keyboard_deadline`（+0x10/+0x18 = Instant::now()），controller_deadline 不动。
     // 使用宿主单调时间；暂停游戏不会阻止键鼠/手柄提示切换。
-    let has_mouse_events = mouse.get_just_pressed().next().is_some();
-    let has_keyboard_events = keyboard.get_just_pressed().next().is_some();
+    let has_mouse_events = mouse.any_just_pressed();
+    let has_keyboard_events = keyboard.any_just_pressed();
     let update_tracker = if steam.present && steam.on_deck {
         has_keyboard_events
     } else {
@@ -335,9 +391,8 @@ pub fn translate_input(
     if gate_open {
         let dt = time.delta;
         let mut analog = values.current.analog;
-        translate_analog(&keyboard, &bindings, dt, &mut analog);
+        translate_analog(&keyboard, bindings, dt, &mut analog);
         values.current.analog = analog;
-        translate_digital(&keyboard, &mouse, &bindings, &mut values.current.digital);
 
         // `EventReader<MouseWheel>` → analog 槽 4 camera_zoom（O：行 282..336；逐事件
         // 权重 = tag 0（Line）8.0 / 其余 1.0，`_UNK_142934604`=8.0、`_UNK_142925904`=1.0；
@@ -354,70 +409,73 @@ pub fn translate_input(
             .read()
             .last()
             .map_or(0.0, |delta| delta.0.length());
-        if let Some(button) = bindings.slots[39].mouse {
-            if mouse.just_pressed(button) {
+        if let Some((held, just_pressed, just_released)) = bindings.mouse_state(&mouse, 39) {
+            if just_pressed {
                 mouse_moved.0 = 0.0;
-            } else if mouse.pressed(button) {
+            } else if held {
                 mouse_moved.0 += last_len;
             }
-            if mouse.just_released(button) && mouse_moved.0 < 3.0 {
+            if just_released && mouse_moved.0 < 3.0 {
                 values.current.digital[1] = true;
             }
         }
-        if bindings.slots[23].bound_key() && key_pressed(&keyboard, bindings.slots[23].key) {
+        if bindings.key_pressed(&keyboard, 23) {
             values.current.digital[1] = true;
         }
+    }
+    translate_digital(
+        &keyboard,
+        &mouse,
+        bindings,
+        &mut values.current.digital,
+        gate_open,
+    );
 
-        // screenshot 修饰（O：行 678..693，A4）：槽 25 按下且键 0x3d 未按下 →
-        // digital[29]；**仅无 Steam（puVar5==0）时执行**，Steam 存在时跳过（0x1417cdffc
-        // `test r12,r12; jnz`）。
-        if !steam.present {
-            let screenshot = bindings.slots[25];
-            if screenshot.bound_key()
-                && key_pressed(&keyboard, screenshot.key)
-                && !key_pressed(&keyboard, 0x3d)
-            {
-                values.current.digital[29] = true;
-            }
+    // screenshot 修饰（O：行 678..693，A4）：槽 25 按下且键 0x3d 未按下 →
+    // digital[29]；**仅无 Steam（puVar5==0）时执行**，Steam 存在时跳过（0x1417cdffc
+    // `test r12,r12; jnz`）。
+    if !steam.present {
+        if bindings.key_pressed(&keyboard, 25) && !key_pressed(&keyboard, 0x3d) {
+            values.current.digital[29] = true;
         }
+    }
 
-        // Demo 门硬编码键（O：全局 0x143634cd8 != 0，行 730..776；0xa6 经机器码核验
-        // `setne`——`pressed(0xab) && pressed(0x3d)`）。
-        if demo.0 {
-            if key_pressed(&keyboard, 0x35) && key_pressed(&keyboard, 0x3d) {
-                values.current.digital[26] = true; // clear_canvas
-            }
-            if key_pressed(&keyboard, 0x40) {
-                values.current.digital[28] = true; // developer_menu
-            }
-            if key_pressed(&keyboard, 0xab) && key_pressed(&keyboard, 0x3d) {
-                values.current.digital[30] = true; // screenshot_grading_reference
-            }
-            if key_pressed(&keyboard, 0x25) && !key_pressed(&keyboard, 0x33) {
-                values.current.digital[34] = true; // human_scale_ref_toggle
-            }
-            if key_pressed(&keyboard, 0x23) {
-                values.current.digital[35] = true; // ivy_growth_toggle
-            }
-            if key_pressed(&keyboard, 0x29) {
-                values.current.digital[36] = true; // ivy_spawn
-            }
-            if key_pressed(&keyboard, 0xa6) {
-                values.current.digital[37] = true; // camera_snapshot_add
-            }
+    // Demo 门硬编码键（O：全局 0x143634cd8 != 0，行 730..776；0xa6 经机器码核验
+    // `setne`——`pressed(0xab) && pressed(0x3d)`）。
+    if demo.0 {
+        if key_pressed(&keyboard, 0x35) && key_pressed(&keyboard, 0x3d) {
+            values.current.digital[26] = true; // clear_canvas
         }
-        if key_pressed(&keyboard, 0xa7) {
-            values.current.digital[38] = true; // camera_snapshot_restore（恒启）
+        if key_pressed(&keyboard, 0x40) {
+            values.current.digital[28] = true; // developer_menu
         }
+        if key_pressed(&keyboard, 0xab) && key_pressed(&keyboard, 0x3d) {
+            values.current.digital[30] = true; // screenshot_grading_reference
+        }
+        if key_pressed(&keyboard, 0x25) && !key_pressed(&keyboard, 0x33) {
+            values.current.digital[34] = true; // human_scale_ref_toggle
+        }
+        if key_pressed(&keyboard, 0x23) {
+            values.current.digital[35] = true; // ivy_growth_toggle
+        }
+        if key_pressed(&keyboard, 0x29) {
+            values.current.digital[36] = true; // ivy_spawn
+        }
+        if key_pressed(&keyboard, 0xa6) {
+            values.current.digital[37] = true; // camera_snapshot_add
+        }
+    }
+    if key_pressed(&keyboard, 0xa7) {
+        values.current.digital[38] = true; // camera_snapshot_restore（恒启）
+    }
 
-        // UiHistoryButtonPressed 消费（O：0x1417cd0a0 行 780..833）：**只消费最末事件**；
-        // 载荷字节 `0` = undo → digital[16]（+0x98），非零 = redo → digital[17]（+0x99）。
-        if let Some(history) = history_buttons.read().last() {
-            if history.is_redo() {
-                values.current.digital[17] = true;
-            } else {
-                values.current.digital[16] = true;
-            }
+    // UiHistoryButtonPressed 消费（O：0x1417cd0a0 行 780..833）：**只消费最末事件**；
+    // 载荷字节 `0` = undo → digital[16]（+0x98），非零 = redo → digital[17]（+0x99）。
+    if let Some(history) = history_buttons.read().last() {
+        if history.is_redo() {
+            values.current.digital[17] = true;
+        } else {
+            values.current.digital[16] = true;
         }
     }
 }
@@ -435,6 +493,213 @@ mod tests {
     use super::*;
 
     #[test]
+    fn original_full_function_menu_gate_and_global_tail_fixture() {
+        use crate::{
+            game_profile::GameProfile,
+            resources::gui::{LoadMenuState, SettingsMenuState},
+            systems::backend::input::{
+                register_input_events, reset_input_state::reset_input_state,
+            },
+        };
+        let rows: Vec<(u8, u8, i8, u16, bool, bool, i8, u64)> = ron::from_str(include_str!(
+            "../../../../../../tests/fixtures/native/toolbar-input-menu-gates.ron"
+        ))
+        .unwrap();
+        assert_eq!(rows.len(), 1320);
+        let mut world = World::new();
+        register_input_events(&mut world);
+        world.init_resource::<GameProfile>();
+        world.init_resource::<EscMenuState>();
+        world.resource_mut::<GameTime>().delta = 0.02;
+        let mut schedule = Schedule::default();
+        schedule.add_systems((reset_input_state, translate_input).chain());
+        let mut compared = 0;
+        for (tag, flag, slot, key, modifier, demo, history, expected) in rows {
+            // 原已按用户要求删除的页面tag6/9不再进入生产枚举；原证保留这些样本。
+            let menu = match tag {
+                0 => EscMenuState::Load(LoadMenuState::default()),
+                1 => EscMenuState::Load(LoadMenuState {
+                    hovered_index: Some(0),
+                    ..Default::default()
+                }),
+                2 => EscMenuState::Closed,
+                3 => EscMenuState::Main,
+                4 => EscMenuState::Quit,
+                5 => EscMenuState::NewSession,
+                7 => EscMenuState::Settings(SettingsMenuState::Audio),
+                8 => EscMenuState::ReportBug(flag != 0),
+                10 => EscMenuState::Photomode(flag != 0),
+                6 | 9 => continue,
+                _ => unreachable!(),
+            };
+            world.insert_resource(menu);
+            world.resource_mut::<DemoModeEnabled>().0 = demo;
+            let mut profile = world.resource_mut::<GameProfile>();
+            profile.key_bindings.bindings = [None; 37];
+            profile.key_bindings.mouse = [None; 3];
+            if slot >= 0 {
+                profile.key_bindings.bindings[slot as usize] =
+                    Some(bevy_input::keyboard::KeyCode::KeyA);
+            }
+            drop(profile);
+            let mut keyboard = world.resource_mut::<KeyButtonInput>();
+            keyboard.reset_all();
+            if key != 0 {
+                keyboard.press(key);
+            }
+            if modifier {
+                keyboard.press(0x3d);
+            }
+            drop(keyboard);
+            if history >= 0 {
+                world.send_event(UiHistoryButtonPressed(history as u8));
+            }
+            schedule.run(&mut world);
+            let actual = world
+                .resource::<ActionSetValues>()
+                .current
+                .digital
+                .iter()
+                .enumerate()
+                .fold(0u64, |bits, (i, v)| bits | (u64::from(*v) << i));
+            assert_eq!(
+                actual, expected,
+                "原菜单门tag={tag} flag={flag} slot={slot} key={key} modifier={modifier} demo={demo} history={history}"
+            );
+            compared += 1;
+        }
+        assert_eq!(compared, 1080);
+    }
+
+    #[test]
+    fn typed_os_events_reach_authority_translation_edges_rebinding_and_session_reset() {
+        use crate::{
+            game_profile::GameProfile,
+            resources::session::SessionLoadedCmd,
+            systems::backend::input::{
+                calculate_input_delta::calculate_input_delta, register_input_events,
+                reset_input_state::reset_input_state,
+            },
+        };
+        use bevy_input::{
+            ButtonState,
+            keyboard::{Key, KeyCode, NativeKeyCode},
+            mouse::{MouseButton, MouseButtonInput as MouseEvent},
+        };
+        let key_event = |key_code, state| bevy_input::keyboard::KeyboardInput {
+            key_code,
+            state,
+            logical_key: Key::Unidentified(bevy_input::keyboard::NativeKey::Unidentified),
+            text: None,
+            repeat: false,
+            window: Entity::PLACEHOLDER,
+        };
+        let mouse_event = |button, state| MouseEvent {
+            button,
+            state,
+            window: Entity::PLACEHOLDER,
+        };
+        let mut world = World::new();
+        register_input_events(&mut world);
+        world.init_resource::<GameProfile>();
+        world.init_resource::<EscMenuState>();
+        world.resource_mut::<GameTime>().delta = 0.02;
+        let mut schedule = Schedule::default();
+        schedule.add_systems((reset_input_state, translate_input, calculate_input_delta).chain());
+        // 覆盖五种原生载荷；相同数值的Windows和MacOS仍是不同的物理身份。
+        for native in [
+            NativeKeyCode::Unidentified,
+            NativeKeyCode::Android(u32::MAX),
+            NativeKeyCode::MacOS(u16::MAX),
+            NativeKeyCode::Windows(u16::MAX),
+            NativeKeyCode::Xkb(u32::MAX),
+        ] {
+            world.resource_mut::<KeyButtonInput>().reset_all();
+            let key = KeyCode::Unidentified(native);
+            let mut profile = world.resource_mut::<GameProfile>();
+            profile.key_bindings.bindings[0] = Some(key);
+            profile.key_bindings.bindings[21] = Some(key);
+            profile.key_bindings.mouse[0] = Some(MouseButton::Other(1));
+            profile.key_bindings.mouse[2] = Some(MouseButton::Other(0));
+            drop(profile);
+            world
+                .resource_mut::<KeyButtonInput>()
+                .apply_event(&key_event(key, ButtonState::Pressed));
+            world
+                .resource_mut::<MouseButtonInput>()
+                .apply_event(&mouse_event(MouseButton::Other(1), ButtonState::Pressed));
+            schedule.run(&mut world);
+            let actions = world.resource::<ActionSetValues>();
+            assert_eq!(
+                actions.current.analog[2].y.to_bits(),
+                (-(0.02f32 * 30.)).to_bits()
+            );
+            assert!(actions.current.digital[16]);
+            assert!(actions.current.digital[2]);
+            assert!(!actions.current.digital[0], "Other(0/1)不得冒充Left");
+            assert!(
+                world
+                    .resource::<ActiveInputModeTracker>()
+                    .mouse_keyboard_deadline
+                    > std::time::Duration::ZERO
+            );
+            world.resource_mut::<KeyButtonInput>().clear();
+            world.resource_mut::<MouseButtonInput>().clear();
+            assert!(world.resource::<KeyButtonInput>().pressed_key(key));
+            assert!(!world.resource::<KeyButtonInput>().any_just_pressed());
+            world
+                .resource_mut::<KeyButtonInput>()
+                .apply_event(&key_event(key, ButtonState::Released));
+            schedule.run(&mut world);
+            assert!(!world.resource::<ActionSetValues>().current.digital[16]);
+        }
+        // 保存／重载后的完整typed绑定仍被真实系统消费，不进入旧u16拒绝路径。
+        let text = ron::to_string(world.resource::<GameProfile>()).unwrap();
+        let profile: GameProfile = ron::from_str(&text).unwrap();
+        world.insert_resource(profile);
+        world.resource_mut::<GameProfile>().key_bindings.mouse[0] = Some(MouseButton::Right);
+        schedule.run(&mut world);
+        assert!(
+            !world.resource::<ActionSetValues>().current.digital[2],
+            "Other(1)与Right不混同"
+        );
+        world
+            .resource_mut::<MouseButtonInput>()
+            .apply_event(&mouse_event(MouseButton::Right, ButtonState::Pressed));
+        schedule.run(&mut world);
+        assert!(world.resource::<ActionSetValues>().current.digital[2]);
+        world.resource_mut::<MouseButtonInput>().clear();
+        world
+            .resource_mut::<MouseButtonInput>()
+            .apply_event(&mouse_event(MouseButton::Other(0), ButtonState::Pressed));
+        schedule.run(&mut world);
+        world.resource_mut::<MouseButtonInput>().clear();
+        world
+            .resource_mut::<MouseButtonInput>()
+            .apply_event(&mouse_event(MouseButton::Other(0), ButtonState::Released));
+        schedule.run(&mut world);
+        assert!(
+            world.resource::<ActionSetValues>().current.digital[1],
+            "原点选结束释放手势对Other(0)同样生效"
+        );
+        let key = KeyCode::Unidentified(NativeKeyCode::MacOS(42));
+        world
+            .resource_mut::<KeyButtonInput>()
+            .apply_event(&key_event(key, ButtonState::Pressed));
+        assert!(
+            !world
+                .resource::<KeyButtonInput>()
+                .pressed_key(KeyCode::Unidentified(NativeKeyCode::Windows(42)))
+        );
+        world.send_event(SessionLoadedCmd);
+        schedule.run(&mut world);
+        assert!(
+            !world.resource::<KeyButtonInput>().pressed_key(key),
+            "换档清除完整原生按住集合"
+        );
+    }
+
+    #[test]
     fn profile_remapping_reaches_the_live_table_and_left_mouse_is_bound() {
         use bevy_input::{keyboard::KeyCode, mouse::MouseButton};
         let mut profile = crate::game_profile::GameKeyBindings::default();
@@ -447,7 +712,7 @@ mod tests {
         let mut mouse = MouseButtonInput::default();
         mouse.press(0);
         let mut output = [false; DIGITAL_SLOTS];
-        translate_digital(&keyboard, &mouse, &table, &mut output);
+        translate_digital(&keyboard, &mouse, &table, &mut output, true);
         assert!(
             output[16],
             "the user's remapped undo key must reach the action set"
@@ -469,6 +734,7 @@ mod tests {
             &MouseButtonInput::default(),
             &BindingsTable::default(),
             &mut output,
+            true,
         );
         assert!(
             !output[29],
@@ -534,6 +800,7 @@ mod tests {
             &MouseButtonInput::default(),
             &BindingsTable::default(),
             &mut out,
+            true,
         );
         assert!(out[4]); // tool_building
         assert!(out[18]); // ui_cancel

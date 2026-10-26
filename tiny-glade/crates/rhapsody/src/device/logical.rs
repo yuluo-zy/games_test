@@ -16,7 +16,7 @@
 //! Components never call into each other while holding one of their own
 //! locks, with these documented nestings (outer → inner):
 //! `Caches` (sampler table / setup pool list) → `Memory` and managed-store locks;
-//! `Queues` pending acquires → resource sync cells;
+//! Pending acquire lists are drained before taking resource sync cells;
 //! `Queues` per-queue locks (ascending queue index) → the native queue call only.
 //! Retirement and eviction run their callbacks with no lock held.
 //!
@@ -56,8 +56,7 @@ impl Device {
             .expect("device method called with a live owner")
     }
     pub(crate) fn create_with_runtime(
-        instance: Arc<crate::raw::instance::VulkanInstance>,
-        physical: vk::PhysicalDevice,
+        physical: Arc<crate::raw::physical_device::PhysicalDevice>,
         info: &vk::DeviceCreateInfo<'_>,
         plan: crate::device::QueuePlan,
         runtime: crate::device::init::RuntimeConfig,
@@ -66,7 +65,7 @@ impl Device {
         let stats = Memory::new_stats(&runtime)?;
         let caches = Caches::new(stats.clone())?;
         // Each component releases what it created when a later step fails.
-        let core = unsafe { DeviceCore::create(instance, physical, info, &runtime)? };
+        let core = unsafe { DeviceCore::create(physical, info, &runtime)? };
         let queues = unsafe { Queues::create(&core.device, info, plan)? };
         let memory = Memory::create(&core, stats, &runtime)?;
         let device = Arc::new_cyclic(|weak| Self {
@@ -174,7 +173,7 @@ impl Device {
     /// no-op (one atomic load) when nothing is pending, e.g. coherent memory.
     pub(crate) fn flush_deferred_host_writes(&self) -> crate::Result<()> {
         self.queues.host_flush.flush_with(|ranges| {
-            crate::raw::error::observe_vulkan(self, unsafe {
+            crate::error::observe_vulkan(self, unsafe {
                 self.core.device.flush_mapped_memory_ranges(ranges)
             })
         })
@@ -224,40 +223,15 @@ impl Device {
         &self.core.properties
     }
 
-    /// Minimum subgroup size, or 1 when `VK_EXT_subgroup_size_control` is absent.
-    pub fn min_subgroup_size(&self) -> u32 {
-        self.min_subgroup_size_option().unwrap_or(1)
-    }
     /// Raw physical device handle; see [`Self::physical_device_info`].
     pub fn physical_device(&self) -> vk::PhysicalDevice {
         self.core.physical
     }
-    /// Physical device wrapper attached by [`Self::attach_physical_device_info`].
-    pub fn physical_device_info(
-        &self,
-    ) -> Option<&Arc<crate::raw::physical_device::PhysicalDevice>> {
-        self.core.physical_info.get()
+    /// Immutable physical-device metadata captured during device creation.
+    pub fn physical_device_info(&self) -> &Arc<crate::raw::physical_device::PhysicalDevice> {
+        &self.core.physical_info
     }
-    /// 挂接物理设备包装（只能设置一次）。
-    pub fn attach_physical_device_info(
-        &self,
-        info: Arc<crate::raw::physical_device::PhysicalDevice>,
-    ) -> Result<(), Arc<crate::raw::physical_device::PhysicalDevice>> {
-        self.core.physical_info.set(info)
-    }
-    pub fn queue_family_index_for(&self, kind: u8) -> crate::Result<u32> {
-        match kind {
-            0 => Ok(self.queues.primary_family),
-            1 => self
-                .queues
-                .additional
-                .iter()
-                .map(|queue| queue.family)
-                .find(|family| *family != self.queues.primary_family)
-                .ok_or_else(|| crate::Error::unsupported("设备未创建独立队列族")),
-            _ => Err(crate::Error::invalid_usage("未知队列族类别")),
-        }
-    }
+
     pub fn queue_family_index(&self) -> u32 {
         self.queues.primary_family
     }
@@ -297,7 +271,7 @@ impl Device {
     pub fn create_gpu_profiler_output_buffer(
         &self,
         size: u64,
-    ) -> crate::raw::error::Result<crate::raw::buffer::Buffer> {
+    ) -> crate::error::Result<crate::raw::buffer::Buffer> {
         crate::raw::buffer::Buffer::new(
             self.shared(),
             &crate::raw::buffer::BufferDesc::new_gpu_to_cpu(
@@ -311,19 +285,19 @@ impl Device {
         &self,
         texture: &crate::raw::texture::Texture,
         bytes: &[u8],
-    ) -> crate::raw::error::Result<()> {
+    ) -> crate::error::Result<()> {
         crate::raw::setup::init_texture_data(&self.shared(), texture, bytes)
     }
     pub fn update_texture(
         &self,
         texture: &crate::raw::texture::Texture,
         bytes: &[u8],
-    ) -> crate::raw::error::Result<()> {
+    ) -> crate::error::Result<()> {
         crate::raw::setup::update_texture(&self.shared(), texture, bytes)
     }
 
     /// Record one barrier batch through the enabled barrier API
-    /// (synchronization2 when enabled, legacy otherwise; empty stage masks
+    /// (synchronization2; empty stage masks
     /// keep their empty-scope meaning on both).
     ///
     /// # Safety
@@ -333,7 +307,7 @@ impl Device {
         &self,
         command: vk::CommandBuffer,
         scope: &crate::raw::barrier::SynchronizationScope,
-    ) -> crate::raw::error::Result<()> {
+    ) -> crate::error::Result<()> {
         unsafe { crate::raw::barrier::BarrierDispatch::new(self).issue(self, command, scope) }
     }
     /// Record the batch, then clear its barriers for reuse.
@@ -344,7 +318,7 @@ impl Device {
         &self,
         command: vk::CommandBuffer,
         scope: &mut crate::raw::barrier::SynchronizationScope,
-    ) -> crate::raw::error::Result<()> {
+    ) -> crate::error::Result<()> {
         let issued = unsafe { self.issue_barriers(command, scope) };
         scope.memory.clear();
         scope.buffers.clear();
@@ -358,7 +332,7 @@ impl Device {
     pub unsafe fn issue_full_pipeline_barrier(
         &self,
         command: vk::CommandBuffer,
-    ) -> crate::raw::error::Result<()> {
+    ) -> crate::error::Result<()> {
         let mut scope = crate::raw::barrier::SynchronizationScope::new(
             vk::PipelineStageFlags::ALL_COMMANDS,
             vk::PipelineStageFlags::ALL_COMMANDS,
@@ -376,7 +350,7 @@ impl Device {
         &self,
         accesses: &[crate::raw::setup::SetupAccess<'_>],
         body: impl FnOnce(vk::CommandBuffer) -> R,
-    ) -> crate::raw::error::Result<crate::raw::setup::SetupSubmission<R>> {
+    ) -> crate::error::Result<crate::raw::setup::SetupSubmission<R>> {
         crate::raw::setup::with_setup_resources(&self.shared(), accesses, body)
     }
 }

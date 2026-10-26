@@ -21,8 +21,7 @@ use country_core::{
     systems::render_loop::{
         draw_passes::draw_lists::{DrawLists, build_draw_lists},
         render_frame::{Acquire, Level, RenderHost, SwapchainInfo},
-        render_world as core_render_world,
-        world_frame::{self as core_world_frame, MinimalWorldFrameHost, WorldFrameError},
+        world_frame as core_world_frame,
     },
 };
 use rhapsody::{
@@ -142,16 +141,27 @@ pub struct HeadlessGameplayFrame {
     pub draw_lists: Duration,
     /// Graph declaration (`build_frame`), i.e. the world stage builders.
     pub declare: Duration,
-    /// Pipeline prewarm wait plus `compile_built`.
+    /// Physical `compile_built` time, excluding caller-owned Pending progress.
     pub compile: Duration,
     /// `execute_compiled` (recording + submit).
     pub execute: Duration,
 }
 
-pub fn render_headless_gameplay_frame(
+/// Prepared through the same declaration/compile protocol as desktop frames.
+/// Dropping the compiled owner cancels its unsubmitted graph.
+pub struct PreparedHeadlessGameplayFrame {
+    compiled: CompiledCoreGraph,
+    capture_graph_id: rhapsody::rg::GraphId,
+    output: u32,
+    draw_lists: Duration,
+    declare: Duration,
+    compile: Duration,
+}
+
+pub fn prepare_headless_gameplay_frame(
     bridge: &mut crate::render_bridge::CoreRenderBridge,
     world: &mut World,
-) -> Result<HeadlessGameplayFrame> {
+) -> Result<PreparedHeadlessGameplayFrame> {
     let started = std::time::Instant::now();
     let mut lists = DrawLists::new();
     build_draw_lists(world, bridge.shader_library().as_ref(), &mut lists);
@@ -167,38 +177,44 @@ pub fn render_headless_gameplay_frame(
     }).context("declare world graph")?;
     let declare = started.elapsed();
     let started = std::time::Instant::now();
-    if let Err(error) = bridge.shader_backend().prewarm(PIPELINE_PREWARM_TIMEOUT) {
-        if let Err(cleanup) = bridge.cancel_built(built) {
-            log::warn!("headless frame prewarm cancellation: {cleanup}");
-        }
-        return Err(error.into());
-    }
     let capture_graph_id = built.graph_id();
     let compiled = bridge.compile_built(built).context("compile world graph")?;
     let compile = started.elapsed();
-    // 原窗口链在 compile 成功后、execute 前 drain_finished_frames；只处理真实已完成帧。
-    // 新 compiled 仍持有自己的声明和回调，未完成的旧帧也不会在此提前释放。
-    if let Err(error) = bridge.collect_completed_frames() {
-        drop(compiled);
-        crate::screenshot::shared_texture_capture::cancel_unsubmitted(world, capture_graph_id);
-        return Err(anyhow::Error::from(error).context("collect completed gameplay frames"));
-    }
-    let started = std::time::Instant::now();
-    let receipt = match bridge.execute_compiled(compiled) {
-        Ok(receipt) => receipt,
-        Err(error) => {
+    Ok(PreparedHeadlessGameplayFrame { compiled, capture_graph_id, output: output.texture,
+        draw_lists, declare, compile })
+}
+
+impl PreparedHeadlessGameplayFrame {
+    /// The caller drives upload/pipeline admission before execution, just as
+    /// the desktop render owner does while Pending.
+    pub fn execute(self, bridge: &mut CoreRenderBridge, world: &mut World) -> Result<HeadlessGameplayFrame> {
+        let Self { compiled, capture_graph_id, output, draw_lists, declare, compile } = self;
+        if let Err(error) = bridge.collect_completed_frames() {
+            drop(compiled);
             crate::screenshot::shared_texture_capture::cancel_unsubmitted(world, capture_graph_id);
-            return Err(anyhow::Error::from(error).context("execute world graph"));
+            return Err(anyhow::Error::from(error).context("collect completed gameplay frames"));
         }
-    };
-    let execute = started.elapsed();
-    if crate::screenshot::shared_texture_capture::installed(world) {
-        crate::screenshot::shared_texture_capture::submitted(
-            world, bridge, capture_graph_id, &receipt,
-        )?;
+        let started = std::time::Instant::now();
+        let receipt = match bridge.execute_compiled(compiled) {
+            Ok(receipt) => receipt,
+            Err(error) => {
+                crate::screenshot::shared_texture_capture::cancel_unsubmitted(world, capture_graph_id);
+                return Err(anyhow::Error::from(error).context("execute world graph"));
+            }
+        };
+        let execute = started.elapsed();
+        let mut submitted = rhapsody::sync::SyncSet::EMPTY;
+        for point in &receipt.receipts { submitted.insert(*point); }
+        bridge.publish_headless_readbacks(world, submitted)?;
+        if crate::screenshot::shared_texture_capture::installed(world) {
+            crate::screenshot::shared_texture_capture::submitted(
+                world, bridge, capture_graph_id, &receipt,
+            )?;
+        }
+        let texture = bridge.take_exported_texture(&receipt, output).context("take exported texture")?;
+        Ok(HeadlessGameplayFrame { receipt, texture, draw_lists, declare, compile, execute })
     }
-    let texture = bridge.take_exported_texture(&receipt, output.texture).context("take exported texture")?;
-    Ok(HeadlessGameplayFrame { receipt, texture, draw_lists, declare, compile, execute })
+
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -216,12 +232,6 @@ pub fn render_headless_gameplay_frame(
 /// `production_resolve` imports the main source at access 0x22.
 const WORLD_EXPORT_ACCESS: u8 = 0x22;
 
-/// Explicit diagnostic switch for the minimal (clear+export) world frame.
-/// Without it, a missing world producer is a hard error:
-/// presenting an empty world as a successful frame would hide the real gap.
-pub const ALLOW_MINIMAL_WORLD_FRAME_ENV: &str = "TG_ALLOW_MINIMAL_WORLD_FRAME";
-
-const DIAGNOSTIC_RETAIN_WSI_ENV: &str = "TG_DIAGNOSTIC_RETAIN_WSI";
 
 /// Explicit startup diagnostics only: no environment lookup or formatting on
 /// later frames after the once-initialized disabled branch.
@@ -268,19 +278,7 @@ struct StartupVisualTraceLog {
     pending_presentation: Option<(u64, u64)>,
 }
 
-fn diagnostic_swapchain_policy(value: Option<&std::ffi::OsStr>) -> Result<rhapsody::present::SwapchainPolicy> {
-    use rhapsody::present::SwapchainPolicy;
-    match value {
-        None => Ok(SwapchainPolicy::Strict),
-        Some(value) if value == "0" => Ok(SwapchainPolicy::Strict),
-        Some(value) if value == "1" => Ok(SwapchainPolicy::RetainUnproven),
-        Some(_) => anyhow::bail!("{DIAGNOSTIC_RETAIN_WSI_ENV} must be unset, 0 or 1"),
-    }
-}
 
-fn minimal_world_frame_allowed() -> bool {
-    std::env::var(ALLOW_MINIMAL_WORLD_FRAME_ENV).as_deref() == Ok("1")
-}
 
 /// Original world dimensions.
 ///
@@ -349,10 +347,10 @@ fn world_depth_target(
         core_world_frame::MAIN_DEPTH_NAME, &core_world_frame::main_depth_desc(extent))))
 }
 
-/// Native `plVar39[6]` target extent (I: `FrameRenderConfig.extent_8`, the same
-/// display extent used by the TGSR history). The original no-swapchain worker
-/// explicitly supplies its 32x32 render extent instead. Used by final_post's
-/// R9 and the UI target viewport; zero is an error, never a fallback size.
+/// Final composition and UI use the physical window extent. TGSR history uses
+/// the scaled world extent instead. The presentation shader performs integer
+/// texel loads, so a scaled final target would leave black pixels outside it.
+/// The no-swapchain warmup explicitly supplies its own 32x32 extent.
 fn display_extent(world: &World, explicit: Option<[u32; 2]>) -> rhapsody::Result<[u32; 2]> {
     let extent = if let Some(extent) = explicit {
         extent
@@ -364,7 +362,7 @@ fn display_extent(world: &World, explicit: Option<[u32; 2]>) -> rhapsody::Result
                     "original compile_main 0x140161cd0: missing FrameRenderConfig for the tail display extent",
                 )
             })?
-            .extent_8
+            .extent_0
     };
     if extent.contains(&0) {
         return Err(rhapsody::Error::invalid_usage(
@@ -503,15 +501,6 @@ fn compile_full_world_graph(
     });
     renderer.timing_end(TimedStage::Declare, started);
     let (output, built) = result?;
-    let started = renderer.timing_start();
-    let prewarm = renderer.prewarm_declaration();
-    renderer.timing_end(TimedStage::Prewarm, started);
-    if let Err(error) = prewarm {
-        if let Err(cleanup) = renderer.bridge.cancel_built(built) {
-            log::warn!("world pipeline prewarm cancellation: {cleanup}");
-        }
-        return Err(error);
-    }
     let capture_graph_id = built.graph_id();
     if let Some(timing) = &mut renderer.timing { timing.graph = Some(capture_graph_id); }
     let started = renderer.timing_start();
@@ -527,105 +516,6 @@ fn compile_full_world_graph(
             format: country_core::systems::render_loop::draw_passes::final_post::MSAA_COLOR_FORMAT,
             sample_count:
                 country_core::systems::render_loop::draw_passes::final_post::MSAA_SAMPLE_COUNT,
-        },
-    })
-}
-
-/// Minimal world-frame host over the real enclosing graph. `Clear image`
-/// (0x1409dde90) is a real transfer pass; no shader or substitute renderer is
-/// installed.
-struct MinimalWorldHost<'a, 'b> {
-    frame: &'a mut CoreGraphFrame<'b>,
-}
-
-fn backend_error(seam: &'static str) -> impl FnOnce(rhapsody::Error) -> WorldFrameError {
-    move |error| WorldFrameError::backend(seam, error)
-}
-
-impl MinimalWorldFrameHost for MinimalWorldHost<'_, '_> {
-    fn create_color_target(
-        &mut self,
-        name: &str,
-        desc: &country_core::rhapsody_types::TextureDesc,
-    ) -> Result<core_render_world::RgTexture, WorldFrameError> {
-        // The graph creation uses the full country-core description, including
-        // the native mip_levels(6); the returned render_world view only carries
-        // id/format/extent because downstream consumers use `id`.
-        let texture = self
-            .frame
-            .with_compute(|compute| Ok(compute.create_raw_texture(name, desc)))
-            .map_err(backend_error("create_color_target"))?;
-        Ok(core_render_world::RgTexture {
-            id: texture.resource,
-            desc: core_render_world::TextureDesc::new_2d(
-                [desc.extent[0], desc.extent[1]],
-                desc.format,
-            ),
-        })
-    }
-
-    fn clear_color_target(
-        &mut self,
-        color: &core_render_world::RgTexture,
-    ) -> Result<(), WorldFrameError> {
-        self.frame
-            .with_compute(|compute| {
-                country_core::render::rg_helpers::clear_rg_color_image(compute, color.id);
-                Ok(())
-            })
-            .map_err(backend_error("clear_color_target"))
-    }
-
-    fn export_texture(
-        &mut self,
-        color: &core_render_world::RgTexture,
-        access: u8,
-    ) -> Result<(), WorldFrameError> {
-        self.frame
-            .with_graph(|graph| {
-                let id = graph.resource_handle(color.id)?;
-                graph.export(id, access)?;
-                Ok(())
-            })
-            .map_err(backend_error("export_texture"))
-    }
-}
-
-fn compile_minimal_world_graph(
-    renderer: &mut ProductionRenderer,
-    extent: [u32; 2],
-) -> rhapsody::Result<CompiledGameGraph> {
-    let started = renderer.timing_start();
-    let result = renderer.bridge.build_frame(|frame| {
-        let mut host = MinimalWorldHost { frame };
-        core_world_frame::build_minimal_world_frame(&mut host, extent)
-            .map_err(|error| rhapsody::Error::invalid_usage(error.to_string()))
-    });
-    renderer.timing_end(TimedStage::Declare, started);
-    let (output, built) = result?;
-    let started = renderer.timing_start();
-    let prewarm = renderer.prewarm_declaration();
-    renderer.timing_end(TimedStage::Prewarm, started);
-    if let Err(error) = prewarm {
-        if let Err(cleanup) = renderer.bridge.cancel_built(built) {
-            log::warn!("minimal world frame prewarm cancellation: {cleanup}");
-        }
-        return Err(error);
-    }
-    let capture_graph_id = built.graph_id();
-    if let Some(timing) = &mut renderer.timing { timing.graph = Some(capture_graph_id); }
-    let started = renderer.timing_start();
-    let result = renderer.bridge.compile_built(built);
-    renderer.timing_end(TimedStage::Compile, started);
-    let graph = result?;
-    Ok(CompiledGameGraph {
-        capture_graph_id,
-        graph,
-        output: output.id,
-        kind: ProductionGraphKind::DiagnosticMinimal,
-        expected: ExportExpectation {
-            format: core_render_world::formats::COLOR_HDR,
-            sample_count: 1,
         },
     })
 }
@@ -662,7 +552,7 @@ impl ApplicationGpu {
             .parent()
             .context("compiled shader directory has no installation root")?;
         let bridge = CoreRenderBridge::new(device.clone(), asset_root, shaders.clone())?;
-        let egui = EguiGpu::new(device, bridge.hosts().clone());
+        let egui = EguiGpu::new(bridge.hosts().clone());
         Ok(Self {
             bridge,
             egui,
@@ -682,7 +572,6 @@ struct RenderStageTiming {
     receipt: Option<u64>,
     draw_lists: Duration,
     declare: Duration,
-    prewarm: Duration,
     compile: Duration,
     execute: Duration,
     collect: Duration,
@@ -700,7 +589,7 @@ struct RenderStageTiming {
 }
 
 #[derive(Clone, Copy)]
-enum TimedStage { DrawLists, Declare, Prewarm, Compile, Execute, Collect, PresentWait, Acquire, Resolve, Present, FrameThrottle, QueueTrim }
+enum TimedStage { DrawLists, Declare, Compile, Execute, Collect, PresentWait, Acquire, Resolve, Present, FrameThrottle, QueueTrim }
 
 pub struct ProductionRenderer {
     bridge: CoreRenderBridge,
@@ -718,9 +607,8 @@ pub struct ProductionRenderer {
     other_applications: BTreeMap<usize, ApplicationGpu>,
     timing: Option<RenderStageTiming>,
     timing_gameplay_count: u64,
-    /// Identity (raster owner address) of the bridge whose session has GPU timing
-    /// configured; the loading and gameplay Apps own different sessions.
-    gpu_timing_bridge: Option<usize>,
+    #[cfg(feature = "cpu-probe")]
+    cpu_recorder: Option<crate::render_cpu_probe::CpuIntervalRecorder>,
     gpu_span_window: crate::frame_counters::GpuSpanWindow,
     compiled_shader_root: PathBuf,
     pending: VecDeque<PresentTicket>,
@@ -739,7 +627,7 @@ pub struct ProductionRenderer {
     // Published only after the CPU frame finishes. Readers never send a
     // control command or wait for the next frame to finish.
     published_observation: Option<Arc<parking_lot::RwLock<Option<ProductionFrameObservation>>>>,
-    controls: Option<Arc<crate::render_control::WindowControlMailbox>>,
+    controls: Arc<crate::render_control::WindowControlMailbox>,
     prepared_present_format: Option<u32>,
     cancel_preparation: bool,
     visual_trace: Option<StartupVisualTraceLog>,
@@ -773,6 +661,8 @@ pub(crate) struct QueuedFrame {
     mode: crate::render_loop::RenderMode,
     egui: EguiBackend,
     activation_error: Option<anyhow::Error>,
+    activation: Option<(World, Arc<std::sync::atomic::AtomicUsize>)>,
+    write_back: parking_lot::Mutex<Option<crate::render_thread::WriteBackSet>>,
 }
 
 /// What the back half needs from the front half besides the compiled graph.
@@ -795,29 +685,15 @@ struct FrameHandoff {
 
 
 impl ProductionRenderer {
+    /// Create the renderer with the game's startup preparation and device choice.
     pub fn new(
         window: Arc<winit::window::Window>,
         compiled_shader_root: impl AsRef<Path>,
         shaders: Arc<AssetShaderLibrary>,
+        defer_gameplay_programs: bool,
+        preferred: Option<[u8; 16]>,
     ) -> Result<Self> {
-        Self::new_with_shader_initialization(window, compiled_shader_root.as_ref(), shaders, false)
-    }
-
-    pub(crate) fn new_for_async_gameplay_preparation(
-        window: Arc<winit::window::Window>, compiled_shader_root: impl AsRef<Path>, shaders: Arc<AssetShaderLibrary>,
-    ) -> Result<Self> {
-        Self::new_with_shader_initialization(window, compiled_shader_root.as_ref(), shaders, true)
-    }
-
-    fn new_with_shader_initialization(
-        window: Arc<winit::window::Window>, compiled_shader_root: &Path, shaders: Arc<AssetShaderLibrary>, defer: bool,
-    ) -> Result<Self> {
-        let policy = diagnostic_swapchain_policy(std::env::var_os(DIAGNOSTIC_RETAIN_WSI_ENV).as_deref())?;
-        if policy == rhapsody::present::SwapchainPolicy::RetainUnproven {
-            log::warn!(
-                "{DIAGNOSTIC_RETAIN_WSI_ENV}=1: diagnostic WSI RetainUnproven enabled; real presents remain enabled, but final presentation completion may be unproven and shutdown may return an error while retaining GPU owners; this is not strict WSI acceptance"
-            );
-        }
+        let compiled_shader_root = compiled_shader_root.as_ref();
         let builder = InstanceBuilder {
             application_name: std::ffi::CString::new("Tiny Glade")?,
             extensions: platform_extensions(&window)?,
@@ -830,6 +706,7 @@ impl ProductionRenderer {
             instance,
             Some(&surface),
             &rhapsody::device::DeviceConfig {
+                preferred_device: preferred.map(rhapsody::device::DevicePreference::ByUuid).unwrap_or_default(),
                 // 原版 GpuAllocator::new (0x140c0d980) 没有预算参数，allocate (0x140c0da40)
                 // 没有总量上限分支；真实上限只有驱动堆与 VK_EXT_memory_budget。rhapsody 的
                 // 1 GiB 默认值是它自有策略，装不下全量纹理加 Nani/地形缓冲，这里取“不限”。
@@ -845,7 +722,7 @@ impl ProductionRenderer {
         set_gpu_wait_for(&device);
         let size = window.inner_size();
         let swapchain = Arc::new(unsafe {
-            Swapchain::new_with_policy(
+            Swapchain::new(
                 device.clone(),
                 surface,
                 vk::Extent2D {
@@ -854,7 +731,6 @@ impl ProductionRenderer {
                 },
                 true,
                 vk::ImageUsageFlags::COLOR_ATTACHMENT,
-                policy,
             )
         }?)
         .clone();
@@ -867,7 +743,7 @@ impl ProductionRenderer {
             shaders,
             final_post_shader,
             programs_deferred,
-        } = if defer { ApplicationGpu::new_owners(device.clone(), &compiled_shader_root, shaders)? }
+        } = if defer_gameplay_programs { ApplicationGpu::new_owners(device.clone(), &compiled_shader_root, shaders)? }
             else { ApplicationGpu::new(device.clone(), &compiled_shader_root, shaders)? };
         let properties = unsafe {
             device
@@ -892,7 +768,8 @@ impl ProductionRenderer {
             other_applications: BTreeMap::new(),
             timing: None,
             timing_gameplay_count: 0,
-            gpu_timing_bridge: None,
+            #[cfg(feature = "cpu-probe")]
+            cpu_recorder: None,
             gpu_span_window: Default::default(),
             compiled_shader_root,
             pending: VecDeque::new(),
@@ -908,7 +785,7 @@ impl ProductionRenderer {
             frame_present_queued: false,
             frame_observation: None,
             published_observation: None,
-            controls: None,
+            controls: Arc::new(crate::render_control::WindowControlMailbox::default()),
             prepared_present_format: None,
             cancel_preparation: false,
             visual_trace: startup_visual_trace_enabled().then(StartupVisualTraceLog::default),
@@ -1008,6 +885,15 @@ impl ProductionRenderer {
     pub fn device(&self) -> &Arc<rhapsody::device::Device> {
         &self.device
     }
+    /// 从当前窗口真实surface枚举一次候选；只读查询，不创建另一窗口或设备。
+    pub(crate) fn settings_graphics_devices(&self) -> Result<Vec<rhapsody::interop::AvailableGraphicsDevice>> {
+        let instance = self.device.instance().clone();
+        let devices = rhapsody::interop::enumerate_physical_devices(instance.clone())?
+            .into_iter().map(Arc::new).collect();
+        let graphics = rhapsody::interop::GraphicsInstance { instance, devices };
+        Ok(graphics.available_for_surface(Some(self.swapchain.surface.raw_handle()), Default::default())?
+            .available_devices())
+    }
     pub fn bridge(&self) -> &CoreRenderBridge {
         &self.bridge
     }
@@ -1102,18 +988,6 @@ impl ProductionRenderer {
     pub fn frame_observation(&self) -> Option<&ProductionFrameObservation> {
         self.frame_observation.as_ref()
     }
-    /// `None` means no current queued ticket is retained. Queue acceptance and
-    /// GPU completion are never substituted for presentation completion.
-    pub fn frame_present_complete(&self) -> rhapsody::Result<Option<bool>> {
-        let Some(frame) = self.frame_observation.as_ref() else { return Ok(None); };
-        let Some(point) = frame.present_point else { return Ok(None); };
-        for ticket in &self.pending {
-            if ticket.point == point && Some(ticket.generation()) == frame.present_generation {
-                return ticket.is_present_complete().map(Some);
-            }
-        }
-        Ok(None)
-    }
     pub fn take_error(&mut self) -> Option<anyhow::Error> {
         self.first_error.take().map(anyhow::Error::from)
     }
@@ -1151,25 +1025,12 @@ impl ProductionRenderer {
             self.first_error = Some(error);
         }
     }
-    /// `TG_GPU_TIMING=1`: enable per-pass timestamps on the main session once,
-    /// then drain completed samples every frame and log a window summary.
+    /// `TG_GPU_TIMING=1`: drain the current session's completed samples and log
+    /// a window summary. begin_frame owns the sole configuration path.
     /// Does not feed `last_gpu_frame_ns`, so frame pacing is unchanged.
     fn report_gpu_spans(&mut self) {
         if !crate::frame_counters::gpu_timing_enabled() {
             return;
-        }
-        let bridge_id = std::sync::Arc::as_ptr(self.bridge.raster_resources()) as usize;
-        if self.gpu_timing_bridge != Some(bridge_id) {
-            self.gpu_timing_bridge = Some(bridge_id);
-            let config = rhapsody::rg::GpuTimingConfig {
-                pass_spans: true,
-                pending_commands: 1024,
-                ..Default::default()
-            };
-            if let Err(error) = self.bridge.with_session(|session| session.backend.configure_gpu_timing(Some(config))) {
-                log::warn!(target: "tiny_glade::frame_timing", "TG_GPU_TIMING requested but unavailable: {error}");
-                return;
-            }
         }
         let window = &mut self.gpu_span_window;
         let polled = self.bridge.with_session(|session| {
@@ -1193,7 +1054,7 @@ impl ProductionRenderer {
         let elapsed = started.elapsed();
         let slot = match stage {
             TimedStage::DrawLists => &mut timing.draw_lists,
-            TimedStage::Declare => &mut timing.declare, TimedStage::Prewarm => &mut timing.prewarm,
+            TimedStage::Declare => &mut timing.declare,
             TimedStage::Compile => &mut timing.compile, TimedStage::Execute => &mut timing.execute,
             TimedStage::Collect => &mut timing.collect, TimedStage::PresentWait => &mut timing.present_wait,
             TimedStage::Acquire => &mut timing.acquire, TimedStage::Resolve => &mut timing.resolve,
@@ -1298,7 +1159,6 @@ struct ExportExpectation {
 pub enum ProductionGraphKind {
     Loading,
     Main { world_rendered: bool, primary_rt: bool },
-    DiagnosticMinimal,
 }
 
 #[derive(Clone, Debug)]
@@ -1312,6 +1172,7 @@ pub struct ProductionFrameObservation {
     pub draw_list_lengths: [usize; 21],
     pub output_format: u32,
     pub output_sample_count: u8,
+    pub output_extent: [u32; 2],
     pub present_point: Option<rhapsody::sync::SyncPoint>,
     pub present_generation: Option<u64>,
     /// Native successes in this exact generation at publication, rather than
@@ -1340,6 +1201,10 @@ pub struct ProductionRenderThread {
     swapchain: Arc<parking_lot::RwLock<Arc<Swapchain>>>,
     hosts: crate::render_host::HostTables,
     shaders: Arc<AssetShaderLibrary>,
+    applications: BTreeMap<usize, crate::render_host::HostTables>,
+    applied_application: Arc<std::sync::atomic::AtomicUsize>,
+    activation_pending: bool,
+    pending_write_back: Option<crate::render_thread::WriteBackSet>,
     owner: std::thread::ThreadId,
     platform: Option<PlatformSurface>,
     window: Arc<winit::window::Window>,
@@ -1353,6 +1218,11 @@ impl std::ops::DerefMut for ProductionRenderThread {
 }
 
 impl ProductionRenderThread {
+    pub(crate) fn poll_owned_uploads(&self) -> rhapsody::Result<bool> {
+        let buffers = self.hosts.buffers.poll_pending_uploads()?;
+        let textures = self.hosts.textures.poll_pending_uploads()?;
+        Ok(buffers && textures)
+    }
     fn post_control(&self, update: impl FnOnce(&mut crate::render_control::WindowControls)) -> Result<()> {
         self.controls.update(update);
         self.worker.notify_control()
@@ -1392,9 +1262,6 @@ impl ProductionRenderThread {
         self.observation = self.published_observation.read().clone();
         self.observation.as_ref()
     }
-    pub fn frame_present_complete(&mut self) -> rhapsody::Result<Option<bool>> {
-        self.call(|renderer| renderer.frame_present_complete())
-    }
     pub fn shutdown_renderer(&mut self) -> Result<()> {
         if self.failed() {
             self.join_failed();
@@ -1420,35 +1287,45 @@ impl ProductionRenderThread {
         }
     }
     pub(crate) fn set_write_back(&mut self, write_back: crate::render_thread::WriteBackSet) {
-        self.call(move |renderer| renderer.set_write_back(write_back));
+        self.pending_write_back = Some(write_back);
     }
     pub(crate) fn activate_application(&mut self, game: &World) -> Result<()> {
-        let activation = application_activation(game);
-        let (result, hosts, shaders) = self.call(move |renderer| {
-            let result = renderer.activate_application(&activation);
-            (result, renderer.bridge.hosts().clone(), renderer.shaders.clone())
-        });
-        self.hosts = hosts;
+        let shaders = game.get_resource::<crate::run_game::ApplicationShaderLibrary>()
+            .context("App has no original shader-library owner")?.0.clone();
+        let key = Arc::as_ptr(&shaders) as usize;
+        self.hosts = self.applications.get(&key)
+            .context("App has no registered physical rendering owners")?.clone();
         self.shaders = shaders;
-        result
+        self.activation_pending = self.applied_application.load(std::sync::atomic::Ordering::Acquire) != key;
+        Ok(())
     }
     pub(crate) fn queue_frame(&mut self, game: &World, mode: crate::render_loop::RenderMode, egui: EguiBackend) {
         self.reclaim();
         let matches = game.get_resource::<crate::run_game::ApplicationShaderLibrary>()
             .is_some_and(|shaders| Arc::ptr_eq(&shaders.0, &self.shaders));
         let activation_error = if matches { None } else { self.activate_application(game).err() };
+        let activation = if self.activation_pending {
+            self.activation_pending = self.applied_application.load(std::sync::atomic::Ordering::Acquire)
+                != Arc::as_ptr(&self.shaders) as usize;
+            self.activation_pending.then(|| (application_activation(game), self.applied_application.clone()))
+        } else { None };
         // Seal before sending the packet, so producers cannot overtake the
         // worker while it is waking up. No per-frame control round trip.
         let read_boundary = [self.hosts.buffers.begin_frame_read(self.owner), self.hosts.textures.begin_frame_read(self.owner)];
         let buffers = self.hosts.buffers.freeze_frame_resources();
+        let write_back = parking_lot::Mutex::new(self.pending_write_back.take());
         let side = self.reclaim();
         side.read_boundary = Some(read_boundary);
-        side.world.insert_resource(QueuedFrame { buffers, mode, egui, activation_error });
+        side.world.insert_resource(QueuedFrame { buffers, mode, egui, activation_error,
+            activation, write_back });
     }
-    pub(crate) fn managed_buffer(&mut self, buffer: country_core::render::ssbo::rhapsody_boundary::Buffer)
-        -> Option<rhapsody::resource::ManagedBuffer>
+    pub(crate) fn mapped_buffer_writer(&self, buffer: country_core::render::ssbo::rhapsody_boundary::Buffer)
+        -> Option<(rhapsody::resource::ManagedBuffer,
+            Arc<dyn country_core::render::ssbo::rhapsody_boundary::MappedUploadWriter>)>
     {
-        self.hosts.buffers.managed_buffer(&buffer)
+        use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
+        Some((self.hosts.buffers.managed_buffer(&buffer)?,
+            self.hosts.buffers.mapped_upload_writer(&buffer)?))
     }
 }
 
@@ -1490,6 +1367,10 @@ impl ProductionRenderer {
             && self.frame_observation.is_none() && !self.closed,
             "resident renderer must be started before its first frame");
         let owners = self.bridge.warmup_owners()?;
+        let mut applications = self.other_applications.iter()
+            .map(|(&key, app)| (key, app.bridge.hosts().clone())).collect::<BTreeMap<_, _>>();
+        let active_application = Arc::as_ptr(&self.shaders) as usize;
+        applications.insert(active_application, self.bridge.hosts().clone());
         // Validate every App before moving any of its owners.
         let mut other_owners = BTreeMap::new();
         for (key, app) in &self.other_applications {
@@ -1500,13 +1381,13 @@ impl ProductionRenderer {
                 egui: app.egui, shaders: app.shaders, final_post_shader: app.final_post_shader,
                 programs_deferred: app.programs_deferred })
         }).collect::<Vec<_>>();
-        let egui = std::mem::replace(&mut self.egui, EguiGpu::new(self.device.clone(), self.bridge.hosts().clone()));
+        let egui = std::mem::replace(&mut self.egui, EguiGpu::new(self.bridge.hosts().clone()));
         let swapchain = self.swapchain.clone();
         let swapchain_observer = Arc::new(parking_lot::RwLock::new(swapchain.clone()));
         let worker_swapchain_observer = swapchain_observer.clone();
         let published_observation = Arc::new(parking_lot::RwLock::new(None));
         let worker_observation = published_observation.clone();
-        let controls = Arc::new(crate::render_control::WindowControlMailbox::default());
+        let controls = self.controls.clone();
         let worker_controls = controls.clone();
         let device = self.device.clone();
         let shaders = self.shaders.clone();
@@ -1532,7 +1413,8 @@ impl ProductionRenderer {
             other_applications,
             timing: None,
             timing_gameplay_count: 0,
-            gpu_timing_bridge: None,
+            #[cfg(feature = "cpu-probe")]
+            cpu_recorder: None,
             gpu_span_window: Default::default(),
             compiled_shader_root,
             pending: VecDeque::new(),
@@ -1548,7 +1430,7 @@ impl ProductionRenderer {
             frame_present_queued: false,
             frame_observation: None,
             published_observation: Some(worker_observation),
-            controls: Some(worker_controls),
+            controls: worker_controls,
             prepared_present_format: None,
             cancel_preparation: false,
             visual_trace: startup_visual_trace_enabled().then(StartupVisualTraceLog::default),
@@ -1565,13 +1447,16 @@ impl ProductionRenderer {
             write_back: Default::default(),
         })
         }, render_back_frame_step, poll_window_controls)?;
-        let wake_window = self.window.clone();
-        worker.set_wake(Arc::new(move || wake_window.request_redraw()));
+        // The OS runner installs an EventLoopProxy wake. request_redraw from
+        // this worker dispatches synchronously to AppKit and deadlocks when
+        // the main thread is settling a control command.
         let owner = worker.call(|_| std::thread::current().id());
         self.closed = true; // the resident owner now owns GPU shutdown
         Ok(ProductionRenderThread { worker, controls, platform: self.platform.take(), window: self.window.clone(),
             observation: None, published_observation, swapchain: swapchain_observer, hosts: self.bridge.hosts().clone(),
-            shaders: self.shaders.clone(), owner })
+            shaders: self.shaders.clone(), owner, applications,
+            applied_application: Arc::new(std::sync::atomic::AtomicUsize::new(active_application)),
+            activation_pending: false, pending_write_back: None })
     }
 }
 
@@ -1582,7 +1467,7 @@ impl ProductionRenderer {
 }
 
 fn poll_window_controls(renderer: &mut ProductionRenderer, active: Option<&mut crate::render_thread::RenderSide>) -> bool {
-    let Some(mailbox) = renderer.controls.clone() else { return false; };
+    let mailbox = renderer.controls.clone();
     let Some((generation, control)) = mailbox.take() else { return false; };
     if control.cancel_preparation { renderer.cancel_preparation = true; }
     // A pending graph is tied to its original window state. Cancel its actual
@@ -1636,13 +1521,14 @@ fn complete_render_feedback(renderer: &mut ProductionRenderer, side: &mut crate:
     // After the submitted write-backs: the game sees copy_issued and the
     // matching submitted frame number in the same hand-over.
     let buffers = renderer.bridge.hosts().buffers.clone();
-    renderer.readbacks.finish_frame(&mut side.world, &buffers, renderer.frame_submitted, &mut side.feedback);
+    let submitted = side.world.remove_resource::<crate::gpu_readback::SubmittedFrameCompletion>().map(|proof| proof.0);
+    renderer.readbacks.finish_frame(&mut side.world, &buffers, submitted, &mut side.feedback);
     side.feedback.submitted = renderer.frame_submitted;
     side.feedback.history_submitted = renderer.frame_history_submitted;
     side.feedback.temporal_candidate = side.world.remove_resource::<crate::temporal_frame::RenderCameraCandidate>()
         .map(|candidate| candidate.0).filter(|_| renderer.frame_history_submitted);
     side.feedback.present_queued = renderer.frame_present_queued;
-    side.feedback.error = result.err();
+    if let Err(error) = result { side.feedback.error = Some(error); }
     if let Some(published) = &renderer.published_observation {
         *published.write() = renderer.frame_observation.clone();
     }
@@ -1654,7 +1540,8 @@ fn render_back_frame_step(renderer: &mut ProductionRenderer, side: &mut crate::r
     use crate::render_thread::RenderStep;
     if renderer.cancel_preparation && !side.world.contains_resource::<PreparingFrame>() {
         renderer.cancel_preparation = false;
-        side.world.remove_resource::<QueuedFrame>();
+        if let Some(packet) = side.world.remove_resource::<QueuedFrame>()
+            && let Some(write_back) = packet.write_back.into_inner() { renderer.set_write_back(write_back); }
         renderer.frame_submitted = false;
         renderer.frame_history_submitted = false;
         renderer.frame_present_queued = false;
@@ -1663,10 +1550,17 @@ fn render_back_frame_step(renderer: &mut ProductionRenderer, side: &mut crate::r
         return RenderStep::Complete;
     }
     if !side.world.contains_resource::<PreparingFrame>() {
-        let Some(QueuedFrame { buffers, mode, mut egui, activation_error }) = side.world.remove_resource::<QueuedFrame>() else {
+        let Some(QueuedFrame { buffers, mode, mut egui, activation_error, activation, write_back }) = side.world.remove_resource::<QueuedFrame>() else {
             return RenderStep::Complete;
         };
+        if let Some(write_back) = write_back.into_inner() { renderer.set_write_back(write_back); }
         renderer.activation_error = activation_error;
+        if renderer.activation_error.is_none() && let Some((activation, acknowledgement)) = activation {
+            renderer.activation_error = renderer.activate_application(&activation).err();
+            if renderer.activation_error.is_none() {
+                acknowledgement.store(Arc::as_ptr(&renderer.shaders) as usize, std::sync::atomic::Ordering::Release);
+            }
+        }
         if renderer.activation_error.is_none() {
             renderer.activation_error = renderer.bridge.install_frame_buffers(buffers).err().map(Into::into);
         }
@@ -1694,6 +1588,22 @@ fn render_back_frame_step(renderer: &mut ProductionRenderer, side: &mut crate::r
         return RenderStep::Complete;
     }
     {
+        match (|| {
+            let buffers = renderer.bridge.hosts().buffers.poll_pending_uploads()?;
+            let textures = renderer.bridge.hosts().textures.poll_pending_uploads()?;
+            Ok::<_, rhapsody::Error>(buffers && textures)
+        })() {
+            Ok(false) => {
+                crate::frame_counters::record_upload_pending_yield();
+                return RenderStep::Pending;
+            },
+            Ok(true) => {},
+            Err(error) => {
+                let _ = cancel_frame_preparation(renderer, side);
+                complete_render_feedback(renderer, side, Err(error.into()), true);
+                return RenderStep::Complete;
+            }
+        }
         let ready = renderer.bridge.shader_backend().poll_preparation();
         match ready {
             Ok(false) if side.world.resource::<PreparingFrame>().started.elapsed() < PIPELINE_PREWARM_TIMEOUT => return RenderStep::Pending,
@@ -1734,11 +1644,6 @@ struct BackContext {
 }
 
 impl ProductionRenderer {
-    fn prewarm_declaration(&self) -> rhapsody::Result<()> {
-        if self.controls.is_some() { Ok(()) }
-        else { self.bridge.shader_backend().prewarm(PIPELINE_PREWARM_TIMEOUT) }
-    }
-
     fn prepare_presentation_pipeline(&mut self) -> rhapsody::Result<()> {
         use country_core::render::pass_builder::draw_stream::{AttachmentDesc, RasterRenderPassDesc, DEPTH_STATE_NONE};
         let Some(handoff) = &self.handoff else { return Ok(()); };
@@ -1821,6 +1726,56 @@ impl ProductionRenderer {
         host_result
     }
 
+    /// Install a bounded CPU-interval recorder for a measurement session. The
+    /// recorder samples owner CPU at each render completion point without any
+    /// logging or sampling gate (see [`crate::render_cpu_probe`]). Built under
+    /// the `cpu-probe` feature (implied by `profile`); the clock read itself is
+    /// macOS-only. Normal builds have no recorder and no clock overhead.
+    #[cfg(feature = "cpu-probe")]
+    pub fn install_cpu_recorder(
+        &mut self,
+        recorder: crate::render_cpu_probe::CpuIntervalRecorder,
+    ) {
+        self.cpu_recorder = Some(recorder);
+    }
+
+    /// Take the recorder back at the end of a measurement session to dump its
+    /// clean per-frame distribution.
+    #[cfg(feature = "cpu-probe")]
+    pub fn take_cpu_recorder(
+        &mut self,
+    ) -> Option<crate::render_cpu_probe::CpuIntervalRecorder> {
+        self.cpu_recorder.take()
+    }
+
+    /// Reset the recorder's baseline across an App switch so the first interval
+    /// of the new App is not measured against the old App's clock.
+    #[cfg(feature = "cpu-probe")]
+    pub fn reset_cpu_recorder_baseline(&mut self) {
+        if let Some(recorder) = self.cpu_recorder.as_mut() {
+            recorder.reset_baseline();
+        }
+    }
+
+    /// Feed one render completion point into the recorder. `observed` is true
+    /// when the frame produced a real world observation (so its owner CPU is a
+    /// clean per-frame interval); failed/cancelled/app-switch frames pass false
+    /// so the baseline advances without a clean interval. Consecutive
+    /// completion samples cover all render-thread CPU work, including prior
+    /// diagnostics and idle polling; sleeping/GPU time does not advance this
+    /// clock. Unlike the legacy path this never logs and is not gated by log
+    /// sampling.
+    #[cfg(feature = "cpu-probe")]
+    fn record_cpu_interval(&mut self, frame: u64, receipt: Option<u64>, attempt: u64, observed: bool) {
+        if let Some(recorder) = self.cpu_recorder.as_mut() {
+            if observed {
+                recorder.record_observed(frame, receipt, attempt);
+            } else {
+                recorder.record_unobserved(frame, attempt);
+            }
+        }
+    }
+
     fn finish_render(&mut self) -> anyhow::Result<()> {
         // Graph/receipt leases retain submitted owners; discard only this
         // packet's CPU resolver after cancellation or the completed back half.
@@ -1835,16 +1790,29 @@ impl ProductionRenderer {
         let declaration = self.timing.is_some().then(country_core::render::declare_probe::take);
         self.report_gpu_spans();
         let every = crate::game_loop::frame_timing_every();
-        if let Some(t) = self.timing.take().filter(|t| t.frame <= 3 || t.frame % every == 0) {
+        if let Some(t) = self.timing.take() {
+            let emit = t.frame <= 3 || t.frame % every == 0;
+            // The clean CPU recorder fires on every completion point, not just
+            // logged frames: it is independent of the frame-timing log and its
+            // sampling gate. Failed/cancelled frames advance the baseline as
+            // unobserved so a later clean interval does not absorb their CPU.
+            #[cfg(feature = "cpu-probe")]
+            {
+                let observed = self.first_error.is_none() && !self.cancel_preparation;
+                let attempt = self.timing_gameplay_count;
+                let receipt = t.receipt;
+                let frame = t.frame;
+                self.record_cpu_interval(frame, receipt, attempt, observed);
+            }
+            if !emit { return self.take_error().map_or(Ok(()), Err); }
             let ms = |d: Duration| d.as_secs_f64() * 1000.0;
             let c = counters.unwrap_or_default();
             log::info!(target: "tiny_glade::frame_timing",
                 "recording_shape gameplay_n={} main_batches_parallel_chunks={:?}",
                 t.frame, t.main_recording);
             log::info!(target: "tiny_glade::frame_timing",
-                "frame_counters gameplay_n={} upload_wait_n={} upload_wait_ms={:.3} upload_wait_bytes={} upload_capacity_waits={} prewarm_calls={} prewarm_tickets={} prewarm_ms={:.3}",
-                t.frame, c.upload_wait_calls, c.upload_wait_ns as f64 / 1_000_000.0, c.upload_wait_bytes, c.upload_capacity_waits,
-                c.prewarm_calls, c.prewarm_tickets, c.prewarm_ns as f64 / 1_000_000.0);
+                "frame_counters gameplay_n={} upload_pending_yields={}",
+                t.frame, c.upload_pending_yields);
             // Completion polls since the previous logged frame: how often the
             // frame asks the driver about GPU progress.
             let plans = self.bridge.plan_cache_stats();
@@ -1862,12 +1830,12 @@ impl ProductionRenderer {
             let (polls, queries) = self.device.timeline_poll_stats();
             let memory = self.device.memory_usage_snapshot();
             let host = self.device.allocator_stats().cpu_memory_usage();
-            let heap = self.bridge.shader_backend().bindless_stats();
+            let heap = self.bridge.shader_backend().bindless_occupancy();
             let constants = self.bridge.raster_resources().dynamic_constants().lock().stats();
             log::info!(target: "tiny_glade::frame_timing",
-                "frame_memory gameplay_n={} device_bytes={} native_blocks={} host_live={} host_cache={} descriptors_live={} descriptors_peak={} descriptors_capacity={} constants_pages={} constants_bytes={} constants_peak={}",
+                "frame_memory gameplay_n={} device_bytes={} native_blocks={} host_live={} host_cache={} descriptors_live={} descriptors_capacity={} constants_pages={} constants_bytes={} constants_peak={}",
                 t.frame, memory.application_vk_memory_bytes, memory.native_memory_blocks,
-                host.live, host.cache, heap.live, heap.peak_live, heap.capacity,
+                host.live, host.cache, heap.live, heap.capacity,
                 constants.pages, constants.backing_bytes, constants.peak_backing_bytes);
             log::info!(target: "tiny_glade::frame_timing",
                 "timeline_polls gameplay_n={} poll_calls_total={} driver_queries_total={}",
@@ -1878,8 +1846,8 @@ impl ProductionRenderer {
             let vao = t.vao_before.filter(|(owner, _)| *owner == Arc::as_ptr(raster) as usize)
                 .map(|(_, before)| raster.vao_refresh_timing().delta_since(before));
             log::info!(target: "tiny_glade::frame_timing",
-                "render_stages gameplay_n={} graph={:?} receipt={:?} draw_lists_ms={:.3} declare_ms={:.3} prewarm_ms={:.3} compile_ms={:.3} record_submit_ms={:.3} collect_ms={:.3} present_ticket_wait_ms={:.3} acquire_ms={:.3} resolve_inclusive_ms={:.3} present_ms={:.3} frame_throttle_ms={:.3} queue_trim_actual_ms={:.3} queue_trim_budget_ms={:.3} observed_completion_wall_ms={:.3} submitted={} present_queued={} error={}; GPU top-level timestamp span unavailable",
-                t.frame, t.graph, t.receipt, ms(t.draw_lists), ms(t.declare), ms(t.prewarm), ms(t.compile), ms(t.execute), ms(t.collect), ms(t.present_wait), ms(t.acquire), ms(t.resolve), ms(t.present), ms(t.frame_throttle), ms(t.queue_trim), ms(t.queue_budget), t.observed_completion_wall_ns as f64 / 1_000_000.0,
+                "render_stages gameplay_n={} graph={:?} receipt={:?} draw_lists_ms={:.3} declare_ms={:.3} compile_ms={:.3} record_submit_ms={:.3} collect_ms={:.3} present_ticket_wait_ms={:.3} acquire_ms={:.3} resolve_inclusive_ms={:.3} present_ms={:.3} frame_throttle_ms={:.3} queue_trim_actual_ms={:.3} queue_trim_budget_ms={:.3} observed_completion_wall_ms={:.3} submitted={} present_queued={} error={}; GPU top-level timestamp span unavailable",
+                t.frame, t.graph, t.receipt, ms(t.draw_lists), ms(t.declare), ms(t.compile), ms(t.execute), ms(t.collect), ms(t.present_wait), ms(t.acquire), ms(t.resolve), ms(t.present), ms(t.frame_throttle), ms(t.queue_trim), ms(t.queue_budget), t.observed_completion_wall_ns as f64 / 1_000_000.0,
                 self.frame_submitted, self.frame_present_queued, self.first_error.is_some());
             let d = declaration.unwrap_or_default();
             log::info!(target: "tiny_glade::frame_timing",
@@ -1922,6 +1890,7 @@ impl ProductionRenderer {
         }
     }
     fn front_host<'a>(&'a mut self, world: &'a mut World, egui: &'a mut EguiBackend) -> ProductionRenderHost<'a> {
+        world.remove_resource::<crate::gpu_readback::SubmittedFrameCompletion>();
         self.timing = if crate::game_loop::frame_timing_enabled() && world.contains_resource::<crate::run_game::GameplayApplication>() {
             self.timing_gameplay_count += 1;
             Some(RenderStageTiming { frame: self.timing_gameplay_count, ..Default::default() })
@@ -2029,10 +1998,8 @@ impl ProductionRenderHost<'_> {
             resolve::build(frame, world, &shaders, elapsed, source, &target, flag)?;
             Ok(target)
         })?;
-        let ready = if self.renderer.controls.is_some() {
-            self.renderer.bridge.shader_backend().poll_preparation().and_then(|ready|
-                if ready { Ok(()) } else { Err(rhapsody::Error::invalid_usage("presentation pipeline missing from Prepare dependencies")) })
-        } else { self.renderer.bridge.shader_backend().prewarm(PIPELINE_PREWARM_TIMEOUT) };
+        let ready = self.renderer.bridge.shader_backend().poll_preparation().and_then(|ready|
+            if ready { Ok(()) } else { Err(rhapsody::Error::invalid_usage("presentation pipeline missing from Prepare dependencies")) });
         if let Err(error) = ready {
             if let Err(cleanup) = self.renderer.bridge.cancel_built(graph) {
                 log::warn!(target: crate::render_loop::LOG_TARGET,
@@ -2144,15 +2111,6 @@ impl RenderHost for ProductionRenderHost<'_> {
         });
         self.renderer.timing_end(TimedStage::Declare, started);
         let (output, built) = result?;
-        let started = self.renderer.timing_start();
-        let prewarm = self.renderer.prewarm_declaration();
-        self.renderer.timing_end(TimedStage::Prewarm, started);
-        if let Err(error) = prewarm {
-            if let Err(cleanup) = self.renderer.bridge.cancel_built(built) {
-                log::warn!("pipeline prewarm cancellation: {cleanup}");
-            }
-            return Err(error);
-        }
         let capture_graph_id = built.graph_id();
         if let Some(timing) = &mut self.renderer.timing { timing.graph = Some(capture_graph_id); }
         let started = self.renderer.timing_start();
@@ -2183,23 +2141,9 @@ impl RenderHost for ProductionRenderHost<'_> {
                 let egui = self.egui.as_deref_mut().expect("world compilation on the back host");
                 compile_full_world_graph(self.renderer, self.world, &self.lists, extent, egui)
             }
-            Some(missing) => {
-                if minimal_world_frame_allowed() {
-                    // Explicit diagnostic path only. The minimal closure
-                    // is a real clear+export frame, not a claim that world
-                    // rendering succeeded.
-                    log::warn!(
-                        target: crate::render_loop::LOG_TARGET,
-                        "original compile_main 0x140161cd0: missing {missing} producer; diagnostic minimal world frame enabled (clear + export)"
-                    );
-                    compile_minimal_world_graph(self.renderer, extent)
-                } else {
-                    // Default: refuse to present an empty world as success.
-                    Err(rhapsody::Error::unsupported(format!(
-                        "original compile_main 0x140161cd0: missing {missing} producer; refusing the minimal world frame (set {ALLOW_MINIMAL_WORLD_FRAME_ENV}=1 to allow the diagnostic)"
-                    )))
-                }
-            }
+            Some(missing) => Err(rhapsody::Error::unsupported(format!(
+                "original compile_main 0x140161cd0: missing {missing} producer"
+            ))),
         }
     }
     fn resolution_scale(&mut self) -> Option<f32> {
@@ -2258,11 +2202,16 @@ impl RenderHost for ProductionRenderHost<'_> {
         self.renderer.frame_submitted = false;
         self.renderer.frame_history_submitted = false;
         self.renderer.frame_present_queued = false;
-        let result = self.renderer.bridge.with_session(|session| {
-            session
-                .backend
-                .configure_gpu_timing(gpu_profiling.then_some(Default::default()))
+        // One configuration owner: environment diagnostics and the game's
+        // profiling option select the same session ring. Identical settings
+        // retain in-flight queries instead of resetting them every frame.
+        let pass_spans = crate::frame_counters::gpu_timing_enabled();
+        let config = (gpu_profiling || pass_spans).then(|| rhapsody::rg::GpuTimingConfig {
+            pass_spans,
+            pending_commands: if pass_spans { 1024 } else { 256 },
+            ..Default::default()
         });
+        let result = self.renderer.bridge.with_session(|session| session.backend.configure_gpu_timing(config));
         if let Err(error) = result {
             self.renderer.record_error(error);
         }
@@ -2293,6 +2242,11 @@ impl RenderHost for ProductionRenderHost<'_> {
                 // or export validation below subsequently fails. Abort must
                 // preserve that fact rather than report an unsubmitted frame.
                 self.renderer.frame_submitted = !receipt.receipts.is_empty();
+                if self.renderer.frame_submitted {
+                    let mut points = rhapsody::sync::SyncSet::EMPTY;
+                    for point in &receipt.receipts { points.insert(*point); }
+                    self.world.insert_resource(crate::gpu_readback::SubmittedFrameCompletion(points));
+                }
                 self.renderer.frame_history_submitted = self.renderer.frame_submitted
                     && matches!(kind, ProductionGraphKind::Main { world_rendered: true, .. });
                 if crate::screenshot::shared_texture_capture::installed(self.world) {
@@ -2335,6 +2289,7 @@ impl RenderHost for ProductionRenderHost<'_> {
                         draw_list_lengths: std::array::from_fn(|i| self.lists.list(i).len()),
                         output_format: actual.format,
                         output_sample_count: actual.sample_count,
+                        output_extent: [texture.desc.width, texture.desc.height],
                         present_point: None,
                         present_generation: None,
                         native_present_successes: 0,
@@ -2381,10 +2336,19 @@ impl RenderHost for ProductionRenderHost<'_> {
         })();
         match result {
             Ok(Some(image)) => {
+                // The OS may resize the surface while this frame is recording.
+                // Resolve uses integer texel coordinates: return that image and
+                // let the next extracted frame use the new physical extent.
+                let extent = image.extent();
+                if self.renderer.main_output.as_ref().is_some_and(|source|
+                    [source.desc.width, source.desc.height] != [extent.width, extent.height]) {
+                    if let Err(error) = image.cancel(timeout_ns()) { self.renderer.record_error(error); }
+                    return Acquire::Unavailable;
+                }
                 // Native recreation can choose a different surface format.
                 // Its pipeline belongs to the next Prepare; this accepted main
                 // submission keeps its history while presentation is skipped.
-                if self.renderer.controls.is_some() && self.renderer.prepared_present_format
+                if self.renderer.prepared_present_format
                     != Some(self.renderer.swapchain.format().as_raw() as u32) {
                     if let Err(error) = image.cancel(timeout_ns()) { self.renderer.record_error(error); }
                     return Acquire::Unavailable;
@@ -2511,7 +2475,7 @@ pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract)
 
 #[cfg(test)]
 mod world_extent_tests {
-    use super::{diagnostic_swapchain_policy, display_extent, world_extent, GAMEPLAY_WARMUP_EXTENT};
+    use super::{display_extent, world_extent, GAMEPLAY_WARMUP_EXTENT};
     use bevy_ecs::world::World;
     use country_core::{
         game_config::GameConfig, render::render_config::FrameRenderConfig,
@@ -2578,9 +2542,9 @@ mod world_extent_tests {
     fn ordinary_frames_keep_scaled_world_unscaled_display_and_oom_override_contract() {
         let world = test_world([1280, 720], Some(0.5));
         assert_eq!(world_extent(&world, None, None).unwrap(), [640, 384]);
-        assert_eq!(display_extent(&world, None).unwrap(), [640, 360]);
+        assert_eq!(display_extent(&world, None).unwrap(), [1280, 720]);
         assert_eq!(world_extent(&world, None, Some([64, 64])).unwrap(), [64, 64]);
-        assert_eq!(display_extent(&world, None).unwrap(), [640, 360]);
+        assert_eq!(display_extent(&world, None).unwrap(), [1280, 720]);
         assert!(display_extent(&world, Some([32, 0])).is_err());
         assert!(display_extent(&World::new(), None).is_err());
     }
@@ -2593,29 +2557,7 @@ mod world_extent_tests {
         assert!(world_extent(&world, None, None).is_err());
     }
 
-    #[test]
-    fn diagnostic_wsi_policy_requires_explicit_opt_in_and_never_uses_acquire_only() {
-        use rhapsody::present::SwapchainPolicy;
-        use std::ffi::OsStr;
-        assert_eq!(diagnostic_swapchain_policy(None).unwrap(), SwapchainPolicy::Strict);
-        assert_eq!(diagnostic_swapchain_policy(Some(OsStr::new("0"))).unwrap(), SwapchainPolicy::Strict);
-        assert_eq!(diagnostic_swapchain_policy(Some(OsStr::new("1"))).unwrap(), SwapchainPolicy::RetainUnproven);
-        for value in ["", "true", "2", "01", " 1", "1 "] {
-            let error = diagnostic_swapchain_policy(Some(OsStr::new(value))).unwrap_err();
-            assert!(error.to_string().contains("TG_DIAGNOSTIC_RETAIN_WSI"));
-        }
-        #[cfg(windows)]
-        {
-            use std::os::windows::ffi::OsStringExt;
-            let invalid = std::ffi::OsString::from_wide(&[0xd800]);
-            assert!(diagnostic_swapchain_policy(Some(&invalid)).is_err());
-        }
-        #[cfg(unix)]
-        {
-            use std::os::unix::ffi::OsStrExt;
-            assert!(diagnostic_swapchain_policy(Some(OsStr::from_bytes(&[0xff]))).is_err());
-        }
-    }
+
 }
 
 #[cfg(target_os = "macos")]
@@ -2689,6 +2631,7 @@ mod macos {
     pub struct PlatformSurface {
         layer: StrongPtr,
         view: *mut Object,
+        transaction: &'static Class,
     }
     impl PlatformSurface {
         pub fn new(window: &winit::window::Window) -> Result<Self> {
@@ -2710,7 +2653,8 @@ mod macos {
                 }
                 Ok(layer)
             })?;
-            let surface = Self { layer, view };
+            let transaction = Class::get("CATransaction").context("QuartzCore CATransaction is unavailable")?;
+            let surface = Self { layer, view, transaction };
             surface.update(window)?;
             Ok(surface)
         }
@@ -2750,10 +2694,16 @@ mod macos {
         }
         pub fn update(&self, window: &winit::window::Window) -> Result<()> {
             let size = window.inner_size();
-            unsafe {
+            let transaction = self.transaction;
+            unsafe { let (): () = transaction.send_message(Sel::register("begin"), ())?; }
+            let update = (|| -> Result<()> { unsafe {
+                // Surface geometry is an immediate OS control. Animating the
+                // backing layer leaves an old-size drawable visible while the
+                // model layer and swapchain already advertise the new extent.
+                let (): () = transaction.send_message(Sel::register("setDisableActions:"), (YES,))?;
                 let bounds: Rect = (&*self.view).send_message(Sel::register("bounds"), ())?;
                 let (): () =
-                    (&**self.layer).send_message(Sel::register("setBounds:"), (bounds,))?;
+                    (&**self.layer).send_message(Sel::register("setFrame:"), (bounds,))?;
                 let (): () = (&**self.layer)
                     .send_message(Sel::register("setContentsScale:"), (window.scale_factor(),))?;
                 let (): () = (&**self.layer).send_message(
@@ -2764,6 +2714,10 @@ mod macos {
                     },),
                 )?;
             }
+            Ok(()) })();
+            let commit: std::result::Result<(), _> = unsafe { transaction.send_message(Sel::register("commit"), ()) };
+            update?;
+            commit?;
             Ok(())
         }
         pub fn create_surface(

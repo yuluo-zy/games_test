@@ -1,6 +1,9 @@
 //! Real gameplay App, shipped initial session and the production device tuple.
 //! No individual systems are removed or replaced to make this fixture pass.
 //! A temporary account prevents writes to the player's actual saves.
+#[path = "support/mod.rs"]
+mod test_support;
+use test_support::BridgeTestDriver as _;
 use std::{path::PathBuf, time::Duration};
 
 use anyhow::{Context, Result};
@@ -396,6 +399,17 @@ fn diagnose_completed_retirement(device: &rhapsody::device::Device, stage: &str)
 }
 
 fn boot_shipped_session() -> Result<BootedSession> {
+    struct Diagnostics;
+    impl log::Log for Diagnostics {
+        fn enabled(&self, metadata: &log::Metadata<'_>) -> bool { metadata.level() <= log::Level::Error }
+        fn log(&self, record: &log::Record<'_>) {
+            if self.enabled(record.metadata()) { eprintln!("{} {}", record.target(), record.args()); }
+        }
+        fn flush(&self) {}
+    }
+    static DIAGNOSTICS: Diagnostics = Diagnostics;
+    if log::set_logger(&DIAGNOSTICS).is_ok() { log::set_max_level(log::LevelFilter::Error); }
+
     let installed = std::env::var_os("TG_INSTALL_ROOT")
         .map(PathBuf::from)
         .unwrap_or_else(|| {
@@ -581,7 +595,7 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
     driver.app_mut().update();
     let _ = context.end_frame();
     let world = driver.app_mut().world_mut();
-    let display = world.resource::<country_core::render::render_config::FrameRenderConfig>().extent_8;
+    let display = world.resource::<country_core::render::render_config::FrameRenderConfig>().extent_0;
     // Real pixel consumer on the shipped screenshot owner: the T4 MenuBackground opportunity of the
     // actual world graph reads the world color back through the original capture chain
     // (after final_post, before any overlay). The pixels are checked below, not just the export.
@@ -603,8 +617,10 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
             completion: None,
         }],
     )?;
-    let frame = tiny_glade::production_renderer::render_headless_gameplay_frame(&mut bridge, world)
+    let frame = tiny_glade::production_renderer::prepare_headless_gameplay_frame(&mut bridge, world)
         .context("actual normal-resolution world graph after warmup adoption")?;
+    bridge.prepare_test_execution()?;
+    let frame = frame.execute(&mut bridge, world)?;
     world.resource_mut::<country_core::render::RenderTemporalState>().frame_render_returned();
     bridge.with_session(|session| session.wait_frame(frame.receipt.frame, 120_000_000_000))?;
     drop(frame);
@@ -747,7 +763,7 @@ struct FrameRow {
     declare: Duration,
     compile: Duration,
     execute: Duration,
-    shader_heap: rhapsody::bindless::BindlessStats,
+    shader_heap: rhapsody::bindless::BindlessOccupancy,
     texture_heap: rhapsody::bindless::BindlessStats,
     constants: rhapsody::resource::DynamicConstantsStats,
     allocated_bytes: u64,
@@ -780,7 +796,12 @@ fn shipped_session_steady_state_multi_frame() -> Result<()> {
 }
 
 fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
-    const FRAMES: usize = 30;
+    let collect_probe_enabled = std::env::var("TG_FRAME_TIMING").is_ok_and(|value| value == "1");
+    let require_cross_pass = std::env::var_os("TG_REQUIRE_CROSS_PASS").is_some();
+    anyhow::ensure!(!require_cross_pass || collect_probe_enabled, "Collect task acceptance requires TG_FRAME_TIMING=1");
+    let frames: usize = std::env::var("TG_MULTIFRAME_FRAMES").ok()
+        .map(|value| value.parse()).transpose()?.unwrap_or(30);
+    anyhow::ensure!((30..=100_000).contains(&frames), "TG_MULTIFRAME_FRAMES must be 30..=100000");
     const CAPTURES: [usize; 7] = [1, 2, 3, 4, 9, 19, 29]; // 2nd, 10th and 30th frame plus the convergence ramp // 2nd, 10th and 30th frame plus the convergence ramp
     let BootedSession { mut driver, context, mut bridge, shaders: _shaders, device, _boot } =
         boot_shipped_session()?;
@@ -811,7 +832,8 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
     }
     let mut rows: Vec<FrameRow> = Vec::new();
     let mut in_flight = std::collections::VecDeque::<u64>::new();
-    for index in 0..FRAMES {
+    let mut allocation_peak_dumped = false;
+    for index in 0..frames {
         let update_started = std::time::Instant::now();
         context.begin_frame(egui::RawInput::default());
         driver.app_mut().update();
@@ -843,15 +865,17 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
                 }],
             )?;
         }
-        let frame = tiny_glade::production_renderer::render_headless_gameplay_frame(&mut bridge, world)
+        let frame = tiny_glade::production_renderer::prepare_headless_gameplay_frame(&mut bridge, world)
             .with_context(|| {
                 format!(
                     "steady-state frame {index}: constants {:?}, shader heap {:?}, pending {}",
                     { let stats = bridge.raster_resources().dynamic_constants().lock().stats(); stats },
-                    bridge.shader_backend().bindless_stats(),
+                    bridge.shader_backend().bindless_occupancy(),
                     bridge.with_session(|session| session.pending_frame_count()),
                 )
             })?;
+        bridge.prepare_test_execution()?;
+        let frame = frame.execute(&mut bridge, world)?;
         let history_valid = world
             .resource::<tiny_glade::world_graph::WorldHistoryObservation>()
             .color_history_valid;
@@ -863,7 +887,7 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
         let stats = frame.receipt.stats;
         eprintln!(
             "MULTIFRAME progress frame {index}: shader heap {:?}, record {:.0} ms, retirement {:?}",
-            bridge.shader_backend().bindless_stats(),
+            bridge.shader_backend().bindless_occupancy(),
             stats.record_ns as f64 / 1e6,
             device.retirement_stats(),
         );
@@ -899,7 +923,7 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
             declare: frame.declare,
             compile: frame.compile,
             execute: frame.execute,
-            shader_heap: bridge.shader_backend().bindless_stats(),
+            shader_heap: bridge.shader_backend().bindless_occupancy(),
             texture_heap,
             constants,
             allocated_bytes: device.allocator_stats().totals().total_allocated_bytes,
@@ -917,7 +941,11 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
             })?;
             gpu_samples.push(serde_json::json!({"observed_after_frame": index, "stats": stats, "samples": samples}));
         }
-        if let (Some(dir), true) = (&out_dir, index == 5 || index == FRAMES - 1) {
+        let first_memory_growth = index > 12 && !allocation_peak_dumped
+            && !CAPTURES.contains(&index) && !CAPTURES.contains(&(index - 1))
+            && rows[index].allocated_bytes > rows[12].allocated_bytes;
+        if let (Some(dir), true) = (&out_dir, index == 5 || index == 12 || index == frames - 1 || first_memory_growth) {
+            allocation_peak_dumped |= first_memory_growth;
             let mut by_name = std::collections::BTreeMap::<String, (u64, u64)>::new();
             for record in device.allocator_stats().report().allocations {
                 let entry = by_name.entry(format!("heap{} props{:x} size{} {}", record.heap, record.properties, record.size, record.name)).or_default();
@@ -944,17 +972,18 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
     // every surviving descriptor through its intended frame-global/sampler
     // owner. A strong residency index or leaked past frame fails exactly here.
     let collection = country_core::render::declare_probe::take();
-    if std::env::var("TG_DRAW_COLLECT").as_deref() == Ok("parallel") {
-        assert!(collection.collect_tasks > 0, "parallel acceptance ran only inline fallback");
+    assert!(rows.iter().all(|row| row.stats.chunks > 0), "native recording must execute shared-pool chunks");
+    if collect_probe_enabled {
+        assert!(collection.collect_tasks > 0, "enabled Collect probe recorded no shared-pool tasks");
         eprintln!("MULTIFRAME actual shared-pool Collect jobs: {}, cross-pass jobs: {}", collection.collect_tasks, collection.cross_pass_tasks);
-        if std::env::var_os("TG_REQUIRE_CROSS_PASS").is_some() {
+        if require_cross_pass {
             assert!(collection.cross_pass_tasks > 0, "cross-pass acceptance ran only single-pass Collect");
         }
     }
-    let drained = bridge.shader_backend().bindless_stats();
+    let drained = bridge.shader_backend().bindless_occupancy();
     let expected = bridge.shader_backend().retained_bindless_counts();
     let actual = drained.tables.map(|table| table.live);
-    eprintln!("MULTIFRAME drained descriptor owners: actual={actual:?}, expected={expected:?}, peak={}", drained.peak_live);
+    eprintln!("MULTIFRAME drained descriptor owners: actual={actual:?}, expected={expected:?}");
     assert_eq!(actual, expected, "descriptors outlive their intended owners after actual GPU completion");
     assert_eq!(drained.live, expected.iter().sum::<usize>());
     // Grass blades survive the steady state. The ground carries a fine blade texture only while
@@ -979,7 +1008,7 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
             let samples = session.backend.drain_gpu_timings().collect::<Vec<_>>();
             Ok::<_, rhapsody::Error>((stats, samples))
         })?;
-        gpu_samples.push(serde_json::json!({"observed_after_frame": FRAMES, "stats": stats, "samples": samples}));
+        gpu_samples.push(serde_json::json!({"observed_after_frame": frames, "stats": stats, "samples": samples}));
         let dir = out_dir.as_ref().expect("计时启动前已检查证据目录");
         std::fs::create_dir_all(dir)?;
         // 每项是同一物理队列上单 command 的时间跨度，不能相加当作跨队列帧延迟。
@@ -999,17 +1028,17 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
     }
 
     // ---- report -------------------------------------------------------------------------------
-    eprintln!("MULTIFRAME idx counter hist hit compile_ms record_ms submit_ms barriers/trans cmds batches par chunks | update declare compile exec (ms) | shaderheap live/ret/peak  texheap live | constants pages/inflight/creat/reuse | alloc_MiB blocks parked");
+    eprintln!("MULTIFRAME idx counter hist hit compile_ms record_ms submit_ms barriers/trans cmds batches par chunks | update declare compile exec (ms) | shaderpool sampled_live  texheap live | constants pages/inflight/creat/reuse | alloc_MiB blocks parked");
     for r in &rows {
         eprintln!(
-            "MULTIFRAME {:>2} {:>2} {} {} {:>8.1} {:>8.1} {:>8.1} {}/{} {} {} {} {} | {:>7.1} {:>7.1} {:>7.1} {:>7.1} | {}/{}/{} {} | {}/{}/{}/{} | {:.1} {} {}",
+            "MULTIFRAME {:>2} {:>2} {} {} {:>8.1} {:>8.1} {:>8.1} {}/{} {} {} {} {} | {:>7.1} {:>7.1} {:>7.1} {:>7.1} | {} {} | {}/{}/{}/{} | {:.1} {} {}",
             r.index, r.frame_counter, u8::from(r.history_valid), u8::from(r.stats.plan_cache_hit),
             r.stats.compile_ns as f64 / 1e6, r.stats.record_ns as f64 / 1e6, r.stats.submit_ns as f64 / 1e6,
             r.stats.barrier_commands, r.stats.barrier_transitions, r.stats.commands_recorded,
             r.stats.batches, r.stats.parallel_batches, r.stats.chunks,
             r.update.as_secs_f64() * 1e3, r.declare.as_secs_f64() * 1e3,
             r.compile.as_secs_f64() * 1e3, r.execute.as_secs_f64() * 1e3,
-            r.shader_heap.live, r.shader_heap.retiring, r.shader_heap.peak_live, r.texture_heap.live,
+            r.shader_heap.live, r.texture_heap.live,
             r.constants.pages, r.constants.in_flight_pages, r.constants.page_creations, r.constants.page_reuses,
             r.allocated_bytes as f64 / (1024.0 * 1024.0), r.native_blocks, r.parked_resources,
         );
@@ -1091,11 +1120,22 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
         let peak = settled.iter().map(|r| r.allocated_bytes).max().unwrap();
         assert!(peak <= first.allocated_bytes, "device memory fluctuates upwards in the steady state: {peak}");
     }
+    // The fixture must consume the same owned publisher as the window path.
+    // A submission counter alone cannot prove that a GPU copy was harvested.
+    let readbacks = driver.app_mut().world().resource::<country_core::render::gpu_readback::GpuReadbacks>();
+    assert_eq!(readbacks.submitted_frame(), frames as u64);
+    let depth = readbacks.get::<country_core::resources::compute_mouse_depth_value::MouseDepthValueSsbo>()
+        .expect("production GPU readback publisher never delivered mouse depth");
+    assert!(!depth.data.is_empty());
+    assert!(depth.frame > 0 && depth.frame <= readbacks.submitted_frame());
+    assert!(depth.revision > 1, "the owned readback stayed at its initial publication");
+    eprintln!("MULTIFRAME production GPU readbacks: submitted={} mouse_depth_frame={} revision={}",
+        readbacks.submitted_frame(), depth.frame, depth.revision);
     let late_hits = rows.iter().skip(2).filter(|r| r.stats.plan_cache_hit).count();
-    eprintln!("MULTIFRAME plan_cache_hit frames>=2: {late_hits}/{}", FRAMES - 2);
+    eprintln!("MULTIFRAME plan_cache_hit frames>=2: {late_hits}/{}", frames - 2);
     let mut times = rows.iter().skip(2).map(|r| (r.update + r.draw_lists + r.declare + r.compile + r.execute).as_secs_f64() * 1e3).collect::<Vec<_>>();
     times.sort_by(f64::total_cmp);
-    eprintln!("MULTIFRAME frame ms (frames>=2): median {:.1} p95 {:.1}", percentile(&times, 0.5), percentile(&times, 0.95));
+    eprintln!("MULTIFRAME frame ms (frames>=2): median {:.1} p95 {:.1} p99 {:.1}", percentile(&times, 0.5), percentile(&times, 0.95), percentile(&times, 0.99));
 
     let mut shots = captured.lock().clone();
     shots.sort_by_key(|shot| shot.0);

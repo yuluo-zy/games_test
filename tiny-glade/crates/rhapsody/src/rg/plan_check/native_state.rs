@@ -25,6 +25,9 @@ fn wait_for(point: SyncPoint, submitted: SyncPoint, waits: &SyncSet) -> crate::R
     if point.value == 0 {
         return Err(invalid("native dependency uses an unsubmitted zero point"));
     }
+    if point.queue == submitted.queue && point.value > submitted.value {
+        return Err(invalid("native same-queue dependency does not precede submission"));
+    }
     if point.queue != submitted.queue && waits.get(point.queue) < point.value {
         return Err(invalid(
             "native range access omits a foreign queue dependency",
@@ -82,7 +85,7 @@ impl StateOracle {
                     .points()
                     .chain(state.readers.points.points())
                 {
-                    if point.queue == submitted.queue && point.value >= submitted.value {
+                    if point.queue == submitted.queue && point.value > submitted.value {
                         return Err(invalid("native publication precedes its input state"));
                     }
                 }

@@ -445,7 +445,7 @@ fn a_failed_tile_projection_withdraws_the_previous_derived_mesh() {
     tile[4..8].copy_from_slice(&(-f32::MAX).to_le_bytes());
     app.world_mut().get_mut::<TileSimulation>(entity).unwrap().0 =
         country_core::resources::roofs::components::RoofTileSimulation::from_observed(tile);
-    app.world_mut().get_mut::<Roof>(entity).unwrap().0[0x4c..0x50]
+    app.world_mut().component_mut::<Roof>(entity).unwrap().0[0x4c..0x50]
         .copy_from_slice(&f32::MAX.to_le_bytes());
     app.update();
     assert_eq!(
@@ -459,12 +459,12 @@ fn a_failed_tile_projection_withdraws_the_previous_derived_mesh() {
             .iter()
             .any(|fault| fault.contains("unrepresentable height step"))
     );
-    app.world_mut().get_mut::<Roof>(entity).unwrap().0 = original_roof;
+    app.world_mut().component_mut::<Roof>(entity).unwrap().0 = original_roof;
     app.update();
     assert!(app.world().resource::<BuildingReport>().faults.is_empty());
     // An invalid externally replaced component still must not keep an old mesh
     // whose geometry no longer corresponds to its authoritative roof record.
-    app.world_mut().get_mut::<Roof>(entity).unwrap().0[8..12].copy_from_slice(&2u32.to_le_bytes());
+    app.world_mut().component_mut::<Roof>(entity).unwrap().0[8..12].copy_from_slice(&2u32.to_le_bytes());
     app.update();
     assert!(
         app.world()
@@ -479,7 +479,7 @@ fn a_failed_tile_projection_withdraws_the_previous_derived_mesh() {
 #[test]
 fn invalid_external_roof_does_not_panic_in_direction_consumer() {
     let (mut app, wall, entity) = scene();
-    app.world_mut().get_mut::<Roof>(entity).unwrap().0[8..12].copy_from_slice(&2u32.to_le_bytes());
+    app.world_mut().component_mut::<Roof>(entity).unwrap().0[8..12].copy_from_slice(&2u32.to_le_bytes());
     emit(
         &mut app,
         SwitchRoofDirection(RoofDirectionRequest { wall, direction: 1 }),
@@ -533,3 +533,5 @@ fn invalid_frame_times_do_not_poison_roof_animation_and_valid_time_recovers() {
         before
     );
 }
+
+use country_core::render::extract::WorldComponentWrite as _;

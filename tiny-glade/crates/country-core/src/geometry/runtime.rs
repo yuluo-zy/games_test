@@ -16,7 +16,7 @@ pub fn prepare_wall_brick_assembly_owners(
     public: Res<PublicWalls>,
     library: Res<AssetSsboLibrary>,
     mut entities: ResMut<WallEntities>,
-    mut owners: Query<&mut InstancedWall<BrickTransformSsbo>>,
+    mut owners: Query<ComponentWrite<InstancedWall<BrickTransformSsbo>>>,
     mut commands: Commands,
 ) {
     if public.last_delta.changed.is_empty() {
@@ -134,7 +134,7 @@ pub fn sync_wall_bricks(
     runtime: Option<Res<AssetLibraryRuntime>>,
     library: Option<ResMut<AssetSsboLibrary>>,
     status: Option<ResMut<WallBrickUploadStatus>>,
-    mut walls: Query<&mut InstancedWall<BrickTransformSsbo>>,
+    mut walls: Query<ComponentWrite<InstancedWall<BrickTransformSsbo>>>,
 ) {
     let (Some(runtime), Some(mut library), Some(mut status)) = (runtime, library, status) else {
         return;
@@ -183,7 +183,7 @@ pub fn sync_wall_bricks(
         log::warn!("{capacity_failures} 堵墙的砖实例空间不足，保留旧几何并等待空闲 chunk");
     }
     status.capacity_failures = capacity_failures;
-    match storage.try_gpu_flush(runtime.buffers.as_ref()) {
+    match storage.gpu_flush(runtime.buffers.as_ref()) {
         Ok(()) => {
             status.gpu_ready = true;
             status.last_error = None;
@@ -195,3 +195,5 @@ pub fn sync_wall_bricks(
 #[cfg(test)]
 #[path = "tests/runtime.rs"]
 mod tests;
+
+use crate::render::extract::ComponentWrite;

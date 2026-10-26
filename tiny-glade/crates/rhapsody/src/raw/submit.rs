@@ -205,19 +205,7 @@ impl PreparedSubmit {
         Ok(())
     }
 
-    /// 仅在所有数组和 pNext 仍存活的回调期间提供真实 ash 结构。
-    pub fn with_vk<R>(&self, call: impl FnOnce(&vk::SubmitInfo<'_>) -> R) -> R {
-        let mut timeline = vk::TimelineSemaphoreSubmitInfo::default()
-            .wait_semaphore_values(&self.wait_values)
-            .signal_semaphore_values(&self.signal_values);
-        let submit = vk::SubmitInfo::default()
-            .wait_semaphores(&self.wait_semaphores)
-            .wait_dst_stage_mask(&self.wait_stages)
-            .command_buffers(&self.commands)
-            .signal_semaphores(&self.signal_semaphores)
-            .push_next(&mut timeline);
-        call(&submit)
-    }
+
 }
 
 #[cfg(test)]

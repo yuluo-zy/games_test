@@ -1,11 +1,8 @@
 //! Original clearing lifecycle: complete per-session producer below, plus
-//! the existing canonical unload/despawn owners. The small asset inventory
-//! helper is retained for legacy CPU-only tests; actual gameplay registers
-//! init_clearing_complete on every OnEnter(Game), without run_once.
-use crate::asset_libraries::mesh_library::AssetMeshLibrary;
+//! the canonical unload/despawn owners. Gameplay registers init_clearing_complete
+//! on every OnEnter(Game), without run_once.
 use crate::resources::session::ActiveSession;
-use super::{StartupAssetHost, register_mesh_file};
-use bevy_ecs::prelude::Res;
+use super::StartupAssetHost;
 
 pub const CLEARING_UNLOAD_SNAPSHOT: &str = "snapshot:/Loading";
 pub const BILLBOARD_MESH: (&str, &str) = (
@@ -36,14 +33,6 @@ pub fn clearing_asset_inventory<H: StartupAssetHost>(host: &mut H, is_winter: bo
         "Initializing the glade."
     );
     // Asset inventory only; full spawning and theme policy are below.
-}
-
-pub fn init_clearing_meshes(meshes: Res<AssetMeshLibrary>, session: Option<Res<ActiveSession>>) {
-    register_mesh_file(&meshes, BILLBOARD_MESH.0, Some(BILLBOARD_MESH.1));
-    let is_winter = session.map(|session| session.is_winter()).unwrap_or(false);
-    if is_winter {
-        register_mesh_file(&meshes, ICE_CRACKS_MESH.0, Some(ICE_CRACKS_MESH.1));
-    }
 }
 
 /// 卸载快照常量；FMOD 调用由音频域消费（`game_loading_audio` 已有同一字符串）。

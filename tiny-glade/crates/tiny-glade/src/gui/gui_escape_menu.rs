@@ -193,17 +193,7 @@ pub fn build_escape_menu(
                     emit(MenuEffect::Next(EscMenuState::Quit));
                 }
             });
-            screen.with_slot("credits", |slot| {
-                let credits = menu_button(slot, "Menu.Credits");
-                credits
-                    .content_mut::<MenuButtonContent>()
-                    .text
-                    .set_metrics(25.)
-                    .expect("escape credits metrics");
-                if credits.node().used() {
-                    emit(MenuEffect::Next(EscMenuState::Credits));
-                }
-            });
+
         }
         EscMenuState::Quit => {
             let screen = mei

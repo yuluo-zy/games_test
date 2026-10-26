@@ -270,7 +270,7 @@ fn shared_reference_ssbo_registration_is_extracted_without_an_ecs_tick_change() 
     let mut exchange = RenderExchange::default();
     // The production manifest must register the revision-aware extractor.
     tiny_glade::world_walls::render_extract(&mut exchange);
-    exchange.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
+    exchange.asset_library::<AssetSsboLibrary>();
     exchange.extract.run(&mut game, &mut render);
     let source_tick = game
         .get_resource_change_ticks::<AssetSsboLibrary>()

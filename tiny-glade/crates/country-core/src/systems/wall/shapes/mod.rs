@@ -1,10 +1,8 @@
-//! B `systems/wall/shapes/mod.rs`: shape submodule root.
+//! B `systems/wall/shapes/mod.rs`：形状创建、编辑与预览的原归属。
 //!
-//! Evidence: `chapters/systems/wall/shapes/mod.rs.md` (O, 0x140945f50) —
-//! `add_wall_shape_ux` registers the eight shape systems and the four shape
-//! resources (CalcShapeHeight / PreviewCircle / PreviewRectangle /
-//! ShapePlacement). The per-system type hashes are U; registration is exposed
-//! through the crate's schedule API.
+//! 原140945f50包含嵌套A/C链，而非旧注释所称八个系统/四个资源。
+//! 完整注册合同见toolbar的shape-registration-contract-review；实际游戏当前
+//! 只启用已复原的toolbar必要子链，其余编辑叶子不能由资源存在推断已接通。
 
 pub mod calc_shape_height;
 pub mod circle;
@@ -39,65 +37,62 @@ impl SelectedWallShape {
     }
 }
 
-/// PreviewCircle (B +0x10 center, +0x18 radius; larger record fields 待接线).
-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+/// 原圆形画布预览：反馈位置、几何参数与交互起始平面。
+#[derive(Resource, Clone, Copy, Debug, PartialEq)]
 pub struct PreviewCircle {
+    /// 原 +0..0xf：上一次音频反馈位置，退出工具时清空。
+    pub last_audio_position: Option<Vec3>,
     pub center: Vec2,
     pub radius: f32,
     pub rotation: f32,
-    /// B +0x8 preview height type (2 = follow terrain).
-    pub height_ty: i32,
-    /// B +0x40 computed preview height (calc_shape_height).
-    pub height: f32,
-    /// B +0x3c previous preview height (interpolation base).
-    pub old_height: f32,
+    /// 原 +0x20：开始画布交互时保存的放置平面。
+    pub placement_y: f32,
 }
 
-/// PreviewRectangle (B +0x10 center, +0x18 dims, +0x20 orientation).
-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+impl Default for PreviewCircle {
+    fn default() -> Self {
+        Self { last_audio_position: None, center: Vec2::ZERO, radius: 3.0,
+            rotation: 0.0, placement_y: 0.0 }
+    }
+}
+
+/// 原矩形画布预览：原几何块+0x10朝向/+0x18中心/+0x20尺寸。
+/// 当前采用安全字段访问，声明顺序不承担原私有ABI。
+#[derive(Resource, Clone, Copy, Debug, PartialEq)]
 pub struct PreviewRectangle {
+    /// 原 +0..0xf：上一次音频反馈位置。
+    pub last_audio_position: Option<Vec3>,
     pub center: Vec2,
     pub dimensions: Vec2,
     pub orientation: Vec2,
-    /// B +0x8 preview height type (2 = follow terrain).
-    pub height_ty: i32,
-    /// B +0x40 computed preview height (calc_shape_height).
-    pub height: f32,
-    /// B +0x3c previous preview height (interpolation base).
-    pub old_height: f32,
+    /// 原 +0x28：拖拽起始放置平面。
+    pub placement_y: f32,
 }
 
-/// ShapePlacement (B 0x30 B record: mode byte @+0, snapped @+1, target/normal).
-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
-pub struct ShapePlacement {
-    /// 0 = unsnapped, 2 = snapped.
-    pub mode: u8,
-    pub snapped: bool,
-    pub position: Vec2,
-    pub target: Vec3,
-    pub normal: Vec3,
+impl Default for PreviewRectangle {
+    fn default() -> Self {
+        Self { last_audio_position: None, center: Vec2::ZERO, dimensions: Vec2::splat(6.0),
+            orientation: Vec2::X, placement_y: 0.0 }
+    }
 }
 
-/// CalcShapeHeight (B 16 B record `{tag u32@+0, cur f32@+4, prev f32@+8,
-/// delta f32@+0xc}`).
-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
-pub struct CalcShapeHeight {
-    pub tag: u32,
-    pub current: f32,
-    pub previous: f32,
-    pub delta: f32,
-}
+pub use shape_placement::{ShapePlacement, SnapMode, DontRecalculateShapePlacement};
 
-/// CreateCircleCmd (B payload: `{u64 seq, u32 tag=0, center qword, radius
-/// qword}`; full 48 B Bevy slot 待取证).
+/// 兼容原恢复接口；与半木构造缓存共用同一个权威资源。
+pub use calc_shape_height::TimberframeConstructionParamsCache as CalcShapeHeight;
+
+/// 原圆形创建请求：继承墙身份、完整几何、高度与海拔。
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
 pub struct CreateCircleCmd {
+    pub previous_wall: Option<WallId>,
     pub center: Vec2,
     pub radius: f32,
+    pub rotation: f32,
+    pub height: f32,
+    pub elevation: f32,
 }
 
-/// CreateRectangleCmd (B payload `{cmd u64×2, center@+0x20, dims@+0x30,
-/// orientation@+0x40, ...}`).
+/// 原矩形创建请求：继承墙身份、完整几何、高度与海拔。
 ///
 /// `previous_wall` is the native event's `GlobalId` at record `+0x8`
 /// (fresh 0x140a93790: `MOV RSI,[RDI+0x8]`), the wall whose roof supplies the
@@ -108,6 +103,8 @@ pub struct CreateRectangleCmd {
     pub dimensions: Vec2,
     pub orientation: Vec2,
     pub previous_wall: Option<WallId>,
+    pub height: f32,
+    pub elevation: f32,
 }
 
 /// EditCircleCmd (radius / rotation edit transport).
@@ -171,6 +168,7 @@ pub fn register_shape_resources(world: &mut World) {
     world.init_resource::<ShapePlacement>();
     world.init_resource::<CalcShapeHeight>();
     world.init_resource::<Events<CreateCircleCmd>>();
+    world.init_resource::<Events<crate::resources::glade_border::MaxDemoElevationReached>>();
     world.init_resource::<Events<CreateRectangleCmd>>();
     world.init_resource::<Events<EditCircleCmd>>();
     world.init_resource::<Events<EditRectangleCmd>>();
@@ -178,8 +176,7 @@ pub fn register_shape_resources(world: &mut World) {
     world.init_resource::<Events<FinishEditRectangleCmd>>();
     world.init_resource::<Events<RotateCircleCmd>>();
     world.init_resource::<crate::resources::walls::shape_alignment::WallShapeAlignmentWrites>();
-    world.init_resource::<circle::ui_create_circle::CircleCanvasInput>();
-    world.init_resource::<rectangle::ui_create_rectangle::RectangleCanvasInput>();
+    world.init_resource::<rectangle::ui_create_rectangle::ShapesDragMouseMoved>();
     world.init_resource::<rectangle::ui_edit_rectangle_dims::RectangleDimsEditInput>();
     world.init_resource::<rectangle::ui_edit_rectangle_orientation::RectangleOrientationEditInput>();
     world.init_resource::<circle::ui_edit_circle::CircleEditState>();

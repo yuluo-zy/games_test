@@ -2,12 +2,8 @@
 //! These functions preserve observed f32 evaluation order. Raw fields retain
 //! offsets until the original type layout is independently recovered.
 
-fn f(b: &[u8], o: usize) -> f32 {
-    f32::from_le_bytes(b[o..o + 4].try_into().unwrap())
-}
-fn put(b: &mut [u8], o: usize, v: f32) {
-    b[o..o + 4].copy_from_slice(&v.to_le_bytes());
-}
+use ::utils::bytes::{read_f32_le as f, write_f32_le as put};
+use ::utils::scalar::{clamp, clamp01, max_f32};
 
 /// Observed parameter block, copied by Roof::new to bytes 0x24..0x40.
 /// Geometry consumers establish profile/height/eave/ridge roles; spelling is
@@ -125,13 +121,6 @@ pub fn eave_length_ws(profile: f32, eave: f32) -> f32 {
     (profile.sqrt() + (1.0 - profile.sqrt()) * 0.5) * (1.5 * eave + (1.0 - eave) * 0.0)
 }
 
-fn sse_max(a: f32, b: f32) -> f32 {
-    if a > b { a } else { b }
-}
-fn sse_min(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
-}
-
 /// Height rule: size-dependent smoothstep cap (8/9 -> 12) and 0.4 -> 12
 /// interpolation by height_01. Panic cases match the observed assertion.
 pub fn height(roof: &[u8; 88]) -> f32 {
@@ -144,15 +133,15 @@ pub fn height(roof: &[u8; 88]) -> f32 {
     } else {
         let x = f(roof, 0x1c);
         let z = f(roof, 0x20);
-        let greatest = if x.is_nan() { z } else { sse_max(z, x) };
+        let greatest = if x.is_nan() { z } else { max_f32(z, x) };
         ((greatest + (-2.25)) / 12.75, 9.0)
     };
-    let u = sse_min(1.0, sse_max(0.0, size / 0.4));
+    let u = clamp01(size / 0.4);
     let smooth = (3.0 - (u + u)) * (u * u);
     let cap = smooth * 12.0 + (1.0 - smooth) * base;
     assert!(cap >= 0.0, "original height cap assertion");
     let wanted = h * 12.0 + (1.0 - h) * 0.4;
-    sse_min(cap, sse_max(0.0, wanted))
+    clamp(wanted, 0.0, cap)
 }
 
 /// Twenty exact original normalized sample coordinates (f32 constants).
@@ -260,7 +249,7 @@ impl Curve2 {
         let a = self.points_u[segment];
         let b = self.points_u[next];
         assert!(a != b);
-        (segment, sse_min(1.0, sse_max(0.0, (u - a) / (b - a))))
+        (segment, clamp01((u - a) / (b - a)))
     }
     pub fn pos_at_u(&self, u: f32) -> [f32; 2] {
         let (i, t) = self.coord_at_u(u);

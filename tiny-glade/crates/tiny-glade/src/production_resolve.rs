@@ -4,7 +4,8 @@
 //! the session's first-class swapchain import (discarded contents, exported as
 //! Present by the library, which also injects the acquire wait and present
 //! signal into whichever batches first/last touch it); 0x140166b07 calls
-//! original resolve_to_swapchain.
+//! resolve_to_swapchain. The bundled current shaders map target pixel centers
+//! to the completed source extent, including when resize occurs after main.
 //!
 //! The presentation graph is declared on the render thread, after the main
 //! graph of the same frame. It reads nothing from the game world: the resolve

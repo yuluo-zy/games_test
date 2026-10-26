@@ -39,6 +39,7 @@
 
 use fastrand::Rng;
 use glam::{Quat, Vec3};
+use ::utils::scalar::lerp;
 use std::sync::LazyLock;
 
 /// Boid 记录（0x18）：pos Vec3@+0 + vel Vec3@+0xc。
@@ -82,7 +83,7 @@ pub fn random_vel_change(boid: &mut Boid, state: &mut BoidState, dt: f32, rng: &
         let u = rng.f32();
         let v = rng.f32();
         state.dir = uniform_sample_cone(u, v, CONE_MAX);
-        state.timer = utils_lerp(0.1, 0.3, rng.f32());
+        state.timer = lerp(0.1, 0.3, rng.f32());
     }
     state.dir_smoothed = time_continuous_lerp_vec3(state.dir_smoothed, state.dir, 4.0, dt);
     let q = Quat::from_rotation_arc(Vec3::Y, state.dir_smoothed);
@@ -100,11 +101,6 @@ pub fn uniform_sample_cone(u: f32, v: f32, cone: f32) -> Vec3 {
 
 /// 锥采样上限（random_vel_change 调用点 0x142f7d5f4 = 0x3f7e76c9）。
 pub const CONE_MAX: f32 = 0.99376;
-
-/// `utils::lerp(a, b, t)` = a + (b-a)*t。
-pub fn utils_lerp(a: f32, b: f32, t: f32) -> f32 {
-    a + (b - a) * t
-}
 
 /// `utils::time_continuous_lerp(cur, target, rate, dt)`（0x140c904e0）：
 /// `cur + (target-cur) * (1 - exp(-rate*dt))`。
@@ -248,7 +244,7 @@ pub fn frame_update(
         Some(g) => {
             let t = (1.0 * (g - boid.pos).length() * 0.5).min(1.0);
             let s = (3.0 - 2.0 * t) * t * t;
-            utils_lerp(0.2, 1.0, s) * min_speed
+            lerp(0.2, 1.0, s) * min_speed
         }
         None => min_speed,
     };

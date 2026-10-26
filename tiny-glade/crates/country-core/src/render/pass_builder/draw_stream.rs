@@ -17,7 +17,7 @@
 //!
 //! # RasterPass 布局（O，0x3e8 B）
 //! `+0x00` draws `Vec<DrawPacket(0xb8)>`；`+0x18` bindings `Vec<RenderPassBinding(0x44)>`（≤ 0x100）；
-//! `+0x30` `HashMap<TextureBindingKey, u8>`（+RandomState @0x50）；`+0x60` `HashMap<&str, u8>`（+RandomState @0x80）；
+//! `+0x30` `HashMap<TextureBindingKey, u32>`（+RandomState @0x50）；`+0x60` `HashMap<&str, u8>`（+RandomState @0x80）；
 //! `+0x90` PassBuilder（0x50 B，`+0xd0` = rg 资源信息 `rg::resource_info::from(device.+0xa0)`）；
 //! `+0xe0` 深度视图（u32 tag，2 = 无深度）…`+0x12d`；`+0x130` 描述符集克隆；`+0x1a8` `PassResources`（7 个指针）；
 //! `+0x1e0` 设备引用、`+0x1e8` 渲染 pass 缓存引用、`+0x1f0` world、`+0x1f8` 视口尺寸引用；
@@ -28,12 +28,13 @@
 //! `TextureBindingKey{texture:u32, view_hash:u64}`、`&Texture` 的键转换实现都与机器码不符，已重写；
 //! 旧 `RasterPass::get_render_pass` 的占位已落实为 `render` 内联的 entry 去重。
 
+// Current Rust binding slots are u32 throughout declaration, Collect and Commit; native byte offsets above are historical evidence.
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use hashbrown::HashMap;
 
 use crate::render::pass_builder::framebuffer_binding::{
-    ColorAttachment, ColorViewWords, DepthAttachment, DepthClear,
+    ColorAttachment, ColorClearWords, DepthAttachment, DepthClear,
 };
 use crate::render::pass_builder::rg_resources::RgResources;
 use crate::render::rg_helpers::rg_boundary::ResourceLease;
@@ -107,9 +108,10 @@ impl GpuOwned {
 
 /// `+0x10` Vec 的元素（8 B）：着色器绑定序号 + RasterPass.bindings 里的槽下标。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Rust packet slots use the graph's 32-bit index domain, including Commit remapping.
 pub struct ResourceAccess {
     pub binding_index: u32,
-    pub slot: u8,
+    pub slot: u32,
 }
 
 // ------------------------------------------------------------------------------------------
@@ -396,8 +398,10 @@ pub struct RasterPassSubmission {
     pub name: &'static str,
     pub draws: Vec<DrawPacket>,
     pub bindings: Vec<RenderPassBinding>,
-    pub texture_slots: HashMap<TextureBindingKey, u8>,
-    pub buffer_slots: HashMap<&'static str, u8>,
+    /// Exact native access appended by each binding; moved intact after Commit.
+    pub binding_accesses: Vec<usize>,
+    pub texture_slots: HashMap<TextureBindingKey, u32>,
+    pub buffer_slots: HashMap<&'static str, u32>,
     pub render_pass: ManagedHandle,
     pub accesses: Vec<PassAccess>,
     pub color_count: u32,
@@ -434,8 +438,8 @@ pub struct DeferredBuffer {
 pub struct DrawBatch {
     draws: Vec<DrawPacket>,
     bindings: Vec<RenderPassBinding>,
-    texture_slots: HashMap<TextureBindingKey, u8>,
-    buffer_slots: HashMap<&'static str, u8>,
+    texture_slots: HashMap<TextureBindingKey, u32>,
+    buffer_slots: HashMap<&'static str, u32>,
     accesses: Vec<PassAccess>,
     binding_accesses: Vec<usize>,
     deferred: Vec<DeferredBuffer>,
@@ -446,11 +450,9 @@ pub struct DrawBatch {
 pub trait PassHost {
     /// Prepare an immutable factory. The returned hosts are constructed and
     /// destroyed inside Collect; neither the graph nor its Rc crosses threads.
-    fn collect_factory(&self) -> Option<Arc<dyn Fn() -> alloc::boxed::Box<dyn PassHost> + Send + Sync>> {
-        None
+    fn collect_factory(&self) -> Arc<dyn Fn() -> alloc::boxed::Box<dyn PassHost> + Send + Sync> {
+        panic!("list-pass host must provide an owned Collect factory")
     }
-    /// Only an owning render thread may wait on shared-pool collection tasks.
-    fn try_parallel_collect(&self) -> Option<alloc::boxed::Box<dyn core::any::Any>> { None }
     fn collect_chunk_draws(&self) -> usize { 64 }
 
     /// Logical SSBO references recorded by a graph-free collector, in lookup order.
@@ -584,7 +586,7 @@ pub struct RasterPassColorAttachment {
     pub tag: u32,
     pub sample_count: u8,
     /// Exact VkClearColorValue bits; historical field name retained for source compatibility.
-    pub view: ColorViewWords,
+    pub view: ColorClearWords,
 }
 
 impl RasterPassColorAttachment {
@@ -615,8 +617,8 @@ pub const MAX_RENDER_PASS_COLORS: usize = 8;
 pub struct DrawDeclarations {
     pub(crate) draws: Vec<DrawPacket>,
     pub(crate) bindings: Vec<RenderPassBinding>,
-    pub(crate) texture_slots: HashMap<TextureBindingKey, u8>,
-    pub(crate) buffer_slots: HashMap<&'static str, u8>,
+    pub(crate) texture_slots: HashMap<TextureBindingKey, u32>,
+    pub(crate) buffer_slots: HashMap<&'static str, u32>,
     pub(crate) accesses: Vec<PassAccess>,
     /// Access introduced by each binding; needed to preserve cache-hit semantics
     /// when merging independently collected contiguous draw ranges.
@@ -664,38 +666,6 @@ impl RasterPass {
         }
     }
 
-    /// A texture cache keeps the first declaration's access mode. If a callback
-    /// changes that mode across chunks, its content checks must observe the
-    /// original cache; the caller reruns that pass through the serial path.
-    pub fn batches_compatible(&self, batches: &[DrawBatch]) -> bool {
-        let mut buffers = HashMap::new();
-        let mut textures: HashMap<TextureBindingKey, (u8, Option<TextureViewDesc>)> =
-            self.body.texture_slots.iter().map(|(&key, &slot)| {
-                let b = self.body.bindings[slot as usize]; (key, (b.access_type, b.view))
-            }).collect();
-        for batch in batches {
-            for (&key, &slot) in &batch.buffer_slots {
-                let resource = batch.bindings[slot as usize].resource_index;
-                let signature = if resource >= DEFERRED_BUFFER_BASE {
-                    let deferred = batch.deferred.iter().find(|buffer| buffer.token == resource)
-                        .expect("unresolved Collect resource");
-                    (deferred.hash, deferred.type_name, true)
-                } else { (u64::from(resource), "", false) };
-                if let Some(previous) = buffers.insert(key, signature) {
-                    if previous != signature { return false; }
-                }
-            }
-            for (&key, &slot) in &batch.texture_slots {
-                let b = batch.bindings[slot as usize];
-                let signature = (b.access_type, b.view);
-                if let Some(previous) = textures.insert(key, signature) {
-                    if previous != signature { return false; }
-                }
-            }
-        }
-        true
-    }
-
     /// Stable Commit. Keep unbound and discarded-draw accesses, eliminate only
     /// accesses that the original per-pass binding caches would have skipped.
     pub fn commit_draw_batch(&mut self, mut batch: DrawBatch) {
@@ -712,51 +682,68 @@ impl RasterPass {
             }
         };
         let mut slots = vec![None; batch.bindings.len()];
-        for (&key, &slot) in &batch.texture_slots {
-            slots[slot as usize] = self.body.texture_slots.get(&key).copied();
-        }
-        for (&key, &slot) in &batch.buffer_slots {
-            slots[slot as usize] = self.body.buffer_slots.get(key).copied();
-        }
-        let mut skip = vec![false; batch.accesses.len()];
-        let mut new_bindings = Vec::new();
-        for (index, mut binding) in batch.bindings.drain(..).enumerate() {
-            let access_index = batch.binding_accesses[index];
-            if slots[index].is_some() {
-                skip[access_index] = true;
-            } else {
-                resolve(&mut binding.resource_index);
-                let slot = u8::try_from(self.body.bindings.len()).expect("too many pass bindings");
-                slots[index] = Some(slot);
-                self.body.bindings.push(binding);
-                new_bindings.push(access_index);
+        if self.body.bindings.is_empty() {
+            // The first batch owns the binding domain. Adopt its containers;
+            // no alias pruning or full access-index scratch is needed.
+            for (index, slot) in slots.iter_mut().enumerate() { *slot = Some(index as u32); }
+            for binding in &mut batch.bindings { resolve(&mut binding.resource_index); }
+            for access in &mut batch.accesses { resolve(&mut access.resource); }
+            let prefix = self.body.accesses.len();
+            for access in &mut batch.binding_accesses { *access += prefix; }
+            self.body.bindings = batch.bindings;
+            self.body.binding_accesses = batch.binding_accesses;
+            self.body.texture_slots = batch.texture_slots;
+            self.body.buffer_slots = batch.buffer_slots;
+            if self.body.accesses.is_empty() { self.body.accesses = batch.accesses; }
+            else { self.body.accesses.extend(batch.accesses); }
+        } else {
+            for (&key, &slot) in &batch.texture_slots {
+                slots[slot as usize] = self.body.texture_slots.get(&key).copied();
+            }
+            for (&key, &slot) in &batch.buffer_slots {
+                slots[slot as usize] = self.body.buffer_slots.get(key).copied();
+            }
+            let mut skip = vec![false; batch.accesses.len()];
+            let mut new_bindings = Vec::new();
+            for (index, mut binding) in batch.bindings.drain(..).enumerate() {
+                let access_index = batch.binding_accesses[index];
+                if slots[index].is_some() {
+                    skip[access_index] = true;
+                } else {
+                    resolve(&mut binding.resource_index);
+                    let slot = u32::try_from(self.body.bindings.len()).expect("too many pass bindings");
+                    slots[index] = Some(slot);
+                    self.body.bindings.push(binding);
+                    new_bindings.push(access_index);
+                }
+            }
+            let mut access_indices = vec![0; batch.accesses.len()];
+            for (index, mut access) in batch.accesses.into_iter().enumerate() {
+                if !skip[index] {
+                    resolve(&mut access.resource);
+                    access_indices[index] = self.body.accesses.len();
+                    self.body.accesses.push(access);
+                }
+            }
+            self.body.binding_accesses.extend(new_bindings.into_iter().map(|i| access_indices[i]));
+            for (key, slot) in batch.texture_slots {
+                self.body.texture_slots.entry(key).or_insert(slots[slot as usize].unwrap());
+            }
+            for (key, slot) in batch.buffer_slots {
+                self.body.buffer_slots.entry(key).or_insert(slots[slot as usize].unwrap());
             }
         }
-        let mut access_indices = vec![0; batch.accesses.len()];
-        for (index, mut access) in batch.accesses.into_iter().enumerate() {
-            if !skip[index] {
-                resolve(&mut access.resource);
-                access_indices[index] = self.body.accesses.len();
-                self.body.accesses.push(access);
-            }
-        }
-        self.body.binding_accesses.extend(new_bindings.into_iter().map(|i| access_indices[i]));
-        for (key, slot) in batch.texture_slots {
-            self.body.texture_slots.entry(key).or_insert(slots[slot as usize].unwrap());
-        }
-        for (key, slot) in batch.buffer_slots {
-            self.body.buffer_slots.entry(key).or_insert(slots[slot as usize].unwrap());
-        }
-        for mut draw in batch.draws {
+        for draw in &mut batch.draws {
             for access in &mut draw.accesses { access.slot = slots[access.slot as usize].unwrap(); }
             match &mut draw.kind {
                 DrawKind::MultiDrawIndirect { buffer, .. } | DrawKind::IndexedIndirect { buffer, .. } => resolve(buffer),
                 DrawKind::IndexedIndirectCount { buffer, count_buffer, .. } => { resolve(buffer); resolve(count_buffer); }
                 _ => {}
             }
-            self.host.commit_collected_draw(&mut draw);
-            self.body.draws.push(draw);
+            self.host.commit_collected_draw(draw);
         }
+        if self.body.draws.is_empty() { self.body.draws = batch.draws; }
+        else { self.body.draws.extend(batch.draws); }
     }
 
     /// `new`（inline 42）→ `new_impl`（0x140867970）。
@@ -892,6 +879,7 @@ impl RasterPass {
             name: self.name,
             draws: core::mem::take(&mut self.body.draws),
             bindings: core::mem::take(&mut self.body.bindings),
+            binding_accesses: core::mem::take(&mut self.body.binding_accesses),
             texture_slots: core::mem::take(&mut self.body.texture_slots),
             buffer_slots: core::mem::take(&mut self.body.buffer_slots),
             render_pass,
@@ -904,12 +892,6 @@ impl RasterPass {
         self.host.submit_raster_pass(submission);
         crate::render::declare_probe::render(probe_started);
     }
-}
-
-/// DrawStream（旧占位聚合体，无 PDB 过程；保留给既有 re-export）。
-#[derive(Debug, Default)]
-pub struct DrawStream {
-    pub packets: Vec<DrawPacket>,
 }
 
 #[cfg(test)]
@@ -978,6 +960,24 @@ pub(crate) mod test_host {
     }
 
     impl PassHost for MockHost {
+        fn collect_factory(&self) -> Arc<dyn Fn() -> Box<dyn PassHost> + Send + Sync> {
+            let shaders = self.shaders.clone();
+            let rg_buffers = self.rg_buffers.clone();
+            let placement = self.placement.clone();
+            let vk_buffers = self.vk_buffers.clone();
+            let textures_by_name = self.textures_by_name.clone();
+            let presets = self.presets.clone();
+            let constants = self.constants;
+            let buffer_words = self.buffer_words.clone();
+            Arc::new(move || {
+                let (mut host, _) = MockHost::new();
+                host.shaders = shaders.clone(); host.rg_buffers = rg_buffers.clone();
+                host.placement = placement.clone(); host.vk_buffers = vk_buffers.clone();
+                host.textures_by_name = textures_by_name.clone(); host.presets = presets.clone();
+                host.constants = constants; host.buffer_words = buffer_words.clone();
+                host.boxed()
+            })
+        }
         fn take_deferred_buffers(&mut self) -> Vec<DeferredBuffer> { core::mem::take(&mut self.deferred) }
         fn raster_shader(
             &self,
@@ -1079,6 +1079,65 @@ mod tests {
             format,
             sample_count: 4,
         }
+    }
+
+    #[test]
+    fn adopted_binding_domain_preserves_access_prefix_and_later_alias_pruning() {
+        let (mut host, _) = MockHost::new();
+        host.rg_buffers.insert(0xAAAA, 5);
+        let color = crate::render::pass_builder::framebuffer_binding::AttachmentTexture {
+            id: 99, extent: (1, 1), format: 37, sample_count: 1,
+        };
+        let mut owner = RasterPass::new("prefix", &[ColorAttachment::Texture(color)], None, host.boxed());
+        owner.body.draws.push(DrawPacket::new(Handle::gap_new(), [77, 0], RasterState(0)));
+        let batch = |marker| {
+            let mut draw = DrawPacket::new(Handle::gap_new(), [marker, 0], RasterState(0));
+            draw.accesses.push(ResourceAccess { binding_index: 3, slot: 0 });
+            draw.kind = DrawKind::MultiDrawIndirect { buffer: DEFERRED_BUFFER_BASE, arg_50: 0, arg_58: 1 };
+            DrawBatch {
+                draws: vec![draw],
+                bindings: vec![RenderPassBinding { resource_index: DEFERRED_BUFFER_BASE, access_type: 0x10, view: None }],
+                texture_slots: HashMap::new(),
+                buffer_slots: HashMap::from([("ssbo", 0)]),
+                accesses: vec![PassAccess { resource: DEFERRED_BUFFER_BASE, access: 0x10, group: 0 }; 2],
+                binding_accesses: vec![1],
+                deferred: vec![DeferredBuffer { token: DEFERRED_BUFFER_BASE, hash: 0xAAAA, type_name: "fixture" }],
+            }
+        };
+        owner.commit_draw_batch(batch(1));
+        assert_eq!(owner.body.binding_accesses, [2]);
+        assert_eq!(owner.body.accesses.len(), 3);
+        owner.commit_draw_batch(batch(2));
+        assert_eq!(owner.body.binding_accesses, [2]);
+        assert_eq!(owner.body.bindings.len(), 1);
+        assert_eq!(owner.body.accesses.len(), 4, "only the cached binding access is skipped; unbound accesses survive");
+        assert_eq!(owner.body.accesses[0].resource, 99);
+        assert!(owner.body.accesses[1..].iter().all(|access| access.resource == 5));
+        assert_eq!(owner.body.draws.iter().map(|draw| draw.head[0]).collect::<Vec<_>>(), [77, 1, 2]);
+        for draw in &owner.body.draws[1..] {
+            assert_eq!(draw.accesses[0].slot, 0);
+            assert_eq!(draw.kind, DrawKind::MultiDrawIndirect { buffer: 5, arg_50: 0, arg_58: 1 });
+        }
+        owner.render();
+    }
+
+    #[test]
+    fn first_commit_adopts_worker_draw_storage_and_later_commit_preserves_prefix() {
+        let (host, _) = MockHost::new();
+        let mut local = RasterPass::collector(host.boxed(), [1, 1]);
+        for marker in 0..17 { local.body.draws.push(DrawPacket::new(Handle::gap_new(), [marker, 0], RasterState(0))); }
+        let batch = local.into_draw_batch();
+        let storage = batch.draws.as_ptr();
+        let (host, _) = MockHost::new();
+        let mut owner = RasterPass::new("owner", &[], None, host.boxed());
+        owner.commit_draw_batch(batch);
+        assert_eq!(owner.body.draws.as_ptr(), storage);
+        let (host, _) = MockHost::new();
+        let mut next = RasterPass::collector(host.boxed(), [1, 1]);
+        next.body.draws.push(DrawPacket::new(Handle::gap_new(), [17, 0], RasterState(0)));
+        owner.commit_draw_batch(next.into_draw_batch());
+        assert_eq!(owner.body.draws.iter().map(|draw| draw.head[0]).collect::<Vec<_>>(), (0..18).collect::<Vec<_>>());
+        owner.render();
     }
 
     #[test]

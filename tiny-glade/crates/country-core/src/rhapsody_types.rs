@@ -354,7 +354,7 @@ pub use rhapsody::resource::ManagedBuffer;
 pub use rhapsody::resource::TextureDesc as RhapsodyTextureDesc;
 /// `raw::texture::TextureViewDesc`（resolve 后的实际视图描述，`vk::ImageViewType/Format/AspectFlags`）。
 pub use rhapsody::resource::TextureViewDesc as RhapsodyTextureViewDesc;
-/// `raw::error::{Error, Result}`。
+/// `rhapsody::{Error, Result}`。
 pub use rhapsody::{Error as RhapsodyError, Result as RhapsodyResult};
 /// `raw::shader::{RasterPipelineOpts, ShaderLibrary, VulkanPipeline}`。
 pub use rhapsody::{

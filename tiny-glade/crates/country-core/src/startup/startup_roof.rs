@@ -81,12 +81,6 @@ pub fn startup_roof(
         .try_into()
         .expect("original roof startup has exactly two drawables")
 }
-/// Partial compatibility helper, not the actual device gameplay startup.
-pub fn startup_roof_meshes(meshes: bevy_ecs::prelude::Res<AssetMeshLibrary>) {
-    for (path, name) in ROOF_MESHES {
-        super::register_mesh_file(&meshes, path, Some(name));
-    }
-}
 #[cfg(test)]
 mod tests {
     use super::*;

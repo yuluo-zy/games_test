@@ -2,7 +2,7 @@
 use crate::{components::{Ui2dExtent,Ui2DFollowMouse}, resources::mouse_terrain_raycast::CursorPositionSS};
 use bevy_ecs::prelude::*;
 pub fn ui_2d_follow_mouse(
-    mut query: Query<(&mut Ui2dExtent, &Ui2DFollowMouse)>,
+    mut query: Query<(ComponentWrite<Ui2dExtent>, &Ui2DFollowMouse)>,
     cursor: Res<CursorPositionSS>,
 ) {
     for (mut extent, _) in &mut query {
@@ -50,3 +50,5 @@ mod tests {
         );
     }
 }
+
+use crate::render::extract::ComponentWrite;

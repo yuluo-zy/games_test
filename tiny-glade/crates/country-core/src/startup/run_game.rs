@@ -154,7 +154,7 @@ where
 
 /// 每帧先处理命令，再消费本帧新请求；chain 保证 Commands 在消费者之前提交。
 /// 契约 §1.4：本表对应 OnEnter(AppLoadingState::Game)；batch2/batch3/batch4
-/// 共用同一 label。启动世界资产产者按 batch2→batch4 顺序追加在会话载入之后。
+/// 共用同一 label。设备宿主负责完整的世界资产产者，不登记 CPU mesh-only 分支。
 pub fn register_session_systems(schedule: &mut Schedule) {
     use bevy_ecs::schedule::common_conditions::resource_exists;
     schedule.add_systems(
@@ -165,7 +165,6 @@ pub fn register_session_systems(schedule: &mut Schedule) {
         )
             .chain(),
     );
-    super::add_startup_mesh_systems(schedule);
 }
 
 /// 每帧系统不再包含磁盘初始扫描、音乐重建和启动网格加载。

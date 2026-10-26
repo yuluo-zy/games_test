@@ -175,10 +175,12 @@ fn real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set() 
     uniform.write_bytes(0, &25u32.to_le_bytes()).unwrap();
     let mut constants = DynamicConstants::new(device.clone()).unwrap();
     let pool = VulkanCommandPool::new(device.clone()).unwrap();
+    let pages = rhapsody::bindless::BindlessPagePool::new(heap.clone()).unwrap();
+    let mut cursor = pages.cursor();
     for value in 17..33u32 {
-        let mut bindings =
-            BindlessParameters::new(heap.clone(), package.abi.clone(), &value.to_le_bytes())
-                .unwrap();
+        let prepared = cursor.prepare(|group| {
+        group.require_slots([0, 0, 4, 0])?;
+        let mut bindings = group.parameters(package.abi.clone(), &value.to_le_bytes())?;
         for (location, element, owner) in [
             (BindingLocation { set: 0, binding: 5 }, 0, &first),
             (BindingLocation { set: 0, binding: 5 }, 1, &second),
@@ -195,11 +197,20 @@ fn real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set() 
                     },
                 )
                 .unwrap();
+            if location.binding == 5 && element == 0 {
+                let live = heap.stats().live;
+                for _ in 0..64 {
+                    assert!(matches!(bindings.write(location, element, BindlessResource::Buffer {
+                        buffer: second.clone(), offset: 0, size: 4,
+                    }), Err(rhapsody::Error::InvalidUsage { .. })));
+                }
+                assert_eq!(heap.stats().live, live, "rejected duplicates cannot allocate/cache another resource");
+            }
         }
-        let prepared = bindings.finish(&mut constants).unwrap();
-        let changed_push = prepared
-            .with_push(&(value + 100).to_le_bytes(), &mut constants)
-            .unwrap();
+        bindings.finish(|size| constants.allocate(size)).map_err(Into::into)
+        }).unwrap();
+        let changed_push = cursor.prepare(|group| group.with_push(&prepared, &(value + 100).to_le_bytes(),
+            |size| constants.allocate(size))?.ok_or_else(|| rhapsody::Error::invalid_usage("test group unexpectedly changed page").into())).unwrap();
         let mut command = pool.allocate().unwrap();
         command.begin().unwrap();
         unsafe {
@@ -365,28 +376,32 @@ fn complete_groups_page_without_changing_the_abi_or_immutable_push_values() {
     assert_eq!(heap.stats().table(DescriptorKind::StorageBuffer).free, 5);
     let mut constants = DynamicConstants::new(device.clone()).unwrap();
     let mut prepared: Vec<rhapsody::bindless::PreparedBindlessParameters> = Vec::new();
-    for value in [17u32, 18, 19] {
+    // Recording workers may keep their cursors alive together. Their presence
+    // must not strand free slots and grow one physical page per cursor.
+    let mut cursors = [cursor, pages.cursor(), pages.cursor()];
+    for (index, (cursor, value)) in cursors.iter_mut().zip([17u32, 18, 19]).enumerate() {
+        if index == 2 {
+            pages.advance_frame();
+            *cursor = pages.cursor();
+        }
         let previous = prepared.last();
         let next = cursor
             .prepare(|group| {
-                if let Some(previous) =
-                    previous.filter(|previous| previous.belongs_to(group.heap()))
-                {
-                    group.require_slots([0, 0, 1, 0])?;
-                    return previous
-                        .with_push(&value.to_le_bytes(), &mut constants)
-                        .map_err(Into::into);
+                if let Some(previous) = previous
+                    && let Some(prepared) = group.with_push(previous, &value.to_le_bytes(), |size| constants.allocate(size))? {
+                    return Ok(prepared);
                 }
                 group.require_slots(required)?;
-                let mut bindings = BindlessParameters::new(
-                    group.heap().clone(),
+                let mut bindings = group.parameters(
                     package.abi.clone(),
                     &value.to_le_bytes(),
                 )?;
                 for ((location, element), resource) in locations.iter().zip(&resources) {
                     bindings.write(*location, *element, resource.clone())?;
                 }
-                bindings.finish(&mut constants).map_err(Into::into)
+                bindings
+                    .finish(|size| constants.allocate(size))
+                    .map_err(Into::into)
             })
             .unwrap();
         prepared.push(next);
@@ -395,18 +410,41 @@ fn complete_groups_page_without_changing_the_abi_or_immutable_push_values() {
     assert!(prepared[0].belongs_to(&heap));
     assert!(prepared[1].belongs_to(&heap));
     assert!(!prepared[2].belongs_to(&heap));
-    let readback = Buffer::new(
-        device.clone(),
-        &BufferDesc::new_gpu_to_cpu(12, vk::BufferUsageFlags::TRANSFER_DST),
-    )
-    .unwrap();
+    // A valid foreign set makes an omitted interop invalidation produce a
+    // different value, rather than accessing uninitialized descriptors.
+    let foreign_parameters = Arc::new(Buffer::new(device.clone(),
+        &BufferDesc::new_cpu_to_gpu(16, vk::BufferUsageFlags::STORAGE_BUFFER)).unwrap());
+    let foreign_words: Vec<u8> = [99u32, 0, 1, 2].into_iter()
+        .flat_map(u32::to_le_bytes).collect();
+    foreign_parameters.write_bytes(0, &foreign_words).unwrap();
+    let foreign_pool = rhapsody::raw::descriptor_set::VulkanDescriptorPool::new(
+        device.clone(), heap.layout.plan(), 1).unwrap();
+    let mut foreign = foreign_pool.allocate(heap.layout.clone()).unwrap();
+    for (index, owner) in owners.iter().cloned()
+        .chain([foreign_parameters.clone(), foreign_parameters.clone()]).enumerate() {
+        unsafe { foreign.update(2, index as u32, &rhapsody::raw::binding::DescriptorSetBinding::Buffer {
+            ty: vk::DescriptorType::STORAGE_BUFFER,
+            info: vk::DescriptorBufferInfo::default().buffer(owner.raw_handle()).offset(0)
+                .range(if index < 3 { 4 } else { 16 }),
+            owner,
+        }) }.unwrap();
+    }
+    let foreign = Arc::new(foreign);
+    let readback = Buffer::new(device.clone(),
+        &BufferDesc::new_gpu_to_cpu(20, vk::BufferUsageFlags::TRANSFER_DST)).unwrap();
     let pool = VulkanCommandPool::new(device.clone()).unwrap();
     let mut command = pool.allocate().unwrap();
     command.begin().unwrap();
     unsafe {
         pipeline.bind_pipeline(command.raw_handle());
-        for (index, parameters) in prepared.iter().enumerate() {
-            parameters
+        command.retain_opaque(foreign.clone()).unwrap();
+        for (index, selection) in [0usize, 1, 2, 0, 0].into_iter().enumerate() {
+            if index == 4 {
+                device.raw_device().cmd_bind_descriptor_sets(command.raw_handle(),
+                    vk::PipelineBindPoint::COMPUTE, pipeline.layout.raw_handle(), 0,
+                    &[foreign.raw_handle()], &[]);
+            }
+            prepared[selection]
                 .bind_command(&mut command, pipeline.clone())
                 .unwrap();
             device
@@ -464,7 +502,7 @@ fn complete_groups_page_without_changing_the_abi_or_immutable_push_values() {
             &[vk::BufferMemoryBarrier::default()
                 .buffer(readback.raw_handle())
                 .offset(0)
-                .size(12)
+                .size(20)
                 .src_access_mask(vk::AccessFlags::TRANSFER_WRITE)
                 .dst_access_mask(vk::AccessFlags::HOST_READ)
                 .src_queue_family_index(vk::QUEUE_FAMILY_IGNORED)
@@ -482,18 +520,46 @@ fn complete_groups_page_without_changing_the_abi_or_immutable_push_values() {
         )
         .unwrap();
     drop(pending);
-    let mut snapshots = [0; 12];
+    let mut snapshots = [0; 20];
     readback.read_bytes(0, &mut snapshots).unwrap();
     let values: Vec<_> = snapshots
         .chunks_exact(4)
         .map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap()))
         .collect();
-    assert_eq!(values, [42, 43, 44]);
+    assert_eq!(values, [42, 43, 44, 42, 42]);
     let mut actual = [0; 4];
     owners[1].read_bytes(0, &mut actual).unwrap();
-    assert_eq!(u32::from_le_bytes(actual), 44);
+    assert_eq!(u32::from_le_bytes(actual), 42);
     owners[0].read_bytes(0, &mut actual).unwrap();
     assert_eq!(u32::from_le_bytes(actual), 123);
+    for _ in 1..device.frames_in_flight() {
+        pages.advance_frame();
+    }
+    let mut next_frame = pages.cursor();
+    let reused = next_frame
+        .prepare(|group| {
+            group.require_slots(required)?;
+            let mut bindings = group.parameters(
+                package.abi.clone(),
+                &20u32.to_le_bytes(),
+            )?;
+            for ((location, element), resource) in locations.iter().zip(&resources) {
+                bindings.write(*location, *element, resource.clone())?;
+            }
+            bindings
+                .finish(|size| constants.allocate(size))
+                .map_err(Into::into)
+        })
+        .unwrap();
+    assert!(
+        reused.belongs_to(&heap),
+        "completed frame bank must reuse its original arena"
+    );
+    assert_eq!(
+        pages.page_count(),
+        2,
+        "rotating back must not strand completed slots"
+    );
     assert_eq!(compiler.stats().compiled, 1);
     assert_eq!(device.retirement_stats().idle_waits, 0);
 }
@@ -631,7 +697,11 @@ fn lowering_keeps_the_draw_index_builtin_and_its_capability() {
     b.member_name(block, 0, "value");
     b.name(params_block, "DrawParamsBuffer");
     b.member_name(params_block, 0, "items");
-    b.decorate(params, Decoration::DescriptorSet, [Operand::LiteralInt32(0)]);
+    b.decorate(
+        params,
+        Decoration::DescriptorSet,
+        [Operand::LiteralInt32(0)],
+    );
     b.decorate(params, Decoration::Binding, [Operand::LiteralInt32(30)]);
     let input_uint = b.type_pointer(None, StorageClass::Input, uint);
     let draw_index = b.variable(input_uint, None, StorageClass::Input, None);
@@ -665,12 +735,7 @@ fn lowering_keeps_the_draw_index_builtin_and_its_capability() {
     b.store(position, vector, None, []).unwrap();
     b.ret().unwrap();
     b.end_function().unwrap();
-    b.entry_point(
-        ExecutionModel::Vertex,
-        main,
-        "main",
-        [draw_index, position],
-    );
+    b.entry_point(ExecutionModel::Vertex, main, "main", [draw_index, position]);
     let stage = CompiledShaderStage {
         stage: ShaderStage::Vertex,
         entry_point: "main".into(),
@@ -686,10 +751,12 @@ fn lowering_keeps_the_draw_index_builtin_and_its_capability() {
     };
     let (_, stages) = shader_compiler::bindless::lower_pipeline(&input).unwrap();
     let lowered = rspirv::dr::load_words(&stages[0].spirv).unwrap();
-    assert!(lowered
-        .capabilities
-        .iter()
-        .any(|inst| inst.operands == [Operand::Capability(Capability::DrawParameters)]));
+    assert!(
+        lowered
+            .capabilities
+            .iter()
+            .any(|inst| inst.operands == [Operand::Capability(Capability::DrawParameters)])
+    );
     assert!(lowered.annotations.iter().any(|inst| {
         inst.operands.get(1) == Some(&Operand::Decoration(Decoration::BuiltIn))
             && inst.operands.get(2) == Some(&Operand::BuiltIn(BuiltIn::DrawIndex))

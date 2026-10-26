@@ -4,6 +4,7 @@ use super::graph;
 use crate::{
     Error, Result,
     device::BudgetCategory,
+    collections::cpu_pool::{CpuPool, CpuPoolLease, CpuPoolLimits, CpuPoolValue},
     raw::allocator::{AllocatorStats, CpuMemoryReservation},
 };
 use std::sync::Arc;
@@ -53,13 +54,26 @@ impl std::fmt::Debug for ReceiptSlot {
     }
 }
 pub(crate) struct ReceiptStorage {
-    slots: Vec<Arc<ReceiptSlot>>,
+    pool: CpuPool<Arc<ReceiptSlot>>,
     config: ReceiptStorageConfig,
     budget: Arc<AllocatorStats>,
-    growths: u64,
-    stalls: u64,
-    metadata_bytes: usize,
-    _metadata: CpuMemoryReservation,
+}
+pub(crate) struct ReceiptLease {
+    lease: CpuPoolLease<Arc<ReceiptSlot>>,
+}
+impl CpuPoolValue for Arc<ReceiptSlot> {
+    type Statistics = ();
+    fn capacity_bytes(&self) -> usize { self.bytes }
+    fn available(&self) -> bool { Arc::strong_count(self) == 1 && Arc::weak_count(self) == 0 }
+    fn reset(&mut self) {
+        let slot = Arc::get_mut(self).expect("exclusive receipt slot");
+        slot.data.receipts.clear();
+        slot.data.snapshot.physical_mapping.clear();
+        slot.data.snapshot.pool_hits.clear();
+    }
+    fn reclassify(&mut self, category: BudgetCategory) {
+        Arc::get_mut(self).expect("exclusive receipt slot").reservation.reclassify(category);
+    }
 }
 fn bytes<T>(capacity: usize) -> usize {
     capacity.saturating_mul(std::mem::size_of::<T>())
@@ -114,146 +128,79 @@ fn empty_snapshot(source: &graph::Snapshot) -> graph::Snapshot {
 }
 impl ReceiptStorage {
     pub(crate) fn new(config: ReceiptStorageConfig, budget: Arc<AllocatorStats>) -> Result<Self> {
-        if !(1..=256).contains(&config.max_receipts)
-            || config.max_cached_bytes > config.max_total_bytes
-        {
-            return Err(Error::invalid_usage(
-                "invalid bounded receipt storage configuration",
-            ));
-        }
-        let mut slots = Vec::new();
-        slots
-            .try_reserve_exact(config.max_receipts)
-            .map_err(|_| Error::OutOfHostMemory)?;
-        let metadata_bytes =
-            bytes::<Arc<ReceiptSlot>>(slots.capacity()).saturating_add(std::mem::size_of::<Self>());
-        if metadata_bytes >= config.max_total_bytes {
-            return Err(Error::invalid_usage(
-                "receipt storage limit cannot hold its slots",
-            ));
-        }
-        let metadata = budget.reserve_cpu_bytes(metadata_bytes as u64, BudgetCategory::Live)?;
-        Ok(Self {
-            slots,
-            config,
-            budget,
-            growths: 0,
-            stalls: 0,
-            metadata_bytes,
-            _metadata: metadata,
-        })
+        let pool = CpuPool::new(CpuPoolLimits {
+            items: config.max_receipts, total_bytes: config.max_total_bytes,
+            cached_bytes: config.max_cached_bytes, full: || Error::Timeout,
+        }, budget.clone())?;
+        Ok(Self { pool, config, budget })
     }
-    pub(crate) fn statistics(&mut self) -> ReceiptStorageStats {
-        let mut stats = ReceiptStorageStats {
-            slots: self.slots.len(),
-            metadata_bytes: self.metadata_bytes,
-            capacity_growths: self.growths,
-            capacity_stalls: self.stalls,
-            ..Default::default()
-        };
-        for arc in &mut self.slots {
-            if let Some(slot) = Arc::get_mut(arc) {
-                slot.reservation.reclassify(BudgetCategory::Cache);
-                stats.cached_bytes += slot.bytes;
-            } else {
-                stats.borrowed += 1;
-                stats.live_bytes += arc.bytes;
-            }
+    pub(crate) fn statistics(&self) -> ReceiptStorageStats {
+        let stats = self.pool.stats();
+        ReceiptStorageStats {
+            slots: stats.checked_out + stats.cached + stats.pinned,
+            borrowed: stats.checked_out + stats.pinned,
+            live_bytes: stats.live_bytes, cached_bytes: stats.cached_bytes,
+            metadata_bytes: stats.metadata_bytes, capacity_growths: stats.capacity_growths,
+            capacity_stalls: stats.capacity_stalls,
         }
-        stats
     }
-    pub(crate) fn trim_idle(&mut self, target: usize) -> usize {
-        let mut cached = self.statistics().cached_bytes;
-        let mut freed = 0;
-        let mut index = 0;
-        while cached > target && index < self.slots.len() {
-            if Arc::get_mut(&mut self.slots[index]).is_some() {
-                let slot = self.slots.swap_remove(index);
-                cached -= slot.bytes;
-                freed += slot.bytes;
-                drop(slot);
-            } else {
-                index += 1;
-            }
-        }
-        freed
-    }
-    /// Admit all receipt capacity before any irreversible queue submission.
-    pub(crate) fn prepare(&mut self, source: &graph::Snapshot, receipts: usize) -> Result<usize> {
-        self.trim_idle(self.config.max_cached_bytes);
-        let existing = self
-            .slots
-            .iter_mut()
-            .position(|slot| Arc::get_mut(slot).is_some());
-        if existing.is_none() && self.slots.len() == self.config.max_receipts {
-            self.stalls += 1;
-            return Err(Error::Timeout);
-        }
-        let total = self.metadata_bytes + self.slots.iter().map(|s| s.bytes).sum::<usize>();
-        let mut new_slot = None;
-        let index = existing.unwrap_or(self.slots.len());
-        let slot = if let Some(index) = existing {
-            Arc::get_mut(&mut self.slots[index]).expect("exclusive receipt slot")
-        } else {
-            new_slot = Some(ReceiptSlot {
-                data: ReceiptData {
-                    receipts: Vec::new(),
-                    snapshot: empty_snapshot(source),
-                },
-                bytes: 0,
-                reservation: self.budget.reserve_cpu_bytes(0, BudgetCategory::Live)?,
-            });
-            new_slot.as_mut().expect("new receipt slot")
-        };
-        let previous = slot.bytes;
-        let required = desired(
-            &slot.data.snapshot,
-            source,
-            slot.data.receipts.capacity().max(receipts),
-        );
-        if total.saturating_add(required.saturating_sub(previous)) > self.config.max_total_bytes {
-            self.stalls += 1;
-            return Err(Error::Timeout);
-        }
-        slot.reservation.reclassify(BudgetCategory::Live);
-        slot.reservation.resize(required as u64)?;
-        let result = reserve(&mut slot.data.receipts, receipts)
-            .and_then(|()| copy_snapshot(&mut slot.data.snapshot, source));
-        slot.data.receipts.clear();
-        let actual = capacity(&slot.data.snapshot, slot.data.receipts.capacity());
-        slot.bytes = actual;
-        let accounted = slot.reservation.resize(actual as u64);
-        let valid = result.and(accounted).and_then(|()| {
-            if total - previous + actual > self.config.max_total_bytes {
-                Err(Error::Timeout)
-            } else {
-                Ok(())
-            }
-        });
-        if let Err(error) = valid {
-            if existing.is_some() {
-                self.slots.swap_remove(index);
-            }
+    pub(crate) fn trim_idle(&self, target: usize) -> usize { self.pool.trim_idle(target) }
+    /// An owned reservation follows the compiled frame through execute/cancel;
+    /// a canceled preparation immediately returns its storage to the same pool.
+    pub(crate) fn prepare(&self, source: &graph::Snapshot, receipts: usize) -> Result<ReceiptLease> {
+        self.pool.trim_idle(self.config.max_cached_bytes);
+        let mut lease = ReceiptLease { lease: self.pool.checkout(|| {
+            let snapshot = empty_snapshot(source);
+            let bytes = capacity(&snapshot, 0);
+            let reservation = self.budget.reserve_cpu_bytes(bytes as u64, BudgetCategory::Live)?;
+            Ok(Arc::new(ReceiptSlot { data: ReceiptData { receipts: Vec::new(), snapshot }, bytes, reservation }))
+        })? };
+        let slot = lease.lease.value();
+        let required = desired(&slot.data.snapshot, source, slot.data.receipts.capacity().max(receipts));
+        if let Err(error) = lease.resize(required, |data| {
+            reserve(&mut data.receipts, receipts)?;
+            copy_snapshot(&mut data.snapshot, source)
+        }) {
+            lease.lease.discard_on_return();
             return Err(error);
         }
-        self.growths += u64::from(actual > previous);
-        if existing.is_none() {
-            self.slots
-                .push(Arc::new(new_slot.expect("new receipt slot")));
-        }
-        Ok(index)
+        Ok(lease)
     }
-    pub(crate) fn publish(
-        &mut self,
-        index: usize,
-        receipts: &[crate::sync::SyncPoint],
-    ) -> Arc<ReceiptSlot> {
-        let arc = &mut self.slots[index];
-        let slot = Arc::get_mut(arc).expect("unpublished receipt slot is exclusive");
-        assert!(
-            receipts.len() <= slot.data.receipts.capacity(),
-            "receipt capacity admitted before submit"
-        );
+}
+impl ReceiptLease {
+    fn resize(&mut self, required: usize, change: impl FnOnce(&mut ReceiptData) -> Result<()>) -> Result<()> {
+        let previous = self.lease.value().bytes;
+        self.lease.update(required.saturating_sub(previous), |arc, available| {
+            let slot = Arc::get_mut(arc).expect("unpublished receipt is exclusive");
+            let limit = slot.bytes.saturating_add(available);
+            slot.reservation.resize(required as u64)?;
+            let result = change(&mut slot.data);
+            let actual = capacity(&slot.data.snapshot, slot.data.receipts.capacity());
+            let accounted = if actual > limit { Err(Error::Timeout) } else { slot.reservation.resize(actual as u64) };
+            if let Err(error) = accounted {
+                // Release enlarged vectors before crediting their reservation.
+                drop(std::mem::take(&mut slot.data.receipts));
+                drop(std::mem::take(&mut slot.data.snapshot.physical_mapping));
+                drop(std::mem::take(&mut slot.data.snapshot.pool_hits));
+                slot.bytes = capacity(&slot.data.snapshot, 0);
+                slot.reservation.resize(slot.bytes as u64).expect("shrinking receipt reservation");
+                return Err(error);
+            }
+            slot.bytes = actual;
+            result
+        })
+    }
+    /// The exact bound count is known after ownership preludes, before submit.
+    pub(crate) fn reserve_points(&mut self, count: usize) -> Result<()> {
+        let slot = self.lease.value();
+        if count <= slot.data.receipts.capacity() { return Ok(()); }
+        let required = capacity(&slot.data.snapshot, count);
+        self.resize(required, |data| reserve(&mut data.receipts, count))
+    }
+    pub(crate) fn publish(mut self, receipts: &[crate::sync::SyncPoint]) -> Arc<ReceiptSlot> {
+        let arc = self.lease.value_mut();
+        let slot = Arc::get_mut(arc).expect("unpublished receipt is exclusive");
+        assert!(receipts.len() <= slot.data.receipts.capacity(), "receipt capacity admitted before submit");
         slot.data.receipts.extend_from_slice(receipts);
         arc.clone()
     }
@@ -298,20 +245,45 @@ mod tests {
         }
     }
     #[test]
+    fn cancellation_returns_storage_and_statistics_do_not_reclassify_weakly_pinned_slots() {
+        let budget = Arc::new(AllocatorStats::default());
+        let pool = ReceiptStorage::new(ReceiptStorageConfig { max_receipts: 1, ..config() }, budget.clone()).unwrap();
+        let source = snapshot(2);
+        let prepared = pool.prepare(&source, 3).unwrap();
+        assert_eq!(pool.statistics().borrowed, 1);
+        drop(prepared);
+        assert_eq!(pool.statistics().borrowed, 0);
+        let prepared = pool.prepare(&source, 3).unwrap();
+        let published = prepared.publish(&[]);
+        let weak = Arc::downgrade(&published);
+        drop(published);
+        assert!(matches!(pool.prepare(&source, 3), Err(Error::Timeout)));
+        assert_eq!(pool.trim_idle(0), 0);
+        drop(weak);
+        let usage = budget.cpu_memory_usage();
+        assert_eq!(pool.statistics().borrowed, 0);
+        assert!(pool.statistics().cached_bytes > 0);
+        assert_eq!(budget.cpu_memory_usage().live, usage.live);
+        assert_eq!(budget.cpu_memory_usage().cache, usage.cache);
+        assert!(pool.trim_idle(0) > 0);
+        drop(pool);
+        assert_eq!(budget.cpu_memory_usage().total(), 0);
+    }
+    #[test]
     fn retained_clones_bound_reuse_and_own_bytes_after_session_pool_drop() {
         let stats = Arc::new(AllocatorStats::default());
-        let mut pool = ReceiptStorage::new(config(), stats.clone()).unwrap();
+        let pool = ReceiptStorage::new(config(), stats.clone()).unwrap();
         let mut source = snapshot(12);
         let index = pool.prepare(&source, 16).unwrap();
         let point = crate::sync::SyncPoint {
             queue: crate::sync::QueueId::new(0).unwrap(),
             value: 1,
         };
-        let first = pool.publish(index, &[point]);
+        let first = index.publish(&[point]);
         let cloned = first.clone();
         source.physical_mapping[0].token = Some(22);
         let index = pool.prepare(&source, 16).unwrap();
-        let second = pool.publish(index, &[point]);
+        let second = index.publish(&[point]);
         assert_eq!(first.data.snapshot.physical_mapping[0].token, Some(11));
         assert_eq!(second.data.snapshot.physical_mapping[0].token, Some(22));
         assert!(matches!(pool.prepare(&source, 16), Err(Error::Timeout)));
@@ -322,7 +294,7 @@ mod tests {
         drop(cloned);
         for _ in 0..1000 {
             let index = pool.prepare(&source, 16).unwrap();
-            let reused = pool.publish(index, &[point]);
+            let reused = index.publish(&[point]);
             assert_eq!(reused.data.snapshot.physical_mapping.as_ptr(), pointer);
             assert_eq!(reused.data.receipts, [point]);
         }
@@ -337,7 +309,7 @@ mod tests {
     #[test]
     fn local_receipt_capacity_backpressure_and_host_budget_errors_are_distinct() {
         let stats = Arc::new(AllocatorStats::default());
-        let mut pool = ReceiptStorage::new(config(), stats.clone()).unwrap();
+        let pool = ReceiptStorage::new(config(), stats.clone()).unwrap();
         let source = snapshot(1);
         assert!(matches!(
             pool.prepare(&source, 100_000),
@@ -353,7 +325,7 @@ mod tests {
         ));
         stats.set_total_budget(0).unwrap();
         let index = pool.prepare(&source, 1).unwrap();
-        drop(pool.publish(index, &[]));
+        drop(index.publish(&[]));
         drop(pool);
         assert_eq!(stats.cpu_memory_usage().total(), 0);
     }

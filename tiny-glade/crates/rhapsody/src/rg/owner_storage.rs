@@ -60,7 +60,7 @@ impl ResourceOwners {
             Storage::Pooled(list) => list.add(owner),
             Storage::Local(items) => {
                 if items.len() == items.inline_size() {
-                    return Err(crate::Error::Timeout);
+                    return Err(crate::Error::exhausted("local retained-resource capacity exceeded"));
                 }
                 items.push(owner);
                 Ok(())

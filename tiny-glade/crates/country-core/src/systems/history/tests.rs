@@ -325,7 +325,12 @@ fn history_finish_recording_gates_on_recording_and_changed_owners() {
         .expect("changed owners commit an entry");
     assert_eq!(commit.entry_index, 0);
     assert!(!history.is_recording());
-    assert!(history.decorator_diff.is_some());
+    assert!(
+        history.ledger().entries[commit.entry_index]
+            .auxiliary
+            .decorator_diff
+            .is_some()
+    );
 }
 
 #[test]
@@ -548,18 +553,22 @@ fn new_replay_command_clears_previous_allowed_ids() {
     let mut schedule = Schedule::default();
     schedule.add_systems(history_clear_previous_state);
     schedule.run(&mut world);
-    assert!(world
-        .resource::<LiveDecoratorArchivist>()
-        .culling
-        .allowed_ids
-        .contains(&3));
+    assert!(
+        world
+            .resource::<LiveDecoratorArchivist>()
+            .culling
+            .allowed_ids
+            .contains(&3)
+    );
     world
         .resource_mut::<Events<history_process::NewReplayCommandEvent>>()
         .send(history_process::NewReplayCommandEvent);
     schedule.run(&mut world);
-    assert!(world
-        .resource::<LiveDecoratorArchivist>()
-        .culling
-        .allowed_ids
-        .is_empty());
+    assert!(
+        world
+            .resource::<LiveDecoratorArchivist>()
+            .culling
+            .allowed_ids
+            .is_empty()
+    );
 }

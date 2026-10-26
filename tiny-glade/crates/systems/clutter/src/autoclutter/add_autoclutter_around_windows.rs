@@ -125,21 +125,10 @@ pub fn window_ends(curve: &[Vec3]) -> Option<(Vec3, Vec3)> {
 
 /// 窗口键（`calculate_hash<tuple<&str,usize,u32>>` 语义）。
 pub fn hash_window_key(name: &str, curve_len: usize, u32_field: u32) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    name.hash(&mut h);
-    curve_len.hash(&mut h);
-    u32_field.hash(&mut h);
-    h.finish()
+    utils::calculate_hash(&(name, curve_len, u32_field))
 }
 
 /// trap_door 键（`calculate_hash<tuple<&str,i32,usize,u32>>` 语义）。
 pub fn hash_trap_door_key(subtype: i32, i: usize, u32_field: u32) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    TRAP_DOOR.hash(&mut h);
-    subtype.hash(&mut h);
-    i.hash(&mut h);
-    u32_field.hash(&mut h);
-    h.finish()
+    utils::calculate_hash(&(TRAP_DOOR, subtype, i, u32_field))
 }

@@ -102,12 +102,6 @@ pub fn glade_startup_walls(
     spawn_wall_drawables([brick, half], shaders, commands)
 }
 
-/// Existing mesh-only callers are explicitly partial; device gameplay uses
-/// glade_startup_walls, which includes shaders, procedural index mesh and ECS.
-pub fn startup_walls_meshes(meshes: bevy_ecs::prelude::Res<AssetMeshLibrary>) {
-    super::register_mesh_file(&meshes, BRICK_MESH_PATH, Some(BRICK_MESH_NAME));
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

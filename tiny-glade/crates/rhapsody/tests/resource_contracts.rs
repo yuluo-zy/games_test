@@ -480,7 +480,10 @@ fn resource_info_failure_preserves_metadata_and_rejects_invalid_indices() {
         access_code: WRITE,
         ..Default::default()
     }];
-    info.calculate(&origins, &[], &[&good], |_| ash::vk::AccessFlags::SHADER_READ).unwrap();
+    info.calculate(&origins, &[], &[&good], |_| {
+        ash::vk::AccessFlags::SHADER_READ
+    })
+    .unwrap();
     let previous = info.accesses.clone();
     let bad = [AccessDeclaration {
         resource_index: u32::MAX,
@@ -488,17 +491,21 @@ fn resource_info_failure_preserves_metadata_and_rejects_invalid_indices() {
         ..Default::default()
     }];
     assert_eq!(
-        info.calculate(&origins, &[], &[&bad], |_| ash::vk::AccessFlags::SHADER_READ)
-            .unwrap_err()
-            .kind(),
+        info.calculate(&origins, &[], &[&bad], |_| {
+            ash::vk::AccessFlags::SHADER_READ
+        })
+        .unwrap_err()
+        .kind(),
         rhapsody::ErrorKind::InvalidUsage
     );
     assert_eq!(info.accesses, previous);
     let image_origins = [OriginKind::Tag1 { type_code: 0 }];
     assert_eq!(
-        info.calculate(&image_origins, &[], &[&good], |_| ash::vk::AccessFlags::HOST_READ)
-            .unwrap_err()
-            .kind(),
+        info.calculate(&image_origins, &[], &[&good], |_| {
+            ash::vk::AccessFlags::HOST_READ
+        })
+        .unwrap_err()
+        .kind(),
         rhapsody::ErrorKind::InvalidUsage
     );
     assert_eq!(info.accesses, previous);
@@ -507,14 +514,18 @@ fn resource_info_failure_preserves_metadata_and_rejects_invalid_indices() {
 #[test]
 fn original_raw_first_write_does_not_invent_a_previous_content_read() {
     let mut graph = RenderGraph::new();
-    let buffer = graph.create_buffer("original first write", buffer_desc()).unwrap();
+    let buffer = graph
+        .create_buffer("original first write", buffer_desc())
+        .unwrap();
     let mut writer = graph.add_pass("original writer with broad synchronization");
     writer.add_resource_access(buffer.raw(), 0x37, 0).unwrap();
     writer.render(|_| true);
     let current = graph.buffer_id(buffer.raw()).unwrap();
     let mut reader = graph.add_pass("consume actual written contents");
     reader.side_effect();
-    reader.read_buffer(current, READ, AccessRange::Whole).unwrap();
+    reader
+        .read_buffer(current, READ, AccessRange::Whole)
+        .unwrap();
     reader.render(|_| true);
     let definition = graph_definition(graph).unwrap();
     assert!(!definition.passes[0].accesses[0].reads_previous);

@@ -1,5 +1,6 @@
-//! Frame-scoped physical imports. A graph owns its declaration lease; commands
-//! independently retain actual resources through their real submission points.
+//! Frame-scoped physical imports. Unrecorded graphs own declaration leases;
+//! after recording, commands retain resources through real submission points.
+use crate::resource::identity::PhysicalIdentity;
 use super::resource::{GraphId, ResourceHandle};
 use crate::{
     Error, Result,
@@ -36,12 +37,9 @@ impl ImportLease {
         self.marker.clone()
     }
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum PhysicalIdentity {
-    Buffer(usize),
-    Image(usize),
-}
+
 struct Entry {
+    handle: ResourceHandle,
     token: u64,
     // Destroy the final Weak before returning the Arc allocation's CPU credit.
     marker: Weak<LeaseMarker>,
@@ -76,8 +74,8 @@ impl FrameImports {
     }
     pub(crate) fn reserve(&mut self) -> Result<ImportLease> {
         self.entries.reserve(self.entries.as_slice().len() + 1)?;
-        // The allocation's weak count and the graph's boxed Arc capture remain
-        // charged until both graph retirement and registry removal occur.
+        // The allocation stays charged through the last graph/command callback
+        // and registry reference, even when recording releases admission first.
         let memory = self.budget.reserve_cpu_bytes(
             shared_cpu_bytes::<LeaseMarker>()?
                 .checked_add(shared_cpu_bytes::<LeaseMemory>()?)
@@ -101,6 +99,7 @@ impl FrameImports {
         lease: ImportLease,
     ) -> Result<()> {
         self.entries.add(Entry {
+            handle,
             token,
             marker: Arc::downgrade(&lease.marker),
             _memory: lease.memory,
@@ -111,12 +110,23 @@ impl FrameImports {
         );
         Ok(())
     }
-    pub(crate) fn collect(&mut self, mut remove: impl FnMut(u64)) {
-        // Drop the index's Weak first: the entry's Weak must be the last one
-        // alive when its CPU credit is returned.
-        self.index.retain(|_, (_, marker)| marker.strong_count() != 0);
+    pub(crate) fn collect(
+        &mut self,
+        recorded: Option<(GraphId, &[u16])>,
+        mut remove: impl FnMut(u64),
+    ) {
+        // Exports remain addressable by post-submit consumers until retirement.
+        // Other declarations are only needed until recording has transferred
+        // physical ownership to commands. Drop the index's Weak first.
+        let needed = |handle: ResourceHandle| recorded.is_none_or(|(graph, exports)| {
+            handle.graph_id() != graph
+                || exports.iter().any(|index| u32::from(*index) == handle.raw())
+        });
+        self.index.retain(|_, (handle, marker)| {
+            needed(*handle) && marker.strong_count() != 0
+        });
         self.entries.retain(|entry| {
-            if entry.marker.strong_count() != 0 {
+            if needed(entry.handle) && entry.marker.strong_count() != 0 {
                 return true;
             }
             remove(entry.token);
@@ -162,20 +172,20 @@ mod tests {
                 second,
             )
             .unwrap();
-        assert!(matches!(imports.reserve(), Err(Error::Timeout)));
+        assert!(matches!(imports.reserve(), Err(Error::Exhausted(_))));
         let charged = budget.cpu_memory_usage().total();
         let mut removed = Vec::new();
-        imports.collect(|token| removed.push(token));
+        imports.collect(None, |token| removed.push(token));
         assert!(removed.is_empty());
         drop(first_graph_owner);
         assert_eq!(budget.cpu_memory_usage().total(), charged);
-        imports.collect(|token| removed.push(token));
+        imports.collect(None, |token| removed.push(token));
         assert_eq!(removed, [41]);
         assert!(budget.cpu_memory_usage().total() < charged);
         assert_eq!(imports.find(graph, PhysicalIdentity::Buffer(17)), None);
         drop(second_graph_owner);
-        imports.collect(|token| removed.push(token));
-        imports.collect(|token| removed.push(token));
+        imports.collect(None, |token| removed.push(token));
+        imports.collect(None, |token| removed.push(token));
         assert_eq!(removed, [41, 42]);
         drop(imports);
         assert_eq!(budget.cpu_memory_usage().total(), 0);
@@ -222,8 +232,37 @@ mod tests {
             1
         );
         drop((buffer_owner, image_owner));
-        imports.collect(|_| {});
+        imports.collect(None, |_| {});
         assert_eq!(imports.len(), 0);
+    }
+
+    #[test]
+    fn recorded_graph_releases_only_its_entries_and_keeps_callback_memory_charged() {
+        let budget = Arc::new(AllocatorStats::default());
+        let mut imports =
+            FrameImports::new(FrameImportConfig { max_imports: 2 }, budget.clone()).unwrap();
+        let recorded = GraphId::next();
+        let building = GraphId::next();
+        let first = imports.reserve().unwrap();
+        let pending_owner = first.marker();
+        imports.insert(PhysicalIdentity::Buffer(1), 11,
+            ResourceHandle::scoped(recorded, 0), first).unwrap();
+        let second = imports.reserve().unwrap();
+        let building_owner = second.marker();
+        imports.insert(PhysicalIdentity::Buffer(1), 12,
+            ResourceHandle::scoped(building, 0), second).unwrap();
+        let mut removed = Vec::new();
+        imports.collect(Some((recorded, &[])), |token| removed.push(token));
+        assert_eq!(removed, [11]);
+        assert_eq!(imports.len(), 1);
+        assert_eq!(imports.find(recorded, PhysicalIdentity::Buffer(1)), None);
+        assert!(imports.find(building, PhysicalIdentity::Buffer(1)).is_some());
+        assert!(imports.reserve().is_ok());
+        drop(imports);
+        drop(building_owner);
+        assert_ne!(budget.cpu_memory_usage().total(), 0);
+        drop(pending_owner);
+        assert_eq!(budget.cpu_memory_usage().total(), 0);
     }
 
     #[test]

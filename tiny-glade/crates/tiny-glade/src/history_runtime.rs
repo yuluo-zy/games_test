@@ -233,7 +233,10 @@ mod tests {
     use std::sync::Arc;
 
     fn app() -> App {
+        use bevy_state::app::AppExtStates;
         let mut app = App::new();
+        app.add_plugins(bevy_state::app::StatesPlugin);
+        app.insert_state(country_core::app_loading_state::AppLoadingState::Game);
         for stage in 0..44 {
             app.configure_sets(
                 Update,
@@ -255,6 +258,7 @@ mod tests {
         app.insert_resource(country_core::resources::mouse_terrain_raycast::CursorPositionSS(glam::Vec2::ZERO));
         app.init_resource::<country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::AdjWallHeightModeCache>();
         app.add_event::<country_core::resources::window::AudioCursorMoved>();
+        app.add_event::<country_core::resources::onboarding::NotifyHintSystemSnapping>();
         app.init_resource::<country_core::resources::editing_highlight::EditingHighlight>();
         app.add_systems(bevy_app::Startup, country_core::resources::glade_border::setup_glade_border);
         app.insert_resource(country_core::resources::session::ActiveSession::new(
@@ -520,6 +524,12 @@ mod tests {
             decorator_storage::{DecoratorStorage, DecoratorStorageAddr},
         };
         let mut app = app();
+        #[derive(Resource, Default)]
+        struct ReplayCullIds(Vec<u32>);
+        app.init_resource::<ReplayCullIds>();
+        app.add_systems(Update, (|archivist: Res<LiveDecoratorArchivist>, mut observed: ResMut<ReplayCullIds>| {
+            observed.0 = archivist.culling.allowed_ids.iter().copied().collect();
+        }).after(GameSystemSet(40)).before(GameSystemSet(41)));
         let addr = DecoratorStorageAddr::Terrain;
         let state = |id| {
             let mut state = DecoratorStorageAddrHistoryState::default();
@@ -593,12 +603,12 @@ mod tests {
                 world.resource::<StairsState>().collect_edges(),
                 vec![expected_edge]
             );
-            let ids = &world
-                .resource::<LiveDecoratorArchivist>()
-                .culling
-                .allowed_ids;
+            // Cull permission belongs to replay set40; Pop set41 consumes it
+            // while extracting the restored archive diff.
+            let ids = &world.resource::<ReplayCullIds>().0;
             assert_eq!(ids.len(), 1);
             assert!(ids.contains(&allowed));
+            assert!(world.resource::<LiveDecoratorArchivist>().culling.allowed_ids.is_empty());
             assert_eq!(world.resource::<History>().ledger().cursor, cursor);
             assert!(world.resource::<ReplayBuffer>().is_empty());
         }

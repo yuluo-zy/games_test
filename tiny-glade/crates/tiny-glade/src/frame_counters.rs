@@ -1,81 +1,28 @@
 //! Per-frame diagnostic counters for the render-performance work
 //! (reports/render-perf-architecture-2026-10-21, step 0).
 //!
-//! Counters are plain relaxed atomics. Wall-clock sampling happens only when
-//! `TG_FRAME_TIMING=1`, so a disabled run adds no `Instant` reads. `take`
+//! Counters are plain relaxed atomics. `take`
 //! returns the totals since the previous `take` and resets them; the renderer
 //! calls it once per frame from `finish_render`.
 
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
-use std::time::{Duration, Instant};
 
-static UPLOAD_WAIT_CALLS: AtomicU64 = AtomicU64::new(0);
-static UPLOAD_WAIT_NS: AtomicU64 = AtomicU64::new(0);
-static UPLOAD_WAIT_BYTES: AtomicU64 = AtomicU64::new(0);
-static UPLOAD_CAPACITY_WAITS: AtomicU64 = AtomicU64::new(0);
-static PREWARM_CALLS: AtomicU64 = AtomicU64::new(0);
-static PREWARM_TICKETS: AtomicU64 = AtomicU64::new(0);
-static PREWARM_NS: AtomicU64 = AtomicU64::new(0);
-
+static UPLOAD_PENDING_YIELDS: AtomicU64 = AtomicU64::new(0);
 /// Totals accumulated since the previous [`take`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct FrameCounters {
-    /// Synchronous `upload_buffer_ranges_wait` calls (each waits on a GPU fence).
-    pub upload_wait_calls: u64,
-    pub upload_wait_ns: u64,
-    pub upload_wait_bytes: u64,
-    /// Times the queued-upload flush had to wait for a full staging ring.
-    pub upload_capacity_waits: u64,
-    /// `ShaderHost::prewarm` invocations.
-    pub prewarm_calls: u64,
-    /// Tickets scanned across those invocations.
-    pub prewarm_tickets: u64,
-    pub prewarm_ns: u64,
+    /// Times upload admission yielded to the owner loop without waiting.
+    pub upload_pending_yields: u64,
 }
 
-fn enabled() -> bool {
-    crate::game_loop::frame_timing_enabled()
-}
-
-/// Starts a wall-clock sample only when frame timing is enabled.
-pub(crate) fn start() -> Option<Instant> {
-    enabled().then(Instant::now)
-}
-
-pub(crate) fn record_upload_wait(started: Option<Instant>, bytes: usize) {
-    UPLOAD_WAIT_CALLS.fetch_add(1, Relaxed);
-    UPLOAD_WAIT_BYTES.fetch_add(bytes as u64, Relaxed);
-    if let Some(started) = started {
-        UPLOAD_WAIT_NS.fetch_add(nanos(started.elapsed()), Relaxed);
-    }
-}
-
-pub(crate) fn record_upload_capacity_wait() {
-    UPLOAD_CAPACITY_WAITS.fetch_add(1, Relaxed);
-}
-
-pub(crate) fn record_prewarm(started: Option<Instant>, tickets: usize) {
-    PREWARM_CALLS.fetch_add(1, Relaxed);
-    PREWARM_TICKETS.fetch_add(tickets as u64, Relaxed);
-    if let Some(started) = started {
-        PREWARM_NS.fetch_add(nanos(started.elapsed()), Relaxed);
-    }
-}
-
-fn nanos(duration: Duration) -> u64 {
-    duration.as_nanos().min(u128::from(u64::MAX)) as u64
+pub(crate) fn record_upload_pending_yield() {
+    UPLOAD_PENDING_YIELDS.fetch_add(1, Relaxed);
 }
 
 /// Returns and resets the counters.
 pub fn take() -> FrameCounters {
     FrameCounters {
-        upload_wait_calls: UPLOAD_WAIT_CALLS.swap(0, Relaxed),
-        upload_wait_ns: UPLOAD_WAIT_NS.swap(0, Relaxed),
-        upload_wait_bytes: UPLOAD_WAIT_BYTES.swap(0, Relaxed),
-        upload_capacity_waits: UPLOAD_CAPACITY_WAITS.swap(0, Relaxed),
-        prewarm_calls: PREWARM_CALLS.swap(0, Relaxed),
-        prewarm_tickets: PREWARM_TICKETS.swap(0, Relaxed),
-        prewarm_ns: PREWARM_NS.swap(0, Relaxed),
+        upload_pending_yields: UPLOAD_PENDING_YIELDS.swap(0, Relaxed),
     }
 }
 
@@ -96,11 +43,11 @@ pub(crate) struct GpuSpanWindow {
     frames: u64,
     command_spans: u64,
     command_ns: u64,
-    passes: std::collections::HashMap<String, (u64, u64)>,
+    passes: std::collections::HashMap<&'static str, (u64, u64)>,
 }
 
 impl GpuSpanWindow {
-    pub(crate) fn add(&mut self, duration_ns: u64, pass_name: Option<String>) {
+    pub(crate) fn add(&mut self, duration_ns: u64, pass_name: Option<&'static str>) {
         match pass_name {
             None => {
                 self.command_spans += 1;
@@ -151,14 +98,10 @@ mod tests {
     #[test]
     fn take_returns_totals_and_resets() {
         let _ = take();
-        record_upload_wait(None, 100);
-        record_upload_wait(None, 28);
-        record_prewarm(None, 7);
+        record_upload_pending_yield();
+        record_upload_pending_yield();
         let first = take();
-        assert_eq!(first.upload_wait_calls, 2);
-        assert_eq!(first.upload_wait_bytes, 128);
-        assert_eq!(first.prewarm_calls, 1);
-        assert_eq!(first.prewarm_tickets, 7);
+        assert_eq!(first.upload_pending_yields, 2);
         assert_eq!(take(), FrameCounters::default());
     }
 
@@ -176,3 +119,56 @@ mod tests {
         assert!(window.end_frame(2).is_none(), "window must reset");
     }
 }
+
+/// `TG_PROFILE_OUT=<file>` samples every thread's CPU time (997 Hz) for
+/// `TG_PROFILE_SECS` (default 30) starting `TG_PROFILE_DELAY` seconds (default
+/// 100) after launch, then writes collapsed stacks (`thread;frame;...;leaf N`,
+/// flamegraph input) so one run supports any offline analysis.
+#[cfg(feature = "profile")]
+pub fn start_cpu_profiler() {
+    let Some(out) = std::env::var_os("TG_PROFILE_OUT") else {
+        return;
+    };
+    let secs = |name: &str, default: u64| {
+        std::env::var(name)
+            .ok()
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(default)
+    };
+    let (delay, length) = (secs("TG_PROFILE_DELAY", 100), secs("TG_PROFILE_SECS", 30));
+    std::thread::spawn(move || {
+        use std::io::Write;
+        std::thread::sleep(std::time::Duration::from_secs(delay));
+        let Ok(guard) = pprof::ProfilerGuardBuilder::default()
+            .frequency(997)
+            .blocklist(&["libc", "libgcc", "pthread", "vdso"])
+            .build()
+        else {
+            eprintln!("profiler failed to start");
+            return;
+        };
+        std::thread::sleep(std::time::Duration::from_secs(length));
+        let Ok(report) = guard.report().build() else {
+            return;
+        };
+        let Ok(mut file) = std::fs::File::create(&out) else {
+            return;
+        };
+        for (frames, count) in &report.data {
+            let mut line = frames.thread_name.clone();
+            for frame in frames.frames.iter().rev() {
+                // Inlined frames come innermost first; keep the outermost first.
+                for symbol in frame.iter().rev() {
+                    line.push(';');
+                    line.push_str(&symbol.name().replace(';', ":"));
+                    if symbol.lineno() != 0 {
+                        line.push_str(&format!(" ({}:{})", symbol.filename(), symbol.lineno()));
+                    }
+                }
+            }
+            let _ = writeln!(file, "{line} {count}");
+        }
+        eprintln!("profile written to {}", std::path::Path::new(&out).display());
+    });
+}
+

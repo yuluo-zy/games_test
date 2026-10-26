@@ -90,7 +90,8 @@ pub fn check_memory_plan(plan: &PhysicalMemoryPlan, edges: &[(usize, usize)]) ->
                 if a.compatibility != b.compatibility {
                     return Err(invalid());
                 }
-                if a_offset < b_offset + b.size && b_offset < a_offset + a.size {
+                if a_offset < b_offset.checked_add(b.size).ok_or_else(|| crate::Error::invalid_usage("transient placement range overflow"))?
+                    && b_offset < a_offset.checked_add(a.size).ok_or_else(|| crate::Error::invalid_usage("transient placement range overflow"))? {
                     let a_before_b = a
                         .uses
                         .iter()

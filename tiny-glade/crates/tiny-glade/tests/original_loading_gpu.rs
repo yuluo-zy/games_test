@@ -2,6 +2,10 @@
 //! The text is a bounded test input; the logo meshes/shaders and their draw
 //! callbacks come from the recovered original startup producer. This does not
 //! prove that gameplay's asynchronous load or complete startup UI has finished.
+#[path = "support/mod.rs"]
+mod test_support;
+use test_support::ShaderTestDriver as _;
+use test_support::BridgeTestDriver as _;
 use ash::vk::{self, Handle};
 use country_core::{
     asset_libraries::{
@@ -23,11 +27,9 @@ use tiny_glade::{
 
 #[test]
 fn packaged_loading_background_vermeer_and_actual_text_stream_execute_and_read_back() {
-    let installed = std::env::var_os("TG_INSTALL_ROOT")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../ljxsj_92385/Tiny Glade")
-        });
+    let installed = PathBuf::from(
+        std::env::var_os("TG_INSTALL_ROOT").expect("TG_INSTALL_ROOT must name the installation"),
+    );
     let installed = installed.canonicalize().unwrap();
     // This integration-test process has one test. Match the original process's
     // installation cwd for its original relative mesh paths and restore it on
@@ -216,23 +218,32 @@ fn packaged_loading_background_vermeer_and_actual_text_stream_execute_and_read_b
     );
     let (output, built) = bridge
         .build_frame(|frame| {
+            let earlier_factory = frame.with_raster(|host| Ok(host.prepare_draw_collection()))?;
+            let earlier = earlier_factory();
+            use country_core::render::pass_builder::pass_resource_access::SsboType;
+            let text_hash = TextPrimSsbo::rg_buffer_hash();
+            assert_eq!(earlier.rg_buffer_resource(text_hash), None);
             let output = loading_graph::build_loading_frame(
                 frame, &mut world, &shaders, extent, 43, &lists,
             )?;
-            use country_core::render::pass_builder::pass_resource_access::SsboType;
-            let primitives = frame.import_buffer(&text_prim_buffer, 0x1a)?;
-            let shapes = frame.import_buffer(&shape_stream_buffer, 0x1a)?;
+            let primitives = frame.import_buffer(&text_prim_buffer, 0x37)?;
+            let shapes = frame.import_buffer(&shape_stream_buffer, 0x37)?;
             let raster = frame.raster_resources();
             let assets = raster.assets.lock();
             assert_eq!(
-                assets.rg_buffers.get(&TextPrimSsbo::rg_buffer_hash()),
+                assets.collect.rg_buffers.get(&TextPrimSsbo::rg_buffer_hash()),
                 Some(&primitives.raw())
             );
             assert_eq!(
-                assets.rg_buffers.get(&ShapeStreamSsbo::rg_buffer_hash()),
+                assets.collect.rg_buffers.get(&ShapeStreamSsbo::rg_buffer_hash()),
                 Some(&shapes.raw())
             );
             drop(assets);
+            // Real loading/MEI registration publishes to later Collect scopes;
+            // an earlier factory must keep its prior immutable query snapshot.
+            assert_eq!(earlier.rg_buffer_resource(text_hash), None);
+            let current_factory = frame.with_raster(|host| Ok(host.prepare_draw_collection()))?;
+            assert_eq!(current_factory().rg_buffer_resource(text_hash), Some(primitives.raw()));
             let buffer = frame.import_native_buffer(readback.clone(), 0)?;
             frame.with_graph(|graph| {
                 let texture = graph.resource_handle(output.id)?;
@@ -277,10 +288,10 @@ fn packaged_loading_background_vermeer_and_actual_text_stream_execute_and_read_b
         .unwrap();
     bridge
         .shader_backend()
-        .prewarm(Duration::from_secs(30))
+        .prepare_test_pipelines(Duration::from_secs(30))
         .unwrap();
     let compiled = bridge.compile_built(built).unwrap();
-    let receipt = bridge.execute_compiled(compiled).unwrap();
+    let receipt = bridge.execute_after_uploads(compiled).unwrap();
     assert!(
         !receipt.receipts.is_empty(),
         "loading requires real Vulkan submissions"

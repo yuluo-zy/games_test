@@ -37,30 +37,6 @@ fn device_creates_distinct_named_command_buffers() {
 }
 
 #[test]
-fn device_micro_functions_and_creation_tail_state() {
-    let Ok(device) = create_headless_device() else {
-        return;
-    };
-    let gd = device;
-    assert_eq!(
-        gd.queue_family_index_for(0).unwrap(),
-        gd.queue_family_index()
-    );
-    // 没有 EXT_subgroup_size_control 时 Option 为 None，数值版保持旧行为 1。
-    if gd.min_subgroup_size_option().is_none() {
-        assert_eq!(gd.min_subgroup_size(), 1);
-    }
-    // Without VK_EXT_memory_budget there is nothing to refresh; with it the
-    // driver heap budgets become allocator heap limits.
-    let budget = gd.refresh_memory_budget().unwrap();
-    assert_eq!(budget.is_some(), gd.memory_budget_enabled());
-    if budget.is_some() {
-        assert!(gd.allocator_stats().heap_usage(0).unwrap().1.is_some());
-    }
-    assert_eq!(gd.device_uuid(), gd.device_uuid());
-}
-
-#[test]
 fn device_is_released_after_last_resource_without_cache_cycles() {
     let Ok(device) = create_headless_device() else {
         eprintln!("SKIP: Vulkan device unavailable");

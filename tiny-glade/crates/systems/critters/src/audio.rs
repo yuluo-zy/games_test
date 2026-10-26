@@ -647,15 +647,14 @@ mod duck_constructor_tests {
         let mut inner = InnerWalls::default();
         let wall = inner.new_wall(WallState::from_snapshot(snapshot, 0));
         let mut public = PublicWalls::default();
-        public.consume(
+        public.consume_with_paths(
             &mut inner,
             &TerrainHeightGrid512 {
                 encoded: vec![0; 512 * 512].into(),
                 minimum_y: 0.0,
                 maximum_y: 0.0,
                 sampling_fix: false,
-            },
-        );
+            }, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         world.insert_resource(public);
         world.init_resource::<Events<CmdCheckForSheepInsideBuilding>>();
         world

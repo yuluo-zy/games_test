@@ -1,6 +1,6 @@
 //! 原 B1407ebfd0 农舍墙窗：只向唯一蓝图 owner 发布完整视觉与业务输出。
 //! 设计与原证见本任务 window-producer-root-continuation-v1；不复制原生 ABI。
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 
 use bevy_ecs::prelude::*;
 use country_core::{
@@ -114,10 +114,9 @@ pub(super) fn wall_space(wall: &PublicWallState) -> WallSpace {
     WallSpace { is_loop: wall.shape().tag() != 2, length: wall.wall_space_length() }
 }
 
-/// 原calculate_hash的Sip13零key、Hash顺序交给同一标准库依赖。
+/// 原calculate_hash的Sip13零key、Hash顺序交给共享 `utils` crate。
 pub(super) fn candidate_hash(value: impl Hash) -> u64 {
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    value.hash(&mut hasher); hasher.finish()
+    ::utils::calculate_hash(&value)
 }
 
 fn wall_window_pose(info: &DecoratorInfo, width: f32, wall: &PublicWallState,
@@ -425,8 +424,8 @@ pub(super) mod original_window_helper_tests {
         let mut inner = InnerWalls::new();
         inner.new_wall_with_id(WallId(42), WallState::from_snapshot(snapshot, 0));
         let mut walls = PublicWalls::default();
-        walls.consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0; 512 * 512].into(),
-            minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false });
+        walls.consume_with_paths(&mut inner, &TerrainHeightGrid512 { encoded: vec![0; 512 * 512].into(),
+            minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false }, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         assert!(walls.get(WallId(42)).is_some());
         let mut info = DecoratorInfo { rank, decorator_id: 1, state: 2,
             u28: 0x5566_7788, u30: 0x1020_3040, u40: 6 << 8, ..DecoratorInfo::default() };

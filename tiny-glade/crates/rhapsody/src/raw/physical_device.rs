@@ -1,5 +1,6 @@
 //! Physical device capability and memory budget queries.
-use super::{error::Result, instance::VulkanInstance};
+use crate::Result;
+use super::instance::VulkanInstance;
 use arc_swap::ArcSwapOption;
 use ash::vk;
 use std::{
@@ -249,6 +250,24 @@ pub struct PhysicalDevice {
 }
 
 impl PhysicalDevice {
+    pub(crate) fn from_snapshot(
+        instance: Arc<VulkanInstance>,
+        handle: vk::PhysicalDevice,
+        properties: vk::PhysicalDeviceProperties,
+        memory: vk::PhysicalDeviceMemoryProperties,
+        queues: Vec<vk::QueueFamilyProperties>,
+    ) -> Self {
+        Self {
+            instance,
+            handle,
+            properties,
+            memory,
+            queues,
+            budget_snapshot: ArcSwapOption::empty(),
+            memory_budget_extension: OnceLock::new(),
+        }
+    }
+
     /// The instance that owns this object.
     pub fn instance(&self) -> &Arc<VulkanInstance> {
         &self.instance
@@ -422,7 +441,7 @@ impl PhysicalDevice {
     }
     pub fn with_presentation_support(&self, surface: vk::SurfaceKHR) -> Result<Vec<u32>> {
         if surface == vk::SurfaceKHR::null() {
-            return Err(super::error::Error::invalid_usage(
+            return Err(crate::Error::invalid_usage(
                 "呈现查询需要有效surface",
             ));
         }
@@ -545,11 +564,11 @@ pub fn enumerate_vk_data<T: Clone>(
 ) -> Result<Vec<T>> {
     let mut count = 0;
     if fill(&mut count, &mut vec![]) != vk::Result::SUCCESS {
-        return Err(super::error::Error::invalid_usage("枚举数量查询失败"));
+        return Err(crate::Error::invalid_usage("枚举数量查询失败"));
     }
     let mut output = Vec::with_capacity(count as usize);
     if fill(&mut count, &mut output) != vk::Result::SUCCESS {
-        return Err(super::error::Error::invalid_usage("枚举数据查询失败"));
+        return Err(crate::Error::invalid_usage("枚举数据查询失败"));
     }
     output.truncate(count as usize);
     Ok(output)
@@ -561,10 +580,8 @@ pub fn string_from_c_array(bytes: &[std::ffi::c_char]) -> String {
         .iter()
         .position(|byte| *byte == 0)
         .unwrap_or(bytes.len());
-    unsafe {
-        std::str::from_utf8_unchecked(std::slice::from_raw_parts(bytes.as_ptr().cast(), length))
-    }
-    .to_owned()
+    let bytes: Vec<u8> = bytes[..length].iter().map(|&byte| byte as u8).collect();
+    String::from_utf8_lossy(&bytes).into_owned()
 }
 
 /// Vulkan 驱动版本编码：`major<<22 | minor<<12 | patch`。
@@ -576,23 +593,13 @@ pub fn enumerate_physical_devices(instance: Arc<VulkanInstance>) -> Result<Vec<P
     let handles = unsafe { instance.instance.enumerate_physical_devices() }?;
     Ok(handles
         .into_iter()
-        .map(|handle| PhysicalDevice {
-            properties: unsafe { instance.instance.get_physical_device_properties(handle) },
-            memory: unsafe {
-                instance
-                    .instance
-                    .get_physical_device_memory_properties(handle)
-            },
-            queues: unsafe {
-                instance
-                    .instance
-                    .get_physical_device_queue_family_properties(handle)
-            },
-            instance: Arc::clone(&instance),
-            budget_snapshot: ArcSwapOption::empty(),
-            memory_budget_extension: OnceLock::new(),
+        .map(|handle| PhysicalDevice::from_snapshot(
+            Arc::clone(&instance),
             handle,
-        })
+            unsafe { instance.instance.get_physical_device_properties(handle) },
+            unsafe { instance.instance.get_physical_device_memory_properties(handle) },
+            unsafe { instance.instance.get_physical_device_queue_family_properties(handle) },
+        ))
         .collect())
 }
 

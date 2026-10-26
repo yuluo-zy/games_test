@@ -21,7 +21,7 @@ use bevy_ecs::prelude::*;
 pub fn edit_roof(
     mut requests: EventReader<EditRoofCmd>,
     walls: Res<PublicWalls>,
-    mut roofs: Query<&mut Roof>,
+    mut roofs: Query<ComponentWrite<Roof>>,
     mut geometry: EventWriter<RoofGeometryChanged>,
     mut gable: EventWriter<WallGableChanged>,
     mut feedback: EventWriter<RoofEditFeedback>,
@@ -80,7 +80,7 @@ pub fn edit_roof(
 pub fn switch_roof_direction(
     mut requests: EventReader<SwitchRoofDirectionCmd>,
     walls: Res<PublicWalls>,
-    mut roofs: Query<&mut Roof>,
+    mut roofs: Query<ComponentWrite<Roof>>,
     mut geometry: EventWriter<RoofGeometryChanged>,
     mut gable: EventWriter<WallGableChanged>,
     mut sound: EventWriter<RoofSound>,
@@ -122,7 +122,7 @@ pub fn switch_roof_direction(
 pub fn set_flat_roof_style(
     mut requests: EventReader<SetFlatRoofStyleCmd>,
     walls: Res<PublicWalls>,
-    mut roofs: Query<&mut Roof>,
+    mut roofs: Query<ComponentWrite<Roof>>,
     mut holes: EventWriter<RecalculateWallHoles>,
     mut sounds: EventWriter<RoofSound>,
 ) {
@@ -155,7 +155,7 @@ pub fn set_flat_roof_style(
 pub fn set_flat_roof_rim_style(
     mut requests: EventReader<SetFlatRoofRimStyleCmd>,
     walls: Res<PublicWalls>,
-    mut roofs: Query<&mut Roof>,
+    mut roofs: Query<ComponentWrite<Roof>>,
     mut holes: EventWriter<RecalculateWallHoles>,
     mut history: EventWriter<RecordRoofHistory>,
 ) {
@@ -177,3 +177,5 @@ pub fn set_flat_roof_rim_style(
         }
     }
 }
+
+use country_core::render::extract::ComponentWrite;

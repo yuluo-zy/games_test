@@ -20,7 +20,7 @@ use bevy_ecs::prelude::*;
 pub fn update_roof_spatial(
     mut changed: EventReader<OnWallChanged>,
     walls: Res<PublicWalls>,
-    mut roofs: Query<(Entity, &mut Roof, &mut Transform), Without<RoofMarkedForDeletion>>,
+    mut roofs: Query<(Entity, ComponentWrite<Roof>, ComponentWrite<Transform>), Without<RoofMarkedForDeletion>>,
     mut geometry: EventWriter<RoofGeometryChanged>,
 ) {
     let ids: Vec<_> = changed.read().map(|event| event.0).collect();
@@ -89,3 +89,5 @@ pub fn update_wall_gable_heights(
         }
     }
 }
+
+use country_core::render::extract::ComponentWrite;

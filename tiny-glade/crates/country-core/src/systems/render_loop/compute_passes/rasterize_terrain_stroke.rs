@@ -98,9 +98,7 @@ pub struct StrokeInfo {
     pub id_and_count: u32,
     pub packed_params: u32,
 }
-pub fn pack_2x16f_uint(a: f32, b: f32) -> u32 {
-    half::f16::from_f32(a).to_bits() as u32 | ((half::f16::from_f32(b).to_bits() as u32) << 16)
-}
+pub use crate::render::nani::instance_updates::pack_2x16f_uint;
 
 /// Original BDA fetches are uint4/16B even when only one point is used.
 /// The even allocation covers that read. Only meaningful XZ bytes are copied;

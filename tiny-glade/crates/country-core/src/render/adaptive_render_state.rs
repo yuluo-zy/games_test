@@ -28,6 +28,9 @@ impl AdaptiveRenderState {
             AdaptivePhase::OutOfMemory => 2, AdaptivePhase::Cooldown { .. } => 3 }
     }
     pub fn mark_out_of_memory(&mut self) { self.phase = AdaptivePhase::OutOfMemory; }
+    /// 原设置页显式修改缩放后重启预算状态；不改变用户开关和请求值。
+    /// 与逐帧request_scale不同，即使数值相同也必须清除旧OOM状态。
+    pub fn reset_after_manual_scale_change(&mut self) { self.phase = AdaptivePhase::Initial; }
     /// Track explicit settings changes without resetting a retained OOM limit
     /// when the loading World hands its resources to the gameplay World.
     pub fn request_scale(&mut self, requested: Option<f32>) -> bool {

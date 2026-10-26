@@ -7,12 +7,12 @@
 //! as precise state-derived barriers and tracked state before the body runs,
 //! and later graph/raw users order after them through that state. Every call
 //! returns the submission's [`SyncPoint`]; waiting is an explicit opt-in.
+use crate::{Error, Result};
 use super::{
     buffer::Buffer,
     command_buffer::{CommandPoolAllocation, VulkanCommandBuffer, VulkanCommandPool},
     graveyard::Doomed,
     device::Device,
-    error::{Error, Result},
     format::vk_format_info,
     texture::Texture,
     texture_upload::{TextureUpdateRegion, copy_format_params, linear_regions, per_mip_regions},

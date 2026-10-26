@@ -10,7 +10,6 @@
 //!   `finish<country_core::systems::main_camera::MainCameraPlugin>`：ICF 合并的
 //!   单字节 RET 空体（1,581 处引用），build 为空注册。
 //! - `impl$2::build` `0x1405aeea0`（578 B）—— bevy_input 注册面。
-//! - `compute_on_dedicated_thread` `0x14032d170`（111 行反编译）—— 通用线程助手。
 //!
 //! ## 已恢复
 //!
@@ -23,13 +22,6 @@
 //! 检查。本实现转发上游 `bevy_input::InputPlugin`。
 //! **差异**：上游 0.16.0 `InputPlugin` 还注册手势/gamepad 事件；按 AGENTS
 //! 「直接复用依赖」保留，额外注册项不影响原消费面。
-//!
-//! ### `compute_on_dedicated_thread`（判等，std 转发）
-//! fresh 0x14032d170：`sync_channel(1)` → 复制 name → `Builder::name(name)`
-//! → `spawn(move || tx.send(f()))`；spawn 失败
-//! `panic!("Thread failed to spawn: {name}: {err}")`（文案 pieces
-//! `"Thread failed to spawn: "` + name + `": "` + io::Error，0x1429beeb1）；
-//! 成功后 drop JoinHandle（CloseHandle）→ `rx.recv().unwrap()`。
 //!
 //! ## Integration boundary (2026-10-18)
 //! `run_game` now calls the actual public winit window/event-loop adapter and
@@ -96,6 +88,10 @@ impl Plugin for EmptyPlugin {
 /// Original ordering of the plugin tuple inside run_game_thread is not recovered
 /// (OPEN); every system keeps the explicit GameSystemSet recovered in its own body.
 fn add_original_plugins(app: &mut App) {
+    app.add_plugins(crate::gui::settings::SettingsMenuPlugin);
+    app.init_resource::<country_core::resources::daily::CurrentDaily>()
+        .init_resource::<toolbar::menu::daily_welcome::DailyWelcomeScreenState>()
+        .add_event::<toolbar::menu::daily_welcome::ShowDailyWelcomeCmd>();
     use country_core::systems::terrain::TerrainSystems;
     use system_onboarding::OnboardingSystems;
     use system_roof::RoofSystems;
@@ -116,26 +112,6 @@ fn add_original_plugins(app: &mut App) {
     app.add_roof_events_and_resources().add_roof_systems();
     app.add_timberframe(); // @140630a20
     app.add_onboarding(); // @140650d50
-}
-
-/// `tiny_glade::run_game::compute_on_dedicated_thread` `0x14032d170` —— 判等。
-///
-/// `sync_channel(1)` + `Builder::name(name)` + spawn + recv；spawn 失败 panic
-/// 文案 `"Thread failed to spawn: {name}: {err}"`，recv 失败 `unwrap` panic。
-pub fn compute_on_dedicated_thread<T, F>(name: String, f: F) -> T
-where
-    T: Send + 'static,
-    F: FnOnce() -> T + Send + 'static,
-{
-    let (tx, rx) = std::sync::mpsc::sync_channel(1);
-    std::thread::Builder::new()
-        .name(name.clone())
-        .spawn(move || {
-            let _ = tx.send(f());
-        })
-        .unwrap_or_else(|err| panic!("Thread failed to spawn: {name}: {err}"));
-    // JoinHandle 在此 drop（原版 CloseHandle，线程分离）；结果经 channel 回传。
-    rx.recv().unwrap()
 }
 
 /// Resolve the packaged installation for the explicit local host. The original
@@ -335,7 +311,6 @@ pub fn run_game_thread(
             next.set(country_core::app_loading_state::AppLoadingState::Game);
         },
     );
-    country_core::startup::startup_session::set_startup_demo_mode(config.dev.demo);
     app.insert_resource(
         country_core::asset_libraries::configwatch::ConfigWatch::new(config.dev.live_link()),
     );
@@ -589,6 +564,8 @@ pub fn run_game_thread(
             ),
         ).chain_ignore_deferred().in_set(GameSystemSet(9)),
     );
+    // 原过山车状态机在相机更新后发布摄影提示，并在乘坐期间接管相机。
+    crate::rollercoaster::build(&mut app);
     app.add_systems(
         bevy_app::Update,
         (
@@ -687,6 +664,13 @@ pub fn run_game_thread(
     gui.add_systems(country_core::resources::gui::advance_menu_state_system);
     gui.add_systems(crate::gui::gui_escape_menu::do_gui_escape_menu
         .before(country_core::resources::gui::advance_menu_state_system));
+    gui.add_systems(crate::gui::settings::detect_konami_code
+        .before(crate::gui::settings::do_gui_escape_menu_settings));
+    gui.add_systems(crate::gui::settings::do_gui_escape_menu_settings
+        .after(crate::gui::gui_escape_menu::do_gui_escape_menu)
+        .before(country_core::resources::gui::advance_menu_state_system));
+    // B gui/gui_tod.rs：与其他 GUI 同属 set39，先于 set44 的 MEI 布局提交。
+    gui.add_systems(crate::gui::gui_tod::do_time_of_day_screen);
     let gui_system = move |world: &mut World| gui.run(world);
     // Native1405a0512 calls GUI tuple in_set140611040 with stage0x27=39.
     // The separate time tuple140aad7d0 belongs to stage2; it is not the GUI.
@@ -804,7 +788,7 @@ pub fn run_game_thread(
             .in_set(GameSystemSet(44)),
     );
     debug_assert!(app.world().contains_resource::<SavedSessionList>());
-    apply_ecs_executor_policy(&mut app);
+    apply_ecs_executor_policy(&mut app)?;
     Ok(app)
 }
 
@@ -829,29 +813,18 @@ fn init_ecs_task_pool() {
     });
 }
 
-/// Executor policy. The `ecs-multithreaded` feature (on by default) runs every
-/// schedule on bevy's multi-threaded executor with the conflicting, unordered
-/// system pairs pinned to their single-threaded order (`ecs_order`).
-/// `TG_ECS_EXECUTOR=single` forces the single-threaded executor on every schedule
-/// of a feature-enabled build, and `TG_SCHEDULE_AMBIGUITY=1` logs every pair of
-/// conflicting systems with no declared order (the audit that decides whether the
-/// feature is safe: a real run reports 525 such pairs in `Update`).
-fn apply_ecs_executor_policy(app: &mut App) {
+/// Install deterministic dependency order and the single parallel executor.
+/// Ambiguity diagnostics are a startup audit setting.
+fn apply_ecs_executor_policy(app: &mut App) -> anyhow::Result<()> {
     {
         let mut schedules = app.world_mut().resource_mut::<bevy_ecs::schedule::Schedules>();
         for (_, schedule) in schedules.iter_mut() {
             apply_ecs_executor_policy_to(schedule);
         }
     }
-    #[cfg(feature = "ecs-multithreaded")]
-    if !ecs_single_threaded() {
-        crate::ecs_order::pin_and_parallelize(app.world_mut());
-    }
+    crate::ecs_order::pin_and_parallelize(app.world_mut())
 }
 
-fn ecs_single_threaded() -> bool {
-    std::env::var("TG_ECS_EXECUTOR").is_ok_and(|value| value == "single")
-}
 fn ecs_ambiguity_detection() -> bool {
     std::env::var_os("TG_SCHEDULE_AMBIGUITY").is_some_and(|value| value == "1")
 }
@@ -859,9 +832,7 @@ fn ecs_ambiguity_detection() -> bool {
 /// Applies the policy to one schedule (also used for schedules the App does not own).
 fn apply_ecs_executor_policy_to(schedule: &mut Schedule) {
     use bevy_ecs::schedule::{ExecutorKind, LogLevel, ScheduleBuildSettings};
-    if ecs_single_threaded() {
-        schedule.set_executor_kind(ExecutorKind::SingleThreaded);
-    }
+    schedule.set_executor_kind(ExecutorKind::MultiThreaded);
     if ecs_ambiguity_detection() {
         schedule.set_build_settings(ScheduleBuildSettings {
             ambiguity_detection: LogLevel::Warn,
@@ -1050,21 +1021,8 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     let ui = country_core::systems::ui::resources::ui_state::UiState::at_startup();
     app.insert_resource(mode_manager::ModeManagerUiContext::from_ui_state(&ui));
     app.insert_resource(ui);
-    // Original set6 input arbitration: hover_intersection produces this frame's
-    // sorted real intersections, then ui_update consumes physical action slot0,
-    // emits sounds/brush/cursor effects and clears the frame registrations.
-    // The picker builds its own ray from the camera matrices, so it must stay
-    // after set5 input translation and before the set10 camera update; never
-    // move a ray producer ahead of it.
-    app.add_systems(
-        bevy_app::Update,
-        (
-            country_core::systems::ui::hover_intersection::hover_intersection,
-            country_core::systems::ui::ui_update::ui_update,
-        )
-            .chain_ignore_deferred()
-            .in_set(GameSystemSet(6)),
-    );
+    // ToolbarPlugin owns the single set6 hover -> ui_update chain. Registering
+    // it here too makes function-type ordering ambiguous in the real App.
     // Original app-lifetime startup value, inserted beside the photomode state
     // owner; it does not reset across glade reload.
     app.init_resource::<country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen>();
@@ -1108,6 +1066,7 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     // add_wall_systems 0x140493120：set 19/28/34/44、OnExit(Game) 等墙系统注册统一由
     // `WallSystems::add_wall_systems`（app_systems.rs）承担。
     crate::app_systems::WallSystems::add_wall_systems(app);
+    install_toolbar_shape_dependencies(app);
     // add_history_systems 0x1409438a0（Update；0x140b669c0 同一 SubApp::add_systems 实例，
     // 与 SaveLoadSystems 共用，PDB 名证明 Update）。四项一起提交：
     //   A 0x1409438d0  history_start_recording.in_set(14)（0x141738630）
@@ -1167,6 +1126,50 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
             .chain_ignore_deferred()
             .in_set(GameSystemSet(41)),
     );
+}
+
+/// toolbar空间/高度反馈需要真实创建和抬升生产链。这里只安装已经恢复并核验的
+/// 原add_wall_shape_ux子链，保持set17内的相对次序；圆形/矩形编辑等其余叶子
+/// 仍属于后续建筑模块，不能将旧raw signifier壳注册后冒称完整26项UX已恢复。
+fn install_toolbar_shape_dependencies(app: &mut bevy_app::App) {
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{resources, systems::{ui_raise_shape, ui_focus_mode_shape_height, wall::shapes}};
+    app.init_resource::<shapes::ShapePlacement>()
+        .init_resource::<shapes::SnapMode>()
+        .init_resource::<shapes::PreviewCircle>()
+        .init_resource::<shapes::PreviewRectangle>()
+        .init_resource::<shapes::calc_shape_height::TimberframeConstructionParamsCache>()
+        .init_resource::<shapes::rectangle::ui_create_rectangle::ShapesDragMouseMoved>()
+        .add_event::<shapes::CreateCircleCmd>()
+        .add_event::<shapes::CreateRectangleCmd>()
+        .add_event::<shapes::DontRecalculateShapePlacement>()
+        .add_event::<ui_raise_shape::HandleRaiseShapeUiInteraction>()
+        .add_event::<resources::glade_border::MaxDemoElevationReached>()
+        .add_event::<resources::events::ConstructTimberframeCmd>()
+        .add_event::<resources::tree_storage::HideTreesinAreaCmd>()
+        .add_event::<resources::color_id::SetWallColorIdCmd>()
+        .add_event::<resources::color_id::SetHalftimberColorIdCmd>()
+        .add_event::<resources::color_id::SetGateColorIdCmd>()
+        .add_event::<country_core::systems::history::recording::HistoryRecordingFailed>()
+        .add_event::<country_core::systems::audio::PlayBuildingAudio>()
+        .add_event::<country_core::systems::audio::PlayTimberframeSound>()
+        .add_event::<country_core::systems::audio::RequestWallMaterialAudio>();
+    app.add_systems(bevy_app::Update, (
+        (
+            shapes::shape_placement::shape_placement_params,
+            shapes::shape_placement_signifiers::shape_placement_signifiers,
+            shapes::calc_shape_height::calc_shape_height,
+            shapes::circle::ui_create_circle::ui_create_circle,
+            shapes::circle::create_circle::create_circle,
+        ).chain_ignore_deferred(),
+        (
+            ui_raise_shape::ui_raise_shape,
+            ui_focus_mode_shape_height::ui_focus_mode_shape_height,
+            ui_raise_shape::impl_raise_shape,
+            shapes::rectangle::ui_create_rectangle::ui_create_rectangle,
+            shapes::rectangle::create_rectangle::create_rectangle,
+        ).chain_ignore_deferred(),
+    ).chain_ignore_deferred().in_set(GameSystemSet(17)).run_if(is_gameplay_active));
 }
 
 /// Original country_core::systems::is_gameplay_active @140a90e00,22B.
@@ -1771,6 +1774,7 @@ fn install_history_gpu_fixture(app: &mut bevy_app::App) {
     app.add_event::<country_core::resources::glade_border::DisplayOutOfBorder>();
     app.add_event::<country_core::resources::glade_border::FeedbackInputOutOfBorder>();
     app.add_event::<country_core::resources::onboarding::NotifyHintSystemShapeEditWasPerformed>();
+    app.add_event::<country_core::resources::window::WindowFocusEvent>();
 }
 
 #[cfg(test)]
@@ -1800,7 +1804,10 @@ mod intro_history_integration {
             .expect("original intro sections decode");
         assert_eq!(parsed.chain_index, 12);
         assert_eq!(parsed.edits.len(), 13);
+        use bevy_state::app::AppExtStates;
         let mut app = App::new();
+        app.add_plugins(bevy_state::app::StatesPlugin);
+        app.insert_state(country_core::app_loading_state::AppLoadingState::Game);
         for stage in 0..44 {
             app.configure_sets(
                 bevy_app::Update,
@@ -1822,6 +1829,7 @@ mod intro_history_integration {
         app.insert_resource(country_core::resources::mouse_terrain_raycast::CursorPositionSS(glam::Vec2::ZERO));
         app.init_resource::<country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::AdjWallHeightModeCache>();
         app.add_event::<country_core::resources::window::AudioCursorMoved>();
+        app.add_event::<country_core::resources::onboarding::NotifyHintSystemSnapping>();
         app.init_resource::<country_core::resources::editing_highlight::EditingHighlight>();
         app.add_systems(bevy_app::Startup, country_core::resources::glade_border::setup_glade_border);
         app.insert_resource(country_core::resources::session::ActiveSession::new(
@@ -2609,7 +2617,7 @@ mod member14_owner_stage_tests {
         let curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(vec![[0.,0.],[4.,0.]], false).unwrap();
         inner.new_wall_with_id(WallId(0x700000031), WallState::new(curve, 2., 0, 0, false));
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true });
+        public.consume_with_paths(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true }, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&CpuBufferDevice(1)).unwrap();
         let mut library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);
         app.insert_resource(public); app.insert_resource(library); app.init_resource::<WallEntities>();

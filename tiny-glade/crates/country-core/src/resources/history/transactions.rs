@@ -154,19 +154,6 @@ impl HistoryReplaySelection<RoofRimHistoryMutation> {
 pub struct HistoryTransactions<M, S = ()> {
     ledger: ObservedHistoryLedger<M, S>,
     pending: Option<HistoryEntry<M>>,
-    /// Latest pending-write compatibility view, not the replay authority.
-    /// Committed entries retain their own Arc in HistoryEntryAux.
-    /// Native `History +0x48`: `Arc<DecoratorHistoryDiff>` replaced by
-    /// `History::add_decorator_diff` (0x140a854a0). Native
-    /// `DecoratorHistoryDiff` is a 0x30-byte map value (see
-    /// `decorator_edit::DecoratorHistoryDiffMap`).
-    pub decorator_diff:
-        Option<std::sync::Arc<crate::resources::history::decorator_edit::DecoratorHistoryDiffMap>>,
-    /// Latest pending-write compatibility view; replay uses the selected entry.
-    /// Native `History +0x50`: `Arc<StairsHistoryDiff>` replaced by the same
-    /// function (0x60-byte payload in the original; see stairs domain).
-    pub stairs_diff:
-        Option<std::sync::Arc<crate::resources::stairs::stairs_state::StairsHistoryDiff>>,
     /// Native `History +0x68`（`HistoryEditChain` 的调试显示值）：`history_chain::impl$2::fmt`
     /// (0x140b31c90) 读取 `chain+0x30` 的数字。语义未完整锚定，仅供 `debug_display`。
     pub debug_chain: u64,
@@ -182,8 +169,6 @@ impl<M, S> HistoryTransactions<M, S> {
         Self {
             ledger,
             pending: None,
-            decorator_diff: None,
-            stairs_diff: None,
             debug_chain: 0,
             debug_history_start: 0,
         }

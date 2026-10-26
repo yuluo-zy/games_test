@@ -31,6 +31,7 @@ use country_core::resources::{
     roofs::commands::{CreateRoofCmd, RecalculateWallBricks},
     walls::public_walls::{OnWallChanged, PublicWalls},
 };
+use itertools::Itertools;
 
 /// 28B `PillarPlacementProposal` 观测投影（原件 stride 0x1c）。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -203,8 +204,8 @@ pub fn assemble_stone_pillar(
             // 原件追加段尾（0.25 间隙保留在最后一对里）。
             heights.push(b);
         }
-        for pair in heights.windows(2) {
-            let (low, high) = (pair[0], pair[1]);
+        for (low, high) in heights.iter().tuple_windows() {
+            let (low, high) = (*low, *high);
             let length = (high - low).abs();
             if length < f32::from_bits(0x3c23d70a) {
                 // 0.01 ε

@@ -4,6 +4,8 @@
 use bevy_ecs::component::Component;
 
 #[derive(Component, Clone, Debug, Default)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct RoofAnimation(pub(crate) crate::resources::roofs::components::RoofAnimation);
 
 impl RoofAnimation {
@@ -40,3 +42,5 @@ impl RoofAnimation {
 
 #[derive(Component, Clone, Copy, Debug)]
 pub struct RoofMarkedForDeletion;
+
+impl crate::render::extract::JournaledComponent for RoofAnimation {}

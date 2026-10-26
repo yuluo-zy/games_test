@@ -15,6 +15,8 @@ use crate::resources::roofs::{
     roof_shape::Roof,
 };
 use glam::Vec3;
+use ::utils::bytes::read_f32_le as at;
+use ::utils::scalar::{clamp, clamp01, max_f32};
 
 /// `RoofBoundsDims` 判别 tag（O：bit0 = circle）。
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -79,14 +81,14 @@ impl Roof {
             } else {
                 let x = at(b, 0x1c);
                 let z = at(b, 0x20);
-                ((sse_max(x, z) + -2.25) / 12.75, 9.0)
+                ((max_f32(x, z) + -2.25) / 12.75, 9.0)
             };
-            let t = sse_min(1.0, sse_max(0.0, dim_n / 0.4));
+            let t = clamp01(dim_n / 0.4);
             let smooth = (3.0 - (t + t)) * t * t;
             let cap_base = smooth * 12.0 + (1.0 - smooth) * base;
             assert!(cap_base >= 0.0, "original height cap assertion");
             let cap_h = height_01 * 12.0 + (1.0 - height_01) * 0.4;
-            cap = sse_min(cap_base, sse_max(0.0, cap_h));
+            cap = clamp(cap_h, 0.0, cap_base);
         }
         // 分子 (pos.y + noise·(−0.3)) − floor；分母 (cap + floor) − floor（保留原求值序）。
         (y - floor) / ((cap + floor) - floor)
@@ -127,16 +129,6 @@ pub fn get_roof_expanded_top_and_bottom(roof: &Roof) -> RoofBoundsDims {
         };
         RoofBoundsDims::Rectangle { bottom, top }
     }
-}
-
-fn at(b: &[u8; 88], offset: usize) -> f32 {
-    f32::from_le_bytes(b[offset..offset + 4].try_into().unwrap())
-}
-fn sse_max(a: f32, b: f32) -> f32 {
-    if a > b { a } else { b }
-}
-fn sse_min(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
 }
 
 #[cfg(test)]

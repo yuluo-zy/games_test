@@ -1,7 +1,6 @@
 //! 配置驱动的设备选择与功能启用；生产创建入口不依赖旧驱动排序或固定扩展清单。
 use super::{
     AllocationStrategy, DeviceCaps, ExecutionPolicy, Feature, FeatureSet, QueueConfig,
-    RecordingPolicy,
 };
 use crate::raw::{
     device::Device,
@@ -23,17 +22,6 @@ pub enum DevicePreference {
     ByUuid([u8; vk::UUID_SIZE]),
 }
 
-/// Native submission strategy. Legacy disables synchronization2 while retaining
-/// device timeline completion, dynamic rendering and descriptor capabilities.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum SubmissionApi {
-    /// Enable synchronization2 when the selected device supports it.
-    #[default]
-    Auto,
-    /// Use vkQueueSubmit with timeline semaphore submission information.
-    Legacy,
-}
-
 #[derive(Clone, Debug)]
 pub struct DeviceConfig {
     /// Device memory budget; cached and retiring allocations still count.
@@ -48,9 +36,7 @@ pub struct DeviceConfig {
     pub required_features: FeatureSet,
     pub preferred_device: DevicePreference,
     pub frames_in_flight: u32,
-    pub recording: RecordingPolicy,
     pub allocation: AllocationStrategy,
-    pub submission_api: SubmissionApi,
     /// Per-maintenance-tick limits; explicit completed-object drains and
     /// shutdown are exempt from the normal/pressure quotas.
     pub reclamation: super::ReclamationConfig,
@@ -66,11 +52,10 @@ impl Default for DeviceConfig {
             required_features: super::policy::bindless_features()
                 .with(Feature::TimelineSemaphore)
                 .with(Feature::DynamicRendering)
+        .with(Feature::Synchronization2)
                 .with(Feature::ShaderDemoteToHelperInvocation),
             preferred_device: DevicePreference::default(),
             frames_in_flight: 2,
-            recording: RecordingPolicy::default(),
-            submission_api: SubmissionApi::Auto,
             reclamation: super::ReclamationConfig::default(),
             allocation: if cfg!(feature = "suballocation") {
                 AllocationStrategy::Suballocated
@@ -94,13 +79,6 @@ impl DeviceConfig {
 
     pub fn validate(&self, has_surface: bool) -> Result<()> {
         self.reclamation.validate()?;
-        if self.submission_api == SubmissionApi::Legacy
-            && self.required_features.contains(Feature::Synchronization2)
-        {
-            return Err(Error::invalid_usage(
-                "legacy submission conflicts with required synchronization2",
-            ));
-        }
         if self.memory_budget_bytes == 0 {
             return Err(Error::invalid_usage("memory budget must be nonzero"));
         }
@@ -306,8 +284,6 @@ impl Device {
                 properties,
                 surface,
                 config,
-                None,
-                &[],
             ) {
                 Ok(device) => return Ok(device),
                 Err(error @ Error::Unsupported(_)) => last_unsupported = Some(error),
@@ -319,14 +295,12 @@ impl Device {
     }
 }
 
-pub(crate) fn create_candidate(
+fn create_candidate(
     instance: Arc<VulkanInstance>,
     physical: vk::PhysicalDevice,
     properties: vk::PhysicalDeviceProperties,
     surface: Option<&crate::raw::swapchain::Surface>,
     config: &DeviceConfig,
-    selected_plan: Option<super::QueuePlan>,
-    required_extensions: &[&CStr],
 ) -> Result<Arc<Device>> {
     if properties.api_version < vk::API_VERSION_1_2 || instance.api_version < vk::API_VERSION_1_2 {
         return Err(Error::unsupported("设备创建要求 Vulkan 1.2"));
@@ -447,15 +421,14 @@ pub(crate) fn create_candidate(
     for feature in required.iter() {
         DeviceCaps::new(supported, FeatureSet::EMPTY).require_supported(feature)?;
     }
-    let use_sync2 = config.submission_api == SubmissionApi::Auto && sync2.synchronization2 != 0;
 
-    let properties = unsafe {
+    let queue_properties = unsafe {
         instance
             .instance
             .get_physical_device_queue_family_properties(physical)
     };
-    let mut families = Vec::with_capacity(properties.len());
-    for (index, props) in properties.iter().enumerate() {
+    let mut families = Vec::with_capacity(queue_properties.len());
+    for (index, props) in queue_properties.iter().enumerate() {
         let present = if let Some(surface) = surface {
             unsafe {
                 surface.loader.get_physical_device_surface_support(
@@ -469,10 +442,7 @@ pub(crate) fn create_candidate(
         };
         families.push(super::FamilyInfo::from_properties(props, present));
     }
-    let plan = match selected_plan {
-        Some(plan) => plan,
-        None => super::plan_queues(&families, &config.queues)?,
-    };
+    let plan = super::plan_queues(&families, &config.queues)?;
     let counts = plan.create_counts();
     let priorities: Vec<_> = counts.iter().map(|(_, n)| vec![1.0; *n as usize]).collect();
     let queues: Vec<_> = counts
@@ -485,17 +455,6 @@ pub(crate) fn create_candidate(
         })
         .collect();
     let mut extensions = Vec::new();
-    for name in required_extensions {
-        if !has(name) {
-            return Err(Error::unsupported(format!(
-                "缺少请求的设备扩展 {}",
-                name.to_string_lossy()
-            )));
-        }
-        if !extensions.contains(&name.as_ptr()) {
-            extensions.push(name.as_ptr());
-        }
-    }
     if surface.is_some() {
         if !has(ash::khr::swapchain::NAME) {
             return Err(Error::unsupported("设备缺少 VK_KHR_swapchain"));
@@ -519,7 +478,7 @@ pub(crate) fn create_candidate(
         extensions.push(ash::ext::memory_budget::NAME.as_ptr());
     }
     // 在 1.2 实例上通过扩展入口使用 1.3 特性，不能调用未启用的核心函数。
-    if !core13 && use_sync2 {
+    if !core13 {
         extensions.push(ash::khr::synchronization2::NAME.as_ptr());
     }
     if !core13 && dynamic.dynamic_rendering != 0 {
@@ -596,9 +555,7 @@ pub(crate) fn create_candidate(
     if enabled11.shader_draw_parameters != 0 {
         enabled = enabled.with(Feature::ShaderDrawParameters);
     }
-    if use_sync2 {
-        enabled = enabled.with(Feature::Synchronization2);
-    }
+    enabled = enabled.with(Feature::Synchronization2);
     if dynamic.dynamic_rendering != 0 {
         enabled = enabled.with(Feature::DynamicRendering);
     }
@@ -627,9 +584,7 @@ pub(crate) fn create_candidate(
     if maintenance.swapchain_maintenance1 != 0 {
         info = info.push_next(&mut maintenance);
     }
-    if use_sync2 {
-        info = info.push_next(&mut sync2);
-    }
+    info = info.push_next(&mut sync2);
     if dynamic.dynamic_rendering != 0 {
         info = info.push_next(&mut dynamic);
     }
@@ -640,7 +595,6 @@ pub(crate) fn create_candidate(
     let policy = super::plan_policy(
         &caps,
         &super::PolicyPreferences {
-            recording: config.recording,
             allocation: config.allocation,
         },
     )?;
@@ -652,29 +606,22 @@ pub(crate) fn create_candidate(
         policy,
         frames_in_flight: config.frames_in_flight,
     };
-    Device::create_with_runtime(instance, physical, &info, plan, runtime)
+    let memory = unsafe {
+        instance.instance.get_physical_device_memory_properties(physical)
+    };
+    let physical = Arc::new(crate::raw::physical_device::PhysicalDevice::from_snapshot(
+        instance,
+        physical,
+        properties,
+        memory,
+        queue_properties,
+    ));
+    Device::create_with_runtime(physical, &info, plan, runtime)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn submission_api_defaults_to_auto_and_legacy_rejects_a_required_sync2_conflict() {
-        assert_eq!(DeviceConfig::default().submission_api, SubmissionApi::Auto);
-        let mut config = DeviceConfig {
-            submission_api: SubmissionApi::Legacy,
-            ..DeviceConfig::headless()
-        };
-        assert!(config.validate(false).is_ok());
-        config.required_features = config.required_features.with(Feature::Synchronization2);
-        assert_eq!(
-            config.validate(false).unwrap_err().kind(),
-            crate::ErrorKind::InvalidUsage
-        );
-        config.submission_api = SubmissionApi::Auto;
-        assert!(config.validate(false).is_ok());
-    }
 
     #[test]
     fn default_config_requires_shader_demote_to_helper_invocation() {

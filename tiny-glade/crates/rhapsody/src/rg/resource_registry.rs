@@ -63,7 +63,10 @@ impl<TextureHandle, BufferHandle> ResourcePool<TextureHandle, BufferHandle> {
     ) -> Option<Texture<TextureHandle>> {
         let entries = self.textures.get_mut(desc)?;
         let index = entries.iter().rposition(|entry| accepts(&entry.handle))?;
-        Some(entries.swap_remove(index))
+        let found = entries.swap_remove(index);
+        let empty = entries.is_empty();
+        if empty { self.textures.remove(desc); }
+        Some(found)
     }
     pub fn take_buffer_where(
         &mut self,
@@ -72,10 +75,10 @@ impl<TextureHandle, BufferHandle> ResourcePool<TextureHandle, BufferHandle> {
     ) -> Option<Buffer<BufferHandle>> {
         let entries = self.buffers.get_mut(desc)?;
         let index = entries.iter().rposition(|entry| accepts(&entry.handle))?;
-        Some(entries.swap_remove(index))
-    }
-    pub fn take_texture(&mut self, desc: &TextureDesc) -> Option<Texture<TextureHandle>> {
-        self.textures.get_mut(desc).and_then(Vec::pop)
+        let found = entries.swap_remove(index);
+        let empty = entries.is_empty();
+        if empty { self.buffers.remove(desc); }
+        Some(found)
     }
 
     pub fn insert_texture(&mut self, texture: Texture<TextureHandle>) {
@@ -83,7 +86,7 @@ impl<TextureHandle, BufferHandle> ResourcePool<TextureHandle, BufferHandle> {
     }
 
     pub fn take_buffer(&mut self, desc: &BufferDesc) -> Option<Buffer<BufferHandle>> {
-        self.buffers.get_mut(desc).and_then(Vec::pop)
+        self.take_buffer_where(desc, |_| true)
     }
 
     pub fn insert_buffer(&mut self, buffer: Buffer<BufferHandle>) {
@@ -163,10 +166,6 @@ impl<TextureHandle, BufferHandle, Other> Default
     }
 }
 
-pub struct ResourceExports<TextureHandle, BufferHandle, Other> {
-    pub remaining: Vec<RegistryResource<TextureHandle, BufferHandle, Other>>,
-    pub exported: HashMap<u16, RegistryResource<TextureHandle, BufferHandle, Other>>,
-}
 
 impl<TextureHandle, BufferHandle, Other> ResourceRegistry<TextureHandle, BufferHandle, Other> {
     /// 逻辑资源是否已由 population 分配物理槽；未出现在生命周期事件里的资源（如只导出、
@@ -182,6 +181,11 @@ impl<TextureHandle, BufferHandle, Other> ResourceRegistry<TextureHandle, BufferH
         &self.backing_resources[usize::from(reuse.backing_index)]
     }
 
+    /// Access a populated physical resource after graph preparation.
+    ///
+    /// # Panics
+    /// Panics for an invalid logical handle or a resource not populated by
+    /// this frame. Use `is_populated` when inspecting a culled declaration.
     pub fn resource(
         &self,
         logical: u32,
@@ -199,25 +203,13 @@ impl<TextureHandle, BufferHandle, Other> ResourceRegistry<TextureHandle, BufferH
         )
     }
 
-    pub fn image_from_raw_handle(&self, logical: u32) -> &Texture<TextureHandle> {
+    pub fn image(&self, logical: u32) -> &Texture<TextureHandle> {
         match self.backing(logical) {
             RegistryResource::OwnedTexture(texture) | RegistryResource::UnownedTexture(texture) => {
                 texture
             }
             _ => panic!("resource is not a texture"),
         }
-    }
-
-    /// `image_from_raw_handle` 的别名。
-    pub fn image(&self, logical: u32) -> &Texture<TextureHandle> {
-        self.image_from_raw_handle(logical)
-    }
-
-    /// 本通用 registry 只持有 `Texture { handle, desc }`，
-    /// 不拥有独立的 image-view 载体。返回纹理 handle 作为可解析的物理对象，
-    /// 视图创建仍由 raw 层 `TextureViewDesc`/后端完成。
-    pub fn image_view(&self, logical: u32) -> &Texture<TextureHandle> {
-        self.image_from_raw_handle(logical)
     }
 
     pub fn buffer(&self, logical: u32) -> &Buffer<BufferHandle> {
@@ -229,24 +221,4 @@ impl<TextureHandle, BufferHandle, Other> ResourceRegistry<TextureHandle, BufferH
         }
     }
 
-    pub fn into_exports(mut self) -> ResourceExports<TextureHandle, BufferHandle, Other> {
-        self.exported_logical_handles.sort_unstable();
-        self.exported_logical_handles.dedup();
-        let exported = self
-            .exported_logical_handles
-            .into_iter()
-            .filter_map(|logical| {
-                // 未填充的导出资源没有物理槽可取（执行器已以 ResourceUnavailable 拒绝该图）。
-                let physical = self.resources.get(usize::from(logical))?.backing_index;
-                let slot = self.backing_resources.get_mut(usize::from(physical))?;
-                Some((logical, std::mem::replace(slot, RegistryResource::Empty)))
-            })
-            .collect();
-        self.backing_resources
-            .retain(|resource| !matches!(resource, RegistryResource::Empty));
-        ResourceExports {
-            remaining: self.backing_resources,
-            exported,
-        }
-    }
 }

@@ -30,7 +30,7 @@ pub fn vk_format_planes(format: vk::Format) -> &'static [PlaneInfo] {
 /// 整图视图使用 COLOR；选择单平面时额外允许 PLANE_n。
 pub fn vk_format_all_aspects(format: vk::Format) -> vk::ImageAspectFlags {
     let mut flags = vk_format_valid_aspect_flags(format);
-    for i in 0..vk_format_planes(format).len() {
+    for i in 0..vk_format_planes(format).len().min(3) {
         flags |= vk::ImageAspectFlags::from_raw(0x10 << i);
     }
     flags
@@ -74,9 +74,7 @@ pub mod observed {
         pub fn byte_at_08(self) -> u8 {
             self.bytes[8]
         }
-        pub fn byte_at_09(self) -> u8 {
-            self.bytes[9]
-        }
+
         pub fn write_into(self, destination: &mut [u8]) -> Result<(), FormatError> {
             if destination.len() < 10 {
                 return Err(FormatError::OutputTooShort);

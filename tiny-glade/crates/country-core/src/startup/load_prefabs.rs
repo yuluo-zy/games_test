@@ -269,6 +269,9 @@ fn load_prefabs_selected(
                 bounds,
             });
         }
+        // Publish one part order for atlas, GPU instances, RT and audio.
+        // Source maps have randomized iteration; their order is not identity.
+        parts.sort_unstable_by(|left, right| left.name.cmp(&right.name));
         modified.insert(runtime_name.clone());
         replacements.push((runtime_name, Prefab { parts }));
     }
@@ -352,14 +355,16 @@ mod tests {
                 rt: (mesh: Aabb, mesh_scale:[0.9,0.9,0.9], semantic: Canopy,
                      summer_albedo:[1.0,0.5,0.25]),
                 audio: (trigger: (shape: Aabb, shape_scale:[0.8,1.0,0.8], kind: "Tree")),
-            )},
+            ), "a_early": (render: (mesh: "canopy", shader: "tree_canopy"))},
         )"#,
         )
         .unwrap();
         let mut library = PrefabLibrary::default();
         load_prefabs_impl(&root, &mut library).unwrap();
         let _ = std::fs::remove_dir_all(&dir);
-        let part = &library.get(&PrefabName::new("tree")).parts[0];
+        let parts = &library.get(&PrefabName::new("tree")).parts;
+        assert_eq!(parts.iter().map(|part| part.name.as_str()).collect::<Vec<_>>(), ["a_early", "canopy"]);
+        let part = &parts[1];
         assert_eq!(part.name, "canopy");
         assert_eq!(part.render_subset, GpuWorldSubsetKind::Canopy);
         assert_eq!(part.render_mesh.indices, [0, 1, 2]);

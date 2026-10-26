@@ -172,7 +172,7 @@ impl VulkanGraphBackend {
         self.queue_runtime.tokens.values.clear();
         self.queue_runtime.points.values.clear();
         if Arc::get_mut(&mut self.queue_runtime.planner).is_none() {
-            return Err(crate::Error::Timeout);
+            return Err(crate::Error::invalid_usage("synchronization planner is still borrowed"));
         }
         for batch in &plan.range_program.batches {
             let flags = *self
@@ -422,11 +422,7 @@ impl VulkanGraphBackend {
             let token = self.queue_runtime.tokens.values[transition.resource as usize].ok_or_else(
                 || crate::Error::invalid_usage("ownership transition has no physical token"),
             )?;
-            if !ExecutionBackend::transition(self, command, token, transition) {
-                return Err(self.recording_error.take().unwrap_or_else(|| {
-                    crate::Error::invalid_usage("ownership transition recording failed")
-                }));
-            }
+            ExecutionBackend::transition(self, command, token, transition)?;
         }
         self.attach_range_patches(&[command], prelude.tag as usize)
     }

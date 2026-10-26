@@ -45,7 +45,7 @@ fn real_toolbar_focus_suppresses_hint_then_release_consumes_only_new_requests() 
     schedule.run(&mut world);
     assert!(hints(&mut world).is_empty());
 
-    world.get_mut::<UiInteractionState>(item).unwrap().keep = 0;
+    world.component_mut::<UiInteractionState>(item).unwrap().keep = 0;
     schedule.run(&mut world);
     assert!(hints(&mut world).is_empty(), "suppressed request must already be consumed");
 
@@ -75,3 +75,5 @@ fn focused_toolbar_does_not_block_menu_deletion_or_linger_special_hint() {
     schedule.run(&mut world);
     assert_eq!(hints(&mut world).len(), 1);
 }
+
+use country_core::render::extract::WorldComponentWrite as _;

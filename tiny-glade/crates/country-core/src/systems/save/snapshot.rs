@@ -406,13 +406,6 @@ impl SnapshotDomainData {
         Ok(sections)
     }
 
-    /// Compatibility entry for callers requiring an infallible projection.
-    /// File writers should call encode_game_snapshot and propagate its Result.
-    pub fn to_section_values(&self) -> Vec<(&'static str, Value)> {
-        self.try_to_section_values()
-            .expect("snapshot domain serialization failed")
-    }
-
     pub fn try_to_json(&self) -> anyhow::Result<Value> {
         let object = self
             .try_to_section_values()?
@@ -680,14 +673,6 @@ pub fn capture_game_snapshot_save_data(
 /// `MOVZX EAX,[0x143634c09]` + `MOV ECX,0x80000; MOV EDX,1; CALL __rust_alloc`；
 /// 0x80000 = 512 KiB，分配失败走 handle_alloc_error）。
 pub const SNAPSHOT_JSON_BUFFER_CAPACITY: usize = 0x80000;
-
-/// Compatibility wrapper around the Result file encoder. B's full original
-/// procedure is 20,581 bytes (PDB 1722:19228), not the older 6,947-byte extract.
-/// The original fourteen-domain metadata and compressed chunks are emitted by
-/// one implementation; asynchronous writers must propagate encode's Result.
-pub fn capture_game_snapshot(domain: SnapshotDomainData) -> Vec<u8> {
-    encode_game_snapshot(&domain).expect("snapshot serialization failed (native unwrap_failed)")
-}
 
 /// The single file encoder for both explicit and automatic snapshot saves.
 /// B@1417a31e2: Snapshot JSON chunk; @1417a35e7: each named raster chunk;
@@ -2658,25 +2643,6 @@ impl TerrainSectionJson {
     }
 }
 
-/// Terrain 节 flate2 解压入口（① r7-chain1-field 契约 §3 纠偏：**Terrain strokes 为
-/// JSON 明文，flate2 deflate 只用于二进制栅格尾**（"decompressing terrain data"
-/// @0x142cdc800）；本函数保留作栅格尾解压候选，JSON Terrain 节请用
-/// [`TerrainSectionJson`]）。
-pub fn parse_terrain_section(json: &serde_json::Value) -> Option<Vec<u8>> {
-    let bytes = json
-        .as_array()
-        .and_then(|array| array.first())
-        .and_then(serde_json::Value::as_str)
-        .or_else(|| json.as_str())
-        .map(|s| s.as_bytes().to_vec());
-    bytes.and_then(|compressed| inflate_terrain(&compressed).ok())
-}
-
-/// Terrain 节 flate2 解压入口（兼容旧签名，① c-apply-section-parsing §3）。
-pub fn inflate_terrain_entry(bytes: &[u8]) -> std::io::Result<Vec<u8>> {
-    inflate_terrain(bytes)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2726,7 +2692,7 @@ mod tests {
             terrain_height_range: Some(-2.0..4.0),
             removed_supports: Some(StairsRemovedSupports::default()),
         };
-        let bytes = capture_game_snapshot(domain);
+        let bytes = encode_game_snapshot(&domain).unwrap();
         assert!(bytes.len() <= SNAPSHOT_JSON_BUFFER_CAPACITY);
         let first = motomoto::Reader::new(&bytes)
             .iter()

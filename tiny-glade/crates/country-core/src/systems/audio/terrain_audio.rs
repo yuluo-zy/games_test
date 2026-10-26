@@ -9,6 +9,7 @@ use crate::{
 };
 use bevy_ecs::prelude::*;
 use glam::Vec3;
+use ::utils::scalar::{clamp01, inverse_lerp};
 
 /// The four terrain edit loops (O: rne-read; slot order 0..3).
 pub const TERRAIN_LOOP_EVENTS: [&str; 4] = [
@@ -78,17 +79,6 @@ pub fn add_terrain_audio_systems<S: Studio + Send + Sync + 'static>(schedule: &m
             .chain()
             .after(crate::systems::terrain::TerrainCpuStage::Changed),
     );
-}
-
-/// Native `inverse_lerp` (0x140c904a0) — unclamped.
-fn inverse_lerp(min: f32, max: f32, value: f32) -> f32 {
-    (value - min) / (max - min)
-}
-
-fn clamp01(value: f32) -> f32 {
-    // Native MAXSS/MINSS retain NaN and the input signed zero. The f32
-    // min/max methods ignore NaN and canonicalize opposite signed zeros.
-    value.clamp(0.0, 1.0)
 }
 
 /// `terrain_audio_system` (0x1414618c0).

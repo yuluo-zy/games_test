@@ -154,9 +154,7 @@ impl<T, Points: CurvePoints<T>, S, R: CurvePoint, F: Fn(usize, &T) -> R>
             marker: PhantomData,
         }
     }
-    pub fn remap_2d(
-        self,
-    ) -> CurveSlice<T, Points, S, glam::Vec2, impl Fn(usize, &T) -> glam::Vec2>
+    pub fn remap_2d(self) -> CurveSlice<T, Points, S, glam::Vec2, impl Fn(usize, &T) -> glam::Vec2>
     where
         T: CurvePoint,
     {
@@ -273,31 +271,90 @@ impl<T, Points: CurvePoints<T>, S, R: CurvePoint, F: Fn(usize, &T) -> R>
         }
     }
 }
+/// 原 slice_into 的借用缓存入口；只分配结果点列，不复制整个权威曲线。
+pub fn slice_cached_into<P, T: CurvePoint>(
+    points: &[P],
+    points_u: &[f32],
+    start: f32,
+    end: f32,
+    project: impl Fn(&P) -> T,
+    output: &mut Vec<T>,
+) {
+    assert!(end > start);
+    let left = super::coord_at_cached_u(points.len(), points_u, start);
+    let right = super::coord_at_cached_u(points.len(), points_u, end);
+    let at = |c: CurveInternalCoord| {
+        project(&points[c.segment + 1]) * c.t + project(&points[c.segment]) * (1.0 - c.t)
+    };
+    let a = at(left);
+    let b = at(right);
+    let first = left.segment
+        + if a == project(&points[left.segment + 1]) {
+            2
+        } else {
+            1
+        };
+    let last = if b == project(&points[right.segment]) {
+        right.segment.checked_sub(1)
+    } else {
+        Some(right.segment)
+    };
+    output.push(a);
+    if let Some(last) = last
+        && first <= last
+    {
+        output.extend(points[first..=last].iter().map(&project));
+    }
+    output.push(b);
+}
+
+/// 与现有原 circular_slice 共用的借用入口；右侧构造失败、接缝点移除和重复点
+/// 检查保留原算法，不能把环绕切片替换成一个取模后的中点。
+pub fn circular_slice_cached<P, T: CurvePoint, S: CurveMetric<T>>(
+    points: &[P],
+    points_u: &[f32],
+    start: f32,
+    end: f32,
+    project: impl Fn(&P) -> T + Copy,
+) -> Result<Curve<T, S>, CurveError> {
+    let _ = CurveU::<S>::new(start);
+    let _ = CurveU::<S>::new(end);
+    let slice = |start, end| {
+        let mut out = Vec::new();
+        slice_cached_into(points, points_u, start, end, project, &mut out);
+        Curve::<T, S>::try_new_from_points(out, false)
+    };
+    if start < end {
+        return slice(start, end);
+    }
+    let mut out = Vec::new();
+    if start != 1.0 {
+        slice_cached_into(points, points_u, start, 1.0, project, &mut out);
+    }
+    if end != 0.0
+        && let Ok(right) = slice(0.0, end)
+    {
+        if !out.is_empty() {
+            out.pop();
+        }
+        if out.last() == right.points.first() {
+            out.pop();
+        }
+        out.extend(right.points);
+    }
+    Curve::try_new_from_points(out, false)
+}
+
 impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     pub fn slice_into(&self, start: f32, end: f32, output: &mut Vec<T>) {
-        assert!(end > start);
-        let left = self.get_coord_at_u(start);
-        let right = self.get_coord_at_u(end);
-        let a = self.get_pos_at_coord(left);
-        let b = self.get_pos_at_coord(right);
-        let first = left.segment
-            + if a == self.points[left.segment + 1] {
-                2
-            } else {
-                1
-            };
-        let last = if b == self.points[right.segment] {
-            right.segment.checked_sub(1)
-        } else {
-            Some(right.segment)
-        };
-        output.push(a);
-        if let Some(last) = last
-            && first <= last
-        {
-            output.extend_from_slice(&self.points[first..=last]);
-        }
-        output.push(b);
+        slice_cached_into(
+            &self.points,
+            &self.points_u,
+            start,
+            end,
+            |point| *point,
+            output,
+        );
     }
     pub fn try_slice(&self, start: f32, end: f32) -> Result<Self, CurveError> {
         let mut out = Vec::new();
@@ -309,27 +366,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     }
     /// Join the tail and head of a closed curve, removing the seam vertex.
     pub fn circular_slice(&self, start: f32, end: f32) -> Result<Self, CurveError> {
-        let _ = CurveU::<S>::new(start);
-        let _ = CurveU::<S>::new(end);
-        if start < end {
-            return self.try_slice(start, end);
-        }
-        let mut out = Vec::new();
-        if start != 1.0 {
-            self.slice_into(start, 1.0, &mut out)
-        }
-        if end != 0.0
-            && let Ok(right) = self.try_slice(0.0, end)
-        {
-            if !out.is_empty() {
-                out.pop();
-            }
-            if out.last() == right.points.first() {
-                out.pop();
-            }
-            out.extend(right.points);
-        }
-        Self::try_new_from_points(out, false)
+        circular_slice_cached(&self.points, &self.points_u, start, end, |point| *point)
     }
 }
 
@@ -349,14 +386,33 @@ mod original_right_f32_regressions {
     #[test]
     fn zero_distance_keeps_original_f32_cancellation() {
         let points = [
-            Vec3::new(f32::from_bits(3246861589), f32::from_bits(3236099130), f32::from_bits(1096230032)),
-            Vec3::new(f32::from_bits(1089722329), f32::from_bits(1100558226), f32::from_bits(1097214363)),
-            Vec3::new(f32::from_bits(3233710308), f32::from_bits(1093554716), f32::from_bits(1091714934)),
+            Vec3::new(
+                f32::from_bits(3246861589),
+                f32::from_bits(3236099130),
+                f32::from_bits(1096230032),
+            ),
+            Vec3::new(
+                f32::from_bits(1089722329),
+                f32::from_bits(1100558226),
+                f32::from_bits(1097214363),
+            ),
+            Vec3::new(
+                f32::from_bits(3233710308),
+                f32::from_bits(1093554716),
+                f32::from_bits(1091714934),
+            ),
         ];
-        let coordinate = CurveInternalCoord { segment: 0, t: f32::from_bits(1057632207) };
-        let mut slice = CurveSlice::<Vec3, _, super::super::CurveCoordSemantic2D>::from_coord_range(
-            points.as_slice(), coordinate, coordinate,
-        ).remap_2d();
+        let coordinate = CurveInternalCoord {
+            segment: 0,
+            t: f32::from_bits(1057632207),
+        };
+        let mut slice =
+            CurveSlice::<Vec3, _, super::super::CurveCoordSemantic2D>::from_coord_range(
+                points.as_slice(),
+                coordinate,
+                coordinate,
+            )
+            .remap_2d();
         slice.extend_right(0.0);
         assert_eq!(slice.start(), coordinate);
         assert_eq!(slice.end().t.to_bits(), 1057632208);
@@ -365,9 +421,12 @@ mod original_right_f32_regressions {
     #[test]
     fn right_extension_uses_the_remapped_metric() {
         let points = [Vec3::ZERO, Vec3::new(3.0, 100.0, 4.0)];
-        let mut slice = CurveSlice::<Vec3, _, super::super::CurveCoordSemantic2D>::from_point_range(
-            points.as_slice(), 0..=0,
-        ).remap_2d();
+        let mut slice =
+            CurveSlice::<Vec3, _, super::super::CurveCoordSemantic2D>::from_point_range(
+                points.as_slice(),
+                0..=0,
+            )
+            .remap_2d();
         slice.extend_right(2.5);
         assert_eq!(slice.end(), CurveInternalCoord { segment: 0, t: 0.5 });
     }
@@ -377,12 +436,15 @@ mod original_right_f32_regressions {
         let points = [Vec2::ZERO, Vec2::X, Vec2::X * 2.0, Vec2::X * 3.0];
         let sampled = std::cell::RefCell::new(Vec::new());
         let mut stopped = Vec::new();
-        let mut slice = CurveSlice::<Vec2, _, super::super::CurveCoordSemantic2D>::from_point_range(
-            points.as_slice(), 0..=0,
-        ).remap(|index, point| {
-            sampled.borrow_mut().push(index);
-            *point
-        });
+        let mut slice =
+            CurveSlice::<Vec2, _, super::super::CurveCoordSemantic2D>::from_point_range(
+                points.as_slice(),
+                0..=0,
+            )
+            .remap(|index, point| {
+                sampled.borrow_mut().push(index);
+                *point
+            });
         slice.extend_right_until(100.0, |index| {
             stopped.push(*index);
             *index == 2
@@ -395,23 +457,29 @@ mod original_right_f32_regressions {
     #[test]
     fn later_remap_failure_preserves_the_completed_endpoint() {
         let points = [Vec2::ZERO, Vec2::X, Vec2::X * 2.0];
-        let mut slice = CurveSlice::<Vec2, _, super::super::CurveCoordSemantic2D>::from_point_range(
-            points.as_slice(), 0..=0,
-        ).remap(|index, point| {
-            assert_ne!(index, 2, "late remap failure");
-            *point
-        });
-        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            slice.extend_right(10.0);
-        })).is_err());
+        let mut slice =
+            CurveSlice::<Vec2, _, super::super::CurveCoordSemantic2D>::from_point_range(
+                points.as_slice(),
+                0..=0,
+            )
+            .remap(|index, point| {
+                assert_ne!(index, 2, "late remap failure");
+                *point
+            });
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                slice.extend_right(10.0);
+            }))
+            .is_err()
+        );
         assert_eq!(slice.end(), CurveInternalCoord { segment: 0, t: 1.0 });
     }
 }
 
 #[cfg(test)]
 mod borrowed_point_constructor_tests {
-    use super::*;
     use super::super::CurveCoordSemantic2D;
+    use super::*;
     use glam::Vec2;
 
     #[test]
@@ -419,12 +487,16 @@ mod borrowed_point_constructor_tests {
         let points = [[0.0, 2.0, 0.0], [3.0, 100.0, 4.0], [6.0, -10.0, 4.0]];
         let sampled = std::cell::RefCell::new(Vec::new());
         let coordinate = CurveInternalCoord { segment: 0, t: 0.0 };
-        let mut view = CurveSlice::<[f32; 3], _, CurveCoordSemantic2D, Vec2, _>::from_coord_range_with_remap(
-            points.as_slice(), coordinate, coordinate, |index, point| {
-                sampled.borrow_mut().push(index);
-                Vec2::new(point[0], point[2])
-            },
-        );
+        let mut view =
+            CurveSlice::<[f32; 3], _, CurveCoordSemantic2D, Vec2, _>::from_coord_range_with_remap(
+                points.as_slice(),
+                coordinate,
+                coordinate,
+                |index, point| {
+                    sampled.borrow_mut().push(index);
+                    Vec2::new(point[0], point[2])
+                },
+            );
         assert!(sampled.borrow().is_empty());
         view.extend_right(2.5);
         assert_eq!(*sampled.borrow(), [0, 1]);
@@ -439,9 +511,24 @@ mod borrowed_point_constructor_tests {
         let zero = CurveInternalCoord { segment: 0, t: 0.0 };
         for (first, last) in [
             (CurveInternalCoord { segment: 1, t: 0.0 }, zero),
-            (zero, CurveInternalCoord { segment: 0, t: f32::NAN }),
-            (zero, CurveInternalCoord { segment: 0, t: -0.1 }),
-            (CurveInternalCoord { segment: 0, t: 0.5 }, CurveInternalCoord { segment: 0, t: 0.2 }),
+            (
+                zero,
+                CurveInternalCoord {
+                    segment: 0,
+                    t: f32::NAN,
+                },
+            ),
+            (
+                zero,
+                CurveInternalCoord {
+                    segment: 0,
+                    t: -0.1,
+                },
+            ),
+            (
+                CurveInternalCoord { segment: 0, t: 0.5 },
+                CurveInternalCoord { segment: 0, t: 0.2 },
+            ),
         ] {
             assert!(std::panic::catch_unwind(|| {
                 CurveSlice::<[f32; 3], _, CurveCoordSemantic2D, Vec2, _>::from_coord_range_with_remap(
@@ -462,15 +549,22 @@ mod borrowed_point_constructor_tests {
     fn borrowed_late_mapper_failure_preserves_completed_native_endpoint() {
         let points = [[0.0, 0.0, 0.0], [1.0, 100.0, 0.0], [2.0, 200.0, 0.0]];
         let zero = CurveInternalCoord { segment: 0, t: 0.0 };
-        let mut view = CurveSlice::<[f32; 3], _, CurveCoordSemantic2D, Vec2, _>::from_coord_range_with_remap(
-            points.as_slice(), zero, zero, |index, p| {
-                assert_ne!(index, 2, "later genuine mapper failure");
-                Vec2::new(p[0], p[2])
-            },
+        let mut view =
+            CurveSlice::<[f32; 3], _, CurveCoordSemantic2D, Vec2, _>::from_coord_range_with_remap(
+                points.as_slice(),
+                zero,
+                zero,
+                |index, p| {
+                    assert_ne!(index, 2, "later genuine mapper failure");
+                    Vec2::new(p[0], p[2])
+                },
+            );
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                view.extend_right(10.0);
+            }))
+            .is_err()
         );
-        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            view.extend_right(10.0);
-        })).is_err());
         assert_eq!(view.end(), CurveInternalCoord { segment: 0, t: 1.0 });
     }
 }

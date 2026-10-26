@@ -145,7 +145,7 @@ pub fn switch_type_cpu(
 pub fn consume(
     mut events: EventReader<EditRoof>,
     associations: Res<WallRoofMap>,
-    mut roofs: Query<&mut Roof>,
+    mut roofs: Query<ComponentWrite<Roof>>,
     frame: Res<BuildingFrame>,
     mut geometry: EventWriter<RoofGeometryChanged>,
     mut gable: EventWriter<WallGableDirty>,
@@ -231,3 +231,5 @@ pub fn consume(
         });
     }
 }
+
+use country_core::render::extract::ComponentWrite;

@@ -165,7 +165,6 @@ fn launch(
         config.lang_override.as_deref(),
     );
     country_core::game_config::set_developer_hotkeys_enabled(config.dev.internal_hotkeys);
-    rhapsody::init_logging();
     if cli.verify_integrity {
         // Execute the real verification and propagate failures. The deleted
         // original report GUI is not represented by an empty GUI backend.

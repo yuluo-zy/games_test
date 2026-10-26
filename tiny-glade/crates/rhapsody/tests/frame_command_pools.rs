@@ -3,7 +3,7 @@ mod gpu_test_support;
 
 use ash::vk;
 use rhapsody::{
-    device::{Device, DeviceConfig, RecordingPolicy},
+    device::{Device, DeviceConfig},
     raw::{command_buffer::VulkanCommandPool, semaphore::TimelineSemaphore},
     rg::{
         parallel::ParallelRecording,
@@ -151,7 +151,6 @@ fn dropped_pending_commands_do_not_allow_early_whole_pool_reset() {
 fn production_session_uses_bounded_frame_worker_pools_and_whole_pool_reuse() {
     let config = DeviceConfig {
         frames_in_flight: 2,
-        recording: RecordingPolicy::Adaptive,
         ..DeviceConfig::headless()
     };
     let Some(device) = gpu_test_support::initialize(
@@ -245,7 +244,7 @@ fn production_callbacks_reuse_cpu_arenas_after_recording_completes() {
     assert!(session.backend.command_pool_reset_count() > 0);
     assert_eq!(
         session.backend.cpu_arena_statistics().backing_allocations,
-        1
+        2 // one owner arena and one recording worker, both reused
     );
 }
 

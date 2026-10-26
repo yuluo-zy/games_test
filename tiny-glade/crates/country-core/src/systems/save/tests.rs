@@ -499,7 +499,7 @@ fn on_load_variant2_fence_release_unblocks_inline() {
     let fence = MetaCommandFence::new_pair_blocked();
     let check = fence.clone();
     // 变体 2 fence 释放条目 + 终止哨兵。
-    session.append_fence_release(fence);
+    session.append_fence(fence);
     session.append_replay_terminator();
     let mut manager = LoadGameManager::default();
     manager.state = LoadGameState::Loaded;

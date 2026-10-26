@@ -5,43 +5,65 @@
 //!   `adjacent` 0x141c4ee80/0x141c4f060、`together` 0x141c4f230：self 已是同类列表
 //!   （判别 0xca/0xcb/0xcc）则 push 到 Vec（容量满 grow_one）；否则新建 2 元素列表。
 //! - `filter_to_mode_impl` 0x1422808d0：游戏手柄分支 0xc5→清空/0xc9 保留/列表递归/
-//!   其余→Empty；非手柄 0xc4..0xc8 保留/列表递归/0xc9 与 0xcd→Empty。
-//! - `cleanup_impl` 0x14227f4a0：列表递归清理→原地压缩非 Empty→剩 1 提升单元素→
-//!   全空置 Empty；Graphic 释放载荷置 Empty；Steam 置 Empty；0xc8/0xcd 默认分支仅当
-//!   +0/+0xc/+0x18==0xc3 才置 Empty（对真 0xc8 恒假，保留）。
+//!   其余→Empty；非手柄保留键鼠及图形，Steam 清空，组合列表递归。
+//! - `cleanup_impl` 0x14227f4a0：Alternate/Adjacent 压缩 Empty、单元素提升；
+//!   Together 仅全空时置 Empty，否则保留间隔。未绑定 Key 与未解析 Steam 清空，
+//!   Graphic/Mouse/Row 保留；顶层非列表包为单元素 Alternate。
 //! - `resolve_steam_impl` 0x14227e5e0：`SteamInput::get_action_origin_glyphs` 逐字形
 //!   映射（0→Empty/1→取元素/≥2→Alternate）；**已重建**（2026-10-17，SteamInput 落库）。
 
 use bevy_ecs::prelude::*;
 use glam::Vec2;
 
-/// 提示图形参数（O `BindingHintDisplay::Graphic` 载荷）。
-///
-/// fresh 反编译 0x141c3de00（make_focus_or_camera_binding_hint）证明真实载荷为
-/// **32B** = `{Vec<&str>, f32@+0x18, f32@+0x1c}`（Bevy `Vec` 布局 {cap@0, ptr@+8,
-/// len@+0x10}）：`alloc(0x20)` 写两条 `&str` `[("hint/mouse",10),("hint/rmb"|"hint/mmb",8)]`
-/// → `{cap=2, ptr, len=2, 0x3f333333(0.7), 0x42c80000(100.0)}`，再走一次
-/// `alternate<HintGraphicParams>`。**两个图标在同一 Graphic 元素内**，不是两个元素。
-/// +0x18/+0x1c 的字段语义 U（按原 f32 值保留）。
+/// 原Graphic支持单张图片（Cow<str>）与按时间轮换的图片序列。
+/// Rust保留语义，不复刻Cow/Vec的niche或未初始化padding。
+#[derive(Clone, Debug, PartialEq)]
+pub enum HintGraphicImages {
+    Image(String),
+    Animation {
+        frames: Vec<String>,
+        seconds_per_frame: f32,
+    },
+}
 #[derive(Clone, Debug, PartialEq)]
 pub struct HintGraphicParams {
-    /// 图标名列表（原生 `Vec<&'static str>`；make_focus 分支 len=2，
-    /// camera/stairs 等单图标写面 len=1）。
-    pub graphics: Vec<String>,
-    /// native +0x18 f32（make_focus = 0.7f；其余写面未取证，置 0）。
-    pub value_0x18: f32,
-    /// native +0x1c f32（make_focus = 100.0f；其余写面未取证，置 0）。
-    pub value_0x1c: f32,
+    pub images: HintGraphicImages,
+    /// 原Graphic枚举+0x28；不是旧记录误认的颜色字段。
+    pub height: f32,
 }
-
-/// 单图标 Graphic 参数（O：camera_*/make_*_binding_hint 构造；字符串 len 与
-/// DAT/anon 表逐项核对）。+0x18/+0x1c 对单图标写面未取证，置 0（登记 U）。
-pub(crate) fn graphic(name: &str) -> HintGraphicParams {
-    HintGraphicParams {
-        graphics: vec![name.to_string()],
-        value_0x18: 0.0,
-        value_0x1c: 0.0,
+impl HintGraphicParams {
+    pub fn image(image: impl Into<String>, height: f32) -> Self {
+        Self {
+            images: HintGraphicImages::Image(image.into()),
+            height,
+        }
     }
+    pub fn animated(frames: Vec<String>, seconds_per_frame: f32, height: f32) -> Self {
+        Self {
+            images: HintGraphicImages::Animation {
+                frames,
+                seconds_per_frame,
+            },
+            height,
+        }
+    }
+    /// 原floorf(time/period)到usize饱和投影后取模；NaN/负数转0，正无穷转MAX。
+    pub fn image_at_time(&self, time: f32) -> &str {
+        match &self.images {
+            HintGraphicImages::Image(image) => image,
+            HintGraphicImages::Animation {
+                frames,
+                seconds_per_frame,
+            } => {
+                let index = (time / *seconds_per_frame).floor() as usize;
+                &frames[index % frames.len()]
+            }
+        }
+    }
+}
+/// 原静态提示图片高度100；动态帧构造必须显式提供原period。
+pub(crate) fn graphic(name: &str) -> HintGraphicParams {
+    HintGraphicParams::image(name, 100.)
 }
 
 /// Steam 动作源字形查询（O：`country_core::resources::steam::ActionOriginGlyphQuery`
@@ -89,7 +111,7 @@ pub enum BindingHintDisplay {
     Empty,
     /// 0xc5
     Graphic(HintGraphicParams),
-    /// 0xc6（载荷 8B = Option<KeyCode>；None/未绑=0xc3 哨兵）
+    /// 0xc6：原Option<KeyCode>含完整平台载荷；None为未绑定。
     Key(Option<crate::KeyCode>),
     /// 0xc7（2×u16）
     Mouse(crate::MouseButton),
@@ -156,26 +178,20 @@ impl BindingHintDisplay {
     /// None → `Empty`；Some(1) → 单元素；Some(n≥2) → `Alternate`。列表递归。
     pub fn resolve_steam(self, steam: &country_core::resources::steam::SteamInput) -> Self {
         match self {
-            Self::Steam(query) => {
-                match steam.get_action_origin_glyphs(query) {
-                    None => Self::Empty,
-                    Some(glyphs) => {
-                        let items: Vec<Self> = glyphs
-                            .into_iter()
-                            .map(|glyph| Self::Graphic(HintGraphicParams {
-                                graphics: vec![glyph],
-                                value_0x18: 0.0,
-                                value_0x1c: 0.0,
-                            }))
-                            .collect();
-                        match items.len() {
-                            0 => Self::Empty,
-                            1 => items.into_iter().next().expect("resolve_steam single"),
-                            _ => Self::Alternate(items),
-                        }
+            Self::Steam(query) => match steam.get_action_origin_glyphs(query) {
+                None => Self::Empty,
+                Some(glyphs) => {
+                    let items: Vec<Self> = glyphs
+                        .into_iter()
+                        .map(|glyph| Self::Graphic(HintGraphicParams::image(glyph, 64.)))
+                        .collect();
+                    match items.len() {
+                        0 => Self::Empty,
+                        1 => items.into_iter().next().expect("resolve_steam single"),
+                        _ => Self::Alternate(items),
                     }
                 }
-            }
+            },
             Self::Alternate(list) => {
                 Self::Alternate(list.into_iter().map(|e| e.resolve_steam(steam)).collect())
             }
@@ -196,7 +212,10 @@ impl BindingHintDisplay {
 
     /// `is_row()`（inline，PDB 行 843）：是否列表/行变体。语义 I（0xca/0xcb/0xcc）。
     pub fn is_row(&self) -> bool {
-        matches!(self, Self::Alternate(_) | Self::Adjacent(_) | Self::Together(_))
+        matches!(
+            self,
+            Self::Alternate(_) | Self::Adjacent(_) | Self::Together(_)
+        )
     }
 
     /// `filter_to_mode`（O `filter_to_mode_impl` 0x1422808d0）：按输入模式过滤键帽。
@@ -385,25 +404,25 @@ impl HintType {
 /// id > 18 时 native 越界读表；本实现返回 `""`（合法写面只产生 0..=18）。
 pub fn hint_type_display_name(id: u8) -> &'static str {
     const NAMES: [&str; 19] = [
-        "Deselect",                 // 0  (8)
-        "FocusEdit",                // 1  (9)
-        "Undo",                     // 2  (4)
-        "DisableSnapping",          // 3  (15)
-        "TerrainSteepness",         // 4  (16)
-        "TerrainFocus",             // 5  (12)
-        "Terrain",                  // 6  (7)
-        "RoofShape",                // 7  (9)
-        "UnlinkWindows",            // 8  (13)
-        "Clutter",                  // 9  (7)
-        "CameraPan",                // 10 (9)
-        "CameraRotate",             // 11 (12)
-        "CameraZoom",               // 12 (10)
-        "StairsCreateStart",        // 13 (17)
-        "StairsCreateFinish",       // 14 (18)
-        "StairsFocus",              // 15 (11)
-        "StairsContinue",           // 16 (14)
-        "StairsDetachFromWall",     // 17 (20)
-        "RollercoasterPrompt",      // 18 (19)
+        "Deselect",             // 0  (8)
+        "FocusEdit",            // 1  (9)
+        "Undo",                 // 2  (4)
+        "DisableSnapping",      // 3  (15)
+        "TerrainSteepness",     // 4  (16)
+        "TerrainFocus",         // 5  (12)
+        "Terrain",              // 6  (7)
+        "RoofShape",            // 7  (9)
+        "UnlinkWindows",        // 8  (13)
+        "Clutter",              // 9  (7)
+        "CameraPan",            // 10 (9)
+        "CameraRotate",         // 11 (12)
+        "CameraZoom",           // 12 (10)
+        "StairsCreateStart",    // 13 (17)
+        "StairsCreateFinish",   // 14 (18)
+        "StairsFocus",          // 15 (11)
+        "StairsContinue",       // 16 (14)
+        "StairsDetachFromWall", // 17 (20)
+        "RollercoasterPrompt",  // 18 (19)
     ];
     NAMES.get(id as usize).copied().unwrap_or("")
 }
@@ -723,7 +742,10 @@ pub fn hint_orchestrator(
     // `(AppMode == 0x13 (Photomode)) | EscMenuState::is_open()`；Linger 有事件恒抑制。
     let suppressed = if linger_present {
         true
-    } else if matches!(*app_mode, country_core::systems::mode_manager::AppMode::Replay) {
+    } else if matches!(
+        *app_mode,
+        country_core::systems::mode_manager::AppMode::Replay
+    ) {
         true
     } else {
         matches!(
@@ -788,10 +810,8 @@ pub fn hint_orchestrator(
                     if !matches!(first.display, BindingHintDisplay::Empty) {
                         entity_commands.insert(first.display.clone());
                     }
-                    entity_commands
-                        .remove::<crate::hint_display_system::HintMarkedForDeletion>();
-                    entity_commands
-                        .remove::<crate::hint_display_system::HintDeleteAfterCooldown>();
+                    entity_commands.remove::<crate::hint_display_system::HintMarkedForDeletion>();
+                    entity_commands.remove::<crate::hint_display_system::HintDeleteAfterCooldown>();
                 }
                 Some(_) => {
                     // id 变化：标记删除，等 entity 消失后再 spawn 新提示。
@@ -808,9 +828,7 @@ pub fn hint_orchestrator(
                         crate::hint_display_system::DELETION_COOLDOWN_TABLE[existing_id as usize];
                     commands
                         .entity(entity)
-                        .insert(crate::hint_display_system::HintDeleteAfterCooldown {
-                            timer,
-                        });
+                        .insert(crate::hint_display_system::HintDeleteAfterCooldown { timer });
                 }
             }
         }
@@ -824,14 +842,16 @@ mod tests {
     #[test]
     fn alternate_pushes_into_existing_list() {
         // O 0x141c4e4f0：self 判别==0xca 则 push，否则新建 2 元素列表。
-        let seed = BindingHintDisplay::Key(Some(1));
-        let list = seed.alternate(Some(2)).alternate(Some(3));
+        let seed = BindingHintDisplay::Key(Some(crate::KeyCode::KeyA));
+        let list = seed
+            .alternate(Some(crate::KeyCode::KeyB))
+            .alternate(Some(crate::KeyCode::KeyC));
         match &list {
             BindingHintDisplay::Alternate(v) => {
                 assert_eq!(v.len(), 3);
-                assert_eq!(v[0], BindingHintDisplay::Key(Some(1)));
-                assert_eq!(v[1], BindingHintDisplay::Key(Some(2)));
-                assert_eq!(v[2], BindingHintDisplay::Key(Some(3)));
+                assert_eq!(v[0], BindingHintDisplay::Key(Some(crate::KeyCode::KeyA)));
+                assert_eq!(v[1], BindingHintDisplay::Key(Some(crate::KeyCode::KeyB)));
+                assert_eq!(v[2], BindingHintDisplay::Key(Some(crate::KeyCode::KeyC)));
             }
             other => panic!("expected Alternate, got {other:?}"),
         }
@@ -850,15 +870,15 @@ mod tests {
         assert!(matches!(t, BindingHintDisplay::Together(v) if v.len() == 3));
         // 不跨列表合并：adjacent 不 push 进 Alternate（新建 2 元素列表）。
         let x = BindingHintDisplay::Empty
-            .alternate(Some(1u32))
-            .adjacent(Some(2u32));
+            .alternate(Some(crate::KeyCode::KeyA))
+            .adjacent(Some(crate::KeyCode::KeyB));
         assert!(matches!(x, BindingHintDisplay::Adjacent(v) if v.len() == 2));
     }
 
     #[test]
     fn filter_to_mode_gamepad_removes_key_mouse_keeps_steam() {
         // O 0x1422808d0：手柄 0xc5→Empty、0xc9 保留、列表递归、其余→Empty。
-        let d = BindingHintDisplay::Key(Some(1))
+        let d = BindingHintDisplay::Key(Some(crate::KeyCode::KeyA))
             .alternate(BindingHintDisplay::Steam(steam_query(0x101)))
             .alternate(BindingHintDisplay::Mouse(crate::MouseButton::Left));
         let filtered = d.filter_to_mode(true);
@@ -874,9 +894,8 @@ mod tests {
 
     #[test]
     fn filter_to_mode_non_gamepad_keeps_keys_empties_steam() {
-        let d = BindingHintDisplay::Key(Some(1)).alternate(BindingHintDisplay::Steam(
-            steam_query(0x101),
-        ));
+        let d = BindingHintDisplay::Key(Some(crate::KeyCode::KeyA))
+            .alternate(BindingHintDisplay::Steam(steam_query(0x101)));
         let filtered = d.filter_to_mode(false);
         match &filtered {
             BindingHintDisplay::Alternate(v) => {
@@ -891,12 +910,14 @@ mod tests {
     fn cleanup_promotes_single_and_empties_all() {
         // O 0x14227f4a0：列表递归→压缩→剩 1 提升；全空置 Empty；owned 顶层把非列表
         // 结果包成 1 元素 Alternate。
-        let single = BindingHintDisplay::Key(Some(1))
+        let single = BindingHintDisplay::Key(Some(crate::KeyCode::KeyA))
             .alternate(BindingHintDisplay::Empty)
             .alternate(BindingHintDisplay::Empty);
         assert_eq!(
             single.cleanup(),
-            BindingHintDisplay::Alternate(vec![BindingHintDisplay::Key(Some(1))])
+            BindingHintDisplay::Alternate(vec![BindingHintDisplay::Key(Some(
+                crate::KeyCode::KeyA
+            ))])
         );
 
         let all_empty = BindingHintDisplay::Empty
@@ -908,7 +929,8 @@ mod tests {
         );
 
         // Together 非全空则保留列表（O：不做压缩/提升）；结果已是列表 → 不包裹。
-        let together = BindingHintDisplay::Key(Some(1)).together(BindingHintDisplay::Empty);
+        let together =
+            BindingHintDisplay::Key(Some(crate::KeyCode::KeyA)).together(BindingHintDisplay::Empty);
         assert!(matches!(together.cleanup(), BindingHintDisplay::Together(v) if v.len() == 2));
     }
 
@@ -916,13 +938,14 @@ mod tests {
     fn cleanup_owned_wraps_non_list_into_single_alternate() {
         // O closure$2 反汇编 XOR EDX,EDX（owned 顶层）：非列表结果包成 1 元素 Alternate；
         // 递归（RDX=1）不包裹。
-        let key = BindingHintDisplay::Key(Some(1));
+        let key = BindingHintDisplay::Key(Some(crate::KeyCode::KeyA));
         assert_eq!(
             key.clone().cleanup(),
             BindingHintDisplay::Alternate(vec![key.clone()])
         );
         // 结果已是列表 → 返回原列表。
-        let list = BindingHintDisplay::Key(Some(1)).alternate(BindingHintDisplay::Key(Some(2)));
+        let list = BindingHintDisplay::Key(Some(crate::KeyCode::KeyA))
+            .alternate(BindingHintDisplay::Key(Some(crate::KeyCode::KeyB)));
         assert!(matches!(list.clone().cleanup(), BindingHintDisplay::Alternate(v) if v.len() == 2));
     }
 
@@ -966,7 +989,7 @@ mod tests {
         assert_eq!(DISPLAY_HINT_FLAG_PROGRESS_BAR, 0x01);
 
         let req = DisplayHintRequest::new(
-            BindingHintDisplay::Key(Some(1)),
+            BindingHintDisplay::Key(Some(crate::KeyCode::KeyA)),
             HintType::Terrain,
             0,
         );
@@ -978,7 +1001,7 @@ mod tests {
 
         // 相机写面 +0x48=1（0x0a01/0x0b01/0x0c01 的低字节）。
         let camera = DisplayHintRequest::new(
-            BindingHintDisplay::Key(Some(1)),
+            BindingHintDisplay::Key(Some(crate::KeyCode::KeyA)),
             HintType::CameraPan,
             DISPLAY_HINT_FLAG_PROGRESS_BAR,
         );
@@ -991,10 +1014,7 @@ mod tests {
         // O hint_position_update 0x141c50510 switch 6/7/8/10；
         // deselect/disable_snapping 写面 placement = 6 + WallShape。
         assert_eq!(HintPlacement::Cursor.native_tag(), 6);
-        assert_eq!(
-            HintPlacement::WorldPoint(glam::Vec3::ZERO).native_tag(),
-            7
-        );
+        assert_eq!(HintPlacement::WorldPoint(glam::Vec3::ZERO).native_tag(), 7);
         assert_eq!(
             HintPlacement::Bounds(utils::geometry::rectangle::Rectangle2d {
                 axis: Vec2::ZERO,
@@ -1073,11 +1093,19 @@ mod tests {
         let mut world = orchestrator_world();
         write_request(
             &mut world,
-            DisplayHintRequest::new(BindingHintDisplay::Key(Some(1)), HintType::RoofShape, 0),
+            DisplayHintRequest::new(
+                BindingHintDisplay::Key(Some(crate::KeyCode::KeyA)),
+                HintType::RoofShape,
+                0,
+            ),
         );
         write_request(
             &mut world,
-            DisplayHintRequest::new(BindingHintDisplay::Key(Some(1)), HintType::Undo, 0),
+            DisplayHintRequest::new(
+                BindingHintDisplay::Key(Some(crate::KeyCode::KeyA)),
+                HintType::Undo,
+                0,
+            ),
         );
         run_orchestrator(&mut world);
 
@@ -1090,7 +1118,9 @@ mod tests {
             "id=2 应排在 id=7 前"
         );
         assert_eq!(
-            world.get::<crate::hint_display_system::HintText>(entity).map(|t| t.text.as_str()),
+            world
+                .get::<crate::hint_display_system::HintText>(entity)
+                .map(|t| t.text.as_str()),
             Some("KeyBindings.Undo/KeyBindings.Redo")
         );
         assert!(world.get::<BindingHintDisplay>(entity).is_some());
@@ -1113,7 +1143,7 @@ mod tests {
         write_request(
             &mut world,
             DisplayHintRequest::new(
-                BindingHintDisplay::Key(Some(1)),
+                BindingHintDisplay::Key(Some(crate::KeyCode::KeyA)),
                 HintType::CameraPan,
                 DISPLAY_HINT_FLAG_PROGRESS_BAR,
             )
@@ -1142,25 +1172,33 @@ mod tests {
             .id();
         write_request(
             &mut world,
-            DisplayHintRequest::new(BindingHintDisplay::Key(Some(3)), HintType::Terrain, 0)
-                .with_placement(HintPlacement::ScreenCenter),
+            DisplayHintRequest::new(
+                BindingHintDisplay::Key(Some(crate::KeyCode::KeyC)),
+                HintType::Terrain,
+                0,
+            )
+            .with_placement(HintPlacement::ScreenCenter),
         );
         run_orchestrator(&mut world);
 
         assert_eq!(hint_entities(&mut world).len(), 1);
-        assert!(world
-            .get::<crate::hint_display_system::HintMarkedForDeletion>(entity)
-            .is_none());
-        assert!(world
-            .get::<crate::hint_display_system::HintDeleteAfterCooldown>(entity)
-            .is_none());
+        assert!(
+            world
+                .get::<crate::hint_display_system::HintMarkedForDeletion>(entity)
+                .is_none()
+        );
+        assert!(
+            world
+                .get::<crate::hint_display_system::HintDeleteAfterCooldown>(entity)
+                .is_none()
+        );
         assert_eq!(
             world.get::<HintPlacement>(entity),
             Some(&HintPlacement::ScreenCenter)
         );
         assert_eq!(
             world.get::<BindingHintDisplay>(entity),
-            Some(&BindingHintDisplay::Key(Some(3)))
+            Some(&BindingHintDisplay::Key(Some(crate::KeyCode::KeyC)))
         );
     }
 
@@ -1175,9 +1213,11 @@ mod tests {
         );
         run_orchestrator(&mut world);
         assert_eq!(hint_entities(&mut world).len(), 1);
-        assert!(world
-            .get::<crate::hint_display_system::HintMarkedForDeletion>(entity)
-            .is_some());
+        assert!(
+            world
+                .get::<crate::hint_display_system::HintMarkedForDeletion>(entity)
+                .is_some()
+        );
     }
 
     #[test]
@@ -1209,9 +1249,11 @@ mod tests {
 
         let entity = world.spawn(HintType::Terrain).id();
         run_orchestrator(&mut world);
-        assert!(world
-            .get::<crate::hint_display_system::HintMarkedForDeletion>(entity)
-            .is_some());
+        assert!(
+            world
+                .get::<crate::hint_display_system::HintMarkedForDeletion>(entity)
+                .is_some()
+        );
     }
 
     #[test]

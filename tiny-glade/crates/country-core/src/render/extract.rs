@@ -7,6 +7,37 @@
 use bevy_ecs::{component::Component, event::Event, resource::Resource};
 use bevy_state::state::States;
 
+mod component_write;
+pub use component_write::{ComponentWrite, ComponentMut};
+
+/// Exclusive World producers use the same journal as query producers. Before
+/// the first extraction no journal is needed: that extraction copies all rows.
+pub trait WorldComponentWrite {
+    fn component_mut<C: Component<Mutability = bevy_ecs::component::Mutable>>(
+        &mut self, entity: bevy_ecs::entity::Entity) -> Option<bevy_ecs::change_detection::Mut<'_, C>>;
+}
+impl WorldComponentWrite for bevy_ecs::world::World {
+    fn component_mut<C: Component<Mutability = bevy_ecs::component::Mutable>>(
+        &mut self, entity: bevy_ecs::entity::Entity) -> Option<bevy_ecs::change_detection::Mut<'_, C>> {
+        if let Some(journal) = self.get_resource::<ComponentJournal<C>>() { journal.record(entity); }
+        self.get_mut::<C>(entity)
+    }
+}
+pub trait EntityComponentWrite {
+    fn component_mut<C: Component<Mutability = bevy_ecs::component::Mutable>>(
+        &mut self) -> Option<bevy_ecs::change_detection::Mut<'_, C>>;
+}
+impl EntityComponentWrite for bevy_ecs::world::EntityWorldMut<'_> {
+    fn component_mut<C: Component<Mutability = bevy_ecs::component::Mutable>>(
+        &mut self) -> Option<bevy_ecs::change_detection::Mut<'_, C>> {
+        let entity = self.id();
+        self.world_scope(|world| {
+            if let Some(journal) = world.get_resource::<ComponentJournal<C>>() { journal.record(entity); }
+        });
+        self.get_mut::<C>()
+    }
+}
+
 /// In the render world: the game world has an `R` (declaration checks that a
 /// producer is installed without reading it).
 #[derive(Resource)]
@@ -17,15 +48,14 @@ impl<R: Send + Sync + 'static> Default for Present<R> {
     }
 }
 
-/// What a partial write-back applies to the game-side resource.
-pub type WriteBack<R> = Box<dyn FnOnce(&mut R) + Send>;
+/// A partial write-back preserves Bevy change detection: only dereferencing
+/// the received owner mutably marks the game-side resource changed.
+pub type WriteBack<R> = Box<dyn for<'a> FnOnce(bevy_ecs::change_detection::Mut<'a, R>) + Send>;
 
 pub trait RenderExtract {
-    /// Mirror component `C` of every game entity onto the same entity id.
-    fn component<C: Component + Clone>(&mut self);
-    /// Immutable components publish insert/replace/remove through type hooks.
-    /// Extraction can then visit only journaled entities between hand-overs.
-    fn component_journaled<C: JournaledComponent>(&mut self) { self.component::<C>(); }
+    /// Structural hooks and mutable producers publish the changed entities.
+    /// Extraction visits only those entities between hand-overs.
+    fn component_journaled<C: JournaledComponent>(&mut self);
     /// Copy resource `R` whenever it changed in the game world.
     fn resource<R: Resource + Clone>(&mut self);
     /// Publish only the declaration view, retaining the producer's CPU storage
@@ -34,13 +64,8 @@ pub trait RenderExtract {
     /// Combine ECS change detection with an interior-mutation revision.
     /// All declarations of the same resource must use the same revision source.
     fn resource_with_revision<R: Resource + Clone>(&mut self, revision: fn(&R) -> u64);
-    /// Reuse the destination allocation and apply producer-recorded changes.
-    /// `update` must detect a different source or expired journal and rebuild.
-    fn resource_incremental<R: Resource + Clone>(
-        &mut self, revision: fn(&R) -> u64, _update: fn(&R, &mut R),
-    ) {
-        self.resource_with_revision::<R>(revision);
-    }
+    /// Asset tables publish entry identities and reuse their snapshot allocations.
+    fn asset_library<R: crate::render::asset_ack::AssetSnapshot>(&mut self);
     /// Copy this frame's pending events of `E`.
     fn events<E: Event + Clone>(&mut self);
     /// Copy the current value of state `S`.
@@ -63,19 +88,17 @@ pub trait RenderExtract {
     fn render_owned<R: Resource>(&mut self);
 }
 
-/// Opt-in contract for immutable components with `record_component_change`
-/// installed as both their `on_insert` and `on_remove` hook. Immutability makes
-/// value replacement go through the insertion hook instead of an untracked
-/// `&mut C`. Mutable animation/transform producers retain the tick-scan path.
-pub trait JournaledComponent:
-    Component<Mutability = bevy_ecs::component::Immutable> + Clone {}
+/// Insert/remove hooks publish structural changes. Mutable implementations
+/// additionally route every producer through ComponentWrite or component_mut;
+/// structural and mutable producers must use the same journal.
+pub trait JournaledComponent: Component + Clone {}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ComponentCursor(ChangeCursor);
 
-/// Installed in the game world at the first extraction. Earlier spawns are
-/// covered by that extraction's full initial copy, so hooks need not allocate
-/// resources or issue deferred commands during entity creation.
+/// Installed when a producer query is initialized or at first extraction.
+/// Earlier spawns are covered by that extraction's full initial copy, so hooks
+/// need not allocate resources or issue commands during entity creation.
 #[derive(Resource)]
 pub struct ComponentJournal<C: Component> {
     changes: ChangeJournal<bevy_ecs::entity::Entity>,
@@ -87,6 +110,7 @@ impl<C: Component> Default for ComponentJournal<C> {
     }
 }
 impl<C: Component> ComponentJournal<C> {
+    pub fn record(&self, entity: bevy_ecs::entity::Entity) { self.changes.record(entity); }
     pub fn cursor(&self) -> ComponentCursor { ComponentCursor(self.changes.cursor()) }
     pub fn since(&self, cursor: Option<ComponentCursor>)
         -> Option<(ComponentCursor, Vec<bevy_ecs::entity::Entity>)> {
@@ -115,10 +139,10 @@ struct JournalState<K> {
     entries: std::collections::VecDeque<(u64, K)>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct ChangeCursor { owner: u64, revision: u64 }
+pub(crate) struct ChangeCursor { owner: u64, pub(crate) revision: u64 }
 const JOURNAL_CAPACITY: usize = 4096;
 
-fn next_publication() -> u64 {
+pub(crate) fn next_publication() -> u64 {
     use std::sync::atomic::{AtomicU64, Ordering};
     static NEXT: AtomicU64 = AtomicU64::new(1);
     NEXT.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| n.checked_add(1))

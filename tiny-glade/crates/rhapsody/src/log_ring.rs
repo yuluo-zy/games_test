@@ -8,13 +8,12 @@
 //! that are being written, or that changed while being copied, are skipped. Records longer than [`MAX_RECORD_BYTES`] are truncated.
 //! Nothing in this module panics; writes before [`init_logging`] are dropped
 //! and dumps of an uninitialised ring are empty.
-use std::io::Write;
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering, fence};
 
 /// Total payload capacity of the global ring in bytes.
 pub const LOG_RING_BYTES: usize = 0x10000;
-const WORDS_PER_SLOT: usize = 7;
+const WORDS_PER_SLOT: usize = 32;
 /// Largest payload stored for one record; longer records are truncated.
 pub const MAX_RECORD_BYTES: usize = WORDS_PER_SLOT * 8 - 1;
 
@@ -175,43 +174,30 @@ pub fn write(bytes: &[u8]) {
     }
 }
 
-/// `[u64 payload][kind]` record.
-pub fn record_event(kind: u8, payload: u64) {
-    let mut bytes = [0u8; 9];
-    bytes[..8].copy_from_slice(&payload.to_le_bytes());
-    bytes[8] = kind;
-    write(&bytes);
-}
-
-/// `[name: 16 bytes, zero padded][u64 payload]?[kind]` record. The name is
-/// truncated at a UTF-8 character boundary.
-pub fn record_named(name: &str, payload: Option<u64>, kind: u8) {
-    let mut end = name.len().min(16);
-    while !name.is_char_boundary(end) {
-        end -= 1;
+/// Capture an already formatted log record without a heap allocation. Long
+/// records are truncated at a UTF-8 boundary and always retain a final newline.
+pub fn record_log(arguments: std::fmt::Arguments<'_>) {
+    use std::fmt::Write as _;
+    let Some(ring) = RING.get() else { return; };
+    struct Record { bytes: [u8; MAX_RECORD_BYTES], len: usize }
+    impl std::fmt::Write for Record {
+        fn write_str(&mut self, text: &str) -> std::fmt::Result {
+            let mut count = text.len().min(MAX_RECORD_BYTES - 1 - self.len);
+            while !text.is_char_boundary(count) { count -= 1; }
+            self.bytes[self.len..self.len + count].copy_from_slice(&text.as_bytes()[..count]);
+            self.len += count;
+            Ok(())
+        }
     }
-    let mut bytes = [0u8; 25];
-    bytes[..end].copy_from_slice(&name.as_bytes()[..end]);
-    let mut len = 16;
-    if let Some(payload) = payload {
-        bytes[16..24].copy_from_slice(&payload.to_le_bytes());
-        len = 24;
-    }
-    bytes[len] = kind;
-    write(&bytes[..=len]);
+    let mut record = Record { bytes: [0; MAX_RECORD_BYTES], len: 0 };
+    let _ = record.write_fmt(arguments);
+    record.bytes[record.len] = b'\n';
+    ring.write(&record.bytes[..=record.len]);
 }
 
 /// Committed records of the global ring, oldest first (empty if uninitialised).
 pub fn dump_log_vec() -> Vec<u8> {
     RING.get().map(RingBuffer::dump).unwrap_or_default()
-}
-
-pub fn dump_log(out: &mut impl Write) -> std::io::Result<()> {
-    out.write_all(&dump_log_vec())
-}
-
-pub fn print_log_dump() -> std::io::Result<()> {
-    dump_log(&mut std::io::stderr().lock())
 }
 
 #[cfg(test)]
@@ -226,7 +212,7 @@ mod tests {
         assert!(ring.dump().is_empty());
         ring.write(b"abc");
         ring.write(b"");
-        ring.write(&[7; 200]);
+        ring.write(&[7; MAX_RECORD_BYTES + 37]);
         assert_eq!(ring.records()[0], b"abc");
         assert_eq!(ring.records()[2].len(), MAX_RECORD_BYTES);
         ring.write(b"d");
@@ -380,22 +366,16 @@ mod tests {
     }
 
     #[test]
-    fn global_ring_is_idempotent_and_formats_named_records() {
-        write(b"may be dropped before init");
+    fn global_ring_is_idempotent_and_captures_actual_text() {
         init_logging();
         init_logging();
-        record_named("abcdefghijklmn\u{4e2d}", Some(9), 3);
-        record_event(0x1e, 7);
-        let out = dump_log_vec();
-        assert_eq!(&out[out.len() - 9..], &[7, 0, 0, 0, 0, 0, 0, 0, 0x1e]);
-        let named = &out[out.len() - 34..out.len() - 9];
-        assert_eq!(&named[..14], b"abcdefghijklmn");
-        assert_eq!(
-            &named[14..16],
-            &[0, 0],
-            "a split UTF-8 character is not stored"
-        );
-        assert_eq!(&named[16..24], &9u64.to_le_bytes());
-        assert_eq!(named[24], 3);
+        record_log(format_args!("render error: {}", 42));
+        assert!(dump_log_vec().ends_with(b"render error: 42\n"));
+        record_log(format_args!("{}", "中".repeat(MAX_RECORD_BYTES)));
+        let records = RING.get().unwrap().records();
+        let last = records.last().unwrap();
+        assert!(last.len() <= MAX_RECORD_BYTES);
+        assert_eq!(last.last(), Some(&b'\n'));
+        assert!(std::str::from_utf8(last).is_ok());
     }
 }

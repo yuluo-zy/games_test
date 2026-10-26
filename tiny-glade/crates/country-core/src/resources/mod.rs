@@ -1,3 +1,4 @@
+pub mod daily;
 pub mod active_raster_stroke;
 pub mod raster_stroke;
 pub mod audio_instance;

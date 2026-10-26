@@ -57,9 +57,7 @@ pub fn uint_to_u01_float(bits: u32) -> f32 {
 }
 
 /// 线性插值。
-pub fn lerp(a: f32, b: f32, t: f32) -> f32 {
-    a + (b - a) * t
-}
+pub use ::utils::scalar::lerp;
 
 /// `gpunoise::noise` 0x140a152c0：2D value-noise（floor 格 + 4 角哈希 + smoothstep 双线性插值），
 /// 返回 [0,1]。

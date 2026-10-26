@@ -32,6 +32,8 @@ pub enum SheepMoveState {
 /// typed movement state, including the previously dropped force byte+0x31.
 /// No birth/default constructor is inferred from this consolidation.
 #[derive(Component, Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct Sheep {
     /// Original +8 / +0xc: follow behavior and its timer.
     pub behavior_state: u32,
@@ -82,6 +84,8 @@ mod tests {
 
 /// 羊行走动画记录（二进制位于 Sheep 0x68 记录 +0x10/+0x14/+0x28/+0x48/+0x4c/+0x50/+0x54/+0x5c）。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct SheepWalkRecord {
     /// +0x10：动画状态（1=行走、2=静止过渡、3=静止；跳表 0x14304b0f8 索引）。
     pub state: u32,
@@ -96,3 +100,6 @@ pub struct SheepWalkRecord {
     /// +0x5c：walk 累积计时（每帧 `+= dt` 后 `fmodf(accum, 1.25)` 回写）。
     pub accum: f32,
 }
+
+impl crate::render::extract::JournaledComponent for Sheep {}
+impl crate::render::extract::JournaledComponent for SheepWalkRecord {}

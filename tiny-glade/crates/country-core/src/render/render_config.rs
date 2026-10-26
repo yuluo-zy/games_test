@@ -65,23 +65,18 @@ use uuid::Uuid;
 
 use rhapsody::interop::GraphicsInstanceLayerAllowlist;
 
-/// 全屏配置。判别式 1 携带分辨率（O）；0 的含义为 I（无需分辨率的模式）。
+/// 原RON14034c620：Best为无载荷变体，ClosestMatch为VideoMode新类型变体。
+/// 全屏／独占的开启分别由DisplayConfig两个bool决定，不是此枚举的变体含义。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum FullscreenConfig {
-    /// 判别式 0（I）。
-    Borderless = 0,
-    /// 判别式 1：独占全屏，分辨率 @+4。
-    Exclusive { width: u32, height: u32 } = 1,
+    Best = 0,
+    ClosestMatch(VideoMode) = 1,
 }
-
 impl FullscreenConfig {
-    /// O 0x140968ad0。
-    pub fn resolution(&self) -> Option<(u32, u32)> {
-        match *self {
-            FullscreenConfig::Exclusive { width, height } => Some((width, height)),
-            _ => None,
-        }
+    /// 原140968ad0仅投影载荷前两个u32；不能因此丢弃后续刷新率／色深。
+    pub fn resolution(&self) -> Option<(u32,u32)> {
+        match self {Self::Best=>None,Self::ClosestMatch(mode)=>Some((mode.resolution[0],mode.resolution[1]))}
     }
 }
 
@@ -225,7 +220,7 @@ impl Default for DisplayConfig {
         Self {
             fullscreen: true,
             allow_exclusive_fullscreen: true,
-            fullscreen_config: FullscreenConfig::Borderless,
+            fullscreen_config: FullscreenConfig::Best,
             windowed_resolution: [1920, 1080],
             monitor: None,
         }
@@ -404,17 +399,14 @@ mod tests {
 
     #[test]
     fn resolution_only_for_discriminant_one() {
-        assert_eq!(FullscreenConfig::Borderless.resolution(), None);
+        assert_eq!(FullscreenConfig::Best.resolution(), None);
         assert_eq!(
-            FullscreenConfig::Exclusive {
-                width: 2560,
-                height: 1440
-            }
+            FullscreenConfig::ClosestMatch(VideoMode {resolution:[2560,1440],refresh_rate_millihertz:144000,bit_depth:10})
             .resolution(),
             Some((2560, 1440))
         );
         // 判别式即布局：u32 @+0。
-        assert_eq!(core::mem::size_of::<FullscreenConfig>(), 12);
+        assert_eq!(core::mem::size_of::<FullscreenConfig>(), 20);
     }
 
     #[test]
@@ -508,7 +500,7 @@ mod tests {
         let d = DisplayConfig::default();
         assert!(d.fullscreen && d.allow_exclusive_fullscreen);
         assert_eq!(d.windowed_resolution, [1920, 1080]);
-        assert_eq!(d.fullscreen_config, FullscreenConfig::Borderless);
+        assert_eq!(d.fullscreen_config, FullscreenConfig::Best);
         assert!(d.monitor.is_none());
     }
 

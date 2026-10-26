@@ -18,8 +18,8 @@
 //! core 调度内；core 直接写表是本轮的生产路径，plaster/sound/SSBO 副作用
 //! 登记为 follow-up（partial，不冒充完成）。
 use crate::resources::{
-    color_id::{GateColorIds, HalftimberColorIds, RoofColorIds, WallColorIds, MAX_NUMBER_OF_WALLS},
-    history::{color_edit::ColorEdit, ReplayBuffer, ReplayCommand},
+    color_id::{GateColorIds, HalftimberColorIds, MAX_NUMBER_OF_WALLS, RoofColorIds, WallColorIds},
+    history::{ReplayBuffer, ReplayCommand, color_edit::ColorEdit},
     roofs::commands::SetFlatRoofStyleCmd,
     roofs::customization::{FlatRoofStyleObserved, FlatRoofStyleRequest},
     time::GameTime,
@@ -88,11 +88,7 @@ pub fn replay_color(
 /// 离散选择：`undo` 取 `from`，否则取 `to`（所有 target 一致）。
 #[inline]
 fn pick<T: Copy>(undo: bool, from: T, to: T) -> T {
-    if undo {
-        from
-    } else {
-        to
-    }
+    if undo { from } else { to }
 }
 
 /// 生产消费者：把一次派发写回真实颜色表/装饰存储。
@@ -313,9 +309,9 @@ mod tests {
     use super::*;
     use crate::resources::history::replay_cmd_buffer::ColorReplayCmd;
     use crate::resources::terrain_editing::StrokeId;
+    use crate::resources::walls::WallId;
     use crate::resources::walls::decorator::{DecoratorInfo, FlagExtra, LanternExtra, WindowExtra};
     use crate::resources::walls::decorator_storage::DecoratorStorageAddr;
-    use crate::resources::walls::WallId;
     use crate::systems::history::register_history_events;
 
     const TERRAIN: DecoratorStorageAddr = DecoratorStorageAddr::Terrain;
@@ -333,12 +329,14 @@ mod tests {
         world.init_resource::<DecoratorStorage>();
         world.init_resource::<Events<crate::systems::history::ReplayBucketFinished>>();
         let mut schedule = Schedule::default();
-        schedule.add_systems((
-            replay_color,
-            apply_color_replay,
-            crate::systems::history::pop_empty_replay_bucket,
-        )
-            .chain());
+        schedule.add_systems(
+            (
+                replay_color,
+                apply_color_replay,
+                crate::systems::history::pop_empty_replay_bucket,
+            )
+                .chain(),
+        );
         (world, schedule)
     }
 
@@ -423,9 +421,15 @@ mod tests {
         };
         assert!((command.elapsed - 0.1).abs() < 1e-6);
         // 后续帧不再派发。
-        world.resource_mut::<Events<ColorHistoryReplayApply>>().clear();
+        world
+            .resource_mut::<Events<ColorHistoryReplayApply>>()
+            .clear();
         schedule.run(&mut world);
-        assert!(world.resource::<Events<ColorHistoryReplayApply>>().is_empty());
+        assert!(
+            world
+                .resource::<Events<ColorHistoryReplayApply>>()
+                .is_empty()
+        );
         // required = max(0.2/1.0, 0.1) = 0.2；elapsed 0.2 未过（严格 <）。
         assert_eq!(world.resource::<ReplayBuffer>().len(), 1);
         // elapsed 0.3 仍未过（检查在自增之前）。
@@ -439,7 +443,11 @@ mod tests {
     #[test]
     fn brightness_is_one_shot_without_interpolation() {
         let (mut world, mut schedule) = fixture();
-        place(&mut world, 4, DecoratorExtraInfo::Lantern(LanternExtra(0.25)));
+        place(
+            &mut world,
+            4,
+            DecoratorExtraInfo::Lantern(LanternExtra(0.25)),
+        );
         push(
             &mut world,
             ColorEdit::Brightness {
@@ -481,7 +489,11 @@ mod tests {
         schedule.run(&mut world);
         // 0.1 < 0.11 → 完成并移除（未派发，因为 elapsed != 0）。
         assert!(world.resource::<ReplayBuffer>().is_empty());
-        assert!(world.resource::<Events<ColorHistoryReplayApply>>().is_empty());
+        assert!(
+            world
+                .resource::<Events<ColorHistoryReplayApply>>()
+                .is_empty()
+        );
     }
 
     #[test]

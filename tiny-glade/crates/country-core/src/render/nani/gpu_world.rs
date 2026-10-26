@@ -47,13 +47,25 @@ use crate::render::nani::buffers::{
 };
 use crate::render::nani::mesh_atlas::NaniMeshAtlasPartInfo;
 use crate::render::shadowed_buffer::ShadowedBuffer;
-use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
+use crate::render::ssbo::rhapsody_boundary::{BackendError, GraphicsDevice};
 use crate::render::ssbo::{StorageElement, TypedStorageBuffer};
 use crate::rhapsody_types::{ImportedBuffer, RenderGraph};
 use crate::utils::index_condenser::IndexCondenser;
 
 /// `rg.import_unowned(..., 0x37)` / `export(..., 0x37)` 的访问码（O：`mov r9b, 0x37` / `mov r8b, 0x37`）。
 const RG_BUFFER_ACCESS: u8 = 0x37;
+
+// Both payloads get an admission attempt. Preserve terminal errors if another
+// payload only encountered capacity pressure; dirty ranges remain authoritative.
+fn merge_upload_admission(first: Result<(), BackendError>, second: Result<(), BackendError>)
+    -> Result<(), BackendError> {
+    match (first, second) {
+        (Err(BackendError::Exhausted(_)), Err(error)) => Err(error),
+        (Err(error), _) | (_, Err(error)) => Err(error),
+        _ => Ok(()),
+    }
+}
+
 
 /// `log` 的 target（O：`0x142aba578` = "country_core::render::nani::gpu_world"，len 0x25）。
 const LOG_TARGET: &str = "country_core::render::nani::gpu_world";
@@ -122,11 +134,7 @@ pub enum GpuWorldSubsetKind {
     StairsFloor = 26,
 }
 
-#[allow(non_upper_case_globals)]
 impl GpuWorldSubsetKind {
-    /// 旧骨架里的拼写（`Halftimber`）；真名 `CurvedHalfTimber`（O）。
-    pub const CurvedHalftimber: Self = Self::CurvedHalfTimber;
-
     /// 全部 27 个变体，按判别顺序（O：`enum_iterator::All` 的跳表逐项 `next = k + 1`）。
     pub const ALL: [GpuWorldSubsetKind; 27] = [
         Self::Canopy,
@@ -257,7 +265,7 @@ pub trait NaniInstanceData: Any + Send + Sync {
     fn type_name(&self) -> &'static str;
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn gpu_flush(&mut self, device: &dyn GraphicsDevice);
+    fn gpu_flush(&mut self, device: &dyn GraphicsDevice) -> Result<(), BackendError>;
     /// 未导入（`rg_handle` tag 字节 == 5）→ `expect` panic（O 文案见实现）。
     fn rg_handle(&self) -> &ImportedBuffer;
     fn import_to_rg(&mut self, rg: &mut RenderGraph);
@@ -306,8 +314,8 @@ impl<T: InstanceElement> NaniInstanceData for InstanceDataBuffer<T> {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
-    fn gpu_flush(&mut self, device: &dyn GraphicsDevice) {
-        self.shadow.gpu_flush(device);
+    fn gpu_flush(&mut self, device: &dyn GraphicsDevice) -> Result<(), BackendError> {
+        self.shadow.gpu_flush(device)
     }
     fn rg_handle(&self) -> &ImportedBuffer {
         self.rg_handle
@@ -348,6 +356,7 @@ impl GpuWorldSubset {
                 positions: owned.positions.gpu_only(),
                 data: owned.data.render_snapshot(),
                 instance_count: owned.instance_count,
+                main_cull_bins: owned.main_cull_bins,
                 mesh_part_count: owned.mesh_part_count,
                 next_id: owned.next_id,
             }),
@@ -365,10 +374,67 @@ impl Clone for GpuWorld {
             }),
             total_instance_count: self.total_instance_count,
             reserved: self.reserved,
+            instance_uploads_pending: false,
             params: self.params.clone(),
             mesh_atlas_info: self.mesh_atlas_info,
             draw_list_info: self.draw_list_info,
         }
+    }
+}
+
+// Producer-side event accounting for the real main-cull shader's 64 bins.
+// No scan of live instances is performed during extraction or drawing.
+#[derive(Clone, Copy)]
+struct MainCullMeshBins {
+    counts: [u32; 64],
+    occupied: u64,
+    instances: usize,
+    capped_sum: u64,
+}
+impl MainCullMeshBins {
+    const EMPTY: Self = Self { counts: [0; 64], occupied: 0, instances: 0, capped_sum: 0 };
+    fn refresh_cap(&mut self) {
+        let groups = self.instances.div_ceil(32) as u32;
+        self.capped_sum = self.counts.iter().map(|&count| u64::from(count.min(groups))).sum();
+    }
+    fn add(&mut self, mesh: u16) {
+        let bin = usize::from(mesh) % 64;
+        let groups = self.instances.div_ceil(32) as u32;
+        let old = self.counts[bin];
+        self.counts[bin] += 1;
+        self.instances += 1;
+        self.occupied |= 1_u64 << bin;
+        if self.instances.div_ceil(32) as u32 != groups { self.refresh_cap(); }
+        else if old < groups { self.capped_sum += 1; }
+    }
+    fn remove(&mut self, mesh: u16) {
+        let bin = usize::from(mesh) % 64;
+        let groups = self.instances.div_ceil(32) as u32;
+        let old = self.counts[bin];
+        self.counts[bin] -= 1;
+        self.instances -= 1;
+        if self.counts[bin] == 0 { self.occupied &= !(1_u64 << bin); }
+        if self.instances.div_ceil(32) as u32 != groups { self.refresh_cap(); }
+        else if old <= groups { self.capped_sum -= 1; }
+    }
+    fn replace(&mut self, old: u16, new: u16) {
+        let (old, new) = (usize::from(old) % 64, usize::from(new) % 64);
+        if old == new { return; }
+        let groups = self.instances.div_ceil(32) as u32;
+        if self.counts[old] <= groups { self.capped_sum -= 1; }
+        self.counts[old] -= 1;
+        if self.counts[old] == 0 { self.occupied &= !(1_u64 << old); }
+        if self.counts[new] < groups { self.capped_sum += 1; }
+        self.counts[new] += 1;
+        self.occupied |= 1_u64 << new;
+    }
+    fn command_bound(self, instances: usize) -> u64 {
+        let count = instances as u64;
+        let bins = u64::from(self.occupied.count_ones());
+        // Visibility compaction and LOD sorting can rearrange all instances.
+        // A bin emits at most once per final group and at most once per live
+        // instance of that bin, independently of that rearrangement.
+        ((count / 32) * bins.min(32) + (count % 32).min(bins)).min(self.capped_sum)
     }
 }
 
@@ -383,6 +449,7 @@ pub struct OwnedGpuWorldSubset {
     positions: ShadowedBuffer<InstanceCullData>,
     data: Box<dyn NaniInstanceData>,
     instance_count: usize,
+    main_cull_bins: MainCullMeshBins,
     mesh_part_count: usize,
     next_id: u32,
 }
@@ -394,14 +461,9 @@ fn warn_once(message: String) {
 }
 
 impl OwnedGpuWorldSubset {
-    /// 新 owned subset（I：机器码里内联 21 处；容量按 `kind.max_instances()`，数据缓冲元素为 `T`）。
-    pub fn new<T: InstanceElement>(device: &dyn GraphicsDevice, kind: GpuWorldSubsetKind) -> Self {
-        Self::new_with_mesh_parts::<T>(device, kind, 0)
-    }
-
     /// Startup passes the actual atlas layout count as the native constructor's
     /// third argument. It is independent of the number of live instances.
-    pub fn new_with_mesh_parts<T: InstanceElement>(
+    pub fn new<T: InstanceElement>(
         device: &dyn GraphicsDevice,
         kind: GpuWorldSubsetKind,
         mesh_part_count: usize,
@@ -412,6 +474,7 @@ impl OwnedGpuWorldSubset {
             positions: Self::create_cull_buffer(device, cap),
             data: Box::new(InstanceDataBuffer::<T>::new(device, cap)),
             instance_count: 0,
+            main_cull_bins: MainCullMeshBins::EMPTY,
             mesh_part_count,
             next_id: 0,
         }
@@ -449,6 +512,12 @@ impl OwnedGpuWorldSubset {
         self.instance_count
     }
 
+    /// Main-cull only: each 32-instance group emits at most one command per
+    /// occupied mesh bin. Custom cull programs can source their part elsewhere.
+    pub fn main_cull_command_bound(&self) -> u64 {
+        self.main_cull_bins.command_bound(self.instance_count)
+    }
+
     /// Native +0xa8, read by nani_draw for non-fine indirect draw count.
     pub fn mesh_part_count(&self) -> usize {
         self.mesh_part_count
@@ -474,9 +543,10 @@ impl OwnedGpuWorldSubset {
     }
 
     /// 把实例数据缓冲上传 GPU（I：`gpu_generate_draw_lists` 之前的 flush，转发 `NaniInstanceData::gpu_flush`）。
-    pub fn gpu_flush(&mut self, device: &dyn GraphicsDevice) {
-        self.positions.gpu_flush(device);
-        self.data.gpu_flush(device);
+    pub fn gpu_flush(&mut self, device: &dyn GraphicsDevice) -> Result<(), BackendError> {
+        let positions = self.positions.gpu_flush(device);
+        let data = self.data.gpu_flush(device);
+        merge_upload_admission(positions, data)
     }
 
     /// 分配一个槽（`extend_no_data` / `create_instances` 共用的前半段，O）：
@@ -523,6 +593,7 @@ impl OwnedGpuWorldSubset {
             callback(key);
             self.write_cull(key.index as usize, *item);
             self.instance_count += 1;
+            self.main_cull_bins.add(item.mesh_index);
         }
     }
 
@@ -579,6 +650,7 @@ impl OwnedGpuWorldSubset {
     pub fn update_instance_mesh(&mut self, key: &mut InstanceKey, mesh_index: u16) {
         let dense = self.resolve(key);
         self.positions.dirty.add(dense..dense + 1);
+        self.main_cull_bins.replace(self.positions.data[dense].mesh_index, mesh_index);
         self.positions.data[dense].mesh_index = mesh_index;
     }
 
@@ -594,6 +666,7 @@ impl OwnedGpuWorldSubset {
             .instance_count
             .checked_sub(1)
             .expect("instance_count > 0");
+        self.main_cull_bins.remove(self.positions.data[dense].mesh_index);
         self.instance_count = count;
         let last = self.positions.data[count];
         self.positions.data[dense] = last;
@@ -613,6 +686,8 @@ pub struct GpuWorld {
     pub total_instance_count: u64,
     /// +0x1448：`new` 置 0，其余引用点 U。
     reserved: u64,
+    /// Producer cohort rejected by upload admission; retried before extraction.
+    instance_uploads_pending: bool,
     /// +0x1450：`Box<NaniDrawListParams>`（0x70B 堆分配，O）。
     params: Box<NaniDrawListParams>,
     /// +0x1458：`TypedStorageBuffer<NaniMeshAtlasPartInfo>`（`BUFFER_LEN` = 0x6c0，无初始数据）。
@@ -646,6 +721,7 @@ impl GpuWorld {
             if let Some(GpuWorldSubset::Owned(subset)) = slot.get_mut() {
                 subset.condenser.clear();
                 subset.instance_count = 0;
+                subset.main_cull_bins = MainCullMeshBins::EMPTY;
             }
         }
     }
@@ -673,6 +749,7 @@ impl GpuWorld {
             subsets,
             total_instance_count: 0,
             reserved: 0,
+            instance_uploads_pending: false,
             params,
             mesh_atlas_info,
             draw_list_info,
@@ -762,6 +839,7 @@ impl GpuWorld {
                 subset.write_cull(dense, cull[i]);
                 subset.typed_data::<T>(kind).set(dense, data[i]);
                 subset.instance_count += 1;
+                subset.main_cull_bins.add(cull[i].mesh_index);
             }
         }
         self.total_instance_count += cull.len() as u64;
@@ -798,12 +876,23 @@ impl GpuWorld {
 
     /// 冲刷（`nani_flush_instance_updates` 0x142080640，O）：遍历 27 个槽，仅 Owned 的调其 GPU 冲刷
     /// （`ShadowedBuffer<GpuInstance>::gpu_flush(device)` + 数据缓冲 vtable `+0x30`）。
-    pub fn flush_instance_buffers(&mut self, device: &dyn GraphicsDevice) {
+    pub fn flush_instance_buffers(&mut self, device: &dyn GraphicsDevice) -> Result<(), BackendError> {
+        let mut admission = Ok(());
         for slot in &mut self.subsets {
             if let Some(GpuWorldSubset::Owned(subset)) = slot.get_mut() {
-                subset.gpu_flush(device);
+                admission = merge_upload_admission(admission, subset.gpu_flush(device));
             }
         }
+        self.instance_uploads_pending = admission.is_err();
+        if admission.is_ok() {
+            self.roll_instance_counts();
+        }
+        admission
+    }
+
+    /// A single scalar at frame handover; no entity or cull-shadow scan.
+    pub fn instance_uploads_pending(&self) -> bool {
+        self.instance_uploads_pending
     }
 
     /// 导入 RG（0x1409921c0，O）：遍历 27 槽，仅 Owned subset 调其数据缓冲的 `import_to_rg`（vtable +0x40）。
@@ -886,9 +975,104 @@ mod tests {
         let mut w = GpuWorld::new(dev);
         w.assign_subset(
             kind,
-            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<Elem40>(dev, kind)),
+            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<Elem40>(dev, kind, 0)),
         );
         w
+    }
+
+    fn assert_live_mesh_bins(subset: &OwnedGpuWorldSubset) {
+        let mut counts = [0_u32; 64];
+        for item in &subset.positions()[..subset.instance_count()] {
+            counts[usize::from(item.mesh_index) % 64] += 1;
+        }
+        let mask = counts.iter().enumerate().fold(0_u64, |mask, (bin, &count)|
+            mask | if count == 0 { 0 } else { 1_u64 << bin });
+        assert_eq!(subset.main_cull_bins.counts, counts);
+        assert_eq!(subset.main_cull_bins.occupied, mask);
+        assert_eq!(subset.main_cull_bins.instances, subset.instance_count());
+        let cap: u64 = counts.iter().map(|&count| u64::from(count.min(subset.instance_count().div_ceil(32) as u32))).sum();
+        assert_eq!(subset.main_cull_bins.capped_sum, cap);
+        let actual_groups: usize = subset.positions()[..subset.instance_count()].chunks(32)
+            .map(|group| group.iter().map(|item| usize::from(item.mesh_index) % 64)
+                .collect::<std::collections::HashSet<_>>().len()).sum();
+        assert!(actual_groups as u64 <= subset.main_cull_command_bound());
+        assert!(subset.main_cull_command_bound() <= subset.instance_count() as u64);
+    }
+
+    #[test]
+    fn mesh_bin_events_preserve_live_prefix_bounds_through_swap_clear_and_snapshot() {
+        let dev = MockDevice::default();
+        let kind = GpuWorldSubsetKind::Canopy;
+        let mut world = world_with(kind, &dev);
+        let cull: Vec<_> = (0..65).map(|_| InstanceCullData::new(Vec3::ZERO, 1.0, 1)).collect();
+        let mut pending = Vec::new();
+        world.create_instances(kind, &cull, &vec![Elem40::default(); 65], &mut pending);
+        let mut keys: Vec<_> = pending.iter().map(|&(id, index, _)| InstanceKey { id, index, kind }).collect();
+        {
+            let mut subset = world.owned_subset_mut(kind);
+            assert_live_mesh_bins(&subset);
+            assert_eq!(subset.main_cull_command_bound(), 3);
+            subset.update_instance_mesh(&mut keys[0], 65);
+            assert_live_mesh_bins(&subset);
+            assert_eq!(subset.main_cull_command_bound(), 3);
+            subset.update_instance_mesh(&mut keys[1], 63);
+            subset.update_instance_mesh(&mut keys[2], 65535);
+            subset.update_instance_mesh(&mut keys[3], 64);
+            assert_live_mesh_bins(&subset);
+            assert_eq!(subset.main_cull_command_bound(), 6);
+            assert!(subset.remove(&mut keys[1]));
+            assert_live_mesh_bins(&subset);
+            assert_ne!(subset.main_cull_bins.occupied & (1_u64 << 63), 0);
+            subset.update_instance_mesh(keys.last_mut().unwrap(), 0);
+            assert_live_mesh_bins(&subset);
+            assert!(subset.remove(&mut keys[2]));
+            assert_live_mesh_bins(&subset);
+            assert_eq!(subset.main_cull_bins.occupied & (1_u64 << 63), 0);
+            assert!(!subset.remove(&mut keys[2]));
+            assert_live_mesh_bins(&subset);
+        }
+        let old = world.clone();
+        let old_mask = old.owned_subset_mut(kind).main_cull_bins.occupied;
+        let old_count = old.owned_subset_mut(kind).instance_count();
+        world.clear_owned_instances();
+        {
+            let mut subset = world.owned_subset_mut(kind);
+            assert_live_mesh_bins(&subset);
+            assert_eq!(subset.main_cull_command_bound(), 0);
+            subset.extend_no_data(kind, &[InstanceCullData::new(Vec3::ZERO, 1.0, 0)], |_| {});
+            assert_live_mesh_bins(&subset);
+            assert_eq!(subset.main_cull_command_bound(), 1);
+        }
+        assert_eq!(old.owned_subset_mut(kind).main_cull_bins.occupied, old_mask);
+        assert_eq!(old.owned_subset_mut(kind).instance_count(), old_count);
+    }
+
+    #[test]
+    fn rare_bins_and_group_boundary_events_preserve_reordered_subset_bounds() {
+        let mut bins = MainCullMeshBins::EMPTY;
+        for n in 1_usize..=97 {
+            bins.add(if n > 95 { (n - 95) as u16 } else { 0 });
+            let groups = n.div_ceil(32) as u32;
+            let oracle: u64 = bins.counts.iter().map(|&count| u64::from(count.min(groups))).sum();
+            assert_eq!(bins.capped_sum, oracle);
+            assert_eq!(bins.instances, n);
+        }
+        bins.replace(1, 65);
+        assert_eq!(bins.command_bound(97), 6);
+        bins.replace(2, 0);
+        assert_eq!(bins.command_bound(97), 5);
+        for n in (1_usize..=96).rev() {
+            bins.remove(0);
+            assert_eq!(bins.instances, n);
+            let cap: u64 = bins.counts.iter().map(|&count| u64::from(count.min(n.div_ceil(32) as u32))).sum();
+            assert_eq!(bins.capped_sum, cap);
+        }
+        bins.remove(65);
+        assert_eq!(bins.command_bound(0), 0);
+        let mut rare = MainCullMeshBins::EMPTY;
+        for _ in 0..63 { rare.add(0); }
+        rare.add(1); rare.add(2);
+        assert_eq!(rare.command_bound(65), 5);
     }
 
     #[test]
@@ -914,7 +1098,7 @@ mod tests {
         assert_eq!(u32::from_le_bytes(bytes[4..8].try_into().unwrap()), 6);
         assert_eq!(f32::from_le_bytes(bytes[8..12].try_into().unwrap()), 2.5);
         drop(mem);
-        let owned = OwnedGpuWorldSubset::new_with_mesh_parts::<Elem40>(
+        let owned = OwnedGpuWorldSubset::new::<Elem40>(
             &dev,
             GpuWorldSubsetKind::VelocityOnly,
             7,
@@ -944,7 +1128,7 @@ mod tests {
         }
         assert_eq!(GpuWorldSubsetKind::from_u8(27), None);
         assert_eq!(
-            GpuWorldSubsetKind::CurvedHalftimber,
+            GpuWorldSubsetKind::CurvedHalfTimber,
             GpuWorldSubsetKind::CurvedHalfTimber
         );
     }
@@ -1004,7 +1188,7 @@ mod tests {
     fn owned_subset_keeps_real_bda_cull_payload_and_flushes_dirty_record() {
         let dev = MockDevice::default();
         let kind = GpuWorldSubsetKind::VelocityOnly;
-        let mut subset = OwnedGpuWorldSubset::new::<Elem40>(&dev, kind);
+        let mut subset = OwnedGpuWorldSubset::new::<Elem40>(&dev, kind, 0);
         {
             let created = dev.created.borrow();
             assert_eq!(created[0].1, "GpuInstance");
@@ -1019,7 +1203,7 @@ mod tests {
         let cull = InstanceCullData::new(Vec3::new(1.25, -2.0, 7.5), 0.75, 19);
         subset.extend_no_data(kind, &[cull], |_| {});
         assert_eq!(subset.positions_dirty().to_range(), Some(0..1));
-        subset.gpu_flush(&dev);
+        subset.gpu_flush(&dev).unwrap();
         assert!(subset.positions_dirty().is_empty());
         assert!(
             dev.writes
@@ -1071,7 +1255,7 @@ mod tests {
         let mut w = GpuWorld::new(&dev);
         w.assign_subset(
             kind,
-            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<Elem40>(&dev, kind)),
+            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<Elem40>(&dev, kind, 0)),
         );
         let items: Vec<_> = (0..300).map(|i| cull(i as f32)).collect();
         let mut n = 0;

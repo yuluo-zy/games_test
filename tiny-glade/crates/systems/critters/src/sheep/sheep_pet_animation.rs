@@ -43,7 +43,7 @@ pub struct PlaySheepPet {
 pub fn sheep_pet_animation(
     time: Res<GameTime>,
     mut events: EventReader<PlaySheepPet>,
-    mut query: Query<&mut Sheep>,
+    mut query: Query<ComponentWrite<Sheep>>,
 ) {
     let dt = time.delta;
     let targets: Vec<u64> = events.read().map(|e| e.target).collect();
@@ -118,3 +118,5 @@ pub fn advance_sheep_pet(sheep: &mut Sheep, requested: bool, delta: f32) -> (boo
     }
     (advanced, entered)
 }
+
+use country_core::render::extract::ComponentWrite;

@@ -1,20 +1,21 @@
 //! Raster pipeline cache keys: every field that affects the Vulkan pipeline.
 use super::*;
 
-#[cfg(test)]
-pub(super) fn append_dynamic_rendering_key(
-    key: &mut Vec<u64>,
+pub(super) fn visit_dynamic_rendering_key(
     formats: Option<&DynamicRenderingFormats>,
+    mut emit: impl FnMut(u64),
 ) {
     match formats {
-        None => key.push(0),
+        None => emit(0),
         Some(formats) => {
-            key.extend([1, u64::from(formats.view_mask), formats.colors.len() as u64]);
-            key.extend(formats.colors.iter().map(|format| format.as_raw() as u64));
-            key.extend([
-                formats.depth.as_raw() as u64,
-                formats.stencil.as_raw() as u64,
-            ]);
+            for word in [1, u64::from(formats.view_mask), formats.colors.len() as u64] {
+                emit(word);
+            }
+            for format in &formats.colors {
+                emit(format.as_raw() as u64);
+            }
+            emit(formats.depth.as_raw() as u64);
+            emit(formats.stencil.as_raw() as u64);
         }
     }
 }
@@ -90,17 +91,7 @@ pub(super) fn visit_raster_pipeline_key(desc: &RasterPipelineDesc, emit: &mut dy
         u64::from(desc.stencil.write_mask),
         desc.entry.as_bytes().len() as u64,
     ]);
-    match desc.dynamic_rendering.as_ref() {
-        None => key.push(0),
-        Some(formats) => {
-            key.extend([1, u64::from(formats.view_mask), formats.colors.len() as u64]);
-            key.extend(formats.colors.iter().map(|format| format.as_raw() as u64));
-            key.extend([
-                formats.depth.as_raw() as u64,
-                formats.stencil.as_raw() as u64,
-            ]);
-        }
-    }
+    visit_dynamic_rendering_key(desc.dynamic_rendering.as_ref(), |word| key.push(word));
     key.extend(desc.entry.as_bytes().iter().map(|byte| u64::from(*byte)));
     let fragment_entry = desc.fragment_entry.as_deref().unwrap_or(&desc.entry);
     key.push(fragment_entry.to_bytes().len() as u64);

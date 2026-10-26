@@ -1,10 +1,8 @@
 //! Original B completion observer140a9f810: consume LoadingGameComplete,
 //! retain its sticky Local bit, and unlink loading.tmp once mode is neither
 //! replay13 nor loading14. All unlink errors are dropped; mode_manager owns
-//! the separate restore transition. The older pure filesystem-readiness helper
-//! remains a compatibility API and must not be mistaken for this ECS consumer.
+//! the separate restore transition. Session readiness uses is_session_ok_to_load.
 use crate::{resources::session::SessionId, systems::save::save_thread::UnsavedFileList};
-use bevy_ecs::prelude::Resource;
 use std::path::Path;
 
 /// 会话可载入就绪度。原字节 tag：`Ok=0`、`DenyLoad=1`、`NotReady=2`（I；字段序 U）。
@@ -24,21 +22,6 @@ impl SessionLoadReadiness {
     /// 0x140a9fa70：tag==1（与 `GladeType::is_olden` 同址折叠）。
     pub fn deny_load(self) -> bool {
         self == Self::DenyLoad
-    }
-}
-
-/// `check_load_completion` 0x140a9f810：`loading.tmp` 仍存在 → 加载尚未完成，拒绝读入。
-/// 路径根为全局 saves 目录；提供按目录的变体便于隔离测试。
-pub fn check_load_completion(session: SessionId) -> SessionLoadReadiness {
-    check_load_completion_in(&session.save_folder_path())
-}
-
-/// 按会话目录判定的 `check_load_completion`（O：save_folder + join "loading.tmp"）。
-pub fn check_load_completion_in(session_folder: &Path) -> SessionLoadReadiness {
-    if session_folder.join("loading.tmp").exists() {
-        SessionLoadReadiness::DenyLoad
-    } else {
-        SessionLoadReadiness::Ok
     }
 }
 
@@ -75,18 +58,6 @@ pub fn is_session_ok_to_load_in(
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct DisplayCorruptedSaveFileWarning;
 
-/// 原读档完成状态资源（PDB：`LoadingCompletionState`）。字段序 U，仅登记资源合同。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct LoadingCompletionState {
-    /// Canonical original Local bit: once a LoadingGameComplete was observed,
-    /// later nonloading/nonreplay modes retry marker deletion every update.
-    observed_complete: bool,
-    /// Historical global readiness projection retained for the older tree
-    /// adapter; it is not read by the original completion observer.
-    /// 最近一次就绪度判定；游戏循环消费。
-    pub readiness: SessionLoadReadiness,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -105,14 +76,10 @@ mod tests {
         use crate::systems::save::save_thread::UnsavedFileList;
         let root = tempfile::tempdir().unwrap();
         let folder = root.path().join("session");
-        assert_eq!(check_load_completion_in(&folder), SessionLoadReadiness::Ok);
+        let unsaved = UnsavedFileList::default();
+        assert_eq!(is_session_ok_to_load_in(&folder, &unsaved), SessionLoadReadiness::Ok);
         std::fs::create_dir(&folder).unwrap();
         std::fs::write(folder.join("loading.tmp"), b"").unwrap();
-        assert_eq!(
-            check_load_completion_in(&folder),
-            SessionLoadReadiness::DenyLoad
-        );
-        let unsaved = UnsavedFileList::default();
         assert_eq!(
             is_session_ok_to_load_in(&folder, &unsaved),
             SessionLoadReadiness::NotReady
@@ -138,13 +105,13 @@ mod tests {
 pub fn check_load_completion_system(
     mode: bevy_ecs::prelude::Res<crate::systems::mode_manager::AppMode>,
     mut complete: bevy_ecs::prelude::EventReader<super::load_game::LoadingGameComplete>,
-    mut local: bevy_ecs::prelude::Local<LoadingCompletionState>,
+    mut local: bevy_ecs::prelude::Local<bool>,
     session: bevy_ecs::prelude::Res<crate::resources::session::ActiveSession>,
 ) {
     if complete.read().last().is_some() {
-        local.observed_complete = true;
+        *local = true;
     }
-    if !local.observed_complete || matches!(mode.native_tag(), 13 | 14) {
+    if !*local || matches!(mode.native_tag(), 13 | 14) {
         return;
     }
     let _ = std::fs::remove_file(session.id.save_folder_path().join("loading.tmp"));

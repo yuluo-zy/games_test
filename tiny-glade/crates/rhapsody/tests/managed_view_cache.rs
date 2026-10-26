@@ -69,7 +69,7 @@ fn view_cache_rejects_held_and_pending_views_then_reuses_completed_capacity() {
     let extra = &descriptors[MAX_CACHED_TEXTURE_VIEWS];
     assert!(matches!(
         texture.view(Some(extra)),
-        Err(rhapsody::Error::Timeout)
+        Err(rhapsody::Error::Exhausted(_))
     ));
     assert_eq!(texture.cached_view_count(), MAX_CACHED_TEXTURE_VIEWS);
     let hit = texture.view(Some(&descriptors[0])).unwrap();
@@ -109,7 +109,7 @@ fn view_cache_rejects_held_and_pending_views_then_reuses_completed_capacity() {
     assert!(!device.timelines().is_reached(&point.into()).unwrap());
     assert!(matches!(
         texture.view(Some(extra)),
-        Err(rhapsody::Error::Timeout)
+        Err(rhapsody::Error::Exhausted(_))
     ));
     assert_eq!(texture.cached_view_count(), MAX_CACHED_TEXTURE_VIEWS);
     release.signal().unwrap();

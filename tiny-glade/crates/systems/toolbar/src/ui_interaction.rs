@@ -32,7 +32,7 @@ use crate::resouces_and_components::{
 pub fn debug_hide_ui(
     debug: Res<country_core::resources::gui::DebugGui>,
     mut drawables: Query<(
-        &mut country_core::components::Ui2dExtent,
+        ComponentWrite<country_core::components::Ui2dExtent>,
         &country_core::components::UiMouseInteractable,
     )>,
 ) {
@@ -320,7 +320,7 @@ pub fn render_taffy_ui_to_widgets(
         &country_core::components::Ui2dExtent,
         &UiMouseInteractable,
         &TaffyNode,
-        &mut UiInteractionState,
+        ComponentWrite<UiInteractionState>,
         Option<&HistoryButton>,
         Option<&UiNav>,
     )>,
@@ -1269,3 +1269,5 @@ pub use ordering::sort_contextual_buttons_draw_order;
 #[cfg(test)]
 #[path = "ui_interaction/widget_geometry_tests.rs"]
 mod widget_geometry_tests;
+
+use country_core::render::extract::ComponentWrite;

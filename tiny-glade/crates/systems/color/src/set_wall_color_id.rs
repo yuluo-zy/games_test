@@ -187,15 +187,14 @@ mod full_wall_id_tests {
             let mut inner = InnerWalls::default();
             let curve = Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap();
             inner.new_wall_with_id(id, WallState::new(curve, 4.0, 0, 0, false));
-            public.consume(
+            public.consume_with_paths(
                 &mut inner,
                 &TerrainHeightGrid512 {
                     encoded: vec![0u16; 512 * 512].into(),
                     minimum_y: 0.0,
                     maximum_y: 0.0,
                     sampling_fix: false,
-                },
-            );
+                }, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
             assert!(public.get(id).is_some());
         }
         world.insert_resource(public);

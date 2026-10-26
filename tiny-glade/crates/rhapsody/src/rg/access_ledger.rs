@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 static NEXT_SYNC_GROUP: AtomicU32 = AtomicU32::new(2);
 
-/// 同步组编号：全局递增计数器 fetch_add 的旧值（溢出后回绕）。
+/// 同步组编号：全局单调分配；耗尽时终止分配，不复用仍可存活的编号。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct ResourceSyncGroup(u32);
@@ -38,7 +38,8 @@ impl Default for ResourceSyncGroup {
 }
 
 fn allocate_group(counter: &AtomicU32) -> u32 {
-    counter.fetch_add(1, Ordering::Relaxed)
+    counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |next| next.checked_add(1))
+        .expect("resource synchronization group identifiers exhausted")
 }
 
 /// 一条访问账本记录（12 字节，显式填充）。
@@ -439,8 +440,8 @@ mod tests {
         assert_eq!(allocate_group(&counter), 2);
         assert_eq!(allocate_group(&counter), 3);
         counter.store(u32::MAX, Ordering::Relaxed);
-        assert_eq!(allocate_group(&counter), u32::MAX);
-        assert_eq!(allocate_group(&counter), 0);
+        assert!(std::panic::catch_unwind(|| allocate_group(&counter)).is_err());
+        assert_eq!(counter.load(Ordering::Relaxed), u32::MAX);
         assert_eq!(std::mem::size_of::<AccessLedgerEntry>(), 12);
         assert_eq!(
             std::mem::offset_of!(AccessLedgerEntry, synchronization_group),

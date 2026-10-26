@@ -55,11 +55,11 @@ pub fn make_focus_or_camera_binding_hint(
             } else {
                 "hint/mmb"
             };
-            base.alternate(crate::hint_orchestrator::HintGraphicParams {
-                graphics: vec!["hint/mouse".to_string(), second.to_string()],
-                value_0x18: 0.7,
-                value_0x1c: 100.0,
-            })
+            base.alternate(crate::hint_orchestrator::HintGraphicParams::animated(
+                vec!["hint/mouse".to_string(), second.to_string()],
+                0.7,
+                100.,
+            ))
         }
         // U：原生 `MOVZX R9D,word [profile+0x1c6]`；core GameProfile 无该字段。
         _ => base.alternate(crate::MouseButton::Left),
@@ -96,10 +96,12 @@ pub fn hint_clutter_focused_edit_condition(
     }
     completed.write(crate::tutorial_completion::TutorialHintComplete { id: 9 });
     if query.iter().next().is_some_and(|b| b.0 == 9) {
-        let _ = sound.write(country_core::systems::ui::resources::widget_params::PlayUiSound {
-            kind: 0x13,
-            _payload: [0; 20],
-        });
+        let _ = sound.write(
+            country_core::systems::ui::resources::widget_params::PlayUiSound {
+                kind: 0x13,
+                _payload: [0; 20],
+            },
+        );
     }
 }
 
@@ -134,9 +136,7 @@ pub fn hint_clutter_focused_edit_hint(
     profile: Res<country_core::game_profile::GameProfile>,
 ) {
     use country_core::systems::mode_manager::EditSubject;
-    use country_core::systems::ui_edit_focus::{
-        geo_src_to_edit_subject_w_deco_clutter, GeoSource,
-    };
+    use country_core::systems::ui_edit_focus::{GeoSource, geo_src_to_edit_subject_w_deco_clutter};
 
     // 1. state@+0 != 0 → 早退。
     if state.hint_done {
@@ -200,11 +200,13 @@ mod tests {
                 match &items[1] {
                     crate::BindingHintDisplay::Graphic(p) => {
                         assert_eq!(
-                            p.graphics,
-                            vec!["hint/mouse".to_string(), "hint/rmb".to_string()]
+                            p.images,
+                            crate::hint_orchestrator::HintGraphicImages::Animation {
+                                frames: vec!["hint/mouse".to_string(), "hint/rmb".to_string()],
+                                seconds_per_frame: 0.7,
+                            }
                         );
-                        assert_eq!(p.value_0x18, 0.7);
-                        assert_eq!(p.value_0x1c, 100.0);
+                        assert_eq!(p.height, 100.);
                     }
                     other => panic!("{other:?}"),
                 }
@@ -217,7 +219,7 @@ mod tests {
         match make_focus_or_camera_binding_hint(&profile) {
             crate::BindingHintDisplay::Alternate(items) => match &items[1] {
                 crate::BindingHintDisplay::Graphic(p) => {
-                    assert_eq!(p.graphics[1], "hint/mmb");
+                    assert_eq!(p.image_at_time(0.7), "hint/mmb");
                 }
                 other => panic!("{other:?}"),
             },

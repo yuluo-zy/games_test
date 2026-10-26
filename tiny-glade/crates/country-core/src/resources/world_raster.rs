@@ -529,9 +529,22 @@ impl<const N: usize> WorldRaster<N> {
     ///    `out` 太短则越界 panic）、更新状态表并保留位。
     /// 4. 发布保留下来的位图，`published = true`。
     pub fn copy_to_staging(&mut self, selector: u8, out: &mut [u8]) {
+        self.copy_to_staging_impl(selector, out, |_| {});
+    }
+
+    /// The upload owner reuses these exact byte spans, including the initial
+    /// clear, without another whole-buffer copy or comparison.
+    pub fn copy_to_staging_with_ranges(&mut self, selector: u8, out: &mut [u8],
+        ranges: &mut Vec<core::ops::Range<usize>>) {
+        self.copy_to_staging_impl(selector, out, |range| ranges.push(range));
+    }
+
+    fn copy_to_staging_impl(&mut self, selector: u8, out: &mut [u8],
+        mut written: impl FnMut(core::ops::Range<usize>)) {
         self.require_cpu_pixels();
         if self.staging_dirty {
             out.fill(0);
+            if !out.is_empty() { written(0..out.len()); }
             self.staging_dirty = false;
         }
         self.selector = selector;
@@ -557,6 +570,7 @@ impl<const N: usize> WorldRaster<N> {
                 return false;
             }
             out[index * TILE_BYTES..(index + 1) * TILE_BYTES].copy_from_slice(tile_array);
+            written(index * TILE_BYTES..(index + 1) * TILE_BYTES);
             Arc::make_mut(tile_hashes)[index] = hash;
             true
         });
@@ -643,10 +657,12 @@ mod tests {
         r.dirty_mut().set_all();
         let mut out = vec![0xee; 0x40000];
         let mut subscriber = r.subscribe();
-        r.copy_to_staging(0, &mut out);
+        let mut ranges = Vec::new();
+        r.copy_to_staging_with_ranges(0, &mut out, &mut ranges);
         // staging_dirty 未置位 → 不先清零 out；空瓦片哈希未变不写出。
         assert!(out.iter().all(|b| *b == 0xee || *b == 0 || *b == 0xab) && out[0] == 0xee);
         let index = 2 * 64 + 1;
+        assert_eq!(ranges, [index * 64..(index + 1) * 64]);
         let tile = &out[index * 64..index * 64 + 64];
         assert_eq!(tile[8 + 1], 0xab);
         assert_eq!(tile.iter().filter(|b| **b != 0).count(), 1);
@@ -667,7 +683,9 @@ mod tests {
         r.copy_to_staging(0, &mut out);
         assert_eq!(r.dirty().tile_indices().count(), 1);
         out.fill(0x77);
-        r.copy_to_staging(0, &mut out);
+        let mut ranges = Vec::new();
+        r.copy_to_staging_with_ranges(0, &mut out, &mut ranges);
+        assert!(ranges.is_empty());
         assert!(r.dirty().is_empty());
         assert!(out.iter().all(|b| *b == 0x77));
     }
@@ -677,7 +695,9 @@ mod tests {
         let mut r = raster();
         r.mark_staging_dirty();
         let mut out = vec![0x55; 0x40000];
-        r.copy_to_staging(1, &mut out);
+        let mut ranges = Vec::new();
+        r.copy_to_staging_with_ranges(1, &mut out, &mut ranges);
+        assert_eq!(ranges, [0..out.len()]);
         assert!(out.iter().all(|b| *b == 0));
         assert!(!r.staging_dirty());
         assert_eq!(r.staged_selector(), 1);

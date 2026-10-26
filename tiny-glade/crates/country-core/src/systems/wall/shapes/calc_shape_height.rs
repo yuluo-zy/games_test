@@ -1,213 +1,365 @@
-//! B `systems/wall/shapes/calc_shape_height.rs`: shape preview height.
-//!
-//! Evidence: `chapters/systems/wall/shapes/calc_shape_height.rs.md` (O,
-//! 0x140ac80e0). Base heights are 6.0 (rectangle) / 8.0 (circle); follow-
-//! terrain height type adds the terrain sample, otherwise the sampled average
-//! is used with the -0.46 constant; the final value is clamped to [0.7, 14.0]
-//! and written to the preview +0x40 field; CalcShapeHeight records the
-//! time-continuous interpolation.
-
-use bevy_ecs::prelude::*;
-use ::utils::curve::Curve3XZ;
-use ::utils::geometry::{Circle2d, Rectangle2d};
-
-use super::{
-    CalcShapeHeight, PreviewCircle, PreviewRectangle, SelectedWallShape,
+//! B `calc_shape_height`（140ac80e0/827B）：规则墙预览的高度与木框架缓存。
+//! 原第六参数是TimberframeConstructionParamsCache；旧CalcShapeHeight只能兼容别名，
+//! 不能另外保存状态。高度写ShapePlacement+40，抬升读取+3c，预览几何不拥有高度字段。
+use ::utils::{
+    curve::Curve3,
+    geometry::{Circle2d, Rectangle2d},
 };
-use crate::resources::terrain_height::{TerrainHeightsData, TerrainHeightSsbo};
+use bevy_ecs::prelude::*;
+use glam::Vec3;
 
-/// Rectangle base height (0x40c00000 @0x142934690).
-const RECTANGLE_BASE_HEIGHT: f32 = 6.0;
-/// Circle base height (0x41000000 @0x142934604).
-const CIRCLE_BASE_HEIGHT: f32 = 8.0;
-/// Height offset constant (0xbeeb851f @0x142a7f250).
-const HEIGHT_OFFSET: f32 = -0.46;
-/// Clamp range (0x3f333333 @0x1429cd030 / 0x41600000 @0x142a7de00).
-const MIN_HEIGHT: f32 = 0.7;
-const MAX_HEIGHT: f32 = 14.0;
-/// Circle sample step (0x3e4ccccd @0x1429cd068).
-const CIRCLE_SAMPLE_STEP: f32 = 0.2;
-/// Interpolation rate (0x41200000 @0x1429345a8).
-const INTERPOLATION_RATE: f32 = 10.0;
-/// Previous-height default when the old preview height is zero (0xc0200000
-/// @0x1429df1c0).
-const DEFAULT_PREVIOUS: f32 = -2.5;
+use super::{PreviewCircle, PreviewRectangle, ShapePlacement};
+use crate::{
+    resources::{
+        terrain_height::{TerrainHeightSsbo, TerrainHeightsData},
+        time::GameTime,
+    },
+    systems::mode_manager::{AppMode, WallShape},
+};
 
-/// B 0x140ac80e0 (7-param system).
-pub fn calc_shape_height(
-    selected: Res<SelectedWallShape>,
-    mut preview_circle: ResMut<PreviewCircle>,
-    mut preview_rectangle: ResMut<PreviewRectangle>,
-    terrain: Res<TerrainHeightsData<TerrainHeightSsbo>>,
-    mut state: ResMut<CalcShapeHeight>,
-) {
-    let is_rect = selected.is_rectangle();
-    if !(selected.is_circle() || is_rect) {
-        state.tag = 0;
-        return;
-    }
-
-    // Build the shape Curve2 and sample terrain heights along it.
-    let curve = if is_rect {
-        Rectangle2d {
-            axis: preview_rectangle.orientation,
-            center: preview_rectangle.center,
-            size: preview_rectangle.dimensions,
-        }
-        .as_curve2()
-    } else {
-        Circle2d {
-            center: preview_circle.center,
-            radius: preview_circle.radius,
-            rotation: preview_circle.rotation,
-        }
-        .as_curve2(CIRCLE_SAMPLE_STEP)
-    };
-    let remapped: Curve3XZ = curve.crashy_resample_remap_per_segment(
-        1.0,
-        |_segment, _t, point: glam::Vec2| {
-            let h = terrain.sample_at_world_xz(point.x, point.y);
-            glam::Vec3::new(point.x, h, point.y)
-        },
-    );
-    let mut sum = 0.0f32;
-    let mut max = f32::NEG_INFINITY;
-    let mut count = 0usize;
-    for point in &remapped.points {
-        sum += point.y;
-        count += 1;
-        if point.y > max {
-            max = point.y;
-        }
-    }
-
-    let base = if is_rect {
-        RECTANGLE_BASE_HEIGHT
-    } else {
-        CIRCLE_BASE_HEIGHT
-    };
-    let height_ty = if is_rect {
-        preview_rectangle.height_ty
-    } else {
-        preview_circle.height_ty
-    };
-    let mut height = if height_ty == 2 {
-        // Follow terrain: base + terrain sample (None treated as 0).
-        let center_h = if is_rect {
-            terrain.sample_at_world_xz(preview_rectangle.center.x, preview_rectangle.center.y)
-        } else {
-            terrain.sample_at_world_xz(preview_circle.center.x, preview_circle.center.y)
-        };
-        base + center_h
-    } else {
-        let average = if count == 0 { 0.0 } else { sum / count as f32 };
-        average + base + HEIGHT_OFFSET
-    };
-    height -= max + HEIGHT_OFFSET;
-    let clamped = if height < MIN_HEIGHT {
-        MIN_HEIGHT
-    } else if height > MAX_HEIGHT {
-        MAX_HEIGHT
-    } else {
-        height
-    };
-
-    // Write preview +0x40.
-    if is_rect {
-        preview_rectangle.height = clamped;
-    } else {
-        preview_circle.height = clamped;
-    }
-
-    // Time-continuous interpolation record.
-    let target = height + max - HEIGHT_OFFSET;
-    let previous = if is_rect {
-        if preview_rectangle.old_height == 0.0 {
-            DEFAULT_PREVIOUS
-        } else {
-            preview_rectangle.old_height
-        }
-    } else if preview_circle.old_height == 0.0 {
-        DEFAULT_PREVIOUS
-    } else {
-        preview_circle.old_height
-    };
-    let current = lerp_rate(previous, target, INTERPOLATION_RATE);
-    state.tag = 1;
-    state.current = current;
-    state.previous = previous;
-    state.delta = current - previous;
+/// 原16B缓存：tag0未就绪，tag1为正在平滑的木框架参数。
+/// +8是绘制基准，+c是从基准到平滑顶部的高度，两个构造系统直接消费这两项。
+#[repr(C)]
+#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
+pub struct TimberframeConstructionParamsCache {
+    pub tag: u32,
+    pub current: f32,
+    pub previous: f32,
+    pub delta: f32,
 }
 
-/// B func_0x000140c904e0: exponential time-continuous lerp toward `target` at
-/// the given rate.
-fn lerp_rate(previous: f32, target: f32, rate: f32) -> f32 {
-    let t = (rate * 0.1).clamp(0.0, 1.0);
-    previous + (target - previous) * t
+/// 原maxNum展开：相等保留前值，前值NaN时取后值；不滤除非有限高度。
+fn maximum(previous: f32, next: f32) -> f32 {
+    if previous.is_nan() || next > previous {
+        next
+    } else {
+        previous
+    }
+}
+
+fn update_from_samples(
+    points: &[Vec3],
+    base: f32,
+    placement: &mut ShapePlacement,
+    cache: &mut TimberframeConstructionParamsCache,
+    delta: f32,
+) {
+    let mut sum = 0.0f32;
+    let mut highest = 0.0f32;
+    for point in points {
+        sum += point.y;
+        highest = maximum(highest, point.y);
+    }
+    let top = if placement.surface() == 2 {
+        // 原屋顶吸附以Option<float>固定基高为准，不重新采样形状中心。
+        let fixed = if placement.height_type() as u8 == 0 {
+            0.0
+        } else {
+            placement.fixed_height()
+        };
+        base + fixed
+    } else {
+        (sum / points.len() as f32 + base) + (-0.46)
+    };
+    let raw = top - (highest + (-0.46));
+    let low = if raw < 0.7 { 0.7 } else { raw };
+    let height = if low > 14.0 { 14.0 } else { low };
+    placement.set_computed_height(height);
+    let elevation = placement.elevation();
+    cache.previous = if elevation == 0.0 { -2.5 } else { elevation };
+    let target = (height + highest) + (-0.46);
+    // 初帧直接到目标；后续复用同一缓存的顶部，不从抬升/旧预览字段重启。
+    let previous = if cache.tag as u8 == 0 {
+        target
+    } else {
+        cache.current
+    };
+    cache.current = ::utils::time_continuous_lerp(previous, target, delta, 10.0);
+    cache.tag = 1;
+    cache.delta = cache.current - cache.previous;
+}
+
+fn sampled_preview(
+    mode: AppMode,
+    rectangle: &PreviewRectangle,
+    circle: &PreviewCircle,
+    terrain: &TerrainHeightsData<TerrainHeightSsbo>,
+    elevation: f32,
+) -> Option<(Curve3, f32)> {
+    let (curve, base) = match mode {
+        AppMode::Wall(WallShape::Rectangle) => (
+            Rectangle2d {
+                axis: rectangle.orientation,
+                center: rectangle.center,
+                size: rectangle.dimensions,
+            }
+            .as_curve2(),
+            6.0,
+        ),
+        AppMode::Wall(WallShape::Circle) => (
+            Circle2d {
+                center: circle.center,
+                radius: circle.radius,
+                rotation: circle.rotation,
+            }
+            .as_curve2(0.2),
+            8.0,
+        ),
+        _ => return None,
+    };
+    let remapped: Curve3 =
+        curve.crashy_resample_remap_per_segment(0.5, |_, _, point: glam::Vec2| {
+            Vec3::new(
+                point.x,
+                maximum(terrain.sample_at_world_xz(point.x, point.y), elevation),
+                point.y,
+            )
+        });
+    Some((remapped, base))
+}
+
+/// 原七参数生产系统：真实AppMode→规则曲线→0.5逐段地形重采样→放置/木框架。
+#[allow(clippy::too_many_arguments)]
+pub fn calc_shape_height(
+    mode: Res<AppMode>,
+    preview_rectangle: Res<PreviewRectangle>,
+    preview_circle: Res<PreviewCircle>,
+    terrain: Res<TerrainHeightsData<TerrainHeightSsbo>>,
+    mut placement: ResMut<ShapePlacement>,
+    mut cache: ResMut<TimberframeConstructionParamsCache>,
+    time: Res<GameTime>,
+) {
+    let Some((remapped, base)) = sampled_preview(
+        *mode,
+        &preview_rectangle,
+        &preview_circle,
+        &terrain,
+        placement.elevation(),
+    ) else {
+        cache.tag = 0;
+        return;
+    };
+    update_from_samples(
+        &remapped.points,
+        base,
+        &mut placement,
+        &mut cache,
+        time.delta,
+    );
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use glam::Vec2;
+    #[derive(serde::Deserialize)]
+    struct NativeCase {
+        mode: u32,
+        shape: u8,
+        center: [u32; 2],
+        radius: u32,
+        dimensions: [u32; 2],
+        axis: [u32; 2],
+        rotation: u32,
+        placement: Vec<u8>,
+        cache: [u32; 4],
+        delta: u32,
+        grid_seed: usize,
+        centered: bool,
+        terrain_range: [u32; 2],
+        points: Vec<[u32; 3]>,
+        parameters: Vec<u32>,
+        length: u32,
+        height: u32,
+        output_cache: [u32; 4],
+    }
+    fn bits_equal(actual: f32, expected: u32, context: &str) {
+        if f32::from_bits(expected).is_nan() {
+            assert!(actual.is_nan(), "{context}");
+        } else {
+            assert_eq!(actual.to_bits(), expected, "{context}");
+        }
+    }
+    /// 真执行原827B主函数、原两种曲线、逐段重采样及地形采样；CRT数学边界另记。
+    #[test]
+    fn actual_seven_resource_system_matches_original_complete_business_chain() {
+        // 原全局地形开关是进程级依赖；两种路径在独立测试进程验证，避免污染其它测试。
+        if std::env::var_os("TB_CALC_HEIGHT_NATIVE_CHILD").is_none() {
+            let output=std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "systems::wall::shapes::calc_shape_height::tests::actual_seven_resource_system_matches_original_complete_business_chain", "--nocapture"])
+                .env("TB_CALC_HEIGHT_NATIVE_CHILD","1").output().unwrap();
+            assert!(
+                output.status.success(),
+                "{}{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
+        let cases: Vec<NativeCase> = serde_json::from_str(include_str!(
+            "../../../../../../tests/fixtures/native/toolbar-calc-shape-height.json"
+        ))
+        .unwrap();
+        assert_eq!(cases.len(), 96);
+        for (index, case) in cases.into_iter().enumerate() {
+            ::utils::float_grid::CENTERED_PATH
+                .store(case.centered, std::sync::atomic::Ordering::Relaxed);
+            let mode = if case.mode == 6 {
+                AppMode::Wall(if case.shape == 1 {
+                    WallShape::Circle
+                } else {
+                    WallShape::Rectangle
+                })
+            } else {
+                AppMode::default()
+            };
+            let rectangle = PreviewRectangle {
+                center: Vec2::from_array(case.center.map(f32::from_bits)),
+                dimensions: Vec2::from_array(case.dimensions.map(f32::from_bits)),
+                orientation: Vec2::from_array(case.axis.map(f32::from_bits)),
+                ..Default::default()
+            };
+            let circle = PreviewCircle {
+                center: Vec2::from_array(case.center.map(f32::from_bits)),
+                radius: f32::from_bits(case.radius),
+                rotation: f32::from_bits(case.rotation),
+                ..Default::default()
+            };
+            let mut terrain = TerrainHeightsData::<TerrainHeightSsbo>::new();
+            terrain.set_height_range(
+                f32::from_bits(case.terrain_range[0]),
+                f32::from_bits(case.terrain_range[1]),
+            );
+            for (i, value) in terrain.heights_mut().iter_mut().enumerate() {
+                let x = i % 512;
+                let z = i / 512;
+                *value = ((x * 97 + z * 43 + case.grid_seed) & 65535) as u16;
+            }
+            let placement = ShapePlacement::from_observed(case.placement.try_into().unwrap());
+            // 比较实际生产几何帮助函数的完整输出，不从平均值/最高点倒造预期。
+            let sampled =
+                sampled_preview(mode, &rectangle, &circle, &terrain, placement.elevation());
+            if let Some((samples, _)) = sampled {
+                bits_equal(
+                    samples.length,
+                    case.length,
+                    &format!("case {index} XYZ curve length"),
+                );
+                assert_eq!(samples.points_u.len(), case.parameters.len());
+                for (coordinate, (actual, expected)) in samples
+                    .points_u
+                    .iter()
+                    .copied()
+                    .zip(case.parameters)
+                    .enumerate()
+                {
+                    bits_equal(
+                        actual,
+                        expected,
+                        &format!("case {index} curve u[{coordinate}]"),
+                    );
+                }
+                assert_eq!(samples.points.len(), case.points.len(), "case {index}");
+                for (point, (actual, expected)) in
+                    samples.points.iter().zip(case.points).enumerate()
+                {
+                    for (axis, (a, e)) in actual.to_array().into_iter().zip(expected).enumerate() {
+                        bits_equal(a, e, &format!("case {index} point {point} axis {axis}"));
+                    }
+                }
+            } else {
+                assert!(case.points.is_empty());
+            }
+            let mut world = World::new();
+            world.insert_resource(mode);
+            world.insert_resource(rectangle);
+            world.insert_resource(circle);
+            world.insert_resource(terrain);
+            world.insert_resource(placement);
+            world.insert_resource(TimberframeConstructionParamsCache {
+                tag: case.cache[0],
+                current: f32::from_bits(case.cache[1]),
+                previous: f32::from_bits(case.cache[2]),
+                delta: f32::from_bits(case.cache[3]),
+            });
+            world.insert_resource(GameTime {
+                delta: f32::from_bits(case.delta),
+                ..Default::default()
+            });
+            let mut schedule = Schedule::default();
+            schedule.add_systems(calc_shape_height);
+            schedule.run(&mut world);
+            bits_equal(
+                world.resource::<ShapePlacement>().computed_height(),
+                case.height,
+                &format!("case {index} placement height"),
+            );
+            let cache = world.resource::<TimberframeConstructionParamsCache>();
+            assert_eq!(cache.tag, case.output_cache[0], "case {index} tag");
+            for (field, (actual, expected)) in [cache.current, cache.previous, cache.delta]
+                .into_iter()
+                .zip(case.output_cache[1..].iter().copied())
+                .enumerate()
+            {
+                bits_equal(
+                    actual,
+                    expected,
+                    &format!("case {index} cache field {field}"),
+                );
+            }
+        }
+    }
 
-    fn run_height(selected: SelectedWallShape, rect: PreviewRectangle) -> (CalcShapeHeight, PreviewRectangle) {
+    #[test]
+    fn persistent_cache_uses_real_time_and_mode_exit_preserves_payload() {
         let mut world = World::new();
-        world.insert_resource(selected);
+        world.insert_resource(AppMode::Wall(WallShape::Rectangle));
+        world.insert_resource(PreviewRectangle::default());
         world.insert_resource(PreviewCircle::default());
-        world.insert_resource(rect);
-        world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
-        world.insert_resource(CalcShapeHeight::default());
+        world.insert_resource(ShapePlacement::default());
+        let mut terrain = TerrainHeightsData::<TerrainHeightSsbo>::new();
+        terrain.set_height_range(3., 3.);
+        world.insert_resource(terrain);
+        world.insert_resource(GameTime {
+            delta: 0.0,
+            ..Default::default()
+        });
+        world.init_resource::<TimberframeConstructionParamsCache>();
         let mut schedule = Schedule::default();
         schedule.add_systems(calc_shape_height);
         schedule.run(&mut world);
-        (
-            *world.resource::<CalcShapeHeight>(),
-            *world.resource::<PreviewRectangle>(),
-        )
-    }
-
-    #[test]
-    fn non_wall_shape_disables_the_preview() {
-        let (state, _) = run_height(SelectedWallShape { tag: 3, ty: 0 }, PreviewRectangle::default());
-        assert_eq!(state.tag, 0);
-    }
-
-    #[test]
-    fn rectangle_height_uses_six_and_clamps() {
-        let (state, rect) = run_height(
-            SelectedWallShape {
-                tag: SelectedWallShape::WALL_SHAPES_TAG,
-                ty: SelectedWallShape::TY_RECTANGLE,
-            },
-            PreviewRectangle {
-                center: glam::Vec2::ZERO,
-                dimensions: glam::Vec2::new(4.0, 4.0),
-                orientation: glam::Vec2::X,
-                height_ty: 0,
-                height: 0.0,
-                old_height: 0.0,
-            },
+        let first = *world.resource::<TimberframeConstructionParamsCache>();
+        assert_eq!(first.tag, 1);
+        assert_eq!(first.previous, -2.5);
+        assert_eq!(world.resource::<ShapePlacement>().computed_height(), 6.0);
+        world
+            .resource_mut::<TerrainHeightsData<TerrainHeightSsbo>>()
+            .set_height_range(12., 12.);
+        schedule.run(&mut world);
+        assert_eq!(
+            world
+                .resource::<TimberframeConstructionParamsCache>()
+                .current,
+            first.current,
+            "delta=0不能以固定0.1推进"
         );
-        assert!((0.7..=14.0).contains(&rect.height));
-        assert_eq!(state.tag, 1);
+        world.resource_mut::<GameTime>().delta = 0.04;
+        schedule.run(&mut world);
+        let moved = *world.resource::<TimberframeConstructionParamsCache>();
+        assert!(moved.current > first.current && moved.current < 17.54);
+        world.insert_resource(AppMode::default());
+        world.resource_mut::<PreviewRectangle>().dimensions = Vec2::ZERO;
+        schedule.run(&mut world);
+        let cleared = *world.resource::<TimberframeConstructionParamsCache>();
+        assert_eq!(
+            cleared,
+            TimberframeConstructionParamsCache { tag: 0, ..moved },
+            "退出只清tag且不构造无效曲线"
+        );
+        assert_eq!(
+            std::any::TypeId::of::<TimberframeConstructionParamsCache>(),
+            std::any::TypeId::of::<super::super::CalcShapeHeight>(),
+            "别名不能产生另一资源"
+        );
     }
-}
-
-// ---------------------------------------------------------------- 组 A 接线
-
-/// 木框架构造参数缓存（O：`calc_shape_height::TimberframeConstructionParamsCache`；
-/// `timberframe` crate 两构造系统（0x1421b67a0/0x141a41ba0）以
-/// `Res<TimberframeConstructionParamsCache>` 读取墙形状→屋顶参数。
-/// 布局（O，restorer-wave3-timber-roof fresh 0x141a41ba0/0x1421b67a0）：`+0x00` 墙形状/
-/// 屋顶参数族（语义 U，typed gap）、`+0x08` 裙层偏移、`+0x0c` 主高——两 f32 被
-/// rect/circle 构造系统直接读取（`fVar33=*(cache+0xc)` 主环高、`fVar33+*(cache+8)`
-/// 裙层高），本处按机器码面暴露字段名（原 `{_gap: u64}` 8B 占位扩展为 16B 对齐原布局）。
-#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
-pub struct TimberframeConstructionParamsCache {
-    /// @+0x00：墙形状/屋顶参数族（语义 U，typed gap）。
-    pub _gap: u64,
-    /// @+0x08：裙层高度偏移（O：rect/circle 裙层 `h + *(cache+8)`）。
-    pub skirt_offset: f32,
-    /// @+0x0c：主高（O：rect 垂直梁/circle 主环高度）。
-    pub main_height: f32,
 }

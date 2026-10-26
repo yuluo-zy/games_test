@@ -205,7 +205,7 @@ pub fn construct_wall_bricks(
     holes: Res<WallHoles>,
     mut entities: ResMut<WallEntities>,
     mut bricks: Query<(
-        &mut InstancedWall<WallBrickInstance>,
+        ComponentWrite<InstancedWall<WallBrickInstance>>,
         Option<&mut WallTriggerVolume>,
     )>,
     mut commands: Commands,
@@ -291,3 +291,5 @@ pub fn construct_wall_bricks(
         output.write(WallBricksChanged { wall: id, entity });
     }
 }
+
+use crate::render::extract::ComponentWrite;

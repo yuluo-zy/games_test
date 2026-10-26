@@ -1470,9 +1470,23 @@ impl RaycastWorld {
         Rapier::raycast(self, origin, dir, mask)
     }
 
+    /// 原Raycasting显式距离上限。方向保持原长度，TOI传入QBVH剪枝，
+    /// 不做无限射线之后再丢弃远处命中的替代。
+    #[cfg(feature = "native-physics")]
+    pub fn raycast_with_max_toi(&self, origin: glam::Vec3, dir: glam::Vec3,
+        max_toi: f32, mask: u32) -> RaycastWorldResult {
+        Rapier::raycast_with_max_toi(self, origin, dir, max_toi, mask)
+    }
+
     /// `RaycastWorld::raycast`（非 native-physics 壳：查询不落地）。
     #[cfg(not(feature = "native-physics"))]
     pub fn raycast(&self, _origin: glam::Vec3, _dir: glam::Vec3, _mask: u32) -> RaycastWorldResult {
+        RaycastWorldResult::miss()
+    }
+
+    #[cfg(not(feature = "native-physics"))]
+    pub fn raycast_with_max_toi(&self, _origin: glam::Vec3, _dir: glam::Vec3,
+        _max_toi: f32, _mask: u32) -> RaycastWorldResult {
         RaycastWorldResult::miss()
     }
 
@@ -1511,7 +1525,16 @@ impl RaycastWorld {
         dir: glam::Vec3,
         mask: u32,
     ) -> RaycastWorldResult {
-        let mut result = Rapier::raycast(self, origin, dir, mask);
+        self.raycast_w_terrain_with_max_toi(terrain, origin, dir, f32::MAX, mask)
+    }
+
+    /// B1408cc2e0有界转发；地形同样受调用方上限约束，之后仅收紧距离。
+    #[cfg(feature = "native-physics")]
+    pub fn raycast_w_terrain_with_max_toi(
+        &self, terrain: &TerrainHeightsData<TerrainHeightSsbo>,
+        origin: glam::Vec3, dir: glam::Vec3, max_toi: f32, mask: u32,
+    ) -> RaycastWorldResult {
+        let mut result = Rapier::raycast_with_max_toi(self, origin, dir, max_toi, mask);
         if mask & 0x20 != 0 {
             let ray = TerrainRay {
                 origin,
@@ -1521,7 +1544,7 @@ impl RaycastWorld {
             let maximum_toi = if result.is_hit() {
                 result.toi
             } else {
-                f32::MAX
+                max_toi
             };
             if let Some(terrain_hit) = terrain.intersect_ray(ray, maximum_toi) {
                 result = terrain_result(terrain_hit.t, origin, dir);
@@ -2142,12 +2165,19 @@ impl Rapier {
         dir: glam::Vec3,
         mask: u32,
     ) -> RaycastWorldResult {
+        Self::raycast_with_max_toi(world, origin, dir, f32::MAX, mask)
+    }
+
+    fn raycast_with_max_toi(
+        world: &RaycastWorld, origin: glam::Vec3, dir: glam::Vec3,
+        max_toi: f32, mask: u32,
+    ) -> RaycastWorldResult {
         let ray = Ray::new(
             Point::new(origin.x, origin.y, origin.z),
             Vector::new(dir.x, dir.y, dir.z),
         );
         let mut result = RaycastWorldResult::miss();
-        let mut maximum_toi = f32::MAX;
+        let mut maximum_toi = max_toi;
         for (slot_index, slot) in world.slots.iter().enumerate() {
             if (mask >> slot_index) & 1 == 0 {
                 continue;
@@ -2912,6 +2942,30 @@ impl RaycastGeoSource {
 mod transform_family_tests {
     use super::*;
     use glam::{Quat, Vec3};
+
+    #[test]
+    fn bounded_rollercoaster_rays_keep_parametric_limit_and_terrain_limit() {
+        let mut world = RaycastWorld::new();
+        let mut map = std::collections::HashMap::new();
+        upsert_collider(&mut world, &mut map, 7_u32, RaycastGeoSource::Slot0,
+            Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(2.0), Vec3::ZERO)),
+            Vec3::new(5.0, 0.0, 0.0), Quat::IDENTITY);
+        world.flush_colliders();
+        let miss = world.raycast_with_max_toi(Vec3::ZERO, Vec3::X * 2.0, 1.99, 1);
+        assert!(miss.is_miss());
+        let hit = world.raycast_with_max_toi(Vec3::ZERO, Vec3::X * 2.0, 2.0, 1);
+        assert!(hit.is_hit());
+        assert_eq!(hit.toi, 2.0);
+        assert_eq!(hit.position, Vec3::new(4.0, 0.0, 0.0));
+        let terrain = TerrainHeightsData::<TerrainHeightSsbo>::new();
+        let origin = Vec3::new(100.0, 3.0, 100.0);
+        assert!(world.raycast_w_terrain_with_max_toi(&terrain, origin, Vec3::NEG_Y,
+            2.99, 0x20).is_miss());
+        let hit = world.raycast_w_terrain_with_max_toi(&terrain, origin, Vec3::NEG_Y,
+            3.0, 0x20);
+        assert!(hit.is_terrain());
+        assert_eq!(hit.toi, 3.0);
+    }
 
     #[test]
     fn offset_transform_builds_rapier_collider_builder() {

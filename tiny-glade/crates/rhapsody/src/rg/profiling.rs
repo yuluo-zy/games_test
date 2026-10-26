@@ -39,7 +39,7 @@ pub struct GpuCommandTiming {
     pub pass_index: Option<usize>,
     /// Declared pass name for pass spans; always None for whole-command spans.
     /// Filled only when pass spans are enabled (diagnostic builds of the log).
-    pub pass_name: Option<String>,
+    pub pass_name: Option<&'static str>,
 }
 /// A CPU-only reserved query pair. Its query-pool owner is retained by the
 /// command's outer timing scope, through that command's real completion point.
@@ -109,7 +109,7 @@ pub(crate) struct GpuTimingRing {
     // Slots and completed samples drop before their reservation.
     slots: Vec<Option<Tracked>>,
     /// Pass names of reserved pass-span slots, removed when the slot is released.
-    slot_names: std::collections::HashMap<usize, crate::resource::ResourceName>,
+    slot_names: Vec<Option<crate::resource::ResourceName>>,
     active: Vec<(u64, usize)>,
     free: VecDeque<usize>,
     samples: VecDeque<GpuCommandTiming>,
@@ -122,6 +122,10 @@ pub(crate) struct GpuTimingRing {
     stats: GpuTimingStats,
 }
 impl GpuTimingRing {
+    pub(crate) fn matches_config(&self, config: GpuTimingConfig) -> bool {
+        self.pass_spans == config.pass_spans && self.slots.len() == config.pending_commands
+            && self.sample_limit == config.retained_samples
+    }
     pub(crate) fn new(device: Arc<Device>, config: GpuTimingConfig) -> Result<Self> {
         if device.is_device_lost() {
             return Err(Error::DeviceLost);
@@ -164,6 +168,7 @@ impl GpuTimingRing {
         }
         let bytes = config.pending_commands
             * (std::mem::size_of::<Option<Tracked>>()
+                + std::mem::size_of::<Option<crate::resource::ResourceName>>()
                 + std::mem::size_of::<(u64, usize)>()
                 + std::mem::size_of::<usize>())
             + config.retained_samples * std::mem::size_of::<GpuCommandTiming>()
@@ -173,6 +178,7 @@ impl GpuTimingRing {
             .stats
             .reserve_cpu_bytes(bytes as u64, crate::device::BudgetCategory::Live)?;
         let mut slots = Vec::new();
+        let mut slot_names = Vec::new();
         let mut active = Vec::new();
         let mut free = VecDeque::new();
         let mut samples = VecDeque::new();
@@ -187,9 +193,12 @@ impl GpuTimingRing {
         samples
             .try_reserve_exact(config.retained_samples)
             .map_err(|_| Error::OutOfHostMemory)?;
+        slot_names.try_reserve_exact(config.pending_commands).map_err(|_| Error::OutOfHostMemory)?;
+        slot_names.resize(config.pending_commands, None);
         slots.resize(config.pending_commands, None);
         free.extend(0..config.pending_commands);
         let actual_bytes = slots.capacity() * std::mem::size_of::<Option<Tracked>>()
+            + slot_names.capacity() * std::mem::size_of::<Option<crate::resource::ResourceName>>()
             + active.capacity() * std::mem::size_of::<(u64, usize)>()
             + free.capacity() * std::mem::size_of::<usize>()
             + samples.capacity() * std::mem::size_of::<GpuCommandTiming>()
@@ -212,7 +221,7 @@ impl GpuTimingRing {
             })?;
         Ok(Self {
             slots,
-            slot_names: std::collections::HashMap::new(),
+            slot_names,
             active,
             free,
             samples,
@@ -320,7 +329,7 @@ impl GpuTimingRing {
             ended: true,
             ..outer
         });
-        self.slot_names.insert(slot, name.clone());
+        self.slot_names[slot] = Some(*name);
         self.active.push((command, slot));
         self.stats.pending += 1;
         self.stats.peak_pending = self.stats.peak_pending.max(self.stats.pending);
@@ -373,7 +382,7 @@ impl GpuTimingRing {
     fn release(&mut self, index: usize, slot: usize) {
         self.active.swap_remove(index);
         self.slots[slot] = None;
-        self.slot_names.remove(&slot);
+        self.slot_names[slot] = None;
         self.free.push_back(slot);
         self.stats.pending -= 1;
     }
@@ -424,7 +433,7 @@ impl GpuTimingRing {
                     completion_value: point.value,
                     duration_ns,
                     pass_index: tracked.pass_index,
-                    pass_name: self.slot_names.get(&slot).map(|name| name.to_string()),
+                    pass_name: self.slot_names[slot].map(|name| name.as_str()),
                 });
                 self.stats.completed += 1;
             }
@@ -487,14 +496,12 @@ pub(crate) enum RecordPhase {
     Retain,
     NativeBind,
     NativePush,
-    CounterLockWait,
-    CounterUpdate,
     Finish,
     WithPush,
     FinishConstants,
     FinishLease,
 }
-const RECORD_PHASES: usize = 17;
+const RECORD_PHASES: usize = 15;
 const RECORD_PHASE_NAMES: [&str; RECORD_PHASES] = [
     "Requirements",
     "CompleteGroup",
@@ -507,8 +514,6 @@ const RECORD_PHASE_NAMES: [&str; RECORD_PHASES] = [
     "Retain",
     "NativeBind",
     "NativePush",
-    "CounterLockWait",
-    "CounterUpdate",
     "Finish",
     "WithPush",
     "FinishConstants",

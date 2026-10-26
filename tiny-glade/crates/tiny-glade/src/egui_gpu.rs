@@ -31,15 +31,13 @@ use crate::{
 };
 
 pub struct EguiGpu {
-    device: Arc<rhapsody::device::Device>,
     tables: HostTables,
     textures: HashMap<egui::TextureId, Texture>,
 }
 
 impl EguiGpu {
-    pub fn new(device: Arc<rhapsody::device::Device>, tables: HostTables) -> Self {
+    pub fn new(tables: HostTables) -> Self {
         Self {
-            device,
             tables,
             textures: HashMap::new(),
         }
@@ -152,21 +150,7 @@ impl EguiRenderer for EguiFrame<'_> {
             bail!("zero-sized egui texture");
         }
         if let Some(texture) = self.gpu.textures.get(&id) {
-            let texture = self
-                .gpu
-                .tables
-                .textures
-                .get(texture)
-                .context("stale egui texture")?;
             let [x, y] = delta.pos.unwrap_or([0, 0]);
-            let staging = Arc::new(rhapsody::resource::Buffer::new(
-                self.gpu.device.clone(),
-                &rhapsody::resource::BufferDesc::new_cpu_to_gpu(
-                    bytes.len() as u64,
-                    vk::BufferUsageFlags::TRANSFER_SRC,
-                ),
-            )?);
-            staging.write_bytes(0, &bytes)?;
             let region = vk::BufferImageCopy::default()
                 .image_subresource(
                     vk::ImageSubresourceLayers::default()
@@ -183,21 +167,7 @@ impl EguiRenderer for EguiFrame<'_> {
                     height,
                     depth: 1,
                 });
-            let queue = self
-                .gpu
-                .device
-                .queue(rhapsody::device::QueueClass::Graphics)?;
-            rhapsody::resource::with_setup_command(&self.gpu.device, &[], |command| unsafe {
-                rhapsody::command::record_texture_regions(
-                    command,
-                    queue,
-                    texture.shared(),
-                    staging,
-                    &[region],
-                    vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-                )
-            })?
-            .into_value();
+            self.gpu.tables.textures.upload_regions(texture, bytes, vec![region])?;
         } else {
             if delta.pos.is_some() {
                 bail!("egui partial update refers to a missing texture");

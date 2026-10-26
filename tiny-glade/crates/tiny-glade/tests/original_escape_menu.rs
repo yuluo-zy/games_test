@@ -238,6 +238,260 @@ fn actual_pointer_settings_then_quit_deferred_resource() {
     assert!(app.world().contains_resource::<ShutdownGame>());
 }
 
+/// 此测试只使用CPU控件协议。真实OS输入仍暂停；子进程隔离全局路径和语言表。
+#[test]
+fn settings_router_builds_pages_and_persists_changes_across_processes() {
+    const NAME: &str = "settings_router_builds_pages_and_persists_changes_across_processes";
+    if let Some(path) = std::env::var_os("TG_SETTINGS_RESTORE_FILE") {
+        let config: GameConfig = ron::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        assert_eq!(config.lang_override.as_deref(), Some("de-DE"));
+        assert_eq!(
+            config.audio.master_volume.to_bits(),
+            std::env::var("TG_SETTINGS_EXPECT_MASTER_BITS")
+                .unwrap()
+                .parse::<u32>()
+                .unwrap()
+        );
+        return;
+    }
+    if std::env::var_os("TG_SETTINGS_ROUTER_CHILD").is_none() {
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", NAME, "--nocapture"])
+            .env("TG_SETTINGS_ROUTER_CHILD", "1")
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stdout).to_string()
+                + &String::from_utf8_lossy(&output.stderr)
+        );
+        return;
+    }
+    use country_core::{
+        render::{adaptive_render_state::AdaptiveRenderState, render_config::FrameRenderConfig},
+        resources::{
+            gui::{EscapeMenuJustClosed, PrevEscMenuState},
+            mouse_capture::OsCursorVisibilityCmd,
+            onboarding::TutorialOp,
+            session::{ActiveSession, SessionId, SessionMeta},
+            time_of_day::TimeOfDay,
+        },
+    };
+    use tiny_glade::{
+        app_config,
+        gui::settings::{self, LastAppliedVideoSettings},
+    };
+    use toolbar::mei::widgets::{ImageContent, LabelContent, tweaker::TweakerContent};
+    let install = PathBuf::from(std::env::var_os("TG_INSTALL_ROOT").unwrap());
+    let account = tempfile::tempdir().unwrap();
+    paths::initialize_paths_with_installation(0, Some(account.path()), &install).unwrap();
+    lang_lib::configure(install.join("assets/lang"), true).unwrap();
+    lang_lib::load_locale("en-US").unwrap();
+    let mut app = setup(EscMenuState::Main, AppMode::default());
+    {
+        let mut mei = app.world_mut().resource_mut::<MeiContext>();
+        for name in [
+            "menu/settings",
+            "menu/image-settings",
+            "menu/settings_see_thru",
+            "menu/settings-info",
+            "menu/settings-info-frame",
+            "menu/key_remapping",
+            "menu/language",
+        ] {
+            mei.configs.insert(
+                name.into(),
+                Arc::new(
+                    toolbar::mei::config::read_node_config_from_file(
+                        &install.join(format!("assets/ui/{name}.ron")),
+                    )
+                    .unwrap(),
+                ),
+            );
+        }
+    }
+    let frame = FrameRenderConfig::at_startup(
+        WindowSize::new(1600, 1000),
+        &app.world().resource::<GameConfig>().video,
+    );
+    app.add_plugins((bevy_input::InputPlugin, settings::SettingsMenuPlugin))
+        .insert_resource(frame)
+        .insert_resource(AdaptiveRenderState::at_startup(false))
+        .insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()))
+        .init_resource::<TimeOfDay>()
+        .init_resource::<PrevEscMenuState>()
+        .init_resource::<app_config::PanicReproStateResource>()
+        .add_event::<EscapeMenuJustClosed>()
+        .add_event::<OsCursorVisibilityCmd>()
+        .add_event::<TutorialOp>()
+        .add_event::<app_config::WriteSettingsFileCmd>()
+        .add_systems(
+            Update,
+            settings::do_gui_escape_menu_settings
+                .after(do_gui_escape_menu)
+                .before(country_core::resources::gui::advance_menu_state_system),
+        )
+        .add_systems(
+            Update,
+            country_core::resources::gui::advance_menu_state_system,
+        )
+        .add_systems(
+            bevy_app::PostUpdate,
+            app_config::write_settings_file_system.run_if(
+                bevy_ecs::schedule::common_conditions::on_event::<app_config::WriteSettingsFileCmd>,
+            ),
+        );
+    let click = |app: &mut App, text: &str| {
+        let id = *app
+            .world()
+            .resource::<MeiContext>()
+            .nodes
+            .iter()
+            .find(|(_, node)| {
+                let content: &dyn std::any::Any = node.content.as_ref();
+                content
+                    .downcast_ref::<MenuButtonContent>()
+                    .is_some_and(|c| c.pending_text.as_deref() == Some(text))
+            })
+            .unwrap_or_else(|| panic!("页面缺真实按钮: {text}"))
+            .0;
+        pointer_click(app, id);
+        app.update();
+        app.update();
+    };
+    app.update();
+    let settings = *app
+        .world()
+        .resource::<MeiContext>()
+        .nodes
+        .iter()
+        .find(|(_, node)| {
+            let content: &dyn std::any::Any = node.content.as_ref();
+            content
+                .downcast_ref::<PillButtonContent>()
+                .is_some_and(|c| c.image == "menu/settings_icon")
+        })
+        .unwrap()
+        .0;
+    pointer_click(&mut app, settings);
+    app.update();
+    app.update();
+    assert!(matches!(
+        app.world().resource::<EscMenuState>(),
+        EscMenuState::Settings(SettingsMenuState::Audio)
+    ));
+    assert!(
+        app.world()
+            .resource::<LastAppliedVideoSettings>()
+            .0
+            .is_some()
+    );
+    assert!(
+        app.world()
+            .resource::<MeiContext>()
+            .nodes
+            .values()
+            .any(|node| {
+                let content: &dyn std::any::Any = node.content.as_ref();
+                content
+                    .downcast_ref::<ImageContent>()
+                    .is_some_and(|image| image.color == 0xffffffc8)
+            })
+    );
+    let master = lang_lib::lookup("Menu.Settings.Audio.MasterVolume");
+    let row = *app
+        .world()
+        .resource::<MeiContext>()
+        .nodes
+        .iter()
+        .find(|(_, node)| {
+            node.content.type_name().ends_with("TweakerContent")
+                && node.children.iter().any(|child| {
+                    let content: &dyn std::any::Any = app.world().resource::<MeiContext>().nodes
+                        [child]
+                        .content
+                        .as_ref();
+                    content
+                        .downcast_ref::<LabelContent>()
+                        .is_some_and(|label| label.pending_text.as_deref() == Some(&*master))
+                })
+        })
+        .unwrap()
+        .0;
+    // 原控件下一帧消费的delta；不通过直接修改GameConfig代替设置业务。
+    toolbar::mei::core::NodeContext::new(&mut app.world_mut().resource_mut::<MeiContext>(), row)
+        .content_mut::<TweakerContent>()
+        .delta = 1;
+    app.update();
+    let master_bits = app
+        .world()
+        .resource::<GameConfig>()
+        .audio
+        .master_volume
+        .to_bits();
+    assert_eq!(master_bits, 1.1f32.to_bits());
+    assert!(app_config::settings_file_path().is_file());
+    // 此CPU入口没有安装需要GPU设备的mei_post_update；撤回本测试注入的单帧delta。
+    // 原prepare_layout清理合同由Tweaker控件测试验证，此处仅验页面消费与磁盘持久化。
+    toolbar::mei::core::NodeContext::new(&mut app.world_mut().resource_mut::<MeiContext>(), row)
+        .content_mut::<TweakerContent>()
+        .delta = 0;
+    click(
+        &mut app,
+        &lang_lib::lookup("Menu.Settings.Controls").to_uppercase(),
+    );
+    assert!(matches!(
+        app.world().resource::<EscMenuState>(),
+        EscMenuState::Settings(SettingsMenuState::Controls)
+    ));
+    assert!(
+        app.world()
+            .resource::<MeiContext>()
+            .nodes
+            .values()
+            .any(|node| {
+                let content: &dyn std::any::Any = node.content.as_ref();
+                content
+                    .downcast_ref::<MenuButtonContent>()
+                    .is_some_and(|c| {
+                        c.pending_text.as_deref()
+                            == Some(&*lang_lib::lookup("Menu.Settings.Controls.KeyBindings"))
+                    })
+            })
+    );
+    click(&mut app, "文/A");
+    assert!(matches!(
+        app.world().resource::<EscMenuState>(),
+        EscMenuState::Settings(SettingsMenuState::Language)
+    ));
+    click(&mut app, "Deutsch");
+    assert_eq!(
+        app.world()
+            .resource::<GameConfig>()
+            .lang_override
+            .as_deref(),
+        Some("de-DE")
+    );
+    click(&mut app, &lang_lib::lookup("Menu.Back"));
+    assert!(matches!(
+        app.world().resource::<EscMenuState>(),
+        EscMenuState::Main
+    ));
+    let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", NAME, "--nocapture"])
+        .env("TG_SETTINGS_RESTORE_FILE", app_config::settings_file_path())
+        .env("TG_SETTINGS_EXPECT_MASTER_BITS", master_bits.to_string())
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stdout).to_string()
+            + &String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 #[test]
 fn original_back_cancel_hotkey_closes_main_without_reopening() {
     let mut app = setup(EscMenuState::Main, AppMode::default());

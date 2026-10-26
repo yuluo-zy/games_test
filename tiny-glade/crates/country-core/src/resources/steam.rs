@@ -14,7 +14,7 @@
 //!   （cursor_move + main_menu/ui_cancel/ui_confirm/ui_up/ui_left/ui_right/ui_down/
 //!   ui_tab_prev/ui_tab_next）。
 //! - `SteamMenuActionSetState`（0x11 B）：`analog [Vec2;1] @0` + `digital [bool;9] @8`。
-//! - `SteamInput` 资源：手柄状态 + 两动作集 + 上帧数字状态表 + 本帧动作队列 + 计数。
+//! - `SteamInput`：手柄状态、两个动作集、核心动作→Steam来源映射。旧上帧位图/计数解释已纠正。
 //!
 //! `is_any_active` 0x1409e8aa0（RNE 机器码核验）：任一 analog `max(|x|,|y|) >= 0.25`
 //! （阈值 0x142925950 = `0000803e` = f32 0.25；NaN 不触发 ucomiss 无序遍历）或任一
@@ -44,10 +44,10 @@ pub trait SteamSdk: Send + Sync {
     fn analog_action_handle(&self, name: &str) -> Option<u64>;
     /// `input.get_digital_action_handle(name)`。
     fn digital_action_handle(&self, name: &str) -> Option<u64>;
-    /// `input.get_analog_action_data(handle)`。
-    fn analog_action_data(&self, handle: u64) -> AnalogActionData;
-    /// `input.get_digital_action_data(handle)`。
-    fn digital_action_data(&self, handle: u64) -> DigitalActionData;
+    /// `input.get_analog_action_data(controller, handle)`。
+    fn analog_action_data(&self, controller: u64, handle: u64) -> AnalogActionData;
+    /// `input.get_digital_action_data(controller, handle)`。
+    fn digital_action_data(&self, controller: u64, handle: u64) -> DigitalActionData;
     /// `input.activate_action_set(set, controller)`。
     fn activate_action_set(&self, set: u64, controller: u64);
     /// `input.init()`（SteamAPI_ISteamInput_Init）。
@@ -77,10 +77,10 @@ pub trait SteamSdk: Send + Sync {
     }
     /// `utils().show_floating_gamepad_text_input(mode, x, y, width, height)`。
     fn show_floating_gamepad_text_input(&self, mode: u32, x: i32, y: i32, width: i32, height: i32);
-    /// `input.get_analog_action_origins(set, handle)`。
-    fn analog_action_origins(&self, set: u64, handle: u64) -> Vec<u64>;
-    /// `input.get_digital_action_origins(set, handle)`。
-    fn digital_action_origins(&self, set: u64, handle: u64) -> Vec<u64>;
+    /// `input.get_analog_action_origins(controller, set, handle)`。
+    fn analog_action_origins(&self, controller: u64, set: u64, handle: u64) -> Vec<u64>;
+    /// `input.get_digital_action_origins(controller, set, handle)`。
+    fn digital_action_origins(&self, controller: u64, set: u64, handle: u64) -> Vec<u64>;
     /// `input.get_glyph_for_action_origin(origin)`（C 串→String）。
     fn glyph_for_action_origin(&self, origin: u64) -> String;
 }
@@ -99,59 +99,45 @@ pub struct DigitalActionData {
     pub active: bool,
 }
 
-/// Steam 数字动作输入码（O：update_steam_inputs 0x140ae9740 22 个压入码，压入序
-/// 0x400,0x500,0x600,0x700,0x900,0x800,0xa00,0xb00,0xc00,0xe00,0xd00,0x200,0x300,
-/// 0x1300,0x1400,0x1600,0x1700,0x1800,0x1500,0x1200,0xf00,0x101）。
-///
-/// 码→动作名配对待 ui-input 域游戏 InputEvent 枚举确认（跨域依赖，本域不臆造）；
-/// 变体名按 try_load 动作表序的**候选**映射标注，消费端接线前须对账。
+/// 原数字动作源二元组的安全枚举：低字节0=GameControls、1=Menu，
+/// 高字节为该动作集原句柄表下标。原9e8da0加1转换为图标查询码。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u16)]
 pub enum SteamActionSetDigitalAction {
-    /// 候选：left_click（0x400，第 1 数字动作）。
-    LeftClick = 0x400,
-    /// 候选：right_click（0x500，第 2 数字动作）。
-    RightClick = 0x500,
-    /// 候选：undo（0x600，第 3 数字动作）。
-    Undo = 0x600,
-    /// 候选：redo（0x700，第 4 数字动作）。
-    Redo = 0x700,
-    /// 候选：tool_building（0x900，第 5 数字动作）。
-    ToolBuilding = 0x900,
-    /// 候选：tool_path（0x800，第 6 数字动作）。
-    ToolPath = 0x800,
-    /// 候选：tool_decorator（0xa00，第 7 数字动作）。
-    ToolDecorator = 0xa00,
-    /// 候选：tool_customize（0xb00，第 8 数字动作）。
-    ToolCustomize = 0xb00,
-    /// 候选：tool_eraser（0xc00，第 9 数字动作）。
-    ToolEraser = 0xc00,
-    /// 候选：tool_terrain（0xe00，第 10 数字动作）。
-    ToolTerrain = 0xe00,
-    /// 候选：tool_garden（0xd00，第 11 数字动作）。
-    ToolGarden = 0xd00,
-    /// 候选：tool_tree（0x200，第 12 数字动作）。
-    ToolTree = 0x200,
-    /// 候选：tool_water（0x300，第 13 数字动作）。
-    ToolWater = 0x300,
-    /// 候选：time_of_day（0x1300，第 14 数字动作）。
-    TimeOfDay = 0x1300,
-    /// 候选：photomode（0x1400，第 15 数字动作）。
-    Photomode = 0x1400,
-    /// 候选：toggle_snapping（0x1600，第 16 数字动作）。
-    ToggleSnapping = 0x1600,
-    /// 候选：zoom_in（0x1700，第 17 数字动作）。
-    ZoomIn = 0x1700,
-    /// 候选：zoom_out（0x1800，第 18 数字动作）。
-    ZoomOut = 0x1800,
-    /// 候选：main_menu（0x1500，第 19 数字动作）。
-    MainMenu = 0x1500,
-    /// 候选：ui_cancel（0x1200，第 20 数字动作）。
-    UiCancel = 0x1200,
-    /// 候选：ui_confirm（0xf00，第 21 数字动作）。
-    UiConfirm = 0xf00,
-    /// 候选：ui_up（0x101，第 22 数字动作/尾块）。
-    UiUp = 0x101,
+    LeftClick = 0x0000,
+    RightClick = 0x0100,
+    Undo = 0x0200,
+    Redo = 0x0300,
+    ToolBuilding = 0x0400,
+    ToolPath = 0x0500,
+    ToolDecorator = 0x0600,
+    ToolCustomize = 0x0700,
+    ToolEraser = 0x0800,
+    ToolTerrain = 0x0900,
+    ToolGarden = 0x0a00,
+    ToolTree = 0x0b00,
+    ToolWater = 0x0c00,
+    TimeOfDay = 0x0d00,
+    Photomode = 0x0e00,
+    ToggleSnapping = 0x0f00,
+    ZoomIn = 0x1000,
+    ZoomOut = 0x1100,
+    MainMenu = 0x1200,
+    UiCancel = 0x1300,
+    UiConfirm = 0x1400,
+    UiUp = 0x1500,
+    UiLeft = 0x1600,
+    UiRight = 0x1700,
+    UiDown = 0x1800,
+    MenuMainMenu = 0x0001,
+    MenuUiCancel = 0x0101,
+    MenuUiConfirm = 0x0201,
+    MenuUiUp = 0x0301,
+    MenuUiLeft = 0x0401,
+    MenuUiRight = 0x0501,
+    MenuUiDown = 0x0601,
+    MenuUiTabPrev = 0x0701,
+    MenuUiTabNext = 0x0801,
 }
 
 impl SteamActionSetDigitalAction {
@@ -232,12 +218,12 @@ impl SteamMainActionSet {
     }
 
     /// read_state 0x1409e86b0：逐句柄读 3 模拟 + 25 数字 → 状态结构。
-    pub fn read_state(&self, input: &dyn SteamSdk, out: &mut SteamMainActionSetState) {
+    pub fn read_state(&self, input: &dyn SteamSdk, controller: u64, out: &mut SteamMainActionSetState) {
         for (i, handle) in self.analog.iter().enumerate() {
-            out.analog[i] = input.analog_action_data(*handle).value;
+            out.analog[i] = input.analog_action_data(controller, *handle).value;
         }
         for (i, handle) in self.digital.iter().enumerate() {
-            out.digital[i] = input.digital_action_data(*handle).state;
+            out.digital[i] = input.digital_action_data(controller, *handle).state;
         }
     }
 }
@@ -308,10 +294,10 @@ impl SteamMenuActionSet {
     }
 
     /// read_state 0x1409e8bf0：1 模拟 + 9 数字。
-    pub fn read_state(&self, input: &dyn SteamSdk, out: &mut SteamMenuActionSetState) {
-        out.analog[0] = input.analog_action_data(self.analog[0]).value;
+    pub fn read_state(&self, input: &dyn SteamSdk, controller: u64, out: &mut SteamMenuActionSetState) {
+        out.analog[0] = input.analog_action_data(controller, self.analog[0]).value;
         for (i, handle) in self.digital.iter().enumerate() {
-            out.digital[i] = input.digital_action_data(*handle).state;
+            out.digital[i] = input.digital_action_data(controller, *handle).state;
         }
     }
 }
@@ -336,8 +322,8 @@ impl SteamMenuActionSetState {
 /// SteamInput 资源（startup_steam 0x140a9bbf0 插入；update_steam_inputs 0x140ae9740 消费）。
 ///
 /// 原布局（O）：`active_controller u64 @0` + `? u64 @8` + `SteamMainActionSet @0x10`
-/// （0xf0 B）+ `SteamMenuActionSet @0x100`（0x68 B）+ 上帧数字状态表 @0x160（16 B/槽，
-/// 容量 @0x168）+ 释放计数 @0x170 + 按住计数 @0x178。本重建按逻辑分域承载，
+/// （0xf0 B）+ `SteamMenuActionSet @0x100`（0x68 B）+ 动作源HashMap @0x160。
+/// 其+168/170/178是容器元数据，不能当输入释放/按住计数。本重建按逻辑分域承载，
 /// 字段序仅供消费端接线参照。
 #[derive(Resource)]
 pub struct SteamInput {
@@ -350,14 +336,6 @@ pub struct SteamInput {
     pub main_action_set: SteamMainActionSet,
     /// Menu 动作集（@0x100）。
     pub menu_action_set: SteamMenuActionSet,
-    /// 上帧数字动作状态表（16 B/槽；@0x160）。SIMD 位图编码在重建中简化为逐动作标志。
-    pub prev_digital: [u64; 25],
-    /// 本帧数字动作输入码队列（u16 元素；@0x160 起）。
-    pub frame_actions: Vec<SteamActionSetDigitalAction>,
-    /// 释放计数（@0x170）。
-    pub released: u64,
-    /// 按住计数（@0x178）。
-    pub pressed: u64,
     /// 动作类型→本帧动作 分组（O：0x140ae9740 reserve_rehash）。
     pub actions_by_type: HashMap<DigitalActionSetActionType, Vec<SteamActionSetDigitalAction>>,
 }
@@ -370,13 +348,13 @@ impl SteamInput {
     }
 }
 
-/// 动作源字形查询的输入码（`(index << 8) | kind`；kind 2 = analog，1 = digital）。
+/// 原动作源查询码：kind0=主模拟，1=主数字，2=菜单（index9为菜单模拟）。
 /// get_action_origin_glyphs 0x1409e6280 的 R9 载荷。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ActionOriginGlyphQuery(pub u16);
 
 impl ActionOriginGlyphQuery {
-    /// 低 8 位：集类（2 = analog）。
+    /// 低8位的动作集分支。
     pub fn kind(self) -> u8 {
         (self.0 & 0xff) as u8
     }
@@ -393,31 +371,25 @@ impl SteamInput {
     ///
     /// 返回 None = 无字形（tag 0/1/2 细分在本重建中合并）；Some = 字形串表。
     pub fn get_action_origin_glyphs(&self, action: ActionOriginGlyphQuery) -> Option<Vec<String>> {
-        // 位 0 校验（原 `(*in_RDX & 1)`：动作可用性标志）。
-        let _ = self.client;
-        if action.kind() != 2 && action.kind() != 1 {
-            return None;
-        }
-        let set = self.main_action_set.action_set_handle;
-        let handle = if action.kind() == 2 {
-            self.main_action_set
-                .analog
-                .get(usize::from(action.index()))
-                .copied()
-        } else {
-            self.main_action_set
-                .digital
-                .get(usize::from(action.index()))
-                .copied()
+        // 原首项是 Option<控制器>；当前 API 用非零句柄表达 Some。
+        if self.active_controller == 0 { return None; }
+        let index = usize::from(action.index());
+        let (set, handle, analog) = match action.kind() {
+            0 if self.main_action_set.loaded == 1 =>
+                (self.main_action_set.action_set_handle, self.main_action_set.analog.get(index).copied(), true),
+            1 if self.main_action_set.loaded == 1 =>
+                (self.main_action_set.action_set_handle, self.main_action_set.digital.get(index).copied(), false),
+            2 if self.menu_action_set.loaded == 1 =>
+                (self.menu_action_set.action_set_handle, if index == 9 {
+                    self.menu_action_set.analog.first().copied()
+                } else { self.menu_action_set.digital.get(index).copied() }, index == 9),
+            _ => return None,
         };
         let Some(handle) = handle else { return None };
-        if handle == 0 {
-            return None;
-        }
-        let origins = if action.kind() == 2 {
-            self.client.analog_action_origins(set, handle)
+        let origins = if analog {
+            self.client.analog_action_origins(self.active_controller, set, handle)
         } else {
-            self.client.digital_action_origins(set, handle)
+            self.client.digital_action_origins(self.active_controller, set, handle)
         };
         let mut glyphs = Vec::new();
         for origin in origins {
@@ -517,3 +489,4 @@ mod tests {
         assert_eq!(packed_pair(0x34, 0x12), 0x1234 + 1);
     }
 }
+

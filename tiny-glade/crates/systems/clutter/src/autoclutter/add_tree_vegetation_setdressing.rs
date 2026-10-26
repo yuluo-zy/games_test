@@ -151,10 +151,5 @@ pub fn add_tree_setdressing(
 
 /// 放置键（`calculate_hash<tuple<TreeStorageIndex,usize,&str>>` 0x141cf7600 语义）。
 pub fn hash_tree_key(tree_index: u64, i: usize) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    tree_index.hash(&mut h);
-    i.hash(&mut h);
-    "tree".hash(&mut h);
-    h.finish()
+    utils::calculate_hash(&(tree_index, i, "tree"))
 }

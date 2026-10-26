@@ -5,10 +5,14 @@
 use crate::resources::walls::WallId;
 use bevy_ecs::component::Component;
 use glam::Vec3;
+use ::utils::bytes::read_f32_le as at;
+use ::utils::scalar::{clamp, clamp01, max_f32};
 use serde::ser::{SerializeStruct, SerializeStructVariant};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Component, Clone, Debug)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct Roof(pub(crate) [u8; 88]);
 
 impl Roof {
@@ -192,12 +196,12 @@ pub enum RoofIntersectionSection {
 pub fn ridge_length_01_from_rectangle_ratio(dim_x: f32, dim_z: f32) -> f32 {
     let ratio_xz = dim_x / dim_z;
     let ratio_zx = dim_z / dim_x;
-    let ratio = sse_max(ratio_zx, ratio_xz);
-    let max_dim = sse_max(dim_x, dim_z);
-    let u = sse_min(1.0, sse_max(0.0, (max_dim + -2.25) / 5.25));
+    let ratio = max_f32(ratio_zx, ratio_xz);
+    let max_dim = max_f32(dim_x, dim_z);
+    let u = clamp01((max_dim + -2.25) / 5.25);
     let smooth = (3.0 - 2.0 * u) * u * u;
     let blended = (1.5 * smooth + ratio + -1.5) / 1.5;
-    let t = sse_min(1.0, sse_max(0.0, blended));
+    let t = clamp01(blended);
     (3.0 - 2.0 * t) * t * t
 }
 
@@ -210,7 +214,7 @@ pub fn roof_height_ws_from_wall_shape(wall_shape: &[u8]) -> f32 {
         ((at(wall_shape, 0xc) + -0.9) / 7.1, 10.0, 4.0)
     } else {
         (
-            (sse_max(at(wall_shape, 0x14), at(wall_shape, 0x18)) + -2.25) / 12.75,
+            (max_f32(at(wall_shape, 0x14), at(wall_shape, 0x18)) + -2.25) / 12.75,
             6.0,
             3.0,
         )
@@ -238,15 +242,16 @@ fn cap_height(b: &[u8; 88]) -> f32 {
     let (dim_n, base) = if b[8] & 1 == 0 {
         ((at(b, 0x14) + -0.9) / 7.1, 8.0)
     } else {
-        ((sse_max(at(b, 0x1c), at(b, 0x20)) + -2.25) / 12.75, 9.0)
+        ((max_f32(at(b, 0x1c), at(b, 0x20)) + -2.25) / 12.75, 9.0)
     };
-    let t = sse_min(1.0, sse_max(0.0, dim_n / 0.4));
+    let t = clamp01(dim_n / 0.4);
     let smooth = (3.0 - (t + t)) * t * t;
     let cap_base = smooth * 12.0 + (1.0 - smooth) * base;
     assert!(cap_base >= 0.0, "original height cap assertion");
-    sse_min(
+    clamp(
+        height_01 * 12.0 + (1.0 - height_01) * 0.4,
+        0.0,
         cap_base,
-        sse_max(0.0, height_01 * 12.0 + (1.0 - height_01) * 0.4),
     )
 }
 
@@ -579,16 +584,6 @@ pub fn ty_observed(value_at_0x30: f32) -> bool {
 pub fn is_gable_observed(value_at_0x30: f32, value_at_0x34: f32) -> bool {
     // CMPNLEPS（含无序比较）与 CMPEQPS 的低 lane 按位相与。
     ty_observed(value_at_0x30) && value_at_0x34 == 1.0
-}
-
-fn at(b: &[u8], offset: usize) -> f32 {
-    f32::from_le_bytes(b[offset..offset + 4].try_into().unwrap())
-}
-fn sse_max(a: f32, b: f32) -> f32 {
-    if a > b { a } else { b }
-}
-fn sse_min(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
 }
 
 // 原入口的八参数观察合同保持不变。
@@ -1431,3 +1426,5 @@ impl TryFrom<u8> for FlatRoofRimStyle {
         match value {0=>Ok(Self::Rim),1=>Ok(Self::NoRim),_=>Err(value)}
     }
 }
+
+impl crate::render::extract::JournaledComponent for Roof {}

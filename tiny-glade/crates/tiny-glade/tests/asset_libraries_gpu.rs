@@ -171,3 +171,73 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
         table.heap().unwrap().stats().live
     );
 }
+
+/// 文件图片必须经过真实控件准备、纹理宿主、采样租约和 GPU 像素读回。
+#[test]
+fn mei_file_image_uses_real_upload_cache_descriptor_and_releases_host_slot() -> anyhow::Result<()> {
+    use country_core::{asset_libraries::texture_library::AssetIndex, render::device::GraphicsDeviceResource, rhapsody_contract::GraphicsDevice};
+    use toolbar::mei::{core::{NodeContent, NodeDrawContext, NodePrepareContext}, widgets::{DefaultNodeContent, FileImageCache, ImageContent}};
+    let device = rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless())?;
+    let host = Arc::new(TextureHost::new(device.clone()).with_extra_usage(vk::ImageUsageFlags::TRANSFER_SRC));
+    let mut assets = AssetTextureLibrary::try_new(host.as_ref())?;
+    let mut cache = FileImageCache::new(host.clone());
+    let path = std::env::temp_dir().join(format!("mei-gpu-file-{}-{}.png",std::process::id(),
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_nanos()));
+    let expected = vec![255,0,0,255,0,255,0,128];
+    image::RgbaImage::from_raw(2,1,expected.clone()).unwrap().save(&path)?;
+    let mut content = ImageContent::from_font_table(Arc::new(Default::default()));
+    content.image = format!("file:{}",path.display());
+    content.height = 32.;
+    let graphics = GraphicsDeviceResource::new(GraphicsDevice::new(device.clone()));
+    let mut renderer = tg_text::TextRenderer::new();
+    let mut state = 0;
+    let actions = Default::default();
+    for frame in 0..2 {
+        let mut ctx = NodePrepareContext {
+            text: &mut renderer, device: &graphics, textures: &mut assets, file_images: Some(&mut cache),
+            state: &mut state, actions: &actions, window_points: glam::Vec2::new(1000.,1000.),
+            steam_client: None, steam_input: None, pixels_per_point: 1., cursor: glam::Vec2::ZERO, elapsed: 0.016,
+        };
+        let size = content.prepare_layout(&mut ctx).unwrap();
+        assert_eq!(size.map(|x|x.value),[64.,32.]);
+        assert_eq!(assets.len(),1);
+        if frame == 0 { std::fs::remove_file(&path)?; }
+    }
+    content.draw(&mut NodeDrawContext {
+        text: &mut renderer, center: glam::Vec2::new(32.,16.), extent: glam::Vec2::new(64.,32.),
+        opacity:1.,pixels_per_point:1.,cursor:glam::Vec2::ZERO,elapsed:0.016,state:0,
+    });
+    assert!(!renderer.consume()?.primitives.is_empty());
+    let texture = assets.texture(AssetIndex(0)).clone();
+    assert_eq!(texture.format,43);
+    let owner = host.get(&texture).unwrap().shared();
+    let index = assets.handle_to_bindless_index(AssetIndex(0));
+    let descriptors = assets.try_bindless_textures_dset(host.as_ref())?;
+    assert_eq!(descriptors.lease(index.0).unwrap().index().index,index.0);
+    let output = Arc::new(Buffer::new(device.clone(),&BufferDesc::new_gpu_to_cpu(8,vk::BufferUsageFlags::TRANSFER_DST))?);
+    let queue = device.queue(rhapsody::device::QueueClass::Graphics)?;
+    // SAFETY：源纹理、目标缓冲均由当前设备创建，访问登记后提交并等待完成。
+    with_setup_command(&device,&[],|command| unsafe {
+        image_access(command,owner.clone(),queue,OwnershipRange::Image {
+            aspects:vk::ImageAspectFlags::COLOR.as_raw(),base_mip:0,mip_count:1,base_layer:0,layer_count:1,
+        },AccessScope { stages:vk::PipelineStageFlags::TRANSFER,access:vk::AccessFlags::TRANSFER_READ,write:false },vk::ImageLayout::TRANSFER_SRC_OPTIMAL)?;
+        buffer_access(command,output.clone(),queue,0,8,AccessScope {
+            stages:vk::PipelineStageFlags::TRANSFER,access:vk::AccessFlags::TRANSFER_WRITE,write:true,
+        })?;
+        device.raw_device().cmd_copy_image_to_buffer(command.raw_handle(),owner.raw_handle(),vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
+            output.raw_handle(),&[vk::BufferImageCopy::default().image_subresource(vk::ImageSubresourceLayers::default()
+                .aspect_mask(vk::ImageAspectFlags::COLOR).layer_count(1)).image_extent(vk::Extent3D {width:2,height:1,depth:1})]);
+        buffer_access(command,output.clone(),queue,0,8,AccessScope {
+            stages:vk::PipelineStageFlags::HOST,access:vk::AccessFlags::HOST_READ,write:false,
+        })
+    })?.wait(rhapsody::resource::SETUP_WAIT_TIMEOUT_NS)?;
+    let mut actual = vec![0;8];output.read_bytes(0,&mut actual)?;
+    assert_eq!(actual,expected);
+    let pending_frame=cache.retained_textures();
+    drop(cache);
+    assert!(host.get(&texture).is_some(),"待执行的MEI快照仍拥有宿主槽位");
+    drop(pending_frame);
+    assert!(host.get(&texture).is_none());
+    assert!(descriptors.lease(index.0).is_some(),"在途图和描述符仍保留实际托管纹理");
+    Ok(())
+}

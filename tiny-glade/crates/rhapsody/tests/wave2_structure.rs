@@ -15,7 +15,10 @@ fn headless() -> Option<(GraphicsInstance, Arc<Device>)> {
             .into_iter()
             .next()
             .ok_or_else(|| rhapsody::Error::unsupported("no headless candidate"))?;
-        let device = available.create_graphics_device_by_uuid(&graphics, candidate.device_uuid)?;
+        let device = Device::new(graphics.instance.clone(), None, &rhapsody::device::DeviceConfig {
+            preferred_device: rhapsody::device::DevicePreference::ByUuid(candidate.device_uuid),
+            ..rhapsody::device::DeviceConfig::headless()
+        })?;
         Ok((graphics, device))
     })();
     gpu_test_support::initialize("managed device tables", result)
@@ -57,22 +60,15 @@ fn device_tables_have_independent_typed_store_identities() {
 }
 
 #[test]
-fn create_graphics_device_attaches_the_physical_device_wrapper() {
+fn configured_creation_owns_the_selected_physical_device_metadata() {
     let Some((graphics, device)) = headless() else {
         eprintln!("跳过：无可用 Vulkan 设备");
         return;
     };
-    let attached: &Arc<PhysicalDevice> = device
-        .physical_device_info()
-        .expect("create_graphics_device 必须挂接物理设备包装");
-    assert!(graphics.devices.iter().any(|p| Arc::ptr_eq(p, attached)));
+    let attached: &Arc<PhysicalDevice> = device.physical_device_info();
+    assert!(graphics.devices.iter().any(|p| p.raw_handle() == attached.raw_handle()));
+    assert!(Arc::ptr_eq(&graphics.instance, attached.instance()));
     assert_eq!(attached.raw_handle(), device.physical_device());
-    // 第二次挂接被拒（原版只设置一次）。
-    assert!(
-        device
-            .attach_physical_device_info(attached.clone())
-            .is_err()
-    );
     // refresh_memory_budget 经包装委托：扩展门开时给出快照，门关时 Ok(None)。
     let budget = device.refresh_memory_budget().unwrap();
     if device

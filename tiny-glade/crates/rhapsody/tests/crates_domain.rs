@@ -204,13 +204,17 @@ const PUBLIC_VARIANTS: &[(&str, u8, u32, u32, i32)] = &[
 /// 原版新增（公开枚举里没有）的 6 个读变体码。
 const FORK_ONLY: [u8; 6] = [0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x23];
 /// 与公开值不同的两项：IndirectBuffer（stage 0x2→0x10000，access 0x1→0x21）、DepthStencilAttachmentWrite（access 0x400→0x600）。
-const DIFFERS_FROM_PUBLIC: [u8; 2] = [0x02, 0x2f];
+const DIFFERS_FROM_PUBLIC: [u8; 3] = [0x02, 0x05, 0x2f];
 
 #[test]
 fn table_matches_public_vk_sync_fork_except_documented_differences() {
     for &(name, code, stage, access, layout) in PUBLIC_VARIANTS {
         let info = access_info(code).unwrap();
-        let same = (info.scope.stages.as_raw(), info.scope.access.as_raw(), info.layout.as_raw()) == (stage, access, layout);
+        let same = (
+            info.scope.stages.as_raw(),
+            info.scope.access.as_raw(),
+            info.layout.as_raw(),
+        ) == (stage, access, layout);
         assert_eq!(
             same,
             !DIFFERS_FROM_PUBLIC.contains(&code),
@@ -218,7 +222,10 @@ fn table_matches_public_vk_sync_fork_except_documented_differences() {
         );
     }
     let ind = access_info(0x02).unwrap();
-    assert_eq!((ind.scope.stages.as_raw(), ind.scope.access.as_raw()), (0x10000, 0x21));
+    assert_eq!(
+        (ind.scope.stages.as_raw(), ind.scope.access.as_raw()),
+        (0x10000, 0x21)
+    );
     assert_eq!(access_info(0x2f).unwrap().scope.access.as_raw(), 0x600);
     // 公开 58 个变体 + 原版 6 个新增 = 64 个码，且互不重叠。
     let mut seen: Vec<u8> = PUBLIC_VARIANTS
@@ -235,6 +242,11 @@ fn table_matches_public_vk_sync_fork_except_documented_differences() {
     for (code, spec) in ACCESS_TABLE.iter().enumerate() {
         assert_eq!(spec.scope.write, is_write(code as u8));
     }
+    assert_eq!(
+        access_info(0x05).unwrap().scope.access,
+        ash::vk::AccessFlags::UNIFORM_READ
+    );
+    assert!(is_write(0x3d) && is_write(0x3f));
     assert_eq!(ACCESS_TABLE.len(), ACCESS_CODE_COUNT);
 }
 

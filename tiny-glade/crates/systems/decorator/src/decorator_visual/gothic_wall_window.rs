@@ -32,7 +32,8 @@ use utils::{
 };
 
 use super::cottage_wall_window::{wall_space, window_builder};
-use crate::{blueprint::DecoratorBlueprints, utils::inverse_lerp};
+use crate::blueprint::DecoratorBlueprints;
+use ::utils::scalar::inverse_lerp;
 
 /// 半径表（O：DAT_142c2b180 = {0.25, 0.3, 0.29}，read_memory 核验）。
 pub const GOTHIC_HALF_DORMER_RADIUS: [f32; 3] = [0.25, 0.3, 0.29];
@@ -499,15 +500,14 @@ mod original_main_tests {
         let mut inner = InnerWalls::new();
         inner.new_wall_with_id(WALL, WallState::from_snapshot(snapshot, 0));
         let mut walls = PublicWalls::default();
-        walls.consume(
+        walls.consume_with_paths(
             &mut inner,
             &TerrainHeightGrid512 {
                 encoded: vec![0; 512 * 512].into(),
                 minimum_y: 0.0,
                 maximum_y: 0.0,
                 sampling_fix: false,
-            },
-        );
+            }, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         assert!(walls.get(WALL).is_some());
         walls
     }

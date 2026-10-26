@@ -29,9 +29,10 @@
 //! # 与旧版的差异
 //! 旧版的 `DrawCommand{discriminant,payload[0xb0]}`、`GameContext`、`mode/draw_args`、`has_dynamic_constants` 与机器码
 //! 不符，全部重写；`draw_*` 不再返回 `DrawBuilder`（机器码里它们是终结操作，无返回值）；`DrawBuilder` 增加借用
-//! `RasterPass` 的生命周期参数。`BindGameResources for DrawBuilder` 不再由本文件实现（`bind_color_library`
+//! `RasterPass` 的生命周期参数。DrawBuilder 的资源绑定由当前泛型固有方法实现（`bind_color_library`
 //! 在 `bind_common` 里内联展开，见 [`DrawBuilder::bind_color_library`]）。
 
+// Current Rust binding slots are u32 throughout declaration, Collect and Commit; native byte offsets above are historical evidence.
 // Rust 1.88 enables newer style suggestions; retain original nested branches and modulo expressions.
 #![allow(clippy::collapsible_if)]
 // Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
@@ -68,8 +69,6 @@ pub const ACCESS_RG_STORAGE_READ: u8 = 0x24;
 pub const ACCESS_RG_STORAGE_WRITE: u8 = 0x37;
 /// 间接缓冲读取（O：多个 `multi_draw_*` 里 `mov r8b, 2`，同步组 1）。
 pub const ACCESS_INDIRECT_BUFFER_READ: u8 = 0x02;
-/// 一个 pass 内的绑定上限（O：`cmp rdi, 0x100; jae unwrap_failed`）。
-pub const MAX_PASS_BINDINGS: usize = 0x100;
 
 /// `draw_instanced_from_placement_data` 用的 storage-buffer 名字 hash（O：`movabs r8, 0x30e6778252531a83`）。
 pub const PLACEMENT_DATA_BINDING_HASH: u64 = 0x30e6_7782_5253_1a83;
@@ -134,10 +133,6 @@ pub struct BrickEraseHighlightInputs {
     /// 资源 D（`0x48b321ef779dc301/-0x429a898e6b262238`）的字节 `+0xfe`。
     pub suppress: bool,
 }
-
-/// 旧版 `DrawCommand`（0xb8 B draw 记录）就是 `DrawPacket`（`RasterPass.draws` 的元素）；
-/// 保留别名以免 `lib.rs::consume::pass_builder` 的 re-export 失效。
-pub type DrawCommand = DrawPacket;
 
 // ------------------------------------------------------------------------------------------
 // NoDropOnlyTake
@@ -439,18 +434,17 @@ impl<'p> DrawBuilder<'p> {
     }
 
     /// 向 `RasterPass.bindings` 追加一条记录并返回其下标（O：`cmp r13, 0x100; jae unwrap_failed`）。
-    fn push_pass_binding(&mut self, binding: RenderPassBinding) -> u8 {
+    fn push_pass_binding(&mut self, binding: RenderPassBinding) -> u32 {
         let idx = self.pass.bindings.len();
-        let idx = u8::try_from(idx)
+        let idx = u32::try_from(idx)
             .expect("called `Result::unwrap()` on an `Err` value: TryFromIntError(())");
-        assert!(self.pass.bindings.len() < MAX_PASS_BINDINGS);
         self.pass.bindings.push(binding);
         self.pass.binding_accesses.push(self.pass.accesses.len() - 1);
         idx
     }
 
     /// `packet.accesses.push(ResourceAccess)`（`+0x10` Vec）。
-    fn push_packet_access(&mut self, binding_index: u32, slot: u8) {
+    fn push_packet_access(&mut self, binding_index: u32, slot: u32) {
         // 反射 binding 重新绑定后恢复严格内容合同，不能继承旧资源的许可。
         self.forget_undefined_texture_binding(binding_index);
         self.packet.get_mut().accesses.push(ResourceAccess {
@@ -1155,7 +1149,7 @@ impl<'p> DrawBuilder<'p> {
         self.bind_disk_textures(&WOODEN_FLOOR_TEXTURES)
     }
 
-    /// `bind_ray_tracing<DrawBuilder>`（0x1416289d0，4167 B；`bind_resources::BindGameResources::bind_ray_tracing` 的 DrawBuilder 实例）。
+    /// `bind_ray_tracing<DrawBuilder>`（0x1416289d0，4167 B；DrawBuilder 的真实类型化实例）。
     ///
     /// O 顺序（与 ComputePass 版 0x1415fc230 的差别：走槽表 + 多一次墙色读，访问码 0x1f）：
     ///  1. 从 world 取 `AssetSsboLibrary`；对 `RtTrianglesSsbo` 与 `RtBvhSsbo`：`FrozenMap::get` → 缺失 `Option::unwrap`；
@@ -1401,8 +1395,11 @@ mod tests {
         let (mut second, _) = make_pass();
         builder(&mut first).read_storage_buffer::<Ssbo>("shared", 0x10).draw();
         builder(&mut second).read_storage_buffer::<Ssbo2>("shared", 0x10).draw();
-        let (pass, _) = make_pass();
-        assert!(!pass.batches_compatible(&[first.into_draw_batch(), second.into_draw_batch()]));
+        let (mut pass, _) = make_pass();
+        pass.commit_draw_batch(first.into_draw_batch());
+        pass.commit_draw_batch(second.into_draw_batch());
+        assert_eq!(pass.bindings.len(), 1);
+        assert_eq!(pass.draws[0].accesses, pass.draws[1].accesses);
         pass.render();
 
         let texture = AttachmentTexture { id: 9, extent: (1, 1), format: 37, sample_count: 1 };
@@ -1410,8 +1407,11 @@ mod tests {
         let (mut second, _) = make_pass();
         builder(&mut first).bind_texture_to_draw_builder(BindTexture::RgHandle(&texture), 0x10, 0x1d, None).draw();
         builder(&mut second).bind_texture_to_draw_builder(BindTexture::RgHandle(&texture), 0x10, 0x1e, None).draw();
-        let (pass, _) = make_pass();
-        assert!(!pass.batches_compatible(&[first.into_draw_batch(), second.into_draw_batch()]));
+        let (mut pass, _) = make_pass();
+        pass.commit_draw_batch(first.into_draw_batch());
+        pass.commit_draw_batch(second.into_draw_batch());
+        assert_eq!(pass.bindings.len(), 1);
+        assert_eq!(pass.draws[0].accesses, pass.draws[1].accesses);
         pass.render();
     }
 
@@ -2499,12 +2499,12 @@ mod tests {
         finish_pass(pass);
     }
 
-    fn pass_has_slot(slots: &HashMap<&'static str, u8>, name: &str) -> bool {
+    fn pass_has_slot(slots: &HashMap<&'static str, u32>, name: &str) -> bool {
         slots.contains_key(name)
     }
 
     impl DrawBuilder<'_> {
-        fn pass_slots(&self) -> &HashMap<&'static str, u8> {
+        fn pass_slots(&self) -> &HashMap<&'static str, u32> {
             &self.pass.buffer_slots
         }
     }
@@ -2517,7 +2517,6 @@ mod tests {
             (ACCESS_RG_STORAGE_READ, ACCESS_RG_STORAGE_WRITE),
             (0x24, 0x37)
         );
-        assert_eq!(MAX_PASS_BINDINGS, 0x100);
         assert_eq!(
             BIND_COMMON_FLAG_INT_UNIFORM,
             (-0x3a5498c04f79ae0bi64) as u64
@@ -2531,13 +2530,29 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "TryFromIntError")]
-    fn more_than_256_pass_bindings_panic() {
-        let (mut pass, _l) = make_pass();
-        for _ in 0..0x100 {
-            pass.bindings.push(RenderPassBinding::default());
+    fn parallel_collect_and_commit_preserve_binding_indices_above_255() {
+        let batches = std::thread::scope(|scope| {
+            (0..4).map(|worker| scope.spawn(move || {
+                let mut reflection = refl(); reflection.has_uniform_block = false;
+                let (mut local, _) = make_pass_with(reflection);
+                for index in worker * 300..(worker + 1) * 300 {
+                    builder(&mut local).read_rg_storage_buffer(0x10, index).draw();
+                }
+                local.into_draw_batch()
+            })).collect::<Vec<_>>().into_iter().map(|worker| worker.join().unwrap()).collect::<Vec<_>>()
+        });
+        let (mut pass, _) = make_pass();
+        for batch in batches { pass.commit_draw_batch(batch); }
+        assert_eq!(pass.bindings.len(), 1200);
+        assert_eq!(pass.draws.len(), 1200);
+        assert_eq!(pass.binding_accesses, (0..1200).collect::<Vec<_>>());
+        for (index, draw) in pass.draws.iter().enumerate() {
+            let access = draw.accesses[0];
+            assert_eq!(access.slot, index as u32);
+            assert_eq!(pass.bindings[access.slot as usize].resource_index, index as u32);
         }
-        let _ = builder(&mut pass).read_rg_storage_buffer(0x10, 1);
+        assert_eq!(core::mem::size_of::<ResourceAccess>(), 8);
+        finish_pass(pass);
     }
 
     #[test]

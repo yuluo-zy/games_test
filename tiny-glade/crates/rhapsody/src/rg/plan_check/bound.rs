@@ -41,6 +41,10 @@ fn stages_cover(provided: vk::PipelineStageFlags, required: vk::PipelineStageFla
     }
     provided.contains(remaining)
 }
+fn wait_stages_cover(provided: vk::PipelineStageFlags, required: vk::PipelineStageFlags) -> bool {
+    let device = required & !vk::PipelineStageFlags::HOST;
+    stages_cover(provided, if device.is_empty() { vk::PipelineStageFlags::ALL_COMMANDS } else { device })
+}
 fn scope_covers(provided: AccessScope, required: AccessScope) -> bool {
     let mut access = required.access;
     if provided.access.contains(vk::AccessFlags::MEMORY_READ) {
@@ -197,8 +201,8 @@ impl Ordering {
                 {
                     return Err(invalid("native wait refers to an unsubmitted batch"));
                 }
-                DependencyRef::Point(point) if point.value == 0 => {
-                    return Err(invalid("native wait uses an unsubmitted zero point"));
+                DependencyRef::Point(point) if point.value == 0 || point.value > known.get(point.queue) => {
+                    return Err(invalid("native wait uses an unknown or future point"));
                 }
                 _ => {}
             }
@@ -271,7 +275,7 @@ fn visible(
         if source != queue {
             for wait in view.waits.iter().filter(|wait| wait.batch == batch) {
                 if ordering.covers(wait.dependency, dependency)
-                    && stages_cover(wait.stages, destination.stages)
+                    && wait_stages_cover(wait.stages, destination.stages)
                 {
                     history.visible[queue.index()] = union(
                         history.visible[queue.index()],
@@ -688,7 +692,7 @@ fn check(program: &RangeProgram, view: View<'_>) -> crate::Result<()> {
                                 if !view.waits.iter().filter(|wait| wait.batch == batch).any(
                                     |wait| {
                                         ordering.covers(wait.dependency, release)
-                                            && stages_cover(
+                                            && wait_stages_cover(
                                                 wait.stages,
                                                 transfer.destination.stages,
                                             )

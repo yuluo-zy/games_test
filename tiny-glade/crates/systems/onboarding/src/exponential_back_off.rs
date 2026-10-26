@@ -5,13 +5,13 @@
 //! - 每帧 `GameProfile[0x1f0] += dt`（累加器；仅当鼠标事件或 local<30.0 时）。
 //! - 两对 (计时,冷却)：A=0x1e0/0x1e4、B=0x1e8/0x1ec；冷却缺省 720.0（0x44340000）。
 //! - 对 A：读事件（**读者类型 U**，本重建以 DisplayHintRequest 承载）→ 计时归零、
-//!   `cooldown=clamp(old*1.5,720,10800)` 写回、写 WriteSettingsFileCmd。
+//!   `cooldown=clamp(old*1.5,720,10800)` 写回、写 SaveGameProfileCmd。
 //! - 对 B：读 `ModeJustChanged`（0x28B 步长，首载荷工具 id ∈ {1,2} 才触发）→ 同上。
 //! - 标志 A（profile[0x1f4]）/ B（profile[0x1f5]）：`local<10.0` 才计时+=dt、
 //!   `clamp[0,cooldown]`（cooldown<0 走 f32::clamp panic）；`timer>=cooldown` →
-//!   写 WriteSettingsFileCmd + 清对应条件资源（10B）+ 清标志。
+//!   写 SaveGameProfileCmd + 清对应条件资源（10B）+ 清标志。
 //!
-//! **已重建（2026-10-17，coregap-2 GameProfile 计时区 + WriteSettingsFileCmd 落库）**；
+//! **已重建（2026-10-17，coregap-2 GameProfile 计时区 + SaveGameProfileCmd 落库）**；
 //! 分歧点：对 A 读者事件类型 U（候选 DisplayHintRequest，stride 无取证）。
 
 use bevy_ecs::prelude::*;
@@ -28,7 +28,7 @@ pub fn exponential_back_off(
     mut mouse: EventReader<country_core::resources::window::CursorMovedScreenSpace>,
     time: Res<GameTime>,
     mut profile: ResMut<country_core::game_profile::GameProfile>,
-    mut writer: EventWriter<country_core::resources::events::WriteSettingsFileCmd>,
+    mut writer: EventWriter<country_core::game_profile::SaveGameProfileCmd>,
     mut trigger_a: EventReader<crate::DisplayHintRequest>,
     mut mode_b: EventReader<country_core::resources::events::ModeJustChanged>,
     mut deselect: ResMut<crate::hint_deselect_tool::DeselectToolHintConditions>,
@@ -60,7 +60,7 @@ pub fn exponential_back_off(
         profile.tutorial_cooldowns.timer_a = 0.0;
         cooldown_a = (cooldown_a * 1.5).clamp(720.0, 10800.0);
         profile.tutorial_cooldowns.cooldown_a = cooldown_a;
-        writer.write(country_core::resources::events::WriteSettingsFileCmd);
+        writer.write(country_core::game_profile::SaveGameProfileCmd);
     }
     if flag_a {
         if local.0 < 10.0 {
@@ -69,7 +69,7 @@ pub fn exponential_back_off(
             profile.tutorial_cooldowns.timer_a = timer;
         }
         if cooldown_a <= profile.tutorial_cooldowns.timer_a {
-            writer.write(country_core::resources::events::WriteSettingsFileCmd);
+            writer.write(country_core::game_profile::SaveGameProfileCmd);
             *deselect = crate::hint_deselect_tool::DeselectToolHintConditions::default();
             profile.tutorial = false;
         }
@@ -90,7 +90,7 @@ pub fn exponential_back_off(
         profile.tutorial_cooldowns.timer_b = 0.0;
         cooldown_b = (cooldown_b * 1.5).clamp(720.0, 10800.0);
         profile.tutorial_cooldowns.cooldown_b = cooldown_b;
-        writer.write(country_core::resources::events::WriteSettingsFileCmd);
+        writer.write(country_core::game_profile::SaveGameProfileCmd);
     }
     if flag_b {
         if local.0 < 10.0 {
@@ -99,7 +99,7 @@ pub fn exponential_back_off(
             profile.tutorial_cooldowns.timer_b = timer;
         }
         if cooldown_b <= profile.tutorial_cooldowns.timer_b {
-            writer.write(country_core::resources::events::WriteSettingsFileCmd);
+            writer.write(country_core::game_profile::SaveGameProfileCmd);
             *focused = crate::hint_focused_edit::FocusedEditHintConditions::default();
             profile.focused_edit_completed = false;
         }
@@ -121,10 +121,10 @@ pub fn advance_exp_backoff(profile: &mut country_core::game_profile::GameProfile
 #[cfg(test)]
 mod canonical_mode_backoff_tests {
     use super::*;
-    use country_core::resources::events::{ModeJustChanged, WriteSettingsFileCmd};
     use country_core::systems::mode_manager::{
-        send_mode_just_changed_event, AppMode, EditSubject, PreviousAppMode,
+        AppMode, EditSubject, PreviousAppMode, send_mode_just_changed_event,
     };
+    use country_core::{game_profile::SaveGameProfileCmd, resources::events::ModeJustChanged};
 
     #[test]
     fn published_latest_mode_controls_backoff_once_across_both_event_buffers() {
@@ -135,11 +135,14 @@ mod canonical_mode_backoff_tests {
         world.init_resource::<crate::hint_deselect_tool::DeselectToolHintConditions>();
         world.init_resource::<crate::hint_focused_edit::FocusedEditHintConditions>();
         world.init_resource::<Events<ModeJustChanged>>();
-        world.init_resource::<Events<WriteSettingsFileCmd>>();
+        world.init_resource::<Events<SaveGameProfileCmd>>();
         world.init_resource::<Events<country_core::resources::window::CursorMovedScreenSpace>>();
         world.init_resource::<Events<crate::DisplayHintRequest>>();
         world.resource_mut::<GameTime>().delta = 0.0;
-        world.resource_mut::<country_core::game_profile::GameProfile>().tutorial_cooldowns.cooldown_b = 800.0;
+        world
+            .resource_mut::<country_core::game_profile::GameProfile>()
+            .tutorial_cooldowns
+            .cooldown_b = 800.0;
         let mut publish = Schedule::default();
         publish.add_systems(send_mode_just_changed_event);
         let mut consume = Schedule::default();
@@ -151,16 +154,34 @@ mod canonical_mode_backoff_tests {
         world.insert_resource(AppMode::Path);
         publish.run(&mut world);
         consume.run(&mut world);
-        assert_eq!(world.resource::<country_core::game_profile::GameProfile>().tutorial_cooldowns.cooldown_b, 800.0);
-        assert_eq!(world.resource::<Events<WriteSettingsFileCmd>>().len(), 0);
+        assert_eq!(
+            world
+                .resource::<country_core::game_profile::GameProfile>()
+                .tutorial_cooldowns
+                .cooldown_b,
+            800.0
+        );
+        assert_eq!(world.resource::<Events<SaveGameProfileCmd>>().len(), 0);
 
         world.insert_resource(AppMode::Editing(EditSubject::Wall(0xfeed_dead_beef_1234)));
         publish.run(&mut world);
         consume.run(&mut world);
-        assert_eq!(world.resource::<country_core::game_profile::GameProfile>().tutorial_cooldowns.cooldown_b, 1200.0);
-        assert_eq!(world.resource::<Events<WriteSettingsFileCmd>>().len(), 1);
+        assert_eq!(
+            world
+                .resource::<country_core::game_profile::GameProfile>()
+                .tutorial_cooldowns
+                .cooldown_b,
+            1200.0
+        );
+        assert_eq!(world.resource::<Events<SaveGameProfileCmd>>().len(), 1);
         consume.run(&mut world);
-        assert_eq!(world.resource::<country_core::game_profile::GameProfile>().tutorial_cooldowns.cooldown_b, 1200.0);
-        assert_eq!(world.resource::<Events<WriteSettingsFileCmd>>().len(), 1);
+        assert_eq!(
+            world
+                .resource::<country_core::game_profile::GameProfile>()
+                .tutorial_cooldowns
+                .cooldown_b,
+            1200.0
+        );
+        assert_eq!(world.resource::<Events<SaveGameProfileCmd>>().len(), 1);
     }
 }

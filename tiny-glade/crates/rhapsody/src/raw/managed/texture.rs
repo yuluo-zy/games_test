@@ -7,7 +7,7 @@ use crate::{
         device::Device,
         texture::{Texture, TextureDesc, TextureView, TextureViewDesc},
     },
-    rg::cache::{BoundedCache, Inserted},
+    collections::cache::{BoundedCache, Inserted},
 };
 use ash::vk;
 use parking_lot::Mutex;
@@ -34,22 +34,53 @@ impl Managed<Texture> {
             Some(desc) => *desc,
             None => TextureViewDesc::new(&self.desc)?,
         };
-        desc.validate(&self.desc)?;
         let key = ViewKey::new(&desc);
-        let mut entries = self.0.views.entries.lock();
-        let view = match entries.cache.get(&key) {
-            Some(view) => view.clone(),
-            None => {
-                entries.reserve_slot(&self.device)?;
-                let view = Arc::new(self.0.resource.image_view(&desc)?);
-                match entries.cache.insert(key, view.clone(), 1) {
-                    Inserted::Stored(None) => view,
-                    _ => {
-                        return Err(Error::invalid_usage(
-                            "view cache publication exceeded its reserved slot",
-                        ));
+        if let Some(view) = self.0.views.entries.lock().cache.get(&key).cloned() {
+            return Ok(ManagedTextureView { view, texture: self.clone() });
+        }
+        // Native creation, budget admission and completion queries never hold
+        // the shared cache lock. A racing creator publishes only one view.
+        let created = Arc::new(self.0.resource.image_view(&desc)?);
+        let view = loop {
+            let (capacity, full) = {
+                let entries = self.0.views.entries.lock();
+                (entries.reserved_entries, entries.cache.len() >= entries.reserved_entries)
+            };
+            let growth = if full && capacity < MAX_CACHED_TEXTURE_VIEWS {
+                Some(ViewEntries::storage(&self.device, (capacity * 2).clamp(8, MAX_CACHED_TEXTURE_VIEWS))?)
+            } else { None };
+            let completed = if full && capacity == MAX_CACHED_TEXTURE_VIEWS { Some(self.device.poll()?) } else { None };
+            let mut entries = self.0.views.entries.lock();
+            if let Some(view) = entries.cache.get(&key).cloned() { break view; }
+            let mut old = None;
+            if entries.cache.len() >= entries.reserved_entries {
+                if let Some((mut cache, memory, next)) = growth {
+                    if next <= entries.reserved_entries { continue; }
+                    for (key, view) in entries.cache.iter_lru() {
+                        cache.insert(*key, view.clone(), 1);
                     }
+                    let previous = std::mem::replace(&mut entries.cache, cache);
+                    let previous_memory = entries._memory.replace(memory);
+                    entries.reserved_entries = next;
+                    old = Some((previous, previous_memory));
+                } else {
+                    let Some(completed) = completed.as_ref() else { continue; };
+                    let key = entries.cache.lru_key_where(|view| {
+                        Arc::strong_count(view) == 1 && Arc::weak_count(view) == 0 && view.last_use.is_reached(completed)
+                    }).ok_or_else(|| Error::exhausted("texture view cache has no retired entry"))?;
+                    let retired = entries.cache.remove(&key);
+                    // Drop the native owner after releasing the shared lock.
+                    drop(entries);
+                    drop(retired);
+                    continue;
                 }
+            }
+            let stored = entries.cache.insert(key, created.clone(), 1);
+            drop(entries);
+            drop(old);
+            match stored {
+                Inserted::Stored(None) => break created,
+                _ => return Err(Error::invalid_usage("view cache publication exceeded its reserved slot")),
             }
         };
         Ok(ManagedTextureView {
@@ -86,56 +117,16 @@ impl Default for ViewEntries {
     }
 }
 impl ViewEntries {
-    fn reserve_slot(&mut self, device: &Device) -> Result<()> {
-        if self.cache.len() < self.reserved_entries {
-            return Ok(());
-        }
-        if self.reserved_entries < MAX_CACHED_TEXTURE_VIEWS {
-            let next = (self.reserved_entries * 2).clamp(8, MAX_CACHED_TEXTURE_VIEWS);
-            // Conservative backing allowance includes hash buckets/control
-            // storage, Entry metadata and the LRU key deque. Both old and new
-            // storage remain charged during growth; rejected growth publishes
-            // nothing and leaves the original cache unchanged.
-            let bytes = (std::mem::size_of::<ViewKey>() * 2
-                + std::mem::size_of::<Arc<TextureView>>()
-                + std::mem::size_of::<usize>() * 2
-                + 1)
-            .saturating_mul(next)
-            .saturating_mul(4);
-            let memory = device
-                .memory
-                .stats
-                .reserve_cpu_bytes(bytes as u64, crate::device::BudgetCategory::Cache)?;
-            let mut cache = BoundedCache::new(MAX_CACHED_TEXTURE_VIEWS, MAX_CACHED_TEXTURE_VIEWS);
-            cache
-                .try_reserve(next)
-                .map_err(|_| Error::OutOfHostMemory)?;
-            for (key, view) in self.cache.iter_lru() {
-                if !matches!(cache.insert(*key, view.clone(), 1), Inserted::Stored(None)) {
-                    return Err(Error::invalid_usage(
-                        "view cache migration exceeded its fixed limit",
-                    ));
-                }
-            }
-            let old_cache = std::mem::replace(&mut self.cache, cache);
-            let old_memory = self._memory.replace(memory);
-            self.reserved_entries = next;
-            drop(old_cache);
-            drop(old_memory);
-            return Ok(());
-        }
-        let completed = device.poll()?;
-        let key = self
-            .cache
-            .lru_key_where(|view| {
-                Arc::strong_count(view) == 1
-                    && Arc::weak_count(view) == 0
-                    && view.last_use.is_reached(&completed)
-            })
-            .ok_or(Error::Timeout)?;
-        drop(self.cache.remove(&key));
-        Ok(())
+    fn storage(device: &Device, next: usize) -> Result<(BoundedCache<ViewKey, Arc<TextureView>>, CpuMemoryReservation, usize)> {
+        let bytes = (std::mem::size_of::<ViewKey>() * 2
+            + std::mem::size_of::<Arc<TextureView>>() + std::mem::size_of::<usize>() * 5 + 1)
+            .saturating_mul(next).saturating_mul(4);
+        let memory = device.memory.stats.reserve_cpu_bytes(bytes as u64, crate::device::BudgetCategory::Cache)?;
+        let mut cache = BoundedCache::new(MAX_CACHED_TEXTURE_VIEWS, MAX_CACHED_TEXTURE_VIEWS);
+        cache.try_reserve(next).map_err(|_| Error::OutOfHostMemory)?;
+        Ok((cache, memory, next))
     }
+
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct ViewKey {

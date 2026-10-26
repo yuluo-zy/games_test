@@ -3,6 +3,7 @@
 //! Typed bundles select the floor or solid upload consumer. Staging emits CPU
 //! snapshots; only the renderer may confirm backend instance activation.
 use crate::{Animation, ObjectTransform, Roof};
+use ::utils::bytes::read_f32_le as read_f32;
 use bevy_ecs::prelude::*;
 use std::collections::HashMap;
 
@@ -115,9 +116,6 @@ pub enum StoneFloorProjectionError {
     NonfiniteGeometry,
 }
 
-fn read_f32(bytes: &[u8], offset: usize) -> f32 {
-    f32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
-}
 // Keep separate calls: combining them into sin_cos can change serialized
 // projection values by one ULP on some platforms.
 #[inline(never)]

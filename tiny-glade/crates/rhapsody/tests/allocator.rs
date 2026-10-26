@@ -1,12 +1,10 @@
 //! 私有包装的峰值/错误/快照规则；公开分配器的池算法不在这里复制。
 use ash::vk;
-use rhapsody::raw::{
-    allocator::{
-        AllocationBackend, AllocationRequest, AllocationTotals, AllocatorReport, AllocatorStats,
-        GpuAllocator, MemoryLocation,
-    },
-    error::{Error, Result},
+use rhapsody::raw::allocator::{
+    AllocationBackend, AllocationRequest, AllocationTotals, AllocatorReport, AllocatorStats,
+    GpuAllocator, MemoryLocation,
 };
+use rhapsody::{Error, Result};
 use std::collections::VecDeque;
 
 #[test]

@@ -46,9 +46,7 @@ impl Command {
     pub fn handle(&self) -> u64 {
         self.handle
     }
-    pub fn pool_family(&self) -> u32 {
-        self.family
-    }
+
 }
 pub struct RecordingCounters {
     slots: [AtomicU64; crate::sync::MAX_QUEUES],
@@ -78,9 +76,7 @@ impl RecordingCounters {
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Failure {
-    BackendReset,
     CounterBounds,
-    InvalidPendingState,
     PoolFamilyBounds,
 }
 #[derive(Debug)]
@@ -104,14 +100,10 @@ mod tests {
         let mut chain =
             ExecutionChain::new(ash::vk::Queue::null(), vec![ash::vk::Queue::null()], 4);
         let failure = chain
-            .begin(41, 3, Queue::Auxiliary(0), Err(Failure::BackendReset))
+            .begin(41, 3, Queue::Auxiliary(0), Err(crate::Error::Timeout))
             .unwrap_err();
-        let Error::Begin(failure) = failure else {
-            panic!("expected begin failure")
-        };
-        assert_eq!(failure.command.state, CommandState::Initial);
-        assert_eq!(failure.command.recording_id, RecordingId(0));
-        assert_eq!(failure.command.queue, Queue::Auxiliary(0));
+        assert!(matches!(failure, Error::Validation(crate::Error::Timeout)));
+        assert_eq!(chain.recording_command_count(), 0);
         let command = chain.begin(42, 3, Queue::Auxiliary(0), Ok(())).unwrap();
         assert_eq!(command.state, CommandState::Recording);
         assert_eq!(command.recording_id, RecordingId(1));

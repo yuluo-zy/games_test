@@ -1563,7 +1563,7 @@ pub const DISPATCH: &[ShaderDispatch] = &[
 pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
     m.component_journaled::<Handle<Vao>>();
     m.component_journaled::<Handle<RasterShaderProgram>>();
-    m.component::<Transform>();
+    m.component_journaled::<Transform>();
     m.component_journaled::<DrawTopology>();
     m.component_journaled::<DesignatedRenderPass>();
     m.component_journaled::<UiPass>();

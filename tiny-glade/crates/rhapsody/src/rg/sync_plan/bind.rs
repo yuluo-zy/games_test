@@ -186,17 +186,21 @@ struct ResourceShadow {
 pub struct SynchronizationPlanner {
     bound: BoundSynchronization,
     shadow: Storage<ShadowCell>,
-    by_resource: Vec<ResourceShadow>,
+    by_resource: Storage<ResourceShadow>,
     /// `initial` row of each pushed patch (parallel to `bound.patches`).
-    patch_slots: Vec<u32>,
+    patch_slots: Storage<u32>,
     /// Reused every frame so computing the template key allocates nothing.
-    key_scratch: Vec<InitKey>,
+    key_scratch: Storage<InitKey>,
+    index_spill_bytes: usize,
+    borrowed_key_bytes: usize,
+    _index_spill_memory: CpuMemoryReservation,
     templates: Vec<Template>,
     template_clock: u64,
     template_hits: u64,
     budget: Arc<AllocatorStats>,
     config: SynchronizationConfig,
     next_pair: u64,
+    ready: bool,
     owner_bytes: usize,
     _owner_memory: Option<CpuMemoryReservation>,
 }
@@ -226,15 +230,19 @@ impl SynchronizationPlanner {
                 shared: None,
             },
             shadow: Storage::new(0, &budget)?,
-            by_resource: Vec::new(),
-            patch_slots: Vec::new(),
-            key_scratch: Vec::new(),
+            by_resource: Storage::new(0, &budget)?,
+            patch_slots: Storage::new(0, &budget)?,
+            key_scratch: Storage::new(0, &budget)?,
+            index_spill_bytes: 0,
+            borrowed_key_bytes: 0,
+            _index_spill_memory: budget.reserve_cpu_bytes(0, crate::device::BudgetCategory::Live)?,
             templates: Vec::new(),
             template_clock: 0,
             template_hits: 0,
             budget,
             config,
             next_pair: 1,
+            ready: true,
             owner_bytes: 0,
             _owner_memory: None,
         })
@@ -260,25 +268,10 @@ impl SynchronizationPlanner {
     }
     pub fn known_cpu_bytes(&self) -> usize {
         self.owner_bytes + self.bound.bytes() + self.shadow.bytes()
-    }
-    /// Approximate bytes held by cached templates (at most `MAX_TEMPLATES`),
-    /// kept out of `known_cpu_bytes` because they are reusable cache, not
-    /// per-frame working storage, but reported so the bound is visible.
-    pub fn template_cpu_bytes(&self) -> usize {
-        self.templates
-            .iter()
-            .map(|template| {
-                template.key.len() * size_of::<InitKey>()
-                    + template.aliases.len() * size_of::<AliasEdge>()
-                    + template.patches.len() * size_of::<BoundPatch>()
-                    + template.bases.len() * size_of::<(u32, u64)>()
-                    + template.shared.transitions.len() * size_of::<BoundTransition>()
-                    + template.shared.batches.len() * size_of::<BoundBatch>()
-                    + template.shared.order.len() * size_of::<usize>()
-            })
-            .sum()
+            + self.by_resource.bytes() + self.patch_slots.bytes() + self.key_scratch.bytes() + self.borrowed_key_bytes + self.index_spill_bytes
     }
     pub fn begin(&mut self) {
+        self.ready = true;
         self.bound.initial.values.clear();
         self.bound.aliases.values.clear();
         self.bound.batches.values.clear();
@@ -287,9 +280,9 @@ impl SynchronizationPlanner {
         self.bound.patches.values.clear();
         self.bound.waits.values.clear();
         self.bound.invalidate_index();
-        self.patch_slots.clear();
+        self.patch_slots.values.clear();
         self.shadow.values.clear();
-        for entry in &mut self.by_resource {
+        for entry in &mut self.by_resource.values {
             entry.cells.clear();
             entry.alias_flags = 0;
             entry.alias_previous.clear();
@@ -304,12 +297,29 @@ impl SynchronizationPlanner {
         }
         Ok(())
     }
-    fn resource_shadow(&mut self, resource: u32) -> &mut ResourceShadow {
+    fn resource_shadow(&mut self, resource: u32) -> Result<&mut ResourceShadow> {
         let index = resource as usize;
-        if self.by_resource.len() <= index {
-            self.by_resource.resize_with(index + 1, Default::default);
+        if self.by_resource.values.len() <= index {
+            let capacity = (index + 1).max(self.by_resource.values.capacity().saturating_mul(2)).min(self.config.max_cells);
+            let total = self.known_cpu_bytes() - self.by_resource.bytes();
+            self.by_resource.grow(capacity, total, RangeStateConfig { max_cells: self.config.max_cells, max_cpu_bytes: self.config.max_cpu_bytes }, &self.budget)?;
+            self.by_resource.values.resize_with(index + 1, Default::default);
         }
-        &mut self.by_resource[index]
+        Ok(&mut self.by_resource.values[index])
+    }
+    // Inline adjacency can spill geometrically. Reserve a conservative bound
+    // from the already admitted flat row capacities before any spill occurs.
+    fn reserve_index_spill(&mut self, rows: usize) -> Result<()> {
+        let needed = rows.saturating_mul(4 * size_of::<u32>());
+        if needed <= self.index_spill_bytes { return Ok(()); }
+        let bytes = needed.max(self.index_spill_bytes.saturating_mul(2));
+        if bytes <= self.index_spill_bytes { return Ok(()); }
+        if self.known_cpu_bytes().saturating_sub(self.index_spill_bytes).saturating_add(bytes) > self.config.max_cpu_bytes {
+            return Err(Error::exhausted("native synchronization index capacity exceeded"));
+        }
+        self._index_spill_memory.resize(bytes as u64)?;
+        self.index_spill_bytes = bytes;
+        Ok(())
     }
     pub fn add_initial(&mut self, resource: u32, cells: &[RangeCell]) -> Result<()> {
         self.check_resource(resource)?;
@@ -328,10 +338,11 @@ impl SynchronizationPlanner {
         }
         self.check_resource(previous)?;
         self.check_resource(next)?;
+        self.reserve_index_spill(self.bound.aliases.values.len() + self.shadow.values.len() + 1)?;
         self.push_alias(AliasEdge { previous, next })?;
-        self.resource_shadow(next).alias_flags |= 1;
-        self.resource_shadow(next).alias_previous.push(previous);
-        self.resource_shadow(previous).alias_flags |= 2;
+        self.resource_shadow(next)?.alias_flags |= 1;
+        self.resource_shadow(next)?.alias_previous.push(previous);
+        self.resource_shadow(previous)?.alias_flags |= 2;
         Ok(())
     }
     /// Number of bindings served from a cached template (diagnostics/tests).
@@ -354,10 +365,13 @@ impl SynchronizationPlanner {
         pin: Arc<dyn std::any::Any + Send + Sync>,
         family_domain: impl FnMut(u32) -> Result<QueueDomain>,
     ) -> Result<()> {
-        let key_ok = self.template_key();
-        let key = std::mem::take(&mut self.key_scratch);
+        self.start_binding()?;
+        let key_ok = self.template_key()?;
+        let key = std::mem::take(&mut self.key_scratch.values);
+        self.borrowed_key_bytes = key.capacity() * size_of::<InitKey>();
         let result = self.bind_cached_keyed(program, id, pin, family_domain, key_ok, &key);
-        self.key_scratch = key;
+        self.key_scratch.values = key;
+        self.borrowed_key_bytes = 0;
         result
     }
     fn bind_cached_keyed(
@@ -385,7 +399,7 @@ impl SynchronizationPlanner {
                         self.bound.transitions.values.clear();
                         self.bound.patches.values.clear();
                         self.bound.waits.values.clear();
-                        self.patch_slots.clear();
+                        self.patch_slots.values.clear();
                         self.bind_full(program, family_domain)?;
                         assert_eq!(
                             produced,
@@ -418,12 +432,17 @@ impl SynchronizationPlanner {
     }
     /// Frame-independent projection of the initial state; `None` when a
     /// released ownership makes the binding depend on a pending transfer.
-    fn template_key(&mut self) -> bool {
-        let mut key = std::mem::take(&mut self.key_scratch);
+    fn template_key(&mut self) -> Result<bool> {
+        let needed = self.bound.initial.values.len();
+        if self.key_scratch.values.capacity() < needed {
+            let total = self.known_cpu_bytes() - self.key_scratch.bytes();
+            self.key_scratch.grow(needed, total, RangeStateConfig { max_cells: self.config.max_cells, max_cpu_bytes: self.config.max_cpu_bytes }, &self.budget)?;
+        }
+        let mut key = std::mem::take(&mut self.key_scratch.values);
         key.clear();
         let ok = self.fill_template_key(&mut key);
-        self.key_scratch = key;
-        ok
+        self.key_scratch.values = key;
+        Ok(ok)
     }
     fn fill_template_key(&self, key: &mut Vec<InitKey>) -> bool {
         for initial in &self.bound.initial.values {
@@ -470,12 +489,12 @@ impl SynchronizationPlanner {
         if !single_queue
             || !access_only
             || !bound.waits.values.is_empty()
-            || self.patch_slots.len() != bound.patches.values.len()
+            || self.patch_slots.values.len() != bound.patches.values.len()
         {
             return;
         }
         let mut bases = Vec::with_capacity(bound.patches.values.len());
-        for (patch, &slot) in bound.patches.values.iter().zip(&self.patch_slots) {
+        for (patch, &slot) in bound.patches.values.iter().zip(&self.patch_slots.values) {
             let Some(initial) = bound.initial.values.get(slot as usize) else {
                 return;
             };
@@ -561,7 +580,14 @@ impl SynchronizationPlanner {
         program: &RangeProgram,
         family_domain: impl FnMut(u32) -> Result<QueueDomain>,
     ) -> Result<()> {
+        self.start_binding()?;
         self.bind_full(program, family_domain)
+    }
+    fn start_binding(&mut self) -> Result<()> {
+        if !std::mem::take(&mut self.ready) {
+            return Err(Error::invalid_usage("synchronization binding requires begin for the next frame"));
+        }
+        Ok(())
     }
     fn bind_full(
         &mut self,
@@ -712,9 +738,9 @@ impl SynchronizationPlanner {
         let later = |a, b| Self::later(order, a, b);
         let mut writer = current.writer;
         writer.merge(current.readers, later);
-        if let Some(entry) = self.by_resource.get(current.resource as usize) {
+        if let Some(entry) = self.by_resource.values.get(current.resource as usize) {
             for &previous in &entry.alias_previous {
-                let Some(other) = self.by_resource.get(previous as usize) else {
+                let Some(other) = self.by_resource.values.get(previous as usize) else {
                     continue;
                 };
                 for &index in &other.cells {
@@ -746,13 +772,13 @@ impl SynchronizationPlanner {
                 "native use family absent from sharing list",
             ));
         }
-        let alias_flags = self.resource_shadow(access.resource).alias_flags;
+        let alias_flags = self.resource_shadow(access.resource)?.alias_flags;
         // Fragments split off below are appended past `visit`; like the old
         // flat scan, this use does not revisit them.
-        let visit = self.by_resource[access.resource as usize].cells.len();
+        let visit = self.by_resource.values[access.resource as usize].cells.len();
         let mut covered = false;
         for slot in 0..visit {
-            let index = self.by_resource[access.resource as usize].cells[slot] as usize;
+            let index = self.by_resource.values[access.resource as usize].cells[slot] as usize;
             let mut current = self.shadow.values[index];
             let Some(overlap) = range_state::intersection(current.range, access.range) else {
                 continue;
@@ -1065,6 +1091,11 @@ impl SynchronizationPlanner {
         if source == domain.queue_index as usize {
             return Ok(());
         }
+        // HOST is a terminal resource access, not a command-buffer stage.
+        // Host readers wait for the real completion receipt; ownership submits
+        // must wait at an executable device stage instead.
+        let device_stages = stages & !vk::PipelineStageFlags::HOST;
+        let stages = if device_stages.is_empty() { vk::PipelineStageFlags::ALL_COMMANDS } else { device_stages };
         if let Some(wait) = self
             .bound
             .waits
@@ -1145,8 +1176,14 @@ impl SynchronizationPlanner {
     push!(push_patch, patches, BoundPatch, max_rows);
     push!(push_wait, waits, BoundWait, max_rows);
     fn push_patch_slot(&mut self, slot: u32, value: BoundPatch) -> Result<()> {
+        let needed = self.patch_slots.values.len() + 1;
+        if self.patch_slots.values.capacity() < needed {
+            let capacity = needed.max(self.patch_slots.values.capacity().saturating_mul(2)).min(self.config.max_rows);
+            let total = self.known_cpu_bytes() - self.patch_slots.bytes();
+            self.patch_slots.grow(capacity, total, RangeStateConfig { max_cells: self.config.max_rows, max_cpu_bytes: self.config.max_cpu_bytes }, &self.budget)?;
+        }
         self.push_patch(value)?;
-        self.patch_slots.push(slot);
+        self.patch_slots.values.push(slot);
         Ok(())
     }
     fn push_shadow(&mut self, value: ShadowCell) -> Result<()> {
@@ -1172,11 +1209,12 @@ impl SynchronizationPlanner {
             self.shadow
                 .grow(capacity, total - own, config, &self.budget)?;
         }
+        self.reserve_index_spill(self.bound.aliases.values.len() + self.shadow.values.len() + 1)?;
         let target = &mut self.shadow;
         let index = target.values.len() as u32;
         let resource = value.resource;
         target.values.push(value);
-        self.resource_shadow(resource).cells.push(index);
+        self.resource_shadow(resource)?.cells.push(index);
         Ok(())
     }
 }
@@ -1529,6 +1567,33 @@ mod tests {
         };
         assert!(error.to_string().contains("alias member"), "{error}");
     }
+    #[test]
+    fn three_alias_members_preserve_each_previous_writer_and_the_wrap_edge() {
+        let range = buffer(0, 16);
+        let mut program = program(range, vec![usage(range, true); 3], &[queue(0, 0); 3]);
+        program.resources.extend([program.resources[0]; 2]);
+        for (index, access) in program.uses.iter_mut().enumerate() { access.resource = index as u32; }
+        program.uses[1].scope = AccessScope { stages: vk::PipelineStageFlags::COMPUTE_SHADER,
+            access: vk::AccessFlags::SHADER_WRITE, write: true };
+        program.dependencies = vec![(0, 1), (1, 2)];
+        let mut planner = SynchronizationPlanner::new(Arc::new(AllocatorStats::default()), Default::default()).unwrap();
+        for resource in 0..3 {
+            let mut state = NativeState::default();
+            if resource == 2 {
+                state.writer.points.insert(SyncPoint { queue: QueueId::new(0).unwrap(), value: 8 });
+                state.writer.add(QueueId::new(0).unwrap(), usage(range, true).scope);
+            }
+            planner.add_initial(resource, &[RangeCell { range, state }]).unwrap();
+        }
+        for (previous, next) in [(0, 1), (1, 2), (2, 0)] { planner.add_alias(previous, next).unwrap(); }
+        planner.bind(&program, |family| Ok(queue(0, family))).unwrap();
+        for (resource, source) in [(0, vk::AccessFlags::TRANSFER_WRITE), (1, vk::AccessFlags::TRANSFER_WRITE), (2, vk::AccessFlags::SHADER_WRITE)] {
+            assert!(planner.bound().transitions().iter().any(|transition|
+                transition.resource == resource && transition.source.access.contains(source)));
+        }
+        crate::rg::plan_check::check_bound_synchronization(&program, planner.bound()).unwrap();
+    }
+
     #[test]
     fn released_recovery_first_acquires_the_original_destination_then_moves_again() {
         let range = buffer(0, 16);
@@ -1927,7 +1992,7 @@ mod tests {
         };
         assert!(planner.add_initial(u32::MAX, &[cell]).is_err());
         assert!(planner.add_alias(0, u32::MAX).is_err());
-        assert!(planner.by_resource.is_empty());
+        assert!(planner.by_resource.values.is_empty());
     }
     /// A template must not be applied when the patch's own revision increment
     /// would exhaust the counter; a full bind rejects that frame.

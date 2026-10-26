@@ -35,22 +35,6 @@ pub struct EditOutcome {
     pub requests_recalculation: bool,
 }
 
-// SSE MAXSS/MINSS choose their source operand on an unordered/equal comparison.
-fn source_max(destination: f32, source: f32) -> f32 {
-    if destination > source {
-        destination
-    } else {
-        source
-    }
-}
-fn source_min(destination: f32, source: f32) -> f32 {
-    if destination < source {
-        destination
-    } else {
-        source
-    }
-}
-
 /// B 14094eb76..14094ef1b: business writes and ordered audio observations.
 /// Does not allocate/resolve native hash buckets or enqueue ECS events.
 pub fn apply_resolved(state: StrokeParameters, command: EditCommand) -> EditOutcome {
@@ -70,7 +54,7 @@ pub fn apply_resolved(state: StrokeParameters, command: EditCommand) -> EditOutc
         }
         Adjustment::Delta(delta) => {
             let previous = state.falloff;
-            let value = source_min(1.0, source_max(0.0, previous + delta));
+            let value = (previous + delta).clamp(0.0, 1.0);
             state.falloff = value;
             if previous != value {
                 audio.push(AudioObservation {
@@ -109,7 +93,7 @@ pub fn apply_resolved(state: StrokeParameters, command: EditCommand) -> EditOutc
                 previous = 1.0;
                 state.height = 1.0;
             }
-            let clamped = source_min(20.0, source_max(0.0, previous + delta));
+            let clamped = (previous + delta).clamp(0.0, 20.0);
             let value = if clamped < 1.0 { 0.0 } else { clamped };
             state.height = value;
             let magnitude = (previous - value).abs();

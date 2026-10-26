@@ -140,11 +140,7 @@ pub fn spawn_stitches(
 
 /// 墙对键（`calculate_hash<([WallId;2],usize)>` 语义；宿主填充）。
 pub fn wall_pair_key(a: u64, b: u64, i: usize) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    [a, b].hash(&mut h);
-    i.hash(&mut h);
-    h.finish()
+    utils::calculate_hash(&([a, b], i))
 }
 
 /// spawn_stitch_bricks（0x141ce7190）：把缝合砖参数烘焙进 BrickTransformSsbo 实例

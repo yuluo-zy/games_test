@@ -12,6 +12,7 @@ use crate::render::load_texture::boundary::TextureDevice;
 use crate::resources::texture_presets::TexturePreset;
 use crate::rhapsody_contract::{DescriptorSet, GraphicsDevice};
 use crate::rhapsody_types::{BackendError, ImportedBuffer, RenderGraph, Texture, TextureDesc};
+use crate::render::{extract::ChangeJournal, asset_ack::{AssetChangeCursor, AssetEntryKey, AssetSnapshot}};
 
 pub const REQUIRED_BINDLESS_DESCRIPTOR_COUNT: u32 = 0x2000;
 pub const RESERVED_DESCRIPTOR_COUNT: u32 = 0x20;
@@ -185,9 +186,36 @@ pub struct AssetTextureLibrary {
     presets: Vec<PresetTextureState>,
     bindless: RwLock<DescriptorMap>,
     descriptor_revision: AtomicU64,
+    changes: ChangeJournal<AssetEntryKey>,
 }
 
 impl bevy_ecs::resource::Resource for AssetTextureLibrary {}
+
+impl AssetSnapshot for AssetTextureLibrary {
+    fn asset_cursor(&self) -> AssetChangeCursor { AssetChangeCursor(self.changes.cursor()) }
+    fn asset_changes(&self, cursor: Option<AssetChangeCursor>) -> Option<(AssetChangeCursor, Vec<AssetEntryKey>)> {
+        self.changes.since(cursor.map(|cursor| cursor.0)).map(|(cursor, keys)| (AssetChangeCursor(cursor), keys))
+    }
+    fn asset_keys(&self) -> Vec<AssetEntryKey> {
+        let mut keys = (0..self.textures.len()).map(|id| AssetEntryKey::Id(id as u64)).collect::<Vec<_>>();
+        keys.extend(self.by_name.keys().map(|name| AssetEntryKey::TextureName(name.0)));
+        keys.extend((0..self.presets.len()).map(|id| AssetEntryKey::Preset(id as u8)));
+        keys.extend(self.bindless.read().unwrap_or_else(|poison| poison.into_inner()).indices.iter().enumerate()
+            .filter(|(_, index)| index.is_some()).map(|(id, _)| AssetEntryKey::Descriptor(id as u64)));
+        keys
+    }
+    fn asset_contains(&self, key: &AssetEntryKey) -> bool {
+        match key {
+            AssetEntryKey::Id(id) => usize::try_from(*id).is_ok_and(|id| id < self.textures.len()),
+            AssetEntryKey::TextureName(name) => self.by_name.contains_key(&NameHash(*name)),
+            AssetEntryKey::Preset(id) => usize::from(*id) < self.presets.len(),
+            AssetEntryKey::Descriptor(id) => usize::try_from(*id).is_ok_and(|id|
+                self.bindless.read().unwrap_or_else(|poison| poison.into_inner()).indices.get(id).is_some_and(Option::is_some)),
+            _ => false,
+        }
+    }
+    fn update_asset_snapshot(&self, destination: &mut Self) { *destination = self.clone(); }
+}
 
 /// A render-thread snapshot (`resource` extraction).
 impl Clone for AssetTextureLibrary {
@@ -195,6 +223,7 @@ impl Clone for AssetTextureLibrary {
         AssetTextureLibrary {
             textures: self.textures.clone(),
             descriptor_revision: AtomicU64::new(self.descriptor_revision()),
+            changes: ChangeJournal::default(),
             descriptor_set: self.descriptor_set.clone(),
             by_name: self.by_name.clone(),
             presets: self.presets.clone(),
@@ -224,6 +253,7 @@ impl AssetTextureLibrary {
         Ok(AssetTextureLibrary {
             textures: Vec::new(),
             descriptor_revision: AtomicU64::new(0),
+            changes: ChangeJournal::default(),
             descriptor_set,
             by_name: HashMap::default(),
             presets: Vec::new(),
@@ -261,7 +291,9 @@ impl AssetTextureLibrary {
                 old.is_none(),
                 "assertion failed: self.by_name.insert(NameHash::compute(&texture_name),\n        NamedTexture {{ handle, is_virtual: false }}).is_none()"
             );
+            self.changes.record(AssetEntryKey::TextureName(NameHash::compute(&texture_name).0));
         }
+        self.changes.record(AssetEntryKey::Id(handle.0 as u64));
         handle
     }
 
@@ -290,6 +322,7 @@ impl AssetTextureLibrary {
                 is_virtual: true,
             },
         );
+        self.changes.record(AssetEntryKey::TextureName(NameHash::compute(name).0));
     }
 
     pub fn get_handle_and_texture_by_name(&self, hash: NameHash) -> Option<(AssetIndex, &Texture)> {
@@ -375,6 +408,7 @@ impl AssetTextureLibrary {
         for previous in std::mem::replace(&mut self.presets, replacements) {
             device.release_texture(&previous.texture);
         }
+        for preset in 0..PRESET_COUNT { self.changes.record(AssetEntryKey::Preset(preset)); }
         Ok(())
     }
 
@@ -433,7 +467,9 @@ impl AssetTextureLibrary {
                 array_layers: layers,
                 access: RG_TEXTURE_ACCESS,
             },
-        )
+        )?;
+        self.changes.record(AssetEntryKey::Preset(preset.0));
+        Ok(())
     }
 
     pub fn import_texture_presets_to_rg(&mut self, rg: &mut impl TextureRenderGraph) {
@@ -510,6 +546,7 @@ impl AssetTextureLibrary {
         };
         assign_auto_resize(&mut descriptors.indices, asset.0, Some(index));
         self.descriptors_changed();
+        self.changes.record(AssetEntryKey::Descriptor(asset.0 as u64));
         Ok(index)
     }
 
@@ -544,6 +581,7 @@ impl AssetTextureLibrary {
             })
             .collect::<Result<Vec<_>, BackendError>>()?;
         device.update_persistent_descriptor_set(&self.descriptor_set, &updates)?;
+        for asset in &descriptors.pending { self.changes.record(AssetEntryKey::Descriptor(asset.0 as u64)); }
         descriptors.pending.clear();
         self.descriptors_changed();
         Ok(&self.descriptor_set)
@@ -588,6 +626,8 @@ impl AssetTextureLibrary {
             // 已在队列中的资产直接使用最新纹理，尚未请求过描述符的资产仍保持惰性。
             descriptors.pending.push(asset);
         }
+        self.changes.record(AssetEntryKey::Id(asset.0 as u64));
+        self.changes.record(AssetEntryKey::Descriptor(asset.0 as u64));
         Ok(previous)
     }
 
@@ -1058,6 +1098,31 @@ mod tests {
         let before = library.descriptor_revision();
         library.try_bindless_textures_dset(&device).unwrap();
         assert_eq!(library.descriptor_revision(), before);
+    }
+
+    #[test]
+    fn entry_publications_cover_texture_alias_descriptor_and_failed_preset_operations() {
+        let device = MockDevice::default();
+        let mut library = AssetTextureLibrary::new(&device);
+        let before = library.asset_cursor();
+        let asset = library.add(Some("original".into()), tex(11));
+        library.create_name_mapping("alias", "original");
+        let changes = library.asset_changes(Some(before)).unwrap().1;
+        assert!(changes.contains(&AssetEntryKey::Id(asset.0 as u64)));
+        assert!(changes.contains(&AssetEntryKey::TextureName(NameHash::compute("alias").0)));
+        let before = library.asset_cursor();
+        assert!(library.try_handle_to_bindless_index(AssetIndex(99)).is_err());
+        assert!(library.asset_changes(Some(before)).unwrap().1.is_empty());
+        library.try_handle_to_bindless_index(asset).unwrap();
+        assert_eq!(library.asset_changes(Some(before)).unwrap().1, [AssetEntryKey::Descriptor(asset.0 as u64)]);
+        let before = library.asset_cursor();
+        library.replace(NameHash::compute("original"), tex(12)).unwrap();
+        let changes = library.asset_changes(Some(before)).unwrap().1;
+        assert!(changes.contains(&AssetEntryKey::Id(asset.0 as u64)));
+        assert!(changes.contains(&AssetEntryKey::Descriptor(asset.0 as u64)));
+        let before = library.asset_cursor();
+        assert!(library.try_create_preset_textures_with(&MockDevice { fail_create: true, ..Default::default() }, desc_of).is_err());
+        assert!(library.asset_changes(Some(before)).unwrap().1.is_empty());
     }
 
 }

@@ -501,7 +501,7 @@ pub fn toolbar_auto_hide(
     mut toolbar: ResMut<ToolbarLayout>,
     mut photomode: ResMut<PhotomodeToolbarLayout>,
     mut layout: ResMut<TaffyLayout>,
-    mut zones: Query<(&mut country_core::components::Ui2dExtent, &DebugToolbarActivationZone)>,
+    mut zones: Query<(ComponentWrite<country_core::components::Ui2dExtent>, &DebugToolbarActivationZone)>,
     mut sounds: EventWriter<PlayUiSound>,
     size_mult: Res<ToolbarSizeMult>,
 ) {
@@ -686,3 +686,5 @@ mod tests {
         );
     }
 }
+
+use country_core::render::extract::ComponentWrite;

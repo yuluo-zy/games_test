@@ -1,12 +1,9 @@
+use crate::scalar::wrap_angle;
 use std::f32::consts::TAU;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AngleRange {
     pub min: f32,
     pub len: f32,
-}
-fn wrap(value: f32) -> f32 {
-    let r = value % TAU;
-    if r < 0.0 { r + TAU } else { r }
 }
 impl AngleRange {
     /// Constructs a finite directed arc of length `0..=TAU`.
@@ -20,12 +17,12 @@ impl AngleRange {
             "angle range length must be within 0..=TAU"
         );
         Self {
-            min: wrap(min),
+            min: wrap_angle(min),
             len,
         }
     }
     pub fn clamp(self, angle: f32) -> f32 {
-        let angle = wrap(angle);
+        let angle = wrap_angle(angle);
         let end = self.min + self.len;
         if angle < self.min {
             let left = self.min - angle;
@@ -33,14 +30,14 @@ impl AngleRange {
             if right <= 0.0 {
                 angle
             } else if left > right {
-                wrap(end)
+                wrap_angle(end)
             } else {
                 self.min
             }
         } else if angle > end {
             let right = angle - end;
             let left = (TAU - self.len) - right;
-            if left > right { wrap(end) } else { self.min }
+            if left > right { wrap_angle(end) } else { self.min }
         } else {
             angle
         }

@@ -13,8 +13,8 @@ use super::UiJustBecameInFocusEvent;
 /// descendants enter the visited set; each frontier first updates roots, then
 /// propagates through nested parents. Stale/missing ancestors are skipped.
 pub fn ui_focus_parent_if_self_in_focus(
-    mut nested: Query<(Entity, &UiShowIfParentIsInFocus, &mut UiInteractionState)>,
-    mut roots: Query<&mut UiInteractionState, Without<UiShowIfParentIsInFocus>>,
+    mut nested: Query<(Entity, &UiShowIfParentIsInFocus, ComponentWrite<UiInteractionState>)>,
+    mut roots: Query<ComponentWrite<UiInteractionState>, Without<UiShowIfParentIsInFocus>>,
 ) {
     let mut visited = HashSet::new();
     let mut frontier = Vec::new();
@@ -53,7 +53,7 @@ pub fn inherited_visibility(parent_keep: u8, fpv_only: bool, camera_mode: u8) ->
 
 pub fn ui_show_if_parent_in_focus(
     children: Query<(Entity, &UiShowIfParentIsInFocus, Option<&ShowOnlyInFpvAndFree>)>,
-    mut states: Query<&mut UiInteractionState>,
+    mut states: Query<ComponentWrite<UiInteractionState>>,
     photo: Res<PhotomodeState>,
 ) {
     for (entity, parent, fpv_only) in &children {
@@ -93,3 +93,5 @@ pub fn ui_notify_hints_if_toolbar_in_focus(
 #[cfg(test)]
 #[path = "focus_tests.rs"]
 mod tests;
+
+use country_core::render::extract::ComponentWrite;

@@ -1,6 +1,8 @@
 //! Game-owned edit_roof rules recovered from RE-MCP decompilation and original
 //! instructions. ECS lookup/MessageWriter storage is outside this module.
 use glam::{Vec2, Vec3};
+use ::utils::bytes::{read_f32_le as get, write_f32_le as put};
+use ::utils::scalar::clamp;
 
 /// Observed discriminants are 0=Keep, 1=Absolute, 2=Delta. The original profile
 /// branch treats any other nonzero value as Delta; other fields as Absolute.
@@ -98,20 +100,8 @@ pub struct EditOutcome {
     /// 且 gable-after）；仅 ridge/tip 变化（无 gable 转变）不推。非恒 true。
     pub resolved_update: bool,
 }
-fn get(b: &[u8; 88], o: usize) -> f32 {
-    f32::from_le_bytes(b[o..o + 4].try_into().unwrap())
-}
-fn put(b: &mut [u8; 88], o: usize, v: f32) {
-    b[o..o + 4].copy_from_slice(&v.to_le_bytes());
-}
-fn maxss(a: f32, b: f32) -> f32 {
-    if a > b { a } else { b }
-}
-fn minss(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
-}
 fn clamp_observed(v: f32, lo: f32) -> f32 {
-    minss(1.0, maxss(lo, v))
+    clamp(v, lo, 1.0)
 }
 // Original SSE arithmetic produces the negative indefinite NaN for invalid
 // operations on non-NaN operands. ARM's default differs; existing NaN payloads

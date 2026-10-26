@@ -28,10 +28,6 @@ pub fn startup_steam(mut commands: Commands, client: Res<SteamClientResource>) {
             last_controller: 0,
             main_action_set: SteamMainActionSet::default(),
             menu_action_set: SteamMenuActionSet::default(),
-            prev_digital: [0; 25],
-            frame_actions: Vec::new(),
-            released: 0,
-            pressed: 0,
             actions_by_type: HashMap::new(),
         });
     }

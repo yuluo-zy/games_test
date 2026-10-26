@@ -25,11 +25,9 @@ pub fn hint_unlink_windows(
         if crate::event_payload_byte_seam() != 0 {
             completed.write(crate::tutorial_completion::TutorialHintComplete { id: 8 });
         } else {
-            let display = crate::BindingHintDisplay::Steam(
-                crate::hint_orchestrator::steam_query(
-                    country_core::resources::steam::packed_set_plus_one(0),
-                ),
-            )
+            let display = crate::BindingHintDisplay::Steam(crate::hint_orchestrator::steam_query(
+                country_core::resources::steam::packed_set_plus_one(0),
+            ))
             .alternate(None::<crate::KeyCode>);
             request.write(crate::DisplayHintRequest::new(
                 display,

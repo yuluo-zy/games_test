@@ -36,7 +36,7 @@ impl<T> TempList<T> {
     }
     pub(crate) fn reserve_capped(&mut self, needed: usize, max_new_bytes: usize) -> Result<()> {
         if needed > self.max_items {
-            return Err(Error::Timeout);
+            return Err(Error::exhausted("temporary list capacity exceeded"));
         }
         if let Some(memory) = &mut self.memory {
             memory.reclassify(BudgetCategory::Live);
@@ -51,7 +51,7 @@ impl<T> TempList<T> {
             .map_err(|_| Error::invalid_usage("temporary list layout overflows"))?
             .size();
         if bytes > max_new_bytes {
-            return Err(Error::Timeout);
+            return Err(Error::exhausted("temporary list capacity exceeded"));
         }
         let mut memory = self
             .budget
@@ -65,7 +65,7 @@ impl<T> TempList<T> {
             .checked_mul(std::mem::size_of::<T>())
             .ok_or_else(|| Error::invalid_usage("temporary list capacity overflows"))?;
         if actual_bytes > max_new_bytes {
-            return Err(Error::Timeout);
+            return Err(Error::exhausted("temporary list capacity exceeded"));
         }
         memory.resize(actual_bytes as u64)?;
         items.append(&mut self.items);
@@ -85,6 +85,9 @@ impl<T> TempList<T> {
         )?;
         self.items.push(item);
         Ok(self.items.last().expect("pushed one item"))
+    }
+    pub(crate) fn reclassify(&mut self, category: BudgetCategory) {
+        if let Some(memory) = &mut self.memory { memory.reclassify(category); }
     }
     pub fn clear(&mut self) {
         self.items.clear();
@@ -151,11 +154,22 @@ impl<T> TempList<T> {
             .capacity()
             .saturating_mul(std::mem::size_of::<T>())
     }
+    /// Take cached storage without holding its mutex during resource gates,
+    /// budget admission or driver work. Concurrent callers own separate lists.
+    pub(crate) fn checkout(cache: &parking_lot::Mutex<Self>) -> CachedTempList<'_, T> {
+        let mut cached = cache.lock();
+        let empty = Self {
+            items: Vec::new(), memory: None, budget: cached.budget.clone(),
+            max_items: cached.max_items, growths: 0,
+        };
+        let list = std::mem::replace(&mut *cached, empty);
+        CachedTempList { cache, list }
+    }
     pub fn growth_count(&self) -> u64 {
         self.growths
     }
     pub fn trim_idle(&mut self) -> bool {
-        if !self.items.is_empty() {
+        if !self.items.is_empty() || self.items.capacity() == 0 {
             return false;
         }
         let old = std::mem::take(&mut self.items);
@@ -186,6 +200,28 @@ impl<T> TempList<T> {
         Ok(run(&mut active.0.items))
     }
 }
+pub(crate) struct CachedTempList<'a, T> {
+    cache: &'a parking_lot::Mutex<TempList<T>>,
+    list: TempList<T>,
+}
+impl<T> std::ops::Deref for CachedTempList<'_, T> {
+    type Target = TempList<T>;
+    fn deref(&self) -> &Self::Target { &self.list }
+}
+impl<T> std::ops::DerefMut for CachedTempList<'_, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.list }
+}
+impl<T> Drop for CachedTempList<'_, T> {
+    fn drop(&mut self) {
+        self.list.clear();
+        let mut cached = self.cache.lock();
+        let growths = cached.growths + self.list.growths;
+        if self.list.capacity() > cached.capacity() {
+            std::mem::swap(&mut *cached, &mut self.list);
+        }
+        cached.growths = growths;
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -203,7 +239,7 @@ mod tests {
             budget.cpu_memory_usage().cache,
             list.capacity_bytes() as u64
         );
-        assert!(matches!(list.reserve(5), Err(Error::Timeout)));
+        assert!(matches!(list.reserve(5), Err(Error::Exhausted(_))));
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             list.with_reserved(4, |items| {
                 items.push(9);

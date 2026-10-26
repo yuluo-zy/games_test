@@ -139,11 +139,17 @@ fn attachment_cache_releases_views_of_textures_nobody_else_owns() {
     let (first_weak, second_weak) = (Arc::downgrade(&first), Arc::downgrade(&second));
     // `first` is still owned elsewhere: its cached view must stay valid.
     drop(second);
-    assert!(second_weak.upgrade().is_some(), "the cache alone still pins the texture");
+    assert!(
+        second_weak.upgrade().is_some(),
+        "the cache alone still pins the texture"
+    );
     // A new target appears: unreachable textures' views are released, owned ones kept.
     let third = new_texture();
     prepare(&third);
-    assert!(second_weak.upgrade().is_none(), "texture only pinned by the cache is released");
+    assert!(
+        second_weak.upgrade().is_none(),
+        "texture only pinned by the cache is released"
+    );
     assert!(first_weak.upgrade().is_some());
     drop(first);
     drop(third);

@@ -57,9 +57,6 @@ pub struct NaniDrawListParams {
     pub total_batches: u32,
 }
 
-/// 旧名（lib.rs 重导出沿用）。
-pub type DrawListParams = NaniDrawListParams;
-
 /// 计算 27 种 subset 的绘制参数（0x1408baed0，O）。对 `k in 0..27`（`T = MAX_DRAWS_PER_LIST[k]`），每个 kind 重复 4 次（4 个 draw list）：
 /// 1. `cmd_offsets.push(acc_cmd); acc_cmd += T`；
 /// 2. `draws = T`，若 `!FORCE_FINE && (k >= 2 || FORCE_NO_FINE)` 则 `draws = 0x40`；

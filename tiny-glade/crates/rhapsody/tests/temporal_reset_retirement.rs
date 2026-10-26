@@ -5,7 +5,9 @@ use ash::vk::{self, Handle};
 use rhapsody::{
     device::{Device, DeviceConfig},
     raw::{buffer::BufferDesc, semaphore::TimelineSemaphore},
-    rg::{AccessTable, BuiltGraph, GpuResource, PassContext, VulkanGraphBackend, VulkanGraphSession},
+    rg::{
+        AccessTable, BuiltGraph, GpuResource, PassContext, VulkanGraphBackend, VulkanGraphSession,
+    },
 };
 use std::sync::{Arc, Weak};
 
@@ -36,7 +38,8 @@ fn filled_named(session: &mut VulkanGraphSession) -> (BuiltGraph, u32) {
     let logical = named.buffer.raw().raw();
     let device = session.backend.device().clone();
     let mut pass = graph.add_pass("real named fill").with_side_effect();
-    pass.add_resource_access(named.buffer.raw(), 0x34, 0).unwrap();
+    pass.add_resource_access(named.buffer.raw(), 0x34, 0)
+        .unwrap();
     pass.render_with_result_context(move |context: PassContext<'_>| {
         let managed = context.managed.ok_or_else(|| {
             rhapsody::Error::invalid_usage("named reset managed resources absent")
@@ -114,7 +117,11 @@ fn reset_all_releases_cancelled_named_owners_and_rejects_prepared_frames() {
     assert!(session.backend.resource_clone(token).is_none());
     assert!(weak.upgrade().is_none());
     session.reset_all_temporals().unwrap();
-    assert_eq!(session.resource_count(), 0, "重复 reset 不保留闲置物理 owner");
+    assert_eq!(
+        session.resource_count(),
+        0,
+        "重复 reset 不保留闲置物理 owner"
+    );
 }
 
 #[test]
@@ -168,7 +175,10 @@ fn reset_all_preserves_real_pending_owners_and_reclaims_before_the_next_allocati
             rhapsody::ErrorKind::Timeout
         );
         session.reset_all_temporals().unwrap();
-        assert!(weak.upgrade().is_some(), "重复 reset 也不得提前释放在飞 owner");
+        assert!(
+            weak.upgrade().is_some(),
+            "重复 reset 也不得提前释放在飞 owner"
+        );
         unblock.signal().unwrap();
         session.wait_submits_done(TIMEOUT).unwrap();
         assert_eq!(session.pending_frame_count(), 0);

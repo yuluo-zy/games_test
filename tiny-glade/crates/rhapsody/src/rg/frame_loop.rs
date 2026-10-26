@@ -330,16 +330,19 @@ impl FrameLoop {
     ) -> Result<FrameOutcome> {
         self.cpu_timings = FrameCpuTimings::default();
         let before = self.swapchain.generation();
-        let output = execute_frame_protocol(
+        let output = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| execute_frame_protocol(
             &mut LiveFrameOperations {
                 frame_loop: self,
                 build_presentation: Some(build_presentation),
             },
             built,
-        );
+        )));
         // Close the display frame on success and failure alike.
         self.graph.end_display_frame();
-        let output = output?;
+        let output = match output {
+            Ok(output) => output?,
+            Err(payload) => std::panic::resume_unwind(payload),
+        };
         let presentation = output.presentation?;
         let generation = self.swapchain.generation();
         let (presentation_graph, presentation) = presentation.unzip();
@@ -432,9 +435,8 @@ impl FrameLoop {
         self.ensure_alive()?;
         let result = self.graph.wait_submits_done(timeout);
         self.observe(result)?;
-        for ticket in &self.pending {
-            ticket.wait(timeout)?;
-        }
+        let presentations = self.pending.iter().try_for_each(|ticket| ticket.wait(timeout));
+        self.observe(presentations)?;
         self.collect()?;
         let result = self
             .swapchain

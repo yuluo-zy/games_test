@@ -40,7 +40,7 @@ pub fn sheep_input_record_replay(
     time: Res<GameTime>,
     mut input_stream: ResMut<SheepInputStream>,
     mut events: EventReader<SheepInputReplayCmd>,
-    mut query: Query<(Entity, &mut Transform, &Sheep)>,
+    mut query: Query<(Entity, ComponentWrite<Transform>, &Sheep)>,
 ) {
     let _ = &time;
     let mut replaying = false;
@@ -73,3 +73,5 @@ pub fn sheep_input_record_replay(
         }
     }
 }
+
+use country_core::render::extract::ComponentWrite;

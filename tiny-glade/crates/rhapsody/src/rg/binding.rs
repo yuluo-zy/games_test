@@ -23,14 +23,6 @@ pub enum PassResourceSlot {
     },
 }
 impl PassResourceSlot {
-    /// 声明 uniform 缓冲的实际字节范围，由正式参数绑定验证用途。
-    pub fn uniform_buffer(resource: ResourceHandle, offset: u64, size: u64) -> Self {
-        Self::UniformBuffer {
-            resource,
-            offset,
-            size,
-        }
-    }
     pub fn storage_buffer(resource: ResourceHandle, offset: u64, size: u64) -> Self {
         Self::StorageBuffer {
             resource,

@@ -54,12 +54,16 @@ pub struct CritterVelocityTarget {
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
 pub struct CritterVelocityMultiplier(pub f32);
 
-/// Locomotion's observed scalar discriminant and collision predicates.
-/// Complete original enum payload/ABI remains unresolved.
-#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct CritterLocomotion(pub u32);
+/// 原版唯一移动状态（8B）：判别 @+0，奇数行走状态的缓存高度 @+4。
+/// 地形跟随与避障必须读写同一个组件，不能另外保存一份羊高度状态。
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq)]
+pub struct CritterLocomotion(pub u32, pub f32);
 
 impl CritterLocomotion {
+    /// 非活动缓存以零初始化；原版对应状态的缓存槽尚未初始化、也不读取。
+    pub const fn new(state: u32) -> Self {
+        Self(state, 0.0)
+    }
     pub fn samples_rock_mask(self) -> bool {
         self.0 == 2
     }
@@ -302,15 +306,15 @@ mod locomotion_tests {
     #[test]
     fn original_locomotion_mask_selects_observed_values() {
         let selected: Vec<u32> = (0..32)
-            .filter(|&value| CritterLocomotion(value).wall_hash_only())
+            .filter(|&value| CritterLocomotion::new(value).wall_hash_only())
             .collect();
         assert_eq!(selected, [0, 1, 5, 6]);
     }
     #[test]
     fn original_other_branch_predicates() {
-        assert!(CritterLocomotion(2).samples_rock_mask());
-        assert!(CritterLocomotion(4).skips_water_sample());
-        assert!(CritterLocomotion(3).skips_public_walls());
-        assert!(!CritterLocomotion(7).wall_hash_only());
+        assert!(CritterLocomotion::new(2).samples_rock_mask());
+        assert!(CritterLocomotion::new(4).skips_water_sample());
+        assert!(CritterLocomotion::new(3).skips_public_walls());
+        assert!(!CritterLocomotion::new(7).wall_hash_only());
     }
 }

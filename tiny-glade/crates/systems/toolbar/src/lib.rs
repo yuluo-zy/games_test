@@ -35,9 +35,8 @@
 //!   （MeiContext 资源）。
 //! - mei widgets/tweaker/decorate/audio、菜单 menu/*、拍照 photomode/*、文本 text、
 //!   taffy_layout/undo_redo_layout、toolbar_systems 分派 case 体、ui_interaction
-//!   截断 case、toolbar_button/toolbar_update/ui_slider、demo_stuff、
-//!   third_party_licenses_server（taffy/tiny_http/image 依赖已入 workspace，
-//!   类型/接线仍缺，见 wave2b RESTORE.md）。
+//!   截断 case、toolbar_button/toolbar_update/ui_slider、demo_stuff。
+//!   上述为历史批次状态，当前进展见业务台账；Credits及许可证服务已按用户要求删除。
 //!
 //! restorer-mei-body（2026-10-17）：`mei_pre_update`/`mei_post_update` 主体与
 //! `render_taffy_ui_to_widgets` 按 fresh 反编译重建（判等/重建/未实现逐项见
@@ -51,6 +50,7 @@
 //! 均按逐指令判等落库；z 比较器经 `insertion_sort_shift_left` 反汇编定案为
 //! `f32::total_cmp` 升序。残余未实现/未取证见 `reports/mei/final/RESTORE.md`。
 
+pub mod demo_stuff;
 pub mod mei;
 pub mod menu;
 pub mod photomode;

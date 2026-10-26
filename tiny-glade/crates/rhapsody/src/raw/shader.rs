@@ -26,7 +26,7 @@ use pipeline_cache::{BudgetedKey, budgeted_key_vec, budgeted_raster_key, slot_fo
 pub(crate) use pipeline_cache::{MAX_PIPELINE_CACHE_BYTES, valid_pipeline_cache_data};
 pub use pipeline_cache::{PipelineCache, PipelineCacheData};
 #[cfg(test)]
-use pipeline_key::append_dynamic_rendering_key;
+use pipeline_key::visit_dynamic_rendering_key;
 pub(crate) use pipeline_key::{
     raster_pipeline_key, raster_pipeline_key_len, raster_pipeline_key_matches,
 };
@@ -1325,8 +1325,8 @@ pub fn vertex_input_from_reflection(
             }
         };
         // The reflection schema stores scalar *bytes*, not SPIR-V bits: the
-        // attribute format comes from scalar.nbyte() * N and the scalar tag,
-        // and the vertex stride from the full Type::nbyte.
+        // attribute format uses the full Type::nbyte() and the scalar tag;
+        // the vertex stride uses that same complete attribute byte count.
         let tag = match scalar {
             ScalarType::Signed(_) => 2,
             ScalarType::Unsigned(_) => 3,
@@ -2141,7 +2141,7 @@ mod raster_opts_tests {
     fn dynamic_cache_signature_includes_actual_target_and_all_formats() {
         let key = |value: Option<&DynamicRenderingFormats>| {
             let mut key = Vec::new();
-            append_dynamic_rendering_key(&mut key, value);
+            visit_dynamic_rendering_key(value, |word| key.push(word));
             key
         };
         let color = DynamicRenderingFormats::color(vk::Format::R8G8B8A8_UNORM);

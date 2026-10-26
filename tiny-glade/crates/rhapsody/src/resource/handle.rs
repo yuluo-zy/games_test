@@ -40,7 +40,7 @@ impl<T> Handle<T> {
     /// 跨会话、跨设备复用都没有意义（slotmap 键不保证跨存储稳定）。
     pub fn from_ffi(value: u64) -> Self {
         Self {
-            key: DefaultKey::from(slotmap::KeyData::from_ffi(value)),
+            key: if value == 0 { DefaultKey::null() } else { DefaultKey::from(slotmap::KeyData::from_ffi(value)) },
             marker: PhantomData,
         }
     }

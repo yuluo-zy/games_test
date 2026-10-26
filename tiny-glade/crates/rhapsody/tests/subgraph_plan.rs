@@ -96,7 +96,7 @@ fn normalized_keys_reuse_shifted_parent_indices_names_and_version_bases() {
 
 #[test]
 fn native_stages_access_layout_and_layout_coupling_invalidate_local_cache_keys() {
-    use rhapsody::rg::cache::CacheReason;
+    use rhapsody::collections::cache::CacheReason;
     let baseline = fixture(false, 0, 1);
     let mut cache = SubgraphPlanCache::default();
     compile_with_subgraphs(baseline.clone(), &mut cache).unwrap();

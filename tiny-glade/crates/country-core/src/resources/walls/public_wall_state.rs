@@ -354,6 +354,10 @@ impl PublicWallState {
             metrics: self.geometry.metrics,
         }
         .write_projection(&mut bytes);
+        // 原 publisher 140a8d825..140a8d914：保留来源 +0x58/+0x5c。
+        // 吸附资格读 +0x280，屋顶放置也使用它；不是地形重采样或零值占位。
+        bytes[0x280..0x284].copy_from_slice(&self.authority.elevation().to_le_bytes());
+        bytes[0x288..0x28c].copy_from_slice(&self.authority.arch_height().to_le_bytes());
         bytes[0x295] = self.authority.freehand_ty();
         bytes[0x296] = self.authority.source_flag_65();
         bytes[0x297] = self.being_bulldozed as u8;

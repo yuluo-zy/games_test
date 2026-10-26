@@ -20,6 +20,9 @@ pub fn build(app: &mut App) {
         toolbar_button as button, toolbar_systems as systems,
         toolbar_update as sizing, photomode as photo, undo_redo_systems as undo};
     toolbar::configure_app(app);
+    // 原版 GUI 的 Local 状态由当前会话持有；Reload 时与 MEI 一起释放。
+    app.init_resource::<crate::gui::gui_tod::TodButtonState>();
+    app.init_resource::<toolbar::demo_stuff::demo_show_full_glade_size::TextAnchors>();
     app.add_systems(bevy_app::Startup, |mut commands: bevy_ecs::prelude::Commands| {
         commands.insert_resource(photo::PhotomodeScreenshotFolder(
             paths::config().join("screenshots")));
@@ -90,6 +93,12 @@ pub fn build(app: &mut App) {
             button::tod_v2_button),
     ).chain_ignore_deferred().in_set(GameSystemSet(8)).run_if(game())
         .before(country_core::systems::backend::photomode::update_photomode_visibility));
+    // B 原 Demo 提示属于 set36；菜单/摄影门禁仍由原函数自行判定。
+    app.add_event::<country_core::resources::glade_border::MaxDemoElevationReached>();
+    app.add_systems(Update, (
+        toolbar::demo_stuff::demo_show_full_glade_size::demo_show_full_glade_size,
+        toolbar::demo_stuff::demo_show_max_elevation::demo_show_max_elevation,
+    ).in_set(GameSystemSet(36)).run_if(game()));
     // do_photomode's existing host implementation is split into ordered
     // systems. Preserve that implementation and place its recovered button /
     // slider companions before the final previous-state copy.
@@ -146,6 +155,19 @@ pub fn clear_toolbar_session(world: &mut bevy_ecs::world::World) {
         toolbar::resouces_and_components::ToolbarSliderSession>() {
         slider.clear_session();
     }
+    if let Some(mut state) = world.get_resource_mut::<crate::gui::gui_tod::TodButtonState>() {
+        state.clear_session();
+    }
+    if let Some(mut anchors) = world.get_resource_mut::<
+        toolbar::demo_stuff::demo_show_full_glade_size::TextAnchors>() {
+        // 同App重载必须释放原Local的会话位置，不携带上个谷地的插值起点。
+        anchors.0 = None;
+    }
+    if let Some(mut screen) = world.get_resource_mut::<
+        country_core::resources::gui::TimeOfDayScreen>() {
+        // 清除旧会话的目标、拖动和打开边沿，不能带入下一次 Game。
+        *screen = Default::default();
+    }
     if let Some(mut message) = world.get_resource_mut::<
         country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen>() {
         message.0 = false;
@@ -169,7 +191,8 @@ pub fn clear_toolbar_session(world: &mut bevy_ecs::world::World) {
             if let Some(mut events) = world.get_resource_mut::<Events<$kind>>() { events.clear(); }
         )* };
     }
-    clear_events!(toolbar::ui_interaction::UiClickEvent,
+    clear_events!(country_core::resources::glade_border::MaxDemoElevationReached,
+        toolbar::ui_interaction::UiClickEvent,
         toolbar::ui_interaction::UiDragEvent,
         toolbar::ui_interaction::UiJustBecameInFocusEvent,
         toolbar::toolbar_button::UiToolbarButtonResetAllCooldowns,
@@ -189,6 +212,21 @@ pub fn clear_toolbar_session(world: &mut bevy_ecs::world::World) {
 mod registration_tests {
     use super::*;
     use bevy_state::app::AppExtStates;
+
+    #[test]
+    fn reload_releases_demo_anchor_and_unconsumed_old_shape() {
+        use toolbar::demo_stuff::demo_show_full_glade_size::TextAnchors;
+        use country_core::{resources::glade_border::MaxDemoElevationReached,
+            systems::wall::valid_enclosure::{Shape,ShapeParameters}};
+        let mut world=bevy_ecs::world::World::new();
+        world.insert_resource(TextAnchors(Some(glam::Vec3::new(1.,2.,3.))));
+        world.init_resource::<bevy_ecs::event::Events<MaxDemoElevationReached>>();
+        world.send_event(MaxDemoElevationReached(ShapeParameters::from_shape(Shape::Circle(
+            utils::geometry::Circle2d::new(glam::Vec2::ZERO,2.)))));
+        clear_toolbar_session(&mut world);
+        assert!(world.resource::<TextAnchors>().0.is_none());
+        assert!(world.resource::<bevy_ecs::event::Events<MaxDemoElevationReached>>().is_empty());
+    }
 
     #[test]
     fn production_registration_preserves_picker_signifiers_mei_and_toolbar_order() {

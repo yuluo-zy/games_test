@@ -13,8 +13,8 @@ pub mod components {
     pub mod transform;
 }
 
-/// 复用渲染模块的标准哈希入口；用于进程内名字和资源身份。
-pub use crate::render::utils::calculate_hash;
+/// 复用共享 `utils` crate 的标准哈希入口；用于进程内名字和资源身份。
+pub use ::utils::calculate_hash;
 
 use bevy_ecs::{
     event::{Event, Events},
@@ -43,8 +43,8 @@ pub fn get_last_event<E: Event>(world: &mut World) -> Option<E> {
     world.resource_mut::<Events<E>>().drain().last()
 }
 
-/// 世界点转像素坐标。无效窗口、视点后方或奇异透视返回 NaN 坐标。
-/// 需要显式处理不可见点时，使用 try_world_space_to_screen_space。
+/// B @140ac8780：先仿射view列乘得到xyz，再以w=1进入投影；直接齐次除法。
+/// 原版不裁剪负/零w，也不校验窗口；调用者自己决定如何筛选投影结果。
 pub fn world_space_to_screen_space(
     world_position: Vec3,
     width: f32,
@@ -52,11 +52,19 @@ pub fn world_space_to_screen_space(
     world_to_view: &Mat4,
     view_to_clip: &Mat4,
 ) -> Vec2 {
-    try_world_space_to_screen_space(world_position, width, height, world_to_view, view_to_clip)
-        .unwrap_or(Vec2::splat(f32::NAN))
+    fn transform(matrix: &Mat4, point: Vec3) -> glam::Vec4 {
+        // 原指令先y列加x列，再z列，最后加平移；不改变浮点求值顺序。
+        let xy = matrix.y_axis * point.y + matrix.x_axis * point.x;
+        (matrix.z_axis * point.z + xy) + matrix.w_axis
+    }
+    let viewed = transform(world_to_view, world_position);
+    let clip = transform(view_to_clip, viewed.truncate());
+    let x = clip.x / clip.w * 0.5 + 0.5;
+    let y = clip.y / clip.w * 0.5 + 0.5;
+    Vec2::new(x * width, (1.0 - y) * height)
 }
 
-/// 世界点转屏幕像素；保留完整齐次变换，避免丢弃第一个矩阵产生的 w。
+/// 当前架构显式可见性检查接口；不是原版直接投影入口的替代实现。
 pub fn try_world_space_to_screen_space(
     world_position: Vec3,
     width: f32,

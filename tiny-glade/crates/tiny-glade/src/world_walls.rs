@@ -86,7 +86,7 @@ pub fn generate_wall_draw_lists_pass2(
 
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
-    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
+    m.asset_library::<AssetSsboLibrary>();
     m.resource::<WallHighlight>();
-    m.component::<InstancedWall<BrickTransformSsbo>>();
+    m.component_journaled::<InstancedWall<BrickTransformSsbo>>();
 }

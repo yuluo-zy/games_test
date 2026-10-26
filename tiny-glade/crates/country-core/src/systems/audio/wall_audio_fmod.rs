@@ -115,9 +115,7 @@ pub fn wall_audio_fmod<S: Studio + Send + Sync + 'static>(
 /// `inverse_lerp` (shared utils, 0x140c904a0): value in [min,max] → [0,1]
 /// **unclamped** — the native `inverse_lerp` extrapolates past the bounds (the
 /// garden draw template documents the same native unclamped behaviour).
-pub fn inverse_lerp(min: f32, max: f32, value: f32) -> f32 {
-    (value - min) / (max - min)
-}
+pub use ::utils::scalar::inverse_lerp;
 
 #[cfg(test)]
 mod tests {

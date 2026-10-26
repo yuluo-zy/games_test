@@ -4,9 +4,7 @@
 mod gpu_test_support;
 use ash::vk::{self, Handle};
 use rhapsody::{
-    device::{
-        Device, DeviceConfig, Feature, QueueClass, QueueConfig, QueuePreference, SubmissionApi,
-    },
+    device::{Device, DeviceConfig, Feature, QueueClass, QueueConfig, QueuePreference},
     raw::{
         buffer::{Buffer, BufferDesc},
         instance::{InstanceBuilder, ValidationMessenger},
@@ -32,9 +30,6 @@ struct Fixture {
 }
 impl Fixture {
     fn new(independent: bool) -> Option<Self> {
-        Self::with_submission_api(independent, SubmissionApi::Auto)
-    }
-    fn with_submission_api(independent: bool, submission_api: SubmissionApi) -> Option<Self> {
         let preference = if independent {
             QueuePreference::Require
         } else {
@@ -49,7 +44,6 @@ impl Fixture {
                     .layers
                     .push(std::ffi::CString::new("VK_LAYER_KHRONOS_validation").unwrap());
                 let config = DeviceConfig {
-                    submission_api,
                     validation: true,
                     queues: QueueConfig {
                         async_compute: preference,
@@ -259,24 +253,14 @@ fn successful_acquires_survive_later_recording_failure_and_next_frame_recovers()
 }
 
 #[test]
-fn barrier2_and_legacy_ownership_scopes_preserve_pixels_and_partial_recovery() {
+fn synchronization2_ownership_scopes_preserve_pixels_and_partial_recovery() {
     let mut reference = None;
-    for api in [SubmissionApi::Auto, SubmissionApi::Legacy] {
-        let Some(mut fixture) = Fixture::with_submission_api(true, api) else {
+    {
+        let Some(mut fixture) = Fixture::new(true) else {
             return;
         };
         let sync2 = fixture.device.caps().is_enabled(Feature::Synchronization2);
-        if api == SubmissionApi::Legacy {
-            assert!(!sync2);
-        } else {
-            assert_eq!(
-                sync2,
-                fixture
-                    .device
-                    .caps()
-                    .is_supported(Feature::Synchronization2)
-            );
-        }
+        assert!(sync2);
         let graph = fixture.graph(true);
         assert!(fixture.session.execute_frame(graph.build()).is_err());
         assert!(
@@ -300,7 +284,7 @@ fn barrier2_and_legacy_ownership_scopes_preserve_pixels_and_partial_recovery() {
             }
         }
         eprintln!(
-            "ownership scope API {api:?}: synchronization2 enabled={sync2}; partial recovery and 3 real outputs matched"
+            "ownership scope: synchronization2 enabled={sync2}; partial recovery and 3 real outputs matched"
         );
         let validation = fixture.validation.collector.clone();
         drop(fixture);

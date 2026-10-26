@@ -14,7 +14,7 @@ fn same_float(actual: f32, bits: u32, label: &str, case: usize) {
 
 #[test]
 fn advance_matches_original_instructions_and_real_easing() {
-    let native = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reverse-engineering/tiny-glade/progress-20261020/central-signifier-animation/native-animation.bin"));
+    let native = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/native/native-animation.bin"));
     assert_eq!(native.len(), 1728 * 28);
     for (case, bytes) in native.chunks_exact(28).enumerate() {
         let word = |offset| u32::from_le_bytes(bytes[offset..offset+4].try_into().unwrap());

@@ -367,9 +367,8 @@ mod tests {
             delta: 0.2,
             ..Default::default()
         });
-        let mut cmd = crate::resources::history::stairs_history_edit::StairsReplayCmd::new(
-            3, 4, true, false,
-        );
+        let mut cmd =
+            crate::resources::history::stairs_history_edit::StairsReplayCmd::new(3, 4, true, false);
         cmd.elapsed = 0.3; // 已超过 required=0.2 → 本帧处理
         world.resource_mut::<ReplayBuffer>().push(ReplayBucket {
             entry_index: 0,

@@ -193,7 +193,7 @@ impl From<vk::Result> for Error {
     }
 }
 
-// 过渡模块保留结构化细节；公共边界统一为可采取措施的错误类别。
+// 录制错误保留结构化细节与可采取措施的错误类别。
 macro_rules! usage_error {
     ($($ty:path),+ $(,)?) => {$(
         impl From<$ty> for Error {
@@ -203,10 +203,13 @@ macro_rules! usage_error {
         }
     )+};
 }
-usage_error!(
-    crate::raw::buffer::BufferUpdateError,
-    crate::command::recording::Failure,
-);
+usage_error!(crate::command::recording::Failure,);
+
+impl From<crate::raw::buffer::BufferUpdateError> for Error {
+    fn from(source: crate::raw::buffer::BufferUpdateError) -> Self {
+        Self::invalid_usage_with("buffer update", source)
+    }
+}
 
 impl From<crate::rg::graph::BuildError> for Error {
     fn from(error: crate::rg::graph::BuildError) -> Self {
@@ -313,4 +316,17 @@ mod tests {
             "细节"
         );
     }
+}
+
+/// Publish terminal device loss at the native call boundary.
+pub(crate) fn observe_vulkan<T>(
+    device: &crate::device::Device,
+    result: std::result::Result<T, ash::vk::Result>,
+) -> crate::Result<T> {
+    result.map_err(|error| {
+        if error == ash::vk::Result::ERROR_DEVICE_LOST {
+            device.queues.timelines.mark_device_lost();
+        }
+        crate::Error::from(error)
+    })
 }

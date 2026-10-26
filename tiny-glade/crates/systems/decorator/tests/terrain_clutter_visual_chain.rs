@@ -461,8 +461,7 @@ fn generated_terrain_visual_feeds_actual_nani_rows_and_removes_active_instance()
         kind,
         GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<SolidVertexColorInstanceData>(
             &DescriptorBoundary,
-            kind,
-        )),
+            kind, 1)),
     );
     world.insert_resource(gpu);
     let mut mesh = Mesh::new("actual CPU fixture triangle");

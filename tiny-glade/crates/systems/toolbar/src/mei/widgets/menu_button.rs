@@ -118,6 +118,12 @@ fn widget_child(parent: &NodeContext, name: &str, type_high: u64) -> NodeContext
     parent.child_with_global_id(GlobalId(calculate_hash(&(parent.id.0, local))))
 }
 impl NodeContext {
+    /// 原menu_button_no_nav保留相同内容、声音和身份，仅清除导航标志。
+    pub fn menu_button_no_nav(&self, text: &str) -> Self {
+        let node = self.menu_button(text);
+        node.node_mut().with_nav(false);
+        node
+    }
     /// O 0x14067e9e0 `MenuButtonView::force_highlight`: writes the
     /// `MenuButtonContent` byte at native `+0x25c` (the `always_white` draw
     /// branch) and returns the same node context.
@@ -126,18 +132,15 @@ impl NodeContext {
         *self
     }
 
-    /// O 0x14067e6d0 `MenuButtonView::hotkey`: writes the action byte at
-    /// native `+0x25d`; `0x12` is the native "absent" branch.
-    ///
-    /// U: the follow-up `make_hotkey_tooltip` action-hint child needs the
-    /// original static action→label table and tooltip template, which are not
-    /// recovered. Only the byte write (O) is performed here.
+    /// 原14067e6d0：同步热键动作，并创建原相对根和ActionHint子节点。
+    /// 0x12只跳过提示建树，仍然绑定ui_cancel输入。
     pub fn menu_hotkey(&self, action: u8) -> Self {
         let content = self.content_mut::<MenuButtonContent>();
         // Both source fields project the same original+0x25d byte: the
         // tooltip identifier and the action read by pre_update14067ea20.
         content.hotkey = action;
         content.action = action;
+        self.make_hotkey_tooltip(action);
         *self
     }
 
@@ -148,11 +151,14 @@ impl NodeContext {
         *self
     }
 
-    /// O 0x1406816c0 `PillButtonView::hotkey`: writes the action byte at
-    /// native `PillButtonContent+0x44`. Tooltip content is U for the same
-    /// reason as `menu_hotkey`.
+    /// 原1406816c0：写入原+0x44动作的两个API投影，并建立真实提示。
     pub fn pill_hotkey(&self, action: u8) -> Self {
-        self.content_mut::<PillButtonContent>().hotkey = action;
+        let content = self.content_mut::<PillButtonContent>();
+        // 原版 +0x44 同时用于提示和 pre_update；保留现有 API 的两个投影，
+        // 绑定及重新绑定时必须一起更新，不能让输入仍读取旧动作。
+        content.hotkey = action;
+        content.action = action;
+        self.make_hotkey_tooltip(action);
         *self
     }
 }
@@ -169,6 +175,12 @@ impl NodeContext {
         node.set_sounds(0, 2);
         child
     }
+    /// 原14068c790：同一MenuButton身份、导航和0/2声音；字号40、字重700。
+    pub fn settings_button(&self,text:&str)->Self {
+        let child=self.menu_button(text);let content=child.content_mut::<MenuButtonContent>();
+        content.text.set_metrics(40.).expect("原设置按钮字号");content.text.set_weight(Weight(700));child
+    }
+
     /// Original14068bf00 and dynamic pagination140f9b789..140f9b7ea use
     /// the same LabelContent TypeId; String allocation isn't another widget.
     pub fn label(&self, text: impl Into<String>) -> Self {

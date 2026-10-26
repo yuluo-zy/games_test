@@ -5,8 +5,8 @@
 use bevy_ecs::prelude::*;
 use glam::{Affine3A, Mat3, Quat, Vec2, Vec3};
 
-use crate::timberframe_beam_count_change_audio::TimberframeBeamCount;
 use crate::TimberframeInstanceBuffer;
+use crate::timberframe_beam_count_change_audio::TimberframeBeamCount;
 use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
 use country_core::resources::events::ConstructTimberframeCmd;
 use country_core::resources::roofs::roof_buffers::WoodenPlankSsbo;
@@ -72,12 +72,12 @@ pub fn construct_timberframe_rectangle(
         };
         let mut count = 0i64;
         let rotation = Quat::from_mat3(&orientation_mat3(rect.axis));
-        let curve = rect.as_curve3(params.skirt_offset);
+        let curve = rect.as_curve3(params.previous);
         // The native closed curve has five vertices, including its repeated
         // first vertex. It is deliberately not deduplicated here.
         for &position in &curve.points {
             let plank = WoodenPlankSsbo::timberframe(Affine3A::from_scale_rotation_translation(
-                Vec3::new(BEAM_SECTION, params.main_height, BEAM_SECTION),
+                Vec3::new(BEAM_SECTION, params.delta, BEAM_SECTION),
                 rotation,
                 position,
             ));
@@ -95,16 +95,16 @@ pub fn construct_timberframe_rectangle(
                 let position = edge[0] * (1.0 - t) + edge[1] * t;
                 let plank =
                     WoodenPlankSsbo::timberframe(Affine3A::from_scale_rotation_translation(
-                        Vec3::new(BEAM_SECTION_MID, params.main_height, BEAM_SECTION_MID),
+                        Vec3::new(BEAM_SECTION_MID, params.delta, BEAM_SECTION_MID),
                         rotation,
                         position,
                     ));
                 exhausted |= writer.push(&plank).is_err();
             }
         }
-        let skirts = country_core::resources::walls::split_height_into_skirts(params.main_height);
-        for ring in skirts.into_iter().chain([0.0, params.main_height]) {
-            let height = ring + params.skirt_offset;
+        let skirts = country_core::resources::walls::split_height_into_skirts(params.delta);
+        for ring in skirts.into_iter().chain([0.0, params.delta]) {
+            let height = ring + params.previous;
             let offset = Vec3::new(height * 0.0, height, height * 0.0);
             let perimeter = rect.as_curve3(0.0);
             for edge in perimeter.points.windows(2) {
@@ -132,7 +132,7 @@ pub fn construct_timberframe_rectangle(
             };
             let outer = rect.as_curve2();
             let inner = ridge.as_curve2();
-            let base = params.skirt_offset + params.main_height;
+            let base = params.previous + params.delta;
             let peak = roof_height + base;
             for (a, b) in outer.points.iter().zip(&inner.points) {
                 let a = Vec3::new(a.x, base, a.y);
@@ -192,7 +192,11 @@ mod tests {
             unreachable!("this fixture exercises CPU production, not GPU upload")
         }
     }
-    fn run(shape: Shape, gate: u8) -> (i64, Vec<WoodenPlankSsbo>) {
+    fn run_with_setup(
+        shape: Shape,
+        gate: u8,
+        setup: impl FnOnce(&mut World),
+    ) -> (i64, Vec<WoodenPlankSsbo>) {
         let mut world = World::new();
         let library = AssetSsboLibrary::new();
         library.add_new::<WoodenPlankSsbo>(&CpuDevice);
@@ -200,12 +204,7 @@ mod tests {
         world.init_resource::<Events<ConstructTimberframeCmd>>();
         world.init_resource::<TimberframeInstanceBuffer>();
         world.init_resource::<TimberframeBeamCount>();
-        // Explicit CPU fixture, not a claim about cache startup values.
-        world.insert_resource(TimberframeConstructionParamsCache {
-            _gap: 0,
-            skirt_offset: 1.0,
-            main_height: 4.0,
-        });
+        setup(&mut world);
         world
             .resource_mut::<Events<ConstructTimberframeCmd>>()
             .send(ConstructTimberframeCmd::from_shape(
@@ -236,6 +235,92 @@ mod tests {
             .collect();
         (world.resource::<TimberframeBeamCount>().count, records)
     }
+    fn run(shape: Shape, gate: u8) -> (i64, Vec<WoodenPlankSsbo>) {
+        run_with_setup(shape, gate, |world| {
+            // 既有显式消费者夹具，不将其数值当作游戏启动默认值。
+            world.insert_resource(TimberframeConstructionParamsCache {
+                tag: 1,
+                current: 5.0,
+                previous: 1.0,
+                delta: 4.0,
+            });
+        })
+    }
+
+    /// 真实高度生产者与两种木框架消费者共享同一World、同一Cache资源。
+    #[test]
+    fn actual_height_producer_drives_both_construction_consumers() {
+        use bevy_ecs::system::RunSystemOnce;
+        use country_core::{
+            resources::{
+                terrain_height::{TerrainHeightSsbo, TerrainHeightsData},
+                time::GameTime,
+            },
+            systems::{
+                mode_manager::{AppMode, WallShape},
+                wall::shapes::{
+                    PreviewCircle, PreviewRectangle, ShapePlacement,
+                    calc_shape_height::calc_shape_height,
+                },
+            },
+        };
+        for shape in [
+            Shape::Rectangle(Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::new(4., 6.))),
+            Shape::Circle(Circle2d::new(Vec2::new(2., -1.), 1.)),
+        ] {
+            let mut actual = None;
+            let (count, records) = run_with_setup(shape, 1, |world| {
+                let (mode, rectangle, circle) = match shape {
+                    Shape::Rectangle(rect) => (
+                        AppMode::Wall(WallShape::Rectangle),
+                        PreviewRectangle {
+                            center: rect.center,
+                            orientation: rect.axis,
+                            dimensions: rect.size,
+                            ..Default::default()
+                        },
+                        PreviewCircle::default(),
+                    ),
+                    Shape::Circle(circle) => (
+                        AppMode::Wall(WallShape::Circle),
+                        PreviewRectangle::default(),
+                        PreviewCircle {
+                            center: circle.center,
+                            radius: circle.radius,
+                            rotation: circle.rotation,
+                            ..Default::default()
+                        },
+                    ),
+                };
+                world.insert_resource(mode);
+                world.insert_resource(rectangle);
+                world.insert_resource(circle);
+                world.insert_resource(ShapePlacement::default());
+                world.insert_resource(GameTime {
+                    delta: 1.0 / 60.0,
+                    ..Default::default()
+                });
+                let mut terrain = TerrainHeightsData::<TerrainHeightSsbo>::new();
+                terrain.set_height_range(3., 3.);
+                world.insert_resource(terrain);
+                world.init_resource::<TimberframeConstructionParamsCache>();
+                world.run_system_once(calc_shape_height).unwrap();
+                actual = Some(*world.resource::<TimberframeConstructionParamsCache>());
+            });
+            let actual = actual.unwrap();
+            assert_eq!(actual.tag, 1);
+            assert_eq!(actual.previous, -2.5);
+            assert!(actual.delta > 1.0);
+            assert_eq!(count as usize, records.len());
+            assert!(!records.is_empty());
+            assert_eq!(
+                records[0].transform.cols[1],
+                Vec3::new(0., actual.delta, 0.)
+            );
+            assert_eq!(records[0].transform.cols[3].y, actual.previous);
+        }
+    }
+
     #[test]
     fn canonical_ecs_rectangle_uses_full_affines_and_independent_roof_gate() {
         assert_eq!(core::mem::size_of::<ConstructTimberframeCmd>(), 32);
@@ -256,9 +341,11 @@ mod tests {
             records[5].transform.cols[0].length().to_bits(),
             BEAM_SECTION_MID.to_bits()
         );
-        assert!(records
-            .iter()
-            .all(|p| (p.gate_seed, p.piece_seed, p.wall_id, p.flags) == (0, 0, 0, 2)));
+        assert!(
+            records
+                .iter()
+                .all(|p| (p.gate_seed, p.piece_seed, p.wall_id, p.flags) == (0, 0, 0, 2))
+        );
         let (count, records) = run(shape, 0);
         assert_eq!((count, records.len()), (27, 27));
         // Real ridge edge runs along the long dimension, not the old outer

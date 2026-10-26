@@ -1,11 +1,11 @@
 //! B `game_profile.rs` — 玩家档案（0x208B=520B；ron）。
 //!
-//! `serialize<ron>` 0x140a658a0 只写 **5 字段**：tutorial / tutorial_cooldowns /
-//! **player_id** / key_bindings / new_glade_count（reviewer-coregap-2 §2 fresh 反编译
-//! 纠错：**不写 game_installation_id**）；`deserialize` 0x1404b0ed0 名表
-//! tutorial/tutorial_cooldowns/player_id/key_bindings/new_glade_count，case 0x14 把
-//! 旧档 `game_installation_id`（20 字符）作为 player_id 的别名。
-//! `default` 0x140916420 = `Uuid::new_v4`（player_id）+ 默认键位。
+//! 原serialize140a658a0顶层5字段：tutorial、tutorial_cooldowns、
+//! game_installation_id、key_bindings、new_glade_count。tutorial为19个bool的
+//! TutorialCompletionState（140a65fe0），并非一个bool；cooldowns为两组ExpBackOff
+//! 与active_time的嵌套记录（140a65c30/140a65e20）。旧“只序列化5字段所以其余
+//! 完成标志不保存”的结论错误。保留现有扁平业务接口，仅serde临时投影原schema。
+//! 兼容此前重建工程写出的player_id字段及bool tutorial/扁平cooldowns。
 //!
 //! 真实消费方 = `load_game` 0x14146d030（第 3 参 `Res<GameProfile>`）/ save_game /
 //! startup_session（`load_game_profile` 0x140916480 / `save_game_profile` 0x140917230）。
@@ -441,16 +441,16 @@ pub fn desktop_keycode_index(key: bevy_input::keyboard::KeyCode) -> anyhow::Resu
 /// `reset_hints` 0x141c1c8d0 清零面）。
 ///
 /// 布局（fresh 反编译，evidence `batch3-core.txt`）：
-/// `+0x1e0`/`+0x1e4` 第一对计时/冷却（0x1e4 缺省 720.0，`clamp(old*1.5,720,10800)`）；
+/// `+0x1e0`/`+0x1e4` 第一对计时/冷却；原profile初值为0，首次backoff才填720；
 /// `+0x1e8`/`+0x1ec` 第二对（同上）；`+0x1f0` 每次帧 `+= dt` 的累加器
 /// （`reset_hints` 以两个 u64 整块清零 0x1e0..0x1ef，即本结构 20B 中的前 16B）。
 ///
-/// 字段名 I（按消费 hint 语义命名）；ron 序列化形状与原版一致性待取证（serde 仍派生）。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+/// 当前字段名保留业务调用；serde按原TutorialExponentialBackOff/ExpBackOff嵌套。
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct TutorialCooldowns {
     /// +0x1e0：第一计时（f32，`reset_hints` 清零）。
     pub timer_a: f32,
-    /// +0x1e4：第一冷却（f32，缺省 720.0）。
+    /// +0x1e4：第一冷却（f32，profile初值0）。
     pub cooldown_a: f32,
     /// +0x1e8：第二计时（f32）。
     pub timer_b: f32,
@@ -461,43 +461,24 @@ pub struct TutorialCooldowns {
 }
 
 impl TutorialCooldowns {
-    /// 冷却缺省值（O：`exponential_back_off` 在 0.0 时写入 `0x44340000` = 720.0）。
+    /// backoff首次遇0时写入的720秒阈值，不是profile初始化值。
     pub const DEFAULT_COOLDOWN: f32 = 720.0;
 
-    /// 缺省计时区（I：除冷却外全 0）。
+    /// 原load_game_profile三条fallback都把+1e0..+206清零；不提前初始化冷却。
     pub fn default_cooldowns() -> Self {
-        Self {
-            timer_a: 0.0,
-            cooldown_a: Self::DEFAULT_COOLDOWN,
-            timer_b: 0.0,
-            cooldown_b: Self::DEFAULT_COOLDOWN,
-            time_since_mouse_moved: 0.0,
-        }
+        Self::default()
     }
 }
 
-/// 玩家档案（0x208B；ron）。`player_id` 序列化（第 3 位）；`game_installation_id`
-/// **不是**序列化字段（仅旧档 `game_installation_id` 名经 serde alias 映射到
-/// `player_id`，reviewer-coregap-2 §2 fresh `serialize` 0x140a658a0 /
-/// `deserialize` 0x1404b0ed0 纠错）。
-/// 字段声明序按原文 ron serialize 序：tutorial → tutorial_cooldowns →
-/// player_id → key_bindings → new_glade_count（RE-DOMAIN-TYPES §4② REVIEW4 复核 +
-/// reviewer §2 修正）。
-///
-/// `Resource`（O：native `Res<GameProfile>`，load_game 0x14146d030 第 3 参 /
-/// startup_session load_game_session 第 3 参，① T2 契约 §1；crate 以 bevy Resource
-/// 承载，宿主经 `load_game_profile` 0x140916480 装配）。
-#[derive(Resource, Clone, Debug, PartialEq, Serialize, Deserialize)]
+/// 玩家档案权威。字段公有接口沿用当前结构；磁盘格式由下方原嵌套schema投影。
+/// 原顶层第三名是game_installation_id，运行时player_id保留现有调用方命名。
+#[derive(Resource, Clone, Debug, PartialEq)]
 pub struct GameProfile {
-    /// @+0x1f4（bool）：ron 序列化的 `tutorial` 字段；也作 deselect_tool 提示完成标志
-    /// （`tutorial_completion` 0x14227c230 case 0 写 1，`exponential_back_off` 清 0）。
+    /// 原+0x1f4：tutorial.deselect_complete，保持当前公有字段名。
     pub tutorial: bool,
     /// @+0x1e0（20B 计时区）
     pub tutorial_cooldowns: TutorialCooldowns,
-    /// @+0x1c8（Uuid 16B）：内部身份，**ron 序列化第 3 位**（O：serialize 0x140a658a0
-    /// 写 PlayerId；deserialize 0x1404b0ed0 名表 case 0x14 把旧档
-    /// `game_installation_id`（20 字符）别名到本字段）。
-    #[serde(alias = "game_installation_id")]
+    /// 原+0x1c8的PlayerId；磁盘名game_installation_id，输入也接受旧工程player_id。
     pub player_id: Uuid,
     /// @+0x000
     pub key_bindings: GameKeyBindings,
@@ -506,90 +487,288 @@ pub struct GameProfile {
     pub new_glade_count: usize,
     /// @+0x1bc：相机 rotate 提示字形模式（u16，O：`camera_rotate_hint` 0x14227d2f0
     /// 读 `*(short*)(profile+0x1bc)` 比 1/2）。
-    #[serde(skip_serializing, default)]
     pub camera_rotate_glyph_mode: u16,
     /// @+0x1c0：相机 pan 提示字形模式（u16，O：`camera_pan_hint` 0x14227d000 读
     /// `*(short*)(profile+0x1c0)` 比 1/2）。
-    #[serde(skip_serializing, default)]
     pub camera_pan_glyph_mode: u16,
     /// @+0x1c4：聚焦/相机绑定提示字形模式（u16，O：`make_focus_or_camera_binding_hint`
     /// 0x141c3de00 读 `*(short*)(profile+0x1c4)` 比 1/2）。
-    #[serde(skip_serializing, default)]
     pub focus_glyph_mode: u16,
     // ---- 完成标志区 @+0x1f5..0x206（18 个 hint 完成标志 + 1 个复位字节，O）----
     // 偏移与写面：`tutorial_completion` 0x14227c230 18 路 switch（case 1..17 →
     // 0x1f5..0x205）+ `reset_hints` 0x141c1c8d0（0x1f4..0x206 全置 1 / 全清 0）。
-    // 未进 ron 序列化（原文只写 5 字段）。
+    // 原tutorial嵌套19字段全部持久化；此处保留现有扁平运行时接口。
     /// @+0x1f5：focused_edit 提示完成标志（O：`hint_focused_edit_condition` 0x14227da70
     /// 读 `!= 0` → 状态 1）。
-    #[serde(skip_serializing, default)]
     pub focused_edit_completed: bool,
     /// @+0x1f6：相机提示完成标志之一（O：`hints_startup` 0x14227b450 读，三标志
     /// 全置 → CameraHintsState 2；`hint_camera_display_condition` 0x14227c910 读
     /// `== 1`）。pan/rotate/zoom 与偏移的精确对应 U（仅 0x1f6..0x1f8 簇确认）。
-    #[serde(skip_serializing, default)]
     pub camera_pan_completed: bool,
     /// @+0x1f7：相机提示完成标志之二（同上簇）。
-    #[serde(skip_serializing, default)]
     pub camera_rotate_completed: bool,
     /// @+0x1f8：相机提示完成标志之三（同上簇）。
-    #[serde(skip_serializing, default)]
     pub camera_zoom_completed: bool,
     /// @+0x1f9：terrain_layering 提示完成标志（O：`hint_terrain_layering` 0x142283cc0
     /// 读 `== 0` 才展示）。
-    #[serde(skip_serializing, default)]
     pub terrain_layering_completed: bool,
     /// @+0x1fa：terrain_steepness 提示完成标志（O：`hint_terrain_steepness` 0x142283640）。
-    #[serde(skip_serializing, default)]
     pub terrain_steepness_completed: bool,
     /// @+0x1fb：terrain_focus 提示完成标志（O：`hint_terrain_focus` 0x142283980）。
-    #[serde(skip_serializing, default)]
     pub terrain_focus_completed: bool,
     /// @+0x1fc：disable_snapping 提示完成标志（O：`hint_disable_snapping` 0x14227e140
     /// 读 `== 0` 才展示）。
-    #[serde(skip_serializing, default)]
     pub disable_snapping_completed: bool,
     /// @+0x1fd：unlink_windows 提示完成标志（O：`hint_unlink_windows` 0x14227d760
     /// 读 `!= 0` 返回）。
-    #[serde(skip_serializing, default)]
     pub unlink_windows_completed: bool,
     /// @+0x1fe：undo 提示完成标志（O：`hint_undo` 0x142284220 读）。
-    #[serde(skip_serializing, default)]
     pub undo_completed: bool,
     /// @+0x1ff：roof_shape 提示完成标志（O：`hint_roof_shape` 0x142284ed0 读 `== 0`）。
-    #[serde(skip_serializing, default)]
     pub roof_shape_completed: bool,
     /// @+0x200：clutter_focused_edit 提示完成标志（O：`hint_clutter_focused_edit_condition`
     /// 0x141c3d890 读 `!= 0` → 状态 1）。
-    #[serde(skip_serializing, default)]
     pub clutter_focused_edit_completed: bool,
     /// @+0x201：楼梯提示阶段 1 完成标志（O：`hint_stairs` 0x142285a20 五阶段状态机）。
-    #[serde(skip_serializing, default)]
     pub stairs_stage1_completed: bool,
     /// @+0x202：楼梯提示阶段 2。
-    #[serde(skip_serializing, default)]
     pub stairs_stage2_completed: bool,
     /// @+0x203：楼梯提示阶段 3。
-    #[serde(skip_serializing, default)]
     pub stairs_stage3_completed: bool,
     /// @+0x204：楼梯提示阶段 4。
-    #[serde(skip_serializing, default)]
     pub stairs_stage4_completed: bool,
     /// @+0x205：楼梯提示阶段 5。
-    #[serde(skip_serializing, default)]
     pub stairs_stage5_completed: bool,
-    /// Native +0x206: welcome dismissed for this process. reset_hints also
-    /// resets/sets this byte. Keep the existing field and serde policy: it is
-    /// distinct from the persisted tutorial flag at+0x1f4.
-    #[serde(skip_serializing, default)]
+    /// 原+0x206：tutorial.welcome_message_read，reset_hints也读写，真实持久化。
     pub hint_reset_flag_206: bool,
 }
 
+/// 原140a65fe0的tutorial嵌套19字段；只作serde投影，不创建第二份运行时权威。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename = "TutorialCompletionState")]
+struct SerializedTutorialCompletion {
+    deselect_complete: bool,
+    focused_edit_complete: bool,
+    camera_pan_complete: bool,
+    camera_rotate_complete: bool,
+    camera_zoom_complete: bool,
+    terrain_complete: bool,
+    terrain_steepness_complete: bool,
+    terrain_focus_mode: bool,
+    snapping_complete: bool,
+    unlink_windows: bool,
+    undo_complete: bool,
+    roof_shape_complete: bool,
+    focus_clutter_complete: bool,
+    stair_create_start_complete: bool,
+    stair_create_finish_complete: bool,
+    stair_focus_complete: bool,
+    stair_continue_complete: bool,
+    stair_detach_complete: bool,
+    welcome_message_read: bool,
+}
+impl SerializedTutorialCompletion {
+    fn from_profile(profile: &GameProfile) -> Self {
+        Self {
+            deselect_complete: profile.tutorial,
+            focused_edit_complete: profile.focused_edit_completed,
+            camera_pan_complete: profile.camera_pan_completed,
+            camera_rotate_complete: profile.camera_rotate_completed,
+            camera_zoom_complete: profile.camera_zoom_completed,
+            terrain_complete: profile.terrain_layering_completed,
+            terrain_steepness_complete: profile.terrain_steepness_completed,
+            terrain_focus_mode: profile.terrain_focus_completed,
+            snapping_complete: profile.disable_snapping_completed,
+            unlink_windows: profile.unlink_windows_completed,
+            undo_complete: profile.undo_completed,
+            roof_shape_complete: profile.roof_shape_completed,
+            focus_clutter_complete: profile.clutter_focused_edit_completed,
+            stair_create_start_complete: profile.stairs_stage1_completed,
+            stair_create_finish_complete: profile.stairs_stage2_completed,
+            stair_focus_complete: profile.stairs_stage3_completed,
+            stair_continue_complete: profile.stairs_stage4_completed,
+            stair_detach_complete: profile.stairs_stage5_completed,
+            welcome_message_read: profile.hint_reset_flag_206,
+        }
+    }
+    fn apply_to(self, profile: &mut GameProfile) {
+        profile.tutorial = self.deselect_complete;
+        profile.focused_edit_completed = self.focused_edit_complete;
+        profile.camera_pan_completed = self.camera_pan_complete;
+        profile.camera_rotate_completed = self.camera_rotate_complete;
+        profile.camera_zoom_completed = self.camera_zoom_complete;
+        profile.terrain_layering_completed = self.terrain_complete;
+        profile.terrain_steepness_completed = self.terrain_steepness_complete;
+        profile.terrain_focus_completed = self.terrain_focus_mode;
+        profile.disable_snapping_completed = self.snapping_complete;
+        profile.unlink_windows_completed = self.unlink_windows;
+        profile.undo_completed = self.undo_complete;
+        profile.roof_shape_completed = self.roof_shape_complete;
+        profile.clutter_focused_edit_completed = self.focus_clutter_complete;
+        profile.stairs_stage1_completed = self.stair_create_start_complete;
+        profile.stairs_stage2_completed = self.stair_create_finish_complete;
+        profile.stairs_stage3_completed = self.stair_focus_complete;
+        profile.stairs_stage4_completed = self.stair_continue_complete;
+        profile.stairs_stage5_completed = self.stair_detach_complete;
+        profile.hint_reset_flag_206 = self.welcome_message_read;
+    }
+}
+/// 兼容此前重建工程写出的bool，不让已存在用户档案因schema修复无法读取。
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum TutorialCompletionInput {
+    Native(SerializedTutorialCompletion),
+    Legacy(bool),
+}
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "ExpBackOff")]
+struct SerializedExpBackOff {
+    elapsed: f32,
+    current_cooldown: f32,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(rename = "TutorialExponentialBackOff")]
+struct SerializedCooldowns {
+    deselect_hint: SerializedExpBackOff,
+    focused_edit_hint: SerializedExpBackOff,
+    active_time: f32,
+}
+impl Serialize for TutorialCooldowns {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        SerializedCooldowns {
+            deselect_hint: SerializedExpBackOff {
+                elapsed: self.timer_a,
+                current_cooldown: self.cooldown_a,
+            },
+            focused_edit_hint: SerializedExpBackOff {
+                elapsed: self.timer_b,
+                current_cooldown: self.cooldown_b,
+            },
+            active_time: self.time_since_mouse_moved,
+        }
+        .serialize(serializer)
+    }
+}
+impl<'de> Deserialize<'de> for TutorialCooldowns {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        struct Legacy {
+            timer_a: f32,
+            cooldown_a: f32,
+            timer_b: f32,
+            cooldown_b: f32,
+            time_since_mouse_moved: f32,
+        }
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Input {
+            Native(SerializedCooldowns),
+            Legacy(Legacy),
+        }
+        Ok(match Input::deserialize(deserializer)? {
+            Input::Native(v) => Self {
+                timer_a: v.deselect_hint.elapsed,
+                cooldown_a: v.deselect_hint.current_cooldown,
+                timer_b: v.focused_edit_hint.elapsed,
+                cooldown_b: v.focused_edit_hint.current_cooldown,
+                time_since_mouse_moved: v.active_time,
+            },
+            Input::Legacy(v) => Self {
+                timer_a: v.timer_a,
+                cooldown_a: v.cooldown_a,
+                timer_b: v.timer_b,
+                cooldown_b: v.cooldown_b,
+                time_since_mouse_moved: v.time_since_mouse_moved,
+            },
+        })
+    }
+}
+impl Serialize for GameProfile {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        #[derive(Serialize)]
+        #[serde(rename = "GameProfile")]
+        struct Output<'a> {
+            tutorial: SerializedTutorialCompletion,
+            tutorial_cooldowns: &'a TutorialCooldowns,
+            game_installation_id: &'a Uuid,
+            key_bindings: &'a GameKeyBindings,
+            new_glade_count: usize,
+        }
+        Output {
+            tutorial: SerializedTutorialCompletion::from_profile(self),
+            tutorial_cooldowns: &self.tutorial_cooldowns,
+            game_installation_id: &self.player_id,
+            key_bindings: &self.key_bindings,
+            new_glade_count: self.new_glade_count,
+        }
+        .serialize(serializer)
+    }
+}
+impl<'de> Deserialize<'de> for GameProfile {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(rename = "GameProfile")]
+        struct Input {
+            tutorial: TutorialCompletionInput,
+            tutorial_cooldowns: TutorialCooldowns,
+            #[serde(alias = "player_id")]
+            game_installation_id: Uuid,
+            key_bindings: GameKeyBindings,
+            new_glade_count: usize,
+            #[serde(default)]
+            camera_rotate_glyph_mode: u16,
+            #[serde(default)]
+            camera_pan_glyph_mode: u16,
+            #[serde(default)]
+            focus_glyph_mode: u16,
+        }
+        let v = Input::deserialize(deserializer)?;
+        // 已知输入逐字段构造；不额外调用Default生成并丢弃一个随机Uuid。
+        let mut profile = Self {
+            tutorial_cooldowns: v.tutorial_cooldowns,
+            player_id: v.game_installation_id,
+            key_bindings: v.key_bindings,
+            new_glade_count: v.new_glade_count,
+            camera_rotate_glyph_mode: v.camera_rotate_glyph_mode,
+            camera_pan_glyph_mode: v.camera_pan_glyph_mode,
+            focus_glyph_mode: v.focus_glyph_mode,
+            tutorial: false,
+            focused_edit_completed: false,
+            camera_pan_completed: false,
+            camera_rotate_completed: false,
+            camera_zoom_completed: false,
+            terrain_layering_completed: false,
+            terrain_steepness_completed: false,
+            terrain_focus_completed: false,
+            disable_snapping_completed: false,
+            unlink_windows_completed: false,
+            undo_completed: false,
+            roof_shape_completed: false,
+            clutter_focused_edit_completed: false,
+            stairs_stage1_completed: false,
+            stairs_stage2_completed: false,
+            stairs_stage3_completed: false,
+            stairs_stage4_completed: false,
+            stairs_stage5_completed: false,
+            hint_reset_flag_206: false,
+        };
+        match v.tutorial {
+            TutorialCompletionInput::Native(flags) => flags.apply_to(&mut profile),
+            TutorialCompletionInput::Legacy(value) => profile.tutorial = value,
+        };
+        Ok(profile)
+    }
+}
+
 impl GameProfile {
-    pub fn welcome_was_dismissed(&self) -> bool { self.hint_reset_flag_206 }
+    pub fn welcome_was_dismissed(&self) -> bool {
+        self.hint_reset_flag_206
+    }
 
     /// Original welcome confirmation/cancel writes only the canonical+206 byte.
-    pub fn dismiss_welcome(&mut self) { self.hint_reset_flag_206 = true; }
+    pub fn dismiss_welcome(&mut self) {
+        self.hint_reset_flag_206 = true;
+    }
 }
 
 impl Default for GameProfile {
@@ -656,9 +835,12 @@ impl GameProfile {
     }
 
     /// 标记一个教学操作完成（O：`tutorial_completion` 0x14227c230 的 18 路 switch
-    /// 写面；`TutorialOp::completion_flag_offset` 决定写哪个完成标志字节）。
+    /// 写面；`TutorialCompletionId::completion_flag_offset` 决定写哪个完成标志字节）。
     /// 相机提示三标志的 pan/rotate/zoom 归属见字段注释（U）。
-    pub fn mark_tutorial_op_complete(&mut self, op: crate::resources::onboarding::TutorialOp) {
+    pub fn mark_tutorial_op_complete(
+        &mut self,
+        op: crate::resources::onboarding::TutorialCompletionId,
+    ) {
         let offset = op.completion_flag_offset();
         match offset {
             0x1f4 => self.tutorial = true,
@@ -679,7 +861,7 @@ impl GameProfile {
             0x203 => self.stairs_stage3_completed = true,
             0x204 => self.stairs_stage4_completed = true,
             0x205 => self.stairs_stage5_completed = true,
-            _ => unreachable!("TutorialOp offset"),
+            _ => unreachable!("TutorialCompletionId offset"),
         }
     }
 
@@ -844,7 +1026,7 @@ mod tests {
     }
 
     #[test]
-    fn profile_ron_writes_player_id_and_aliases_legacy_installation_id() {
+    fn profile_ron_writes_original_installation_id_and_aliases_old_reconstruction_player_id() {
         let mut bindings = GameKeyBindings::default();
         bindings.bindings[0] = Some(bevy_input::keyboard::KeyCode::KeyX);
         let profile = GameProfile {
@@ -856,9 +1038,9 @@ mod tests {
             ..GameProfile::default()
         };
         let text = ron::to_string(&profile).unwrap();
-        // player_id 序列化（第 3 位）；game_installation_id 不是独立序列化字段。
-        assert!(text.contains("player_id"));
-        assert!(!text.contains("game_installation_id"));
+        // 原顶层第三名game_installation_id；旧工程player_id只作输入alias。
+        assert!(text.contains("game_installation_id"));
+        assert!(!text.contains("player_id"));
         assert!(text.contains("key_bindings"));
         assert!(text.contains("new_glade_count"));
         let back: GameProfile = ron::from_str(&text).unwrap();
@@ -866,13 +1048,138 @@ mod tests {
         assert_eq!(back.key_bindings, profile.key_bindings);
         assert_eq!(back.player_id, profile.player_id);
 
-        // 旧档别名：ron 字段 `game_installation_id` 反序列化到 player_id
-        // （O：deserialize 0x1404b0ed0 名表 case 0x14 20 字符别名）。
+        // 兼容旧重建工程的player_id字段，不再误称原版canonical字段。
         let legacy = ron::to_string(&profile)
             .unwrap()
-            .replace("player_id:", "game_installation_id:");
+            .replace("game_installation_id:", "player_id:");
         let back_legacy: GameProfile = ron::from_str(&legacy).unwrap();
         assert_eq!(back_legacy.player_id, profile.player_id);
+    }
+
+    #[test]
+    fn original_nested_tutorial_schema_preserves_all_nineteen_flags_and_cooldowns() {
+        let rows: Vec<(u32, Vec<(String, bool)>)> = ron::from_str(include_str!(
+            "../../../tests/fixtures/native/tutorial-completion-serde.ron"
+        ))
+        .unwrap();
+        assert_eq!(rows.len(), 279);
+        for (mask, fields) in rows {
+            let mut profile = GameProfile::default();
+            for id in 0..18 {
+                let op = crate::resources::onboarding::TutorialCompletionId::from_id(id).unwrap();
+                let bit = op.completion_flag_offset() - 0x1f4;
+                if mask & (1 << bit) != 0 {
+                    profile.mark_tutorial_op_complete(op);
+                }
+            }
+            if mask & (1 << 18) != 0 {
+                profile.dismiss_welcome();
+            }
+            profile.tutorial_cooldowns = TutorialCooldowns {
+                timer_a: 1.25,
+                cooldown_a: 720.,
+                timer_b: 3.5,
+                cooldown_b: 10800.,
+                time_since_mouse_moved: 42.,
+            };
+            let value = serde_json::to_value(&profile).unwrap();
+            assert_eq!(value.as_object().unwrap().len(), 5);
+            let tutorial = value["tutorial"].as_object().unwrap();
+            assert_eq!(tutorial.len(), 19);
+            for (field, expected) in fields {
+                assert_eq!(
+                    tutorial[&field].as_bool(),
+                    Some(expected),
+                    "mask={mask:#x} field={field}"
+                );
+            }
+            assert_eq!(
+                value["tutorial_cooldowns"]["deselect_hint"]["elapsed"],
+                1.25
+            );
+            assert_eq!(
+                value["tutorial_cooldowns"]["focused_edit_hint"]["current_cooldown"],
+                10800.
+            );
+            assert_eq!(value["tutorial_cooldowns"]["active_time"], 42.);
+            let text = ron::to_string(&profile).unwrap();
+            let restored: GameProfile = ron::from_str(&text).unwrap();
+            assert_eq!(restored, profile, "mask={mask:#x}");
+        }
+        // 同一生产写盘函数经临时文件原子替换，重启读取后完成状态仍在。
+        let mut profile = GameProfile::default();
+        profile.set_all_hint_flags();
+        let directory = tempfile::tempdir().unwrap();
+        write_profile_in_directory(&profile, directory.path()).unwrap();
+        let text = std::fs::read_to_string(directory.path().join("profile.ron")).unwrap();
+        let restored: GameProfile = ron::from_str(&text).unwrap();
+        assert_eq!(restored, profile);
+    }
+    #[test]
+    fn old_reconstruction_bool_tutorial_flat_cooldown_and_player_id_remain_readable() {
+        #[derive(Serialize)]
+        struct OldCooldown {
+            timer_a: f32,
+            cooldown_a: f32,
+            timer_b: f32,
+            cooldown_b: f32,
+            time_since_mouse_moved: f32,
+        }
+        #[derive(Serialize)]
+        struct OldProfile<'a> {
+            tutorial: bool,
+            tutorial_cooldowns: OldCooldown,
+            player_id: Uuid,
+            key_bindings: &'a GameKeyBindings,
+            new_glade_count: usize,
+        }
+        let keys = GameKeyBindings::default();
+        let old = OldProfile {
+            tutorial: true,
+            tutorial_cooldowns: OldCooldown {
+                timer_a: 1.,
+                cooldown_a: 2.,
+                timer_b: 3.,
+                cooldown_b: 4.,
+                time_since_mouse_moved: 5.,
+            },
+            player_id: Uuid::new_v4(),
+            key_bindings: &keys,
+            new_glade_count: 7,
+        };
+        let text = ron::to_string(&old).unwrap();
+        let loaded: GameProfile = ron::from_str(&text).unwrap();
+        assert!(loaded.tutorial);
+        assert!(!loaded.disable_snapping_completed);
+        assert_eq!(loaded.tutorial_cooldowns.timer_b, 3.);
+        assert_eq!(loaded.tutorial_cooldowns.time_since_mouse_moved, 5.);
+        assert_eq!(loaded.player_id, old.player_id);
+        assert_eq!(loaded.new_glade_count, 7);
+        let corrected = ron::to_string(&loaded).unwrap();
+        assert!(corrected.contains("deselect_complete:true"));
+        assert!(corrected.contains("game_installation_id"));
+    }
+
+    #[test]
+    fn original_no_file_fallback_starts_all_tutorial_timers_and_cooldowns_at_zero() {
+        let profile = GameProfile::default();
+        assert_eq!(profile.tutorial_cooldowns, TutorialCooldowns::default());
+        let value = serde_json::to_value(&profile).unwrap();
+        assert!(
+            value["tutorial"]
+                .as_object()
+                .unwrap()
+                .values()
+                .all(|v| v == false)
+        );
+        assert_eq!(
+            value["tutorial_cooldowns"]["deselect_hint"]["current_cooldown"],
+            0.
+        );
+        assert_eq!(
+            value["tutorial_cooldowns"]["focused_edit_hint"]["current_cooldown"],
+            0.
+        );
     }
 
     #[test]
@@ -898,12 +1205,12 @@ mod tests {
         assert_eq!(profile.tutorial_cooldowns.cooldown_a, 0.0);
         assert_eq!(profile.tutorial_cooldowns.cooldown_b, 0.0);
 
-        // TutorialOp → 偏移逐项（与 onboarding::tests 同步）。
-        use crate::resources::onboarding::TutorialOp;
-        profile.mark_tutorial_op_complete(TutorialOp::Tutorial);
-        profile.mark_tutorial_op_complete(TutorialOp::FocusedEdit);
-        profile.mark_tutorial_op_complete(TutorialOp::Undo);
-        profile.mark_tutorial_op_complete(TutorialOp::StairsStage5);
+        // TutorialCompletionId → 偏移逐项（与 onboarding::tests 同步）。
+        use crate::resources::onboarding::TutorialCompletionId;
+        profile.mark_tutorial_op_complete(TutorialCompletionId::Tutorial);
+        profile.mark_tutorial_op_complete(TutorialCompletionId::FocusedEdit);
+        profile.mark_tutorial_op_complete(TutorialCompletionId::Undo);
+        profile.mark_tutorial_op_complete(TutorialCompletionId::StairsStage5);
         assert!(profile.tutorial);
         assert!(profile.focused_edit_completed);
         assert!(profile.undo_completed);

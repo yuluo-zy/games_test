@@ -37,7 +37,7 @@ pub use country_core::resources::critters::sheep::SheepWalkRecord;
 /// sheep_walk_animation（0x14231a630）。
 pub fn sheep_walk_animation(
     time: Res<GameTime>,
-    mut query: Query<(&Transform, &Sheep, &mut SheepWalkRecord)>,
+    mut query: Query<(&Transform, &Sheep, ComponentWrite<SheepWalkRecord>)>,
 ) {
     let dt = time.delta;
     for (transform, sheep, mut rec) in &mut query {
@@ -111,3 +111,5 @@ fn sheep_walk_h2(rec: &mut SheepWalkRecord, n: u64, dt: f32) {
         rec.progress = progress;
     }
 }
+
+use country_core::render::extract::ComponentWrite;

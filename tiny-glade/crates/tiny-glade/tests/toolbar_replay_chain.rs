@@ -1,4 +1,8 @@
 //! Actual Replay toolbar denial factory, shared ECS consumers and original UI raster pass.
+#[path = "support/mod.rs"]
+mod test_support;
+use test_support::ShaderTestDriver as _;
+use test_support::BridgeTestDriver as _;
 use bevy_ecs::prelude::*;
 use country_core::{
     components::{Ui2dExtent, UiInteractionState},
@@ -394,8 +398,8 @@ fn render_cross_pixels(
             })
         })
         .unwrap();
-    bridge.shader_backend().prewarm(std::time::Duration::from_secs(10)).unwrap();
-    bridge.execute_built(built).unwrap();
+    bridge.shader_backend().prepare_test_pipelines(std::time::Duration::from_secs(10)).unwrap();
+    bridge.execute_test_graph(built).unwrap();
     bridge.wait_submits_done(10_000_000_000).unwrap();
     let mut pixels = vec![0; 960 * 540 * 4];
     unsafe {

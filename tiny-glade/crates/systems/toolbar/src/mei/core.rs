@@ -10,8 +10,6 @@
 //! ownership/containers use Rust; no native layout compatibility is claimed.
 
 use std::collections::HashMap;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 use bevy_ecs::prelude::Resource;
@@ -25,15 +23,9 @@ use tg_text::font_table::FontTable;
 /// decorate_hovered 0x67df20 逐字节 `hash ^ 0xb1695320004fb443`）。
 pub const GLOBAL_ID_MASK: u64 = 0xb1695320004fb443;
 
-/// `utils::calculate_hash` 的本 crate 内镜像（O 0x1405bdda0：`sip::write<Sip13Rounds>`×2，
-/// 375B 无 RandomState/thread-local 机制 → 零键 `DefaultHasher::new()`（SipHasher13，
-/// 与 `WidgetId::from_name` 0x14092df30 同源同值）。原属 `utils` crate，尚未落库，
-/// 恢复后应移到 utils。
-pub fn calculate_hash<T: Hash>(value: &T) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    value.hash(&mut hasher);
-    hasher.finish()
-}
+/// `utils::calculate_hash`（O 0x1405bdda0：`sip::write<Sip13Rounds>`×2，
+/// 375B 无 RandomState/thread-local 机制 → 零键 `DefaultHasher::new()`（SipHasher13）。
+pub use ::utils::calculate_hash;
 
 /// 节点全局 id（O：原类型路径 `country_core::systems::ui::GlobalId`，crate 内暂驻；
 /// 恢复后应移至 country-core）。Hash = std SipHash（impl$0::as_id 0x683c10）。
@@ -99,6 +91,8 @@ pub struct NodePrepareContext<'a> {
     pub text: &'a mut tg_text::TextRenderer,
     pub device: &'a country_core::render::device::GraphicsDeviceResource,
     pub textures: &'a mut country_core::asset_libraries::texture_library::AssetTextureLibrary,
+    /// 当前 App 的文件图片缓存和真实纹理设备；纯 CPU 控件测试可不安装。
+    pub file_images: Option<&'a mut crate::mei::widgets::FileImageCache>,
     pub state: &'a mut u8,
     pub actions: &'a CoreMainActionSet,
     pub window_points: Vec2,
@@ -414,6 +408,11 @@ impl Node {
         self.flags = (nav as u8) << 5 | (self.flags & !NodeFlags::WITH_NAV);
     }
 
+    /// 原steal_focus写bit3，由update_nav的优先焦点分支消费。
+    pub fn steal_focus(&mut self) {self.flags|=8;}
+    /// 原PDB与with_nav在140683c60物理合并；保留原API的同一bit5 setter。
+    pub fn lose_focus_on_invalid_nav(&mut self,enabled:bool) {self.with_nav(enabled);}
+
     /// B RNE0x140683c80/11B: testb $0x30,+0xb6; setne al; ret.
     /// Pointer/key activation is a predicate; this does not mutate the node.
     pub fn used(&self) -> bool {
@@ -579,6 +578,11 @@ impl MeiContext {
     /// created. `test dl,1` tests the helper's `existed` return, not id parity.
     pub fn safe_frame(&mut self, name: &str, opaque: bool) -> NodeContext {
         self.new_root(FrameKind::Safe, name, opaque)
+    }
+
+    /// 原宽安全区根复用同一事件和节点owner，布局阶段已有独立WideSafe宽度合同。
+    pub fn wide_safe_frame(&mut self,name:&str,opaque:bool)->NodeContext {
+        self.new_root(FrameKind::WideSafe,name,opaque)
     }
 
     /// Original140f992e0: position, optional size and anchor are independent
@@ -942,7 +946,7 @@ pub struct NodeContext {
     pub mei: *mut MeiContext,
     /// 节点 id（原 +0x08）。
     pub id: GlobalId,
-    /// 第 3 字段（原 +0x10，恒 0）。
+    /// 第3字段（原+0x10）：匿名space节点计数，普通上下文初始为0。
     pub _pad: u64,
 }
 
@@ -1037,18 +1041,7 @@ impl NodeContext {
     /// （FIX 1：不静默创建父节点），命中把子 id append 到父 children；返回
     /// `NodeContext{mei, child}`。**判等**（mei 指针类型见 FIX 3）。
     pub fn child_with_global_id(&self, child: GlobalId) -> NodeContext {
-        self.mei_mut().reuse_or_create_node(child);
-        self.mei_mut()
-            .nodes
-            .get_mut(&self.id)
-            .unwrap()
-            .children
-            .push(child);
-        NodeContext {
-            mei: self.mei,
-            id: child,
-            _pad: 0,
-        }
+        self.into_child_with_global_id(child)
     }
 
     /// O 0x140686300 `into_child_with_global_id(child)`：与 child_with_global_id

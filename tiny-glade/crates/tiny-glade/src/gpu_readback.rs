@@ -42,6 +42,10 @@ const MAX_PENDING: usize = 40;
 /// 游戏侧返还、等待复用的容器上限。
 const MAX_POOLED: usize = 32;
 
+/// Actual main-graph submission, independent of export/present bookkeeping.
+#[derive(bevy_ecs::resource::Resource)]
+pub(crate) struct SubmittedFrameCompletion(pub rhapsody::sync::SyncSet);
+
 type HandleFn = fn(&AssetSsboLibrary) -> Option<Buffer>;
 
 fn handle<T>(library: &AssetSsboLibrary) -> Option<Buffer>
@@ -96,6 +100,9 @@ pub struct ReadbackPublisher {
     owed: Vec<TypeId>,
     frame: u64,
     stats: ReadbackPublisherStats,
+    completions: VecDeque<(bevy_ecs::world::WorldId, u64, rhapsody::sync::SyncSet)>,
+    source: Option<bevy_ecs::world::WorldId>,
+    submitted_points: rhapsody::sync::SyncSet,
 }
 
 impl ReadbackPublisher {
@@ -104,6 +111,8 @@ impl ReadbackPublisher {
             device, transfer: None, pending: VecDeque::new(),
             pool: Default::default(), published_once: Vec::new(), owed: Vec::new(), frame: 0,
             stats: Default::default(),
+            completions: VecDeque::new(), source: None,
+            submitted_points: rhapsody::sync::SyncSet::EMPTY,
         }
     }
 
@@ -124,28 +133,58 @@ impl ReadbackPublisher {
     ///
     /// Also carries the staged asset acknowledgments (asset_ack): revisions
     /// applied this hand-over, confirmed as submitted with the frame, and as
-    /// GPU-complete once a copy issued after that frame completes (a later
-    /// submission on the same queue completing implies the frame completed).
+    /// GPU-complete only after every queue in the main graph's real receipt
+    /// completes. Apps without readback buffers use this same proof.
     pub fn finish_frame(
         &mut self,
         render: &mut bevy_ecs::world::World,
         buffers: &BufferHost,
-        submitted: bool,
+        submitted: Option<rhapsody::sync::SyncSet>,
         feedback: &mut crate::render_thread::FrameFeedback,
     ) {
         let mut ready = Vec::new();
         self.collect(&mut ready);
-        let source = render.get_resource::<crate::render_thread::ExtractedAt>().map(|at| at.source);
-        let applied = render.remove_resource::<country_core::render::asset_ack::AppliedAssetRevisions>()
-            .map(|applied| applied.0).unwrap_or_default();
+        let source = Some(render.get_resource::<crate::render_thread::ExtractedAt>()
+            .map_or(render.id(), |at| at.source));
+        if source != self.source {
+            self.published_once.clear();
+            self.owed.clear();
+            self.source = source;
+            // Old Apps receive no feedback through this World. On reactivation
+            // their next checkpoint covers all preceding queue submissions.
+            self.completions.clear();
+        }
+        let applied = render.get_resource::<country_core::render::asset_ack::AppliedAssetRevisions>()
+            .map(|applied| applied.0.clone()).unwrap_or_default();
+        let operations = render.get_resource_mut::<country_core::render::asset_ack::AppliedAssetOperations>()
+            .map(|mut operations| operations.feedback(submitted.is_some())).unwrap_or_default();
+        let mut completed = None;
+        match self.device.poll() {
+            Ok(values) => {
+                self.completions.retain(|(world, frame, points)| {
+                    if Some(*world) != source || !points.is_reached(&values) { return true; }
+                    if Some(*world) == source { completed = Some(completed.unwrap_or(0u64).max(*frame)); }
+                    false
+                });
+            }
+            Err(error) => { feedback.error.get_or_insert_with(|| error.into()); }
+        }
         let mut note = None;
-        if submitted && let Some(source) = source {
+        if let Some(points) = submitted && let Some(source) = source {
+            self.submitted_points.merge(&points);
+            let points = self.submitted_points;
             self.frame += 1;
             note = Some((source, self.frame));
+            if self.completions.len() >= 64
+                && let Some((_, frame, existing)) = self.completions.iter_mut().rev().find(|entry| entry.0 == source) {
+                *frame = self.frame;
+                existing.merge(&points);
+            } else {
+                self.completions.push_back((source, self.frame, points));
+            }
             self.issue(render, buffers, source);
         }
-        let completed = ready.iter().filter(|entry| Some(entry.3) == source).map(|entry| entry.4).max();
-        if ready.is_empty() && note.is_none() && applied.is_empty() {
+        if ready.is_empty() && note.is_none() && applied.is_empty() && operations.is_empty() && completed.is_none() {
             return;
         }
         let pool = self.pool.clone();
@@ -155,6 +194,7 @@ impl ReadbackPublisher {
             if source.is_some_and(applies) {
                 let mut acks = game.get_resource_or_init::<country_core::render::asset_ack::RenderAssetAcks>();
                 acks.acknowledge(&applied, note.map(|(_, frame)| frame));
+                acks.acknowledge_entries(operations, note.map(|(_, frame)| frame));
                 if let Some(frame) = completed { acks.gpu_completed(frame); }
             }
             if !ready.iter().any(|(_, _, _, world, _)| applies(*world)) && !note.is_some_and(|(world, _)| applies(world)) {
@@ -266,6 +306,55 @@ mod tests {
         for step in feedback.apply.drain(..) { step(game); }
     }
 
+    #[test]
+    fn unchanged_revision_retries_and_completes_without_any_readback_sources() {
+        let Some(device) = device() else { return; };
+        let host = BufferHost::new(device.clone());
+        let buffer = device.create_buffer(&rhapsody::resource::BufferDesc::new(
+            4, ash::vk::BufferUsageFlags::TRANSFER_SRC, rhapsody::resource::MemoryLocation::CpuToGpu),
+            "asset acknowledgment proof", Some(&[0u8; 4][..])).unwrap();
+        let mut transfer = TransferManager::new(device.clone(), TransferConfig::default()).unwrap();
+        let proof = transfer.read_buffer(buffer.shared(), 0, 4).unwrap();
+        let points = rhapsody::sync::SyncSet::from_point(proof.completion());
+        let (mut game, mut render) = (World::new(), World::new());
+        render.insert_resource(crate::render_thread::ExtractedAt {
+            source: game.id(), game: Tick::new(0), render: Tick::new(0) });
+        struct Library;
+        use country_core::render::asset_ack::{AppliedAssetRevisions, RenderAssetAcks,
+            AppliedAssetOperations, AssetEntryKey, AssetOperation, AssetOperationKind};
+        render.insert_resource(AppliedAssetRevisions(vec![(TypeId::of::<Library>(), 9)]));
+        let key = AssetEntryKey::Id(17);
+        render.init_resource::<AppliedAssetOperations>();
+        render.resource_mut::<AppliedAssetOperations>().record(AssetOperation {
+            library: TypeId::of::<Library>(), entry: key.clone(), revision: 9, kind: AssetOperationKind::Upsert,
+        });
+        let mut publisher = ReadbackPublisher::new(device);
+        let mut feedback = crate::render_thread::FrameFeedback::default();
+        publisher.finish_frame(&mut render, &host, None, &mut feedback);
+        apply(&mut feedback, &mut game);
+        assert_eq!(game.resource::<RenderAssetAcks>().stage::<Library>().applied, 9);
+        assert_eq!(game.resource::<RenderAssetAcks>().stage::<Library>().submitted, 0);
+        assert_eq!(game.resource::<RenderAssetAcks>().entry::<Library>(&key).unwrap().stages.submitted, 0);
+        // No extraction and no library mutation between failure and retry.
+        publisher.finish_frame(&mut render, &host, Some(points), &mut feedback);
+        apply(&mut feedback, &mut game);
+        assert_eq!(game.resource::<RenderAssetAcks>().stage::<Library>().submitted, 9);
+        assert_eq!(game.resource::<RenderAssetAcks>().entry::<Library>(&key).unwrap().stages.submitted, 9);
+        let start = std::time::Instant::now();
+        while !game.resource::<RenderAssetAcks>().gpu_complete::<Library>(9) {
+            publisher.finish_frame(&mut render, &host, None, &mut feedback);
+            apply(&mut feedback, &mut game);
+            assert!(start.elapsed() < std::time::Duration::from_secs(10));
+        }
+        assert_eq!(publisher.stats().issued, 0);
+        assert!(game.resource::<RenderAssetAcks>().entry_gpu_complete::<Library>(&key, 9));
+        assert!(render.resource_mut::<AppliedAssetOperations>().feedback(false).is_empty());
+        let mut other = World::new();
+        publisher.finish_frame(&mut render, &host, Some(points), &mut feedback);
+        apply(&mut feedback, &mut other);
+        assert!(!other.contains_resource::<RenderAssetAcks>());
+    }
+
     /// 真实设备：渲染侧复制映射回读、非阻塞轮询，并只向来源 World 发布；
     /// 游戏侧拿到的是完整副本，之后映射内容变化不影响已发布数据。
     #[test]
@@ -274,6 +363,10 @@ mod tests {
         let host = BufferHost::new(device.clone());
         let mut storage = <TerrainRockMaskSsbo as SsboType>::new_storage_buffer(&host, None);
         storage.mapped[7].0 = 0xdead_beef;
+        let native = host.managed_buffer(&storage.buffer).unwrap();
+        let mut transfer = TransferManager::new(device.clone(), TransferConfig::default()).unwrap();
+        let proof = transfer.read_buffer(native.shared(), 0, 4).unwrap();
+        let submitted = rhapsody::sync::SyncSet::from_point(proof.completion());
         let library = AssetSsboLibrary::new();
         library.register::<TerrainRockMaskSsbo>(storage);
         let mut game = World::new();
@@ -287,7 +380,7 @@ mod tests {
         use country_core::render::asset_ack::{AppliedAssetRevisions, AssetStageAck, RenderAssetAcks};
         render.insert_resource(AppliedAssetRevisions(vec![(TypeId::of::<Library>(), 7)]));
         let mut feedback = crate::render_thread::FrameFeedback::default();
-        publisher.finish_frame(&mut render, &host, true, &mut feedback);
+        publisher.finish_frame(&mut render, &host, Some(submitted), &mut feedback);
         assert_eq!(publisher.stats().issued, 1);
         apply(&mut feedback, &mut game);
         assert_eq!(game.resource::<RenderAssetAcks>().stage::<Library>(),
@@ -295,7 +388,7 @@ mod tests {
         // An unsubmitted frame acknowledges CPU application only.
         render.insert_resource(AppliedAssetRevisions(vec![(TypeId::of::<Library>(), 8)]));
         let mut feedback = crate::render_thread::FrameFeedback::default();
-        publisher.finish_frame(&mut render, &host, false, &mut feedback);
+        publisher.finish_frame(&mut render, &host, None, &mut feedback);
         apply(&mut feedback, &mut game);
         assert_eq!(game.resource::<RenderAssetAcks>().stage::<Library>().submitted, 7);
         assert_eq!(game.resource::<RenderAssetAcks>().stage::<Library>().applied, 8);
@@ -305,7 +398,7 @@ mod tests {
         let started = std::time::Instant::now();
         loop {
             let mut feedback = crate::render_thread::FrameFeedback::default();
-            publisher.finish_frame(&mut render, &host, false, &mut feedback);
+            publisher.finish_frame(&mut render, &host, None, &mut feedback);
             apply(&mut feedback, &mut game);
             if game.resource::<GpuReadbacks>().get::<TerrainRockMaskSsbo>().is_some() { break; }
             assert!(started.elapsed() < std::time::Duration::from_secs(10), "readback never completed");
@@ -318,7 +411,7 @@ mod tests {
         // A different App's World never receives this App's results.
         let mut other = other;
         let mut feedback = crate::render_thread::FrameFeedback::default();
-        publisher.finish_frame(&mut render, &host, true, &mut feedback);
+        publisher.finish_frame(&mut render, &host, Some(submitted), &mut feedback);
         apply(&mut feedback, &mut other);
         assert!(!other.contains_resource::<GpuReadbacks>());
     }

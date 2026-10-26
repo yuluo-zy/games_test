@@ -184,13 +184,12 @@ impl RenderPassDesc {
         Ok(desc)
     }
     pub fn pass_samples(&self) -> Result<u32> {
-        if let Some((depth, _)) = &self.depth {
-            return Ok(u32::from(depth.sample_count));
+        let samples = self.depth.as_ref().map(|(depth, _)| depth.sample_count)
+            .or_else(|| self.colors.as_slice().first().map(|color| color.sample_count))
+            .ok_or_else(|| crate::Error::invalid_usage("render pass needs an attachment"))?;
+        if self.colors.as_slice().iter().any(|color| color.sample_count != samples) {
+            return Err(crate::Error::invalid_usage("render pass attachment sample counts differ"));
         }
-        self.colors
-            .as_slice()
-            .first()
-            .map(|a| u32::from(a.sample_count))
-            .ok_or_else(|| crate::Error::invalid_usage("渲染通道必须至少有一个附件"))
+        Ok(u32::from(samples))
     }
 }

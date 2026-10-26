@@ -1,5 +1,6 @@
 //! GPU 崩溃诊断：debug 缓冲解析、断言检测与错误信息需求判定。
 //! （原先的宿主侧 `CrashDiagnostics` 标记环在整条管线里无调用点，且不等价于原作的 `leekspin::RingBuffer`，已删除。）
+use crate::{Error, Result};
 use parking_lot::Mutex;
 use serde::Serialize;
 
@@ -7,7 +8,6 @@ use super::{
     buffer::{Buffer, BufferDesc},
     command_buffer::VulkanCommandBuffer,
     device::Device,
-    error::{Error, Result},
 };
 use ash::vk;
 use std::{collections::BTreeMap, sync::Arc};
@@ -208,7 +208,7 @@ impl GpuCrashDiagnostics {
             ),
         )?);
         marker_buffer.write_bytes(0, &u32::MAX.to_le_bytes())?;
-        debug_buffer.write_bytes(0, &vec![0; debug_words * 4])?;
+        debug_buffer.write_with_unsynchronized(0, debug_words as u64 * 4, |bytes| bytes.fill(0))?;
         Ok(Self {
             marker_buffer,
             debug_buffer,

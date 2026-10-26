@@ -1,6 +1,9 @@
 //! Recovered original RoofRidgeDims numeric algorithms. The byte interface keeps
 //! the observed ABI layout distinct from a claim about the original Rust type.
 
+use ::utils::bytes::read_f32_le as at;
+use ::utils::scalar::{clamp, clamp01};
+
 pub const RIDGE_MIN: f32 = f32::from_bits(0x3dcccccd);
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RidgeDims(pub [f32; 2]);
@@ -17,9 +20,6 @@ pub enum RidgeError {
     InvalidInverse,
 }
 
-fn at(b: &[u8; 0x58], o: usize) -> f32 {
-    f32::from_le_bytes(b[o..o + 4].try_into().unwrap())
-}
 fn tag(b: &[u8; 0x58]) -> u32 {
     u32::from_le_bytes(b[8..12].try_into().unwrap())
 }
@@ -31,13 +31,6 @@ fn max_num(a: f32, b: f32) -> f32 {
     } else {
         b
     }
-}
-// SSE MINSS/MAXSS select the second operand on an unordered comparison.
-fn maxss(a: f32, b: f32) -> f32 {
-    if a > b { a } else { b }
-}
-fn minss(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
 }
 fn neg_bits(a: f32) -> f32 {
     f32::from_bits(a.to_bits() ^ 0x8000_0000)
@@ -103,7 +96,7 @@ pub fn inverse_ridge_01_param(
     if ratio.is_nan() {
         return Err(RidgeError::InvalidInverse);
     }
-    Ok(minss(1.0, maxss(0.0, ratio)))
+    Ok(clamp01(ratio))
 }
 
 // 保持原浮点有序比较与 NaN 分支。
@@ -124,7 +117,7 @@ fn roof_height(roof: &[u8; 0x58]) -> Result<f32, RidgeError> {
             9.0,
         )
     };
-    let t = minss(1.0, maxss(0.0, u / 0.4));
+    let t = clamp01(u / 0.4);
     let squared = t * t;
     let smooth = (3.0 - (t + t)) * squared;
     let limit = smooth * 12.0 + (1.0 - smooth) * low;
@@ -132,7 +125,7 @@ fn roof_height(roof: &[u8; 0x58]) -> Result<f32, RidgeError> {
         return Err(RidgeError::InvalidHeight);
     }
     let requested = 12.0 * h + (1.0 - h) * 0.4;
-    Ok(minss(limit, maxss(0.0, requested)))
+    Ok(clamp(requested, 0.0, limit))
 }
 
 /// Complete point/segment branch of original RoofRidgeDims::to_world_space.

@@ -340,12 +340,13 @@ pub(crate) fn buffer_access_borrowed(
 /// Issue the barriers of `steps`: one batch per distinct source stage mask,
 /// so every barrier keeps exactly its own execution scope.
 fn emit_barriers(
-    command: &VulkanCommandBuffer,
+    command: &mut VulkanCommandBuffer,
     target: BarrierTarget,
     steps: &[AccessStep],
     destination: AccessScope,
     layout: vk::ImageLayout,
 ) -> Result<()> {
+    let result = (|| {
     let mut done = 0;
     let mut issued = smallvec::SmallVec::<[vk::PipelineStageFlags; 4]>::new();
     while done < steps.len() {
@@ -374,6 +375,9 @@ fn emit_barriers(
         batch.issue_into(command)?;
     }
     Ok(())
+    })();
+    command.remember_metadata_error(&result);
+    result
 }
 
 /// # Safety

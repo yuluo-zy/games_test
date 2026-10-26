@@ -36,8 +36,14 @@ fn flatten(item: ToolbarItem, depth: usize, out: &mut Vec<String>) {
 
 #[test]
 fn complete_edition_trees_and_executed_callbacks_match_original_capture() {
-    const FULL: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../reverse-engineering/tiny-glade/progress-20261020/phase2-toolbar-photo/photo-tree-full.txt"));
-    const DEMO: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../../reverse-engineering/tiny-glade/progress-20261020/phase2-toolbar-photo/photo-tree-demo.txt"));
+    const FULL: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/fixtures/native/photo-tree-full.txt"
+    ));
+    const DEMO: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../tests/fixtures/native/photo-tree-demo.txt"
+    ));
     for (demo, expected) in [(false, FULL), (true, DEMO)] {
         let mut actual = Vec::new();
         for (label, category, items) in photomode_category_items(demo) {
@@ -46,7 +52,11 @@ fn complete_edition_trees_and_executed_callbacks_match_original_capture() {
                 flatten(item, 0, &mut actual);
             }
         }
-        assert_eq!(actual, expected.lines().collect::<Vec<_>>(), "original demo={demo}");
+        assert_eq!(
+            actual,
+            expected.lines().collect::<Vec<_>>(),
+            "original demo={demo}"
+        );
     }
 }
 
@@ -134,10 +144,12 @@ fn real_photo_setup_preserves_every_root_callback_size_parent_and_nav_ring() {
             }
             let mut query = world.query::<(Entity, &UiShowIfParentIsInFocus)>();
             for (entity, focus) in query.iter(&world) {
-                assert!(layout
-                    .menus
-                    .iter()
-                    .any(|row| row.parent_entity.to_bits() == focus.parent));
+                assert!(
+                    layout
+                        .menus
+                        .iter()
+                        .any(|row| row.parent_entity.to_bits() == focus.parent)
+                );
                 assert!(world.get::<ShowOnlyInPhotomode>(entity).is_none());
             }
             // Full-only distortion row has all three leaves gated in FPV/free.

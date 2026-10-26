@@ -146,7 +146,7 @@ impl Unbound {
                     crate::raw::allocator::shared_cpu_bytes::<buffer::Buffer>()?,
                     crate::device::BudgetCategory::Live,
                 )?;
-                let handle = crate::raw::error::observe_vulkan(&device, unsafe {
+                let handle = crate::error::observe_vulkan(&device, unsafe {
                     device.core.device.create_buffer(&info, None)
                 })?;
                 let mut dedicated = vk::MemoryDedicatedRequirements::default();
@@ -195,7 +195,7 @@ impl Unbound {
                     crate::raw::allocator::shared_cpu_bytes::<texture::Texture>()?,
                     crate::device::BudgetCategory::Live,
                 )?;
-                let handle = crate::raw::error::observe_vulkan(&device, unsafe {
+                let handle = crate::error::observe_vulkan(&device, unsafe {
                     device.core.device.create_image(&info, None)
                 })?;
                 let mut dedicated = vk::MemoryDedicatedRequirements::default();
@@ -248,7 +248,7 @@ impl Unbound {
         let allocation = MemoryBlock::from_shared(self.device.clone(), backing);
         unsafe {
             match self.handle.as_ref().expect("unbound resource") {
-                Handle::Buffer(handle, _) => crate::raw::error::observe_vulkan(
+                Handle::Buffer(handle, _) => crate::error::observe_vulkan(
                     &self.device,
                     self.device.core.device.bind_buffer_memory(
                         *handle,
@@ -256,7 +256,7 @@ impl Unbound {
                         allocation.offset,
                     ),
                 )?,
-                Handle::Image(handle, _) => crate::raw::error::observe_vulkan(
+                Handle::Image(handle, _) => crate::error::observe_vulkan(
                     &self.device,
                     self.device.core.device.bind_image_memory(
                         *handle,
@@ -405,11 +405,9 @@ impl AliasCache {
         completed: &crate::sync::CompletedValues,
     ) {
         if !resource.owner_cell().discard_idle_range_state(completed) {
-            if self.retiring.try_reserve(1).is_ok() {
-                self.retiring.push((origin, resource));
-            }
-            // Without host memory the member is dropped; its set stays lent
-            // and is never reused (memory is freed with the last owner).
+            // lend reserves return slots for every outstanding member before
+            // publishing ownership. Returning a failed frame cannot allocate.
+            self.retiring.push((origin, resource));
             return;
         }
         if let Some(set) = self.sets.iter_mut().find(|set| set.id == origin.set)
@@ -572,14 +570,14 @@ impl AliasCache {
         plan: &CompiledPlan,
         graph: &graph::GraphDeclaration,
         counters: Arc<TransientBackingCounters>,
-    ) -> crate::Result<Option<LentAliases>> {
+    ) -> crate::Result<(Option<LentAliases>, EvictedSets)> {
         self.clock += 1;
         if !self.retiring.is_empty() {
             self.collect_retiring(&device.poll()?);
         }
         self.build_key(specifications, plan, graph);
         if self.key.entries.is_empty() {
-            return Ok(None);
+            return Ok((None, EvictedSets(Vec::new())));
         }
         let position = match self
             .sets
@@ -589,11 +587,17 @@ impl AliasCache {
             Some(position) => position,
             None => {
                 let set = self.create(device, plan, graph, counters)?;
-                self.evict();
                 self.sets.push(set);
                 self.sets.len() - 1
             }
         };
+        let outstanding = self.sets.iter().map(|set| set.lent).sum::<usize>();
+        let returns = outstanding
+            .checked_add(self.sets[position].members.len())
+            .ok_or(crate::Error::OutOfHostMemory)?;
+        self.retiring
+            .try_reserve(returns)
+            .map_err(|_| crate::Error::OutOfHostMemory)?;
         let set = &mut self.sets[position];
         set.last_used = self.clock;
         let mut resources = BTreeMap::new();
@@ -611,13 +615,16 @@ impl AliasCache {
             );
         }
         set.lent = set.members.len();
-        Ok(Some(LentAliases {
+        let lent = LentAliases {
             plan: set.plan.clone(),
             edges: set.edges.clone(),
             resources,
-        }))
+        };
+        let evicted = self.evict();
+        Ok((Some(lent), evicted))
     }
-    fn evict(&mut self) {
+    fn evict(&mut self) -> EvictedSets {
+        let mut evicted = Vec::new();
         while self.sets.iter().filter(|set| set.lent == 0).count() >= MAX_AVAILABLE_SETS {
             let oldest = self
                 .sets
@@ -627,8 +634,9 @@ impl AliasCache {
                 .min_by_key(|(_, set)| set.last_used)
                 .map(|(position, _)| position)
                 .expect("counted available set");
-            self.sets.swap_remove(oldest);
+            evicted.push(self.sets.swap_remove(oldest));
         }
+        EvictedSets(evicted)
     }
     fn create(
         &mut self,

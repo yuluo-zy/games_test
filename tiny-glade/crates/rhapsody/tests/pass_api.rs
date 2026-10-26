@@ -233,7 +233,14 @@ fn dynamic_command_sequence_keeps_draw_state_and_copy_parameters() {
             20,
         );
         api.dispatch_groups_3d(8, 8, 1);
-        api.dispatch_threads_3d(64, 64, 1, 8, 8, 1);
+        api.dispatch_threads_3d(
+            64,
+            64,
+            1,
+            std::num::NonZeroU32::new(8).unwrap(),
+            std::num::NonZeroU32::new(8).unwrap(),
+            std::num::NonZeroU32::new(1).unwrap(),
+        );
         api.dispatch_indirect(vk::Buffer::from_raw(53), 0);
         assert_eq!(api.draw_call_count(), 9);
     }

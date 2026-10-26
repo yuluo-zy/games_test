@@ -50,6 +50,21 @@ impl Clone for AssetVAOLibrary {
         }
     }
 }
+impl crate::render::asset_ack::AssetSnapshot for AssetVAOLibrary {
+    fn asset_cursor(&self) -> AssetChangeCursor { AssetChangeCursor(self.changes.cursor()) }
+    fn asset_changes(&self, cursor: Option<AssetChangeCursor>) -> Option<(AssetChangeCursor, Vec<AssetEntryKey>)> {
+        self.changes.since(cursor.map(|cursor| cursor.0)).map(|(cursor, keys)|
+            (AssetChangeCursor(cursor), keys.into_iter().map(|mesh| AssetEntryKey::Id(mesh.id().raw())).collect()))
+    }
+    fn asset_keys(&self) -> Vec<AssetEntryKey> {
+        self.mesh_to_vao.keys().map(|mesh| AssetEntryKey::Id(mesh.id().raw())).collect()
+    }
+    fn asset_contains(&self, key: &AssetEntryKey) -> bool {
+        matches!(key, AssetEntryKey::Id(id) if self.mesh_to_vao.contains_key(&Handle::from_raw(*id)))
+    }
+    fn update_asset_snapshot(&self, destination: &mut Self) { self.update_render_snapshot(destination); }
+}
+use crate::render::asset_ack::{AssetChangeCursor, AssetEntryKey};
 
 impl AssetVAOLibrary {
     /// 创建初始状态。

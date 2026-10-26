@@ -1,6 +1,6 @@
 //! Content-versioned persistent results, owned by a graph session, never a plan.
+use crate::collections::cache::{BoundedCache, CacheDiagnostics, CacheReason, Inserted};
 use super::{
-    cache::{BoundedCache, CacheDiagnostics, CacheReason, Inserted},
     graph::{Descriptor, GraphDeclaration, OriginSource, RenderGraph},
     resource::{GraphId, ResourceHandle},
     vulkan::{GpuResource, ResourceSpec, VulkanGraphSession},

@@ -20,11 +20,7 @@ use country_core::{
     rhapsody_types::{Texture, TextureDesc},
     systems::render_loop::draw_passes::ui_2d_pass::{MeiTextOutput, ShapeStreamSsbo, TextPrimSsbo},
 };
-use rhapsody::{
-    command::record_texture_regions, device::Device, resource::Buffer as NativeBuffer,
-    resource::BufferDesc as NativeBufferDesc, resource::ManagedBuffer,
-    resource::with_setup_command,
-};
+use rhapsody::{device::Device, resource::ManagedBuffer};
 use tg_text::{AtlasDescriptor, RenderBatch, TextFragment, TextRenderer};
 
 use crate::{
@@ -32,6 +28,10 @@ use crate::{
     render_bridge::CoreGraphFrame,
     render_host::{BufferHost, TextureHost},
 };
+
+#[cfg(test)]
+#[path = "../tests/support/mei_upload_boundary.rs"]
+mod upload_boundary_tests;
 
 pub const TEXT_PRIMITIVE_BYTES: usize = 0x600000;
 pub const SHAPE_STREAM_BYTES: usize = 0x400000;
@@ -192,9 +192,22 @@ pub struct MeiHost {
     buffer_ownership: MeiBufferOwnership,
     atlas: Option<(AtlasDescriptor, Texture)>,
     last_output: Option<MeiTextOutput>,
+    pending: Option<PendingTextFrame>,
+    file_images: Option<Arc<toolbar::mei::widgets::FileImageStorage>>,
+}
+
+/// One consumed text frame, retained only by its game-side producer until
+/// bounded upload admission succeeds. Render snapshots never copy this batch.
+struct PendingTextFrame {
+    atlas: AtlasDescriptor,
+    batch: RenderBatch,
 }
 
 impl MeiHost {
+    /// 与渲染快照共享文件纹理owner，卸载World后待最后一个快照释放。
+    pub(crate) fn retain_file_images(&mut self, owner: Arc<toolbar::mei::widgets::FileImageStorage>) {
+        self.file_images = Some(owner);
+    }
     pub fn new(
         device: Arc<Device>,
         buffers: Arc<BufferHost>,
@@ -219,6 +232,8 @@ impl MeiHost {
             buffer_ownership: MeiBufferOwnership::Private,
             atlas: None,
             last_output: None,
+            pending: None,
+            file_images: None,
         })
     }
 
@@ -287,34 +302,43 @@ impl MeiHost {
             },
             atlas: None,
             last_output: None,
+            pending: None,
+            file_images: None,
         })
     }
 
     /// Original flush order: update primitive prefix, update shape prefix,
     /// upload pending glyphs; render then reports this exact consumed count.
     /// The CPU stream belongs to the supplied TextRenderer world resource.
-    pub fn prepare(
+    pub(crate) fn prepare(
         &mut self,
         renderer: &mut TextRenderer,
         window: [u32; 2],
         resolver_image_count: usize,
-    ) -> anyhow::Result<MeiTextOutput> {
+    ) -> anyhow::Result<bool> {
         let atlas = renderer.atlas();
         let batch = renderer.consume()?;
-        self.upload_batch(&batch, atlas, window, resolver_image_count)?;
+        self.validate_batch(&batch, atlas, window, resolver_image_count)?;
         let (actual_atlas, primitive_count) = renderer.render();
         anyhow::ensure!(
             *actual_atlas == atlas && primitive_count == batch.primitives.len() as u64,
             "text render output differs from the just-consumed stream"
         );
-        let texture = self
-            .atlas
-            .as_ref()
-            .context("glyph atlas was not uploaded")?
-            .1
-            .clone();
-        let output = MeiTextOutput {
-            prim_count: u32::try_from(primitive_count)?,
+        self.pending = Some(PendingTextFrame { atlas, batch });
+        self.poll_pending_uploads()
+    }
+
+    pub(crate) fn poll_pending_uploads(&mut self) -> anyhow::Result<bool> {
+        let Some(pending) = self.pending.take() else { return Ok(true); };
+        if let Err(error) = self.upload_batch(&pending.batch, pending.atlas) {
+            let capacity = error.downcast_ref::<rhapsody::Error>().is_some_and(|error|
+                matches!(error, rhapsody::Error::Exhausted(_) | rhapsody::Error::Timeout));
+            self.pending = Some(pending);
+            return if capacity { Ok(false) } else { Err(error) };
+        }
+        let texture = &self.atlas.as_ref().context("glyph atlas was not uploaded")?.1;
+        self.last_output = Some(MeiTextOutput {
+            prim_count: u32::try_from(pending.batch.primitives.len())?,
             atlas: ManagedHandle(texture.id),
             atlas_desc: AttachmentTexture {
                 id: texture.id as u32,
@@ -322,13 +346,12 @@ impl MeiHost {
                 format: texture.format,
                 sample_count: 1,
             },
-        };
-        self.last_output = Some(output.clone());
-        Ok(output)
+        });
+        Ok(true)
     }
 
-    fn upload_batch(
-        &mut self,
+    fn validate_batch(
+        &self,
         batch: &RenderBatch,
         atlas: AtlasDescriptor,
         window: [u32; 2],
@@ -371,6 +394,13 @@ impl MeiHost {
                 }
             }
         }
+        Ok(())
+    }
+
+    fn upload_batch(&mut self, batch: &RenderBatch, atlas: AtlasDescriptor) -> anyhow::Result<()> {
+        let primitive_bytes = batch.primitive_bytes();
+        let shape_bytes: &[u8] = bytemuck::cast_slice(&batch.shape_words);
+        let fresh_atlas = self.atlas.as_ref().is_none_or(|(descriptor, _)| *descriptor != atlas);
         if !primitive_bytes.is_empty() {
             self.buffers.update_buffer_bytes(
                 &self.primitives,
@@ -401,11 +431,6 @@ impl MeiHost {
             }
         }
         if !batch.glyph_uploads.is_empty() {
-            let texture = self
-                .textures
-                .get(&self.atlas.as_ref().expect("created atlas").1)
-                .context("glyph atlas host handle is stale")?
-                .shared();
             let mut bytes = Vec::new();
             let mut regions = Vec::with_capacity(batch.glyph_uploads.len());
             for upload in &batch.glyph_uploads {
@@ -430,26 +455,8 @@ impl MeiHost {
                 );
                 bytes.extend_from_slice(&upload.rgba);
             }
-            let staging = Arc::new(NativeBuffer::new(
-                self.device.clone(),
-                &NativeBufferDesc::new_cpu_to_gpu(
-                    bytes.len() as u64,
-                    vk::BufferUsageFlags::TRANSFER_SRC,
-                ),
-            )?);
-            staging.write_bytes_unsynchronized(0, &bytes)?;
-            let queue = self.device.queue(rhapsody::device::QueueClass::Graphics)?;
-            with_setup_command(&self.device, &[], |command| unsafe {
-                record_texture_regions(
-                    command,
-                    queue,
-                    texture,
-                    staging,
-                    &regions,
-                    vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-                )
-            })?
-            .into_value();
+            self.textures.upload_regions(
+                &self.atlas.as_ref().expect("created atlas").1, bytes, regions)?;
         }
         Ok(())
     }
@@ -463,7 +470,8 @@ impl MeiHost {
     ) -> rhapsody::Result<()> {
         let primitives = frame.import_buffer(&self.primitives, 0x37)?;
         let shapes = frame.import_buffer(&self.shapes, 0x37)?;
-        let mut assets = raster.assets.lock();
+        let mut tables = raster.assets.lock();
+        let assets = Arc::make_mut(&mut tables.collect);
         assets
             .rg_buffers
             .insert(TextPrimSsbo::rg_buffer_hash(), primitives.raw());
@@ -507,6 +515,8 @@ impl MeiHost {
             buffer_ownership: MeiBufferOwnership::Borrowed,
             atlas: self.atlas.clone(),
             last_output: self.last_output.clone(),
+            pending: None,
+            file_images: self.file_images.clone(),
         }
     }
 }

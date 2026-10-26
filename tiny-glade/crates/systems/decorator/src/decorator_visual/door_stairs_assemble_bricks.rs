@@ -296,7 +296,7 @@ mod actual_host_tests {
         let curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(vec![[0.,0.],[4.,0.]], false).unwrap();
         inner.new_wall_with_id(wall, WallState::new(curve, 2., 0, 0, false));
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true });
+        public.consume_with_paths(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true }, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         (wall, public)
     }
     fn world(public: PublicWalls, library: AssetSsboLibrary) -> World {
@@ -380,7 +380,7 @@ mod actual_host_tests {
         let mut library = world.resource_mut::<AssetSsboLibrary>();
         let storage = library.get_mut::<BrickTransformSsbo>().unwrap();
         assert!(storage.dirty_bitset.iter().any(|word| word.load(std::sync::atomic::Ordering::Relaxed) != 0));
-        storage.try_gpu_flush(&CpuBufferDevice(1)).unwrap();
+        storage.gpu_flush(&CpuBufferDevice(1)).unwrap();
         assert!(storage.dirty_bitset.iter().all(|word| word.load(std::sync::atomic::Ordering::Relaxed) == 0));
         assert_eq!(storage.to_draw_multi_instanced().iter().map(|r| r.1).sum::<u32>(), 45);
     }

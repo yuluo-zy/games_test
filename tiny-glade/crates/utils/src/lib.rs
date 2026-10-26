@@ -4,6 +4,7 @@
 //! Historical provenance and validation scope are recorded in the package README.
 
 pub mod angle_range;
+pub mod bytes;
 pub mod camera;
 pub mod circular_f32;
 pub mod comparative_space;
@@ -14,16 +15,19 @@ pub mod file;
 pub mod float_grid;
 pub mod geometry;
 pub mod halver;
+pub mod hash;
 pub mod index_condenser;
 pub mod iso_transform;
 pub mod local_time;
 pub mod loop_range;
 pub mod name_hash;
 pub mod natural_cubic;
+pub mod pack;
 pub mod rdp;
 pub mod rgb9e5;
 pub mod rng;
 pub mod sampling;
+pub mod scalar;
 pub mod selective_deserialize;
 pub mod subtractive_1d_boolean;
 pub mod swizzlers;
@@ -32,6 +36,7 @@ pub mod timer;
 pub mod wall_space;
 pub use geometry::rotation_from_normal;
 pub use iso_transform::IsoTransform;
+pub use hash::calculate_hash;
 
 /// Jittered normalized boundaries, including exact endpoints 0 and 1.
 /// Original B 0x140c90350; `count` counts boundaries and must be at least two.
@@ -80,7 +85,10 @@ pub fn xz_rotation_bad(direction: glam::Vec2) -> glam::Quat {
     let direction = direction.try_normalize().unwrap_or(glam::Vec2::X);
     let forward = glam::Vec3::new(direction.x, 0.0, direction.y);
     let up = glam::Vec3::Y;
-    let right = up.cross(forward).normalize();
+    let right = up.cross(forward);
+    // 原140c91087..910a4逐项平方后DIVPS；normalize的倒长度乘法会差1ULP。
+    let length = (right.y * right.y + (right.z * right.z + right.x * right.x)).sqrt();
+    let right = right / length;
     glam::Quat::from_mat3(&glam::Mat3::from_cols(right, up, forward))
 }
 

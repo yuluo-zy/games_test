@@ -153,6 +153,10 @@ impl Device {
         let mut entries = self.queues.pending_acquires.entries.lock();
         if entries.try_reserve(drained.len()).is_ok() {
             entries.extend(drained);
+        } else {
+            log::error!(
+                "pending acquire requeue failed: host memory exhausted; resource release state retained"
+            );
         }
         // Without host memory the releases stay recorded on the resources;
         // a render graph using them still recovers through its own acquire.
@@ -190,21 +194,40 @@ impl Device {
             ));
         }
         let family = command.pool.family;
-        let mut entries = self.queues.pending_acquires.entries.lock();
+        let mut candidates = DrainedAcquires::new();
+        {
+            let mut entries = self.queues.pending_acquires.entries.lock();
+            candidates
+                .try_reserve(entries.len())
+                .map_err(|_| Error::OutOfHostMemory)?;
+            drained
+                .try_reserve(entries.len())
+                .map_err(|_| Error::OutOfHostMemory)?;
+            let mut index = 0;
+            while index < entries.len() {
+                if entries[index].transfer.destination_family == family {
+                    candidates.push(entries.swap_remove(index));
+                } else {
+                    index += 1;
+                }
+            }
+            self.queues
+                .pending_acquires
+                .count
+                .store(entries.len(), Ordering::Release);
+        }
+        // Resource gates and command metadata can allocate or wait. The shared
+        // registration list is no longer locked while any of that work runs.
         let mut scope = crate::raw::barrier::SynchronizationScope::new(
             vk::PipelineStageFlags::empty(),
             vk::PipelineStageFlags::empty(),
         );
         let mut index = 0;
         let mut outcome = Ok(());
-        while index < entries.len() {
-            let entry = &entries[index];
-            if entry.transfer.destination_family != family {
-                index += 1;
-                continue;
-            }
+        while index < candidates.len() {
+            let entry = &candidates[index];
             let Some(target) = entry.target.upgrade() else {
-                entries.swap_remove(index);
+                candidates.swap_remove(index);
                 continue;
             };
             if keep(target.cell()) {
@@ -213,9 +236,8 @@ impl Device {
             }
             let revision = match released_revision(target.cell(), entry) {
                 Ok(Some(revision)) => revision,
-                // Already acquired (by a graph planner) or superseded.
                 Ok(None) => {
-                    entries.swap_remove(index);
+                    candidates.swap_remove(index);
                     continue;
                 }
                 Err(error) => {
@@ -223,31 +245,22 @@ impl Device {
                     break;
                 }
             };
-            if let Err(error) = drained
-                .try_reserve(1)
-                .map_err(|_| Error::OutOfHostMemory)
-                .and_then(|()| record_acquire(command, &target, entry, revision, &mut scope))
-            {
+            if let Err(error) = record_acquire(command, &target, entry, revision, &mut scope) {
                 outcome = Err(error);
                 break;
             }
-            drained.push(entries.swap_remove(index));
+            drained.push(candidates.swap_remove(index));
         }
         if let Err(error) = outcome {
-            // The command's recorded patches are discarded with it; keep
-            // every acquire pending for a later command.
-            entries.extend(drained);
-            self.queues
-                .pending_acquires
-                .count
-                .store(entries.len(), Ordering::Release);
+            // Both lists were admitted to the original list length before the
+            // drain. Merging this unsubmitted command cannot allocate.
+            candidates.extend(drained);
+            self.requeue_pending_acquires(candidates);
             return Err(error);
         }
-        self.queues
-            .pending_acquires
-            .count
-            .store(entries.len(), Ordering::Release);
-        drop(entries);
+        if !candidates.is_empty() {
+            self.requeue_pending_acquires(candidates);
+        }
         if !drained.is_empty() {
             // SAFETY: `command` is recording on this device; the barrier
             // covers exactly the ranges whose Acquire patches were recorded.

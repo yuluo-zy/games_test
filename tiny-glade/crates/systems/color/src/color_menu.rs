@@ -94,6 +94,7 @@
 //! `(1-e)*0.8+e` 混合 + `rot(clamp[0,1])` 缓动 `*0.2+1.0`），core typed-gap 阻断。
 
 use bevy_ecs::prelude::*;
+use ::utils::scalar::{max_f32, min_f32};
 
 use country_core::resources::color_icon::{CustomizationIcon, CustomizationIconMarkedForDeletion};
 
@@ -105,9 +106,9 @@ pub struct ColorMenuSelection(pub Option<(usize, usize)>);
 /// 0xa0-byte radial-menu owner. Both marked/unmarked branches are preserved.
 pub fn color_button_animations(
     mut icons: Query<(
-        &mut CustomizationIcon,
-        &mut country_core::components::Ui2dExtent,
-        &mut country_core::components::UiDrawOrder,
+        ComponentWrite<CustomizationIcon>,
+        ComponentWrite<country_core::components::Ui2dExtent>,
+        ComponentWrite<country_core::components::UiDrawOrder>,
         Option<&CustomizationIconMarkedForDeletion>,
     )>,
     time: Res<country_core::resources::time::GameTime>,
@@ -123,12 +124,6 @@ pub fn color_button_animations(
     }
 }
 
-fn native_min(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
-}
-fn native_max(a: f32, b: f32) -> f32 {
-    if a > b { a } else { b }
-}
 
 fn animate_icon(
     icon: &mut CustomizationIcon,
@@ -140,8 +135,8 @@ fn animate_icon(
     use utils::easing_functions::EasingFunction;
     icon.alpha_18 += if deleting { delta / -0.15 } else { delta * 4.0 };
     order.0 = u64::from(!deleting);
-    icon.alpha_18 = native_min(icon.alpha_18, 1.0);
-    let progress = native_min(1.0, native_max(0.0, icon.alpha_18));
+    icon.alpha_18 = min_f32(icon.alpha_18, 1.0);
+    let progress = min_f32(1.0, max_f32(0.0, icon.alpha_18));
     let eased = EasingFunction::BackOut.apply(progress);
     extent.size = icon.size * eased;
     if deleting {
@@ -153,7 +148,7 @@ fn animate_icon(
     extent.pos = icon.position * mix + icon.initial_position * (1.0 - mix);
     // This is a per-frame increment in the original, not multiplied by dt.
     let step = if icon.hovered != 0 { 0.15 } else { -0.15 };
-    icon.hover_progress = native_min(1.0, native_max(0.0, icon.hover_progress + step));
+    icon.hover_progress = min_f32(1.0, max_f32(0.0, icon.hover_progress + step));
     let eased = EasingFunction::CubicOut.apply(icon.hover_progress);
     let scale = (1.0 - eased) * 0.0 + eased * 0.2 + 1.0;
     extent.size *= scale;
@@ -169,11 +164,11 @@ fn animate_icon(
 #[allow(clippy::too_many_arguments)]
 pub fn color_menu<S: Send + Sync + 'static>(
     mut icons: Query<(
-        &mut CustomizationIcon,
+        ComponentWrite<CustomizationIcon>,
         Option<&country_core::resources::color_icon::ColorIcon>,
         Option<&country_core::resources::color_icon::WallStyleIcon>,
         &country_core::components::Ui2dExtent,
-        &mut country_core::components::Ui2dImage,
+        ComponentWrite<country_core::components::Ui2dImage>,
     )>,
     mut menus: Query<(Entity, &mut crate::radial_menu::ColorRadialMenu)>,
     mut selection: Local<ColorMenuSelection>,
@@ -255,3 +250,5 @@ mod animation_tests {
         assert!(world.get_entity(pending).is_ok());
     }
 }
+
+use country_core::render::extract::ComponentWrite;

@@ -1,8 +1,8 @@
 //! Device memory blocks (dedicated or suballocated) and device/host memory
 //! accounting.
+use crate::{Error, Result};
 use super::{
     device::Device,
-    error::{Error, Result},
 };
 use crate::device::BudgetCategory;
 use crate::sync::{CompletedValues, MAX_QUEUES, QueueId, SyncPoint};
@@ -194,7 +194,7 @@ impl MemoryBlock {
         let heap = device.core.memory_properties.memory_types[index as usize].heap_index;
         let stats = &device.memory.stats;
         stats.acquire_native_object()?;
-        let handle = match super::error::observe_vulkan(&device, unsafe {
+        let handle = match crate::error::observe_vulkan(&device, unsafe {
             device.core.device.allocate_memory(&info, None)
         }) {
             Ok(handle) => handle,
@@ -370,8 +370,8 @@ pub(crate) fn is_memory_exhaustion(error: &Error) -> bool {
     matches!(error, Error::OutOfDeviceMemory | Error::Exhausted(_))
 }
 
-/// Run `attempt`; on memory exhaustion evict idle cache entries and, when
-/// anything was released, retry exactly once.
+/// After memory exhaustion, reclaim completed idle storage and retry exactly
+/// once. Reported cache bytes do not prove whether native retirement recovered.
 pub(crate) fn with_eviction_retry<T>(
     device: &Device,
     bytes: u64,
@@ -379,11 +379,8 @@ pub(crate) fn with_eviction_retry<T>(
 ) -> Result<T> {
     match attempt() {
         Err(error) if is_memory_exhaustion(&error) => {
-            if device.evict_idle_caches(bytes) != 0 {
-                attempt()
-            } else {
-                Err(error)
-            }
+            device.evict_idle_caches(bytes);
+            attempt()
         }
         result => result,
     }
@@ -589,6 +586,9 @@ fn sub_cpu(usage: &mut crate::device::BudgetUsage, category: BudgetCategory, byt
 }
 impl CpuMemoryReservation {
     pub(crate) fn resize(&mut self, bytes: u64) -> Result<()> {
+        if bytes == self.bytes {
+            return Ok(());
+        }
         let category = self.category;
         let previous = self.bytes;
         self.stats.with_host(|host| {
@@ -614,6 +614,10 @@ impl CpuMemoryReservation {
             return;
         }
         let (from, bytes) = (self.category, self.bytes);
+        if bytes == 0 {
+            self.category = category;
+            return;
+        }
         self.stats.with_host(|host| {
             host.budget.reclassify(from, category, bytes);
             sub_cpu(&mut host.usage, from, bytes);
@@ -625,6 +629,9 @@ impl CpuMemoryReservation {
 impl Drop for CpuMemoryReservation {
     fn drop(&mut self) {
         let (category, bytes) = (self.category, self.bytes);
+        if bytes == 0 {
+            return;
+        }
         self.stats.with_host(|host| {
             host.budget.release(category, bytes);
             sub_cpu(&mut host.usage, category, bytes);
@@ -805,14 +812,16 @@ impl AllocatorStats {
                 "CPU allocation must be live or cached",
             ));
         }
-        self.with_host(|host| {
-            host.budget
-                .reserve(category, bytes)
-                .map_err(|_| Error::OutOfHostMemory)?;
-            add_cpu(&mut host.usage, category, bytes);
-            host.peak = host.peak.max(host.usage.total());
-            Ok::<(), Error>(())
-        })?;
+        if bytes != 0 {
+            self.with_host(|host| {
+                host.budget
+                    .reserve(category, bytes)
+                    .map_err(|_| Error::OutOfHostMemory)?;
+                add_cpu(&mut host.usage, category, bytes);
+                host.peak = host.peak.max(host.usage.total());
+                Ok::<(), Error>(())
+            })?;
+        }
         Ok(CpuMemoryReservation {
             stats: self.clone(),
             bytes,
@@ -865,6 +874,7 @@ impl AllocatorStats {
     /// `bytes` (each is enforced independently). Nothing changes on failure.
     pub fn set_total_budget(&self, bytes: u64) -> Result<()> {
         let mut state = self.state.lock();
+        self.drain_pending(&mut state);
         let mut host = self.host.lock();
         let mut device_budget = state.budget;
         device_budget

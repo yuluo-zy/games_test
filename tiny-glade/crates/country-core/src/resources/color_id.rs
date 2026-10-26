@@ -13,6 +13,8 @@ use bevy_ecs::resource::Resource;
     serde::Deserialize,
 )]
 #[serde(transparent)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct ColorId(pub u32);
 
 impl ColorId {
@@ -528,3 +530,5 @@ mod full_wall_id_tests {
         assert_eq!(core::mem::offset_of!(SetWallColorIdCmd, custom), 12);
     }
 }
+
+impl crate::render::extract::JournaledComponent for ColorId {}

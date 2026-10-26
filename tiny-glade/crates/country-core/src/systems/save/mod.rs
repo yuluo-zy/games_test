@@ -43,7 +43,6 @@ pub fn add_save_load_events_and_resources(world: &mut bevy_ecs::world::World) {
         world.insert_resource(auto);
     }
     world.init_resource::<load_game::LoadGameManager>();
-    world.init_resource::<load_completion_checker::LoadingCompletionState>();
     world.init_resource::<crate::resources::session::SavedSessionList>();
     save_game::register_save_game_events(world);
     if !world.contains_resource::<Events<save_game::SavingGameComplete>>() {

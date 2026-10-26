@@ -1,23 +1,13 @@
-//! Shared archive owner; reuse the existing storage/restore implementation.
+//! 装饰编辑的共享归档 owner，沿用 B 的桶、碰撞快照和恢复生命周期。
 //!
-//! 2026-10-17 archivist 迭代链 5 实现（impl-history-difftypes，fresh decomp
-//! batch1 0x140b2cb30 / 0x140b2be70 / 0x1412b2a70 / 0x1412b3910 / 0x14123b5c0 /
-//! 0x1412b4f10）：
-//! - `extract_diff`（0x140b2cb30）：清碰撞 map → memmove before@+0xc0 / after@+0x150
-//!   （0x90B Decorators，即 recovered 模型 special1/special2）→ 三路 chain
-//!   （walls Drain + special1/2 IntoIter，均经 `extract_archived_decorators` 闭包
-//!   映射为 `(DecoratorStorageAddr, Decorators)`）→ `from_iter<Addr,(AddrState,AddrState)>`
-//!   → filter_map `extract_before_after_all` → `HashMap<Addr, DecoratorStorageHistoryDiff>`；
-//!   后置断言 walls/before/after len==0。
-//! - `extract_before_after_impl`（0x140b2be70）：单地址状态构建（桶 items 逐条目
-//!   `DecoratorInfo → DecoratorHistoryState`，`impl$1::from` 0x140b3f930）。
-//! - `archive_storage_decorators<&str/String>`（0x1412b2a70/0x1412b3910）：
-//!   0=墙（已存在 return + clone 入 walls）/ 1=special1（before @+0xc0，已存在
-//!   return）/ 2=special2（after @+0x150）。**collision collider/mesh 重建**（
-//!   `RaycastWorld::get_collider/get_collider_mesh → HashMap insert (DecoratorId,
-//!   (OffsetColliderTransform, RaycastMesh))`）为 collision 域，登记不实现。
-//! - `archive_current_decorators_in_storage/_in_storages`（0x14123b5c0/0x1412b4f10）：
-//!   经 `DecoratorStorage::get`(0x140a1c2c0) 逐地址归档。
+//! - B @1413e77f0：按 Wall/Terrain/Stair 地址保留首次快照，缺桶也归档为空。
+//! - B @1412b2a70 / @1412b3910：数据桶归档后，依次读取两张活碰撞表，
+//!   保存活 collider 的变换与网格 Arc；快照不依赖随后可能卸载的句柄。
+//! - B @140b2cb30：按地址与当前存储配对，移除原语义相等的条目后产出历史差分，
+//!   同时释放碰撞快照并重置剔除许可。+0xc0/+0x150 是 Terrain/Stair 桶，
+//!   不能误解成全局 before/after。
+//! - B @140b2c4b0：取消编辑时 drain/take 归档桶，经权威存储的 tracked_clone_into
+//!   恢复数据和全局装饰索引；碰撞载荷随归档卸载释放。
 pub use crate::resources::walls::decorator_archivist::changes::DecoratorArchivist;
 pub use crate::resources::walls::decorator_archivist::changes::DecoratorStorage;
 pub use crate::resources::walls::decorator_archivist::changes::ObservedDecoratorInfo;
@@ -38,7 +28,7 @@ use crate::resources::walls::publication_fields::WallId as RecoveredWallId;
 /// B `resources::walls::decorator_archivist::DecoratorArchivalResources`
 /// （`#[derive(SystemParam)]`，`archive_current_decorators_in_storages` 第 5 形参）：
 /// `Res<RaycastWorld>` + `Res<DecoratorPhysicsColliders>`，仅供碰撞体载荷重建读取。
-/// 重建本身属 collision 域（见 `archive_storage_decorators` 说明），本参数面只转交。
+/// 活碰撞体与网格从这两个权威资源读取；资源本身不被归档修改。
 #[derive(bevy_ecs::system::SystemParam)]
 pub struct DecoratorArchivalResources<'w> {
     pub raycast_world: bevy_ecs::system::Res<'w, crate::systems::collision::world::RaycastWorld>,
@@ -53,7 +43,7 @@ pub struct DecoratorArchivalResources<'w> {
 /// addresses copied from a native allocation.
 #[cfg(feature = "native-physics")]
 pub type LiveColliderPayload = (
-    crate::systems::collision::world::OffsetColliderTransform,
+    utils::iso_transform::IsoTransform,
     crate::systems::collision::world::RaycastMesh,
 );
 #[cfg(feature = "native-physics")]
@@ -250,117 +240,140 @@ fn tracked_to_addr_state(tracked: &TrackedDecorators) -> DecoratorStorageAddrHis
     }
 }
 
-/// `extract_before_after_all` 闭包（内联，fresh 不收敛）的 Rust 重建：
-/// 对单地址当前桶，before/after 桶（special1/special2）逐 id 覆盖当前状态；
-/// 未在 before/after 的 id 保持当前状态。**登记 U**：原生闭包体为内联未单解，
-/// 覆盖语义按恢复推断，非判等。
-fn extract_before_after_pair(
-    before: &Option<TrackedDecorators>,
-    after: &Option<TrackedDecorators>,
-    cur: &TrackedDecorators,
-) -> (
-    DecoratorStorageAddrHistoryState,
-    DecoratorStorageAddrHistoryState,
-) {
-    let mut before_states = HashMap::new();
-    let mut after_states = HashMap::new();
-    for (id, info) in &cur.items {
-        let cur_info = observed_to_info(info);
-        let b = before
-            .as_ref()
-            .and_then(|b| b.items.get(id))
-            .map(observed_to_info)
-            .unwrap_or(cur_info);
-        let a = after
-            .as_ref()
-            .and_then(|a| a.items.get(id))
-            .map(observed_to_info)
-            .unwrap_or(cur_info);
-        before_states.insert(DecoratorId(*id), DecoratorHistoryState::from(&b));
-        after_states.insert(DecoratorId(*id), DecoratorHistoryState::from(&a));
+/// B @1415237c0 内联 PartialEq：目的变体只比较有效字段；浮点用 IEEE
+/// 相等比较（NaN 不相等、正负零相等），不能对重建载荷的 u32 位模式派生判等。
+fn history_states_equal(a: &DecoratorHistoryState, b: &DecoratorHistoryState) -> bool {
+    let float_eq = |x: u32, y: u32| f32::from_bits(x) == f32::from_bits(y);
+    let low = |x: u64| x as u32;
+    let high = |x: u64| (x >> 32) as u32;
+    let a_tag = ((a.u20 >> 16) & 0xff) as u8;
+    let b_tag = ((b.u20 >> 16) & 0xff) as u8;
+    let variant = |tag: u8| if (2..=4).contains(&tag) { tag - 1 } else { 0 };
+    if variant(a_tag) != variant(b_tag) {
+        return false;
     }
-    let mut before_removed: HashSet<DecoratorId> =
-        cur.removed.iter().copied().map(DecoratorId).collect();
-    let mut after_removed: HashSet<DecoratorId> =
-        cur.removed.iter().copied().map(DecoratorId).collect();
-    if let Some(b) = before.as_ref() {
-        before_removed.extend(b.removed.iter().copied().map(DecoratorId));
-    }
-    if let Some(a) = after.as_ref() {
-        after_removed.extend(a.removed.iter().copied().map(DecoratorId));
-    }
-    (
-        DecoratorStorageAddrHistoryState {
-            states: before_states,
-            removed: before_removed,
-        },
-        DecoratorStorageAddrHistoryState {
-            states: after_states,
-            removed: after_removed,
-        },
-    )
+    let same_destination = match a_tag {
+        2 | 3 => {
+            float_eq(low(a.dst_wall), low(b.dst_wall))
+                && float_eq(high(a.dst_wall), high(b.dst_wall))
+                && float_eq(low(a.dst_secondary), low(b.dst_secondary))
+        }
+        4 => {
+            a.dst_wall == b.dst_wall
+                && float_eq(low(a.dst_secondary), low(b.dst_secondary))
+                && float_eq(high(a.dst_secondary), high(b.dst_secondary))
+                && float_eq(low(a.dst_payload), low(b.dst_payload))
+        }
+        _ => {
+            a_tag == b_tag
+                && (a.u20 as u16) == (b.u20 as u16)
+                && a.dst_secondary == b.dst_secondary
+                && float_eq(low(a.dst_wall), low(b.dst_wall))
+                && float_eq(high(a.dst_wall), high(b.dst_wall))
+                && float_eq(low(a.dst_payload), low(b.dst_payload))
+                && float_eq(high(a.dst_payload), high(b.dst_payload))
+                && float_eq(low(a.u18), low(b.u18))
+                && float_eq(high(a.u18), high(b.u18))
+        }
+    };
+    same_destination
+        && a.ty == b.ty
+        && a.rank == b.rank
+        && a.u49 == b.u49
+        && a.u28 == b.u28
+        && float_eq(a.u30, b.u30)
+        && a.u34 == b.u34
+        && float_eq(a.u38, b.u38)
+        && float_eq(a.u3c, b.u3c)
+        && a.u40 == b.u40
+        && a.u44 == b.u44
+        && a.u4b == b.u4b
+        && a.u4c == b.u4c
+        && a.u4d == b.u4d
+        && a.style == b.style
 }
 
 impl<C: Send + Sync + 'static> DecoratorArchivist<C> {
-    /// B `extract_diff` 0x140b2cb30：消费归档内容，产出
-    /// `HashMap<DecoratorStorageAddr, DecoratorStorageHistoryDiff>`。
-    ///
-    /// fresh 结构：清 collision_a/b → memmove before@+0xc0 / after@+0x150（= recovered
-    /// special1/special2）→ 三路 chain（walls Drain + special1/2 IntoIter）→
-    /// `from_iter<Addr,(AddrState,AddrState)>` → filter_map → 输出 diff map；
-    /// 后置断言 walls/before/after len==0 panic。collision 重建为 collision 域（登记）。
-    ///
-    /// before/after 配对按 [`extract_before_after_pair`]（登记 U，非判等）。
-    pub fn extract_diff(&mut self) -> HashMap<DecoratorStorageAddr, DecoratorStorageHistoryDiff> {
+    /// B @140b2cb30：每个归档地址的原状态与当前权威存储配对；相同条目从两侧
+    /// 同时删除，剩余条目才进入历史。Terrain/Stair 是独立地址，并非 before/after。
+    /// @1409dd921 记录传 false；@140b382ce 回放清理传 true，跳过附加预览诊断。
+    pub fn extract_diff(
+        &mut self,
+        storage: &LiveDecoratorStorage,
+        skip_preview_validation: bool,
+    ) -> HashMap<DecoratorStorageAddr, DecoratorStorageHistoryDiff> {
         self.collision_a.clear();
         self.collision_b.clear();
         let walls = std::mem::take(&mut self.walls);
-        let before = self.special1.take();
-        let after = self.special2.take();
+        let terrain = self.special1.take();
+        let stair = self.special2.take();
+        let archived = walls
+            .into_iter()
+            .map(|(wall, bucket)| (DecoratorStorageAddr::Wall(WallId(wall.0)), bucket))
+            .chain(
+                terrain
+                    .into_iter()
+                    .map(|bucket| (DecoratorStorageAddr::Terrain, bucket)),
+            )
+            .chain(
+                stair
+                    .into_iter()
+                    .map(|bucket| (DecoratorStorageAddr::Stair, bucket)),
+            );
         let mut out = HashMap::new();
-        for (wall, tracked) in walls {
-            let addr = DecoratorStorageAddr::Wall(WallId(wall.0));
-            let (b, a) = extract_before_after_pair(&before, &after, &tracked);
-            out.insert(
-                addr,
-                DecoratorStorageHistoryDiff {
-                    before: b,
-                    after: a,
-                },
-            );
+        for (address, bucket) in archived {
+            let mut before: HashMap<_, _> = bucket
+                .items
+                .iter()
+                .map(|(id, info)| {
+                    (
+                        DecoratorId(*id),
+                        DecoratorHistoryState::from(&observed_to_info(info)),
+                    )
+                })
+                .collect();
+            let mut after = HashMap::new();
+            if let Some(current) = storage.get(address) {
+                for (id, info) in current.decorators() {
+                    if !skip_preview_validation && info.state != 0 {
+                        panic!(
+                            "Found a preview decorator while trying to extract history diff. {:?}: {:?}",
+                            DecoratorId(*id),
+                            info
+                        );
+                    }
+                    after.insert(DecoratorId(*id), DecoratorHistoryState::from(info));
+                }
+            }
+            // 原 @1415237c0 消费 before 迭代器，同时从 before/after 移除相等项。
+            before.retain(|id, old| {
+                let unchanged = after
+                    .get(id)
+                    .is_some_and(|new| history_states_equal(old, new));
+                if unchanged {
+                    after.remove(id);
+                }
+                !unchanged
+            });
+            if !before.is_empty() || !after.is_empty() {
+                out.insert(
+                    address,
+                    DecoratorStorageHistoryDiff {
+                        before: DecoratorStorageAddrHistoryState {
+                            states: before,
+                            removed: HashSet::new(),
+                        },
+                        after: DecoratorStorageAddrHistoryState {
+                            states: after,
+                            removed: HashSet::new(),
+                        },
+                    },
+                );
+            }
         }
-        // fresh：三路 chain 中 special1/special2 条目也经 extract_before_after_all 产出
-        // diff（Terrain / Stair 地址）。此前 Rust 只遍历 walls。
-        if let Some(tracked) = &before {
-            let (b, a) = extract_before_after_pair(&before, &after, tracked);
-            out.insert(
-                DecoratorStorageAddr::Terrain,
-                DecoratorStorageHistoryDiff {
-                    before: b,
-                    after: a,
-                },
-            );
-        }
-        if let Some(tracked) = &after {
-            let (b, a) = extract_before_after_pair(&before, &after, tracked);
-            out.insert(
-                DecoratorStorageAddr::Stair,
-                DecoratorStorageHistoryDiff {
-                    before: b,
-                    after: a,
-                },
-            );
-        }
-        // 后置断言（fresh：in_RDX[3]=walls len、in_RDX[0x18]=before、in_RDX[0x2a]=after）。
-        assert!(self.walls.is_empty(), "assertion failed: walls.is_empty()");
-        assert!(
-            self.special1.is_none(),
-            "assertion failed: special1.is_none()"
-        );
-        assert!(
-            self.special2.is_none(),
-            "assertion failed: special2.is_none()"
-        );
+        // B @140b2cc8d..ccd2：一次提取结束本轮允许剔除的装饰集合和全允许标志。
+        self.culling.allowed_ids.clear();
+        self.culling.allow_any = false;
         out
     }
 
@@ -411,9 +424,8 @@ impl<C: Send + Sync + 'static> DecoratorArchivist<C> {
     /// - 墙：源桶已存在（walls 探针）则 return；否则 clone 入 archivist.walls。
     /// - special1/2：对应区已存在（首 qword 非 0）则 return；否则克隆入。
     ///
-    /// 原生还做 collision collider/mesh 重建（get_collider/get_collider_mesh →
-    /// `HashMap insert (DecoratorId,(OffsetColliderTransform,RaycastMesh))`）——
-    /// 属 collision 域（RaycastMesh/OffsetColliderTransform），登记不实现。
+    /// 此兼容入口只接收数据桶；实际编辑必须使用带真实资源的归档入口，
+    /// 才能同时保存 collider 位姿和网格。
     pub fn archive_storage_decorators(
         &mut self,
         selector: u8,
@@ -470,6 +482,97 @@ impl<C: Send + Sync + 'static> DecoratorArchivist<C> {
     }
 }
 
+/// 原 B `archive_storage_decorators` 的碰撞载荷适配。原生先复制活 collider 的
+/// 28B 平移/四元数，再克隆完整 RaycastMesh；不保存句柄，也不额外克隆 shape Arc。
+#[cfg(feature = "native-physics")]
+fn archive_live_collider_map(
+    target: &mut HashMap<u32, LiveColliderPayload>,
+    decorators: &crate::resources::walls::decorator_storage::Decorators,
+    colliders: &HashMap<DecoratorId, crate::systems::collision::world::ColliderMeshInstance>,
+    world: &crate::systems::collision::world::RaycastWorld,
+) {
+    for id in decorators.decorators().keys() {
+        let Some(instance) = colliders.get(&DecoratorId(*id)) else {
+            continue;
+        };
+        // B @1412b30b0 / @1412b33c0：网格索引来自活 collider.user_data，
+        // 不能以装饰表可能陈旧的 registry_index/generation 代替。
+        let collider = world.get_collider(instance.handle());
+        assert_ne!(
+            collider.generation, 0,
+            "archived collider has no mesh generation"
+        );
+        let mesh = world.get_collider_mesh(collider.generation_low as u32, collider.generation);
+        let transform = utils::iso_transform::IsoTransform::from_translation_rotation(
+            collider.position,
+            collider.rotation,
+        );
+        // 原 insert 会替换重复 id 并释放旧网格 Arc，而不是保留先到的碰撞载荷。
+        target.insert(*id, (transform, mesh.clone()));
+    }
+}
+
+impl LiveDecoratorArchivist {
+    /// B @1413e77f0 的地址切片单态适配：逐地址归档原始桶，再读取两张碰撞表。
+    /// 缺失的桶也归档为空桶，才能撤销本轮新创建的存储；同地址只归档一次。
+    /// `source` 是原版调用来源诊断标签，不进入持久化/历史载荷。
+    pub fn archive_current_decorators_in_storages_with_resources(
+        &mut self,
+        addresses: &[DecoratorStorageAddr],
+        storage: &LiveDecoratorStorage,
+        resources: &DecoratorArchivalResources<'_>,
+        source: &str,
+    ) {
+        for &address in addresses {
+            self.archive_current_decorators_at_with_resources(address, storage, resources, source);
+        }
+    }
+
+    /// 单地址入口保持同一 archivist owner，供其它编辑系统逐步迁移。
+    pub fn archive_current_decorators_at_with_resources(
+        &mut self,
+        address: DecoratorStorageAddr,
+        storage: &LiveDecoratorStorage,
+        resources: &DecoratorArchivalResources<'_>,
+        _source: &str,
+    ) {
+        let exists = match address {
+            DecoratorStorageAddr::Wall(wall) => self.walls.contains_key(&RecoveredWallId(wall.0)),
+            DecoratorStorageAddr::Terrain => self.special1.is_some(),
+            DecoratorStorageAddr::Stair => self.special2.is_some(),
+        };
+        if exists {
+            return;
+        }
+        let empty = crate::resources::walls::decorator_storage::Decorators::default();
+        let decorators = storage.get(address).unwrap_or(&empty);
+        let (selector, wall) = match address {
+            DecoratorStorageAddr::Wall(wall) => (0, Some(wall)),
+            DecoratorStorageAddr::Terrain => (1, None),
+            DecoratorStorageAddr::Stair => (2, None),
+        };
+        self.archive_storage_decorators(selector, decorators, wall);
+        #[cfg(feature = "native-physics")]
+        {
+            // 原执行序为整桶 first，再整桶 second，保持两类碰撞形状彼此独立。
+            archive_live_collider_map(
+                &mut self.collision_a,
+                decorators,
+                &resources.colliders.first,
+                &resources.raycast_world,
+            );
+            archive_live_collider_map(
+                &mut self.collision_b,
+                decorators,
+                &resources.colliders.second,
+                &resources.raycast_world,
+            );
+        }
+        #[cfg(not(feature = "native-physics"))]
+        let _ = resources;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -506,11 +609,11 @@ mod tests {
         archivist
             .walls
             .insert(RecoveredWallId(7), decos_to_tracked(&live_bucket(1, 7)));
-        let out = archivist.extract_diff();
+        let out = archivist.extract_diff(&LiveDecoratorStorage::default(), false);
         let diff = out.get(&DecoratorStorageAddr::Wall(WallId(7))).unwrap();
         assert_eq!(diff.before.states.len(), 1);
-        assert_eq!(diff.before.removed.len(), 1);
-        assert!(diff.before.removed.contains(&DecoratorId(999)));
+        assert!(diff.before.removed.is_empty());
+        assert!(diff.after.states.is_empty());
         // 归档已清空。
         assert!(archivist.walls.is_empty());
         assert!(archivist.special1.is_none());
@@ -596,9 +699,7 @@ mod tests {
         let mut archivist = empty_archivist();
         // 原版放行读的是存储里的墙桶，不是 archivist 自己的 walls。
         let mut storage = LiveDecoratorStorage::default();
-        storage
-            .per_wall
-            .insert(WallId(1), live_bucket(10, 0));
+        storage.per_wall.insert(WallId(1), live_bucket(10, 0));
         archivist.decorator_cull_allow_wall(WallId(2), &storage);
         assert!(archivist.culling.allowed_ids.is_empty());
         archivist.decorator_cull_allow_wall(WallId(1), &storage);
@@ -674,13 +775,271 @@ mod tests {
             .insert(RecoveredWallId(3), tracked_bucket(10));
         archivist.special1 = Some(tracked_bucket(11));
         archivist.special2 = Some(tracked_bucket(12));
-        let out = archivist.extract_diff();
+        let out = archivist.extract_diff(&LiveDecoratorStorage::default(), false);
         assert!(out.contains_key(&DecoratorStorageAddr::Wall(WallId(3))));
         assert!(out.contains_key(&DecoratorStorageAddr::Terrain));
         assert!(out.contains_key(&DecoratorStorageAddr::Stair));
         assert!(archivist.walls.is_empty());
         assert!(archivist.special1.is_none());
         assert!(archivist.special2.is_none());
+    }
+
+    #[test]
+    fn extract_diff_compares_each_current_address_filters_unchanged_and_replays_both_directions() {
+        use crate::resources::walls::decorator::{DecoratorIdGen, DeferredDecoratorOpEvents};
+        use crate::resources::walls::decorator_storage::DecoratorColliderRemover;
+        struct NoPhysics;
+        impl DecoratorColliderRemover for NoPhysics {
+            fn remove_decorator_collider(&mut self, _: DecoratorId) {}
+        }
+        let wall = DecoratorStorageAddr::Wall(WallId(5));
+        let terrain = DecoratorStorageAddr::Terrain;
+        let stair = DecoratorStorageAddr::Stair;
+        let mut storage = LiveDecoratorStorage::default();
+        for (address, id) in [(wall, 10), (terrain, 20), (stair, 30)] {
+            storage.apply_decorator_place(
+                address,
+                DecoratorId(id),
+                &DecoratorInfo {
+                    decorator_id: id,
+                    ..Default::default()
+                },
+            );
+        }
+        let mut archive = empty_archivist();
+        archive.archive_current_decorators_in_storage(&storage);
+        archive.decorator_cull_allow_any();
+        archive.culling.allowed_ids.insert(10);
+        storage
+            .get_or_insert_default(wall)
+            .decorators
+            .get_mut(&10)
+            .unwrap()
+            .rank = 2;
+        // 原移除/加入依赖全局d2s索引，使用已有权威入口更新。
+        storage.apply_decorator_remove(terrain, DecoratorId(20));
+        storage.apply_decorator_place(
+            terrain,
+            DecoratorId(21),
+            &DecoratorInfo {
+                decorator_id: 21,
+                ..Default::default()
+            },
+        );
+        let diff = archive.extract_diff(&storage, false);
+        assert_eq!(diff.len(), 2);
+        assert!(!diff.contains_key(&stair));
+        assert_eq!(diff[&wall].before.states[&DecoratorId(10)].rank, 0);
+        assert_eq!(diff[&wall].after.states[&DecoratorId(10)].rank, 2);
+        assert!(diff[&terrain].before.states.contains_key(&DecoratorId(20)));
+        assert!(diff[&terrain].after.states.contains_key(&DecoratorId(21)));
+        assert!(archive.culling.allowed_ids.is_empty());
+        assert!(!archive.culling.allow_any);
+        let mut ids = DecoratorIdGen::default();
+        let events = DeferredDecoratorOpEvents::default();
+        storage.restore_decorators(&diff, true, &mut ids, &mut NoPhysics, &events);
+        assert_eq!(storage.get(wall).unwrap().decorators()[&10].rank, 0);
+        assert!(storage.get(terrain).unwrap().decorators().contains_key(&20));
+        assert!(!storage.get(terrain).unwrap().decorators().contains_key(&21));
+        storage.restore_decorators(&diff, false, &mut ids, &mut NoPhysics, &events);
+        assert_eq!(storage.get(wall).unwrap().decorators()[&10].rank, 2);
+        assert!(!storage.get(terrain).unwrap().decorators().contains_key(&20));
+        assert!(storage.get(terrain).unwrap().decorators().contains_key(&21));
+    }
+
+    #[test]
+    fn history_equality_uses_variant_payload_and_native_float_semantics() {
+        let mut a = DecoratorHistoryState::default();
+        let mut b = a;
+        b.dst_wall = 0x8000_0000;
+        assert!(history_states_equal(&a, &b));
+        a.dst_wall = 0x7fc0_0000;
+        b.dst_wall = a.dst_wall;
+        assert!(!history_states_equal(&a, &b));
+        a = DecoratorHistoryState {
+            u20: 3 << 16,
+            ..Default::default()
+        };
+        b = a;
+        b.dst_payload = u64::MAX;
+        b.u18 = u64::MAX;
+        b.u24 = u32::MAX;
+        assert!(history_states_equal(&a, &b));
+        b.u28 = 1;
+        assert!(!history_states_equal(&a, &b));
+    }
+
+    #[test]
+    fn resource_archive_records_missing_buckets_and_preserves_first_snapshot() {
+        use bevy_ecs::system::SystemState;
+        let mut world = bevy_ecs::world::World::new();
+        world.init_resource::<crate::systems::collision::world::RaycastWorld>();
+        #[cfg(feature = "native-physics")]
+        world.init_resource::<crate::resources::walls::decorator_collision::DecoratorPhysicsColliders>();
+        let mut params = SystemState::<DecoratorArchivalResources>::new(&mut world);
+        let mut archivist = LiveDecoratorArchivist::default();
+        let mut storage = LiveDecoratorStorage::default();
+        let addresses = [
+            DecoratorStorageAddr::Wall(WallId(51)),
+            DecoratorStorageAddr::Terrain,
+            DecoratorStorageAddr::Stair,
+        ];
+        archivist.archive_current_decorators_in_storages_with_resources(
+            &addresses,
+            &storage,
+            &params.get(&world),
+            "change_elevation",
+        );
+        for (index, address) in addresses.into_iter().enumerate() {
+            storage
+                .get_or_insert_default(address)
+                .insert(DecoratorId(90 + index as u32), DecoratorInfo::default());
+        }
+        for (index, address) in addresses.into_iter().enumerate() {
+            storage
+                .decorator_to_storage
+                .insert(DecoratorId(90 + index as u32), address);
+        }
+        archivist.archive_current_decorators_in_storages_with_resources(
+            &addresses,
+            &storage,
+            &params.get(&world),
+            "change_elevation",
+        );
+        assert_eq!(archivist.all_storages().count(), 3);
+        assert_eq!(archivist.all_decorators().count(), 0);
+        archivist.extract_and_restore_to_storage(&mut storage);
+        assert_eq!(archivist.all_storages().count(), 0);
+        for address in addresses {
+            assert!(storage.get(address).unwrap().decorators().is_empty());
+        }
+    }
+
+    #[cfg(feature = "native-physics")]
+    #[test]
+    fn resource_archive_owns_both_live_meshes_across_disposal_and_releases_on_restore() {
+        use crate::resources::walls::decorator_collision::DecoratorPhysicsColliders;
+        use crate::systems::collision::world::{
+            RaycastGeoSource, RaycastMeshData, RaycastWorld, upsert_collider,
+        };
+        use bevy_ecs::system::SystemState;
+        use glam::{Quat, Vec3};
+        use std::sync::Arc;
+        let id = DecoratorId(71);
+        let address = DecoratorStorageAddr::Wall(WallId(8));
+        let mut storage = LiveDecoratorStorage::default();
+        storage.get_or_insert_default(address).insert(
+            id,
+            DecoratorInfo {
+                decorator_id: id.0,
+                dst_wall: 8,
+                u40: 3 << 8,
+                ..Default::default()
+            },
+        );
+        storage.decorator_to_storage.insert(id, address);
+        let mut raycast = RaycastWorld::new();
+        let mut maps = DecoratorPhysicsColliders::default();
+        let data_a = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::Y));
+        let data_b = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(2.0), Vec3::X));
+        let weak_a = Arc::downgrade(&data_a);
+        let weak_b = Arc::downgrade(&data_b);
+        let rotation = Quat::from_rotation_z(0.37);
+        upsert_collider(
+            &mut raycast,
+            &mut maps.first,
+            id,
+            RaycastGeoSource::decorator(id, address),
+            data_a.clone(),
+            Vec3::new(3.0, 4.0, 5.0),
+            rotation,
+        );
+        upsert_collider(
+            &mut raycast,
+            &mut maps.second,
+            id,
+            RaycastGeoSource::decorator_interaction(id, address, 0),
+            data_b.clone(),
+            Vec3::new(-2.0, 1.0, 8.0),
+            Quat::IDENTITY,
+        );
+        let pose_a = raycast.get_collider(maps.first[&id].handle());
+        let pose_b = raycast.get_collider(maps.second[&id].handle());
+        // 表中注册回执故意陈旧；B 依然以活 collider.user_data 查询网格。
+        maps.first.get_mut(&id).unwrap().registry_index = u32::MAX;
+        maps.first.get_mut(&id).unwrap().generation = u32::MAX;
+        let mut world = bevy_ecs::world::World::new();
+        world.insert_resource(raycast);
+        world.insert_resource(maps);
+        let mut params = SystemState::<DecoratorArchivalResources>::new(&mut world);
+        let mut archivist = LiveDecoratorArchivist::default();
+        archivist.archive_current_decorators_in_storages_with_resources(
+            &[address],
+            &storage,
+            &params.get(&world),
+            "change_elevation",
+        );
+        let (transform_a, mesh_a) = &archivist.collision_a[&id.0];
+        let (transform_b, mesh_b) = &archivist.collision_b[&id.0];
+        assert_eq!(transform_a.translation, pose_a.position);
+        assert_eq!(transform_a.rotation, pose_a.rotation);
+        assert_eq!(transform_b.translation, pose_b.position);
+        assert_eq!(transform_b.rotation, pose_b.rotation);
+        assert!(Arc::ptr_eq(&mesh_a.data, &data_a));
+        assert!(Arc::ptr_eq(&mesh_b.data, &data_b));
+        assert_ne!(mesh_a.source, mesh_b.source);
+        drop(data_a);
+        drop(data_b);
+        // 销毁整个活世界后归档仍持有原网格；恢复只移回数据，碰撞快照卸载释放。
+        drop(params);
+        drop(world);
+        assert!(weak_a.upgrade().is_some());
+        assert!(weak_b.upgrade().is_some());
+        storage
+            .get_or_insert_default(address)
+            .decorators
+            .get_mut(&id.0)
+            .unwrap()
+            .u40 = 9 << 8;
+        archivist.extract_and_restore_to_storage(&mut storage);
+        assert_eq!(
+            storage.get(address).unwrap().decorators()[&id.0].extra_style(),
+            3
+        );
+        assert!(archivist.collision_a.is_empty());
+        assert!(archivist.collision_b.is_empty());
+        assert!(weak_a.upgrade().is_none());
+        assert!(weak_b.upgrade().is_none());
+    }
+
+    #[cfg(feature = "native-physics")]
+    #[test]
+    #[should_panic(expected = "get_collider: collider handle invalid")]
+    fn resource_archive_rejects_stale_live_handle_instead_of_silent_missing_mesh() {
+        use crate::systems::collision::world::{
+            RaycastGeoSource, RaycastMeshData, RaycastWorld, upsert_collider,
+        };
+        use glam::{Quat, Vec3};
+        use std::sync::Arc;
+        let id = DecoratorId(70);
+        let mut colliders = HashMap::new();
+        let mut world = RaycastWorld::new();
+        upsert_collider(
+            &mut world,
+            &mut colliders,
+            id,
+            RaycastGeoSource::decorator(id, DecoratorStorageAddr::Terrain),
+            Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)),
+            Vec3::ZERO,
+            Quat::IDENTITY,
+        );
+        world.on_level_reload();
+        archive_live_collider_map(
+            &mut HashMap::new(),
+            &live_bucket(id.0, 0),
+            &colliders,
+            &world,
+        );
     }
 }
 

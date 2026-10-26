@@ -72,6 +72,8 @@ impl BrickSourceId {
 ///
 /// 不实现 Clone，避免复制实体时无意共享 GPU 分配；新实体应显式传入砖列表。
 #[derive(Clone, bevy_ecs::component::Component, Debug)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct InstancedWall<T> {
     pub id: u64,
     brick_transforms: Vec<T>,
@@ -207,7 +209,7 @@ impl<T: SparseSsbo> InstancedWall<T> {
     }
 
     /// 返回是否写入了新版本。容量失败不清空 CPU 数据、不破坏旧分配；无更新直接返回。
-    /// GPU 提交由共享缓冲的 try_gpu_flush 统一完成。
+    /// GPU 提交由共享缓冲的 gpu_flush 统一完成。
     pub fn upload_to_storage_buffer(
         &mut self,
         storage: &mut SparseInstanceBuffer<T>,
@@ -379,6 +381,8 @@ pub fn populate_brick_ssbo_library(
 /// Field names remain observed byte offsets: semantic enum names are unproved.
 #[repr(C)]
 #[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct WallBrickInstancedDrawProxy {
     pub b0: u8,
     pub b1: u8,
@@ -457,3 +461,7 @@ mod assembly_owner_tests {
         assert_eq!(awaiting.validate_assembly_ownership(&foreign), Err(WallUploadError::ForeignStorage));
     }
 }
+
+impl crate::render::extract::JournaledComponent for WallBrickInstancedDrawProxy {}
+
+impl<T: Clone + Send + Sync + 'static> crate::render::extract::JournaledComponent for InstancedWall<T> {}

@@ -1,5 +1,9 @@
 //! Strict MSAA source -> original downsample/capture shaders -> canonical slots
 //! -> original buffer shader -> actual mapped bytes. Red is a bounded fixture.
+#[path = "support/mod.rs"]
+mod test_support;
+use test_support::ShaderTestDriver as _;
+use test_support::BridgeTestDriver as _;
 use ash::vk::{self, Handle};
 use country_core::{
     asset_libraries::{
@@ -205,10 +209,10 @@ fn original_shared_captures_keep_msaa_pixels_and_actual_slot_owners() -> anyhow:
         Ok((gallery_id, menu_id))
         })
     })?;
-    bridge.shader_backend().prewarm(Duration::from_secs(10))?;
+    bridge.shader_backend().prepare_test_pipelines(Duration::from_secs(10))?;
     let capture_graph_id = built.graph_id();
     let compiled = bridge.compile_built(built)?;
-    let receipt = bridge.execute_compiled(compiled)?;
+    let receipt = bridge.execute_after_uploads(compiled)?;
     tiny_glade::screenshot::shared_texture_capture::submitted(app.world_mut(), &mut bridge, capture_graph_id, &receipt)?;
     assert!(!receipt.receipts.is_empty());
     bridge.wait_submits_done(10_000_000_000)?;
@@ -217,5 +221,45 @@ fn original_shared_captures_keep_msaa_pixels_and_actual_slot_owners() -> anyhow:
     assert_eq!(&pixels[(64 * 128 + 64) * 4..][..4], &[255, 0, 0, 255]);
     assert!(bridge.hosts().textures.get_by_id(gallery_id).is_some());
     assert!(bridge.hosts().textures.get_by_id(menu_id).is_some());
+    // A declared capture cancelled before submission must retain its request,
+    // then deliver exactly once from the replacement graph after resize/control.
+    use tiny_glade::screenshot::{ScreenshotRequest, ScreenshotPurpose, ScreenshotSink};
+    let (completed, completion) = std::sync::mpsc::channel();
+    let (pixels_sent, pixels_received) = std::sync::mpsc::channel();
+    tiny_glade::screenshot::gather_screenshot_requests(app.world_mut(), [ScreenshotRequest {
+        purpose: ScreenshotPurpose::FinalFrame,
+        dimensions: Some([32, 24]),
+        sink: ScreenshotSink::Rgba(Arc::new(move |w, h, rgba| { pixels_sent.send((w, h, rgba)).unwrap(); })),
+        completion: Some(Arc::new(move |result| { completed.send(result).unwrap(); })),
+    }])?;
+    for cancel in [true, false] {
+        let (_, built) = bridge.build_frame(|frame| {
+            tiny_glade::frame_setup::with_frame_resources(frame, app.world_mut(), |frame, world| {
+                let input = frame.import_native_texture(source.clone(), 0x22)?;
+                assert_eq!(tiny_glade::screenshot::shared_texture_capture::opportunity(frame, world, 6,
+                    RgTexture { resource: input.raw(), desc: country_core::rhapsody_types::TextureDesc::new_2d([128, 128], 0x25) }, 4)?, 1);
+                Ok(())
+            })
+        })?;
+        let graph_id = built.graph_id();
+        if cancel {
+            tiny_glade::screenshot::shared_texture_capture::cancel_unsubmitted(app.world_mut(), graph_id);
+            drop(built);
+            assert!(completion.try_recv().is_err());
+            assert!(pixels_received.try_recv().is_err());
+        } else {
+            bridge.shader_backend().prepare_test_pipelines(Duration::from_secs(10))?;
+            let compiled = bridge.compile_built(built)?;
+            let receipt = bridge.execute_after_uploads(compiled)?;
+            tiny_glade::screenshot::shared_texture_capture::submitted(app.world_mut(), &mut bridge, graph_id, &receipt)?;
+        }
+    }
+    tiny_glade::screenshot::shared_texture_capture::shutdown(app.world_mut())?;
+    assert_eq!(completion.recv_timeout(Duration::from_secs(5))?, Ok([32, 24]));
+    let (w, h, pixels) = pixels_received.recv_timeout(Duration::from_secs(5))?;
+    assert_eq!((w, h, pixels.len()), (32, 24, 32 * 24 * 4));
+    assert_eq!(&pixels[(12 * 32 + 16) * 4..][..4], &[255, 0, 0, 255]);
+    assert!(completion.try_recv().is_err());
+    assert!(pixels_received.try_recv().is_err());
     Ok(())
 }

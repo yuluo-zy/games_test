@@ -112,6 +112,15 @@ fn formatted_date_time() -> String {
 ///
 /// `level` = main 传入的 `LevelFilter`（`0x1403dd06d`：`ecx=3` = Info）；
 /// `file_logging` = 第二参数 bool（`in_DL`）。
+struct RenderLog;
+impl log::Log for RenderLog {
+    fn enabled(&self, _: &log::Metadata<'_>) -> bool { true }
+    fn log(&self, record: &log::Record<'_>) {
+        rhapsody::record_log(format_args!("{}", record.args()));
+    }
+    fn flush(&self) {}
+}
+
 pub fn set_up_logging(
     level: log::LevelFilter,
     file_logging: bool,
@@ -128,6 +137,7 @@ pub fn set_up_logging(
         let _ = colored::control::set_virtual_terminal(true);
     }
 
+    rhapsody::init_logging();
     let mut dispatch = fern::Dispatch::new()
         .level(level)
         .format(|out, message, record| {
@@ -140,7 +150,8 @@ pub fn set_up_logging(
                 message
             ))
         })
-        .chain(std::io::stdout());
+        .chain(std::io::stdout())
+        .chain(Box::new(RenderLog) as Box<dyn log::Log>);
 
     if file_logging {
         dispatch = dispatch

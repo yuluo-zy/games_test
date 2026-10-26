@@ -2,6 +2,7 @@
 //! Does not implement history cursor selection, ECS lookup or event scheduling.
 use super::edit_rules::{RoofEditEvent, ScalarEdit, TipEdit};
 use glam::Vec2;
+use ::utils::bytes::read_f32_le as get;
 use tg_history::{RidgeDirection, RoofDirectionEdit, RoofVisualEdit};
 
 /// Game event fields from the other B replay branches. Queue metadata and ECS
@@ -248,9 +249,6 @@ impl VisualReplayState {
     }
 }
 
-fn get(bytes: &[u8], offset: usize) -> f32 {
-    f32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
-}
 fn invalid_result(value: f32, a: f32, b: f32) -> f32 {
     if value.is_nan() && !a.is_nan() && !b.is_nan() {
         f32::from_bits(0xffc00000)

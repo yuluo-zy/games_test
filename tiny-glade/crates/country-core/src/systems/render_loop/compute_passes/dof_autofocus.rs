@@ -11,8 +11,8 @@
 //!    `mouse_pos`（仅 `mode == 2` 才取）。
 //! 2. `point_uv`：
 //!    * `mode == 2`：`(mouse + (0.5, 0.5)) / window`（O：`addps [0.5,0.5]` → `cvtsi2ss`/`divps`；`use_dual_focus` 槽写 `true`）；
-//!    * `mode == 3`：`(0.5 + cam[+8] / aspect * 0.5, 0.5 - cam[+4] * 0.5)`；
-//!    * 其余：`(0.5 + cam[+0x14] / aspect * 0.5, 0.5 - cam[+0x10] * 0.5)`；`aspect = w / h`（`cvtsi2ss`，h=0 得 inf，不 panic）。
+//!    * `mode == 3`：`(0.5 + cam[+4] / aspect * 0.5, 0.5 - cam[+8] * 0.5)`；
+//!    * 其余：`(0.5 + cam[+0x10] / aspect * 0.5, 0.5 - cam[+0x14] * 0.5)`；`aspect = w / h`（`cvtsi2ss`，h=0 得 inf，不 panic）。
 //! 3. 7 个 uniform（顺序 O）：`point_uv`(Vec2)、`use_dual_focus`(bool)、`focus_box_height`(f32 = `cam[+0x18]`)、
 //!    `focus_lock_request`(i32)、`focus_is_locked`(bool = `mode < 2 && view_kind == 0x13`)、
 //!    `use_tilt_shift`(bool = `camx[+0x128]`)、`aperture_size`(f32 = `camx[+0x118]`)。
@@ -224,8 +224,10 @@ pub fn autofocus_uniforms(i: &AutofocusInputs) -> AutofocusUniforms {
                 true,
             )
         }
-        1 => (cam_point(i, i.focus.f08, i.focus.f04), false),
-        _ => (cam_point(i, i.focus.f14, i.focus.f10), false),
+        // 原 RNE140a17af5..b55：RCX 选 X 偏移并先除 aspect，RAX 选 Y；
+        // 后续两次 shuffle 才得到最终 UV，不能按 unpcklps 的中间值倒置。
+        1 => (cam_point(i, i.focus.f04, i.focus.f08), false),
+        _ => (cam_point(i, i.focus.f10, i.focus.f14), false),
     };
     AutofocusUniforms {
         point_uv,
@@ -336,7 +338,7 @@ mod tests {
         i.mouse_pos = None;
         i.focus.mode = 3;
         let u = autofocus_uniforms(&i);
-        assert_eq!(u.point_uv, [0.5 + (0.4 / 2.0) * 0.5, 0.5 - 0.2 * 0.5]);
+        assert_eq!(u.point_uv, [0.5 + (0.2 / 2.0) * 0.5, 0.5 - 0.4 * 0.5]);
         assert!(!u.use_dual_focus);
         for mode in [0u32, 1, 4, 99] {
             i.focus.mode = mode;
@@ -344,9 +346,39 @@ mod tests {
             let u = autofocus_uniforms(&i);
             assert_eq!(
                 u.point_uv,
-                [0.5 + (0.8 / 2.0) * 0.5, 0.5 - 0.6 * 0.5],
+                [0.5 + (0.6 / 2.0) * 0.5, 0.5 - 0.8 * 0.5],
                 "mode {mode}"
             );
+        }
+    }
+
+    #[test]
+    fn camera_uniform_uv_matches_original_rne_instructions() {
+        let original: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/native/toolbar-autofocus.json"
+        ))).unwrap();
+        assert_eq!(original["binary_sha256"],
+            "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03");
+        let rows = original["cases"].as_array().unwrap();
+        assert_eq!(rows.len(), 180);
+        for (index, row) in rows.iter().enumerate() {
+            let mut i = inputs();
+            i.focus.mode = row["mode"].as_u64().unwrap() as u32;
+            i.window.width = row["window"][0].as_u64().unwrap() as u32;
+            i.window.height = row["window"][1].as_u64().unwrap() as u32;
+            let value = |field: usize| {
+                f32::from_bits(row["focus_bits"][field].as_u64().unwrap() as u32)
+            };
+            i.focus.f04 = value(0);
+            i.focus.f08 = value(1);
+            i.focus.f10 = value(2);
+            i.focus.f14 = value(3);
+            i.mouse_pos = None;
+            let expected = std::array::from_fn::<_, 2, _>(|field| {
+                row["uv_bits"][field].as_u64().unwrap() as u32
+            });
+            assert_eq!(autofocus_uniforms(&i).point_uv.map(f32::to_bits), expected,
+                "原指令对照失败：case={index} mode={} window={:?}", i.focus.mode, i.window);
         }
     }
 

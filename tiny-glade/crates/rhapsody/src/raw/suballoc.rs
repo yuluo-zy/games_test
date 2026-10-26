@@ -1,55 +1,22 @@
 //! Device memory suballocation through `gpu-allocator` 0.27, exposed at the
 //! [`AllocationBackend`] boundary.
 //!
-//! Modes: `Suballocated` (default) and `Dedicated` (one `VkDeviceMemory` per
-//! resource, for comparison). The process default can be overridden with
-//! `RHAPSODY_ALLOCATION=dedicated`.
+//! Allocation strategy is selected once through DeviceConfig; no process-wide
+//! mutable defaults or environment-based allocation mode exists.
+use crate::{Error, Result};
 use super::{
     allocator::{
         AllocationBackend, AllocationRequest, AllocatorReport, MemoryBlock, MemoryLocation,
     },
     device::Device,
-    error::{Error, Result},
 };
 use ash::vk;
 use gpu_allocator::vulkan::{Allocation, AllocationCreateDesc, AllocationScheme, Allocator};
 use parking_lot::Mutex;
 use std::sync::{
     Arc,
-    atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering},
+    atomic::{AtomicBool, AtomicU64, Ordering},
 };
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum AllocationMode {
-    /// One dedicated `VkDeviceMemory` per resource.
-    Dedicated,
-    /// 经 gpu-allocator 在大块内子分配。
-    Suballocated,
-}
-
-const UNSET: u8 = 0;
-const DEDICATED: u8 = 1;
-const SUBALLOCATED: u8 = 2;
-static DEFAULT_MODE: AtomicU8 = AtomicU8::new(UNSET);
-
-/// 之后创建的设备使用的默认分配模式。已创建的设备不受影响。
-pub fn set_default_allocation_mode(mode: AllocationMode) {
-    let value = match mode {
-        AllocationMode::Dedicated => DEDICATED,
-        AllocationMode::Suballocated => SUBALLOCATED,
-    };
-    DEFAULT_MODE.store(value, Ordering::SeqCst);
-}
-pub fn default_allocation_mode() -> AllocationMode {
-    match DEFAULT_MODE.load(Ordering::SeqCst) {
-        DEDICATED => AllocationMode::Dedicated,
-        SUBALLOCATED => AllocationMode::Suballocated,
-        _ => match std::env::var("RHAPSODY_ALLOCATION").as_deref() {
-            Ok("dedicated") => AllocationMode::Dedicated,
-            _ => AllocationMode::Suballocated,
-        },
-    }
-}
 
 // gpu-allocator 0.27 retains non-device-OOM Vulkan allocation failures as an
 // exact diagnostic string. Preserve those categories at this pinned boundary.
@@ -109,6 +76,7 @@ struct Shard {
     active_general_blocks: usize,
 }
 struct NativeBlock {
+    counted: bool,
     memory: vk::DeviceMemory,
     size: u64,
     live: usize,
@@ -285,6 +253,7 @@ impl SubAllocator {
                     size
                 };
                 shard.blocks.push(NativeBlock {
+                    counted: have_slot,
                     memory,
                     size: block_size,
                     live: 1,
@@ -386,7 +355,7 @@ impl SubAllocator {
             let block = shard.blocks.swap_remove(position);
             shard.reserved = shard.reserved.saturating_sub(block.size);
             self.reserved_total.fetch_sub(block.size, Ordering::AcqRel);
-            self.stats.release_native_object();
+            if block.counted { self.stats.release_native_object(); }
         }
     }
     /// Destroy an empty shard's allocator and all of its native blocks.
@@ -394,8 +363,8 @@ impl SubAllocator {
         if shard.allocator.take().is_none() {
             return 0;
         }
-        for _ in shard.blocks.drain(..) {
-            self.stats.release_native_object();
+        for block in shard.blocks.drain(..) {
+            if block.counted { self.stats.release_native_object(); }
         }
         let released = std::mem::take(&mut shard.reserved);
         self.reserved_total.fetch_sub(released, Ordering::AcqRel);
@@ -534,11 +503,11 @@ impl MemoryBlock {
         super::allocator::relieve_pressure(&device, Some(memory_type), adjusted.size);
         // should_use already trimmed empty native blocks; release idle cache
         // entries before falling back to a dedicated allocation.
-        if !sub.should_use(memory_type, adjusted.size)
-            && (device.evict_idle_caches(adjusted.size) == 0
-                || !sub.should_use(memory_type, adjusted.size))
-        {
-            return Self::allocate_dedicated(device, requirements, required, preferred, flags);
+        if !sub.should_use(memory_type, adjusted.size) {
+            device.evict_idle_caches(adjusted.size);
+            if !sub.should_use(memory_type, adjusted.size) {
+                return Self::allocate_dedicated(device, requirements, required, preferred, flags);
+            }
         }
         let allocation = super::allocator::with_eviction_retry(&device, adjusted.size, || {
             sub.allocate(

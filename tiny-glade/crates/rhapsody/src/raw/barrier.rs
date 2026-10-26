@@ -71,24 +71,7 @@ impl SynchronizationScope {
         // resource is retained by it through completion.
         unsafe { command.pool.device.issue_barriers(command.handle, self) }
     }
-    fn legacy_stages(&self) -> (ash::vk::PipelineStageFlags, ash::vk::PipelineStageFlags) {
-        use ash::vk::PipelineStageFlags;
-        // synchronization2 NONE has an empty execution scope. Legacy barriers
-        // cannot use zero masks without that feature: TOP as a source and
-        // BOTTOM as a destination preserve those empty scopes respectively.
-        (
-            if self.source_stages.is_empty() {
-                PipelineStageFlags::TOP_OF_PIPE
-            } else {
-                self.source_stages
-            },
-            if self.destination_stages.is_empty() {
-                PipelineStageFlags::BOTTOM_OF_PIPE
-            } else {
-                self.destination_stages
-            },
-        )
-    }
+
 }
 
 /// Which half of a queue-family ownership transfer a barrier records.
@@ -225,17 +208,14 @@ pub(crate) fn subresource_range(
 #[derive(Clone, Copy)]
 pub(crate) struct BarrierDispatch {
     generation: crate::device::DeviceGeneration,
-    cmd_pipeline_barrier2: Option<ash::vk::PFN_vkCmdPipelineBarrier2>,
+    cmd_pipeline_barrier2: ash::vk::PFN_vkCmdPipelineBarrier2,
 }
 impl BarrierDispatch {
     pub(crate) fn new(device: &super::device::Device) -> Self {
-        let cmd_pipeline_barrier2 = device
-            .caps()
-            .is_enabled(crate::device::Feature::Synchronization2)
-            .then(|| match &device.core.synchronization2 {
-                Some(extension) => extension.fp().cmd_pipeline_barrier2_khr,
-                None => device.core.device.fp_v1_3().cmd_pipeline_barrier2,
-            });
+        let cmd_pipeline_barrier2 = match &device.core.synchronization2 {
+            Some(extension) => extension.fp().cmd_pipeline_barrier2_khr,
+            None => device.core.device.fp_v1_3().cmd_pipeline_barrier2,
+        };
         Self {
             generation: device.generation(),
             cmd_pipeline_barrier2,
@@ -259,29 +239,12 @@ impl BarrierDispatch {
                 "barrier command or device does not match",
             ));
         }
-        if let Some(cmd_pipeline_barrier2) = self.cmd_pipeline_barrier2 {
-            let barriers = Barrier2Scope::new(scope, &device.memory.stats)?;
-            let dependency = vk::DependencyInfo::default()
-                .memory_barriers(&barriers.memory)
-                .buffer_memory_barriers(&barriers.buffers)
-                .image_memory_barriers(&barriers.images);
-            unsafe {
-                cmd_pipeline_barrier2(command, &dependency);
-            }
-        } else {
-            let (source, destination) = scope.legacy_stages();
-            unsafe {
-                device.core.device.cmd_pipeline_barrier(
-                    command,
-                    source,
-                    destination,
-                    vk::DependencyFlags::empty(),
-                    &scope.memory,
-                    &scope.buffers,
-                    &scope.images,
-                );
-            }
-        }
+        let barriers = Barrier2Scope::new(scope, &device.memory.stats)?;
+        let dependency = vk::DependencyInfo::default()
+            .memory_barriers(&barriers.memory)
+            .buffer_memory_barriers(&barriers.buffers)
+            .image_memory_barriers(&barriers.images);
+        unsafe { (self.cmd_pipeline_barrier2)(command, &dependency); }
         Ok(())
     }
 }
@@ -563,30 +526,12 @@ mod synchronization2_tests {
     }
 
     #[test]
-    fn legacy_none_scopes_use_legal_empty_scope_equivalents() {
+    fn synchronization2_preserves_empty_stage_scopes() {
         let stats = Arc::new(super::super::allocator::AllocatorStats::default());
-        let scope = SynchronizationScope::new(
-            vk::PipelineStageFlags::empty(),
-            vk::PipelineStageFlags::empty(),
-        );
-        assert_eq!(
-            scope.legacy_stages(),
-            (
-                vk::PipelineStageFlags::TOP_OF_PIPE,
-                vk::PipelineStageFlags::BOTTOM_OF_PIPE,
-            )
-        );
+        let scope = SynchronizationScope::new(vk::PipelineStageFlags::empty(), vk::PipelineStageFlags::empty());
         let converted = Barrier2Scope::new(&scope, &stats).unwrap();
         assert!(converted.memory[0].src_stage_mask.is_empty());
         assert!(converted.memory[0].dst_stage_mask.is_empty());
-        let scope = SynchronizationScope::new(
-            vk::PipelineStageFlags::TRANSFER,
-            vk::PipelineStageFlags::COMPUTE_SHADER,
-        );
-        assert_eq!(
-            scope.legacy_stages(),
-            (scope.source_stages, scope.destination_stages)
-        );
     }
 
     #[test]

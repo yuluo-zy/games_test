@@ -261,7 +261,7 @@ fn photo_reads_every_record_mode_skips_replay_and_height_edges_use_cached_instan
     world.send_event(OnWallChanged(WallId(99)));
     world.send_event(InitAdjWallHeightMode);
     world.send_event(InitAdjWallHeightMode);
-    world.send_event(FinishAdjWallHeightMode);
+    world.send_event(FinishAdjWallHeightMode::default());
     schedule.run(&mut world);
     let mut expected = Vec::new();
     for name in [FIRST_PERSON_ON, FIRST_PERSON_OFF] {
@@ -441,7 +441,7 @@ fn complete_original_executions_match_rust_dispatcher_boundary_effects() {
                 world.send_event(PlayPhotomodeSound(0));
                 world.send_event(PlayPhotomodeSound(1));
                 world.send_event(InitAdjWallHeightMode);
-                world.send_event(FinishAdjWallHeightMode);
+                world.send_event(FinishAdjWallHeightMode::default());
                 world.send_event(OnWallChanged(WallId(1)));
                 world.send_event(OnWallChanged(WallId(99)));
             }
@@ -505,7 +505,7 @@ fn complete_original_executions_match_rust_dispatcher_boundary_effects() {
                 };
                 world
                     .resource_mut::<PublicWalls>()
-                    .consume(&mut inner, &terrain);
+                    .consume_with_paths(&mut inner, &terrain, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
                 assert!(world.resource::<PublicWalls>().get(WallId(99)).is_some());
                 world.send_event(AppModeChanged {
                     current: AppMode::Editing(EditSubject::Wall(99)),

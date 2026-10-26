@@ -58,7 +58,7 @@ fn movement_bundle() -> (
 ) {
     (
         Critter,
-        CritterLocomotion(3),
+        CritterLocomotion::new(3),
         CritterGoal {
             position: Vec3::ZERO,
             goal_tag: 0,

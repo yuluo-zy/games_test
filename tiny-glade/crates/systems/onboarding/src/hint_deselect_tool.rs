@@ -42,7 +42,9 @@ pub fn hint_deselect_tool(
     profile: Res<country_core::game_profile::GameProfile>,
     mut state: ResMut<DeselectToolHintConditions>,
     mode: Res<country_core::systems::mode_manager::AppMode>,
-    mut tool_used: EventReader<country_core::resources::onboarding::NotifyHintSystemToolWasJustUsed>,
+    mut tool_used: EventReader<
+        country_core::resources::onboarding::NotifyHintSystemToolWasJustUsed,
+    >,
     mut reset: EventReader<DeselectReset>,
     mut completed: EventWriter<crate::tutorial_completion::TutorialHintComplete>,
     mut request: EventWriter<crate::DisplayHintRequest>,

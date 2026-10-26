@@ -1,5 +1,9 @@
 //! B main-prefix validation with real original LUT shaders and indirect buffers.
 //! This is a bounded fixture, not a rendered gameplay scene or startup-ready proof.
+#[path = "support/mod.rs"]
+mod test_support;
+use test_support::ShaderTestDriver as _;
+use test_support::BridgeTestDriver as _;
 use ash::vk::{self, Handle};
 use bevy_ecs::world::World;
 use country_core::{
@@ -84,8 +88,7 @@ fn original_main_prefix_imports_owned_world_resets_indirect_and_builds_luts_once
         GpuWorldSubsetKind::SolidVertexColor,
         GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<SolidVertexColorInstanceData>(
             buffers.as_ref(),
-            GpuWorldSubsetKind::SolidVertexColor,
-        )),
+            GpuWorldSubsetKind::SolidVertexColor, 0)),
     );
     world.insert_resource(gpu_world);
     let ssbos = world.resource::<AssetSsboLibrary>();
@@ -264,10 +267,10 @@ fn original_main_prefix_imports_owned_world_resets_indirect_and_builds_luts_once
         previous_generation = Some(generation);
         bridge
             .shader_backend()
-            .prewarm(Duration::from_secs(30))
+            .prepare_test_pipelines(Duration::from_secs(30))
             .unwrap();
         let compiled = bridge.compile_built(built).unwrap();
-        let receipt = bridge.execute_compiled(compiled).unwrap();
+        let receipt = bridge.execute_after_uploads(compiled).unwrap();
         assert!(!receipt.receipts.is_empty());
         assert_eq!(
             receipt

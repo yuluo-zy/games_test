@@ -356,7 +356,7 @@ mod tests {
     #[test]
     fn only_photography_mode_with_flag_draws() {
         for state in [
-            EscMenuState::Credits,
+            EscMenuState::Main,
             EscMenuState::Closed,
             EscMenuState::Photomode(false),
         ] {

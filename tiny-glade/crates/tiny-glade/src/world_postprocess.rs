@@ -471,9 +471,7 @@ fn prepare_mei(
             .get_handle_and_texture_by_name(NameHash(0x579f_39ab_91a0_1865))
             .map(|(_, texture)| texture)
             .ok_or_else(|| tail_missing("MEI blue_noise texture 0x579f39ab91a01865"))?;
-        raster
-            .assets
-            .lock()
+        std::sync::Arc::make_mut(&mut raster.assets.lock().collect)
             .textures_by_name
             .entry(0x579f_39ab_91a0_1865)
             .or_insert((ManagedHandle(source.id), AttachmentTexture::from(source)));
@@ -1130,7 +1128,15 @@ pub fn build_world_tail(
     .sample_count(final_post::MSAA_SAMPLE_COUNT)
     .sampled()
     .color_attachment();
-    let msaa_id = frame.declare_native_image(final_post::MSAA_COLOR_OUT_NAME, native_msaa)?;
+    // Learn every permitted in-flight output slot during startup, even when
+    // the GPU initially finishes before the next CPU frame. Named ownership
+    // handles resize and GPU access tracking orders each slot's reads/writes.
+    // Screenshot consumers copy their pixels in the producing frame.
+    let slots = frame.hosts().buffers.graphics_device().frames_in_flight();
+    let slot = world.resource::<country_core::render::frame_constants::FrameConstants>()
+        .frame_counter % slots;
+    let msaa_id = frame.declare_named_native_image(
+        &format!("{}/frame-{slot}", final_post::MSAA_COLOR_OUT_NAME), native_msaa)?;
     let msaa = RgTexture {
         resource: msaa_id,
         desc: TextureDesc::new_2d(out_extent, final_post::MSAA_COLOR_FORMAT)
@@ -1341,20 +1347,20 @@ pub fn build_world_tail(
 
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
-    m.component::<country_core::components::ui::Ui2dExtent>();
-    m.component::<country_core::components::ui::Ui2dImage>();
-    m.component::<country_core::resources::color_icon::CustomizationIcon>();
-    m.component::<country_core::components::ui::UiInteractionState>();
-    m.component::<country_core::components::ui::UiDrawOrder>();
-    m.component::<country_core::components::ui::UiInactive>();
-    m.component::<country_core::components::ui::Ui2dWsExtent>();
+    m.component_journaled::<country_core::components::ui::Ui2dExtent>();
+    m.component_journaled::<country_core::components::ui::Ui2dImage>();
+    m.component_journaled::<country_core::resources::color_icon::CustomizationIcon>();
+    m.component_journaled::<country_core::components::ui::UiInteractionState>();
+    m.component_journaled::<country_core::components::ui::UiDrawOrder>();
+    m.component_journaled::<country_core::components::ui::UiInactive>();
+    m.component_journaled::<country_core::components::ui::Ui2dWsExtent>();
     m.resource::<GameConfig>();
     m.resource::<AppMode>();
     m.resource::<ImageFormationConfigs>();
     m.resource::<FrameRenderConfig>();
     m.resource_projected::<country_core::systems::camera_rig::main_camera::MainCamera>(country_core::systems::camera_rig::main_camera::MainCamera::render_snapshot);
     m.resource::<country_core::resources::shader_refactoring_state::ShaderRefactoringState>();
-    m.resource_with_revision::<country_core::asset_libraries::texture_library::AssetTextureLibrary>(<country_core::asset_libraries::texture_library::AssetTextureLibrary>::descriptor_revision);
+    m.asset_library::<country_core::asset_libraries::texture_library::AssetTextureLibrary>();
     m.resource::<WindowSize>();
     m.presence::<tg_text::TextRenderer>();
     m.resource::<crate::loading_graph::LoadingGpuResources>();
@@ -1363,9 +1369,9 @@ pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract)
     m.resource::<country_core::resources::gui::DebugGui>();
     m.resource::<country_core::render::frame_constants::FrameConstants>();
     m.resource::<bevy_time::Time>();
-    m.resource_incremental::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>(country_core::asset_libraries::ssbo_library::AssetSsboLibrary::snapshot_revision, country_core::asset_libraries::ssbo_library::AssetSsboLibrary::update_render_snapshot);
-    m.resource_incremental::<country_core::asset_libraries::vao_library::AssetVAOLibrary>(country_core::asset_libraries::vao_library::AssetVAOLibrary::snapshot_revision, country_core::asset_libraries::vao_library::AssetVAOLibrary::update_render_snapshot);
-    m.resource::<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>();
+    m.asset_library::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
+    m.asset_library::<country_core::asset_libraries::vao_library::AssetVAOLibrary>();
+    m.asset_library::<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>();
     m.resource::<vermeer::VermeerDebugControl>();
     m.resource::<vermeer::VermeerState>();
     m.resource::<country_core::resources::gui::EscMenuState>();

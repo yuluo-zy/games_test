@@ -141,15 +141,14 @@ mod tests {
             false,
         ));
         let mut public = PublicWalls::default();
-        public.consume(
+        public.consume_with_paths(
             &mut inner,
             &crate::resources::walls::publication_source::TerrainHeightGrid512 {
                 encoded: vec![0; 512 * 512].into(),
                 minimum_y: 0.,
                 maximum_y: 0.,
                 sampling_fix: false,
-            },
-        );
+            }, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         assert_eq!(audio_position(&public, id), glam::Vec3::new(4., 0., 0.));
     }
     use crate::resources::{

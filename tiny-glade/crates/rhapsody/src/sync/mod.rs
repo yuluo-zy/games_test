@@ -10,7 +10,7 @@
 //!   [`SyncPoint`] 最终都会完成（或设备丢失）。
 //! - 等待一个尚未提交的值是误用（会永远挂起），返回 [`crate::Error::InvalidUsage`]。
 internal_mod!(retire, timeline);
-pub use timeline::{QueueLockStats, TimelineApi, Timelines};
+pub use timeline::{QueueLockStats, SubmitSignal, TimelineApi, Timelines};
 
 /// 一个设备上最多同时使用的逻辑队列数。
 pub const MAX_QUEUES: usize = 8;
@@ -122,6 +122,9 @@ impl StagedDependencies {
             return;
         }
         self.points.insert(point);
+        // Host access is synchronized by waiting for the submission receipt;
+        // HOST is never a legal semaphore wait destination in a command queue.
+        let stages = stages & !ash::vk::PipelineStageFlags::HOST;
         self.stages[point.queue.index()] |= if stages.is_empty() {
             ash::vk::PipelineStageFlags::ALL_COMMANDS
         } else {
@@ -235,6 +238,21 @@ mod tests {
         });
         other.merge(&set);
         assert_eq!((other.get(q(0)), other.get(q(2))), (9, 7));
+    }
+
+    #[test]
+    fn host_resource_dependencies_wait_at_device_stages() {
+        use ash::vk::PipelineStageFlags as Stages;
+        let point = SyncPoint {
+            queue: q(0),
+            value: 7,
+        };
+        let mut dependencies = StagedDependencies::EMPTY;
+        dependencies.insert(point, Stages::HOST);
+        assert_eq!(dependencies.stages(point.queue), Stages::ALL_COMMANDS);
+        let mut combined = StagedDependencies::EMPTY;
+        combined.insert(point, Stages::HOST | Stages::TRANSFER);
+        assert_eq!(combined.stages(point.queue), Stages::TRANSFER);
     }
 
     #[test]

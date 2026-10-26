@@ -8,7 +8,7 @@ use super::SittableForBirds;
 /// inspecting an ineligible row must not set its Changed tick.
 pub fn recycle_returned_bird_spots(
     manager: &mut BirdSpotManager,
-    wrens: &mut Query<(Entity, &mut Transform, &mut Wren), Without<SittableForBirds>>,
+    wrens: &mut Query<(Entity, ComponentWrite<Transform>, &mut Wren), Without<SittableForBirds>>,
 ) {
     manager.recycle(|spot| {
         let Some(entity) = spot.occupant else { return };
@@ -18,3 +18,5 @@ pub fn recycle_returned_bird_spots(
         }
     });
 }
+
+use country_core::render::extract::ComponentWrite;

@@ -21,7 +21,7 @@ use crate::components::{Duck, Transform};
 /// 字段的变更语义，不给后续 `Changed<Duck>` 消费者制造行为变更。
 pub fn ducks_react_to_being_inside_buildings(
     mut checks: EventReader<CmdCheckForSheepInsideBuilding>,
-    mut ducks: Query<(&mut Duck, &Transform)>,
+    mut ducks: Query<(ComponentWrite<Duck>, &Transform)>,
     walls: Res<PublicWalls>,
     roofs: Query<&Roof>,
 ) {
@@ -114,7 +114,7 @@ mod tests {
             sampling_fix: false,
         };
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &terrain);
+        public.consume_with_paths(&mut inner, &terrain, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         assert!(public.get(wall).is_some());
         let mut world = World::new();
         world.insert_resource(inner);
@@ -328,3 +328,5 @@ mod tests {
         schedule.run(&mut world);
     }
 }
+
+use country_core::render::extract::ComponentWrite;

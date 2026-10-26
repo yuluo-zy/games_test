@@ -3,10 +3,10 @@
 use super::{graph, plan::CompiledPlan};
 use crate::{
     Error, Result,
-    device::{BudgetAction, BudgetCategory},
+    device::BudgetCategory,
+    collections::cpu_pool::{CpuPool, CpuPoolLease, CpuPoolLimits, CpuPoolValue},
     raw::allocator::{AllocatorStats, CpuMemoryReservation},
 };
-use parking_lot::Mutex;
 use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug)]
@@ -97,197 +97,100 @@ struct CachedTables {
     reservation: CpuMemoryReservation,
     bytes: usize,
 }
-struct State {
-    idle: Vec<CachedTables>,
-    stats: FrameStorageStats,
-    _metadata: CpuMemoryReservation,
-}
-struct Shared {
-    config: FrameStorageConfig,
-    budget: Arc<AllocatorStats>,
-    state: Mutex<State>,
+impl CpuPoolValue for CachedTables {
+    type Statistics = ();
+    fn capacity_bytes(&self) -> usize { self.bytes }
+    fn reset(&mut self) { self.tables.clear(); }
+    fn reclassify(&mut self, category: BudgetCategory) { self.reservation.reclassify(category); }
 }
 #[derive(Clone)]
 pub struct FrameStoragePool {
-    shared: Arc<Shared>,
+    pool: CpuPool<CachedTables>,
+    config: FrameStorageConfig,
+    budget: Arc<AllocatorStats>,
 }
 impl FrameStoragePool {
     pub fn new(config: FrameStorageConfig, budget: Arc<AllocatorStats>) -> Result<Self> {
-        if !(1..=256).contains(&config.max_frames)
-            || config.max_total_bytes == 0
-            || config.max_cached_bytes > config.max_total_bytes
-        {
-            return Err(Error::invalid_usage(
-                "invalid bounded frame metadata configuration",
-            ));
-        }
-        let mut idle = Vec::new();
-        idle.try_reserve_exact(config.max_frames)
-            .map_err(|_| Error::OutOfHostMemory)?;
-        // Exact free-list capacity plus a conservative fixed owner envelope.
-        // The latter includes Shared/State and the Arc counters/alignment; no
-        // driver memory estimate is mixed into the GPU allocation ledger.
-        let metadata_bytes = bytes::<CachedTables>(idle.capacity())
-            .saturating_add(std::mem::size_of::<Shared>())
-            .saturating_add(2 * std::mem::size_of::<usize>())
-            .saturating_add(std::mem::align_of::<Shared>());
-        if metadata_bytes >= config.max_total_bytes {
-            return Err(Error::invalid_usage(
-                "frame metadata limit cannot hold its free list",
-            ));
-        }
-        let metadata = budget.reserve_cpu_bytes(metadata_bytes as u64, BudgetCategory::Live)?;
-        Ok(Self {
-            shared: Arc::new(Shared {
-                config,
-                budget,
-                state: Mutex::new(State {
-                    idle,
-                    stats: FrameStorageStats {
-                        metadata_bytes,
-                        ..Default::default()
-                    },
-                    _metadata: metadata,
-                }),
-            }),
-        })
+        let pool = CpuPool::new(CpuPoolLimits {
+            items: config.max_frames, total_bytes: config.max_total_bytes,
+            cached_bytes: config.max_cached_bytes, full: || Error::Timeout,
+        }, budget.clone())?;
+        Ok(Self { pool, config, budget })
     }
-    pub fn config(&self) -> FrameStorageConfig {
-        self.shared.config
-    }
+    pub fn config(&self) -> FrameStorageConfig { self.config }
     pub fn stats(&self) -> FrameStorageStats {
-        self.shared.state.lock().stats
-    }
-    pub fn trim_idle(&self, target_bytes: usize) -> usize {
-        let mut state = self.shared.state.lock();
-        let mut freed = 0;
-        while state.stats.cached_bytes > target_bytes {
-            let Some(tables) = state.idle.pop() else {
-                break;
-            };
-            state.stats.cached_bytes -= tables.bytes;
-            state.stats.cached_frames -= 1;
-            freed += tables.bytes;
-            drop(tables);
+        let stats = self.pool.stats();
+        FrameStorageStats {
+            checked_out: stats.checked_out, cached_frames: stats.cached,
+            live_bytes: stats.live_bytes, cached_bytes: stats.cached_bytes,
+            metadata_bytes: stats.metadata_bytes, capacity_growths: stats.capacity_growths,
+            capacity_stalls: stats.capacity_stalls,
         }
-        freed
     }
+    pub fn trim_idle(&self, target_bytes: usize) -> usize { self.pool.trim_idle(target_bytes) }
     pub(crate) fn checkout(&self, plan: &CompiledPlan) -> Result<FrameStorageLease> {
-        let mut state = self.shared.state.lock();
-        let mut cached = if let Some(cached) = state.idle.pop() {
-            state.stats.cached_frames -= 1;
-            state.stats.cached_bytes -= cached.bytes;
-            cached
-        } else {
-            if state.stats.checked_out >= self.shared.config.max_frames {
-                state.stats.capacity_stalls += 1;
-                return Err(Error::Timeout);
-            }
-            CachedTables {
-                tables: FrameTables::default(),
-                reservation: self
-                    .shared
-                    .budget
-                    .reserve_cpu_bytes(0, BudgetCategory::Live)?,
-                bytes: 0,
-            }
-        };
-        cached.reservation.reclassify(BudgetCategory::Live);
-        state.stats.checked_out += 1;
-        state.stats.live_bytes += cached.bytes;
-        drop(state);
-        let mut lease = FrameStorageLease {
-            cached: Some(cached),
-            shared: self.shared.clone(),
-            reusable: false,
-        };
-        lease.reserve_plan(plan)?;
+        let mut lease = FrameStorageLease { lease: self.pool.checkout(|| Ok(CachedTables {
+            tables: FrameTables::default(),
+            reservation: self.budget.reserve_cpu_bytes(0, BudgetCategory::Live)?, bytes: 0,
+        }))? };
+        if let Err(error) = lease.reserve_plan(plan) {
+            lease.lease.discard_on_return();
+            return Err(error);
+        }
         Ok(lease)
     }
 }
 pub(crate) struct FrameStorageLease {
-    cached: Option<CachedTables>,
-    shared: Arc<Shared>,
-    reusable: bool,
+    lease: CpuPoolLease<CachedTables>,
 }
 impl FrameStorageLease {
     fn reserve_plan(&mut self, plan: &CompiledPlan) -> Result<()> {
-        let cached = self.cached.as_mut().expect("active frame tables");
-        // No temporary count table: use the plan's immutable ranges directly.
-        let required = cached
-            .tables
-            .desired_bytes(plan.info.lifetimes.len(), plan.definition.exports.len());
-        let mut state = self.shared.state.lock();
-        if state.stats.live_bytes
-            + state.stats.cached_bytes
-            + state.stats.metadata_bytes
-            + required.saturating_sub(cached.bytes)
-            > self.shared.config.max_total_bytes
-        {
-            state.stats.capacity_stalls += 1;
-            return Err(Error::Timeout);
-        }
-        cached.reservation.resize(required as u64)?;
-        let result = cached.tables.reserve_plan(plan);
-        let actual = cached.tables.capacity_bytes();
-        // try_reserve_exact guarantees at least the requested capacity. Charge
-        // the observed capacity too, and reject an allocator's extra capacity.
-        let budgeted = cached.reservation.resize(actual as u64);
-        state.stats.live_bytes = state.stats.live_bytes - cached.bytes + actual;
-        state.stats.capacity_growths += u64::from(actual > cached.bytes);
-        cached.bytes = actual;
-        result?;
-        budgeted?;
-        if state.stats.live_bytes + state.stats.cached_bytes + state.stats.metadata_bytes
-            > self.shared.config.max_total_bytes
-        {
-            return Err(Error::Timeout);
-        }
-        self.reusable = true;
-        Ok(())
+        let cached = self.lease.value();
+        let required = cached.tables.desired_bytes(plan.info.lifetimes.len(), plan.definition.exports.len());
+        self.lease.update(required.saturating_sub(cached.bytes), |cached, available| {
+            let limit = cached.bytes.saturating_add(available);
+            cached.reservation.resize(required as u64)?;
+            let result = cached.tables.reserve_plan(plan);
+            let actual = cached.tables.capacity_bytes();
+            if actual > limit {
+                drop(std::mem::take(&mut cached.tables));
+                cached.reservation.resize(0).expect("releasing CPU reservation");
+                cached.bytes = 0;
+                return Err(Error::Timeout);
+            }
+            if let Err(error) = cached.reservation.resize(actual as u64) {
+                drop(std::mem::take(&mut cached.tables));
+                cached.reservation.resize(0).expect("releasing CPU reservation");
+                cached.bytes = 0;
+                return Err(error);
+            }
+            cached.bytes = actual;
+            result
+        })
     }
     pub(crate) fn take_tables(&mut self) -> FrameTables {
-        std::mem::take(&mut self.cached.as_mut().expect("active frame tables").tables)
+        std::mem::take(&mut self.lease.value_mut().tables)
     }
     pub(crate) fn return_tables(&mut self, tables: FrameTables) {
-        let cached = self.cached.as_mut().expect("active frame tables");
         let actual = tables.capacity_bytes();
-        // Explicitly released table capacity can shrink retained storage. Public
-        // caller mutations must never cause the recycler to cache extra bytes
-        // which were not admitted by this owner.
-        if actual > cached.bytes {
-            self.reusable = false;
+        let admitted = self.lease.value().bytes;
+        if actual > admitted {
+            // An external mutation cannot leave unadmitted capacity retained.
+            drop(tables);
+            self.lease.discard_on_return();
+            self.lease.update(0, |cached, _| {
+                cached.tables = FrameTables::default();
+                cached.reservation.resize(0)?;
+                cached.bytes = 0;
+                Ok(())
+            }).expect("releasing CPU reservation");
         } else {
-            let mut state = self.shared.state.lock();
-            state.stats.live_bytes = state.stats.live_bytes - cached.bytes + actual;
-            cached
-                .reservation
-                .resize(actual as u64)
-                .expect("shrinking CPU reservation");
-            cached.bytes = actual;
-        }
-        cached.tables = tables;
-    }
-}
-impl Drop for FrameStorageLease {
-    fn drop(&mut self) {
-        let mut cached = self.cached.take().expect("active frame tables");
-        cached.tables.clear();
-        let mut state = self.shared.state.lock();
-        state.stats.checked_out -= 1;
-        state.stats.live_bytes -= cached.bytes;
-        if self.reusable
-            && state.stats.cached_bytes.saturating_add(cached.bytes)
-                <= self.shared.config.max_cached_bytes
-            && !matches!(
-                self.shared.budget.budget_action(),
-                BudgetAction::EvictCache | BudgetAction::Backpressure
-            )
-        {
-            cached.reservation.reclassify(BudgetCategory::Cache);
-            state.stats.cached_bytes += cached.bytes;
-            state.stats.cached_frames += 1;
-            state.idle.push(cached);
+            self.lease.update(0, |cached, _| {
+                cached.reservation.resize(actual as u64)?;
+                cached.bytes = actual;
+                cached.tables = tables;
+                Ok(())
+            }).expect("shrinking CPU reservation");
         }
     }
 }

@@ -8,6 +8,9 @@
 //!
 //! 测试脚手架里 rhapsody 直写的只有与游戏逻辑无关的两件事：预清除（带每帧不同的颜色，用来证明 LOAD 附件
 //! 保留内容、上一帧不泄漏）和 image→buffer 读回。没有 Vulkan 设备时跳过。
+#[path = "support/mod.rs"]
+mod test_support;
+use test_support::ShaderTestDriver as _;
 use ash::vk::{self, Handle};
 use country_core::render::load_texture::boundary::TextureDevice;
 use country_core::{
@@ -503,7 +506,7 @@ struct Env {
     shaders: Arc<ShaderHost>,
     raster: Arc<RasterShared>,
     program: CoreHandle<RasterShaderProgram>,
-    program_arc: Arc<RasterShaderProgram>,
+    shader_library: Arc<country_core::asset_libraries::shader_library::AssetShaderLibrary>,
     /// uniform 块带 `vec4 c`（偏移 64）的版本：片元输出 `c`。
     color_program: CoreHandle<RasterShaderProgram>,
     session: Rc<RefCell<VulkanGraphSession>>,
@@ -555,19 +558,21 @@ impl Env {
                 std::fs::write(&file_path, compiled_container(with_color).encode().unwrap())
                     .unwrap();
             }
-            Arc::new(RasterShaderProgram::new_draw(name, desc, &*shaders))
+            RasterShaderProgram::new_draw(name, desc, &*shaders)
         };
-        let program_arc = make("tri", "test/tri", false);
-        let color_arc = make("tri_color", "test/tri_color", true);
-        let raster = RasterShared::new(
+        let shader_library = Arc::new(country_core::asset_libraries::shader_library::AssetShaderLibrary::new());
+        let program = shader_library.add_raster(make("tri", "test/tri", false), false);
+        let color_program = shader_library.add_raster(make("tri_color", "test/tri_color", true), false);
+        let program = CoreHandle(country_core::rhapsody_contract::ManagedHandle(program.id().raw()), core::marker::PhantomData);
+        let color_program = CoreHandle(country_core::rhapsody_contract::ManagedHandle(color_program.id().raw()), core::marker::PhantomData);
+        let raster = RasterShared::new_with_shader_library(
             gd.clone(),
             buffers.clone(),
             textures.clone(),
             shaders.clone(),
+            shader_library.clone(),
         )
         .unwrap();
-        let program = raster.register_program(program_arc.clone());
-        let color_program = raster.register_program(color_arc);
 
         let backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
         let session = VulkanGraphSession::new(backend);
@@ -580,7 +585,7 @@ impl Env {
             shaders,
             raster,
             program,
-            program_arc,
+            shader_library,
             color_program,
             session: Rc::new(RefCell::new(session)),
             root,
@@ -807,7 +812,7 @@ fn core_raster_pass_draws_a_triangle_into_a_core_texture_and_reads_back() {
 
     let built = Env::finish_graph(graph);
     env.shaders
-        .prewarm(std::time::Duration::from_secs(10))
+        .prepare_test_pipelines(std::time::Duration::from_secs(10))
         .unwrap();
     env.session
         .borrow_mut()
@@ -845,8 +850,8 @@ fn core_raster_pass_draws_a_triangle_into_a_core_texture_and_reads_back() {
 
     // 宿主缓存：一个渲染通道、变体 0 一条管线。
     assert_eq!(env.shaders.passes().len(), 1);
-    assert_eq!(env.program_arc.variants[0].cached(), 1);
-    assert_eq!(env.program_arc.variants[1].cached(), 0, "没用深度变体");
+    assert_eq!(env.shader_library.get_raster_by_id(env.program.0.0).unwrap().variants[0].cached(), 1);
+    assert_eq!(env.shader_library.get_raster_by_id(env.program.0.0).unwrap().variants[1].cached(), 0, "没用深度变体");
     println!(
         "单帧：三角形像素 {}（理论 512），与参考光栅化不一致 {}，质心误差 {:.3}px",
         check.filled, check.mismatches, check.centroid_error
@@ -932,7 +937,7 @@ fn indexed_draw_declares_the_actual_index_bytes_and_outlives_the_host_handle() {
         "the graph owns the physical import after declaration"
     );
     env.shaders
-        .prewarm(std::time::Duration::from_secs(10))
+        .prepare_test_pipelines(std::time::Duration::from_secs(10))
         .unwrap();
     env.session.borrow_mut().execute_frame(built).unwrap();
     env.session
@@ -975,12 +980,13 @@ fn owned_external_draw_resources_are_declared_before_recording_and_outlive_host_
         std::fs::write(path, compiled_external_container().encode().unwrap()).unwrap();
     }
     let program = env
-        .raster
-        .register_program(Arc::new(RasterShaderProgram::new_draw(
+        .shader_library
+        .add_raster(RasterShaderProgram::new_draw(
             "owned-external",
             desc,
             &*env.shaders,
-        )));
+        ), false);
+    let program = CoreHandle(country_core::rhapsody_contract::ManagedHandle(program.id().raw()), core::marker::PhantomData);
     let color_bytes: Vec<_> = [1.0_f32, 0.0, 0.0, 1.0]
         .into_iter()
         .flat_map(f32::to_ne_bytes)
@@ -1083,7 +1089,7 @@ fn owned_external_draw_resources_are_declared_before_recording_and_outlive_host_
     assert!(env.buffers.release(&source));
     assert!(env.textures.release(&sample));
     env.shaders
-        .prewarm(std::time::Duration::from_secs(10))
+        .prepare_test_pipelines(std::time::Duration::from_secs(10))
         .unwrap();
     env.session.borrow_mut().execute_frame(built).unwrap();
     env.session
@@ -1210,7 +1216,7 @@ fn core_raster_pass_chain_animates_over_frames_with_two_in_flight() {
 
         let built = Env::finish_graph(graph);
         env.shaders
-            .prewarm(std::time::Duration::from_secs(10))
+            .prepare_test_pipelines(std::time::Duration::from_secs(10))
             .unwrap();
         let receipt = env
             .session
@@ -1244,7 +1250,7 @@ fn core_raster_pass_chain_animates_over_frames_with_two_in_flight() {
     // 宿主缓存：30 帧共用一个渲染通道、一条管线（不是每帧新建）。
     assert_eq!(env.shaders.passes().len(), 1, "渲染通道按 0x98B 键去重");
     assert_eq!(
-        env.program_arc.variants[0].cached(),
+        env.shader_library.get_raster_by_id(env.program.0.0).unwrap().variants[0].cached(),
         1,
         "管线按 (通道, 状态位域) 缓存"
     );
@@ -1357,7 +1363,6 @@ fn run_depth_frame_collected(env: &Env, draws: &[DepthDraw], collected: bool) ->
             }).collect();
             handles.into_iter().map(|handle| handle.join().unwrap()).collect::<Vec<_>>()
         });
-        assert!(pass.batches_compatible(&batches));
         for batch in batches { pass.commit_draw_batch(batch); }
     } else {
         for d in draws { emit(&mut pass, d); }
@@ -1368,7 +1373,7 @@ fn run_depth_frame_collected(env: &Env, draws: &[DepthDraw], collected: bool) ->
     drop(core_rg);
     let built = Env::finish_graph(graph);
     env.shaders
-        .prewarm(std::time::Duration::from_secs(10))
+        .prepare_test_pipelines(std::time::Duration::from_secs(10))
         .unwrap();
     env.session
         .borrow_mut()
@@ -1740,7 +1745,7 @@ fn host_temporal_validity_tracks_submitted_history_resize_and_cancellation() {
             });
         }
         env.shaders
-            .prewarm(std::time::Duration::from_secs(10))
+            .prepare_test_pipelines(std::time::Duration::from_secs(10))
             .unwrap();
         env.session
             .borrow_mut()

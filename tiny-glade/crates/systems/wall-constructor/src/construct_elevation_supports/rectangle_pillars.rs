@@ -12,15 +12,9 @@ use country_core::systems::collision::world::{
     RaycastSimpleResult, RaycastWorld, SubworldColliderHandle,
 };
 use glam::{Vec2, Vec3};
+use ::utils::scalar::min_f32;
 use utils::geometry::rectangle::Rectangle2d;
 use utils::swizzlers::xvy;
-
-/// x86 `MINSS a, b`：`if a < b { a } else { b }`；unordered（NaN）返回 **b**
-/// （与 `f32::min` 的 NaN 传播不同，必须逐位保留）。
-#[inline]
-fn minss(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
-}
 
 /// B `find_stone_column_start_y`（0x141250720）：石柱起始高度。
 ///
@@ -43,8 +37,8 @@ fn minss(a: f32, b: f32) -> f32 {
 ///    `RDI` 是 `&Option<Rectangle2d>`：tag u32@0 + payload 24B@4）。
 ///    `Rectangle2d::new(center=(position.x, position.z), size=(0.7, 0.7), axis)`，
 ///    `as_points2()` 取 4 角，逐点 `terrain.sample_at_world_xz`；
-///    结果 = `minss(s0, 1000.0)` → 依次 `minss(s1, ·)`, `minss(s2, ·)`,
-///    `minss(s3, ·)`（常量 `0x14295b630=1000.0`）。
+///    结果 = `min_f32(s0, 1000.0)` → 依次 `min_f32(s1, ·)`, `min_f32(s2, ·)`,
+///    `min_f32(s3, ·)`（常量 `0x14295b630=1000.0`）。
 /// 4. 返回 `Some(min)`（判别 `EAX=1`；`None` 为 `EAX=0`）。
 pub fn find_stone_column_start_y(
     world: &RaycastWorld,
@@ -96,7 +90,7 @@ pub fn find_stone_column_start_y(
     let s1 = terrain.sample_at_world_xz(p[1].x, p[1].y);
     let s2 = terrain.sample_at_world_xz(p[2].x, p[2].y);
     let s3 = terrain.sample_at_world_xz(p[3].x, p[3].y);
-    Some(minss(s3, minss(s2, minss(s1, minss(s0, 1000.0)))))
+    Some(min_f32(s3, min_f32(s2, min_f32(s1, min_f32(s0, 1000.0)))))
 }
 
 /// B `construct_rectangle_pillars`（0x14124fcb0）。**未实现（近似体已移除）**。

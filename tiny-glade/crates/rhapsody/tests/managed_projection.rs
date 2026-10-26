@@ -40,7 +40,7 @@ fn fixture() -> Option<(VulkanGraphSession, [Arc<Buffer>; 3])> {
         backend
             .bind_import_named(
                 ["first", "second", "output"][index],
-                index as u64 + 1,
+                (1u64 << 62) | (index as u64 + 1),
                 GpuResource::Buffer(buffer.clone()),
             )
             .unwrap();
@@ -55,9 +55,9 @@ fn graph(
 ) -> (BuiltGraph, [ResourceHandle; 2]) {
     let descriptor = ResourceSpec::Buffer(buffers[0].desc).descriptor();
     let input = graph
-        .import_unowned("input", descriptor, source as u64 + 1, HOST)
+        .import_unowned("input", descriptor, (1u64 << 62) | (source as u64 + 1), HOST)
         .unwrap();
-    let output = graph.import_unowned("output", descriptor, 3, HOST).unwrap();
+    let output = graph.import_unowned("output", descriptor, (1u64 << 62) | 3, HOST).unwrap();
     let mut pass = graph.add_pass("projection copy");
     pass.add_resource_access(input, 0x25, 0).unwrap();
     pass.add_resource_access(output, 0x34, 1).unwrap();
@@ -178,11 +178,11 @@ fn externally_held_snapshot_is_immutable_and_capacity_recovers_after_release() {
     // Removing a backend import clears idle projections. An actual external
     // snapshot remains an owner until its own lifetime ends.
     let observer = Arc::downgrade(&buffers[1]);
-    assert!(session.release_import(2).unwrap());
+    assert!(session.release_import((1u64 << 62) | 2).unwrap());
     drop(buffers);
     assert!(observer.upgrade().is_some());
     drop(next);
-    session.collect_after_completion(&[1, 3]).unwrap();
+    session.collect_after_completion(&[(1u64 << 62) | 1, (1u64 << 62) | 3]).unwrap();
     assert!(observer.upgrade().is_none());
 }
 
@@ -216,4 +216,99 @@ fn resource_bound_failure_precedes_recording_and_a_larger_limit_recovers() {
         .unwrap();
     run(&mut session, &buffers, 0, &recorded);
     assert_eq!(recorded.load(Ordering::Relaxed), 1);
+}
+
+fn imported_shape(
+    session: &mut VulkanGraphSession,
+    buffers: &[Arc<Buffer>; 3],
+    wide: bool,
+) -> [rhapsody::raw::managed::resources::ManagedKey<Buffer>; 2] {
+    let mut graph = session.begin_frame().unwrap();
+    let source = usize::from(!wide);
+    let input = session.import_frame_buffer(&mut graph, buffers[source].clone(), HOST).unwrap();
+    let extra = wide.then(|| session.import_frame_buffer(&mut graph, buffers[1].clone(), HOST).unwrap());
+    let output = session.import_frame_buffer(&mut graph, buffers[2].clone(), HOST).unwrap();
+    let device = session.backend.device().clone();
+    let keys = Arc::new(parking_lot::Mutex::new(None));
+    let observed = keys.clone();
+    let mut pass = graph.add_pass(if wide { "wide import shape" } else { "narrow import shape" })
+        .with_side_effect();
+    pass.add_resource_access(input, 0x25, 0).unwrap();
+    if let Some(extra) = extra { pass.add_resource_access(extra, 0x25, 0).unwrap(); }
+    pass.add_resource_access(output, 0x34, 1).unwrap();
+    pass.render_with_result_context(move |context| {
+        let managed = context.managed.unwrap();
+        let input = managed.buffer_for(input.raw()).unwrap();
+        let output = managed.buffer_for(output.raw()).unwrap();
+        *observed.lock() = Some([input.key(), output.key()]);
+        unsafe { device.raw_device().cmd_copy_buffer(
+            vk::CommandBuffer::from_raw(context.command.handle()), input.raw(), output.raw(),
+            &[vk::BufferCopy { src_offset: 0, dst_offset: 0, size: SIZE }]); }
+        Ok(())
+    });
+    let receipt = session.execute_frame(graph.build()).unwrap();
+    session.wait_frame(receipt.frame, 10_000_000_000).unwrap();
+    assert_eq!(session.frame_import_count(), 0);
+    assert!(session.backend.managed_pass_resources().is_none(), "expired declarations cannot be reused");
+    let mut actual = [0; SIZE as usize];
+    buffers[2].read_bytes(0, &mut actual).unwrap();
+    assert_eq!(actual, [source as u8 + 1; SIZE as usize]);
+    let result = keys.lock().unwrap();
+    result
+}
+
+fn release_named_fixture_imports(session: &mut VulkanGraphSession) {
+    for token in [(1u64 << 62) | 1, (1u64 << 62) | 2, (1u64 << 62) | 3] {
+        assert!(session.release_import(token).unwrap());
+    }
+}
+
+#[test]
+fn alternating_frame_import_shapes_reuse_both_physical_owner_projections() {
+    let Some((mut session, buffers)) = fixture() else { return; };
+    release_named_fixture_imports(&mut session);
+    session.backend.set_managed_projection_limits(ManagedProjectionConfig {
+        max_snapshots: 2, max_resources: 3, max_bytes: 1 << 16,
+    }).unwrap();
+    let a = imported_shape(&mut session, &buffers, true);
+    let b = imported_shape(&mut session, &buffers, false);
+    assert_eq!(imported_shape(&mut session, &buffers, true), a);
+    assert_eq!(imported_shape(&mut session, &buffers, false), b);
+    let warm = session.backend.managed_projection_stats();
+    assert_eq!(warm.snapshots, 2);
+    assert_eq!(warm.managed_allocations, 5);
+    for _ in 0..8 {
+        assert_eq!(imported_shape(&mut session, &buffers, true), a);
+        assert_eq!(imported_shape(&mut session, &buffers, false), b);
+    }
+    let after = session.backend.managed_projection_stats();
+    assert_eq!(after.snapshots, 2);
+    assert_eq!(after.managed_allocations, warm.managed_allocations);
+    assert_eq!(after.capacity_growths, warm.capacity_growths);
+    assert_eq!(after.bytes, warm.bytes);
+}
+
+#[test]
+fn projection_only_native_owners_are_reclaimed_even_with_zero_reported_cache_bytes() {
+    let Some((mut session, buffers)) = fixture() else { return; };
+    release_named_fixture_imports(&mut session);
+    imported_shape(&mut session, &buffers, true);
+    let observed = buffers.each_ref().map(Arc::downgrade);
+    drop(buffers);
+    let device = session.backend.device().clone();
+    // Advance the actual command-pool ring so completed commands relinquish
+    // their owners. The bounded idle projection is then the remaining cache.
+    for _ in 0..device.frames_in_flight() + 1 {
+        let mut graph = session.begin_frame().unwrap();
+        graph.add_pass("empty owner maintenance").with_side_effect().render(|_| true);
+        let receipt = session.execute_frame(graph.build()).unwrap();
+        session.wait_frame(receipt.frame, 10_000_000_000).unwrap();
+    }
+    assert!(observed.iter().all(|owner| owner.upgrade().is_some()));
+    assert_eq!(session.cache_stats().parked_resources, 0);
+    let before = device.allocator_stats().device_memory_usage().total();
+    assert_eq!(device.evict_idle_caches(u64::MAX), 0);
+    assert!(observed.iter().all(|owner| owner.upgrade().is_none()));
+    assert!(device.allocator_stats().device_memory_usage().total() < before);
+    assert_eq!(device.retirement_stats().idle_waits, 0);
 }

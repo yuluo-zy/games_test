@@ -24,7 +24,6 @@ use alloc::rc::Rc;
 use core::cell::RefCell;
 
 use crate::asset_libraries::color_library::ColorLibrarySsbo;
-use crate::render::pass_builder::bind_resources::BindGameResources;
 use crate::render::pass_builder::compute_pass_builder::{
     ComputePass, RecordedComputePass, RgBuffer,
 };
@@ -470,7 +469,7 @@ impl Cp {
     /// `bind_ray_tracing<ComputePass>`（0x1415fc230）。
     pub fn ray_tracing(mut self) -> Self {
         self.op(PlanKind::BindRayTracing, None);
-        BindGameResources::bind_ray_tracing(&mut self.pass);
+        self.pass.bind_ray_tracing();
         self
     }
 

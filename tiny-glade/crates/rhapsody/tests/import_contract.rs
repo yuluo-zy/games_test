@@ -27,9 +27,7 @@ fn foreign_device_imports_fail_without_replacing_bindings() {
     let mut backend = VulkanGraphBackend::new(current.clone(), AccessTable::original()).unwrap();
     let desc = BufferDesc::new_gpu_only(64, vk::BufferUsageFlags::TRANSFER_DST);
     let local = Arc::new(Buffer::new(current.clone(), &desc).unwrap());
-    let token = backend
-        .bind_import(GpuResource::Buffer(local.clone()))
-        .unwrap();
+    let token = (1u64 << 62) | 17;
     backend
         .bind_import_named("local", token, GpuResource::Buffer(local.clone()))
         .unwrap();
@@ -66,6 +64,26 @@ fn foreign_device_imports_fail_without_replacing_bindings() {
             matches!(&backend.resources[&token], GpuResource::Buffer(actual) if Arc::ptr_eq(actual, &local))
         );
     }
+}
+
+#[test]
+fn explicit_import_domain_cannot_replace_generated_resources() {
+    let Some(device) = device() else { return; };
+    let mut backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
+    let desc = BufferDesc::new_gpu_only(64, vk::BufferUsageFlags::TRANSFER_DST);
+    let internal = Arc::new(Buffer::new(device.clone(), &desc).unwrap());
+    let external = Arc::new(Buffer::new(device, &desc).unwrap());
+    let generated = backend.bind_import(GpuResource::Buffer(internal.clone())).unwrap();
+    for token in [0, generated, (1u64 << 62) - 1, u64::MAX] {
+        assert_eq!(backend.bind_import_named("external", token, GpuResource::Buffer(external.clone())).unwrap_err().kind(), rhapsody::ErrorKind::InvalidUsage);
+    }
+    let host = (1u64 << 62) | generated;
+    backend.bind_import_named("external", host, GpuResource::Buffer(external.clone())).unwrap();
+    let next = backend.bind_import(GpuResource::Buffer(internal.clone())).unwrap();
+    assert!(next < (1u64 << 62));
+    assert_ne!(generated, next);
+    assert!(matches!(&backend.resources[&generated], GpuResource::Buffer(actual) if Arc::ptr_eq(actual, &internal)));
+    assert!(matches!(&backend.resources[&host], GpuResource::Buffer(actual) if Arc::ptr_eq(actual, &external)));
 }
 
 #[test]

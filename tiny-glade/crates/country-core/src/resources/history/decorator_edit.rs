@@ -788,18 +788,10 @@ impl<S>
             pending.observed_stairs_checksum = Some(stairs_diff.after_checksum);
         }
 
-        // 5. Arc 替换（原生先 decorator +0x48，再 stairs +0x50）。
-        let old = self
-            .decorator_diff
-            .replace(std::sync::Arc::new(decorator_diff.clone()));
-        drop(old);
-        let old = self
-            .stairs_diff
-            .replace(std::sync::Arc::new(stairs_diff.clone()));
-        drop(old);
+        // The pending entry retains the exact owners used by commit/replay.
         let auxiliary = crate::resources::history::transactions::HistoryEntryAux {
-            decorator_diff: self.decorator_diff.clone(),
-            stairs_diff: self.stairs_diff.clone(),
+            decorator_diff: Some(std::sync::Arc::new(decorator_diff.clone())),
+            stairs_diff: Some(std::sync::Arc::new(stairs_diff.clone())),
         };
         // 建模：原生 MultiEdit 的空判定读 3 个 aux owner 计数；装饰/楼梯 diff
         // 非空即让 pending 非空（否则 decorator-only diff 不会提交条目）。
@@ -1375,8 +1367,8 @@ mod tests {
             &pending.edits[1],
             EditType::Stairs(edit) if matches!(&**edit, crate::resources::history::stairs_history_edit::StairsHistoryEdit::SupportsRecreate(edge) if edge.nodes() == (8, 9))
         ));
-        assert!(history.decorator_diff.is_some());
-        assert_eq!(history.stairs_diff.as_deref(), Some(&stairs));
+        assert!(history.pending().unwrap().auxiliary.decorator_diff.is_some());
+        assert_eq!(history.pending().unwrap().auxiliary.stairs_diff.as_deref(), Some(&stairs));
     }
 
     #[test]

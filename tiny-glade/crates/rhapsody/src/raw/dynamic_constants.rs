@@ -1,10 +1,9 @@
 //! Bounded dynamic constants pages with CPU leases and precise GPU completion.
 //! 设备实际支持并启用 BDA 时提供真实地址；其余设备明确返回 Unsupported。
+use crate::{Error, Result};
 use super::{
-    binding::{DescriptorSetBinding, ResourceOwner},
     buffer::{Buffer, BufferDesc},
     device::Device,
-    error::{Error, Result},
 };
 use ash::vk;
 use std::sync::Arc;
@@ -29,10 +28,6 @@ impl DynamicConstantsChunk {
             self.buffer.write_bytes_unsynchronized(self.offset, bytes)
         }
     }
-    /// Alias of [`Self::write_bytes`].
-    pub fn write(&self, bytes: &[u8]) -> Result<()> {
-        self.write_bytes(bytes)
-    }
     /// 用既有 buffer 与偏移构造带数据区段。
     pub fn with_data(buffer: Arc<Buffer>, offset: u64, size: u64, bytes: &[u8]) -> Result<Self> {
         let chunk = Self {
@@ -48,41 +43,6 @@ impl DynamicConstantsChunk {
             .device_address()?
             .checked_add(self.offset)
             .ok_or_else(|| Error::invalid_usage("设备地址溢出"))
-    }
-    pub fn into_gpu_lifetime_tracker(self) -> ResourceOwner {
-        self.buffer
-    }
-    fn binding(&self, ty: vk::DescriptorType) -> DescriptorSetBinding {
-        DescriptorSetBinding::Buffer {
-            ty,
-            info: vk::DescriptorBufferInfo {
-                buffer: self.buffer.handle,
-                offset: self.offset,
-                range: self.size,
-            },
-            owner: self.buffer.clone(),
-        }
-    }
-    pub fn into_uniform_buffer_binding(self) -> DescriptorSetBinding {
-        self.binding(vk::DescriptorType::UNIFORM_BUFFER)
-    }
-    pub fn into_uniform_and_storage_buffer_binding(
-        self,
-    ) -> (DescriptorSetBinding, DescriptorSetBinding) {
-        (
-            self.binding(vk::DescriptorType::UNIFORM_BUFFER),
-            self.binding(vk::DescriptorType::STORAGE_BUFFER),
-        )
-    }
-    /// Returns a copy of the data rather than a GPU-lifetime-bound mapping.
-    pub fn into_uniform_buffer_binding_and_data(self) -> Result<(DescriptorSetBinding, Vec<u8>)> {
-        let mut bytes = vec![
-            0;
-            usize::try_from(self.size)
-                .map_err(|_| Error::invalid_usage("区段长度无法表示"))?
-        ];
-        self.buffer.read_bytes(self.offset, &mut bytes)?;
-        Ok((self.binding(vk::DescriptorType::UNIFORM_BUFFER), bytes))
     }
 }
 
@@ -160,6 +120,7 @@ impl ConstantPage for Buffer {
 const MAX_ALLOCATIONS_PER_PAGE: u32 = 1000;
 struct Page<B> {
     buffer: Arc<B>,
+    bank: usize,
     cursor: u64,
     /// Allocations handed out since the page was created or last reset.
     allocations: u32,
@@ -175,6 +136,7 @@ struct PageRing<B> {
     _metadata: super::allocator::CpuMemoryReservation,
     config: DynamicConstantsConfig,
     current: Option<usize>,
+    frame_bank: usize,
     completed: crate::sync::CompletedValues,
     stats: DynamicConstantsStats,
 }
@@ -199,12 +161,17 @@ impl<B: ConstantPage> PageRing<B> {
             _metadata: metadata,
             config,
             current: None,
+            frame_bank: 0,
             completed: Default::default(),
             stats: DynamicConstantsStats {
                 metadata_bytes,
                 ..Default::default()
             },
         })
+    }
+    fn begin_frame(&mut self, banks: usize) {
+        self.frame_bank = (self.frame_bank + 1) % banks;
+        self.current = None;
     }
     fn can_append(&self, size: u64, alignment: Option<u64>, device_alignment: u64) -> Result<bool> {
         let Some(index) = self.current else {
@@ -247,6 +214,7 @@ impl<B: ConstantPage> PageRing<B> {
             return Ok(appended);
         }
         for (index, page) in self.pages.iter_mut().enumerate() {
+            if page.bank != self.frame_bank { continue; }
             let cell = page.buffer.use_cell().clone();
             // get_mut also rejects outstanding Weak pointers. A Weak upgrade
             // must not resurrect an old range while this page is being reset.
@@ -291,6 +259,7 @@ impl<B: ConstantPage> PageRing<B> {
         let use_mark = buffer.use_cell().snapshot();
         self.pages.push(Page {
             buffer: buffer.clone(),
+            bank: self.frame_bank,
             cursor: size,
             allocations: 1,
             use_mark,
@@ -400,6 +369,11 @@ impl DynamicConstants {
     }
     pub fn config(&self) -> DynamicConstantsConfig {
         self.ring.config
+    }
+    /// Select this display frame's arena once before allocating its constants.
+    /// Completed GPU uses and exclusive CPU ownership still govern page resets.
+    pub fn begin_frame(&mut self) {
+        self.ring.begin_frame(self.device.frames_in_flight() as usize);
     }
     pub fn stats(&self) -> DynamicConstantsStats {
         self.ring.stats()
@@ -678,17 +652,14 @@ impl HostFlushQueue {
         &self,
         flush: impl FnOnce(&[vk::MappedMemoryRange<'_>]) -> Result<()>,
     ) -> Result<()> {
-        if !self.dirty.swap(false, std::sync::atomic::Ordering::AcqRel) {
+        if !self.dirty.load(std::sync::atomic::Ordering::Acquire) {
             return Ok(());
         }
         let mut pages = self.pages.lock();
         let count = pages.iter().map(|page| page.ranges.len()).sum();
         let mut ranges: smallvec::SmallVec<[vk::MappedMemoryRange<'_>; 8]> =
             smallvec::SmallVec::new();
-        ranges.try_reserve(count).map_err(|_| {
-            self.dirty.store(true, std::sync::atomic::Ordering::Release);
-            Error::OutOfHostMemory
-        })?;
+        ranges.try_reserve(count).map_err(|_| Error::OutOfHostMemory)?;
         for page in pages.iter() {
             for &(start, end) in &page.ranges {
                 ranges.push(
@@ -704,6 +675,7 @@ impl HostFlushQueue {
             }
         }
         if ranges.is_empty() {
+            self.dirty.store(false, std::sync::atomic::Ordering::Release);
             return Ok(());
         }
         self.flush_calls
@@ -711,12 +683,12 @@ impl HostFlushQueue {
         match flush(&ranges) {
             Ok(()) => {
                 pages.clear();
+                // Pending and in-progress ranges both remain dirty until the
+                // native flush finishes while holding the same page lock.
+                self.dirty.store(false, std::sync::atomic::Ordering::Release);
                 Ok(())
             }
-            Err(error) => {
-                self.dirty.store(true, std::sync::atomic::Ordering::Release);
-                Err(error)
-            }
+            Err(error) => Err(error),
         }
     }
     /// Number of `vkFlushMappedMemoryRanges` calls issued (statistics).
@@ -753,6 +725,25 @@ mod tests {
             max_idle_pages: pages,
         }
     }
+    #[test]
+    fn frame_banks_learn_capacity_early_and_reuse_only_unreferenced_pages() {
+        let budget = Arc::new(super::super::allocator::AllocatorStats::default());
+        let mut ring = PageRing::new(config(2), &budget).unwrap();
+        let (first, _) = ring.allocate(16, None, 16, cpu_page).unwrap();
+        let first_pointer = Arc::as_ptr(&first);
+        ring.begin_frame(2);
+        let (second, _) = ring.allocate(16, None, 16, cpu_page).unwrap();
+        assert_ne!(first_pointer, Arc::as_ptr(&second));
+        ring.begin_frame(2);
+        assert!(matches!(ring.allocate(16, None, 16, cpu_page), Err(Error::Timeout)),
+            "another bank's free space cannot overwrite a retained frame");
+        drop(first);
+        let (again, offset) = ring.allocate(16, None, 16, cpu_page).unwrap();
+        assert_eq!(Arc::as_ptr(&again), first_pointer);
+        assert_eq!(offset, 0);
+        assert_eq!(ring.stats().pages, 2);
+    }
+
     #[test]
     fn production_ring_requires_every_queue_and_cpu_or_weak_owner_before_reset() {
         use crate::sync::{QueueId, SyncPoint};
@@ -1087,6 +1078,47 @@ mod tests {
             })
             .unwrap();
         assert_eq!(seen, [(0, 256)]);
+    }
+
+    #[test]
+    fn in_progress_flush_blocks_forget_and_other_submissions_until_native_completion() {
+        use ash::vk::Handle;
+        use std::{sync::mpsc, time::Duration};
+        for forget in [true, false] {
+            let queue = HostFlushQueue::default();
+            queue.record(7, vk::DeviceMemory::from_raw(0x30), 0, 256).unwrap();
+            let (entered_tx, entered_rx) = mpsc::channel();
+            let (release_tx, release_rx) = mpsc::channel();
+            let (attempt_tx, attempt_rx) = mpsc::channel();
+            let (done_tx, done_rx) = mpsc::channel();
+            let returned_early = std::thread::scope(|scope| {
+                let queued = &queue;
+                let flushing = scope.spawn(move || queued.flush_with(|ranges| {
+                    assert_eq!(ranges.len(), 1);
+                    entered_tx.send(()).unwrap();
+                    release_rx.recv().unwrap();
+                    Ok(())
+                }));
+                entered_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+                let queued = &queue;
+                let waiting = scope.spawn(move || {
+                    attempt_tx.send(()).unwrap();
+                    if forget { queued.forget(7); }
+                    else { queued.flush_with(|_| panic!("completed ranges must not flush twice")).unwrap(); }
+                    done_tx.send(()).unwrap();
+                });
+                attempt_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+                let early = done_rx.recv_timeout(Duration::from_millis(50)).is_ok();
+                // Release the controlled native call before asserting, so a
+                // failing regression still joins both threads and terminates.
+                release_tx.send(()).unwrap();
+                flushing.join().unwrap().unwrap();
+                waiting.join().unwrap();
+                early
+            });
+            assert!(!returned_early, "forget={forget}: native flush is still using the memory");
+            assert_eq!(queue.flush_calls(), 1);
+        }
     }
 
     #[test]

@@ -3,7 +3,7 @@ pub use crate::rg::resource_info::{
     LifetimeEvent, NO_ACCESS, ResourceAccessRecord, ResourceLifetimeRecord,
 };
 pub use crate::rg::resource_registry::{
-    Buffer, BufferDesc, RegistryResource, ResourceExports, ResourcePool, ResourceRegistry,
+    Buffer, BufferDesc, RegistryResource, ResourcePool, ResourceRegistry,
     ResourceReuseInfo, Texture, TextureDesc,
 };
 use std::ops::Range;
@@ -11,7 +11,6 @@ use std::ops::Range;
 use crate::rg::compiled as batch_state;
 pub type Registry = ResourceRegistry<u64, u64, ()>;
 pub type Pool = ResourcePool<u64, u64>;
-pub type Exports = ResourceExports<u64, u64, ()>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Descriptor {
@@ -111,7 +110,9 @@ impl GraphDeclaration {
         let mut inline_imports = [0u64; 32];
         let mut inline_count = 0usize;
         let mut imports = std::collections::BTreeSet::new();
+        let mut names = std::collections::HashSet::with_capacity(self.resources.len());
         for resource in &self.resources {
+            if !names.insert(resource.name) { return Err(BuildError::DuplicateResourceName(resource.name.to_string())); }
             if let OriginSource::ImportOwned { token, .. }
             | OriginSource::ImportUnowned { token, .. } = resource.source
             {
@@ -294,14 +295,6 @@ impl RenderGraph {
         Ok(handle)
     }
 
-    /// `create_raw_resource` 的别名。
-    pub fn create_resource_handle(
-        &mut self,
-        name: impl Into<crate::resource::ResourceName>,
-        origin: super::resource::ResourceOrigin,
-    ) -> Result<super::resource::ResourceHandle, BuildError> {
-        self.create_raw_resource(name, origin)
-    }
 
     pub(crate) fn check_handle(
         &self,
@@ -648,31 +641,6 @@ impl std::fmt::Debug for PopulationFailure {
     }
 }
 
-pub fn populate_resources(
-    info: &ResourceInfo,
-    declarations: &[ResourceDeclaration],
-    pool: &mut Pool,
-    backend: &mut impl ResourceBackend,
-) -> Result<Population, PopulationFailure> {
-    let mut population = Population {
-        registry: Registry::default(),
-        pool_hits: Vec::new(),
-    };
-    if let Err(error) = populate_resources_into(
-        info,
-        declarations,
-        pool,
-        backend,
-        &mut population.registry,
-        &mut population.pool_hits,
-    ) {
-        return Err(PopulationFailure {
-            error,
-            partial: Box::new(population),
-        });
-    }
-    Ok(population)
-}
 
 fn populate_resources_into(
     info: &ResourceInfo,
@@ -815,7 +783,7 @@ fn populate_resources_into(
         );
         registry.resources[logical] = ResourceReuseInfo {
             backing_index: registry.backing_resources.len() as u16,
-            reused: false,
+            reused: pool_hits.last() == Some(&(logical as u32)),
         };
         registry.resource_initial_access[logical] = initial_access;
         registry.backing_resources.push(resource);

@@ -93,10 +93,5 @@ pub fn add_autoclutter_around_gates(
 
 /// 门放置键（`calculate_hash<tuple<&str,u32,WallId>>` 0x141cf7440 语义）。
 pub fn hash_gate_key(name: &str, u32_field: u32, wall: u64) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    name.hash(&mut h);
-    u32_field.hash(&mut h);
-    WallId(wall).hash(&mut h);
-    h.finish()
+    utils::calculate_hash(&(name, u32_field, WallId(wall)))
 }

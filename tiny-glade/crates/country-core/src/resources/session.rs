@@ -301,9 +301,9 @@ pub fn copy_dir_all(from: &Path, to: &Path) -> std::io::Result<()> {
 // NextSession / SessionOnLoadCmd / NextSessionKind（PDB：resources::session）
 // ---------------------------------------------------------------------------
 
-/// 会话请求的载入方式（PDB：`NextSessionKind`）。原 kind niche =
-/// `0x8000000000000000 | decoded`；`load_game` 0x14146d030 用
-/// `decoded = kind ^ 0x8000000000000000; sel = min(decoded, 2)` 解码。
+/// 会话请求的语义判别。原 startup_session 14166e7d0 有三个高位 niche
+/// （最近/指定/已解析），新建则是持有路径和完整元数据的数据变体。
+/// 此安全枚举不是原版 Rust enum ABI；不能与下游 LoadGameSource 的判别混用。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u64)]
 pub enum NextSessionKind {
@@ -315,6 +315,9 @@ pub enum NextSessionKind {
     LoadOnLoad = 0x8000_0000_0000_0002,
     /// Load UI already parsed this save; the request owns the complete result.
     LoadParsedGame = 0x8000_0000_0000_0003,
+    /// 安全 Rust 适配标记：原版是持有路径和完整 SessionMeta 的数据变体，
+    /// 使用 String 容量 niche，不能把首 qword 当作固定整数 tag。
+    Create = 0x8000_0000_0000_0004,
 }
 impl NextSessionKind {
     pub const fn decoded(self) -> u64 {
@@ -353,21 +356,15 @@ pub const ON_LOAD_VARIANT_MASK: u64 = 0x8000_0000_0000_0000;
 /// on_load 终止 fence（0x8000000000000003）。
 pub const ON_LOAD_FENCE: u64 = 0x8000_0000_0000_0003;
 
-/// 下一个会话请求资源（PDB：`NextSession`；0xa0B：on_load Vec + kind niche +
-/// uuid + 模板/尾部载荷 + ignore_snapshot bool）。
-///
-/// 原生布局（O 0x140b46920 load / 0x140b46960 create）：
-/// - `+0x0` on_load Vec{ptr,cap,len}（create 置 cap=8）；
-/// - `+0x18` kind；`+0x20` id（16B）；
-/// - `+0x30..+0x78` **模板载荷** 9 qword（create 从 96B 模板 rdx[3..0xb] 复制）；
-/// - `+0x78..+0x98` **尾部载荷** 4 qword（create 从 32B 尾部 r8[0..4] 复制）；
-/// - `+0x98` ignore_snapshot bool。
+/// 下一个会话请求的安全所有者。原版0xa0B的+0x18..+0x98是整个数据枚举，
+/// 不是固定kind+uuid+整数载荷：新建含路径和SessionMeta，已解析含拥有的解析结果。
+/// 整数载荷仅为既有纯ABI探针兼容保留；生产新建/已解析消费者读取各自的拥有值。
 #[derive(Resource, Clone, Debug)]
 pub struct NextSession {
     pub on_load: Vec<OnLoadEntry>,
     pub kind: NextSessionKind,
     pub id: SessionId,
-    /// +0x30..+0x78：`create` 的 96B 模板中 kind/id 之后的 9 qword 载荷（字段语义 U，原样复制）。
+    /// 旧纯构造探针的整数载荷；不能包含分配地址，也不能用于恢复新建会话。
     pub template_payload: [u64; 9],
     /// +0x78..+0x98：`create` 的 32B 尾部载荷（4 qword，字段语义 U，原样复制）。
     pub tail_payload: [u64; 4],
@@ -375,10 +372,19 @@ pub struct NextSession {
     /// Safe owner replacing the native Box+metadata wrapper at +0x30.
     /// Never put an allocation address in template_payload.
     parsed_data: Option<Box<crate::systems::save::load_game::ParsedGameData>>,
+    new_session: Option<NewSessionOptions>,
 }
 
-/// `NextSession::create` 的 96B 模板（O 0x140b46960 rdx 12 qword：`[0]`=kind、
-/// `[1..3]`=id、`[3..0xb]`=载荷）。
+/// 原版新建请求拥有的完整数据。空路径选择标准起始场景；每日主题拥有其 history.json 路径。
+/// 不把原生 String、Vec 或 Option 的指针和填充编码到整数数组中。
+#[derive(Clone, Debug, PartialEq)]
+pub struct NewSessionOptions {
+    pub history_path: Option<PathBuf>,
+    pub metadata: SessionMeta,
+}
+
+/// 既有纯构造探针适配器。原140b46960只宽拷贝96B+32B数据，
+/// 其前24B在新建分支实际是String，而非kind/id。生产新建必须用new_game拥有真实数据。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NextSessionTemplate {
     pub kind: NextSessionKind,
@@ -418,10 +424,11 @@ impl NextSession {
             tail_payload: [0; 4],
             ignore_snapshot: false,
             parsed_data: None,
+            new_session: None,
         }
     }
-    /// `NextSession::create` 0x140b46960：从 96B 模板（kind/id/载荷）与 32B 尾部构造；
-    /// Vec 清空（cap=8）；+0x98=0。**载荷字段 +0x30..+0x98 原样复制**（非仅 id+kind）。
+    /// 保留旧探针和启动最近会话入口；不会把整数伪装成字符串、元数据或解析结果。
+    /// 新建和已解析请求分别用new_game/from_parsed。
     pub fn create(template: &NextSessionTemplate, tail: &NextSessionTail) -> Self {
         Self {
             on_load: Vec::new(),
@@ -431,7 +438,22 @@ impl NextSession {
             tail_payload: tail.words,
             ignore_snapshot: false,
             parsed_data: None,
+            new_session: None,
         }
+    }
+    /// 原 B 新建菜单 @141ebb501..5ad：转交起始历史路径和所选主题的完整元数据。
+    pub fn new_game(metadata: SessionMeta, history_path: Option<PathBuf>) -> Self {
+        let mut request = Self::load(SessionId(Uuid::nil()));
+        request.kind = NextSessionKind::Create;
+        request.new_session = Some(NewSessionOptions {
+            history_path,
+            metadata,
+        });
+        request
+    }
+
+    pub fn new_session_options(&self) -> Option<&NewSessionOptions> {
+        self.new_session.as_ref()
     }
     /// Ordinary load, backup restore and theme switch transfer the actual parsed
     /// result (@141e20d5c..e1a / @140fc4cc3..4d6f), without reopening history.json.
@@ -456,10 +478,13 @@ impl NextSession {
     pub(crate) fn take_parsed_data(
         &mut self,
     ) -> anyhow::Result<Box<crate::systems::save::load_game::ParsedGameData>> {
-        anyhow::ensure!(self.kind == NextSessionKind::LoadParsedGame,
-            "NextSession does not own parsed game data");
-        self.parsed_data.take().ok_or_else(|| anyhow::anyhow!(
-            "NextSession parsed variant has no owned ParsedGameData"))
+        anyhow::ensure!(
+            self.kind == NextSessionKind::LoadParsedGame,
+            "NextSession does not own parsed game data"
+        );
+        self.parsed_data.take().ok_or_else(|| {
+            anyhow::anyhow!("NextSession parsed variant has no owned ParsedGameData")
+        })
     }
 
     /// `NextSession::ignore_snapshot` 0x140b46a20：写 +0x98 bool（builder）。
@@ -490,10 +515,6 @@ impl NextSession {
             payload_b: 0,
             payload_c: 0,
         });
-    }
-    /// 兼容旧接口，统一使用拥有所有权的加载完成信号。
-    pub fn append_fence_release(&mut self, fence: crate::meta_commander::MetaCommandFence) {
-        self.append_fence(fence);
     }
     /// `append_on_load<[MetaCommand;3]>` 0x1403b5150：追加**批量条目**（机器码 tag=3，
     /// 载荷 = Box<0xa8B>；reviewer 二轮修正，非单条 payload）。

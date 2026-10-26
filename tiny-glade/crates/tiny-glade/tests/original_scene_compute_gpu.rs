@@ -1,5 +1,9 @@
 //! B scene consumer fixtures using packaged shaders and actual resource owners.
 //! These bounded inputs do not assert that the full gameplay graph is ready.
+#[path = "support/mod.rs"]
+mod test_support;
+use test_support::ShaderTestDriver as _;
+use test_support::BridgeTestDriver as _;
 use ash::vk::{self, Handle};
 use bevy_ecs::world::World;
 use country_core::{
@@ -272,9 +276,9 @@ fn six_live_rasters_upload_actual_mapped_tiles_and_reuse_their_contents() {
         fixture
             .bridge
             .shader_backend()
-            .prewarm(Duration::from_secs(30))
+            .prepare_test_pipelines(Duration::from_secs(30))
             .unwrap();
-        let receipt = fixture.bridge.execute_built(built).unwrap();
+        let receipt = fixture.bridge.execute_test_graph(built).unwrap();
         assert_eq!(
             receipt
                 .snapshot
@@ -389,9 +393,9 @@ fn reprojection_first_frame_uses_false_validity_and_copies_real_depth() {
     fixture
         .bridge
         .shader_backend()
-        .prewarm(Duration::from_secs(30))
+        .prepare_test_pipelines(Duration::from_secs(30))
         .unwrap();
-    let receipt = fixture.bridge.execute_built(built).unwrap();
+    let receipt = fixture.bridge.execute_test_graph(built).unwrap();
     assert!(
         receipt
             .snapshot
@@ -519,9 +523,9 @@ fn live_water_and_garden_masks_consume_uploads_keep_channels_and_skip_clean_fram
         fixture
             .bridge
             .shader_backend()
-            .prewarm(Duration::from_secs(30))
+            .prepare_test_pipelines(Duration::from_secs(30))
             .unwrap();
-        let receipt = fixture.bridge.execute_built(built).unwrap();
+        let receipt = fixture.bridge.execute_test_graph(built).unwrap();
         for (name, initial_count) in [
             ("Upload cpu raster", 2),
             ("Blur water mask", 4),
@@ -614,7 +618,7 @@ fn original_deferred_shader_owner_is_populated_in_gameplay_startup() {
     fixture
         .bridge
         .shader_backend()
-        .prewarm(Duration::from_secs(30))
+        .prepare_test_pipelines(Duration::from_secs(30))
         .unwrap();
     app.update();
     assert_eq!(
@@ -740,9 +744,9 @@ fn original_terrain_strokes_empty_clean_then_event_odd_xz_use_the_same_owner() {
         fixture
             .bridge
             .shader_backend()
-            .prewarm(Duration::from_secs(30))
+            .prepare_test_pipelines(Duration::from_secs(30))
             .unwrap();
-        let receipt = fixture.bridge.execute_built(built).unwrap();
+        let receipt = fixture.bridge.execute_test_graph(built).unwrap();
         assert!(
             !receipt.receipts.is_empty(),
             "real Vulkan submissions are mandatory"
@@ -988,7 +992,7 @@ fn original_multires_dof_reads_uploaded_tile_offsets_and_dispatches_its_real_par
     fixture
         .bridge
         .shader_backend()
-        .prewarm(Duration::from_secs(60))
+        .prepare_test_pipelines(Duration::from_secs(60))
         .unwrap();
     let compiled = fixture.bridge.compile_built(built).unwrap();
     for name in [
@@ -1013,7 +1017,7 @@ fn original_multires_dof_reads_uploaded_tile_offsets_and_dispatches_its_real_par
             "the real DoF initializer/partition must survive graph compilation: {name}"
         );
     }
-    let receipt = fixture.bridge.execute_compiled(compiled).unwrap();
+    let receipt = fixture.bridge.execute_after_uploads(compiled).unwrap();
     assert!(!receipt.receipts.is_empty());
     fixture.bridge.wait_submits_done(10_000_000_000).unwrap();
     assert_eq!(
@@ -1251,9 +1255,9 @@ fn run_original_aa_fixture_frame(
     fixture
         .bridge
         .shader_backend()
-        .prewarm(Duration::from_secs(30))
+        .prepare_test_pipelines(Duration::from_secs(30))
         .unwrap();
-    let receipt = fixture.bridge.execute_built(built).unwrap();
+    let receipt = fixture.bridge.execute_test_graph(built).unwrap();
     if use_tgsr {
         for required in ["TGSR blur lum", "TGSR reproject", "TGSR"] {
             assert!(
@@ -1489,9 +1493,9 @@ fn original_shader_refactoring_replaces_the_full_frame_and_keeps_real_reference(
         fixture
             .bridge
             .shader_backend()
-            .prewarm(Duration::from_secs(30))
+            .prepare_test_pipelines(Duration::from_secs(30))
             .unwrap();
-        let receipt = fixture.bridge.execute_built(built).unwrap();
+        let receipt = fixture.bridge.execute_test_graph(built).unwrap();
         let count = |name: &str| {
             receipt
                 .snapshot
@@ -1737,9 +1741,9 @@ fn original_spd_large_mip_chain_uses_uploaded_zero_atomic_and_reuses_it_next_fra
         fixture
             .bridge
             .shader_backend()
-            .prewarm(Duration::from_secs(30))
+            .prepare_test_pipelines(Duration::from_secs(30))
             .unwrap();
-        let receipt = fixture.bridge.execute_built(built).unwrap();
+        let receipt = fixture.bridge.execute_test_graph(built).unwrap();
         assert_eq!(
             receipt
                 .snapshot

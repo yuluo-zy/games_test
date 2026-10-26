@@ -6,6 +6,8 @@ use glam::Vec2;
 /// 屏幕空间中的中心位置与尺寸。B 大小 0x10，pos@0、size@8。
 #[repr(C)]
 #[derive(Clone, Component, Debug, Default, PartialEq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct Ui2dExtent {
     pub pos: Vec2,
     pub size: Vec2,
@@ -28,6 +30,8 @@ const _: () = assert!(std::mem::size_of::<UiMouseInteractable>() == 4);
 /// Copy 数据或无载荷标记；ECS 克隆策略保持原作 Default。
 #[repr(C)]
 #[derive(Clone, Component, Debug, Default, PartialEq, Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct Ui2dImage {
     pub name: String,
     pub layer: u32,
@@ -48,17 +52,23 @@ impl Ui2dImage {
 /// B register 0x140850aa0 记录大小/对齐均为 8；绘制端按 u64 比较。
 #[repr(transparent)]
 #[derive(Clone, Component, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct UiDrawOrder(pub u64);
 
 /// B register@0x14084e100: zero-sized marker, alignment 1. The render query
 /// binds its presence to U_INACTIVE; there is no payload to reconstruct.
 #[derive(Component, Clone, Copy, Debug, Default)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct UiInactive;
 
 /// B register@0x14084eee0: size 0x14, align 4. ui_2d_pass reads extent@0
 /// as Vec2 and world position@8 as Vec3 without sorting this query.
 #[repr(C)]
 #[derive(Component, Clone, Copy, Debug, Default)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct Ui2dWsExtent {
     pub extent: Vec2,
     pub position: glam::Vec3,
@@ -68,6 +78,8 @@ pub struct Ui2dWsExtent {
 /// alignment 1. Toolbar writers and the UI raster query share this owner.
 #[repr(C)]
 #[derive(Component, Clone, Copy, Debug, Default)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct UiInteractionState {
     pub state: u8,
     pub keep: u8,
@@ -81,3 +93,12 @@ const _: () = assert!(std::mem::size_of::<UiInteractionState>() == 3);
 /// Original zero-sized query filter marker; no independent runtime owner.
 #[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
 pub struct Ui2DFollowMouse;
+
+impl crate::render::extract::JournaledComponent for Ui2dExtent {}
+impl crate::render::extract::JournaledComponent for Ui2dImage {}
+impl crate::render::extract::JournaledComponent for Ui2dWsExtent {}
+impl crate::render::extract::JournaledComponent for UiDrawOrder {}
+impl crate::render::extract::JournaledComponent for UiInactive {}
+impl crate::render::extract::JournaledComponent for UiInteractionState {}
+
+

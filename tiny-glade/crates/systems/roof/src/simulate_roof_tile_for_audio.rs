@@ -35,7 +35,7 @@ use bevy_ecs::prelude::*;
 
 /// B 0x1421a7090。
 pub fn simulate_roof_tile_for_audio(
-    mut tiles: Query<(&mut RoofTileSimulation, &Roof)>,
+    mut tiles: Query<(ComponentWrite<RoofTileSimulation>, &Roof)>,
     mut sounds: EventWriter<RoofSound>,
     time: Res<GameTime>,
     walls: Res<PublicWalls>,
@@ -143,3 +143,5 @@ pub fn simulate_roof_tile_for_audio(
         simulation.replace_observed(bytes);
     }
 }
+
+use country_core::render::extract::ComponentWrite;

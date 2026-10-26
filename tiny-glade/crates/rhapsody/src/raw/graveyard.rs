@@ -52,5 +52,3 @@ pub struct RetirementStats {
     pub completed: [u64; crate::sync::MAX_QUEUES],
     pub idle_waits: u64,
 }
-/// Former name of [`RetirementStats`].
-pub type GraveyardStats = RetirementStats;

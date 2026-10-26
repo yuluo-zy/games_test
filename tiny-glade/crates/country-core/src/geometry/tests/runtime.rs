@@ -121,7 +121,7 @@ fn production_component_uploads_once_replaces_clears_and_reclaims_on_delete() {
         "静止帧不重复上传或清空"
     );
     world
-        .get_mut::<InstancedWall<BrickTransformSsbo>>(entity)
+        .component_mut::<InstancedWall<BrickTransformSsbo>>(entity)
         .unwrap()
         .update(vec![BrickTransformSsbo {
             seed: 99,
@@ -138,7 +138,7 @@ fn production_component_uploads_once_replaces_clears_and_reclaims_on_delete() {
         99
     );
     world
-        .get_mut::<InstancedWall<BrickTransformSsbo>>(entity)
+        .component_mut::<InstancedWall<BrickTransformSsbo>>(entity)
         .unwrap()
         .update(vec![]);
     schedule.run(&mut world);
@@ -151,7 +151,7 @@ fn production_component_uploads_once_replaces_clears_and_reclaims_on_delete() {
             .is_empty()
     );
     world
-        .get_mut::<InstancedWall<BrickTransformSsbo>>(entity)
+        .component_mut::<InstancedWall<BrickTransformSsbo>>(entity)
         .unwrap()
         .update(vec![BrickTransformSsbo::default()]);
     schedule.run(&mut world);
@@ -267,3 +267,5 @@ fn empty_world_and_new_empty_wall_do_not_allocate_the_shared_brick_buffer() {
             .is_upload_pending()
     );
 }
+
+use crate::render::extract::WorldComponentWrite as _;

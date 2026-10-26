@@ -117,7 +117,7 @@ pub fn update_sheep_goals(
     cursor: Res<CursorTerrainRaycast>,
     water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     rng: Res<CritterRng>,
-    mut query: Query<(&Transform, &mut Sheep, &SheepTerrainState, &mut SheepGoal)>,
+    mut query: Query<(&Transform, ComponentWrite<Sheep>, &SheepTerrainState, &mut SheepGoal)>,
 ) {
     let dt = time.delta;
     let mut rng_ctx = rng.0.lock().unwrap();
@@ -195,7 +195,7 @@ pub fn update_sheep_goals(
                 let r_new = (new_pos.x * new_pos.x + new_pos.z * new_pos.z).sqrt();
                 let r_old = (pos.x * pos.x + pos.z * pos.z).sqrt();
                 let allowed = (r_new < 65.0 || r_new < r_old)
-                    && (terrain_state.state != STATE_GROUNDED || {
+                    && (terrain_state.0 != STATE_GROUNDED || {
                         let s1 = w.bilinear_sample_at_world_xz(new_pos.x, new_pos.z, 130.0, 130.0);
                         s1 <= 0.0 && {
                             let s2 = w.bilinear_sample_at_world_xz(pos.x, pos.z, 130.0, 130.0);
@@ -861,3 +861,5 @@ mod original_movement_phase_tests {
         );
     }
 }
+
+use country_core::render::extract::ComponentWrite;

@@ -163,7 +163,7 @@ pub fn sim_wren_boids(
     mut commands: Commands,
     mut flock: ResMut<WrenBoids>,
     mut rng: Local<WrenRng>,
-    mut wrens: Query<(&mut Transform, &mut Wren)>,
+    mut wrens: Query<(ComponentWrite<Transform>, &mut Wren)>,
     spots_q: Query<&BirdSpots>,
     mut havens: Query<
         (Entity, &mut BirdHaven, &PrefabInstanceData),
@@ -396,3 +396,5 @@ mod despawn_birds_tests {
         assert!(world.get_entity(bird).is_ok(), "despawn_birds 不清理实体");
     }
 }
+
+use country_core::render::extract::ComponentWrite;

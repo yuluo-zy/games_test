@@ -9,6 +9,8 @@ use crate::resources::roofs::geometry::surface::CurveError;
 use crate::resources::walls::publication_fields::PublicWallBuildingState;
 use crate::resources::walls::publication_fields::WallShapeSnapshot;
 use crate::resources::walls::publication_source::TerrainHeightGrid512;
+use ::utils::bytes::{read_f32_le as float_at, write_f32_le as write_float};
+use ::utils::scalar::{clamp, max_f32, min_f32};
 
 #[derive(Clone, Debug)]
 pub struct FreeformWallHeightCache {
@@ -143,19 +145,6 @@ pub enum ShapeHeightError {
     ExcessiveSampleCount,
 }
 
-fn float_at(bytes: &[u8], offset: usize) -> f32 {
-    f32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
-}
-fn write_float(bytes: &mut [u8], offset: usize, value: f32) {
-    bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
-}
-fn source_max(a: f32, b: f32) -> f32 {
-    if a > b { a } else { b }
-}
-fn source_min(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
-}
-
 pub fn rectangle_curve(rectangle: PreviewRectangleObserved) -> Result<Curve2, ShapeHeightError> {
     let [ux, uz] = rectangle.axes;
     let [cx, cz] = rectangle.center;
@@ -229,8 +218,8 @@ fn preview_terrain_map(
     for pair in curve.points.windows(2) {
         let [a, b] = [pair[0], pair[1]];
         let [dx, dz] = [b[0] - a[0], b[1] - a[1]];
-        let length = source_max((dz * dz + dx * dx).sqrt(), f32::from_bits(0x322bcc77));
-        let step = source_min(0.5 / length, 1.0);
+        let length = max_f32((dz * dz + dx * dx).sqrt(), f32::from_bits(0x322bcc77));
+        let step = min_f32(0.5 / length, 1.0);
         let count = ((1.0 / step).round() as usize).saturating_add(1).max(2);
         if count > isize::MAX as usize / 12 {
             return Err(ShapeHeightError::ExcessiveSampleCount);
@@ -307,9 +296,10 @@ pub fn calculate_shape_height(
         (sum / positions.len() as f32 + extent) + f32::from_bits(0xbeeb851f)
     };
     let base_maximum = maximum + f32::from_bits(0xbeeb851f);
-    let extra = source_min(
+    let extra = clamp(
+        wanted - base_maximum,
+        f32::from_bits(0x3f333333),
         14.0,
-        source_max(f32::from_bits(0x3f333333), wanted - base_maximum),
     );
     *placement_tick = current_tick;
     write_float(shape_placement, 0x40, extra);

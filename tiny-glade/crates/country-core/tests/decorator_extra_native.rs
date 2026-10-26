@@ -8,7 +8,7 @@ use country_core::resources::walls::decorator::{
 #[test]
 fn actual_extra_setter_and_readback_match_576_native_write_footprints() {
     assert_eq!(std::mem::size_of::<DecoratorInfo>(), 72);
-    let bytes=include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reverse-engineering/tiny-glade/progress-20261020/phase2-extra-independent/native-from-fixtures.bin"));
+    let bytes=include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/native/native-from-fixtures.bin"));
     let mut total = 0;
     let mut errors = 0;
     for case in bytes.chunks_exact(165) {

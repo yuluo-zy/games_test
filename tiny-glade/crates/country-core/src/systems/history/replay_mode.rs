@@ -6,9 +6,7 @@ use crate::systems::history::PendingHistoryCommands;
 use crate::{
     input::action_set::MainActionSet,
     resources::time::GameTime,
-    systems::mode_manager::{
-        AppMode, AppModeChanged, EditSubject, HistoryCommand, RestoreAppTo,
-    },
+    systems::mode_manager::{AppMode, AppModeChanged, EditSubject, HistoryCommand, RestoreAppTo},
     systems::ui::resources::ui_state::UiState,
 };
 use bevy_ecs::prelude::*;

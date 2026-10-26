@@ -319,13 +319,19 @@ pub fn pop_empty_replay_bucket(
 /// 原生 `DecoratorArchivist::extract_diff` 的 history 侧调用面（walls 域类型，
 /// 以 trait 解耦，避免 history 依赖其泛型参数）。
 pub trait ReplayDiffExtractor {
-    fn extract_replay_diff(&mut self);
+    fn extract_replay_diff(
+        &mut self,
+        storage: &crate::resources::walls::decorator_storage::DecoratorStorage,
+    );
 }
 impl<C: Send + Sync + 'static> ReplayDiffExtractor
     for crate::resources::walls::decorator_archivist::changes::DecoratorArchivist<C>
 {
-    fn extract_replay_diff(&mut self) {
-        let _ = self.extract_diff();
+    fn extract_replay_diff(
+        &mut self,
+        storage: &crate::resources::walls::decorator_storage::DecoratorStorage,
+    ) {
+        let _ = self.extract_diff(storage, true);
     }
 }
 
@@ -363,7 +369,7 @@ where
         if replay.buckets.is_empty() {
             return None;
         }
-        archivist.extract_replay_diff();
+        archivist.extract_replay_diff(storage);
         return None;
     }
     let (bucket, aux) = replay.pop_front_bucket()?;
@@ -375,7 +381,7 @@ where
         stairs.restore_replay_diff(&diff, bucket.undo);
     }
     // ReplayBucket drop 后 archivist 提取并 drop diff map。
-    archivist.extract_replay_diff();
+    archivist.extract_replay_diff(storage);
     raycast.flush_colliders();
     Some(ReplayBucketFinished {
         entry_index: bucket.entry_index,
@@ -398,15 +404,13 @@ where
 #[cfg(feature = "native-physics")]
 pub fn replay_pop_bucket_system(
     mut replay: ResMut<ReplayBuffer>,
-    storage: Option<ResMut<crate::resources::walls::decorator_storage::DecoratorStorage>>,
+    mut storage: Option<ResMut<crate::resources::walls::decorator_storage::DecoratorStorage>>,
     id_gen: Option<ResMut<crate::resources::walls::decorator::DecoratorIdGen>>,
     mut physics: Option<
         ResMut<crate::resources::walls::decorator_collision::DecoratorPhysicsColliders>,
     >,
     events: Option<Res<crate::resources::walls::decorator::DeferredDecoratorOpEvents>>,
-    archivist: Option<
-        ResMut<crate::resources::walls::decorator_archivist::LiveDecoratorArchivist>,
-    >,
+    archivist: Option<ResMut<crate::resources::walls::decorator_archivist::LiveDecoratorArchivist>>,
     mut raycast: Option<ResMut<crate::systems::collision::world::RaycastWorld>>,
     stairs: Option<ResMut<crate::resources::stairs::stairs_state::StairsState>>,
     mut finished: EventWriter<ReplayBucketFinished>,
@@ -414,9 +418,16 @@ pub fn replay_pop_bucket_system(
     let Some(front) = replay.buckets.front() else {
         return Ok(());
     };
+    if archivist.is_some() && storage.is_none() {
+        return Err(
+            anyhow::anyhow!("decorator archive extraction requires DecoratorStorage").into(),
+        );
+    }
     if !front.commands.is_empty() {
         if let Some(mut archivist) = archivist {
-            drop(archivist.extract_diff());
+            drop(
+                archivist.extract_diff(storage.as_deref().expect("archive storage checked"), true),
+            );
         }
         return Ok(());
     }
@@ -444,7 +455,7 @@ pub fn replay_pop_bucket_system(
     }
     let (bucket, aux) = replay.pop_front_bucket().expect("front bucket exists");
     if let Some(diff) = aux.decorator_diff {
-        let (Some(mut storage), Some(mut id_gen)) = (storage, id_gen) else {
+        let (Some(mut storage), Some(mut id_gen)) = (storage.as_deref_mut(), id_gen) else {
             unreachable!("required decorator owners validated before pop");
         };
         // 事件队列缺失时用局部队列承接并告警（不静默丢弃可见性）。
@@ -463,12 +474,11 @@ pub fn replay_pop_bucket_system(
             let physics: &mut crate::resources::walls::decorator_collision::DecoratorPhysicsColliders =
                 &mut *physics;
             let raycast: &mut crate::systems::collision::world::RaycastWorld = &mut *raycast;
-            let mut colliders =
-                crate::resources::walls::decorator_storage::DecoratorColliderMaps {
-                    world: raycast,
-                    collision_a: &mut physics.first,
-                    collision_b: &mut physics.second,
-                };
+            let mut colliders = crate::resources::walls::decorator_storage::DecoratorColliderMaps {
+                world: raycast,
+                collision_a: &mut physics.first,
+                collision_b: &mut physics.second,
+            };
             storage.restore_decorators(&diff, bucket.undo, &mut id_gen, &mut colliders, deferred);
         } else {
             log::warn!(
@@ -489,7 +499,7 @@ pub fn replay_pop_bucket_system(
     };
     drop(bucket);
     if let Some(mut archivist) = archivist {
-        drop(archivist.extract_diff());
+        drop(archivist.extract_diff(storage.as_deref().expect("archive storage checked"), true));
     }
     if let Some(mut raycast) = raycast {
         raycast.flush_colliders();
@@ -505,11 +515,7 @@ struct NoDecoratorColliderRemoval;
 impl crate::resources::walls::decorator_storage::DecoratorColliderRemover
     for NoDecoratorColliderRemoval
 {
-    fn remove_decorator_collider(
-        &mut self,
-        _id: crate::resources::walls::decorator::DecoratorId,
-    ) {
-    }
+    fn remove_decorator_collider(&mut self, _id: crate::resources::walls::decorator::DecoratorId) {}
 }
 
 /// 非 `native-physics` 的等价 CPU Pop：恢复 decorator aux
@@ -520,22 +526,27 @@ impl crate::resources::walls::decorator_storage::DecoratorColliderRemover
 #[cfg(not(feature = "native-physics"))]
 pub fn replay_pop_bucket_cpu_system(
     mut replay: ResMut<ReplayBuffer>,
-    storage: Option<ResMut<crate::resources::walls::decorator_storage::DecoratorStorage>>,
+    mut storage: Option<ResMut<crate::resources::walls::decorator_storage::DecoratorStorage>>,
     id_gen: Option<ResMut<crate::resources::walls::decorator::DecoratorIdGen>>,
     events: Option<Res<crate::resources::walls::decorator::DeferredDecoratorOpEvents>>,
     stairs: Option<ResMut<crate::resources::stairs::stairs_state::StairsState>>,
-    archivist: Option<
-        ResMut<crate::resources::walls::decorator_archivist::LiveDecoratorArchivist>,
-    >,
+    archivist: Option<ResMut<crate::resources::walls::decorator_archivist::LiveDecoratorArchivist>>,
     raycast: Option<ResMut<crate::systems::collision::world::RaycastWorld>>,
     mut finished: EventWriter<ReplayBucketFinished>,
 ) -> bevy_ecs::error::Result {
     let Some(front) = replay.buckets.front() else {
         return Ok(());
     };
+    if archivist.is_some() && storage.is_none() {
+        return Err(
+            anyhow::anyhow!("decorator archive extraction requires DecoratorStorage").into(),
+        );
+    }
     if !front.commands.is_empty() {
         if let Some(mut archivist) = archivist {
-            drop(archivist.extract_diff());
+            drop(
+                archivist.extract_diff(storage.as_deref().expect("archive storage checked"), true),
+            );
         }
         return Ok(());
     }
@@ -561,7 +572,7 @@ pub fn replay_pop_bucket_cpu_system(
     }
     let (bucket, aux) = replay.pop_front_bucket().expect("front bucket exists");
     if let Some(diff) = aux.decorator_diff {
-        let (Some(mut storage), Some(mut id_gen)) = (storage, id_gen) else {
+        let (Some(mut storage), Some(mut id_gen)) = (storage.as_deref_mut(), id_gen) else {
             unreachable!("required decorator owners checked above");
         };
         let fallback = crate::resources::walls::decorator::DeferredDecoratorOpEvents::default();
@@ -589,7 +600,7 @@ pub fn replay_pop_bucket_cpu_system(
     };
     drop(bucket);
     if let Some(mut archivist) = archivist {
-        drop(archivist.extract_diff());
+        drop(archivist.extract_diff(storage.as_deref().expect("archive storage checked"), true));
     }
     if let Some(mut raycast) = raycast {
         raycast.flush_colliders();
@@ -604,11 +615,7 @@ struct NoDecoratorColliderRemoval;
 impl crate::resources::walls::decorator_storage::DecoratorColliderRemover
     for NoDecoratorColliderRemoval
 {
-    fn remove_decorator_collider(
-        &mut self,
-        _id: crate::resources::walls::decorator::DecoratorId,
-    ) {
-    }
+    fn remove_decorator_collider(&mut self, _id: crate::resources::walls::decorator::DecoratorId) {}
 }
 
 #[cfg(feature = "native-physics")]
@@ -699,9 +706,11 @@ pub fn add_history_cpu_systems<S: Send + Sync + 'static>(schedule: &mut Schedule
     schedule.add_systems(
         history_clear_previous_state
             .after(history_process_system::<S>)
-            .run_if(bevy_ecs::schedule::common_conditions::resource_exists::<
-                crate::resources::walls::decorator_archivist::LiveDecoratorArchivist,
-            >)
+            .run_if(
+                bevy_ecs::schedule::common_conditions::resource_exists::<
+                    crate::resources::walls::decorator_archivist::LiveDecoratorArchivist,
+                >,
+            )
             .in_set(HistoryCpuStage::Cursor),
     );
     schedule.add_systems(replay_stairs::replay_stairs.in_set(HistoryCpuStage::Replay));

@@ -45,7 +45,7 @@ pub struct SheepPetAudio {
 pub fn ui_pet_sheep(
     camera: Res<MainCamera>,
     mut target: ResMut<PetSheepTarget>,
-    mut query: Query<(Entity, &Transform, &mut Sheep, &mut SheepPetControl, &mut SheepPetAudio)>,
+    mut query: Query<(Entity, &Transform, ComponentWrite<Sheep>, &mut SheepPetControl, &mut SheepPetAudio)>,
 ) {
     // 未实现：UI 状态资源 code gate（0x13+mode3 / 0xd 跳过 / 6+子字节 / 其余；资源身份 U）。
     // 未实现：UI 命中（format!("pet_sheep{}", Sheep+0x20) / WidgetParams::new()
@@ -72,3 +72,5 @@ pub fn ui_pet_sheep(
     target.entity = best.map(|(e, _, _)| e);
     target.position = best.map_or(Vec3::ZERO, |(_, _, p)| p);
 }
+
+use country_core::render::extract::ComponentWrite;

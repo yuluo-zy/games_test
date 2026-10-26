@@ -67,6 +67,10 @@ impl<K: Eq + Hash, V> FrozenMap<K, V> {
     pub fn is_empty(&self) -> bool {
         self.map.read().is_empty()
     }
+    pub fn try_for_each_mut<E>(&mut self, mut f: impl FnMut(&mut V) -> Result<(), E>) -> Result<(), E> {
+        for value in self.map.get_mut().values_mut() { f(value)?; }
+        Ok(())
+    }
 
     /// 遍历全部值（O：`export_from_rg` 对 hashbrown 表逐桶迭代）。
     /// A new map whose entries are `copy` of this map's (render snapshots).

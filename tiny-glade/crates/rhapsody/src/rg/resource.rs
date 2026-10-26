@@ -128,16 +128,6 @@ impl super::graph::RenderGraph {
         self.check_export_version(buffer.raw(), current.version(), buffer.version())?;
         self.export_range(buffer.raw(), access_code, range)
     }
-    pub fn export_texture_range(
-        &mut self,
-        texture: TextureId,
-        access_code: u8,
-        range: AccessRange,
-    ) -> Result<(), super::graph::BuildError> {
-        let current = self.texture_id(texture.raw())?;
-        self.check_export_version(texture.raw(), current.version(), texture.version())?;
-        self.export_range(texture.raw(), access_code, range)
-    }
     fn check_export_version(
         &self,
         resource: ResourceHandle,
@@ -467,13 +457,10 @@ impl ResourceOrigin {
     }
 }
 
-/// 读访问没有额外的合法性约束；保留为空操作。
-pub fn validate_read_access(_access: u8) {}
 
 use super::resource_registry::{Buffer, RegistryResource, Texture};
 use std::sync::Arc;
 
-pub type RuntimeResource<T, B, O> = RegistryResource<T, B, Arc<O>>;
 
 pub enum BorrowedResource<'a, T, B, O> {
     Image(&'a Texture<T>),
@@ -532,12 +519,6 @@ pub fn descriptor_from_texture(input: &[u8; 32]) -> [u8; 32] {
     *input
 }
 
-/// 只写前 16 字节及第 30 字节。
-/// 未写入区保持原值，不能错误地补零或复制全部 32 字节。
-pub fn descriptor_from_buffer(input: &[u8; 16], output: &mut [u8; 32]) {
-    output[..16].copy_from_slice(input);
-    output[30] = 7;
-}
 
 /// 只允许在所属 builder 中生产绑定。
 pub struct Ref<'borrow, 'graph, Kind> {
@@ -628,18 +609,3 @@ impl Ref<'_, '_, TextureRef> {
     }
 }
 
-/// 视图载体的限定字节写入合同。
-pub fn original_ref_view_binding(
-    view: &[u8; 60],
-    logical: ResourceHandle,
-    role: u8,
-    output: &mut [u8; 68],
-) {
-    output[..60].copy_from_slice(view);
-    output[60..64].copy_from_slice(&logical.raw().to_le_bytes());
-    output[64] = role;
-}
-/// 缓冲载体：uniform=3，另一绑定种类=4。
-pub fn original_ref_buffer_binding(logical: ResourceHandle, uniform: bool) -> [u32; 2] {
-    [if uniform { 3 } else { 4 }, logical.raw()]
-}

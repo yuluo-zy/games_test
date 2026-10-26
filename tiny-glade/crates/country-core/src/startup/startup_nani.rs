@@ -134,7 +134,7 @@ pub fn create_world_subset(
     use GpuWorldSubsetKind::*;
     macro_rules! owned {
         ($ty:ty) => {
-            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new_with_mesh_parts::<$ty>(
+            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<$ty>(
                 device,
                 kind,
                 mesh_part_count,

@@ -24,11 +24,11 @@ pub mod sentry_reporter;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use country_core::input::input_stream::InputStream;
 use country_core::resources::session::ActiveSession;
 use country_core::systems::backend::input::input_record_replay::InputFrame;
-use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use crate::crash_pickup::crash_payload::{BacktracePayload, CrashPickupMessage, CrashRecovered};
@@ -43,8 +43,8 @@ pub struct PanicReporterInfo {
 }
 
 /// Global crash-report snapshot. B stores it in `country-core`; see module note.
-pub static PANIC_REPORTER_INFO: Lazy<Mutex<Option<Arc<PanicReporterInfo>>>> =
-    Lazy::new(|| Mutex::new(None));
+pub static PANIC_REPORTER_INFO: LazyLock<Mutex<Option<Arc<PanicReporterInfo>>>> =
+    LazyLock::new(|| Mutex::new(None));
 
 /// Install (or replace) the snapshot used by [`recover_game_state_after_crash`].
 pub fn set_panic_reporter_info(info: PanicReporterInfo) {
@@ -131,8 +131,8 @@ pub fn setup_panic_hook() {
 }
 
 /// Process-wide client handle used by the panic hook.
-static CRASH_CLIENT: Lazy<Mutex<Option<crate::crash_pickup::ClientHandle>>> =
-    Lazy::new(|| Mutex::new(None));
+static CRASH_CLIENT: LazyLock<Mutex<Option<crate::crash_pickup::ClientHandle>>> =
+    LazyLock::new(|| Mutex::new(None));
 
 /// Register the minidumper client used by the panic hook.
 pub fn set_crash_client(client: crate::crash_pickup::ClientHandle) {

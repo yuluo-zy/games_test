@@ -29,8 +29,8 @@ fn default_views_match_texture_dimensions_and_create_real_vulkan_views() {
         let mut desc = TextureDesc::new(
             vk::Extent3D {
                 width: 4,
-                height: 4,
-                depth: 4,
+                height: if matches!(kind, TextureKind::D1 | TextureKind::D1Array) { 1 } else { 4 },
+                depth: if kind == TextureKind::D3 { 4 } else { 1 },
             },
             kind,
             vk::Format::R8G8B8A8_UNORM,
@@ -366,10 +366,10 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
 
     let mut backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
     backend
-        .bind_import_named("uploaded", 17, GpuResource::Image(texture.clone()))
+        .bind_import_named("uploaded", (1u64 << 62) | 17, GpuResource::Image(texture.clone()))
         .unwrap();
     backend
-        .bind_import_named("readback", 18, GpuResource::Buffer(readback.clone()))
+        .bind_import_named("readback", (1u64 << 62) | 18, GpuResource::Buffer(readback.clone()))
         .unwrap();
     let mut session = VulkanGraphSession::new(backend);
     for _ in 0..3 {
@@ -380,7 +380,7 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
             .import_unowned(
                 "uploaded",
                 ResourceSpec::Image(texture.desc).descriptor(),
-                17,
+                (1u64 << 62) | 17,
                 0x34,
             )
             .unwrap();
@@ -388,7 +388,7 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
             .import_unowned(
                 "readback",
                 ResourceSpec::Buffer(readback.desc).descriptor(),
-                18,
+                (1u64 << 62) | 18,
                 0x26,
             )
             .unwrap();

@@ -4,6 +4,7 @@
 use crate::resources::roofs::geometry::parameters::RoofParameterBlock;
 use crate::resources::roofs::geometry::surface::Curve2;
 use crate::resources::roofs::geometry::surface::CurveError;
+use ::utils::bytes::read_f32_le as f;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum GableError {
@@ -18,9 +19,6 @@ pub struct GableArchHeights {
     pub maximum_y: f32,
     pub curve_u: Vec<f32>,
     pub closing_endpoint_offset: Option<f32>,
-}
-fn f(roof: &[u8; 88], offset: usize) -> f32 {
-    f32::from_le_bytes(roof[offset..offset + 4].try_into().unwrap())
 }
 /// Original Rectangle2d::get_point_u jump cases; addition order is intentional.
 pub fn rectangle_point_u(width: f32, length: f32, index: usize) -> Result<f32, GableError> {

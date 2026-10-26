@@ -21,6 +21,7 @@
 //! `update` 0x140949fe0（2339B）与 `translate_screen_space` 0x140949e70（365B）按完整 B RNE 恢复；每个 body 的持久状态仍由 MainCamera 拥有。
 use glam::{Quat, Vec2, Vec3};
 
+use ::utils::scalar::{clamp, max_f32};
 use super::main_camera::CameraMode;
 
 /// 0x1c B 的活动旋转记录（O：`load_parameters` 创建、`zoom`/`rotate_yaw_pitch` 读写）。
@@ -109,16 +110,6 @@ pub struct NormalCameraBody {
     pub loose_ground_projection: f32,
 }
 
-/// SSE `maxss dst, src`：`dst > src ? dst : src`（相等或有 NaN 取 `src`）。
-fn sse_max(dst: f32, src: f32) -> f32 {
-    if dst > src { dst } else { src }
-}
-
-/// SSE `minss dst, src`：`dst < src ? dst : src`。
-fn sse_min(dst: f32, src: f32) -> f32 {
-    if dst < src { dst } else { src }
-}
-
 fn non_finite(v: f32) -> bool {
     v.to_bits() & 0x7fff_ffff > 0x7f7f_ffff
 }
@@ -144,7 +135,7 @@ impl NormalCameraBody {
         }
         let t = which.table_index();
         let lower = ZOOM_MIN_DISTANCE[t];
-        let exponent = sse_min(1.0, sse_max(-1.0, amount * ZOOM_AMOUNT_SCALE));
+        let exponent = clamp(amount * ZOOM_AMOUNT_SCALE, -1.0, 1.0);
 
         if let Some(active) = self.active.as_mut() {
             let radial_max = self.radial_max;
@@ -155,7 +146,7 @@ impl NormalCameraBody {
                 });
             }
             let factor = exponent.exp2();
-            let target = sse_min(radial_max, sse_max(lower, factor * active.arm_length));
+            let target = clamp(factor * active.arm_length, lower, radial_max);
             active.arm_length = target;
             return Ok(());
         }
@@ -233,7 +224,7 @@ impl NormalCameraBody {
         let y = if y_sum.is_nan() {
             floor
         } else {
-            sse_max(floor, y_sum)
+            max_f32(floor, y_sum)
         };
         self.pending_translation = Vec3::new(x_sum - pos.x, y - pos.y, z_sum - pos.z);
     }
@@ -261,7 +252,7 @@ fn original_xz_bounds(point: Vec2, extent: f32, extent_squared: f32, demo: bool)
             if value.is_nan() {
                 -extent
             } else {
-                sse_min(extent, sse_max(-extent, value))
+                clamp(value, -extent, extent)
             }
         };
         let clamped = Vec2::new(clamp(point.x), clamp(point.y));
@@ -286,7 +277,7 @@ impl NormalCameraBody {
     ) {
         let height = matrices.eye_position().y;
         let direction_y = matrices.eye_direction().y;
-        let scale = sse_max(height / -direction_y, 1.0) / 50.0;
+        let scale = max_f32(height / -direction_y, 1.0) / 50.0;
         let rotation = Quat::from_rotation_y(self.yaw * super::main_camera::ORBIT_ANGLE_SCALE);
         self.pending_translation += (rotation * movement) * scale;
     }
@@ -331,8 +322,8 @@ impl NormalCameraBody {
         }
         let forward = body_rotation(self.yaw, self.pitch) * Vec3::NEG_Z;
         let goal = if self.loose_ground_projection != 0.0 {
-            let denominator = sse_max(-forward.y, f32::from_bits(0x3e19_999a));
-            let distance = sse_max(
+            let denominator = max_f32(-forward.y, f32::from_bits(0x3e19_999a));
+            let distance = max_f32(
                 (self.position.y - 10.0) / denominator,
                 f32::from_bits(0x4140_6667),
             );
@@ -387,14 +378,14 @@ impl NormalCameraBody {
         let translation = self.pending_translation * alpha;
         self.pending_translation -= translation;
         self.position += translation;
-        self.position.y = sse_max(self.position.y, 1.0);
+        self.position.y = max_f32(self.position.y, 1.0);
         self.rotations.retain(|rotation| {
             // Native compares threshold > abs three times; unordered keeps
             // the record, rather than deleting a corrupted/NaN remainder.
             !(rotation.pitch_delta.abs() < 0.001
                 && rotation.yaw_delta.abs() < 0.001
                 && (rotation.unknown_00 - rotation.arm_length).abs()
-                    / sse_max(rotation.arm_length.abs(), 1.0e-20)
+                    / max_f32(rotation.arm_length.abs(), 1.0e-20)
                     < 0.001)
         });
         (self.position, body_rotation(self.yaw, self.pitch))

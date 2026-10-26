@@ -209,7 +209,7 @@ impl VulkanDescriptorSetLayout {
             )));
         }
         let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
-        let handle = super::error::observe_vulkan(&device, unsafe {
+        let handle = crate::error::observe_vulkan(&device, unsafe {
             device.core.device.create_descriptor_set_layout(&info, None)
         })?;
         Ok(Arc::new(Self {
@@ -370,7 +370,7 @@ impl VulkanDescriptorPool {
         let allocation_memory = super::allocator::reserve_shared_cpu_metadata::<
             DescriptorPoolAllocation,
         >(&device.memory.stats, 0)?;
-        let handle = super::error::observe_vulkan(&device, unsafe {
+        let handle = crate::error::observe_vulkan(&device, unsafe {
             device.core.device.create_descriptor_pool(&info, None)
         })?;
         let allocation = Arc::new(DescriptorPoolAllocation {
@@ -437,7 +437,7 @@ impl VulkanDescriptorPool {
         }
         let sync_storage =
             crate::resource::SyncCell::reserve_arc_storage(&self.device.memory.stats)?;
-        let handle = super::error::observe_vulkan(&self.device, unsafe {
+        let handle = crate::error::observe_vulkan(&self.device, unsafe {
             self.device.core.device.allocate_descriptor_sets(&info)
         })?[0];
         self.live_sets.fetch_add(1, Ordering::Relaxed);
@@ -493,7 +493,7 @@ impl VulkanDescriptorPool {
         {
             return Err(vk::Result::NOT_READY.into());
         }
-        super::error::observe_vulkan(&self.device, unsafe {
+        crate::error::observe_vulkan(&self.device, unsafe {
             self.device
                 .core
                 .device
@@ -681,7 +681,7 @@ pub fn descriptor_set_layout(
         bindings: Vec::with_capacity(bindings.len()),
     };
     for (index, binding) in bindings.iter().enumerate() {
-        let count = if binding.runtime {
+        let count = if binding.tag == 5 { 1 } else if binding.runtime {
             runtime_descriptor_count(device_limit)
         } else {
             binding.count
@@ -731,136 +731,8 @@ pub fn descriptor_set_layout(
     Ok(result)
 }
 
-impl LayoutPlan {
-    pub fn with_create_info<R>(
-        &self,
-        call: impl FnOnce(&vk::DescriptorSetLayoutCreateInfo<'_>) -> R,
-    ) -> R {
-        use ash::vk::Handle;
-        let samplers: Vec<vk::Sampler> = self
-            .bindings
-            .iter()
-            .map(|b| vk::Sampler::from_raw(b.immutable_sampler.unwrap_or(0)))
-            .collect();
-        let bindings: Vec<_> = self
-            .bindings
-            .iter()
-            .enumerate()
-            .map(|(i, b)| {
-                let mut result = vk::DescriptorSetLayoutBinding::default()
-                    .binding(b.binding)
-                    .descriptor_type(vk::DescriptorType::from_raw(b.descriptor_type))
-                    .descriptor_count(b.descriptor_count)
-                    .stage_flags(vk::ShaderStageFlags::from_raw(b.stage_flags));
-                if b.immutable_sampler.is_some() {
-                    result.p_immutable_samplers = &samplers[i];
-                }
-                result
-            })
-            .collect();
-        let flags: Vec<_> = self
-            .binding_flags
-            .iter()
-            .map(|&x| vk::DescriptorBindingFlags::from_raw(x))
-            .collect();
-        let mut extension =
-            vk::DescriptorSetLayoutBindingFlagsCreateInfo::default().binding_flags(&flags);
-        let info = vk::DescriptorSetLayoutCreateInfo::default()
-            .flags(vk::DescriptorSetLayoutCreateFlags::from_raw(self.flags))
-            .bindings(&bindings)
-            .push_next(&mut extension);
-        call(&info)
-    }
-}
 
-pub fn with_compute_pipeline_layout<R>(
-    layouts: &[vk::DescriptorSetLayout],
-    push_constant_bytes: u32,
-    call: impl FnOnce(&vk::PipelineLayoutCreateInfo<'_>) -> R,
-) -> R {
-    let range = vk::PushConstantRange::default()
-        .stage_flags(vk::ShaderStageFlags::COMPUTE)
-        .offset(0)
-        .size(push_constant_bytes);
-    let ranges = if push_constant_bytes == 0 {
-        &[][..]
-    } else {
-        std::slice::from_ref(&range)
-    };
-    call(
-        &vk::PipelineLayoutCreateInfo::default()
-            .set_layouts(layouts)
-            .push_constant_ranges(ranges),
-    )
-}
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PersistentPoolPlan {
-    pub flags: u32,
-    pub max_sets: u32,
-    pub sizes: Vec<(i32, u32)>,
-    pub variable_descriptor_count: u32,
-}
-
-pub fn persistent_pool_plan(layout: &LayoutPlan, device_limit: u32) -> PersistentPoolPlan {
-    let mut sizes: Vec<(i32, u32)> = Vec::new();
-    for binding in &layout.bindings {
-        if let Some((_, count)) = sizes
-            .iter_mut()
-            .find(|(ty, _)| *ty == binding.descriptor_type)
-        {
-            *count = count.wrapping_add(binding.descriptor_count);
-        } else {
-            sizes.push((binding.descriptor_type, binding.descriptor_count));
-        }
-    }
-    PersistentPoolPlan {
-        flags: vk::DescriptorPoolCreateFlags::UPDATE_AFTER_BIND.as_raw(),
-        max_sets: 1,
-        sizes,
-        variable_descriptor_count: runtime_descriptor_count(device_limit),
-    }
-}
-
-impl PersistentPoolPlan {
-    pub fn with_pool_create_info<R>(
-        &self,
-        call: impl FnOnce(&vk::DescriptorPoolCreateInfo<'_>) -> R,
-    ) -> R {
-        let sizes: Vec<_> = self
-            .sizes
-            .iter()
-            .map(|&(ty, count)| vk::DescriptorPoolSize {
-                ty: vk::DescriptorType::from_raw(ty),
-                descriptor_count: count,
-            })
-            .collect();
-        call(
-            &vk::DescriptorPoolCreateInfo::default()
-                .flags(vk::DescriptorPoolCreateFlags::from_raw(self.flags))
-                .max_sets(self.max_sets)
-                .pool_sizes(&sizes),
-        )
-    }
-
-    pub fn with_allocate_info<R>(
-        &self,
-        pool: vk::DescriptorPool,
-        layout: vk::DescriptorSetLayout,
-        call: impl FnOnce(&vk::DescriptorSetAllocateInfo<'_>) -> R,
-    ) -> R {
-        let counts = [self.variable_descriptor_count];
-        let layouts = [layout];
-        let mut extension = vk::DescriptorSetVariableDescriptorCountAllocateInfo::default()
-            .descriptor_counts(&counts);
-        call(
-            &vk::DescriptorSetAllocateInfo::default()
-                .descriptor_pool(pool)
-                .set_layouts(&layouts)
-                .push_next(&mut extension),
-        )
-    }
-}
 
 /// Maximum descriptor sets represented by the public shader interface schema.
 pub const MAX_DESCRIPTOR_SETS: usize = 4;
@@ -878,9 +750,7 @@ impl crate::resource::GpuUse for VulkanDescriptorSetLayout {
 
 impl crate::resource::GpuUse for VulkanDescriptorPool {
     fn visit_uses(&self, visitor: &mut crate::resource::UseVisitor<'_>) -> crate::Result<()> {
-        visitor(&self.last_use)?;
-
-        Ok(())
+        crate::resource::tracked::visit_cells(visitor, [&self.last_use])
     }
 }
 

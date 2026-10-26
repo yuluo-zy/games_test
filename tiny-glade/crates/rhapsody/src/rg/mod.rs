@@ -2,7 +2,6 @@ internal_mod!(
     access_ledger,
     attachments,
     binding,
-    cache,
     compiled,
     executor,
     frame,
@@ -25,7 +24,6 @@ internal_mod!(
     resource,
     resource_contracts,
     resource_info,
-    resource_pool,
     resource_registry,
     result_cache,
     subgraph,
@@ -33,7 +31,6 @@ internal_mod!(
     temporal,
     transient_memory,
     transient_memory_check,
-    util,
     vulkan,
     frame_loop,
     transaction,
@@ -41,6 +38,7 @@ internal_mod!(
 );
 
 // Curated render-graph surface; the submodules are implementation detail.
+pub use crate::collections::cache::{CacheReason, CacheStats};
 pub use crate::raw::transient_backing::TransientBackingCounters;
 pub use attachments::{
     Attachment, AttachmentCache, PreparedAttachments, RenderingPolicy,
@@ -49,7 +47,6 @@ pub use attachments::{
         RenderPassKey,
     },
 };
-pub use cache::{CacheReason, CacheStats};
 pub use executor::{
     Error as ExecutionError, ExecutionBackend, ExecutionChain, ExecutionStats, GraphExecution,
     PassContext,
@@ -60,10 +57,10 @@ pub use graph::{
     PassDeclaration, Pool, RenderGraph, ResourceBackend, ResourceDeclaration, Snapshot,
 };
 pub use indirect_count::{IndexedCountAdapter, IndexedCountRequest};
+pub use parallel::{ChunkStrategy, ParallelRecording, map_chunks};
 pub use pass_api::{AshCommandBackend, CommandBackend, RenderPassApi};
 pub use pass_bindings::ManagedPassResources;
 pub use pass_builder::PassBuilder;
-pub use parallel::{ChunkStrategy, ParallelRecording, TaskRunner};
 pub use plan::{GraphDefinition, PlanContext, compile_definition};
 pub use plan_check::check_plan;
 pub use profiling::{GpuCommandTiming, GpuTimingConfig, GpuTimingStats};
@@ -74,13 +71,12 @@ pub use result_cache::{
 };
 pub use temporal::{NamedBuffer, NamedTexture, TemporalTexturePair};
 pub use vulkan::{
-    AccessTable, CompletedNamedResources, GpuResource, PreparedSessionFrame, PresentPolicy,
-    PresentTarget, ResourceSpec, SessionFrameReceipt, SwapchainContents, VulkanGraphBackend,
-    DisplayFrameId, VulkanGraphSession,
+    AccessTable, CompletedNamedResources, DisplayFrameId, GpuResource, PreparedSessionFrame,
+    PresentPolicy, PresentTarget, ResourceSpec, SessionFrameReceipt, SwapchainContents,
+    VulkanGraphBackend, VulkanGraphSession,
 };
 
 mod graph_caches;
-pub mod token_map;
 mod transient_resources;
 pub use graph_caches::GraphCacheStats;
 

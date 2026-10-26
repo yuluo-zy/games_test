@@ -373,13 +373,14 @@ pub mod windows_api {
             (code, status)
         }
         fn shader_debug_info_identifier(&self, version: u32, info: &[u8]) -> (i32, [u64; 2]) {
+            let Ok(length) = u32::try_from(info.len()) else { return (-1, [0; 2]); };
             let mut id = [0u64; 2];
             // SAFETY: `info` 是有效切片，`id` 是有效的 16B 输出。
             let code = unsafe {
                 GFSDK_Aftermath_GetShaderDebugInfoIdentifier(
                     version,
                     info.as_ptr().cast(),
-                    info.len() as u32,
+                    length,
                     &mut id,
                 )
             };

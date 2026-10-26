@@ -124,7 +124,7 @@ pub fn signifier_animation_t(
 pub fn signifier_animation(
     mut query: Query<(
         &SignifierAnimation,
-        &mut Transform,
+        ComponentWrite<Transform>,
         Option<&SignifierId>,
         Option<&SignifierParentToVolumeOrigin>,
     )>,
@@ -280,3 +280,5 @@ mod tests {
         }
     }
 }
+
+use crate::render::extract::ComponentWrite;

@@ -2,7 +2,10 @@
 //! Parameter owners remain in the verified parent module. Bevy owns iteration,
 //! entity generations and deferred command application; no ECS storage mirror.
 use super::{apply_slider_with_eraser, slider_current_position, slider_math};
-use crate::{resouces_and_components::{UiSlider, ToolbarSliderSession}, ui_interaction::UiDragEvent};
+use crate::{
+    resouces_and_components::{ToolbarSliderSession, UiSlider},
+    ui_interaction::UiDragEvent,
+};
 use bevy_ecs::prelude::*;
 use country_core::{
     components::{Ui2dExtent, Ui2dImage, UiDrawOrder},
@@ -110,21 +113,37 @@ pub fn requested_category(kind: u8, mode_tag: u32) -> Option<u8> {
 
 /// Native focused-slider navigation block 142348cfc..142348ef9.
 #[allow(clippy::too_many_arguments)]
-pub fn navigation_input(entity_bits: u64, focus: UiFocus, previous: UiFocus,
-    left: DigitalActionState, right: DigitalActionState, delta: f32,
-    fraction: f32, armed: &mut bool) -> (Option<f32>, bool)
-{
-    if focus.tag != 1 || focus.payload != entity_bits { return (None, false); }
-    if (left.just_pressed() || right.just_pressed()) && previous == focus { *armed = true; }
+pub fn navigation_input(
+    entity_bits: u64,
+    focus: UiFocus,
+    previous: UiFocus,
+    left: DigitalActionState,
+    right: DigitalActionState,
+    delta: f32,
+    fraction: f32,
+    armed: &mut bool,
+) -> (Option<f32>, bool) {
+    if focus.tag != 1 || focus.payload != entity_bits {
+        return (None, false);
+    }
+    if (left.just_pressed() || right.just_pressed()) && previous == focus {
+        *armed = true;
+    }
     if left.released() && right.released() {
         *armed = false;
         (None, false)
     } else if *armed {
         let mut next = None;
-        if left.pressed() { next = Some(slider_math::clamp_01(fraction - delta)); }
-        if right.pressed() { next = Some(slider_math::clamp_01(fraction + delta)); }
+        if left.pressed() {
+            next = Some(slider_math::clamp_01(fraction - delta));
+        }
+        if right.pressed() {
+            next = Some(slider_math::clamp_01(fraction + delta));
+        }
         (next, left.just_pressed() || right.just_pressed())
-    } else { (None, false) }
+    } else {
+        (None, false)
+    }
 }
 
 /// Original slider SystemParams with three persistent locals grouped into
@@ -185,10 +204,22 @@ pub fn ui_slider(
         slider.set_knob_entity(Some(knob));
 
         let previous_focus = session.previous_focus;
-        let (next, category) = navigation_input(entity.to_bits(), navigation.focus,
-            previous_focus, left, right, time.delta, fraction, &mut session.nav_armed);
-        if let Some(fraction) = next { candidate = Some((entity, fraction)); }
-        if category { category_candidate = Some(entity); }
+        let (next, category) = navigation_input(
+            entity.to_bits(),
+            navigation.focus,
+            previous_focus,
+            left,
+            right,
+            time.delta,
+            fraction,
+            &mut session.nav_armed,
+        );
+        if let Some(fraction) = next {
+            candidate = Some((entity, fraction));
+        }
+        if category {
+            category_candidate = Some(entity);
+        }
     }
 
     for drag in drags.read() {

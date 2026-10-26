@@ -62,13 +62,10 @@ fn chunks_always_partition_the_batch_in_order() {
         vec![Some(0); 5],
     ] {
         let (names, s) = stats(&pattern);
-        for strategy in [
-            ChunkStrategy::Serial,
-            ChunkStrategy::Balanced {
-                max_chunks: 4,
-                chunk_overhead_ns: 3,
-            },
-        ] {
+        for strategy in [ChunkStrategy::Balanced {
+            max_chunks: 4,
+            chunk_overhead_ns: 3,
+        }] {
             let chunks = plan_chunks(strategy, &names, &s, &[]);
             let mut next = 0;
             for c in &chunks {

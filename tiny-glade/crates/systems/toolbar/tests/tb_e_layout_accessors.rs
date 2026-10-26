@@ -85,11 +85,11 @@ fn length_size_rect_accessors_resolve_and_zero_percentages() {
     assert_eq!(frac(0.5).resolve(200.0), 100.0);
     assert_eq!(abs(7.0).resolve(200.0), 7.0);
     assert_eq!(LengthPercentage::default(), abs(0.0));
-    // Native Rect::width/height use the two generic `add` calls.
-    let mixed = abs(1.0) + frac(0.5);
-    assert!(mixed.is_percent);
-    assert_eq!(mixed.value, 1.5);
-    assert_eq!((frac(0.25) + frac(0.25)).value, 0.5);
+    // Rect adds each edge's absolute contribution through the current API.
+    let mixed = Rect { left: abs(1.0), right: frac(0.5), ..Default::default() };
+    assert_eq!(mixed.width(), 1.0);
+    let percentages = Rect { left: frac(0.25), right: frac(0.25), ..Default::default() };
+    assert_eq!(percentages.width(), 0.0);
 
     // Size projections.
     let size = Size {
@@ -113,8 +113,7 @@ fn length_size_rect_accessors_resolve_and_zero_percentages() {
     assert_eq!(rect.points(), [2.0, 3.0, 4.0, 5.0]);
     assert_eq!(rect.points_or_zero(), [2.0, 3.0, 4.0, 5.0]);
 
-    // Percentages contribute zero to the rect edge sums; the mixed Add keeps
-    // the percent tag (registered U for mixed edges), so the sum is zero too.
+    // Each percentage edge contributes zero to the absolute edge sums.
     let percent_rect = Rect {
         left: frac(0.5),
         top: frac(0.25),

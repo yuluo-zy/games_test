@@ -39,14 +39,14 @@ use crate::resources::history::{EditType, History};
 use crate::resources::mouse_terrain_raycast::CursorPositionSS;
 use crate::resources::onboarding::NotifyHintSystemShapeEditWasPerformed;
 use crate::resources::roofs::Roof;
-use crate::resources::walls::decorator_archivist::{DecoratorArchivalResources, LiveDecoratorArchivist};
-use crate::resources::walls::decorator_storage::{
-    Decorators, DecoratorStorage, DecoratorStorageAddr,
+use crate::resources::walls::WallId;
+use crate::resources::walls::decorator_archivist::{
+    DecoratorArchivalResources, LiveDecoratorArchivist,
 };
+use crate::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
 use crate::resources::walls::height_rules::clamp_resolved_wall_height;
 use crate::resources::walls::public_walls::PublicWalls;
 use crate::resources::walls::publication_fields::WallId as RecoveredWallId;
-use crate::resources::walls::WallId;
 use crate::resources::window::{AudioCursorMoved, WindowSize};
 use crate::systems::camera_rig::main_camera::MainCamera;
 use crate::systems::wall::adjust_wall_height::{
@@ -55,7 +55,9 @@ use crate::systems::wall::adjust_wall_height::{
 };
 use crate::systems::wall::height_command::AdjustWallHeightRequest;
 use crate::utils::components::transform::Transform;
-use crate::utils::project_cursor_onto_ray::{ProportionalScreenSpace, ProportionalScreenSpaceCoord};
+use crate::utils::project_cursor_onto_ray::{
+    ProportionalScreenSpace, ProportionalScreenSpaceCoord,
+};
 use utils::geometry::Ray;
 
 /// B `ui_adjust_wall_height_mode::AdjustWallHeightUi`：UI 控件每帧请求编辑某面墙的高度。
@@ -109,7 +111,16 @@ fn coord_at_u(points_u: &[f32], u: f32) -> (usize, f32) {
     let (a, b) = (points_u[segment], points_u[next]);
     assert!(a != b);
     let t = (u - a) / (b - a);
-    (segment, if t < 0.0 { 0.0 } else if t > 1.0 { 1.0 } else { t })
+    (
+        segment,
+        if t < 0.0 {
+            0.0
+        } else if t > 1.0 {
+            1.0
+        } else {
+            t
+        },
+    )
 }
 
 /// B `clamp_wall_height`（0x140ac7f30）：`PublicWalls` 中无该墙（含整表为空）→ `None`
@@ -135,18 +146,22 @@ pub fn clamp_wall_height(
 /// B `DecoratorArchivist::archive_current_decorators_in_storages`（0x1413e77f0）以
 /// `[Wall(wall), Terrain]` 调用的归档语义：存储中有桶则在归档里尚无时克隆入；存储缺桶
 /// 则以空 `Decorators` 走 `archive_storage_decorators`（原版 `LAB_1413e7e60` 分支）。
-/// 碰撞体载荷重建（`DecoratorArchivalResources`）属 collision 域，沿用本仓库
-/// `archive_storage_decorators` 的登记缺口。
+/// 原 @140ac7115 同时转交两张活碰撞表与来源 `adjust_wall_height`。
 fn archive_wall_and_terrain(
     archivist: &mut LiveDecoratorArchivist,
     storage: &DecoratorStorage,
     wall: WallId,
+    resources: &DecoratorArchivalResources<'_>,
 ) {
-    let empty = Decorators::default();
-    let wall_source = storage.get(DecoratorStorageAddr::Wall(wall)).unwrap_or(&empty);
-    archivist.archive_storage_decorators(0, wall_source, Some(wall));
-    let terrain_source = storage.get(DecoratorStorageAddr::Terrain).unwrap_or(&empty);
-    archivist.archive_storage_decorators(1, terrain_source, None);
+    archivist.archive_current_decorators_in_storages_with_resources(
+        &[
+            DecoratorStorageAddr::Wall(wall),
+            DecoratorStorageAddr::Terrain,
+        ],
+        storage,
+        resources,
+        "adjust_wall_height",
+    );
 }
 
 /// 0x140ac7180 的 `Map::fold`：存储 `+0x90` 的地形桶（若存在）里的装饰 id 全部放行。
@@ -178,12 +193,12 @@ pub fn ui_adjust_wall_height_mode(
     camera: Res<MainCamera>,
     window: Res<WindowSize>,
     public: Res<PublicWalls>,
-    _archival: DecoratorArchivalResources,
+    archival: DecoratorArchivalResources,
     mut cache: ResMut<AdjWallHeightModeCache>,
     mut cursor_moved: EventReader<AudioCursorMoved>,
     mut ui_requests: EventReader<AdjustWallHeightUi>,
     mut commands: EventWriter<AdjustWallHeightCmd>,
-    _test_cubes: Query<(&TestCube, &mut Transform)>,
+    _test_cubes: Query<(&TestCube, ComponentWrite<Transform>)>,
     storage: Res<DecoratorStorage>,
     mut archivist: ResMut<LiveDecoratorArchivist>,
 ) {
@@ -226,12 +241,14 @@ pub fn ui_adjust_wall_height_mode(
         cache.original_height = Some(constrained_extra);
         cache.current_height = Some(constrained_extra);
         cache.wall = Some(wall);
-        archive_wall_and_terrain(&mut archivist, &storage, wall);
+        archive_wall_and_terrain(&mut archivist, &storage, wall, &archival);
         archivist.decorator_cull_allow_wall(wall, &storage);
         cull_allow_terrain(&mut archivist, &storage);
     }
 
-    let u = cache.u.expect("AdjWallHeightModeCache::u is set by the init branch");
+    let u = cache
+        .u
+        .expect("AdjWallHeightModeCache::u is set by the init branch");
     let (segment, t) = coord_at_u(&state.geometry.outline_u, u);
     // 原生两次边界检查：`len <= i` 与 `i + 1 >= len` 均 panic_bounds_check。
     let p0 = outline[segment];
@@ -293,7 +310,7 @@ fn new_height_changed(wall: WallId, from: f32, to: f32) -> EditType {
 pub fn history_record_adjust_wall_height<S: Send + Sync + 'static>(
     mut cache: ResMut<AdjWallHeightModeCache>,
     mut finish: EventReader<FinishAdjWallHeightMode>,
-    _test_cubes: Query<(&TestCube, &mut Transform)>,
+    _test_cubes: Query<(&TestCube, ComponentWrite<Transform>)>,
     mut history: ResMut<History<S>>,
     public: Res<PublicWalls>,
     roofs: Query<&Roof>,
@@ -326,11 +343,11 @@ mod tests {
     use super::*;
     use crate::resources::history::transactions::HistoryTransactions;
     use crate::resources::roofs::geometry::surface::Curve2;
+    use crate::resources::walls::WallState;
     use crate::resources::walls::decorator::{DecoratorId, DecoratorInfo};
     use crate::resources::walls::inner_walls::InnerWalls;
     use crate::resources::walls::publication_fields::WallShapeSnapshot;
     use crate::resources::walls::publication_source::TerrainHeightGrid512;
-    use crate::resources::walls::WallState;
     use bevy_ecs::system::RunSystemOnce;
 
     type Hist = HistoryTransactions<EditType, ()>;
@@ -358,7 +375,7 @@ mod tests {
         let mut inner = InnerWalls::new();
         let wall = inner.new_wall_from_curve(wall_state(premade));
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &flat_terrain());
+        public.consume_with_paths(&mut inner, &flat_terrain(), None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         world.insert_resource(inner);
         world.insert_resource(public);
         world.init_resource::<AdjWallHeightModeCache>();
@@ -407,8 +424,12 @@ mod tests {
     }
 
     fn send_ui(world: &mut World, wall: WallId) {
-        world.resource_mut::<Events<AdjustWallHeightUi>>().send(AdjustWallHeightUi(wall));
-        world.resource_mut::<Events<AudioCursorMoved>>().send(AudioCursorMoved);
+        world
+            .resource_mut::<Events<AdjustWallHeightUi>>()
+            .send(AdjustWallHeightUi(wall));
+        world
+            .resource_mut::<Events<AudioCursorMoved>>()
+            .send(AudioCursorMoved);
     }
 
     fn cmds(world: &World) -> Vec<AdjustWallHeightCmd> {
@@ -449,9 +470,14 @@ mod tests {
     #[test]
     fn empty_ui_queue_does_nothing() {
         let (mut world, _) = ui_world();
-        world.resource_mut::<Events<AudioCursorMoved>>().send(AudioCursorMoved);
+        world
+            .resource_mut::<Events<AudioCursorMoved>>()
+            .send(AudioCursorMoved);
         world.run_system_once(ui_adjust_wall_height_mode).unwrap();
-        assert_eq!(*world.resource::<AdjWallHeightModeCache>(), AdjWallHeightModeCache::default());
+        assert_eq!(
+            *world.resource::<AdjWallHeightModeCache>(),
+            AdjWallHeightModeCache::default()
+        );
         assert!(cmds(&world).is_empty());
     }
 
@@ -461,13 +487,23 @@ mod tests {
         // 读者游标要跨帧保留，必须用同一个 Schedule（run_system_once 每次新建游标）。
         let mut schedule = Schedule::default();
         schedule.add_systems(ui_adjust_wall_height_mode);
-        world.resource_mut::<Events<AdjustWallHeightUi>>().send(AdjustWallHeightUi(wall));
+        world
+            .resource_mut::<Events<AdjustWallHeightUi>>()
+            .send(AdjustWallHeightUi(wall));
         schedule.run(&mut world);
-        assert_eq!(*world.resource::<AdjWallHeightModeCache>(), AdjWallHeightModeCache::default());
+        assert_eq!(
+            *world.resource::<AdjWallHeightModeCache>(),
+            AdjWallHeightModeCache::default()
+        );
         // UI 事件已被整体消费：补一个光标事件也没有待处理请求。
-        world.resource_mut::<Events<AudioCursorMoved>>().send(AudioCursorMoved);
+        world
+            .resource_mut::<Events<AudioCursorMoved>>()
+            .send(AudioCursorMoved);
         schedule.run(&mut world);
-        assert_eq!(*world.resource::<AdjWallHeightModeCache>(), AdjWallHeightModeCache::default());
+        assert_eq!(
+            *world.resource::<AdjWallHeightModeCache>(),
+            AdjWallHeightModeCache::default()
+        );
     }
 
     #[test]
@@ -483,7 +519,10 @@ mod tests {
         assert!((cache.u.unwrap() - 0.5).abs() < 1e-4, "{cache:?}");
         assert_eq!(cache.original_height, Some(extra));
         assert_eq!(cache.current_height, Some(extra));
-        assert!((cache.grab_offset.unwrap() - (extra - 5.0)).abs() < 1e-4, "{cache:?}");
+        assert!(
+            (cache.grab_offset.unwrap() - (extra - 5.0)).abs() < 1e-4,
+            "{cache:?}"
+        );
         assert!(cmds(&world).is_empty());
 
         let archivist = world.resource::<LiveDecoratorArchivist>();
@@ -557,7 +596,9 @@ mod tests {
     }
 
     fn finish(world: &mut World) {
-        world.resource_mut::<Events<FinishAdjWallHeightMode>>().send(FinishAdjWallHeightMode);
+        world
+            .resource_mut::<Events<FinishAdjWallHeightMode>>()
+            .send(FinishAdjWallHeightMode::default());
     }
 
     fn pending_edits(world: &World) -> Vec<EditType> {
@@ -573,7 +614,9 @@ mod tests {
     fn no_finish_event_leaves_the_cache_alone() {
         let (mut world, wall) = history_world(true);
         set_cache(&mut world, wall, 2.0, 3.0);
-        world.run_system_once(history_record_adjust_wall_height::<()>).unwrap();
+        world
+            .run_system_once(history_record_adjust_wall_height::<()>)
+            .unwrap();
         assert!(world.resource::<AdjWallHeightModeCache>().wall.is_some());
         assert!(pending_edits(&world).is_empty());
     }
@@ -584,7 +627,9 @@ mod tests {
         // 无屋顶、非 special：夹紧区间 [0.5, 14.0]。
         set_cache(&mut world, wall, 0.1, 20.0);
         finish(&mut world);
-        world.run_system_once(history_record_adjust_wall_height::<()>).unwrap();
+        world
+            .run_system_once(history_record_adjust_wall_height::<()>)
+            .unwrap();
         let edits = pending_edits(&world);
         assert_eq!(edits.len(), 1);
         let EditType::Wall(compound) = &edits[0] else {
@@ -600,7 +645,10 @@ mod tests {
             other => panic!("unexpected edit {other:?}"),
         }
         assert_eq!(hints(&world), 1);
-        assert_eq!(*world.resource::<AdjWallHeightModeCache>(), AdjWallHeightModeCache::default());
+        assert_eq!(
+            *world.resource::<AdjWallHeightModeCache>(),
+            AdjWallHeightModeCache::default()
+        );
     }
 
     #[test]
@@ -608,7 +656,9 @@ mod tests {
         let (mut world, wall) = history_world(false);
         set_cache(&mut world, wall, 2.0, 3.0);
         finish(&mut world);
-        world.run_system_once(history_record_adjust_wall_height::<()>).unwrap();
+        world
+            .run_system_once(history_record_adjust_wall_height::<()>)
+            .unwrap();
         assert_eq!(pending_edits(&world).len(), 1);
         assert_eq!(hints(&world), 0);
     }
@@ -619,10 +669,15 @@ mod tests {
         // 两端夹紧后同为 0.5。
         set_cache(&mut world, wall, 0.1, 0.2);
         finish(&mut world);
-        world.run_system_once(history_record_adjust_wall_height::<()>).unwrap();
+        world
+            .run_system_once(history_record_adjust_wall_height::<()>)
+            .unwrap();
         assert!(pending_edits(&world).is_empty());
         assert_eq!(hints(&world), 0);
-        assert_eq!(*world.resource::<AdjWallHeightModeCache>(), AdjWallHeightModeCache::default());
+        assert_eq!(
+            *world.resource::<AdjWallHeightModeCache>(),
+            AdjWallHeightModeCache::default()
+        );
     }
 
     #[test]
@@ -635,9 +690,14 @@ mod tests {
             ..Default::default()
         };
         finish(&mut world);
-        world.run_system_once(history_record_adjust_wall_height::<()>).unwrap();
+        world
+            .run_system_once(history_record_adjust_wall_height::<()>)
+            .unwrap();
         assert!(pending_edits(&world).is_empty());
-        assert_eq!(*world.resource::<AdjWallHeightModeCache>(), AdjWallHeightModeCache::default());
+        assert_eq!(
+            *world.resource::<AdjWallHeightModeCache>(),
+            AdjWallHeightModeCache::default()
+        );
     }
 
     #[test]
@@ -646,7 +706,9 @@ mod tests {
         let ghost = WallId(31337);
         set_cache(&mut world, ghost, 0.1, 20.0);
         finish(&mut world);
-        world.run_system_once(history_record_adjust_wall_height::<()>).unwrap();
+        world
+            .run_system_once(history_record_adjust_wall_height::<()>)
+            .unwrap();
         let edits = pending_edits(&world);
         let EditType::Wall(compound) = &edits[0] else {
             panic!("expected a wall edit");
@@ -682,3 +744,5 @@ mod tests {
         assert!(cache.original_height.is_none() && cache.current_height.is_none());
     }
 }
+
+use crate::render::extract::ComponentWrite;

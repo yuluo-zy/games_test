@@ -12,7 +12,7 @@ use country_core::{
 
 pub fn assemble_roof_tiles(
     mut recalc: EventReader<RecalculateRoofCmd>,
-    mut tiles: Query<(&mut RoofTiles, &Roof)>,
+    mut tiles: Query<(ComponentWrite<RoofTiles>, &Roof)>,
     mut library: ResMut<AssetSsboLibrary>,
     arches: Res<ArchSegments>,
 ) {
@@ -87,3 +87,5 @@ fn warn_capacity(rectangular: bool) {
         log::warn!(target: "system_roof::visual::assemble_roof_tiles", "{message}");
     }
 }
+
+use country_core::render::extract::ComponentWrite;

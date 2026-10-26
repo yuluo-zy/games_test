@@ -2,7 +2,7 @@
 //!
 //! 原版 `gpu_flush_brick_buffers`（0x14082c170，594B；SystemParam 面：
 //! `(Res<GraphicsDeviceResource>, ResMut<AssetSsboLibrary>,
-//! Query<&mut InstancedWall<BrickTransformSsbo>>)`，按 0x14082c170 的参数
+//! Query<ComponentWrite<InstancedWall<BrickTransformSsbo>>>)`，按 0x14082c170 的参数
 //! 指针 param_1 → 设备、param_2 → ResMut 库、param_3 → 查询状态还原）：
 //!
 //! 1. `AssetSsboLibrary::get_mut::<BrickTransformSsbo>()`；`None` → `Option::unwrap` panic
@@ -14,7 +14,7 @@
 //!    `TypedStorageBuffer::gpu_write_ranges_nonoverlapping`，并清脏位）。
 //!
 //! 未闭合：反编译无法证实 Query 是否带 With/Without 过滤（运行体没有过滤分支）；
-//! 本实现用无过滤 `Query<&mut InstancedWall<BrickTransformSsbo>>`。
+//! 本实现用无过滤 `Query<ComponentWrite<InstancedWall<BrickTransformSsbo>>>`。
 use bevy_ecs::prelude::*;
 
 use crate::asset_libraries::ssbo_library::AssetSsboLibrary;
@@ -25,7 +25,7 @@ use crate::render::device::GraphicsDeviceResource;
 pub fn gpu_flush_brick_buffers(
     device: Res<GraphicsDeviceResource>,
     mut library: ResMut<AssetSsboLibrary>,
-    mut walls: Query<&mut InstancedWall<BrickTransformSsbo>>,
+    mut walls: Query<ComponentWrite<InstancedWall<BrickTransformSsbo>>>,
 ) {
     let storage = library.get_mut::<BrickTransformSsbo>().unwrap();
     for mut wall in &mut walls {
@@ -34,7 +34,7 @@ pub fn gpu_flush_brick_buffers(
             log::error!("gpu_flush_brick_buffers: 墙砖上传失败：{error:?}");
         }
     }
-    if let Err(error) = storage.try_gpu_flush(device.device()) {
+    if let Err(error) = storage.gpu_flush(device.device()) {
         log::error!("gpu_flush_brick_buffers: 设备上传失败，脏标记保留待重试：{error}");
     }
 }
@@ -52,3 +52,5 @@ mod tests {
         schedule.initialize(&mut world).unwrap();
     }
 }
+
+use crate::render::extract::ComponentWrite;

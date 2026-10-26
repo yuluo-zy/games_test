@@ -57,15 +57,16 @@ struct Mock {
     fail_creation_at: Option<usize>,
     creation_error: Option<rhapsody::Error>,
     fail_prepare: bool,
+    fail_begin: bool,
+    fail_end_at: Option<usize>,
+    end_attempts: usize,
     released: Vec<u64>,
     abandoned: Vec<u64>,
     next_command: u64,
     next_submit: u64,
     submit_attempts: usize,
     fail_submit_at: Option<usize>,
-    waits: std::cell::RefCell<Vec<rhapsody::sync::SyncPoint>>,
     queue: Option<recording::Queue>,
-    fail_wait: bool,
     ranges: cpu_graph_support::CpuRanges,
     /// One stand-in command pool per parallel worker.
     chunk_pools: Vec<u8>,
@@ -95,9 +96,6 @@ impl ResourceBackend for Mock {
     }
 }
 impl ExecutionBackend for Mock {
-    fn supports_parallel_recording(&self) -> bool {
-        true
-    }
     fn chunk_recording(
         &mut self,
         commands: &[u64],
@@ -136,35 +134,26 @@ impl ExecutionBackend for Mock {
     fn prepare_batch_submission(&mut self, _: &[u64], batch: usize) -> rhapsody::Result<()> {
         self.ranges.prepare(batch)
     }
-    fn prepare_compiled_resources(&mut self, compiled: &graph::FrameInstance) -> bool {
+    fn prepare_compiled_resources(&mut self, compiled: &graph::FrameInstance) -> rhapsody::Result<()> {
         if self.fail_prepare {
-            return false;
+            return Err(rhapsody::Error::OutOfHostMemory);
         }
-        self.ranges
-            .bind(compiled)
-            .expect("bind the formal range planner for the CPU fault adapter");
-        true
+        self.ranges.bind(compiled)?;
+        Ok(())
     }
     fn graph_queue(&self) -> (recording::Queue, u32) {
         (self.queue.unwrap_or(recording::Queue::Primary), 0)
     }
-    fn wait_submission(&self, point: rhapsody::sync::SyncPoint) -> rhapsody::Result<()> {
-        self.waits.borrow_mut().push(point);
-        if self.fail_wait {
-            Err(rhapsody::Error::Timeout)
-        } else {
-            Ok(())
-        }
-    }
-    fn command_handle(&mut self) -> Result<u64, recording::Failure> {
+    fn command_handle(&mut self) -> rhapsody::Result<u64> {
         self.next_command += 1;
         Ok(1000 + self.next_command)
     }
-    fn begin_command(&mut self, _handle: u64) -> Result<(), recording::Failure> {
-        Ok(())
+    fn begin_command(&mut self, _handle: u64) -> rhapsody::Result<()> {
+        if self.fail_begin { Err(rhapsody::Error::OutOfHostMemory) } else { Ok(()) }
     }
-    fn end_command(&mut self, _handle: vk::CommandBuffer) -> bool {
-        true
+    fn end_command(&mut self, _handle: vk::CommandBuffer) -> rhapsody::Result<()> {
+        self.end_attempts += 1;
+        if self.fail_end_at == Some(self.end_attempts) { Err(rhapsody::Error::DeviceLost) } else { Ok(()) }
     }
     fn submit(
         &mut self,
@@ -199,12 +188,11 @@ fn chain() -> ExecutionChain {
 }
 
 #[test]
-fn result_callbacks_preserve_device_errors_in_serial_and_parallel_recording() {
-    use rhapsody::rg::parallel::{ParallelRecording, TaskRunner};
+fn result_callbacks_preserve_device_errors_across_parallel_chunk_strategies() {
+    use rhapsody::rg::parallel::ParallelRecording;
     for parallel in [
-        ParallelRecording::SERIAL,
+        ParallelRecording::PARALLEL,
         ParallelRecording {
-            runner: TaskRunner::Inline,
             ..ParallelRecording::EVERY_PASS
         },
     ] {
@@ -254,11 +242,10 @@ fn result_callbacks_preserve_device_errors_in_serial_and_parallel_recording() {
 
 #[test]
 fn reported_callback_errors_cannot_be_ignored_by_returning_true() {
-    use rhapsody::rg::parallel::{ParallelRecording, TaskRunner};
+    use rhapsody::rg::parallel::ParallelRecording;
     for parallel in [
-        ParallelRecording::SERIAL,
+        ParallelRecording::PARALLEL,
         ParallelRecording {
-            runner: TaskRunner::Inline,
             ..ParallelRecording::EVERY_PASS
         },
     ] {
@@ -541,6 +528,67 @@ fn run(
     chain.execute_graph(declaration, pool, &mut Dependency, backend, &mut callbacks)
 }
 
+#[test]
+fn native_recording_errors_propagate_directly_and_do_not_poison_the_next_frame() {
+    for fail_begin in [true, false] {
+        let mut backend = Mock { fail_begin, fail_end_at: (!fail_begin).then_some(1), ..Default::default() };
+        let mut chain = chain();
+        let mut pool = Pool::default();
+        let error = run(&mut chain, three_buffer_graph(true), &mut pool, &mut backend, true).unwrap_err();
+        assert!(if fail_begin {
+            matches!(error, Error::Validation(rhapsody::Error::OutOfHostMemory))
+        } else {
+            matches!(error, Error::Validation(rhapsody::Error::DeviceLost))
+        });
+        assert_eq!(backend.submit_attempts, 0);
+        assert_eq!(chain.recording_command_count(), 0);
+        backend.fail_begin = false;
+        backend.fail_end_at = None;
+        run(&mut chain, three_buffer_graph(true), &mut pool, &mut backend, true).unwrap();
+        assert_eq!(backend.submit_attempts, 1);
+    }
+}
+
+#[test]
+fn an_end_error_after_submission_keeps_the_original_error_and_gpu_receipt() {
+    let mut backend = Mock { fail_end_at: Some(2), ..Default::default() };
+    let mut graph = RenderGraph::new();
+    graph.batch_per_pass(true);
+    for name in ["first", "second"] {
+        graph.add_pass(name).with_side_effect().render(|_| true);
+    }
+    let mut chain = chain();
+    let error = run(&mut chain, graph.build().into_parts().0, &mut Pool::default(), &mut backend, true).unwrap_err();
+    let Error::PartialSubmission { original, execution } = error else { panic!("successful prefix must remain owned") };
+    assert!(matches!(*original, Error::Validation(rhapsody::Error::DeviceLost)));
+    assert_eq!(execution.transaction.receipts().len(), 1);
+    assert_eq!(chain.pending_command_count(), 1);
+    assert_eq!(chain.recording_command_count(), 0);
+    assert_eq!(backend.abandoned, [1002]);
+}
+
+#[test]
+fn cached_execution_rejects_aliased_imports_at_the_single_declaration_boundary() {
+    let mut graph = RenderGraph::new();
+    let first = graph.import_unowned("first import", buffer(), 77, 0x25).unwrap();
+    let second = graph.import_unowned("second import", buffer(), 88, 0x25).unwrap();
+    let mut pass = graph.add_pass("read both").with_side_effect();
+    pass.add_resource_access(first, 0x25, 0).unwrap();
+    pass.add_resource_access(second, 0x25, 0).unwrap();
+    pass.render(|_| true);
+    let mut declaration = graph.build().into_parts().0;
+    let mut chain = chain();
+    let mut backend = Mock::default();
+    let mut pool = Pool::default();
+    run(&mut chain, declaration.clone(), &mut pool, &mut backend, true).unwrap();
+    let submitted = backend.submit_attempts;
+    declaration.resources[1].source = declaration.resources[0].source;
+    let error = run(&mut chain, declaration, &mut pool, &mut backend, true).unwrap_err();
+    assert_eq!(rhapsody::Error::from(error).kind(), rhapsody::ErrorKind::InvalidUsage);
+    assert_eq!(backend.submit_attempts, submitted);
+    assert_eq!(backend.creations, 0);
+}
+
 // ---------------------------------------------------------------- 1. 导出但从未访问的 Create 资源
 
 #[test]
@@ -646,7 +694,7 @@ fn a_failure_after_compilation_returns_pool_resources_and_releases_created_token
     .err()
     .unwrap();
     assert!(
-        matches!(error, Error::ResourceUnavailable(usize::MAX)),
+        matches!(error, Error::Validation(rhapsody::Error::OutOfHostMemory)),
         "{error:?}"
     );
     let Descriptor::Buffer(desc) = buffer().with_usage(0x20) else {
@@ -809,7 +857,6 @@ fn failed_submit_does_not_publish_a_point_or_pending_commands() {
     assert_eq!(chain.pending_command_count(), 0);
     assert_eq!(chain.recording_command_count(), 0);
     assert_eq!(backend.next_submit, 0);
-    assert!(backend.waits.borrow().is_empty());
     assert_eq!(backend.abandoned, [1001]);
     let execution = run(
         &mut chain,
@@ -861,10 +908,6 @@ fn partial_submit_failure_defers_published_points_and_abandons_the_rest() {
         *original,
         Error::Validation(rhapsody::Error::OutOfDeviceMemory)
     ));
-    assert!(
-        backend.waits.borrow().is_empty(),
-        "error cleanup must not block"
-    );
     assert_eq!(execution.transaction.receipts().len(), 1);
     assert_eq!(chain.pending_command_count(), 1);
     assert_eq!(chain.completed_command_count(), 0);
@@ -924,14 +967,12 @@ fn queue_domains_do_not_share_command_completion() {
     );
     assert_eq!(chain.pending_command_count(), 3);
     assert_eq!(chain.completed_command_count(), 0);
-    assert!(backend.waits.borrow().is_empty());
 }
 
 #[test]
-fn partial_submit_never_attempts_a_failing_cleanup_wait() {
+fn partial_submit_retains_in_flight_resources_and_original_failure() {
     let mut backend = Mock {
         fail_submit_at: Some(2),
-        fail_wait: true,
         ..Default::default()
     };
     let mut chain = chain();
@@ -959,7 +1000,7 @@ fn partial_submit_never_attempts_a_failing_cleanup_wait() {
         execution,
     } = error
     else {
-        panic!("partial execution must survive cleanup failure")
+        panic!("partial execution must preserve the submitted prefix")
     };
     assert!(matches!(
         *original,
@@ -971,7 +1012,7 @@ fn partial_submit_never_attempts_a_failing_cleanup_wait() {
     assert_eq!(backend.abandoned, [1002]);
     assert!(
         backend.released.is_empty(),
-        "GPU resources cannot be reclaimed on a failed wait"
+        "GPU resources cannot be reclaimed before submitted work completes"
     );
     assert_eq!(
         execution
@@ -1091,12 +1132,11 @@ fn duplicate_imports_are_rejected_before_recording_or_allocation() {
 
 #[test]
 fn parallel_chunks_record_only_through_their_own_pool_leases() {
-    use rhapsody::rg::parallel::{ParallelRecording, TaskRunner};
-    for runner in [TaskRunner::Inline, TaskRunner::ComputePool] {
+    use rhapsody::rg::parallel::ParallelRecording;
+    {
         let mut backend = Mock::default();
         let mut chain = chain();
         chain.parallel = ParallelRecording {
-            runner,
             ..ParallelRecording::EVERY_PASS
         };
         let mut graph = RenderGraph::new();

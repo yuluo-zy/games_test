@@ -101,11 +101,7 @@ pub fn add_preplaced_autoclutter(
 
 /// 预放置键（`calculate_hash<tuple<&str,usize>>` 0x141cf70d0 语义）。
 pub fn hash_preplaced_key(name: &str, i: usize) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    name.hash(&mut h);
-    i.hash(&mut h);
-    h.finish()
+    utils::calculate_hash(&(name, i))
 }
 
 #[cfg(test)]

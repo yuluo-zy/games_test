@@ -8,6 +8,7 @@ use crate::resources::roofs::geometry::surface::Curve2;
 use crate::resources::roofs::geometry::surface::CurveError;
 use crate::resources::walls::publication_fields::WallId;
 use crate::resources::walls::publication_fields::WallShapeSnapshot;
+use ::utils::scalar::{clamp01, max_f32};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ConstructionRoof {
@@ -46,18 +47,6 @@ pub fn brick_source_id(wall: WallId) -> u32 {
     }
 }
 
-// SSE MINSS/MAXSS choose their source on unordered inputs and ties. Rust's
-// f32 min/max do not express that original instruction policy.
-fn source_max(a: f32, b: f32) -> f32 {
-    if a > b { a } else { b }
-}
-fn source_min(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
-}
-fn clamp_unit(v: f32) -> f32 {
-    source_min(1.0, source_max(0.0, v))
-}
-
 /// Original plain/top-tag2 perturbation policy uses raw Curve2 +28c length.
 pub fn row_end_perturbation(top_tag: u8, clutter_version: u8, original_curve_length: f32) -> f32 {
     if top_tag != 2 {
@@ -66,7 +55,7 @@ pub fn row_end_perturbation(top_tag: u8, clutter_version: u8, original_curve_len
     if clutter_version != 0 {
         return f32::from_bits(0x3d3c6a7f);
     }
-    let t = clamp_unit(
+    let t = clamp01(
         (original_curve_length + f32::from_bits(0xbf30a3d7)) / f32::from_bits(0x3f30a3d7),
     );
     (3.0 - (t + t)) * (t * t)
@@ -87,8 +76,8 @@ pub fn circle_construction_options(shape: &WallShapeSnapshot) -> CircleConstruct
     }
     let radius = f32::from_le_bytes(shape.bytes()[12..16].try_into().unwrap());
     let lower = f32::from_bits(0x3f666667);
-    let width = clamp_unit((radius - lower) / (f32::from_bits(0x40666666) - lower));
-    let thickness = clamp_unit((radius - lower) / (3.0 - lower));
+    let width = clamp01((radius - lower) / (f32::from_bits(0x40666666) - lower));
+    let thickness = clamp01((radius - lower) / (3.0 - lower));
     CircleConstructionOptions {
         width_padding: Some((1.0 - width) * f32::from_bits(0x3d75c28f)),
         thickness_scale: Some((1.0 - thickness) * f32::from_bits(0x3f666666) + thickness),
@@ -141,7 +130,7 @@ impl WallConstructionPolicy {
             .iter()
             .map(|&h| {
                 if self.lower_flat_no_rim_arches {
-                    source_max(h + f32::from_bits(0xbf23d70a), 0.5)
+                    max_f32(h + f32::from_bits(0xbf23d70a), 0.5)
                 } else {
                     h
                 }

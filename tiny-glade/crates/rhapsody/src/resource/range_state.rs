@@ -289,7 +289,7 @@ impl<T> Storage<T> {
                 .and_then(|bytes| bytes.checked_add(capacity.checked_mul(size_of::<T>())?))
                 .is_none_or(|bytes| bytes > config.max_cpu_bytes)
         {
-            return Err(Error::Timeout);
+            return Err(Error::exhausted("native range state capacity exceeded"));
         }
         // The old ticket stays charged until its actual old backing is freed.
         let mut next = Self::new(capacity, budget)?;
@@ -340,7 +340,7 @@ impl RangeStateTable {
         let cells = Storage::new(1, &budget)?;
         let scratch = Storage::new(1, &budget)?;
         if cells.bytes() + scratch.bytes() > config.max_cpu_bytes {
-            return Err(Error::Timeout);
+            return Err(Error::exhausted("native range state capacity exceeded"));
         }
         let mut result = Self {
             domain,
@@ -419,8 +419,7 @@ impl RangeStateTable {
             .map(|cell| cell.state.revision)
             .max()
             .unwrap_or(0)
-            .saturating_add(1)
-            .min(u64::MAX - 1);
+            .saturating_add(1);
         self.cells.values.clear();
         self.cells.values.push(RangeCell {
             range: self.domain,
@@ -494,7 +493,10 @@ impl RangeStateTable {
                     && !(patch.expected_revision == u64::MAX
                         && matches!(patch.action, PatchAction::Unknown { .. }))
                 {
-                    return Err(Error::Timeout);
+                    return Err(Error::invalid_usage(format!(
+                        "native range revision changed before submission: domain={:?}, patch={:?}, current={:?}",
+                        self.domain, patch, current.cell,
+                    )));
                 }
                 // Declared accesses know the first stage that touches the
                 // range on this queue; opaque uses and releases do not.
@@ -609,7 +611,7 @@ impl RangeStateTable {
                 continue;
             };
             if matches!(current.cell.state.owner, RangeOwner::Released { .. }) {
-                return Err(Error::Timeout);
+                return Err(Error::invalid_usage("host access requires completed queue ownership acquisition"));
             }
             let mut changed = current;
             changed.cell.range = overlap;
@@ -1480,6 +1482,24 @@ mod tests {
         assert!(!table.cells()[0].state.writer.combined().write);
     }
     #[test]
+    fn host_access_rejects_released_contents_and_discard_preserves_exhausted_revision() {
+        let range = bytes(0, 16);
+        let transfer = RangeTransfer { pair: 7, source_family: 0, destination_family: 1,
+            range, source: write(), destination: read(),
+            old_layout: vk::ImageLayout::UNDEFINED, new_layout: vk::ImageLayout::UNDEFINED };
+        let mut table = table(range, NativeState { revision: u64::MAX,
+            owner: RangeOwner::Released { transfer, point: point(0, 2) }, ..Default::default() });
+        assert_eq!(table.prepare_host(bytes(4, 4), true).unwrap_err().kind(), crate::ErrorKind::InvalidUsage);
+        assert!(matches!(table.cells()[0].state.owner, RangeOwner::Released { .. }));
+        table.discard_idle_contents();
+        assert_eq!(table.cells().len(), 1);
+        assert_eq!(table.cells()[0].range, range);
+        assert_eq!(table.cells()[0].state.revision, u64::MAX);
+        assert_eq!(table.cells()[0].state.owner, RangeOwner::Unclaimed);
+        assert!(table.cells()[0].state.dependencies(true).is_empty());
+    }
+
+    #[test]
     fn host_write_advances_only_its_range_without_a_gpu_point() {
         let mut table = table(bytes(0, 16), NativeState::default());
         table.prepare_host(bytes(4, 4), true).unwrap();
@@ -1538,7 +1558,7 @@ mod tests {
                 q(0),
                 0
             ),
-            Err(Error::Timeout)
+            Err(error) if error.kind() == crate::ErrorKind::Exhausted
         ));
         assert_eq!(
             table.cells(),

@@ -68,7 +68,7 @@ fn real_undo_auto_hide_matches_full_native_frames_and_only_first_matching_anchor
     let mut world = setup();
     let mut schedule = Schedule::default();
     schedule.add_systems(undo_redo_auto_hide);
-    let fixture=include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../../reverse-engineering/tiny-glade/progress-20261020/phase2-undo-systems/native-auto-hide.bin"));
+    let fixture=include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../tests/fixtures/native/native-auto-hide.bin"));
     let mut cases = 0;
     for (index, b) in fixture.chunks_exact(52).enumerate() {
         if f(b, 24) < 0. {

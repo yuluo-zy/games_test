@@ -5,11 +5,7 @@ use bevy_ecs::resource::Resource;
 use glam::Vec2;
 use hashbrown::HashMap;
 use parking_lot::RwLock;
-use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
-    sync::Arc,
-};
+use std::{hash::Hash, sync::Arc};
 
 use super::widget_params::WidgetParams;
 
@@ -65,11 +61,9 @@ impl Default for DragState {
 pub struct WidgetId(pub u64);
 impl WidgetId {
     /// B 0x1405bdda0 uses zero-key SipHasher13 and the str Hash terminator.
-    /// Reuse std's implementation; this is unrelated to NameHash/xxh3.
+    /// Canonical `utils::calculate_hash`; unrelated to NameHash/xxh3.
     pub fn from_name(name: &str) -> Self {
-        let mut hash = DefaultHasher::new();
-        name.hash(&mut hash);
-        Self(hash.finish())
+        Self(::utils::calculate_hash(name))
     }
     pub fn clearing_canvas(name: &str) -> Self {
         Self::from_name(&format!("{name}_canvas"))

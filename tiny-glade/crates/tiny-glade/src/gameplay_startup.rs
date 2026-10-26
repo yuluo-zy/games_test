@@ -21,6 +21,11 @@ use crate::{render_host::HostTables, run_game::ApplicationShaderLibrary};
 pub(crate) type GameplayAudioStudio = country_core::resources::native_audio::NativeStudio;
 #[cfg(not(any(windows, feature = "native-audio")))]
 pub(crate) type GameplayAudioStudio = country_core::resources::audio_resources::DisabledStudio;
+#[cfg(any(windows, feature = "native-audio"))]
+type GameplayMusicEvent = country_core::resources::native_audio::NativeEvent;
+#[cfg(not(any(windows, feature = "native-audio")))]
+type GameplayMusicEvent = country_core::systems::audio::music::audio_core_backend::AudioCoreEvent<
+    country_core::resources::audio_resources::DisabledEvent>;
 
 /// 无 FMOD 的宿主仍执行原作加载与卸载状态机，事件实例进入真实 Disabled 分支。
 #[cfg(not(any(windows, feature = "native-audio")))]
@@ -45,11 +50,20 @@ pub(crate) fn install_disabled_audio(app: &mut App) {
     app.insert_resource(GameLoadingAudioState::<DisabledEvent>::empty_after_samples());
     app.add_systems(
         bevy_app::Startup,
-        init_game_loading_audio::<GameplayAudioStudio>,
+        (
+            init_game_loading_audio::<GameplayAudioStudio>,
+            country_core::systems::audio::trigger_audio::trigger_audio_init_system::<GameplayAudioStudio>,
+            country_core::systems::audio::sheep_audio::sheep_audio_init_system::<GameplayAudioStudio>,
+        ),
     );
+    app.add_event::<country_core::systems::audio::PlaySheepReactSound>();
     app.add_systems(
         bevy_app::Update,
-        loading_audio::<GameplayAudioStudio>.in_set(crate::run_game::GameSystemSet(38)),
+        (
+            loading_audio::<GameplayAudioStudio>,
+            country_core::systems::audio::trigger_audio::trigger_audio_system::<GameplayAudioStudio>,
+            country_core::systems::audio::sheep_audio::sheep_audio_system::<GameplayAudioStudio>,
+        ).in_set(crate::run_game::GameSystemSet(38)),
     );
 }
 
@@ -168,6 +182,9 @@ mod disabled_audio_tests {
     fn host_disabled_audio_keeps_startup_reveal_and_unload_lifecycle() {
         let mut app = App::new();
         app.init_resource::<GameTime>();
+        app.init_resource::<bevy_time::Time>();
+        app.init_resource::<country_core::systems::camera_rig::MainCamera>();
+        app.init_resource::<country_core::asset_libraries::audio_trigger_library::AudioTriggerLibrary>();
         app.add_event::<StartupRevealStarted>();
         app.add_event::<StartupRevealFinished>();
         install_disabled_audio(&mut app);
@@ -179,6 +196,11 @@ mod disabled_audio_tests {
         );
 
         app.update();
+        assert!(matches!(
+            app.world().resource::<country_core::systems::audio::trigger_audio::TriggerAudioState<DisabledEvent>>().camera_whoosh,
+            AudioInstance::Disabled
+        ));
+        assert!(app.world().contains_resource::<country_core::systems::audio::sheep_audio::SheepAudioState<DisabledEvent>>());
         assert!(matches!(
             app.world()
                 .resource::<GameLoadingAudioState<DisabledEvent>>()
@@ -399,6 +421,25 @@ pub fn install_gameplay_gpu_startup(
             .run_if(bevy_ecs::schedule::common_conditions::on_event::<
                 country_core::systems::mode_manager::ClearCanvasCmd>));
     crate::mei_host::install_mei_frame_systems(app);
+    app.add_event::<country_core::systems::save::load_completion_checker::DisplayCorruptedSaveFileWarning>();
+    app.add_systems(bevy_app::Update, toolbar::menu::corrupted_save_file::ui
+        .in_set(crate::run_game::GameSystemSet(36))
+        .run_if(bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game)));
+    app.add_systems(bevy_app::Update, toolbar::menu::save_error::ui
+        .in_set(crate::run_game::GameSystemSet(36))
+        .run_if(bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game))
+        .run_if(bevy_ecs::schedule::common_conditions::resource_exists::<
+            country_core::resources::session::ActiveSession>));
+    app.add_systems(bevy_app::Update,
+        toolbar::menu::new_session::ui::<GameplayMusicEvent>
+            .in_set(crate::run_game::GameSystemSet(36))
+            .run_if(bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game))
+            .run_if(bevy_ecs::schedule::common_conditions::resource_exists::<
+                country_core::resources::session::ActiveSession>));
+    app.add_systems(bevy_app::Update, toolbar::menu::daily_welcome::ui
+        .after(toolbar::menu::new_session::ui::<GameplayMusicEvent>)
+        .in_set(crate::run_game::GameSystemSet(36))
+        .run_if(bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game)));
     app.init_resource::<country_core::systems::render_loop::lut_gallery::LutGalleryState>();
     // MenuPlugin14068de50:14068e29e passes0x24 to in_set; the original
     // lut_gallery::ui wrapper140ff9df0 is guarded by in_state(Game).

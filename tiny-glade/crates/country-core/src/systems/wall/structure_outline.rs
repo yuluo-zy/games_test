@@ -828,7 +828,6 @@ mod tests {
         assert!(outline_enabled(&EscMenuState::Photomode(false)));
         assert!(!outline_enabled(&EscMenuState::Photomode(true)));
         assert!(!outline_enabled(&EscMenuState::Main));
-        assert!(!outline_enabled(&EscMenuState::Credits));
     }
 
     #[test]

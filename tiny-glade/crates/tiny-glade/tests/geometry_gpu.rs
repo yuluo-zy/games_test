@@ -1,4 +1,6 @@
 //! 真实设备验证墙砖 ECS 发布、分块上传、静止帧复用与更新后的字节回读。
+#[path = "support/mod.rs"]
+mod test_support;
 use ash::vk;
 use bevy_ecs::{schedule::Schedule, world::World};
 use country_core::{
@@ -54,7 +56,7 @@ fn read_prefix(
 ) -> Vec<u8> {
     // Host writes are queued; submit them before reading the device copy, as the
     // renderer does before every graph.
-    host.flush_pending_uploads().unwrap();
+    test_support::until_ready(|| host.poll_pending_uploads()).unwrap();
     let source = host.managed_buffer(buffer).unwrap();
     let output = Arc::new(
         NativeBuffer::new(
@@ -181,7 +183,7 @@ fn wall_brick_schedule_updates_real_device_bytes_and_reuses_idle_storage() {
         ..Default::default()
     };
     world
-        .get_mut::<InstancedWall<BrickTransformSsbo>>(entity)
+        .component_mut::<InstancedWall<BrickTransformSsbo>>(entity)
         .unwrap()
         .update(vec![replacement]);
     schedule.run(&mut world);
@@ -230,3 +232,5 @@ fn wall_brick_schedule_updates_real_device_bytes_and_reuses_idle_storage() {
     drop(world);
     assert!(host.managed_buffer(&next_buffer).is_none());
 }
+
+use country_core::render::extract::WorldComponentWrite as _;

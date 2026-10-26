@@ -23,6 +23,7 @@
 use crate::arch_walker::ArchWalker;
 use country_core::systems::wall::construction::structures::rdp_support_indices;
 use glam::{Vec3, Vec4};
+use itertools::Itertools;
 
 /// B `SupportBeamGrower::propose`（0x141fe09c0）的输出（40B 提议）。
 /// 布局与原件一致：index 0..8、xz_length 8..12、direction 12..24、
@@ -258,15 +259,15 @@ fn walk_lintel(
         .map(|(p, h)| Vec3::new(p[0], p[1] + *h, p[2]))
         .collect();
     let mut total = 0.0;
-    for pair in points.windows(2) {
-        total += length_yxz(pair[1] - pair[0]);
+    for (a, b) in points.iter().tuple_windows() {
+        total += length_yxz(*b - *a);
     }
     let count = (total / f32::from_bits(0x40499999) + 0.5).floor().max(1.0) as usize;
     let step = total / count as f32;
     let mut previous = points[0];
     let mut residual = 0.0f32;
-    for pair in points.windows(2) {
-        let length = length_yxz(pair[1] - pair[0]);
+    for (a, b) in points.iter().tuple_windows() {
+        let length = length_yxz(*b - *a);
         let mut remaining = residual + length;
         if step < remaining {
             let mut traversed = 0.0f32;
@@ -274,7 +275,7 @@ fn walk_lintel(
                 let distance = (step - residual).max(0.0);
                 traversed += distance;
                 let fraction = traversed / length;
-                let point = pair[1] * fraction + pair[0] * (1.0 - fraction);
+                let point = *b * fraction + *a * (1.0 - fraction);
                 emit_plank(previous, point, wall_id, ordinal, base_index, out);
                 residual = (residual - step).max(0.0);
                 remaining = (length - traversed) + residual;
@@ -406,9 +407,9 @@ fn emit_range(
         return;
     }
     let indices = rdp_support_indices(&source.raised_positions[begin..=end]);
-    for pair in indices.windows(2) {
-        let a = begin + pair[0];
-        let b = begin + pair[1];
+    for (a, b) in indices.iter().tuple_windows() {
+        let a = begin + *a;
+        let b = begin + *b;
         walk_lintel(
             &source.heights[a..=b],
             &source.ground_positions[a..=b],
@@ -536,9 +537,9 @@ pub fn emit_support_beams(
     }
     let arrays: Vec<[f32; 3]> = points.iter().map(|p| p.to_array()).collect();
     let indices = rdp_support_indices(&arrays);
-    for pair in indices.windows(2) {
-        let a = pair[0];
-        let b = pair[1];
+    for (a, b) in indices.iter().tuple_windows() {
+        let a = *a;
+        let b = *b;
         if b <= a {
             continue;
         }

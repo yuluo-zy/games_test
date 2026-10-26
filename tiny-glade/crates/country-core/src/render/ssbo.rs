@@ -94,18 +94,9 @@ pub mod rhapsody_boundary {
     /// mapping that can bypass a queued render frame or a prior GPU read.
     pub trait MappedUploadWriter: Send + Sync {
         fn write(&self, offset: usize, data: &[u8]) -> Result<(), BackendError>;
-        /// Execute an edit of the owner's existing mapping only after prior
-        /// overlapping GPU uses complete; retain exclusion through its flush.
-        fn with_write(
-            &self, _offset: usize, _bytes: usize, _edit: &mut dyn FnMut(),
-        ) -> Result<(), BackendError> {
-            Err(BackendError::unsupported("mapped edit synchronization is not connected"))
-        }
         fn try_read(
-            &self, _offset: usize, _bytes: usize, _read: &mut dyn FnMut(),
-        ) -> Result<bool, BackendError> {
-            Err(BackendError::unsupported("mapped read synchronization is not connected"))
-        }
+            &self, offset: usize, bytes: usize, read: &mut dyn FnMut(),
+        ) -> Result<bool, BackendError>;
     }
 
     /// 占位：`rhapsody::device::Device`（只含本层用到的两个调用）。
@@ -173,7 +164,10 @@ pub mod rhapsody_boundary {
         }
     }
 
-    /// `rhapsody::raw::bytes::slice_as_bytes<T>`。
+    /// `rhapsody::raw::bytes::slice_as_bytes<T>`.
+    ///
+    /// Kept as a `Copy` boundary helper: callers include `StorageElement` types
+    /// that do not implement `bytemuck::NoUninit`; see the dependency audit.
     pub fn slice_as_bytes<T: Copy>(slice: &[T]) -> &[u8] {
         unsafe {
             core::slice::from_raw_parts(slice.as_ptr() as *const u8, core::mem::size_of_val(slice))
@@ -689,13 +683,14 @@ pub struct MappedStorageBuffer<'a, T> {
     shadow: Option<Vec<T>>,
     /// Reused pre-edit copy for change detection.
     before: Vec<T>,
+    pending: Vec<Range<usize>>,
 }
 
 impl<'a, T: StorageElement> MappedStorageBuffer<'a, T> {
     /// Adapt an existing mapping whose synchronization remains with its owner
     /// (CPU test mappings and GPU readback owners use this constructor).
     pub fn from_mapping(mapped: &'a mut [T], buffer: Buffer) -> Self {
-        Self { mapped, buffer, upload_writer: None, shadow: None, before: Vec::new() }
+        Self { mapped, buffer, upload_writer: None, shadow: None, before: Vec::new(), pending: Vec::new() }
     }
 
     /// Adapt a manually constructed native mapping while retaining the host's
@@ -704,7 +699,7 @@ impl<'a, T: StorageElement> MappedStorageBuffer<'a, T> {
         mapped: &'a mut [T], buffer: Buffer,
         access: Option<std::sync::Arc<dyn rhapsody_boundary::MappedUploadWriter>>,
     ) -> Self {
-        Self { mapped, buffer, upload_writer: access, shadow: None, before: Vec::new() }
+        Self { mapped, buffer, upload_writer: access, shadow: None, before: Vec::new(), pending: Vec::new() }
     }
     /// 缓冲字节大小：`BUFFER_LEN * size_of::<T>()`（编译期常量）。
     pub const fn byte_len() -> usize {
@@ -770,7 +765,7 @@ impl<'a, T: StorageElement> MappedStorageBuffer<'a, T> {
         // SAFETY: 对齐与整除已断言；`T: Copy` 且映射区由设备持有至缓冲销毁（与原版保存的裸指针等价）；字节内容按元素重解释
         // （`T` 非 `Pod` 派生，故不能用 `bytemuck::cast_slice_mut`——离线缓存缺 `bytemuck_derive`）。
         let mapped: &'a mut [T] = unsafe { core::slice::from_raw_parts_mut(ptr, len) };
-        Self { mapped, buffer, upload_writer: device.mapped_upload_writer(&buffer), shadow: None, before: Vec::new() }
+        Self { mapped, buffer, upload_writer: device.mapped_upload_writer(&buffer), shadow: None, before: Vec::new(), pending: Vec::new() }
     }
 
     /// `cpu_write`（O：`impl$6::cpu_write<ButterflySsbo/FireflySsbo>` 0x14230edb0 / 0x14230f1e0，各 1057 B，puffin scope 之外就是一次
@@ -802,7 +797,7 @@ impl<'a, T: StorageElement> MappedStorageBuffer<'a, T> {
             .ok_or_else(|| rhapsody_boundary::BackendError::invalid_usage("mapped edit offset overflow"))?;
         let mapped = self.mapped.get_mut(range.clone())
             .ok_or_else(|| rhapsody_boundary::BackendError::invalid_usage("mapped edit exceeds its owner"))?;
-        let Some(writer) = &self.upload_writer else {
+        let Some(_writer) = &self.upload_writer else {
             edit(mapped);
             return Ok(());
         };
@@ -827,16 +822,63 @@ impl<'a, T: StorageElement> MappedStorageBuffer<'a, T> {
             let changed = at < new.len() && new[at..end] != old[at..end];
             match (changed, start) {
                 (true, None) => start = Some(at),
-                (false, Some(from)) => {
-                    writer.write(base + from, &new[from..at])?;
-                    start = None;
-                }
+                (false, Some(from)) => { self.pending.push(base + from..base + at); start = None; }
                 _ => {}
             }
             if at == new.len() { break; }
             at = end;
         }
-        Ok(())
+        self.merge_and_flush_pending()
+    }
+
+    /// Edit authoritative CPU bytes and append the producer's known changed
+    /// byte ranges. Raster already hashes dirty tiles; avoid copying and
+    /// comparing its whole staging allocation again.
+    /// Ranges are absolute byte offsets into the full mapping and must cover
+    /// every write. Append without clearing earlier ranges awaiting retry.
+    pub fn with_cpu_write_regions(&mut self, edit: impl FnOnce(&mut [T], &mut Vec<Range<usize>>))
+        -> Result<(), rhapsody_boundary::BackendError> {
+        if self.upload_writer.is_none() {
+            edit(self.mapped, &mut self.pending);
+            self.pending.clear();
+            return Ok(());
+        }
+        let shadow = self.shadow.get_or_insert_with(|| self.mapped.to_vec());
+        edit(shadow, &mut self.pending);
+        self.merge_and_flush_pending()
+    }
+
+    fn merge_and_flush_pending(&mut self) -> Result<(), rhapsody_boundary::BackendError> {
+        self.pending.sort_unstable_by_key(|range| range.start);
+        let mut merged = 0;
+        for index in 0..self.pending.len() {
+            let range = self.pending[index].clone();
+            if merged > 0 && self.pending[merged - 1].end >= range.start {
+                self.pending[merged - 1].end = self.pending[merged - 1].end.max(range.end);
+            } else { self.pending[merged] = range; merged += 1; }
+        }
+        self.pending.truncate(merged);
+        // Capacity rejection leaves authoritative bytes and dirty spans with
+        // this producer. The hand-over retries before extracting any frame.
+        match self.flush_pending_uploads() {
+            Err(rhapsody_boundary::BackendError::Exhausted(_)) => Ok(()),
+            result => result,
+        }
+    }
+
+    pub fn flush_pending_uploads(&mut self) -> Result<(), rhapsody_boundary::BackendError> {
+        let (Some(writer), Some(shadow)) = (&self.upload_writer, &self.shadow) else { return Ok(()); };
+        let bytes = slice_as_bytes(shadow);
+        let mut accepted = 0;
+        let result = (|| {
+            for range in &self.pending {
+                writer.write(range.start, &bytes[range.clone()])?;
+                accepted += 1;
+            }
+            Ok(())
+        })();
+        self.pending.drain(..accepted);
+        result
     }
 
     /// The owner's latest CPU contents: the shadow of a writer-backed buffer
@@ -1204,6 +1246,72 @@ pub(crate) mod tests {
             )
         });
         assert!(r.is_err(), "6 B 不是 4 B 元素的整数倍");
+    }
+
+    #[test]
+    fn rejected_mapped_upload_keeps_dirty_cpu_bytes_for_handover_retry() {
+        use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+        struct Writer { busy: AtomicBool, bytes: parking_lot::Mutex<Vec<u8>> }
+        impl rhapsody_boundary::MappedUploadWriter for Writer {
+            fn try_read(&self, _: usize, _: usize, _: &mut dyn FnMut()) -> Result<bool, rhapsody_boundary::BackendError> {
+                unreachable!("upload-only fixture cannot be used as a GPU readback source")
+            }
+            fn write(&self, offset: usize, data: &[u8]) -> Result<(), rhapsody_boundary::BackendError> {
+                if self.busy.load(Ordering::Acquire) { return Err(rhapsody_boundary::BackendError::exhausted("full")); }
+                self.bytes.lock()[offset..offset + data.len()].copy_from_slice(data);
+                Ok(())
+            }
+        }
+        let mut initial = [Height(0.0); 128];
+        let writer = Arc::new(Writer { busy: AtomicBool::new(true), bytes: parking_lot::Mutex::new(vec![0; 512]) });
+        let mut storage = MappedStorageBuffer::from_mapping_with_access(&mut initial,
+            Buffer { id: 1, generation: 0, byte_size: 512, _gap10: 0, _gap20: 0 }, Some(writer.clone()));
+        storage.with_cpu_write(|values| values[0] = Height(17.0)).unwrap();
+        assert!(matches!(storage.flush_pending_uploads(), Err(rhapsody_boundary::BackendError::Exhausted(_))));
+        assert_eq!(storage.cpu_contents()[0].0, 17.0);
+        assert_eq!(storage.mapped[0].0, 0.0, "CPU editing never races the live GPU mapping");
+        // A second edit must not erase the first rejected dirty span.
+        storage.with_cpu_write(|values| values[80] = Height(29.0)).unwrap();
+        writer.busy.store(false, Ordering::Release);
+        storage.flush_pending_uploads().unwrap();
+        let bytes = writer.bytes.lock();
+        assert_eq!(f32::from_ne_bytes(bytes[0..4].try_into().unwrap()), 17.0);
+        assert_eq!(f32::from_ne_bytes(bytes[320..324].try_into().unwrap()), 29.0);
+        assert!(storage.pending.is_empty());
+    }
+
+    #[test]
+    fn producer_ranges_preserve_rejected_spans_without_copying_or_uploading_holes() {
+        use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+        struct Writer { busy: AtomicBool, writes: parking_lot::Mutex<Vec<(usize, Vec<u8>)>> }
+        impl rhapsody_boundary::MappedUploadWriter for Writer {
+            fn try_read(&self, _: usize, _: usize, _: &mut dyn FnMut()) -> Result<bool, rhapsody_boundary::BackendError> {
+                unreachable!("upload-only fixture cannot be used as a GPU readback source")
+            }
+            fn write(&self, offset: usize, data: &[u8]) -> Result<(), rhapsody_boundary::BackendError> {
+                if self.busy.load(Ordering::Acquire) { return Err(rhapsody_boundary::BackendError::exhausted("full")); }
+                self.writes.lock().push((offset, data.to_vec()));
+                Ok(())
+            }
+        }
+        let mut initial = [Height(0.0); 128];
+        let writer = Arc::new(Writer { busy: AtomicBool::new(true), writes: Default::default() });
+        let mut storage = MappedStorageBuffer::from_mapping_with_access(&mut initial,
+            Buffer { id: 1, generation: 0, byte_size: 512, _gap10: 0, _gap20: 0 }, Some(writer.clone()));
+        storage.with_cpu_write_regions(|values, dirty| {
+            values[0] = Height(17.0); dirty.push(0..4);
+        }).unwrap();
+        storage.with_cpu_write_regions(|values, dirty| {
+            values[80] = Height(29.0); dirty.push(320..324);
+        }).unwrap();
+        assert!(storage.before.is_empty());
+        assert_eq!(storage.mapped[0].0, 0.0);
+        assert_eq!(storage.pending, [0..4, 320..324]);
+        writer.busy.store(false, Ordering::Release);
+        storage.flush_pending_uploads().unwrap();
+        assert_eq!(*writer.writes.lock(), [(0, 17.0f32.to_ne_bytes().to_vec()),
+            (320, 29.0f32.to_ne_bytes().to_vec())]);
+        assert!(storage.pending.is_empty());
     }
 
     #[test]

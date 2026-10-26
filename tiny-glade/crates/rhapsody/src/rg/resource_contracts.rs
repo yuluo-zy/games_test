@@ -12,6 +12,20 @@ pub(crate) fn range_error(resource: u32, error: RangeError) -> BuildError {
     })
 }
 
+// Format diagnostics only on the existing rejection path. Successful frames
+// perform no additional validation, graph traversal or allocation here.
+#[cold]
+fn uninitialized_read(graph: &GraphDeclaration, resource: u32, pass: u32) -> BuildError {
+    log::error!("undefined graph contents: resource={resource} declaration={:?} pass={pass} name={:?}",
+        graph.resources.get(resource as usize), graph.passes.get(pass as usize).map(|p| &p.name));
+    for (index, node) in graph.passes.iter().enumerate().take(pass as usize + 1) {
+        for access in node.accesses.iter().filter(|a| a.resource_index == resource) {
+            log::error!("undefined graph contents: preceding pass={index} name={:?} access={access:?}", node.name);
+        }
+    }
+    BuildError::Contract(Contract::UninitializedRead { resource, pass })
+}
+
 pub fn validate_contracts(
     graph: &GraphDeclaration,
     is_write: impl FnMut(u8) -> bool,
@@ -82,10 +96,7 @@ pub(crate) fn validate_matching_initialization(
                 )
                 .map_err(|error| range_error(access.resource_index, error))?
                 {
-                    return Err(BuildError::Contract(Contract::UninitializedRead {
-                        resource: access.resource_index,
-                        pass: pass_index as u32,
-                    }));
+                    return Err(uninitialized_read(graph, access.resource_index, pass_index as u32));
                 }
             }
         }
@@ -106,10 +117,7 @@ pub(crate) fn validate_matching_initialization(
             )
             .map_err(|error| range_error(export.resource_index, error))?
             {
-                return Err(BuildError::Contract(Contract::UninitializedRead {
-                    resource: export.resource_index,
-                    pass: graph.passes.len() as u32,
-                }));
+                return Err(uninitialized_read(graph, export.resource_index, graph.passes.len() as u32));
             }
         }
     }
@@ -330,10 +338,7 @@ fn resolve_with_initialization(
                 && !covers(input_ranges, access.range, descriptor)
                     .map_err(|error| range_error(access.resource_index, error))?
             {
-                return Err(BuildError::Contract(Contract::UninitializedRead {
-                    resource: access.resource_index,
-                    pass: pass_index as u32,
-                }));
+                return Err(uninitialized_read(graph, access.resource_index, pass_index as u32));
             }
             if let AccessVersion::Write { current, .. } = resolved {
                 versions[resource] = current;
@@ -360,10 +365,7 @@ fn resolve_with_initialization(
         )
         .map_err(|error| range_error(export.resource_index, error))?
         {
-            return Err(BuildError::Contract(Contract::UninitializedRead {
-                resource: export.resource_index,
-                pass: graph.passes.len() as u32,
-            }));
+            return Err(uninitialized_read(graph, export.resource_index, graph.passes.len() as u32));
         }
     }
     let full = graph

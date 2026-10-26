@@ -358,10 +358,11 @@ fn begin(frame: &mut CoreGraphFrame<'_>, world: &mut World) -> rhapsody::Result<
             .ok_or_else(|| fail("FrameConstants"))?,
     );
     let raster = frame.raster_resources();
-    let constants = raster
-        .dynamic_constants()
-        .lock()
-        .allocate_with_data(&bytes)?;
+    let constants = {
+        let mut constants = raster.dynamic_constants().lock();
+        constants.begin_frame();
+        constants.allocate_with_data(&bytes)?
+    };
     let hosts = frame.hosts();
     let mut library = world
         .get_resource_mut::<AssetTextureLibrary>()
@@ -374,6 +375,7 @@ fn begin(frame: &mut CoreGraphFrame<'_>, world: &mut World) -> rhapsody::Result<
     library.import_texture_presets_to_rg(&mut Textures(frame));
     {
         let mut tables = raster.assets.lock();
+        let tables = Arc::make_mut(&mut tables.collect);
         tables.presets.clear();
         tables.textures_by_name.clear();
         tables.rg_buffers.clear();
@@ -409,6 +411,7 @@ fn begin(frame: &mut CoreGraphFrame<'_>, world: &mut World) -> rhapsody::Result<
         // as compute bind. Publishing counts neither imports GPU resources
         // nor manufactures absent entries; actual draw accesses remain lazy.
         let mut tables = raster.assets.lock();
+        let tables = Arc::make_mut(&mut tables.collect);
         tables.ssbo_leases = Some(
             ssbos
                 .snapshot_graph_leases()
@@ -433,11 +436,12 @@ fn begin(frame: &mut CoreGraphFrame<'_>, world: &mut World) -> rhapsody::Result<
     // owner at every frame, rather than leaving RasterAssets::placement empty.
     {
         let mut tables = raster.assets.lock();
+        let tables = Arc::make_mut(&mut tables.collect);
         tables.placement.clear();
         if let Some(placements) = world.get_resource::<
             country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary,
         >() {
-            for (handle, (storage, count)) in &placements.buffers {
+            for (handle, (storage, count)) in placements.buffers() {
                 hosts.buffers.managed_buffer(&storage.buffer)
                     .ok_or_else(|| fail("placement buffer does not belong to this App's BufferHost"))?;
                 let count = u32::try_from(*count)
@@ -482,7 +486,7 @@ pub fn with_frame_resources<T>(
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
     m.resource::<FrameConstants>();
-    m.resource_with_revision::<AssetTextureLibrary>(<AssetTextureLibrary>::descriptor_revision);
-    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
-    m.resource::<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary,>();
+    m.asset_library::<AssetTextureLibrary>();
+    m.asset_library::<AssetSsboLibrary>();
+    m.asset_library::<country_core::asset_libraries::placement_data_library::AssetPlacementDataLibrary>();
 }

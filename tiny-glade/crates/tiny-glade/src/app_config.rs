@@ -140,12 +140,7 @@ pub struct CliArgs {
         default_value_t = false
     )]
     pub crash_reporter_send_to_sentry: bool,
-    /// `--ignore-vram-budget` / 别名 `--disable-vram-budget`。
-    #[arg(
-        long = "ignore-vram-budget",
-        visible_alias = "disable-vram-budget",
-        value_name = "IGNORE_VRAM_BUDGET"
-    )]
+    #[arg(long = "ignore-vram-budget", value_name = "IGNORE_VRAM_BUDGET")]
     pub ignore_vram_budget: bool,
     #[arg(long = "track-gpu-allocations", value_name = "TRACK_GPU_ALLOCATIONS")]
     pub track_gpu_allocations: bool,
@@ -162,11 +157,6 @@ pub struct CliArgs {
     pub verify_integrity: bool,
     #[arg(long = "max-game-threads", value_name = "MAX_GAME_THREADS")]
     pub max_game_threads: Option<usize>,
-    #[arg(
-        long = "single-threaded-executor",
-        value_name = "SINGLE_THREADED_EXECUTOR"
-    )]
-    pub single_threaded_executor: bool,
     #[arg(long = "override-save-root", value_name = "OVERRIDE_SAVE_ROOT")]
     pub override_save_root: Option<PathBuf>,
     #[arg(

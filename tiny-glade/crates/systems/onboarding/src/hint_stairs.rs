@@ -45,11 +45,21 @@ pub fn hint_stairs(
     mut state: ResMut<StairsHintConditions>,
     mode: Res<country_core::systems::mode_manager::AppMode>,
     mut placed: EventReader<country_core::resources::onboarding::NotifyHintSystemStairsPlaced>,
-    mut hovering: EventReader<country_core::resources::onboarding::NotifyHintSystemHoveringOverStairs>,
-    mut started_continue: EventReader<country_core::resources::onboarding::NotifyHintSystemStartedStairsContinue>,
-    mut can_continue: EventReader<country_core::resources::onboarding::NotifyHintSystemCanContinueStairs>,
-    mut detached: EventReader<country_core::resources::onboarding::NotifyHintSystemStairsDetachedFromWall>,
-    mut can_detach: EventReader<country_core::resources::onboarding::NotifyHintSystemStairsCanDetachFromWall>,
+    mut hovering: EventReader<
+        country_core::resources::onboarding::NotifyHintSystemHoveringOverStairs,
+    >,
+    mut started_continue: EventReader<
+        country_core::resources::onboarding::NotifyHintSystemStartedStairsContinue,
+    >,
+    mut can_continue: EventReader<
+        country_core::resources::onboarding::NotifyHintSystemCanContinueStairs,
+    >,
+    mut detached: EventReader<
+        country_core::resources::onboarding::NotifyHintSystemStairsDetachedFromWall,
+    >,
+    mut can_detach: EventReader<
+        country_core::resources::onboarding::NotifyHintSystemStairsCanDetachFromWall,
+    >,
     mut request: EventWriter<crate::DisplayHintRequest>,
     mut completed: EventWriter<crate::tutorial_completion::TutorialHintComplete>,
 ) {
@@ -57,12 +67,11 @@ pub fn hint_stairs(
     if !profile.stairs_stage5_completed {
         if placed.read().next().is_some() {
             if can_detach.read().next().is_some() {
-                let display = crate::BindingHintDisplay::Steam(
-                    crate::hint_orchestrator::steam_query(
+                let display =
+                    crate::BindingHintDisplay::Steam(crate::hint_orchestrator::steam_query(
                         country_core::resources::steam::packed_set_plus_one(0),
-                    ),
-                )
-                .alternate(None::<crate::KeyCode>);
+                    ))
+                    .alternate(None::<crate::KeyCode>);
                 request.write(crate::DisplayHintRequest::new(
                     display,
                     crate::hint_orchestrator::HintType::StairsCanDetach,
@@ -79,11 +88,9 @@ pub fn hint_stairs(
         if state.counter != 0 {
             completed.write(crate::tutorial_completion::TutorialHintComplete { id: 13 });
         } else if stairs_show_condition_seam() {
-            let display = crate::BindingHintDisplay::Steam(
-                crate::hint_orchestrator::steam_query(
-                    country_core::resources::steam::packed_set_plus_one(0),
-                ),
-            )
+            let display = crate::BindingHintDisplay::Steam(crate::hint_orchestrator::steam_query(
+                country_core::resources::steam::packed_set_plus_one(0),
+            ))
             .alternate(crate::hint_orchestrator::graphic("hint/rmb"));
             request.write(crate::DisplayHintRequest::new(
                 display,
@@ -99,11 +106,9 @@ pub fn hint_stairs(
         if state.counter != 0 {
             completed.write(crate::tutorial_completion::TutorialHintComplete { id: 14 });
         } else if stairs_show_condition_seam() && 2 < state.counter {
-            let display = crate::BindingHintDisplay::Steam(
-                crate::hint_orchestrator::steam_query(
-                    country_core::resources::steam::packed_set_plus_one(0),
-                ),
-            )
+            let display = crate::BindingHintDisplay::Steam(crate::hint_orchestrator::steam_query(
+                country_core::resources::steam::packed_set_plus_one(0),
+            ))
             .alternate(crate::hint_orchestrator::graphic("hint/rmb"));
             request.write(crate::DisplayHintRequest::new(
                 display,

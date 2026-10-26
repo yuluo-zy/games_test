@@ -153,48 +153,39 @@ impl WallSpatialHash {
         result
     }
 
-    /// B 0x140aa5a10 (snapping_to_segments): AABB query returning, per segment
-    /// whose cell lies within the clamped world bounds, **the segment's closest
-    /// point to the AABB center** as `(candidate point, wall)` pairs. The
-    /// consumer (`snapping_to_segments::closest_segment_to_snap_to`) computes
-    /// each proposal from a WallSegment's closest point to the query reference
-    /// (fresh 0x140b16500 closure: `get_approx_coord_from_pos<Vec3,
-    /// Thresholded3D>` + `lerp(point[i], point[i+1], t)`); since segments are
-    /// straight edges of the simplified curve, the closest point on the edge
-    /// equals the native snap point. Points outside the strict (-65,65) grid
-    /// are clamped to the border cells, matching the world->grid clamp.
-    /// fresh 反编译：`get_cells_from_aabb` 后与 0x140aa5940 同骨架——按墙 id 排序 +
-    /// 相邻同墙去重（无距离排序）。返回按墙 id 升序、每墙一条（排序后首段）的最近点，
-    /// 消费者自行按距离取最近。
-    pub fn query_with_aabb_clamped(&self, min: [f32; 2], max: [f32; 2]) -> Vec<([f32; 2], WallId)> {
-        use crate::resources::walls::spatial_index::GRID_SIDE;
-        use crate::resources::walls::spatial_index::grid_coord_to_cell_index;
+    /// 原 140aa5a10：按格收集完整段，按段 ID 排序并消除跨格重复。
+    /// WallId 在原段 +0x28，排序键 +0x30 是段 ID，不能按墙去重：
+    /// 同一墙的不同段承载不同方向，形状吸附的法向依赖它们。
+    pub fn query_segments_with_aabb_clamped(
+        &self,
+        min: [f32; 2],
+        max: [f32; 2],
+    ) -> impl ExactSizeIterator<Item = &WallSpatialSegment> + '_ {
         use crate::resources::walls::spatial_index::world_space_to_grid_coord_unclamped;
-        let clamp_to_cell = |p: [f32; 2]| {
-            let g = world_space_to_grid_coord_unclamped(p);
-            let g = [
-                g[0].clamp(0, GRID_SIDE as i32 - 1),
-                g[1].clamp(0, GRID_SIDE as i32 - 1),
-            ];
-            grid_coord_to_cell_index(g) as usize
-        };
-        let lo = clamp_to_cell(min);
-        let hi = clamp_to_cell(max);
-        let (min_x, max_x) = (lo % GRID_SIDE, hi % GRID_SIDE);
-        let (min_z, max_z) = (lo / GRID_SIDE, hi / GRID_SIDE);
-        // 最近点参考点 = AABB 中心（消费者 0x140a6b5e0 以游标为参考，AABB 以游标为中心）。
-        let center = [(min[0] + max[0]) * 0.5, (min[1] + max[1]) * 0.5];
-        // 0x140aa5a10：get_cells_from_aabb 收集段 → 按墙 id（+0x30 u32）排序 + 相邻同墙
-        // 去重（每墙只保留排序后首段，非最近段）；无距离排序。距离排序/取最近在消费者里。
-        let mut segments: Vec<&WallSpatialSegment> = Vec::new();
-        for z in min_z..=max_z {
-            for x in min_x..=max_x {
-                segments.extend(self.segments_in_cell(z * GRID_SIDE + x));
+        // 原调用先把 AABB 裁到世界边界，再由 get_cells_from_aabb 遍历。
+        // 不把整个越界区间移动到边格，也不颠倒反向区间。
+        let half = WORLD_SIZE * 0.5;
+        let lo = min.map(|v| v.max(-half));
+        let hi = max.map(|v| v.min(half));
+        let lo = world_space_to_grid_coord_unclamped(lo).map(|v| v.max(0));
+        let hi = world_space_to_grid_coord_unclamped(hi).map(|v| v.min(GRID_SIDE as i32 - 1));
+        let mut ids = Vec::new();
+        for z in lo[1]..=hi[1] {
+            for x in lo[0]..=hi[0] {
+                ids.extend_from_slice(&self.cells[z as usize * GRID_SIDE + x as usize]);
             }
         }
-        sort_and_dedup_by_wall_id(&mut segments);
-        segments
-            .into_iter()
+        // 标准库排序替代容器依赖；相同段 ID 总是指向同一条段，稳定性不可观察。
+        ids.sort_unstable();
+        ids.dedup();
+        // 返回拥有 ID 缓冲区的借用迭代器，不再额外分配一个引用 Vec。
+        ids.into_iter().map(|id| &self.segments[&id])
+    }
+
+    /// 保留现有点查询调用面；形状业务使用上面的完整段，独立计算 SnapProposal。
+    pub fn query_with_aabb_clamped(&self, min: [f32; 2], max: [f32; 2]) -> Vec<([f32; 2], WallId)> {
+        let center = [(min[0] + max[0]) * 0.5, (min[1] + max[1]) * 0.5];
+        self.query_segments_with_aabb_clamped(min, max).into_iter()
             .map(|segment| (segment_closest_point_to(segment, center), segment.wall))
             .collect()
     }
@@ -351,10 +342,8 @@ pub fn spatial_hash_update(
     }
 }
 
-/// 端点到参考点距离平方（query_with_aabb_clamped 排序键，fresh 复用圆查询比较器）。
-/// 0x140aa5850/0x140aa5940/0x140aa5ba0 共有的尾段：`sort_unstable_by(seg.wall as u32)`
-/// （比较器 0x141338ac3，`len <= 20` 为稳定插入排序，更长走 ipnsort）+ 相邻同墙去重。
-/// 未闭合：`len > 20` 时 ipnsort 对同墙多段的保留顺序未复刻，统一用稳定排序。
+/// 旧圆/矩形查询调用面的按墙聚合适配器，尚不作为原段查询已恢复的证据。
+/// 原 141338ac3 实际读段 +0x30 ID；已恢复的 AABB 原查询不经过本适配器。
 pub(crate) fn sort_and_dedup_by_wall_id(candidates: &mut Vec<&WallSpatialSegment>) {
     candidates.sort_by_key(|segment| segment.wall.0 as u32);
     candidates.dedup_by_key(|segment| segment.wall.0 as u32);
@@ -442,6 +431,23 @@ mod tests {
             terrain_heights: [100.0, 200.0],
             wall: WallId(1),
         }
+    }
+
+    #[test]
+    fn bounded_raw_query_preserves_same_wall_segments_orders_ids_and_unloads() {
+        let mut spatial=WallSpatialHash::default();
+        for i in 0..100 {
+            spatial.add_segment(WallSpatialSegment{endpoints:[[0.,0.],[1.,i as f32*0.001]],source_u:[0.,1.],relative_heights:[0.;2],terrain_heights:[0.;2],wall:WallId(42)});
+        }
+        for (lo,hi) in [([-2.,-2.],[2.,2.]),([-100.,-100.],[100.,100.])] {
+            let rows:Vec<_>=spatial.query_segments_with_aabb_clamped(lo,hi).collect();
+            assert_eq!(rows.len(),100,"同墙多段保留，仅去跨格重复的同一段");
+            for (i,row) in rows.iter().enumerate(){assert_eq!(row.endpoints[1][1].to_bits(),(i as f32*0.001).to_bits());}
+        }
+        assert!(spatial.query_segments_with_aabb_clamped([70.,70.],[80.,80.]).len()==0);
+        assert!(spatial.query_segments_with_aabb_clamped([-80.,-80.],[-70.,-70.]).len()==0);
+        assert!(spatial.query_segments_with_aabb_clamped([5.,5.],[-5.,-5.]).len()==0);
+        spatial.remove_wall_id(WallId(42));assert!(spatial.query_segments_with_aabb_clamped([-2.,-2.],[2.,2.]).len()==0);
     }
 
     #[test]

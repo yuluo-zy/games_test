@@ -1,6 +1,7 @@
 //! Complete original roof perch producer, 14231db27..14231e0a6.
 use country_core::resources::roofs::{roof_shape::Roof, roof_ridge::{RoofRidgeDims, calc_roof_tip_center_ls}, roof_noise::apply_roof_noise, geometry::tiles::{random_splits, TileRng}};
 use glam::{Vec2, Vec3};
+use itertools::Itertools;
 use utils::geometry::rectangle::Rectangle2d;
 use crate::bird_spots::{BirdSpot, BirdSpotManager};
 
@@ -40,10 +41,10 @@ pub fn sample_roof_bird_spots(roof: &Roof, frame_count: u32, manager: &mut BirdS
     let amplitude = (spread + spread) / length;
     let splits = random_splits(count + 1, amplitude, &mut rng);
     let mut points = Vec::with_capacity(count);
-    for interval in splits.windows(2) {
+    for (left, right) in splits.iter().tuple_windows() {
         let random = rng.next_f32();
         let sample = random * 0.7 + (1.0 - random) * 0.3;
-        let t = interval[1] * sample + interval[0] * (1.0 - sample);
+        let t = *right * sample + *left * (1.0 - sample);
         let local = b * t + a * (1.0 - t);
         let world = orientation * local + shape.center;
         let mut y = roof.height() + roof.floor_y();

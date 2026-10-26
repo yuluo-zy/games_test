@@ -359,23 +359,6 @@ impl PassBuilder<'_> {
         Ok(super::resource::BufferId { version, ..buffer })
     }
     /// Explicitly discard previous contents, even for a read/write Vulkan access mask.
-    pub fn write_texture_discard(
-        &mut self,
-        texture: super::resource::TextureId,
-        access_code: u8,
-        range: super::resource::AccessRange,
-    ) -> Result<super::resource::TextureId, BuildError> {
-        let version = self.typed_access(
-            texture.handle,
-            texture.version,
-            access_code,
-            range,
-            AccessMode::Discard,
-            true,
-        )?;
-        Ok(super::resource::TextureId { version, ..texture })
-    }
-    /// Explicitly discard previous contents, even for a read/write Vulkan access mask.
     pub fn write_buffer_discard(
         &mut self,
         buffer: super::resource::BufferId,
@@ -454,30 +437,6 @@ impl<'graph> PassBuilder<'graph> {
         if !matches!(
             self.graph.declaration.resources[resource.raw() as usize].descriptor,
             super::graph::Descriptor::Buffer(_)
-        ) {
-            return Err(super::pass_bindings::PassBindingError::WrongResourceKind);
-        }
-        Ok(super::resource::Ref {
-            builder: self,
-            resource,
-            access_code,
-            group,
-            kind: std::marker::PhantomData,
-        })
-    }
-    pub fn texture_ref<'borrow>(
-        &'borrow mut self,
-        resource: ResourceHandle,
-        access_code: u8,
-        group: u32,
-    ) -> Result<
-        super::resource::Ref<'borrow, 'graph, super::resource::TextureRef>,
-        super::pass_bindings::PassBindingError,
-    > {
-        self.graph.check_handle(resource)?;
-        if !matches!(
-            self.graph.declaration.resources[resource.raw() as usize].descriptor,
-            super::graph::Descriptor::Image(_)
         ) {
             return Err(super::pass_bindings::PassBindingError::WrongResourceKind);
         }

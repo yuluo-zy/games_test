@@ -34,10 +34,7 @@ pub fn replay_decorator(
     archivist: Option<ResMut<LiveDecoratorArchivist>>,
 ) {
     // O：桶 cull-allow 表 take 语义（原生 `*(bucket+0x18) = 0`）。
-    let cull = replay
-        .aux
-        .front_mut()
-        .and_then(|aux| aux.cull_allow.take());
+    let cull = replay.aux.front_mut().and_then(|aux| aux.cull_allow.take());
     if let (Some(ids), Some(mut archivist)) = (cull, archivist) {
         for id in ids.iter() {
             archivist.culling.allowed_ids.insert(id.0);
@@ -94,32 +91,29 @@ mod tests {
         world.init_resource::<LiveDecoratorArchivist>();
         world.init_resource::<Events<crate::systems::history::ReplayBucketFinished>>();
         let mut schedule = Schedule::default();
-        schedule.add_systems((
-            replay_decorator,
-            crate::systems::history::pop_empty_replay_bucket,
-        )
-            .chain());
+        schedule.add_systems(
+            (
+                replay_decorator,
+                crate::systems::history::pop_empty_replay_bucket,
+            )
+                .chain(),
+        );
         (world, schedule)
     }
 
     fn push(world: &mut World, elapsed: f32, instant: bool, aux: ReplayBucketAux) {
-        let mut command = DecoratorReplayCmd::expanded(
-            Arc::new(DecoratorV5Edit::default()),
-            false,
-            instant,
-        );
+        let mut command =
+            DecoratorReplayCmd::expanded(Arc::new(DecoratorV5Edit::default()), false, instant);
         command.elapsed = elapsed;
-        world
-            .resource_mut::<ReplayBuffer>()
-            .push_with_aux(
-                crate::resources::history::ReplayBucket {
-                    entry_index: 0,
-                    undo: false,
-                    commands: vec![ReplayCommand::Decorator(command)],
-                    timing: vec![Default::default()],
-                },
-                aux,
-            );
+        world.resource_mut::<ReplayBuffer>().push_with_aux(
+            crate::resources::history::ReplayBucket {
+                entry_index: 0,
+                undo: false,
+                commands: vec![ReplayCommand::Decorator(command)],
+                timing: vec![Default::default()],
+            },
+            aux,
+        );
     }
 
     #[test]
@@ -171,9 +165,11 @@ mod tests {
         schedule.run(&mut world);
         // 命令完成只移除；存储由 Pop 的 restore_decorators 恢复。
         assert!(world.resource::<ReplayBuffer>().is_empty());
-        assert!(world
-            .resource::<crate::resources::walls::decorator_storage::DecoratorStorage>()
-            .per_wall
-            .is_empty());
+        assert!(
+            world
+                .resource::<crate::resources::walls::decorator_storage::DecoratorStorage>()
+                .per_wall
+                .is_empty()
+        );
     }
 }

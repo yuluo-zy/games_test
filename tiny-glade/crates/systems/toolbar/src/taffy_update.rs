@@ -23,6 +23,7 @@ use country_core::{
     components::Ui2dExtent, game_config::GameConfig, resources::window::WindowSize,
 };
 use glam::Vec2;
+use ::utils::bytes::{read_f32_ne as read_f32, write_f32_ne};
 use taffy::geometry::Size;
 use taffy::style::Dimension;
 use tg_text::TextFragment;
@@ -45,12 +46,8 @@ pub fn taffy_node_base_size(node: &TaffyNode) -> Vec2 {
 
 /// Replace the base size at `TaffyNode+0x08..+0x10`.
 pub fn set_taffy_node_base_size(node: &mut TaffyNode, size: Vec2) {
-    node._tail[0..4].copy_from_slice(&size.x.to_ne_bytes());
-    node._tail[4..8].copy_from_slice(&size.y.to_ne_bytes());
-}
-
-fn read_f32(bytes: &[u8], offset: usize) -> f32 {
-    f32::from_ne_bytes(bytes[offset..offset + 4].try_into().unwrap())
+    write_f32_ne(&mut node._tail, 0, size.x);
+    write_f32_ne(&mut node._tail, 4, size.y);
 }
 
 /// Pure native formula of 0x142340890 (used by the system and unit tests).
@@ -130,7 +127,7 @@ pub fn taffy_perform_layout(
 ///
 /// PDB signature: `fn(Query<(&mut Ui2dExtent, &TaffyNode)>, Res<TaffyLayout>)`.
 pub fn taffy_update_drawables(
-    mut drawables: Query<(&mut Ui2dExtent, &TaffyNode)>,
+    mut drawables: Query<(ComponentWrite<Ui2dExtent>, &TaffyNode)>,
     layout: Res<TaffyLayout>,
 ) {
     for (mut extent, node) in &mut drawables {
@@ -184,3 +181,5 @@ mod tests {
         assert_eq!(&node._tail[TAIL_MULT], &0.25f32.to_ne_bytes());
     }
 }
+
+use country_core::render::extract::ComponentWrite;

@@ -41,15 +41,15 @@ impl UniformAllocator for ComputeUniformAllocator {
 /// Always call `finish` before building or submitting the shared graph: the
 /// recovered PassFrame::record contract cannot return an error itself.
 #[must_use = "finish the compute frame before building or submitting its graph"]
-pub struct CoreComputeFrame<'session, 'library> {
-    passes: GraphPasses<'session>,
+pub struct CoreComputeFrame<'library> {
+    passes: GraphPasses,
     shaders: &'library AssetShaderLibrary,
     first_error: Option<rhapsody::Error>,
     import_graph: Option<country_core::rhapsody_types::RenderGraph>,
 }
 
-impl<'session, 'library> CoreComputeFrame<'session, 'library> {
-    pub fn new(passes: GraphPasses<'session>, shaders: &'library AssetShaderLibrary) -> Self {
+impl<'library> CoreComputeFrame<'library> {
+    pub fn new(passes: GraphPasses, shaders: &'library AssetShaderLibrary) -> Self {
         Self {
             passes,
             shaders,
@@ -77,7 +77,7 @@ impl<'session, 'library> CoreComputeFrame<'session, 'library> {
 /// Its original implementation is a four-buffer transfer pass, not a shader
 /// dispatch. Reuse that consumer on this same frame's real lazy import facade.
 impl country_core::systems::render_loop::compute_passes::reset_indirect_args::IndirectResetGraph
-    for CoreComputeFrame<'_, '_>
+    for CoreComputeFrame<'_>
 {
     fn import_graph(&mut self) -> &mut country_core::rhapsody_types::RenderGraph {
         self.import_graph
@@ -103,7 +103,7 @@ fn resolve_pipeline(
         })
 }
 
-impl PassFrame for CoreComputeFrame<'_, '_> {
+impl PassFrame for CoreComputeFrame<'_> {
     fn record(&mut self, pass: RecordedComputePass) {
         admit_compute(
             self.shaders,
@@ -130,7 +130,7 @@ fn admit_compute(
     }
 }
 
-impl RgResources for CoreComputeFrame<'_, '_> {
+impl RgResources for CoreComputeFrame<'_> {
     fn create_raw_texture(&mut self, name: &str, desc: &TextureDesc) -> RgTexture {
         self.passes.create_raw_texture(name, desc)
     }
@@ -160,7 +160,7 @@ impl RgResources for CoreComputeFrame<'_, '_> {
     }
 }
 
-impl RenderGraph for CoreComputeFrame<'_, '_> {
+impl RenderGraph for CoreComputeFrame<'_> {
     fn add_pass(&mut self, name: &'static str, resource: u32, access: u8, render: RenderFn) {
         if self.first_error.is_none() {
             self.passes.add_pass(name, resource, access, render);

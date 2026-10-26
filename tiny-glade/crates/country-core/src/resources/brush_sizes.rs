@@ -5,6 +5,7 @@
 //! 字段偏移 path@+0、water@+4、garden@+8（代码此前把 water 放首位，是错的）。
 
 use bevy_ecs::resource::Resource;
+use ::utils::scalar::clamp;
 
 /// 路径工具范围：默认 0.8（0x3f4ccccd），[0.32, 1.2]（0x142ac56c0 / 0x1429cd128）。
 /// 下限的位模式是 0x3ea3d70b，比字面量 `0.32_f32`（0x3ea3d70a）大 1 ULP，所以按位写。
@@ -17,18 +18,8 @@ pub const WATER_RANGE: (f32, f32) = (1.0, 5.0);
 pub const GARDEN_DEFAULT: f32 = 3.0;
 pub const GARDEN_RANGE: (f32, f32) = (2.0, 4.0);
 
-/// `maxss dst, src`：任一操作数为 NaN 时返回 `src`，所以 NaN 会一路穿过两次钳制。
-fn maxss(dst: f32, src: f32) -> f32 {
-    if dst > src { dst } else { src }
-}
-
-/// `minss dst, src`：同上，NaN 返回 `src`。
-fn minss(dst: f32, src: f32) -> f32 {
-    if dst < src { dst } else { src }
-}
-
 fn clamp_like_exe((lower, upper): (f32, f32), value: f32) -> f32 {
-    minss(upper, maxss(lower, value))
+    clamp(value, lower, upper)
 }
 
 #[derive(Resource, Clone, Copy, Debug, PartialEq)]

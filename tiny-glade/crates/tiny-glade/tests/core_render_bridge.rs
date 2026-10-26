@@ -1,5 +1,8 @@
 //! Integration checks through the public core/rhapsody frame bridge.
 //! Set RHAPSODY_REQUIRE_VULKAN=1 to make unavailable GPU execution a failure.
+#[path = "support/mod.rs"]
+mod test_support;
+use test_support::BridgeTestDriver as _;
 use std::{cell::Cell, sync::{Arc, Mutex}};
 
 /// A `Cell` that retire callbacks (which must be `Send`) can share.
@@ -91,7 +94,7 @@ fn core_staging_upload_imports_and_retires_through_one_session() {
     let retired = Arc::new(SyncCell::new(false));
     let flag = retired.clone();
     bridge
-        .render_frame(|frame| {
+        .render_test_frame(|frame| {
             let target_id = frame.import_buffer(&target, 0)?;
             frame.with_compute(|compute| {
                 rg_buffer_copy_from_slice_u32(
@@ -119,7 +122,7 @@ fn core_staging_upload_imports_and_retires_through_one_session() {
     // A released generation is never admitted as an import.
     assert_eq!(
         bridge
-            .render_frame(|frame| frame.import_buffer(&target, 0))
+            .render_test_frame(|frame| frame.import_buffer(&target, 0))
             .unwrap_err()
             .kind(),
         rhapsody::ErrorKind::InvalidUsage
@@ -140,7 +143,7 @@ fn library_ssbo_lazy_import_inside_compute_uses_the_same_frame_and_reimports_nex
     for words in [[0x1234_5678, 0x90ab_cdef], [0xfedc_ba98, 0x7654_3210]] {
         let (imported, receipt) =
             bridge
-                .render_frame(|frame| {
+                .render_test_frame(|frame| {
                     let mut resource_graph = frame.resource_graph();
                     let imported = frame.with_compute(|compute| {
                         // This call was previously made while CoreGraphFrame held the
@@ -197,7 +200,7 @@ fn failed_ignored_and_unwound_builders_retire_without_submission() {
     let retired = Arc::new(SyncCell::new(0));
     let flag = retired.clone();
     let error = bridge
-        .render_frame::<()>(|frame| {
+        .render_test_frame::<()>(|frame| {
             frame.with_graph(|graph| {
                 graph.on_retire(move || flag.set(flag.get() + 1));
                 Ok(())
@@ -209,7 +212,7 @@ fn failed_ignored_and_unwound_builders_retire_without_submission() {
     assert_eq!(retired.get(), 1);
     let flag = retired.clone();
     let error = bridge
-        .render_frame(|frame| {
+        .render_test_frame(|frame| {
             // Even if a game callback ignores a failed phase, no prefix submits.
             let _ = frame.with_graph::<()>(|graph| {
                 graph.on_retire(move || flag.set(flag.get() + 1));
@@ -222,7 +225,7 @@ fn failed_ignored_and_unwound_builders_retire_without_submission() {
     assert_eq!(retired.get(), 2);
     let flag = retired.clone();
     let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let _ = bridge.render_frame::<()>(|frame| {
+        let _ = bridge.render_test_frame::<()>(|frame| {
             frame.with_graph(|graph| {
                 graph.on_retire(move || flag.set(flag.get() + 1));
                 Ok(())
@@ -233,7 +236,7 @@ fn failed_ignored_and_unwound_builders_retire_without_submission() {
     assert!(panic.is_err());
     assert_eq!(retired.get(), 3);
     // Cancellation must leave the same session reusable.
-    bridge.render_frame(|_| Ok(())).unwrap();
+    bridge.render_test_frame(|_| Ok(())).unwrap();
 }
 
 #[test]
@@ -304,7 +307,7 @@ fn foreign_built_graph_retires_the_originating_lease_without_submitting() {
             })
         })
         .unwrap();
-    let error = other.execute_built(foreign).unwrap_err();
+    let error = other.execute_test_graph(foreign).unwrap_err();
     assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
     assert!(retired.get());
     assert_eq!(
@@ -437,7 +440,7 @@ fn completed_old_frame_collection_preserves_new_compiled_imports_and_callbacks()
     ).unwrap();
     let first_retired = Arc::new(SyncCell::new(false));
     let first_flag = first_retired.clone();
-    let (_, first) = bridge.render_frame(|frame| {
+    let (_, first) = bridge.render_test_frame(|frame| {
         let id = frame.import_buffer(&target, 0)?;
         frame.with_compute(|compute| {
             rg_buffer_copy_from_slice_u32(compute, id.raw(), 8, &[11, 12], UploadContentVersion::Unknown)
@@ -483,7 +486,7 @@ fn completed_old_frame_collection_preserves_new_compiled_imports_and_callbacks()
     let imports_after = bridge.with_session(|session| session.frame_import_count());
     assert!(imports_after > 0 && imports_after < imports_before,
         "只清旧 graph marker，新 compiled 的导入必须保留");
-    let second = bridge.execute_compiled(compiled).unwrap();
+    let second = bridge.execute_after_uploads(compiled).unwrap();
     assert!(!second.receipts.is_empty());
     bridge.wait_submits_done(10_000_000_000).unwrap();
     assert!(second_retired.get());
@@ -503,7 +506,7 @@ fn new_readback_host_initializes_undefined_bytes_once_and_keeps_gpu_and_explicit
     owner.read_bytes(0, &mut observed).unwrap();
     assert_eq!(observed, [0; 16]);
     owner.fill_mapped_bytes_unsynchronized(0, 16, 0xa5).unwrap();
-    bridge.render_frame(|frame| {
+    bridge.render_test_frame(|frame| {
         let imported = frame.import_buffer(&target, 0)?;
         frame.with_compute(|compute| rg_buffer_copy_from_slice_u32(
             compute, imported.raw(), 16, &[21, 22, 23, 24], UploadContentVersion::Unknown,
@@ -539,7 +542,7 @@ fn resident_thread_builds_its_own_rc_session_and_preserves_gpu_owners_across_fra
     struct FrameInput { buffer: Buffer, value: u32 }
     fn render(bridge: &mut CoreRenderBridge, side: &mut RenderSide) {
         let input = *side.world.resource::<FrameInput>();
-        bridge.render_frame(|frame| {
+        bridge.render_test_frame(|frame| {
             let target = frame.import_buffer(&input.buffer, 0)?;
             frame.with_compute(|compute| rg_buffer_copy_from_slice_u32(compute,
                 target.raw(), 8, &[input.value, !input.value], UploadContentVersion::Unknown))?;

@@ -33,8 +33,8 @@ pub(crate) mod texture;
 use ash::vk;
 use queue::UploadQueue;
 pub use queue::{
-    OwnedUploadError, UploadMode, UploadCancellation, UploadFailure, UploadKey, UploadOptions, UploadPriority, UploadQueueConfig,
-    UploadQueueStats, UploadStatus,
+    OwnedUploadError, UploadCancellation, UploadFailure, UploadKey, UploadMode, UploadOptions,
+    UploadPriority, UploadQueueConfig, UploadQueueStats, UploadStatus,
 };
 use record::{QueueTarget, UploadRoute, WrittenPiece};
 use staging::{ReadbackLease, Staging};
@@ -389,16 +389,30 @@ impl TransferManager {
         let validation = if self.device.is_device_lost() {
             Err(crate::Error::DeviceLost)
         } else {
-            self.validate_buffer(&destination, offset, bytes.len() as u64,
-                vk::BufferUsageFlags::TRANSFER_DST)
+            self.validate_buffer(
+                &destination,
+                offset,
+                bytes.len() as u64,
+                vk::BufferUsageFlags::TRANSFER_DST,
+            )
         };
         if let Err(error) = validation {
-            return Err(OwnedUploadError { error, payload: bytes });
+            return Err(OwnedUploadError {
+                error,
+                payload: bytes,
+            });
         }
         let len = bytes.len() as u64;
-        let task = self.queued.enqueue_owned(destination.clone(), offset, bytes, options, mode)?;
+        let task = self
+            .queued
+            .enqueue_owned(destination.clone(), offset, bytes, options, mode)?;
         Ok(QueuedUploadTicket {
-            device: self.device.clone(), buffer: destination, task, offset, bytes: len, options,
+            device: self.device.clone(),
+            buffer: destination,
+            task,
+            offset,
+            bytes: len,
+            options,
         })
     }
 
@@ -412,9 +426,7 @@ impl TransferManager {
         }
         Ok(self.queued.cancel_task(&ticket.task))
     }
-    pub fn trim_upload_queue(&mut self) -> usize {
-        self.queued.trim_idle()
-    }
+
     pub fn upload_queue_stats(&self) -> UploadQueueStats {
         self.queued.stats()
     }
@@ -434,27 +446,10 @@ impl TransferManager {
         }
         Ok(self.queued.cancel_key_before(destination, key, epoch))
     }
-    /// Pump bounded work. Full staging defers accepted jobs; allocation/native
-    /// errors are terminal for that job and remain visible through its ticket.
-    /// Under device-budget pressure only High jobs can be submitted. This never
-    /// waits for a device/queue or for an unrelated request.
+    /// Pump bounded accepted writes without waiting for GPU work. Staging
+    /// pressure defers jobs; OOM preserves their payload and FIFO position for
+    /// an explicit later retry. Device loss and other errors terminate tickets.
     pub fn flush_uploads(&mut self, max_submits: usize) -> crate::Result<UploadFlush> {
-        self.flush_uploads_inner(max_submits, false)
-    }
-
-    /// Pump accepted writes while retaining their payload and FIFO position on
-    /// allocation failure. The error is returned immediately; this call never
-    /// retries it. After reclaiming memory the owner may explicitly pump again.
-    ///
-    /// This is for producers that transfer dirty bytes to this bounded queue
-    /// and clear their own dirty flags on acceptance. Pending tickets remain
-    /// pending on OOM. Device loss and invalid/native errors remain terminal,
-    /// with the same ticket failure behavior as `flush_uploads`.
-    pub fn flush_uploads_preserving_oom(&mut self, max_submits: usize) -> crate::Result<UploadFlush> {
-        self.flush_uploads_inner(max_submits, true)
-    }
-
-    fn flush_uploads_inner(&mut self, max_submits: usize, preserve_oom: bool) -> crate::Result<UploadFlush> {
         let mut result = UploadFlush::default();
         if self.device.memory.stats.budget_action() != crate::device::BudgetAction::None {
             self.queued.trim_idle();
@@ -463,18 +458,26 @@ impl TransferManager {
             // Poll first: device-level pressure processing can evict idle native
             // allocator blocks before deciding to defer low-priority payloads.
             if let Err(error) = self.device.poll() {
-                if preserve_oom && error.kind() == crate::ErrorKind::OutOfMemory {
+                if error.kind() == crate::ErrorKind::OutOfMemory {
                     return Err(error);
                 }
                 return Err(self.queued.fail_all(error).to_error());
             }
         }
         for _ in 0..max_submits {
-            let Some(index) = self.queued.next(self.device.memory.stats.budget_action()) else {
+            let batch = self.queued.next_batch(
+                self.device.memory.stats.budget_action(),
+                self.config.chunk_bytes as usize,
+                MAX_COPY_REGIONS,
+            );
+            if batch.is_empty() {
+                result.capacity_deferred = self.queued.queued_jobs() != 0;
                 break;
-            };
-            let job = self.queued.job(index);
-            let bytes = job.bytes();
+            }
+            let bytes: usize = batch
+                .iter()
+                .map(|&index| self.queued.job(index).bytes())
+                .sum();
             let mut staging = self.staging.lock();
             let mut uploader = Uploader {
                 device: &self.device,
@@ -483,15 +486,17 @@ impl TransferManager {
                 staging: &mut staging,
                 stalls: &mut self.capacity_stalls,
             };
-            match uploader.submit(
-                &job.target,
+            match uploader.submit(batch.iter().flat_map(|&index| {
+                let job = self.queued.job(index);
                 job.segments
                     .iter()
-                    .map(|segment| (segment.offset, segment.bytes())),
-            ) {
+                    .map(move |segment| (&job.target, segment.offset, segment.bytes()))
+            })) {
                 Ok(point) => {
-                    self.queued.publish(index, point);
-                    result.submitted_jobs += 1;
+                    for &index in batch.iter().rev() {
+                        self.queued.publish(index, point);
+                    }
+                    result.submitted_jobs += batch.len();
                     result.submitted_bytes += bytes;
                 }
                 Err(crate::Error::Timeout) => {
@@ -499,7 +504,7 @@ impl TransferManager {
                     result.capacity_deferred = true;
                     break;
                 }
-                Err(error) if preserve_oom && error.kind() == crate::ErrorKind::OutOfMemory => {
+                Err(error) if error.kind() == crate::ErrorKind::OutOfMemory => {
                     // Ownership never returns to the producer on an accepted
                     // write. Keep both the original bytes and physical target;
                     // later writes to this target cannot overtake this job.
@@ -509,7 +514,7 @@ impl TransferManager {
                     let failure = if error.is_device_lost() {
                         self.queued.fail_all(error)
                     } else {
-                        self.queued.fail(index, error)
+                        self.queued.fail_batch(&batch, error)
                     };
                     return Err(failure.to_error());
                 }
@@ -518,144 +523,6 @@ impl TransferManager {
         result.remaining_jobs = self.queued.queued_jobs();
         Ok(result)
     }
-    /// Immediate compatibility entry. Accepted queued writes to the same target
-    /// must be pumped first, so this path cannot overtake them.
-    pub fn upload_buffer(
-        &mut self,
-        destination: Arc<Buffer>,
-        offset: u64,
-        bytes: &[u8],
-    ) -> crate::Result<UploadTicket> {
-        if self.device.is_device_lost() {
-            return Err(crate::Error::DeviceLost);
-        }
-        self.validate_buffer(
-            &destination,
-            offset,
-            bytes.len() as u64,
-            vk::BufferUsageFlags::TRANSFER_DST,
-        )?;
-        if self.queued.has_target(&destination) {
-            return Err(crate::Error::Timeout);
-        }
-        let point = self.with_uploader(|uploader| {
-            uploader.submit(&destination, std::iter::once((offset, bytes)))
-        })?;
-        Ok(UploadTicket {
-            device: self.device.clone(),
-            buffer: destination,
-            point,
-            offset,
-            bytes: bytes.len() as u64,
-        })
-    }
-
-    /// Synchronous sparse-update convenience over the same queued service.
-    /// Validates all source/destination ranges first, then packs bounded batches.
-    /// Each batch waits only for its actual upload point, never device/queue idle.
-    /// `timeout_ns` bounds each batch wait. On partial failure already submitted
-    /// batches remain valid; unsubmitted data from this batch is cancelled.
-    /// Use a manager without other queued jobs; async callers pump explicitly.
-    pub fn upload_buffer_ranges_wait(
-        &mut self,
-        destination: Arc<Buffer>,
-        data: &[u8],
-        ranges: &[std::ops::Range<usize>],
-        destination_offset: u64,
-        options: UploadOptions,
-        timeout_ns: u64,
-    ) -> crate::Result<()> {
-        if self.device.is_device_lost() {
-            return Err(crate::Error::DeviceLost);
-        }
-        crate::raw::buffer::plan_buffer_update(
-            &destination.desc,
-            data.len(),
-            ranges,
-            destination_offset,
-        )?;
-        // Validate every requested ownership interval before submitting the
-        // first sparse batch; a later invalid range must not cause partial work.
-        if destination.device.generation() != self.device.generation()
-            || !destination
-                .usage
-                .contains(vk::BufferUsageFlags::TRANSFER_DST)
-        {
-            return Err(crate::Error::invalid_usage(
-                "transfer buffer device or usage is invalid",
-            ));
-        }
-        for range in ranges.iter().filter(|range| !range.is_empty()) {
-            destination.last_use.validate_incoming_queue_range(
-                self.device.queues.primary_family,
-                crate::resource::OwnershipRange::Buffer {
-                    offset: destination_offset + range.start as u64,
-                    size: range.len() as u64,
-                },
-            )?;
-        }
-        if self.queued.queued_jobs() != 0 {
-            return Err(crate::Error::Timeout);
-        }
-        let chunk =
-            usize::try_from(self.config.chunk_bytes).map_err(|_| crate::Error::OutOfHostMemory)?;
-        let mut ticket: Option<QueuedUploadTicket> = None;
-        let mut batch_bytes = 0;
-        let mut batch_regions = 0;
-        let outcome = (|| {
-            for range in ranges {
-                let mut cursor = range.start;
-                while cursor < range.end {
-                    if batch_bytes == chunk || batch_regions == self.queued.region_limit() {
-                        self.finish_sparse_batch(
-                            ticket.take().expect("nonempty admitted batch"),
-                            timeout_ns,
-                        )?;
-                        batch_bytes = 0;
-                        batch_regions = 0;
-                    }
-                    let bytes = (range.end - cursor).min(chunk - batch_bytes);
-                    ticket = Some(self.enqueue_upload(
-                        destination.clone(),
-                        destination_offset + cursor as u64,
-                        &data[cursor..cursor + bytes],
-                        options,
-                    )?);
-                    cursor += bytes;
-                    batch_bytes += bytes;
-                    batch_regions += 1;
-                }
-            }
-            if let Some(last) = ticket.take() {
-                self.finish_sparse_batch(last, timeout_ns)?;
-            }
-            Ok(())
-        })();
-        if outcome.is_err()
-            && let Some(last) = ticket
-        {
-            let _ = self.cancel_upload(&last);
-        }
-        outcome
-    }
-    fn finish_sparse_batch(
-        &mut self,
-        ticket: QueuedUploadTicket,
-        timeout_ns: u64,
-    ) -> crate::Result<()> {
-        let outcome = (|| {
-            self.flush_uploads(1)?;
-            ticket
-                .try_submitted()?
-                .ok_or(crate::Error::Timeout)?
-                .wait(timeout_ns)
-        })();
-        if outcome.is_err() {
-            let _ = self.cancel_upload(&ticket);
-        }
-        outcome
-    }
-
     /// Upload several textures with one submit. Their data is packed with one
     /// host write into a free staging slot when it fits a chunk, otherwise
     /// into a temporary staging buffer retired with the command. Each texture
@@ -723,6 +590,15 @@ impl TransferManager {
             },
             None => None,
         };
+        if let Some(index) = slot {
+            slots.uploads[index].leased = true;
+        }
+        let mut lease = staging::UploadLease {
+            staging: staging_slots.clone(),
+            index: slot,
+            submitted: None,
+        };
+        drop(slots);
         let staging = match resident {
             Some(buffer) => {
                 // Pack each region directly into the mapped staging buffer.
@@ -743,7 +619,7 @@ impl TransferManager {
             .transfer
             .as_ref()
             .filter(|transfer| texture_route(transfer.family(), self.transfer_images, uploads));
-        let point = match transfer {
+        let result = match transfer {
             None => record_graphics_textures(
                 &self.device,
                 &self.graphics,
@@ -752,7 +628,7 @@ impl TransferManager {
                 &bases,
                 &staging,
                 total,
-            )?,
+            ),
             Some(transfer) => record_transfer_textures(
                 &self.device,
                 &self.graphics,
@@ -762,11 +638,13 @@ impl TransferManager {
                 &bases,
                 &staging,
                 total,
-            )?,
+                &mut lease.submitted,
+            ),
         };
-        if let Some(index) = slot {
-            slots.uploads[index].last_use = SyncSet::from_point(point);
+        if let Ok(point) = &result {
+            lease.submitted = Some(*point);
         }
+        let point = result?;
         Ok(point)
     }
 
@@ -787,6 +665,7 @@ impl TransferManager {
         let mut command = self.graphics.pool.allocate()?;
         let recorded = RecordedAcquires::begin(&self.device, &mut command)?;
         if recorded.is_empty() {
+            command.end()?;
             return Ok(None);
         }
         command.end()?;
@@ -924,20 +803,9 @@ struct Uploader<'a> {
     staging: &'a mut Staging,
     stalls: &'a mut u64,
 }
-impl TransferManager {
-    fn with_uploader<R>(&mut self, run: impl FnOnce(&mut Uploader<'_>) -> R) -> R {
-        let mut staging = self.staging.lock();
-        run(&mut Uploader {
-            device: &self.device,
-            graphics: &self.graphics,
-            transfer: self.transfer.as_ref(),
-            staging: &mut staging,
-            stalls: &mut self.capacity_stalls,
-        })
-    }
-}
 /// Upper bound of regions per native copy; queue admission enforces it.
 const MAX_COPY_REGIONS: usize = 256;
+const MAX_UPLOAD_TARGETS: usize = 64;
 
 fn route(
     graphics: &QueueTarget,
@@ -973,14 +841,11 @@ fn route(
 }
 
 impl Uploader<'_> {
-    /// The sole buffer upload kernel. Dirty segments are packed into mapped
-    /// staging without copying gaps (one host flush), then copied in one
-    /// command with one barrier batch before and after the copies. Every
-    /// failure before submit leaves the staging completion unchanged.
+    /// One staging flush and submission for a bounded set of distinct targets.
+    /// Each target retains its own range-state/barrier and ownership program.
     fn submit<'b>(
         &mut self,
-        destination: &Arc<Buffer>,
-        segments: impl Iterator<Item = (u64, &'b [u8])> + Clone,
+        segments: impl Iterator<Item = (&'b Arc<Buffer>, u64, &'b [u8])> + Clone,
     ) -> crate::Result<SyncPoint> {
         self.device.try_collect_garbage()?;
         let completed = self.device.poll()?;
@@ -994,9 +859,17 @@ impl Uploader<'_> {
             .map_err(defer_on_exhaustion)?;
         let mut copies = [vk::BufferCopy::default(); MAX_COPY_REGIONS];
         let mut ranges = [(0u64, 0u64); MAX_COPY_REGIONS];
+        let mut groups = smallvec::SmallVec::<
+            [(
+                &Arc<Buffer>,
+                std::ops::Range<usize>,
+                UploadRoute,
+                Vec<crate::resource::range_state::RangeTransfer>,
+            ); MAX_UPLOAD_TARGETS],
+        >::new();
         let mut count = 0;
         let mut packed = 0u64;
-        for (offset, bytes) in segments.clone() {
+        for (destination, offset, bytes) in segments.clone() {
             if count == copies.len()
                 || packed
                     .checked_add(bytes.len() as u64)
@@ -1012,84 +885,100 @@ impl Uploader<'_> {
                 size: bytes.len() as u64,
             };
             ranges[count] = (offset, bytes.len() as u64);
+            if let Some(group) = groups
+                .last_mut()
+                .filter(|group| Arc::ptr_eq(group.0, destination))
+            {
+                group.1.end = count + 1;
+            } else {
+                // Queue admission groups segments by distinct target; immediate
+                // uploads use the same kernel with exactly one target.
+                debug_assert!(groups.len() < MAX_UPLOAD_TARGETS);
+                groups.push((
+                    destination,
+                    count..count + 1,
+                    UploadRoute::Graphics,
+                    Vec::new(),
+                ));
+            }
             count += 1;
             packed += bytes.len() as u64;
         }
         if count == 0 {
             return Err(crate::Error::invalid_usage("upload has no segments"));
         }
-        let copies = &copies[..count];
-        let ranges = &ranges[..count];
-        // One host write (one poll and at most one non-coherent flush).
         if count == 1 {
-            let (_, bytes) = segments.clone().next().expect("one segment");
+            let (_, _, bytes) = segments.clone().next().expect("one segment");
             buffer.write_bytes_unsynchronized(0, bytes)?;
         } else {
-            // Straight into mapped staging memory: one copy per segment, no
-            // intermediate packed Vec.
             buffer.write_with_unsynchronized(0, packed, |dst| {
                 let mut at = 0;
-                for (_, bytes) in segments {
+                for (_, _, bytes) in segments {
                     dst[at..at + bytes.len()].copy_from_slice(bytes);
                     at += bytes.len();
                 }
             })?;
         }
-        let route = route(self.graphics, self.transfer, destination, copies);
-        let target = match route {
-            UploadRoute::Graphics => self.graphics,
-            _ => self.transfer.expect("route has a transfer queue"),
+        for group in &mut groups {
+            group.2 = route(
+                self.graphics,
+                self.transfer,
+                group.0,
+                &copies[group.1.clone()],
+            );
+        }
+        let graphics = groups.iter().any(|group| group.2 == UploadRoute::Graphics);
+        let target = if graphics {
+            self.graphics
+        } else {
+            self.transfer.expect("transfer routes")
         };
         let mut command = target.pool.allocate()?;
-        // SAFETY: the copy reads exactly the packed staging span.
+        // SAFETY: the copy reads exactly the packed span, retained through submit.
         unsafe {
             command.retain_opaque_buffer_range(buffer.clone(), 0, packed)?;
         }
-        // Acquires still pending for this family (e.g. of an earlier upload
-        // to the same destination) ride in this command.
         let recorded = RecordedAcquires::begin(self.device, &mut command)?;
-        let mut pieces: Vec<WrittenPiece> = Vec::new();
-        record::record_buffer_writes(&mut command, destination, target, ranges, &mut pieces)?;
-        // SAFETY: recording; staging and destination are retained.
-        unsafe {
-            self.device.core.device.cmd_copy_buffer(
-                command.handle,
-                buffer.handle,
-                destination.handle,
-                copies,
-            );
-        }
-        let mut released = Vec::new();
-        match route {
-            UploadRoute::Graphics => {
-                record::record_buffer_visibility(&command, destination.handle, ranges)?
+        let mut pieces = Vec::<WrittenPiece>::new();
+        for group in &mut groups {
+            let destination = group.0;
+            let spans = &ranges[group.1.clone()];
+            record::record_buffer_writes(&mut command, destination, target, spans, &mut pieces)?;
+            // SAFETY: recording; each target and its source span are retained.
+            unsafe {
+                self.device.core.device.cmd_copy_buffer(
+                    command.handle,
+                    buffer.handle,
+                    destination.handle,
+                    &copies[group.1.clone()],
+                );
             }
-            // The semaphore wait derived from the tracked writer point makes
-            // the copy visible to every later consumer on graphics.
-            UploadRoute::SameFamily => {}
-            UploadRoute::OwnershipTransfer => record::record_buffer_release(
-                &mut command,
-                destination,
-                &pieces,
-                self.graphics.family(),
-                &mut released,
-            )?,
+            if graphics {
+                record::record_buffer_visibility(&command, destination.handle, spans)?;
+            } else if group.2 == UploadRoute::OwnershipTransfer {
+                record::record_buffer_release(
+                    &mut command,
+                    destination,
+                    &pieces,
+                    self.graphics.family(),
+                    &mut group.3,
+                )?;
+            }
         }
         command.end()?;
-        // Reserve the registrations before the release is submitted, so that
-        // host allocation failure cannot strand a released range.
-        self.device.reserve_pending_acquires(released.len())?;
-        // A failed submit publishes no state: nothing was released and no
-        // acquire becomes pending.
+        self.device
+            .reserve_pending_acquires(groups.iter().map(|group| group.3.len()).sum())?;
         let submitted = command.submit_to(target.queue, &[], &[])?;
         recorded.submitted();
         self.staging.uploads[index].last_use = SyncSet::from_point(submitted.point);
-        record::queue_acquires(
-            self.device,
-            &crate::device::AcquireTarget::buffer(destination),
-            &released,
-            submitted.point,
-        )?;
+        for group in groups {
+            record::queue_acquires(
+                self.device,
+                &crate::device::AcquireTarget::buffer(group.0),
+                &group.3,
+                submitted.point,
+            )?;
+        }
         Ok(submitted.point)
     }
 }
@@ -1215,6 +1104,7 @@ fn record_transfer_textures(
     bases: &[u64],
     staging: &Arc<Buffer>,
     total: u64,
+    submitted: &mut Option<SyncPoint>,
 ) -> crate::Result<SyncPoint> {
     let mut command = transfer.pool.allocate()?;
     let mut released: Vec<Vec<crate::resource::range_state::RangeTransfer>> = Vec::new();
@@ -1249,6 +1139,7 @@ fn record_transfer_textures(
     command.end()?;
     device.reserve_pending_acquires(released.iter().map(Vec::len).sum())?;
     let point = command.submit_to(transfer.queue, &[], &[])?.point;
+    *submitted = Some(point);
     recorded.submitted();
     for (upload, pieces) in uploads.iter().zip(&released) {
         record::queue_acquires(
@@ -1487,9 +1378,11 @@ mod tests {
                 TransferManager::new(device.clone(), TransferConfig::default()).unwrap();
             // An upload to a still-released destination acquires it (and
             // every other pending acquire) in its own command.
-            let ticket = manager
-                .upload_buffer(uploads[0].0.clone(), 16, &[7; 32])
-                .unwrap();
+            let accepted = manager.enqueue_upload(uploads[0].0.clone(), 16, &[7; 32], UploadOptions {
+                key: UploadKey(0), epoch: 0, priority: UploadPriority::High,
+            }).unwrap();
+            manager.flush_uploads(1).unwrap();
+            let ticket = accepted.try_submitted().unwrap().unwrap();
             assert_eq!(manager.pending_acquire_count(), 0);
             ticket.wait(10_000_000_000).unwrap();
             for (buffer, _) in &uploads {

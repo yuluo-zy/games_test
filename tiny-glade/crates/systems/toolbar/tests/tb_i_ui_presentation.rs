@@ -28,7 +28,7 @@ fn assert_float(actual: f32, expected: f32, index: usize) {
 }
 #[test]
 fn real_focus_query_preserves_all_optional_component_combinations_and_native_scale() {
-    let fixture=include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../../reverse-engineering/tiny-glade/progress-20261020/phase2-ui-presentation/native-focus.bin"));
+    let fixture=include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../tests/fixtures/native/native-focus.bin"));
     let mut world = World::new();
     let mut entities = Vec::new();
     for b in fixture.chunks_exact(20) {
@@ -71,7 +71,7 @@ fn real_focus_query_preserves_all_optional_component_combinations_and_native_sca
 }
 #[test]
 fn real_appear_query_uses_original_weighted_zero_expression_and_multiplies_existing_scale() {
-    let fixture=include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../../reverse-engineering/tiny-glade/progress-20261020/phase2-ui-presentation/native-appear.bin"));
+    let fixture=include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../tests/fixtures/native/native-appear.bin"));
     let mut world = World::new();
     let mut entities = Vec::new();
     for b in fixture.chunks_exact(12) {
@@ -164,7 +164,7 @@ fn real_sound_queries_and_three_event_readers_match_original_priority_all_drag_b
         .drain()
         .map(|sound| sound.kind)
         .collect::<Vec<_>>();
-    let fixture=include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../../reverse-engineering/tiny-glade/progress-20261020/phase2-ui-presentation/native-sounds-output.bin"));
+    let fixture=include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../tests/fixtures/native/native-sounds-output.bin"));
     let expected = fixture.chunks_exact(4).map(|b| n(b, 0)).collect::<Vec<_>>();
     assert_eq!(actual, expected);
     assert_eq!(actual.len(), 73915);

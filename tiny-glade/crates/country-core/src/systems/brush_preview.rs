@@ -22,6 +22,7 @@
 //! command ownership/error-handler metadata, not an additional game component.
 use bevy_ecs::prelude::*;
 use glam::Vec3;
+use ::utils::scalar::clamp;
 
 use crate::{
     resources::{
@@ -52,16 +53,6 @@ pub struct OverwriteBrushPreview {
 /// 克隆行为判别（O：0x140867080 `mov eax,2`）。
 pub const CLONE_BEHAVIOR_DISC: u8 = 2;
 
-/// `maxss`：任一操作数 NaN 时返回 src（与 EXE 位语义一致）。
-fn maxss(dst: f32, src: f32) -> f32 {
-    if dst > src { dst } else { src }
-}
-
-/// `minss`：任一操作数 NaN 时返回 src。
-fn minss(dst: f32, src: f32) -> f32 {
-    if dst < src { dst } else { src }
-}
-
 /// kind 6 的乘数（O 位型 0x3fd70a3d，读自 0x142a95dd0）。
 const KIND6_FACTOR: f32 = f32::from_bits(0x3fd7_0a3d);
 
@@ -78,7 +69,7 @@ pub fn brush_size(kind: u8, brush_sizes: &BrushSizes, multiplier: f32) -> Vec3 {
         // case 6：a = m×1.68×0.5；xvy((a,a), clamp(m))。
         6 => {
             let a = multiplier * KIND6_FACTOR * 0.5;
-            let y = minss(1.0, maxss(0.5, multiplier));
+            let y = clamp(multiplier, 0.5, 1.0);
             Vec3::new(a, y, a)
         }
         // case 7 / 8：m。
@@ -88,7 +79,7 @@ pub fn brush_size(kind: u8, brush_sizes: &BrushSizes, multiplier: f32) -> Vec3 {
         9 => {
             let v = (multiplier - 0.3) / (3.0 - 0.3);
             let s = (v * 3.0 + 1.0) * 0.5;
-            let y = minss(1.0, maxss(0.5, multiplier));
+            let y = clamp(multiplier, 0.5, 1.0);
             Vec3::new(s, y, s)
         }
         // case 10：m × 3.0 × 0.5。
@@ -100,7 +91,7 @@ pub fn brush_size(kind: u8, brush_sizes: &BrushSizes, multiplier: f32) -> Vec3 {
 
 /// 预览网格跟随（O 0x140865050）。
 pub fn brush_preview(
-    mut query: Query<(Entity, &BrushPreview, Option<&mut Transform>)>,
+    mut query: Query<(Entity, &BrushPreview, Option<ComponentWrite<Transform>>)>,
     mut overwrite: EventReader<OverwriteBrushPreview>,
     cursor: Res<CursorTerrainRaycast>,
     mut commands: Commands,
@@ -347,3 +338,5 @@ mod native_runtime_tests {
         assert_eq!(world.get::<Transform>(e).unwrap().scale, Vec3::ONE);
     }
 }
+
+use crate::render::extract::ComponentWrite;

@@ -157,7 +157,7 @@ mod lifecycle_native_tests {
         rt.next_prefab_handle=91;rt.pending_upload=Some(RtUploadData::default());
         let kind=GpuWorldSubsetKind::VelocityOnly;
         let mut gpu=GpuWorld::new(&device);
-        let mut subset=OwnedGpuWorldSubset::new_with_mesh_parts::<PlacementDataSsbo>(&device,kind,7);
+        let mut subset=OwnedGpuWorldSubset::new::<PlacementDataSsbo>(&device,kind,7);
         let items=[InstanceCullData::new(glam::Vec3::ONE,2.0,0),InstanceCullData::new(glam::Vec3::splat(3.0),4.0,0)];
         subset.extend_no_data(kind,&items,|_|{});
         gpu.assign_subset(kind,GpuWorldSubset::Owned(subset));gpu.total_instance_count=29;
@@ -191,7 +191,7 @@ mod lifecycle_native_tests {
         let messages=world.resource::<Events<ClearCanvasCmd>>();
         assert_eq!(messages.iter_current_update_events().map(|e|e.0).collect::<Vec<_>>(),vec![false]);
         assert!(world.get_entity(keep).is_ok());assert!(world.get_entity(old0).is_err());assert!(world.get_entity(old1).is_err());
-        let placements=world.resource::<AssetPlacementDataLibrary>();assert!(placements.buffers.is_empty());assert!(placements.paths.is_empty());
+        let placements=world.resource::<AssetPlacementDataLibrary>();assert!(placements.buffers().is_empty());assert!(placements.paths().is_empty());
         assert_eq!(world.resource::<AudioTriggerLibrary>().get_triggers(AudioTriggerKind::Primary).boxes().count(),0);
         let rt=world.resource::<RtWorld>();assert!(rt.meshes.is_empty());assert_eq!(rt.next_prefab_handle,91);assert!(rt.pending_upload.is_some());assert!(rt.has_pending_changes());
         let gpu=world.resource::<GpuWorld>();assert_eq!(gpu.total_instance_count,29);

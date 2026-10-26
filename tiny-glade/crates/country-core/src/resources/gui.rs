@@ -67,7 +67,6 @@ pub enum EscMenuState {
     Settings(SettingsMenuState),
     /// The original flag is retained; its UI-specific meaning is not yet named.
     ReportBug(bool),
-    Credits,
     /// The flag opens the LUT gallery; false leaves the world/menu policy closed.
     Photomode(bool),
 }
@@ -83,7 +82,6 @@ impl EscMenuState {
             Self::Load(state) => (u32::from(state.hovered_index.is_some()), 0),
             Self::Settings(state) => (7, state.native_tag()),
             Self::ReportBug(flag) => (8, u8::from(*flag)),
-            Self::Credits => (9, 0),
             Self::Photomode(flag) => (10, u8::from(*flag)),
         };
         EscMenuStateView {
@@ -211,9 +209,8 @@ pub enum SettingsMenuState {
     Language,
     Developer,
     Controls,
-    /// Native tag 10 is cloned but the B settings renderer panics on it.
-    /// No producer or original variant name has been identified.
-    UnreachableTag10,
+    /// 原controls页面14024b120写tag10；由设置外层路由进入键位编辑子页。
+    KeyBindings,
 }
 
 impl SettingsMenuState {
@@ -226,7 +223,7 @@ impl SettingsMenuState {
             Self::Language => 7,
             Self::Developer => 8,
             Self::Controls => 9,
-            Self::UnreachableTag10 => 10,
+            Self::KeyBindings => 10,
         }
     }
 }

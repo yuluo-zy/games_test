@@ -4,7 +4,7 @@
 use super::fixture::{HEIGHT, WIDTH};
 use ash::vk::{self, Handle};
 use rhapsody::{
-    bindless::BindlessConfig, bindless::BindlessHeap, bindless::BindlessParameters,
+    bindless::BindlessConfig, bindless::BindlessHeap, bindless::BindlessPagePool,
     bindless::BindlessResource, bindless::BindlessShaderPackage, device::Device,
     pipeline::AsyncPipelineCompiler, pipeline::CompilerConfig, pipeline::DynamicRenderingFormats,
     pipeline::HotPipeline, pipeline::PersistentPipelineCache, pipeline::PipelineLayout,
@@ -111,8 +111,6 @@ pub struct SceneReport {
     pub bindless_enabled: bool,
     pub bindless_verified_frames: u64,
     pub bindless_capacity: usize,
-    pub bindless_peak_live: usize,
-    pub bindless_peak_retiring: usize,
     pub dynamic_rendering_frames: u64,
     pub attachment_cache_views: usize,
     pub gpu_program_hash: Option<String>,
@@ -237,7 +235,7 @@ pub struct RasterScene {
     reload_round: u64,
     alternate_shader: bool,
     attachments: Arc<Mutex<AttachmentCache>>,
-    bindless: Arc<BindlessHeap>,
+    pages: Arc<BindlessPagePool>,
     raster_abi: Arc<rhapsody::bindless::BindlessShaderAbi>,
     postprocess_abi: Arc<rhapsody::bindless::BindlessShaderAbi>,
     parameters: Arc<Mutex<DynamicConstants>>,
@@ -276,6 +274,7 @@ impl RasterScene {
             CompilerConfig {
                 workers: 1,
                 max_pending: 8,
+                max_deferred_pending: 8,
                 max_request_bytes: 1 << 20,
                 max_cached_requests: 16,
             },
@@ -379,7 +378,7 @@ impl RasterScene {
             reload_phase: 0,
             reload_round: 0,
             alternate_shader: false,
-            bindless,
+            pages: BindlessPagePool::new(bindless)?,
             raster_abi: raster_package.abi,
             postprocess_abi: package.abi,
             parameters,
@@ -526,7 +525,7 @@ impl RasterScene {
                 .expect("dynamic raster pipeline")
                 .clone();
             let cache = self.attachments.clone();
-            let heap = self.bindless.clone();
+            let pages = self.pages.clone();
             let abi = self.raster_abi.clone();
             let parameters = self.parameters.clone();
             let (color_index, vertex_index) = (color.raw(), vertices.raw());
@@ -569,9 +568,12 @@ impl RasterScene {
                     api.begin_prepared(&prepared)?;
                     api.set_default_view_and_scissor(extent());
                     api.set_stencil_ref(0);
-                    let prepared_parameters =
-                        BindlessParameters::new(heap.clone(), abi.clone(), &[])?
-                            .finish(&mut parameters.lock().expect("scene parameter pages"))?;
+                    let mut cursor = pages.cursor();
+                    let prepared_parameters = cursor.prepare(|group| {
+                        group.require_slots([0, 0, 1, 0])?;
+                        group.parameters(abi.clone(), &[])?.finish(|size|
+                            parameters.lock().expect("scene parameter pages").allocate(size)).map_err(Into::into)
+                    })?;
                     unsafe {
                         device.raw_device().cmd_bind_pipeline(
                             cb,
@@ -591,7 +593,7 @@ impl RasterScene {
         {
             let device = self.device.clone();
             let pipeline = self.postprocess.current();
-            let heap = self.bindless.clone();
+            let pages = self.pages.clone();
             let abi = self.postprocess_abi.clone();
             let parameters = self.parameters.clone();
             let (source_index, target_index) = (color.raw(), output.raw());
@@ -615,16 +617,21 @@ impl RasterScene {
                         Arc::new(source.image_view(&TextureViewDesc::new(&source.desc)?)?);
                     let target_view =
                         Arc::new(target.image_view(&TextureViewDesc::new(&target.desc)?)?);
-                    let mut bindings = BindlessParameters::new(heap.clone(), abi.clone(), &[])?;
-                    for (binding, view) in [(0, source_view), (1, target_view)] {
+                    let mut cursor = pages.cursor();
+                    let prepared = cursor.prepare(|group| {
+                    group.require_slots([0, 2, 1, 0])?;
+                    let mut bindings = group.parameters(abi.clone(), &[])?;
+                    for (binding, view) in [(0, source_view.clone()), (1, target_view.clone())] {
                         bindings.write(
                             BindingLocation { set: 0, binding },
                             0,
                             BindlessResource::StorageImage(view),
                         )?;
                     }
-                    let prepared =
-                        bindings.finish(&mut parameters.lock().expect("scene parameter pages"))?;
+                    bindings.finish(|size| {
+                        parameters.lock().expect("scene parameter pages").allocate(size)
+                    }).map_err(Into::into)
+                    })?;
                     let cb = vk::CommandBuffer::from_raw(ctx.command.handle());
                     unsafe {
                         device.raw_device().cmd_bind_pipeline(
@@ -847,7 +854,7 @@ impl RasterScene {
         }
         if scripted && self.reload_phase == 2 && frame >= round_start.saturating_add(60) {
             let package = BindlessShaderPackage::new(
-                &self.bindless,
+                self.pages.template(),
                 &postprocess_program(!self.alternate_shader)?,
                 64,
             )?;
@@ -939,13 +946,11 @@ impl RasterScene {
         report: &mut SceneReport,
     ) -> super::fixture::Result<()> {
         {
-            self.bindless.collect()?;
-            let stats = self.bindless.stats();
+            self.pages.template().collect()?;
+            let stats = self.pages.sampled_occupancy();
             report.bindless_enabled = true;
             report.bindless_verified_frames += 1;
             report.bindless_capacity = stats.capacity;
-            report.bindless_peak_live = report.bindless_peak_live.max(stats.peak_live);
-            report.bindless_peak_retiring = report.bindless_peak_retiring.max(stats.peak_retiring);
         }
         report.dynamic_rendering_frames += 1;
         report.attachment_cache_views = self

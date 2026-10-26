@@ -70,6 +70,11 @@ pub struct FinishInputRecordingCmd;
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct DisplayRollercoasterPrompt;
 
+/// 原hint_draw独立警告分支读取的unit事件（B typed注册关系与141c51a60）。
+#[derive(Event, Clone, Copy, Debug, Default)]
+pub struct DisplayBetaWIPWarning;
+
+
 /// 写设置文件命令（O：`tiny_glade::app_config::WriteSettingsFileCmd`；unit 事件，
 /// `exponential_back_off` 0x142284800 / `reset_hints` 0x141c1c8d0 /
 /// `tutorial_completion` 0x14227c230 在提示区变更后 `EventInstance<..>` 追加
@@ -90,9 +95,7 @@ pub use crate::systems::wall::{draw_wall::RecordMouseInputIntoWall, finish_wall:
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct InitAdjWallHeightMode;
 
-/// B `country_core::resources::events::FinishAdjWallHeightMode`：墙高度编辑模式结束
-/// 通知（unit，事件实例仅 EventId）。`history_record_adjust_wall_height`
-/// （0x140ac79e0 `EventReader<FinishAdjWallHeightMode>`）只判空并整队消费，
-/// 载荷未被任何已取证消费者读取。
+/// 原聚焦高度编辑结束事件：633f0写EventId、633f4写WallId，条目16字节。
+/// 音频和旧历史消费者只判非空，不代表生产者没有载荷。
 #[derive(Event, Clone, Copy, Debug, Default)]
-pub struct FinishAdjWallHeightMode;
+pub struct FinishAdjWallHeightMode(pub crate::resources::walls::WallId);

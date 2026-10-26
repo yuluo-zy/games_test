@@ -44,7 +44,7 @@ pub struct NotifyHintSystemCameraMoved {
 
 /// 吸附通知（O：register_event 顺序 4）。
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct NotifyHintSystemSnapping;
+pub struct NotifyHintSystemSnapping(pub bool);
 
 /// Terrain notification: original event first byte0=draw committed,1=hovered terrain,2=focus entered.
 /// No event+1 bool is observed; Default0 is only host construction convenience.
@@ -103,12 +103,18 @@ pub struct NotifyHintSystemStairsDetachedFromWall;
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NotifyHintSystemStairsCanDetachFromWall;
 
-/// 教学操作事件（O：`register_event<...onboarding::TutorialOp>`，register_event 顺序 7；
+/// 原设置页140247173发0/1；reset_hints的PDB参数明确消费此事件。
+/// 完成通知的0..17编号属于TutorialHintComplete，不能复用为该命令判别。
+#[derive(bevy_ecs::event::Event,Clone,Copy,Debug,PartialEq,Eq)]
+#[repr(u8)]
+pub enum TutorialOp {DisableHints=0,ResetHints=1}
+
+/// 完成通知编号的内部映射（不是TutorialOp事件）；
 /// `tutorial_completion` 0x14227c230 消费：载荷 u8 id @+8，0..17 对应 GameProfile
 /// 完成标志偏移 0x1f4..0x205 的 18 路 switch）。
-#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[repr(u8)]
-pub enum TutorialOp {
+pub enum TutorialCompletionId {
     /// id 0 → GameProfile+0x1f4（ron 序列化的 `tutorial` 字段）。
     #[default]
     Tutorial = 0,
@@ -148,7 +154,7 @@ pub enum TutorialOp {
     StairsStage5 = 17,
 }
 
-impl TutorialOp {
+impl TutorialCompletionId {
     /// 反序列化 id（0..17）。越界返回 `None`（原二进制 switch 无 default 分支即
     /// 回绕，见 tutorial_completion 注释）。
     pub fn from_id(id: u8) -> Option<Self> {
@@ -210,31 +216,31 @@ mod tests {
     #[test]
     fn tutorial_op_ids_map_to_the_completion_flag_offsets() {
         let table = [
-            (TutorialOp::Tutorial, 0, 0x1f4),
-            (TutorialOp::FocusedEdit, 1, 0x1f5),
-            (TutorialOp::Undo, 2, 0x1fe),
-            (TutorialOp::DisableSnapping, 3, 0x1fc),
-            (TutorialOp::TerrainSteepness, 4, 0x1fa),
-            (TutorialOp::TerrainFocus, 5, 0x1fb),
-            (TutorialOp::TerrainLayering, 6, 0x1f9),
-            (TutorialOp::RoofShape, 7, 0x1ff),
-            (TutorialOp::UnlinkWindows, 8, 0x1fd),
-            (TutorialOp::ClutterFocusedEdit, 9, 0x200),
-            (TutorialOp::CameraPan, 10, 0x1f6),
-            (TutorialOp::CameraRotate, 11, 0x1f7),
-            (TutorialOp::CameraZoom, 12, 0x1f8),
-            (TutorialOp::StairsStage1, 13, 0x201),
-            (TutorialOp::StairsStage2, 14, 0x202),
-            (TutorialOp::StairsStage3, 15, 0x203),
-            (TutorialOp::StairsStage4, 16, 0x204),
-            (TutorialOp::StairsStage5, 17, 0x205),
+            (TutorialCompletionId::Tutorial, 0, 0x1f4),
+            (TutorialCompletionId::FocusedEdit, 1, 0x1f5),
+            (TutorialCompletionId::Undo, 2, 0x1fe),
+            (TutorialCompletionId::DisableSnapping, 3, 0x1fc),
+            (TutorialCompletionId::TerrainSteepness, 4, 0x1fa),
+            (TutorialCompletionId::TerrainFocus, 5, 0x1fb),
+            (TutorialCompletionId::TerrainLayering, 6, 0x1f9),
+            (TutorialCompletionId::RoofShape, 7, 0x1ff),
+            (TutorialCompletionId::UnlinkWindows, 8, 0x1fd),
+            (TutorialCompletionId::ClutterFocusedEdit, 9, 0x200),
+            (TutorialCompletionId::CameraPan, 10, 0x1f6),
+            (TutorialCompletionId::CameraRotate, 11, 0x1f7),
+            (TutorialCompletionId::CameraZoom, 12, 0x1f8),
+            (TutorialCompletionId::StairsStage1, 13, 0x201),
+            (TutorialCompletionId::StairsStage2, 14, 0x202),
+            (TutorialCompletionId::StairsStage3, 15, 0x203),
+            (TutorialCompletionId::StairsStage4, 16, 0x204),
+            (TutorialCompletionId::StairsStage5, 17, 0x205),
         ];
         for (op, id, offset) in table {
             assert_eq!(op as u8, id, "{op:?}");
             assert_eq!(op.completion_flag_offset(), offset, "{op:?}");
-            assert_eq!(TutorialOp::from_id(id), Some(op));
+            assert_eq!(TutorialCompletionId::from_id(id), Some(op));
         }
-        assert_eq!(TutorialOp::from_id(18), None);
-        assert_eq!(TutorialOp::from_id(255), None);
+        assert_eq!(TutorialCompletionId::from_id(18), None);
+        assert_eq!(TutorialCompletionId::from_id(255), None);
     }
 }

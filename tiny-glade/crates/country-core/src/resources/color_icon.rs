@@ -35,6 +35,8 @@ impl ColorMenuBrightnessValue {
 /// 0xa0 state record belongs to the color-menu algorithm, not this component.
 #[repr(C)]
 #[derive(bevy_ecs::component::Component, Clone, Debug, Default)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct CustomizationIcon {
     pub size: glam::Vec2,
     pub position: glam::Vec2,
@@ -83,3 +85,5 @@ pub struct ChimneySmokeToggle;
 /// delete_color_icon_entities 0x142297ff0 的查询面）。
 #[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct CustomizationIconMarkedForDeletion;
+
+impl crate::render::extract::JournaledComponent for CustomizationIcon {}

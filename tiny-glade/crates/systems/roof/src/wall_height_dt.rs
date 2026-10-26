@@ -12,8 +12,9 @@
 use country_core::resources::roofs::{Roof, RoofTileSimulation};
 use bevy_ecs::prelude::*;
 
-pub fn wall_height_dt(mut roofs: Query<(&mut RoofTileSimulation, &Roof)>) {
+pub fn wall_height_dt(mut roofs: Query<(ComponentWrite<RoofTileSimulation>, &Roof)>) {
     for (mut simulation, roof) in &mut roofs {
         simulation.update_wall_height(roof.floor_y());
     }
 }
+use country_core::render::extract::ComponentWrite;

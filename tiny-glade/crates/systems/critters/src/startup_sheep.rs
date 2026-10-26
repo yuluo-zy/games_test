@@ -11,7 +11,7 @@ use crate::{
     sheep::{
         sheep_behavior::SheepAudio,
         sheep_floatie::FloatieHolder,
-        sheep_terrain::{SheepTerrainState, SheepVerticalDelta},
+        sheep_unstuck::SheepGroundRecord,
         sheep_umbrella::UmbrellaHolder,
     },
 };
@@ -152,7 +152,7 @@ pub fn spawn_startup_sheep(
                     },
                     (
                         Critter,
-                        CritterLocomotion(2),
+                        CritterLocomotion::new(2),
                         CritterGoal {
                             goal_tag: 0,
                             position: Vec3::ZERO,
@@ -164,7 +164,7 @@ pub fn spawn_startup_sheep(
                         Velocity(Vec3::ZERO),
                         CritterVelocityMultiplier(1.0),
                     ),
-                    (SheepTerrainState::new(2), SheepVerticalDelta(0.0)),
+                    SheepGroundRecord::default(),
                     ObjectGrassPush(size * 3.5),
                     UmbrellaHolder {
                         mesh: Some(assets.umbrella_mesh),

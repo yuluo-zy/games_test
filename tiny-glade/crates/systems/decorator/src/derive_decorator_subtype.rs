@@ -4,6 +4,7 @@
 //! 旧公开有限输入helper保留现Result方言；新生产路径复用canonical几何内核。
 
 use bevy_ecs::prelude::*;
+use ::utils::bytes::read_f32_le as read_f32;
 
 use country_core::resources::roofs::geometry::surface::Curve2 as WallCurve2;
 use country_core::resources::roofs::roof_shape::Roof;
@@ -97,10 +98,6 @@ pub enum WallWindowKind {
     Gothic,
 }
 
-
-fn read_f32(bytes: &[u8; 88], offset: usize) -> f32 {
-    f32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
-}
 
 /// 保留旧Result前提；原793B数值与端点外推统一委托canonical坐标内核。
 pub fn wall_coord_to_world(
@@ -336,13 +333,7 @@ pub fn derive_wall_subtype(
 }
 
 /// DecoratorInfo 的墙空间坐标（O：Info+0x00/+0x04 两个 f32 = WallSpaceCoord）。
-#[inline]
-pub fn wall_space_coord_of(info: &DecoratorInfo) -> WallSpaceCoord {
-    WallSpaceCoord::new_unchecked(
-        f32::from_bits(info.dst_wall as u32),
-        f32::from_bits((info.dst_wall >> 32) as u32),
-    )
-}
+pub use crate::decorator_on_wall_height_changed::get_wall_coord as wall_space_coord_of;
 
 /// DecoratorInfo 的角/门附着字节（O：+0x20 corner、+0x21 is_bottom_door）。
 #[inline]
@@ -720,7 +711,7 @@ mod canonical_subtype_producer_tests {
             encoded: vec![0; 512 * 512].into(), minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false,
         };
         let mut walls = PublicWalls::default();
-        walls.consume(&mut inner, &terrain);
+        walls.consume_with_paths(&mut inner, &terrain, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         assert!(walls.get(id).is_some());
         (walls, id)
     }

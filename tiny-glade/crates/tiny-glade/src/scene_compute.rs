@@ -501,10 +501,10 @@ impl<'f, 's, 'w> SceneComputeHost<'f, 's, 'w> {
 
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl country_core::render::extract::RenderExtract) {
-    m.resource_with_revision::<AssetTextureLibrary>(<AssetTextureLibrary>::descriptor_revision);
-    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
-    m.resource_incremental::<AssetVAOLibrary>(AssetVAOLibrary::snapshot_revision, AssetVAOLibrary::update_render_snapshot);
-    m.resource::<AssetPlacementDataLibrary>();
+    m.asset_library::<AssetTextureLibrary>();
+    m.asset_library::<AssetSsboLibrary>();
+    m.asset_library::<AssetVAOLibrary>();
+    m.asset_library::<AssetPlacementDataLibrary>();
     m.resource_projected::<world_raster_defs::WaterRaster>(world_raster_defs::WaterRaster::declaration_snapshot);
     m.resource_projected::<world_raster_defs::GardenRaster>(world_raster_defs::GardenRaster::declaration_snapshot);
     m.resource::<country_core::render::nani::gpu_world::GpuWorld>();

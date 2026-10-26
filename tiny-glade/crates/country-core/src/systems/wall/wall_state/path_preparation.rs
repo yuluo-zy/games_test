@@ -1,6 +1,7 @@
 //! B sample_wall_path_intersections: explicit four encoded path raster owners.
 //! Uses actual selected buffers for attenuation, smoothing and threshold cuts.
 use crate::resources::walls::publication_source::TerrainHeightGrid512;
+use ::utils::scalar::clamp01;
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
@@ -63,7 +64,7 @@ impl PathRasters512 {
             };
             view.sample_at_world_xz(x, z)
         });
-        clamp_unit(((values[0] + values[1]) + values[2]) + values[3])
+        clamp01(((values[0] + values[1]) + values[2]) + values[3])
     }
 }
 
@@ -145,10 +146,6 @@ pub fn prepare_wall_path(
     })
 }
 
-fn clamp_unit(v: f32) -> f32 {
-    let lo = if 0.0 > v { 0.0 } else { v };
-    if 1.0 < lo { 1.0 } else { lo }
-}
 fn distance(a: [f32; 3], b: [f32; 3]) -> f32 {
     (glam::Vec3::from_array(a) - glam::Vec3::from_array(b)).length()
 }

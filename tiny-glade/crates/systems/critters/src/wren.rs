@@ -123,7 +123,7 @@ pub fn update_roof_bird_spots(
     mut roof_changed: EventReader<RecalculateRoofCmd>,
     mut wall_changed: EventReader<OnWallChanged>,
     roofs: Query<(&Roof, Option<&BirdSpots>)>,
-    mut wrens: Query<(Entity, &mut crate::components::Transform, &mut Wren), Without<SittableForBirds>>,
+    mut wrens: Query<(Entity, ComponentWrite<crate::components::Transform>, &mut Wren), Without<SittableForBirds>>,
 ) {
     let roof_entities = roof_changed.read().map(|event| event.entity)
         .chain(wall_changed.read().filter_map(|event| walls.roof_entity(event.0)));
@@ -323,3 +323,5 @@ impl Default for WrenRng {
 /// 轨迹标记（plan_duck 出生路径的鹪鹩侧不用；装饰物鸟点查询的占位类型）。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
 pub struct WrenTrajectoryMarker;
+
+use country_core::render::extract::ComponentWrite;

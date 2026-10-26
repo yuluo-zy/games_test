@@ -7,10 +7,7 @@ use rhapsody::rg::{
     vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession},
 };
 use rhapsody::{
-    device::{
-        AllocationStrategy, Device, DeviceConfig, Feature, QueueClass, RecordingPolicy,
-        SubmitBatch, Wait,
-    },
+    device::{AllocationStrategy, Device, DeviceConfig, Feature, QueueClass, SubmitBatch, Wait},
     sync::{SyncPoint, SyncSet},
 };
 
@@ -22,7 +19,6 @@ fn create(config: &DeviceConfig) -> Option<std::sync::Arc<Device>> {
 fn configured_device_reports_actual_enabled_capabilities_and_allocation_mode() {
     let config = DeviceConfig {
         allocation: AllocationStrategy::Dedicated,
-        recording: RecordingPolicy::Adaptive,
         ..DeviceConfig::headless()
     };
     let Some(device) = create(&config) else {
@@ -40,7 +36,7 @@ fn configured_device_reports_actual_enabled_capabilities_and_allocation_mode() {
     let session = VulkanGraphSession::new(backend);
     assert_eq!(
         session.chain.parallel.strategy,
-        ParallelRecording::ADAPTIVE.strategy
+        ParallelRecording::PARALLEL.strategy
     );
 }
 
@@ -49,11 +45,10 @@ fn default_device_records_graph_sessions_adaptively() {
     let Some(device) = create(&DeviceConfig::headless()) else {
         return;
     };
-    assert_eq!(device.policy().recording, RecordingPolicy::Adaptive);
     let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
     let session = VulkanGraphSession::new(backend);
     assert_eq!(session.chain.parallel, ParallelRecording::default());
-    assert_eq!(session.chain.parallel, ParallelRecording::ADAPTIVE);
+    assert_eq!(session.chain.parallel, ParallelRecording::PARALLEL);
 }
 
 #[test]
@@ -184,7 +179,10 @@ fn a_display_frame_with_more_than_two_graphs_never_exhausts_command_slots() {
             session.execute_frame(graph.build()).unwrap();
         }
         session.end_display_frame();
-        assert!(session.pending_frame_count() <= 4, "graphs in flight stay bounded by the slots");
+        assert!(
+            session.pending_frame_count() <= 4,
+            "graphs in flight stay bounded by the slots"
+        );
     }
     session.wait_submits_done(10_000_000_000).unwrap();
     assert_eq!(session.pending_frame_count(), 0);
@@ -207,7 +205,11 @@ fn a_leftover_display_frame_does_not_disable_throttling_for_plain_graphs() {
     graph.add_pass("a").with_side_effect().render(|_| true);
     session.execute_frame(graph.build()).unwrap();
     session.begin_display_frame().unwrap();
-    assert_eq!(session.pending_frame_count(), 0, "limit 1: the stale frame was drained");
+    assert_eq!(
+        session.pending_frame_count(),
+        0,
+        "limit 1: the stale frame was drained"
+    );
     session.end_display_frame();
 }
 

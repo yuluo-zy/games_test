@@ -7,16 +7,11 @@ use crate::{
     systems::camera_rig::main_camera::MainCamera,
     utils::components::transform::Transform,
 };
+use ::utils::scalar::{clamp01, max_f32};
 use bevy_ecs::prelude::*;
 use glam::Vec3;
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SignifierReplayIndex(pub usize);
-fn maxss(a: f32, b: f32) -> f32 {
-    if a > b { a } else { b }
-}
-fn minss(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
-}
 fn pulse(phase: f32) -> f32 {
     let wave = (phase * f32::from_bits(0x40fb53d2)).sin();
     (phase * -10.).exp2() * wave * 0.5
@@ -24,7 +19,7 @@ fn pulse(phase: f32) -> f32 {
 pub fn signifier_replay_active(
     replay: Res<ReplayBuffer>,
     mut elapsed: ResMut<ReplayModeElapsedTime>,
-    mut query: Query<(&mut Transform, &SignifierReplayIndex)>,
+    mut query: Query<(ComponentWrite<Transform>, &SignifierReplayIndex)>,
     camera: Res<MainCamera>,
     time: Res<GameTime>,
     cursor: Res<CursorTerrainRaycast>,
@@ -34,7 +29,7 @@ pub fn signifier_replay_active(
         return;
     };
     *elapsed = time.delta + *elapsed;
-    let period = maxss(f32::from_bits(0x3f666666) / speed.speed, 0.5);
+    let period = max_f32(f32::from_bits(0x3f666666) / speed.speed, 0.5);
     let normalized = *elapsed / period;
     let mut phase = normalized - normalized.trunc();
     for (mut transform, index) in &mut query {
@@ -53,7 +48,7 @@ pub fn signifier_replay_active(
         } else {
             // Original phase is shared across the query loop: preserve mutation
             // for later rows, including repeated secondary indices.
-            phase = minss(1., maxss(0., phase + f32::from_bits(0xbd4ccccd)));
+            phase = clamp01(phase + f32::from_bits(0xbd4ccccd));
             0.15
         };
         let oscillation = pulse(phase);
@@ -153,3 +148,5 @@ mod tests {
         }
     }
 }
+
+use crate::render::extract::ComponentWrite;

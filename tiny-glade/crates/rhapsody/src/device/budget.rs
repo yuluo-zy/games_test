@@ -191,7 +191,7 @@ impl MemoryBudgetController {
     }
 
     pub fn available(&self) -> u64 {
-        self.limit.saturating_sub(self.total())
+        if self.limit == 0 { u64::MAX } else { self.limit.saturating_sub(self.total()) }
     }
 
     pub fn limit(&self) -> u64 {

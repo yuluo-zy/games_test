@@ -18,6 +18,38 @@
 
 use serde::{Deserialize, Serialize};
 
+/// 原 B `PROMPT_ROLLERCOASTER`（0x143634cd9，经导入槽0x14362c028共享）。
+/// 唯一业务写者是 tiny-glade 的 rollercoaster_update，摄影尾部只读取。
+/// 原版为跨crate全局bool；AtomicBool保持同一权威槽，避免Rust可变静态数据竞争。
+/// 初始化false不代表检测完成：写者的真实射线/车辆状态分支必须另外恢复和注册。
+pub static PROMPT_ROLLERCOASTER: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// 原骑乘帧在普通相机处理之后，强制Walk保留垂直分量。
+pub fn set_rollercoaster_walk_override(camera: &mut super::camera_rig::MainCamera) {
+    camera.set_walk_modifier(true);
+}
+
+/// 原骑乘帧尾写完整四矩阵。镜头来自当前body，不使用固定摄影参数，
+/// 也不在这里重复推进Dolly或镜头平滑。
+pub fn write_rollercoaster_camera_pose(
+    camera: &mut super::camera_rig::MainCamera,
+    position: glam::Vec3,
+    rotation: glam::Quat,
+) {
+    let lens = 0x100 + super::camera_rig::main_camera::FOV_OFFSETS[camera.mode_byte() as usize];
+    let projection = ::utils::camera::CameraProjectionParams {
+        aspect: camera.aspect(),
+        near: camera.read_f32(lens),
+        vertical_fov_degrees: camera.read_f32(lens + 4),
+    }.calc_matrices();
+    let body = ::utils::camera::CameraBodyMatrices::from_position_rotation(position, rotation);
+    camera.write_matrix(0, &projection.projection);
+    camera.write_matrix(0x40, &projection.inverse_projection);
+    camera.write_matrix(0x80, &body.view);
+    camera.write_matrix(0xc0, &body.inverse_view);
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum CameraRotationPivot {

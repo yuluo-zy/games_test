@@ -63,7 +63,7 @@ impl fmt::Display for DxgiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "CreateDXGIFactory: HRESULT {:#010x}",
+            "DXGI: HRESULT {:#010x}",
             self.hresult as u32
         )
     }
@@ -100,7 +100,7 @@ pub fn enumerate(source: &mut impl DxgiSource) -> Result<Vec<DxgiAdapter>, DxgiE
             AdapterProbe::DescFailed => {}
             AdapterProbe::Desc(desc) => adapters.push(DxgiAdapter::from_desc(&desc)),
         }
-        index += 1;
+        index = index.checked_add(1).ok_or(DxgiError { hresult: 0x8000000Bu32 as i32 })?;
     }
 }
 
@@ -173,7 +173,10 @@ mod windows_impl {
             if hr < 0 || factory.is_null() {
                 return Err(DxgiError { hresult: hr });
             }
-            self.factory = Some(factory);
+            if let Some(previous) = self.factory.replace(factory) {
+                // SAFETY: the previous owned COM reference is superseded.
+                unsafe { slot::<Release>(previous, 2)(previous); }
+            }
             Ok(())
         }
         fn probe(&mut self, index: u32) -> AdapterProbe {

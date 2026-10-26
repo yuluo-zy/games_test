@@ -29,6 +29,7 @@ use toolbar::mei::{
     widgets::{DefaultNodeContent, ImageContent},
 };
 use utils::easing_functions::EasingFunction;
+use utils::scalar::clamp01;
 
 /// Native Local<TodButtonState>, with explicit session ownership so unload can
 /// discard hover/pulse and previous sound buckets without changing normal frames.
@@ -86,11 +87,6 @@ impl NodeContent for TodCircleContent {
     }
 }
 
-/// Preserve the original ordered comparisons: a NaN clamps to zero.
-fn clamp01(value: f32) -> f32 {
-    let lower = if value >= 0. { value } else { 0. };
-    if lower <= 1. { lower } else { 1. }
-}
 fn fit(value: f32, start: f32, end: f32, lower: f32, upper: f32) -> f32 {
     (value - start) / (end - start) * (upper - lower) + lower
 }
@@ -575,8 +571,9 @@ mod tests {
 
     fn panel() -> (World, Schedule) {
         let mut mei = toolbar::MeiContext::default();
-        let asset_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../Tiny Glade/assets/ui");
+        let asset_root = std::env::var_os("TG_INSTALL_ROOT").map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../B版本内容"))
+            .join("assets/ui");
         for name in ["menu/time_of_day_2", "menu/tod_time_passage_hint"] {
             let config = toolbar::mei::config::read_node_config_from_file(
                 &asset_root.join(name).with_extension("ron")).unwrap();
@@ -629,5 +626,38 @@ mod tests {
         schedule.run(&mut world);
         assert!(!world.resource::<TimeOfDayScreen>().visible);
         assert!(!world.resource::<TimeOfDayScreen>().was_visible);
+    }
+
+    #[test]
+    fn session_exit_clears_tod_drag_and_open_edges_before_reentry() {
+        let (mut world, mut schedule) = panel();
+        schedule.run(&mut world);
+        // 模拟已经进入拖动的旧会话；退出必须清理本地动画及真实输入标志。
+        *world.resource_mut::<TodButtonState>() = TodButtonState {
+            hover: [0.7, 0.8], previous_target_angle: 2., previous_target_time: 0.3,
+            previous_actual_angle: 1., previous_actual_time: 0.2,
+            button_hover: 0.9, pulse: 0.5, pulsing: true,
+        };
+        {
+            let mut screen = world.resource_mut::<TimeOfDayScreen>();
+            screen.time_input_active = true;
+            screen.angle_input_active = true;
+        }
+        let config_before = world.resource::<GameConfig>().dev.clone();
+        crate::toolbar_plugin::clear_toolbar_session(&mut world);
+        assert_eq!(*world.resource::<TodButtonState>(), TodButtonState::default());
+        assert_eq!(*world.resource::<TimeOfDayScreen>(), TimeOfDayScreen::default());
+        assert_eq!(world.resource::<GameConfig>().dev, config_before);
+        assert!(world.resource::<toolbar::MeiContext>().nodes.is_empty());
+        world.resource_mut::<Events<SaveGameCmd>>().clear();
+        world.resource_mut::<Events<HistoryCommand>>().clear();
+        // 重入后的隐藏帧不应保存；再次打开才重新产生一个真实打开边沿。
+        schedule.run(&mut world);
+        assert!(world.resource::<Events<SaveGameCmd>>().is_empty());
+        world.resource_mut::<TimeOfDayScreen>().visible = true;
+        schedule.run(&mut world);
+        assert!(world.resource::<TimeOfDayScreen>().just_opened);
+        assert_eq!(world.resource::<Events<SaveGameCmd>>().len(), 1);
+        assert_eq!(world.resource::<Events<HistoryCommand>>().len(), 1);
     }
 }

@@ -66,10 +66,10 @@
 //!   are provided by [`PublicWallColorSource`], implemented for `PublicWalls`
 //!   via `get_unchecked` (raw record, matching the native unvalidated probe) and
 //!   `roof_entity` (entity bits, generation in the high 32 bits).
-//! - The dense tables live inside native `InnerWalls` (`+0x1a8`, bitset
-//!   `+0x28/+0x38`, `+0x110` slot) and are **not** modelled by the recovered
-//!   `InnerWalls` (walls group in flight). [`RoofColorComponentTables`] is the
-//!   recovered close-out input; its producer is registered as a seam.
+//! - 原密集表属于 ECS 私有存储；正式创建系统通过
+//!   [`get_building_and_roof_colors_with_lookup`] 查询真实 `Roof` 组件，
+//!   由 ECS 执行实体代数及组件存在性检查。复用当前 Bevy 存储，避免复制私有布局。
+//!   [`RoofColorComponentTables`] 仅保留原布局验证及旧调用兼容入口。
 //! - Native reads inside the dense chain are unchecked raw loads. The recovered
 //!   model is bounds-checked and routes an out-of-range read to the same "miss"
 //!   path; for valid tables behaviour is identical (safe superset registered).
@@ -222,8 +222,8 @@ pub struct RoofChunk {
 /// Recovered input for the native dense tables embedded in `InnerWalls`
 /// (`+0x8` record vector, `+0x1a8` chunk table, `[0]` presence bitset).
 ///
-/// Seam: the recovered `InnerWalls` does not own these tables; a producer that
-/// fills this resource from the real roof/component storage is outstanding.
+/// 原私有存储的验证适配器；正式创建系统直接查询真实 `Roof` 组件，
+/// 不需要在运行时维护第二份密集表镜像。
 #[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
 pub struct RoofColorComponentTables {
     pub presence: RoofPresenceBitset,
@@ -277,6 +277,32 @@ pub fn get_building_and_roof_colors(
     tables: &RoofColorComponentTables,
     settings: &GladeColorCustomization,
 ) -> SelectedCreationAppearance {
+    get_building_and_roof_colors_with_lookup(
+        has_previous,
+        previous,
+        wall_colors,
+        halftimber_colors,
+        public,
+        settings,
+        |bits| {
+            tables
+                .lookup(bits)
+                .map(|component| (component.color_id, component.appearance))
+        },
+    )
+}
+
+/// 原颜色策略复用当前真实Roof组件查询；不要求生产重建原Bevy私有密集表。
+/// 查询回调必须验证Entity代数及组件存在性，返回真实颜色与完整外观。
+pub fn get_building_and_roof_colors_with_lookup(
+    has_previous: bool,
+    previous: u64,
+    wall_colors: &[u32],
+    halftimber_colors: &[u32],
+    public: &impl PublicWallColorSource,
+    settings: &GladeColorCustomization,
+    mut roof_lookup: impl FnMut(u64) -> Option<(u32, [u8; 12])>,
+) -> SelectedCreationAppearance {
     let mut selected = SelectedCreationAppearance {
         wall_color_id: settings.building.0,
         roof_color_id: settings.roof.0,
@@ -307,9 +333,9 @@ pub fn get_building_and_roof_colors(
     if let Some(entity_bits) = public.roof_entity_bits(previous) {
         // Native skips empty map B and treats generation 0 as a miss.
         if entity_bits >> 32 != 0 {
-            if let Some(component) = tables.lookup(entity_bits) {
-                selected.roof_color_id = component.color_id;
-                selected.roof_appearance = component.appearance;
+            if let Some((color_id, appearance)) = roof_lookup(entity_bits) {
+                selected.roof_color_id = color_id;
+                selected.roof_appearance = appearance;
             }
         }
     }

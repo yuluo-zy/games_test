@@ -2,10 +2,7 @@
 mod gpu_test_support;
 use ash::vk::{self, Handle};
 use rhapsody::{
-    device::{
-        Device, DeviceConfig, QueueClass, QueueConfig, QueuePreference, RecordingPolicy,
-        SubmissionApi,
-    },
+    device::{Device, DeviceConfig, QueueClass, QueueConfig, QueuePreference},
     raw::{
         buffer::{Buffer, BufferDesc},
         instance::{InstanceBuilder, ValidationMessenger},
@@ -57,14 +54,10 @@ impl Fixture {
         .unwrap();
         result
     }
-    fn new(api: SubmissionApi, parallel: ParallelRecording) -> Option<Self> {
-        Self::with_queues(api, parallel, false)
+    fn new(parallel: ParallelRecording) -> Option<Self> {
+        Self::with_queues(parallel, false)
     }
-    fn with_queues(
-        api: SubmissionApi,
-        parallel: ParallelRecording,
-        independent: bool,
-    ) -> Option<Self> {
+    fn with_queues(parallel: ParallelRecording, independent: bool) -> Option<Self> {
         let (device, validation) = gpu_test_support::initialize(
             "native resource ranges",
             (|| -> rhapsody::Result<_> {
@@ -77,8 +70,6 @@ impl Fixture {
                     builder.build()?,
                     None,
                     &DeviceConfig {
-                        submission_api: api,
-                        recording: RecordingPolicy::Adaptive,
                         validation: true,
                         queues: QueueConfig {
                             async_compute: if independent {
@@ -431,10 +422,10 @@ fn read(buffer: &Buffer, size: usize) -> Vec<u8> {
 }
 
 #[test]
-fn buffer_barriers_follow_disjoint_and_overlapping_bytes_on_serial_and_worker_recorders() {
-    for api in [SubmissionApi::Auto, SubmissionApi::Legacy] {
-        for parallel in [ParallelRecording::SERIAL, ParallelRecording::EVERY_PASS] {
-            let Some(mut fixture) = Fixture::new(api, parallel) else {
+fn buffer_barriers_follow_disjoint_and_overlapping_bytes_across_worker_chunk_sizes() {
+    {
+        for parallel in [ParallelRecording::PARALLEL, ParallelRecording::EVERY_PASS] {
+            let Some(mut fixture) = Fixture::new(parallel) else {
                 return;
             };
             let (source, token) = fixture.buffer(64, false);
@@ -515,9 +506,9 @@ fn buffer_barriers_follow_disjoint_and_overlapping_bytes_on_serial_and_worker_re
 
 #[test]
 fn image_mips_and_layers_keep_distinct_native_layouts_across_frames_without_whole_initialization() {
-    for api in [SubmissionApi::Auto, SubmissionApi::Legacy] {
-        for parallel in [ParallelRecording::SERIAL, ParallelRecording::EVERY_PASS] {
-            let Some(mut fixture) = Fixture::new(api, parallel) else {
+    {
+        for parallel in [ParallelRecording::PARALLEL, ParallelRecording::EVERY_PASS] {
+            let Some(mut fixture) = Fixture::new(parallel) else {
                 return;
             };
             let (image, token) = fixture.image();
@@ -618,7 +609,7 @@ fn image_mips_and_layers_keep_distinct_native_layouts_across_frames_without_whol
 
 #[test]
 fn failed_later_batch_preserves_the_submitted_prefix_and_untouched_image_subresources() {
-    let Some(mut fixture) = Fixture::new(SubmissionApi::Auto, ParallelRecording::SERIAL) else {
+    let Some(mut fixture) = Fixture::new(ParallelRecording::PARALLEL) else {
         return;
     };
     let (image, token) = fixture.image();
@@ -728,8 +719,8 @@ fn failed_later_batch_preserves_the_submitted_prefix_and_untouched_image_subreso
 #[test]
 fn concurrent_families_initialize_disjoint_image_layouts_without_serializing_and_join_real_points()
 {
-    for api in [SubmissionApi::Auto, SubmissionApi::Legacy] {
-        let Some(mut fixture) = Fixture::with_queues(api, ParallelRecording::SERIAL, true) else {
+    {
+        let Some(mut fixture) = Fixture::with_queues(ParallelRecording::PARALLEL, true) else {
             return;
         };
         let graphics = fixture.device.queue_plan().queue(QueueClass::Graphics);
@@ -873,8 +864,8 @@ fn join_buffer(
 
 #[test]
 fn exclusive_halves_keep_exact_release_pairs_after_failed_acquire_batch_and_recover() {
-    for api in [SubmissionApi::Auto, SubmissionApi::Legacy] {
-        let Some(mut fixture) = Fixture::with_queues(api, ParallelRecording::SERIAL, true) else {
+    {
+        let Some(mut fixture) = Fixture::with_queues(ParallelRecording::PARALLEL, true) else {
             return;
         };
         let (source, token) = fixture.buffer(64, false);

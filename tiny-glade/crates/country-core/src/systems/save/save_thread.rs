@@ -39,24 +39,15 @@ pub struct DeferredSection {
     pub expires_at: std::time::Instant,
 }
 
-/// 未落盘文件列表条目（O：`UnsavedFileList::add` 0x14171ff80 fresh disasm：
-/// `len << 7` 计算尾部、`grow_one` 后**拷贝 16 qword = 0x80B**；`contains_file`
-/// 0x1417201a0 每步 `len*0x80 - 0x80` 遍历，条目内路径按 `Path::components()`
-/// 反向 `eq_by` 比较）。路径位于条目 **+0**（原生 `PathBuf` 24B）；其余 `0x68`
-/// 字段身份 U（`contains_file` 不读），保持为不解析的不透明字节，不编造字段名。
-///
-/// **平台布局适配**：Windows 的 std `PathBuf` 是 32B（WTF-8 前缀布局），直接内嵌
-/// 会让条目变成 0x88，破坏原生 0x80 步进。这里用同为 24B 的 `String` 承载 UTF-8
-/// 路径（`to_string_lossy`），断言保留、不得删除。
+/// 保留现有路径标记API；opaque不是可恢复的ShadowFile数据，不能用它承载失败写入。
+/// 原B128字节条目的真实类型已由retain_mut<ShadowFile>和闭包14130f900确认。
+/// 真正写入失败的文件经UnsavedFileList::add_file转移所有权；仅路径标记用于既有加载保护。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UnsavedFileEntry {
-    /// +0x00：路径（24B `String`，映射原生 24B `PathBuf` 槽）。
     pub path: String,
-    /// +0x18..0x80：未被 `contains_file` 读取的原生尾部（U，原样保留）。
     pub opaque: [u8; 0x68],
 }
 impl UnsavedFileEntry {
-    /// 生产路径构造（未被消费的 0x68 尾部置零；不是对原生字段值的断言）。
     pub fn from_path(path: PathBuf) -> Self {
         Self {
             path: path.to_string_lossy().into_owned(),
@@ -66,44 +57,92 @@ impl UnsavedFileEntry {
 }
 const _: () = assert!(std::mem::size_of::<UnsavedFileEntry>() == 0x80);
 
-/// 未落盘文件列表（PDB：`save_thread::UnsavedFileList`；`parking_lot::Mutex`
-/// 保护，O：add 0x14171ff80 / contains_file 0x1417201a0 的 `RawMutex` fast/slow
-/// 路径与 `Vec` 三元组 {ptr, cap, len}）。
+#[derive(Debug)]
+enum UnsavedFile {
+    /// 当前加载保护接口的路径标记，不伪造不存在的文件内存或成功重试。
+    Marked(UnsavedFileEntry),
+    /// 原UnsavedFileList真正保留的ShadowFile：后续tick重试，成功后释放。
+    Pending(ShadowFile),
+}
+impl UnsavedFile {
+    fn path(&self) -> &Path {
+        match self {
+            Self::Marked(entry) => Path::new(&entry.path),
+            Self::Pending(file) => file.path(),
+        }
+    }
+}
+
+/// 未落盘文件列表：保留当前共享mutex owner，原add/contains_file的路径保护仍可用。
+/// 不复制原生私有ABI；实际失败文件必须保留完整ShadowFile及内存数据。
 #[derive(Debug, Default)]
 pub struct UnsavedFileList {
-    files: parking_lot::Mutex<Vec<UnsavedFileEntry>>,
+    files: parking_lot::Mutex<Vec<UnsavedFile>>,
 }
 impl UnsavedFileList {
-    /// B 0x14171ff80：登记一个未落盘文件（0x80B 整条目拷贝）。
     pub fn add(&self, entry: UnsavedFileEntry) {
-        self.files.lock().push(entry);
+        self.files.lock().push(UnsavedFile::Marked(entry));
     }
-    /// 生产便利入口：以路径构造 0x80B 条目。
     pub fn add_path(&self, path: PathBuf) {
         self.add(UnsavedFileEntry::from_path(path));
     }
-    /// B 0x1417201a0：列表查找（"Was asked to load an unsaved file" 前置检查）。
-    /// 原生按 `Path::components()` 反向逐组件比较；对等价的绝对/相对路径，
-    /// `Path ==` 等价（CRATE 侧路径均为 join 生成的同形路径）。条目路径以 24B
-    /// 字符串保存，这里重建 `Path` 再比较。
+    /// 原14171ff80把ShadowFile整体移入列表，而不是仅拷贝路径后丢弃脏数据。
+    pub fn add_file(&self, file: ShadowFile) {
+        self.files.lock().push(UnsavedFile::Pending(file));
+    }
     pub fn contains_file(&self, path: &Path) -> bool {
         self.files
             .lock()
             .iter()
-            .any(|candidate| Path::new(&candidate.path) == path)
+            .any(|candidate| candidate.path() == path)
     }
-    /// 条目数（测试/诊断）。
     pub fn len(&self) -> usize {
         self.files.lock().len()
     }
+    /// 原14130f900：sync失败保留并按顺序追加错误；成功移除，释放真实文件owner。
+    fn retry_pending(&self, errors: &mut Vec<(PathBuf, AutoSaveError)>) {
+        self.files.lock().retain_mut(|entry| {
+            let UnsavedFile::Pending(file) = entry else {
+                return true;
+            };
+            if file.sync_all() {
+                log::info!("I/O error resolved. Save file successfully written.");
+                false
+            } else {
+                if let Some(error) = file.last_error() {
+                    errors.push((file.path().to_owned(), AutoSaveError::from_error(error)));
+                }
+                true
+            }
+        });
+    }
 }
 
-/// 单文件自动保存失败（PDB：`save_thread::AutoSaveError`）。原错误载荷变体待取证；
-/// 这里保留触发失败的 OS 消息，供错误列表 diff 与日志。
+/// 单文件自动保存失败（原B `AutoSaveError::from` 0x141720490）。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AutoSaveError {
-    /// 落盘/同步失败，携带底层错误文本。
+    /// 原tag0：真实I/O StorageFull，载荷是该I/O错误的文字，不含外层anyhow上下文。
+    StorageFull(String),
+    /// 原tag1：完整anyhow显示链。
     Io(String),
+}
+impl AutoSaveError {
+    /// 原转换先downcast到I/O错误，再按ErrorKind裁决，不能按消息文字猜测。
+    fn from_error(error: &anyhow::Error) -> Self {
+        if let Some(io) = error
+            .downcast_ref::<std::io::Error>()
+            .filter(|io| io.kind() == std::io::ErrorKind::StorageFull)
+        {
+            Self::StorageFull(format!("{io:#}"))
+        } else {
+            Self::Io(format!("{error:#}"))
+        }
+    }
+    pub fn message(&self) -> &str {
+        match self {
+            Self::StorageFull(message) | Self::Io(message) => message,
+        }
+    }
 }
 
 /// 自动保存错误状态（PDB：`save_thread::AutosaveErrorState`；`is_ok` = 列表空）。
@@ -408,14 +447,11 @@ impl CurrentSaveFile {
         &mut self,
         blob: &[u8],
     ) -> anyhow::Result<crate::resources::history::HistorySnapshotId> {
-        use std::hash::{Hash, Hasher};
         use std::io::Write;
         // Native utils::calculate_hash<&[u8]> @14145b1a0 writes usize length
-        // then the bytes, using SipHash13 with both keys zero. Reuse std's
-        // same dependency implementation rather than a new hash algorithm.
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        blob.hash(&mut hasher);
-        let id = crate::resources::history::HistorySnapshotId(hasher.finish());
+        // then the bytes, using SipHash13 with both keys zero. The canonical
+        // helper lives in the shared `utils` crate.
+        let id = crate::resources::history::HistorySnapshotId(::utils::calculate_hash(blob));
         let folder = self.shadow_file.directory().join("snapshots");
         let target = folder.join(format!("{}.snapshot", id.0));
         if !target.is_file() {
@@ -499,11 +535,10 @@ pub fn execute_save_cmd(
             execute_open_file_cmd(current, session, sections, edits, unsaved);
         }
         AsyncSaveCmd::CloseFile { .. } => {
-            // case4：flush 前一档 + 失败 UnsavedFileList::add + drop（原生 = flush+add+drop）。
+            // case4：失败时把真实ShadowFile转移给共享重试列表，不能只留下路径。
             if let Some(mut previous) = current.take() {
                 if !previous.flush_deferred_and_sync() {
-                    let path = previous.shadow_file.path().to_path_buf();
-                    unsaved.add_path(path);
+                    unsaved.add_file(previous.shadow_file);
                 }
             }
         }
@@ -610,11 +645,10 @@ pub fn execute_open_file_cmd(
     edits: Vec<SerializedJson>,
     unsaved: &UnsavedFileList,
 ) {
-    if let Some(previous) = current.as_mut() {
+    if let Some(mut previous) = current.take() {
         if !previous.flush_deferred_and_sync() {
             log::warn!("Flush error while closing previous save file (upon open request)");
-            let path = previous.shadow_file.path().to_path_buf();
-            unsaved.add_path(path);
+            unsaved.add_file(previous.shadow_file);
         }
     }
     let new_file = CurrentSaveFile::create(session.save_folder_path(), sections, &edits);
@@ -654,18 +688,23 @@ fn save_thread_with_current(
         if last_tick.elapsed() >= Duration::from_secs(1) {
             let mut error_list: Vec<(PathBuf, AutoSaveError)> = Vec::new();
             if let Some(file) = current.as_mut() {
-                if file.shadow_file.dirty_blocks().next().is_some() {
+                // 原141720823/83d按last_error保留重试；OS sync失败时dirty可能已清空。
+                if file.shadow_file.last_error().is_some()
+                    || file.shadow_file.dirty_blocks().next().is_some()
+                {
                     if !file.shadow_file.sync_all() {
                         let path = file.shadow_file.path().to_path_buf();
-                        let message = file
+                        let error = file
                             .shadow_file
                             .last_error()
-                            .map(|error| format!("{error:#}"))
-                            .unwrap_or_else(|| "sync failed".to_string());
-                        error_list.push((path, AutoSaveError::Io(message)));
+                            .map(AutoSaveError::from_error)
+                            .unwrap_or_else(|| AutoSaveError::Io("sync failed".to_string()));
+                        error_list.push((path, error));
                     }
                 }
             }
+            // 原mutex内retain_mut的错误接在当前文件之后，成功文件从共享列表卸载。
+            unsaved.retry_pending(&mut error_list);
             last_tick = std::time::Instant::now();
 
             // 3. 错误列表 diff + 日志 + 回传游戏线程。
@@ -1104,5 +1143,291 @@ mod shutdown_save_host_tests {
             let error = shutdown_save_thread(&mut world).unwrap_err();
             assert!(error.to_string().contains(if reported_error {"reported I/O errors"} else {"known unsaved"}));
         }
+    }
+}
+
+
+#[cfg(test)]
+mod autosave_error_contract_tests {
+    use super::*;
+
+    #[test]
+    fn error_classification_uses_nested_io_kind_and_preserves_context() {
+        let error = anyhow::Error::new(std::io::Error::from(std::io::ErrorKind::StorageFull))
+            .context("Sync data")
+            .context("Saving history.json");
+        let classified = AutoSaveError::from_error(&error);
+        assert!(matches!(classified, AutoSaveError::StorageFull(_)));
+        assert!(
+            !classified.message().contains("Saving history.json"),
+            "原StorageFull只显示下层I/O载荷"
+        );
+        assert_eq!(
+            classified.message(),
+            std::io::Error::from(std::io::ErrorKind::StorageFull).to_string()
+        );
+        let generic =
+            anyhow::Error::new(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+                .context("Sync data")
+                .context("Saving history.json");
+        assert!(
+            AutoSaveError::from_error(&generic)
+                .message()
+                .contains("Saving history.json: Sync data:")
+        );
+        for error in [
+            anyhow::anyhow!("disk full"),
+            anyhow::Error::new(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "disk full",
+            )),
+            anyhow::Error::new(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                std::io::Error::new(std::io::ErrorKind::StorageFull, "disk full"),
+            )),
+        ] {
+            let classified = AutoSaveError::from_error(&error);
+            assert!(
+                matches!(classified, AutoSaveError::Io(_)),
+                "文本不能替代真实I/O分类"
+            );
+            assert!(classified.message().contains("disk full"));
+        }
+    }
+
+    #[test]
+    fn queued_error_snapshots_replace_in_order_and_disconnection_keeps_last_state() {
+        let (sender, mut state) = AutosaveErrorState::channel();
+        assert!(state.is_ok());
+        sender
+            .send(vec![(
+                PathBuf::from("first"),
+                AutoSaveError::Io("first".into()),
+            )])
+            .unwrap();
+        sender.send(Vec::new()).unwrap();
+        sender
+            .send(vec![(
+                PathBuf::from("last"),
+                AutoSaveError::StorageFull("last".into()),
+            )])
+            .unwrap();
+        state.drain_pending();
+        assert_eq!(
+            state.errors(),
+            &[(
+                PathBuf::from("last"),
+                AutoSaveError::StorageFull("last".into())
+            )]
+        );
+        drop(sender);
+        state.drain_pending();
+        assert!(!state.is_ok(), "断链不应伪造I/O恢复");
+    }
+
+    #[test]
+    fn close_failure_retains_deferred_file_bytes_until_real_retry_succeeds() {
+        let root = tempfile::tempdir().unwrap();
+        let missing = root.path().join("old-session");
+        let values = [
+            serde_json::json!(27),
+            serde_json::json!(17u64),
+            serde_json::json!(0),
+            serde_json::json!({}),
+            serde_json::json!({}),
+            serde_json::json!([]),
+            serde_json::json!({}),
+            serde_json::json!(-1),
+            serde_json::json!(-1),
+            serde_json::json!([]),
+        ];
+        let mut file = CurrentSaveFile::create(
+            &missing,
+            GameSaveSections {
+                values: values.map(|value| SerializedJson::new(&value).unwrap()),
+            },
+            &[],
+        );
+        let expected = serde_json::json!({"camera_at_close": "仍在内存的原始编辑".repeat(32)});
+        file.queue_section_change(
+            SaveFileSection::Camera,
+            SerializedJson::new(&expected).unwrap(),
+        );
+        let unsaved = Arc::new(UnsavedFileList::default());
+        let pending = unsaved.clone();
+        let (commands, command_receiver) = crossbeam_channel::unbounded();
+        let (errors, receiver) = crossbeam_channel::unbounded();
+        let worker = std::thread::spawn(move || {
+            save_thread_with_current(command_receiver, errors, pending, Some(file))
+        });
+        commands
+            .send(AsyncSaveCmd::CloseFile {
+                session: SessionId::new(),
+            })
+            .unwrap();
+        let failure = receiver.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert_eq!(failure.len(), 1);
+        assert_eq!(failure[0].0, missing.join("history.json"));
+        assert_eq!(unsaved.len(), 1);
+        assert!(unsaved.contains_file(&missing.join("history.json")));
+        std::fs::create_dir(&missing).unwrap();
+        assert!(
+            receiver
+                .recv_timeout(Duration::from_secs(10))
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(unsaved.len(), 0, "成功落盘才卸载并解除加载保护");
+        assert!(!unsaved.contains_file(&missing.join("history.json")));
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(missing.join("history.json")).unwrap()).unwrap();
+        assert_eq!(
+            saved[SaveFileSection::Camera.json_key()],
+            expected,
+            "CloseFile必须保留已应用的deferred内容，不能只存路径"
+        );
+        drop(commands);
+        worker.join().unwrap();
+    }
+
+    #[test]
+    fn multiple_pending_files_keep_order_and_do_not_report_early_recovery() {
+        let root = tempfile::tempdir().unwrap();
+        let first = root.path().join("first");
+        let second = root.path().join("second");
+        let unsaved = Arc::new(UnsavedFileList::default());
+        unsaved.add_file(ShadowFile::create(
+            b"first bytes".to_vec(),
+            &first,
+            "data.json",
+        ));
+        unsaved.add_file(ShadowFile::create(
+            b"second bytes".to_vec(),
+            &second,
+            "data.json",
+        ));
+        let pending = unsaved.clone();
+        let (commands, command_receiver) = crossbeam_channel::unbounded();
+        let (errors, receiver) = crossbeam_channel::unbounded();
+        let worker = std::thread::spawn(move || {
+            save_thread_with_current(command_receiver, errors, pending, None)
+        });
+        let initial = receiver.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert_eq!(
+            initial.iter().map(|(path, _)| path).collect::<Vec<_>>(),
+            vec![&first.join("data.json"), &second.join("data.json")]
+        );
+        std::fs::create_dir(&first).unwrap();
+        let partial = receiver.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert_eq!(partial.len(), 1, "一个文件恢复不能清空另一个真实错误");
+        assert_eq!(partial[0].0, second.join("data.json"));
+        assert_eq!(unsaved.len(), 1);
+        assert_eq!(
+            std::fs::read(first.join("data.json")).unwrap(),
+            b"first bytes"
+        );
+        std::fs::create_dir(&second).unwrap();
+        assert!(
+            receiver
+                .recv_timeout(Duration::from_secs(10))
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(unsaved.len(), 0);
+        assert_eq!(
+            std::fs::read(second.join("data.json")).unwrap(),
+            b"second bytes"
+        );
+        drop(commands);
+        worker.join().unwrap();
+    }
+
+    #[test]
+    fn worker_retries_reported_error_even_without_dirty_blocks() {
+        let directory = tempfile::tempdir().unwrap();
+        let missing = directory.path().join("empty-file-parent");
+        // 空文件创建失败会保留真实错误而没有任何脏块，独立验证last_error重试门控。
+        let current = CurrentSaveFile {
+            shadow_file: ShadowFile::create(Vec::new(), &missing, "empty.json"),
+            save_file_structure: SaveFileStructure {
+                section_ranges: Default::default(),
+                history_edit_offsets: Vec::new(),
+            },
+            deferred_sections: std::array::from_fn(|_| None),
+            locked_backups: HashSet::new(),
+            snapshot_gc_releases: None,
+        };
+        assert!(current.shadow_file.last_error().is_some());
+        assert!(current.shadow_file.dirty_blocks().next().is_none());
+        let (commands, command_receiver) = crossbeam_channel::unbounded();
+        let (errors, receiver) = crossbeam_channel::unbounded();
+        let worker = std::thread::spawn(move || {
+            save_thread_with_current(
+                command_receiver,
+                errors,
+                Arc::new(UnsavedFileList::default()),
+                Some(current),
+            )
+        });
+        let failure = receiver.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert_eq!(failure.len(), 1);
+        std::fs::create_dir(&missing).unwrap();
+        assert!(
+            receiver
+                .recv_timeout(Duration::from_secs(10))
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(std::fs::read(missing.join("empty.json")).unwrap(), b"");
+        drop(commands);
+        worker.join().unwrap();
+    }
+
+    #[test]
+    fn real_worker_reports_failed_disk_write_and_later_successful_retry() {
+        let directory = tempfile::tempdir().unwrap();
+        let missing = directory.path().join("initially-missing");
+        let values = [
+            serde_json::json!(27),
+            serde_json::json!(17u64),
+            serde_json::json!(0),
+            serde_json::json!({}),
+            serde_json::json!({}),
+            serde_json::json!([]),
+            serde_json::json!({}),
+            serde_json::json!(-1),
+            serde_json::json!(-1),
+            serde_json::json!([]),
+        ];
+        let current = CurrentSaveFile::create(
+            &missing,
+            GameSaveSections {
+                values: values.map(|value| SerializedJson::new(&value).unwrap()),
+            },
+            &[],
+        );
+        assert!(current.shadow_file.last_error().is_some());
+        let (commands, command_receiver) = crossbeam_channel::unbounded();
+        let (errors, receiver) = crossbeam_channel::unbounded();
+        let worker = std::thread::spawn(move || {
+            save_thread_with_current(
+                command_receiver,
+                errors,
+                Arc::new(UnsavedFileList::default()),
+                Some(current),
+            )
+        });
+        let failure = receiver.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert_eq!(failure.len(), 1);
+        assert_eq!(failure[0].0, missing.join("history.json"));
+        assert!(matches!(failure[0].1, AutoSaveError::Io(_)));
+        std::fs::create_dir(&missing).unwrap();
+        let recovery = receiver.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert!(recovery.is_empty(), "真实重试落盘成功后发布空错误快照");
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(missing.join("history.json")).unwrap()).unwrap();
+        assert!(saved.is_object());
+        drop(commands);
+        worker.join().unwrap();
     }
 }

@@ -32,7 +32,7 @@ use crate::components::Duck;
 /// `clamp[0,1]`；`frozen && timer >= 1.0` → 释放 frozen。原码每鸭同时写一个 per-entity u32 槽
 /// （值源 = query state +0x14，U —— 本重建无对应组件，DIVERGE）。UI 交互段（format "pet_duck" /
 /// WidgetParams / UiState::add / intersect / is_active / signifier / drag-state）未实现，见模块头注释。
-pub fn ui_pet_ducks(time: Res<GameTime>, mut query: Query<&mut Duck>) {
+pub fn ui_pet_ducks(time: Res<GameTime>, mut query: Query<ComponentWrite<Duck>>) {
     let dt = time.delta;
     for mut duck in &mut query {
         // O（142322e30 L148–157）：`fVar32 = dt`；frozen==0 → `fVar32 = -fVar32`；
@@ -45,3 +45,5 @@ pub fn ui_pet_ducks(time: Res<GameTime>, mut query: Query<&mut Duck>) {
         }
     }
 }
+
+use country_core::render::extract::ComponentWrite;

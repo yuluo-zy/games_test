@@ -45,6 +45,7 @@ use country_core::resources::walls::WallId;
 use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::resources::walls::publication_fields::WallShapeSnapshot;
 use glam::Vec2;
+use ::utils::scalar::clamp01;
 use utils::geometry::Circle2d;
 use utils::geometry::Rectangle2d;
 
@@ -88,18 +89,6 @@ fn shape_contains(shape: &WallShapeSnapshot, point: Vec2) -> bool {
     }
 }
 
-/// x86 `MAXSS a, b`：`if a > b { a } else { b }`；unordered（NaN）返回 **b**。
-#[inline]
-fn maxss(a: f32, b: f32) -> f32 {
-    if a > b { a } else { b }
-}
-
-/// x86 `MINSS a, b`：`if a < b { a } else { b }`；unordered（NaN）返回 **b**。
-#[inline]
-fn minss(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
-}
-
 /// B `circle_categorize`（0x14124af60）：圆形墙的支柱覆盖占比判定。
 ///
 /// 机器实参：`RCX = &Circle2d`、`R8 = &墙条目容器`（+8 指针 / +0x10 长度，
@@ -107,8 +96,7 @@ fn minss(a: f32, b: f32) -> f32 {
 /// `in_wall / inside < threshold`（低半径早退返回 `walls.is_empty()`）。
 ///
 /// NaN/∞ 语义按机器逐字保留（FIX-G1）：
-/// - `t = MINSS(1.0, MAXSS(0.0, (r−1.75)/1.25))`——NaN radius → t=NaN
-///   （Rust `f32::max/min` 会吞掉 NaN，故用手写 `maxss/minss`）。
+/// - `t = clamp01((r−1.75)/1.25)`——NaN radius → t=NaN（`f32::clamp` 传播 NaN）。
 /// - 末比较 = `UCOMISS ratio, threshold` + `SETC`：CF=1 当
 ///   `ratio < threshold` **或 unordered**（NaN → 返回 true）。
 pub fn circle_categorize(
@@ -122,7 +110,7 @@ pub fn circle_categorize(
     }
     let t_raw = (radius - 1.75) / 1.25;
     // 0x14124afc7 段：MAXSS XMM1(0.0), XMM0(t_raw)；MINSS XMM0(1.0), XMM1。
-    let t = minss(1.0, maxss(0.0, t_raw));
+    let t = clamp01(t_raw);
     let smooth = (t * t) * (3.0 - 2.0 * t);
     let threshold = smooth * 0.6 + (1.0 - smooth) * 0.3;
     let n = (radius + radius).ceil() as usize;

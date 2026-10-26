@@ -33,6 +33,7 @@ macro_rules! internal_mod {
 }
 
 pub mod bindless;
+pub mod collections;
 pub mod command;
 pub mod device;
 mod error;
@@ -45,5 +46,5 @@ pub mod sync;
 pub mod transfer;
 internal_mod!(log_ring, raw);
 
-pub use error::{Error, ErrorKind, Result};
-pub use log_ring::{dump_log, dump_log_vec, init_logging, print_log_dump};
+pub use error::{Error, ErrorKind, Result, SharedError};
+pub use log_ring::{dump_log_vec, init_logging, record_log};

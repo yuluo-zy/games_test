@@ -32,6 +32,20 @@ use std::{
     thread::JoinHandle,
 };
 
+/// This thread owns visible drawing and animation. Configure its scheduler
+/// role once, before creating the renderer, rather than on every frame.
+fn configure_render_thread() -> anyhow::Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        let code = unsafe { libc::pthread_set_qos_class_self_np(libc::qos_class_t::QOS_CLASS_USER_INTERACTIVE, 0) };
+        if code != 0 {
+            return Err(anyhow::anyhow!("render thread QoS: {}", std::io::Error::from_raw_os_error(code)));
+        }
+        log::info!(target: "tiny_glade::render_thread", "render_thread requested_qos=user_interactive relative_priority=0");
+    }
+    Ok(())
+}
+
 /// Only Send data crosses the frame boundary. The renderer, including its Rc
 /// graph session, is constructed, used and destroyed on its resident thread.
 #[derive(Default)]
@@ -154,6 +168,7 @@ impl<R: 'static> RenderThread<R> {
         let update_ready = idle.update_ready.clone();
         let worker_update_ready = update_ready.clone();
         let handle = std::thread::Builder::new().name("tg-render".into()).spawn(move || {
+            if let Err(error) = configure_render_thread() { let _ = ready.send(Err(error)); return; }
             let mut renderer = match factory() {
                 Ok(renderer) => { if ready.send(Ok(())).is_err() { return; } renderer }
                 Err(error) => { let _ = ready.send(Err(error)); return; }
@@ -441,6 +456,9 @@ impl ExtractSet {
             let this_run = game.read_change_tick();
             let Some(value) = game.get_resource_ref::<T>() else {
                 render.remove_resource::<T>();
+                if let Some(mut applied) = render.get_resource_mut::<country_core::render::asset_ack::AppliedAssetRevisions>() {
+                    applied.remove::<T>();
+                }
                 previous_revision = None;
                 return;
             };
@@ -452,41 +470,81 @@ impl ExtractSet {
                 render.insert_resource(value);
                 stats.resources_copied += 1;
                 previous_revision = Some(current_revision);
+                if std::any::TypeId::of::<T>() == std::any::TypeId::of::<country_core::asset_libraries::texture_library::AssetTextureLibrary>() {
+                    render.get_resource_or_init::<country_core::render::asset_ack::AppliedAssetRevisions>()
+                        .record::<T>(current_revision.2);
+                }
             }
         })
     }
     /// Update only entries published by the producer; retain the render-side
     /// table and unchanged immutable owners across hand-overs.
-    pub fn copy_incremental<T: Resource + Clone>(
-        &mut self, revision: fn(&T) -> u64, update: fn(&T, &mut T),
-    ) -> &mut Self {
-        let mut previous_revision = None;
+    pub fn copy_asset_library<T: country_core::render::asset_ack::AssetSnapshot>(&mut self) -> &mut Self {
+        use country_core::render::asset_ack::{AppliedAssetOperations, AppliedAssetRevisions,
+            AssetOperation, AssetOperationKind};
+        let mut previous = None;
+        let mut cursor = None;
+        let mut source_world = None;
         self.add_measured(move |game, render, last_run, stats| {
-            let this_run = game.read_change_tick();
-            let Some(value) = game.get_resource_ref::<T>() else {
+            let worlds = (game.id(), render.id());
+            if source_world.is_some_and(|source| source != game.id()) {
                 render.remove_resource::<T>();
-                previous_revision = None;
+                if let Some(mut applied) = render.get_resource_mut::<AppliedAssetOperations>() {
+                    applied.remove_library::<T>();
+                }
+                if let Some(mut applied) = render.get_resource_mut::<AppliedAssetRevisions>() { applied.remove::<T>(); }
+                cursor = None;
+            }
+            source_world = Some(game.id());
+            let Some(value) = game.get_resource_ref::<T>() else {
+                if let Some(old) = render.remove_resource::<T>() {
+                    let revision = country_core::render::asset_ack::next_asset_publication();
+                    let mut applied = render.get_resource_or_init::<AppliedAssetOperations>();
+                    for entry in old.asset_keys() { applied.record(AssetOperation {
+                        library: std::any::TypeId::of::<T>(), entry, revision, kind: AssetOperationKind::Remove,
+                    }); }
+                    render.get_resource_or_init::<AppliedAssetRevisions>().record::<T>(revision);
+                }
+                previous = None;
+                cursor = None;
                 return;
             };
-            let current_revision = (game.id(), render.id(), revision(&value));
-            if value.last_changed().is_newer_than(last_run, this_run)
-                || previous_revision != Some(current_revision)
-                || !render.contains_resource::<T>() {
-                if let Some(mut destination) = render.get_resource_mut::<T>() {
-                    update(&value, &mut destination);
-                } else {
-                    render.insert_resource(value.clone());
-                }
-                stats.resources_copied += 1;
-                previous_revision = Some(current_revision);
-                // Staged acknowledgment of this library revision (asset_ack).
-                render.get_resource_or_init::<country_core::render::asset_ack::AppliedAssetRevisions>()
-                    .0.push((std::any::TypeId::of::<T>(), current_revision.2));
-            }
+            let before = (worlds.0, worlds.1, value.asset_revision());
+            let tick_changed = value.last_changed().is_newer_than(last_run, game.read_change_tick());
+            if previous == Some(before) && render.contains_resource::<T>() && !tick_changed { return; }
+            // Reserve the hand-over sequence before capturing its checkpoint:
+            // replacement/reinsertion also gets a newer operation id, while
+            // concurrent writes after that checkpoint can never be ACKed early.
+            let publication = country_core::render::asset_ack::next_asset_publication();
+            let checkpoint = value.asset_cursor();
+            let publication = publication.max(checkpoint.revision());
+            let current = (worlds.0, worlds.1, checkpoint.revision());
+            let same_worlds = previous.is_some_and(|(source, destination, _)| (source, destination) == worlds);
+            let keys = if same_worlds {
+                value.asset_changes(cursor).map(|(_, keys)| keys)
+            } else { None };
+            let keys = keys.unwrap_or_else(|| {
+                let mut keys = value.asset_keys();
+                if let Some(old) = render.get_resource::<T>() { keys.extend(old.asset_keys()); }
+                keys
+            });
+            let operations = keys.into_iter().collect::<HashSet<_>>().into_iter().map(|entry| {
+                let kind = if value.asset_contains(&entry) { AssetOperationKind::Upsert } else { AssetOperationKind::Remove };
+                AssetOperation { library: std::any::TypeId::of::<T>(), entry, revision: publication, kind }
+            }).collect::<Vec<_>>();
+            if let Some(mut destination) = render.get_resource_mut::<T>() {
+                value.update_asset_snapshot(&mut destination);
+            } else { render.insert_resource(value.clone()); }
+            let mut applied = render.get_resource_or_init::<AppliedAssetOperations>();
+            for operation in operations { applied.record(operation); }
+            render.get_resource_or_init::<AppliedAssetRevisions>().record::<T>(publication);
+            cursor = Some(checkpoint);
+            previous = Some(current);
+            stats.resources_copied += 1;
         })
     }
-    /// Immutable draw identities publish exact entity mutations through their
-    /// component hooks. Only the initial copy or a bounded-journal gap scans
+    /// Component hooks and opted-in mutable producers publish entity changes.
+    /// Only the initial copy or a bounded-journal gap scans
     /// the component table; ordinary frames visit the changed entities only.
     pub fn mirror_journaled<C: country_core::render::extract::JournaledComponent>(&mut self) -> &mut Self {
         use country_core::render::extract::ComponentJournal;
@@ -544,91 +602,6 @@ impl ExtractSet {
                     }
                 }
                 cursor = Some(checkpoint);
-            }
-            insert_mirrored(render, &mut pending);
-        })
-    }
-    /// Mirror component `C` onto the same entity ids in the render world:
-    /// changed or new values are cloned, removed ones are removed.
-    pub fn mirror<C: Component + Clone>(&mut self) -> &mut Self {
-        let mut query: Option<QueryState<(Entity, &'static C)>> = None;
-        let mut changed_query: Option<QueryState<(Entity, &'static C), bevy_ecs::query::Changed<C>>> = None;
-        let mut source_world = None;
-        let mut destination_world = None;
-        let mut seen: HashSet<Entity> = HashSet::new();
-        let mut removals = bevy_ecs::event::EventCursor::<
-            bevy_ecs::removal_detection::RemovedComponentEntity>::default();
-        let mut pending: Vec<(Entity, C)> = Vec::new();
-        self.add_measured(move |game, render, last_run, stats| {
-            let new_source = source_world != Some(game.id());
-            let new_destination = destination_world != Some(render.id());
-            let full_copy = new_source || new_destination;
-            if new_source {
-                if !new_destination {
-                    for &entity in &seen { remove_mirrored::<C>(render, entity, stats); }
-                }
-                query = None;
-                changed_query = None;
-                removals = Default::default();
-                source_world = Some(game.id());
-            }
-            if full_copy { seen.clear(); }
-            destination_world = Some(render.id());
-            let this_run = game.read_change_tick();
-            let query = query.get_or_insert_with(|| game.query::<(Entity, &C)>());
-            let changed_query = changed_query.get_or_insert_with(||
-                game.query_filtered::<(Entity, &C), bevy_ecs::query::Changed<C>>());
-            let component = game.components().component_id::<C>().expect("query registered component");
-            if let Some(events) = game.removed_components().get(component) {
-                if removals.missed_events(events) != 0 {
-                    // App updates normally extract once before the next event
-                    // rotation. Manual callers may skip extracts: reconcile
-                    // when Bevy reports a gap instead of retaining stale rows.
-                    stats.component_removal_rescans += 1;
-                    seen.retain(|&entity| {
-                        if game.get::<C>(entity).is_some() { return true; }
-                        remove_mirrored::<C>(render, entity, stats);
-                        false
-                    });
-                }
-                for event in removals.read(events) {
-                    stats.component_removal_events += 1;
-                    let entity: Entity = event.clone().into();
-                    // A removal followed by reinsertion is the new live value.
-                    if game.get::<C>(entity).is_none() && seen.remove(&entity) {
-                        remove_mirrored::<C>(render, entity, stats);
-                    }
-                }
-            }
-            // Mutable producers (Transform, animation) write through `&mut C`,
-            // which no hook observes: the change tick is the only complete
-            // change record until every writer publishes a journal. The
-            // filtered query compares ticks inside the fetch and constructs no
-            // per-row Ref; only changed rows reach this loop. Static rows do
-            // not touch the seen set or a second per-frame removal diff.
-            query.update_archetypes(game);
-            changed_query.update_archetypes(game);
-            stats.component_rows_scanned += query.matched_archetypes()
-                .map(|id| game.archetypes()[id].len() as u64).sum::<u64>();
-            if full_copy {
-                for (entity, value) in query.iter_manual(game) {
-                    seen.insert(entity);
-                    pending.push((entity, value.clone()));
-                    stats.components_copied += 1;
-                }
-            } else {
-                // SAFETY: read-only query state created from this same `game`
-                // World (rebuilt above whenever the source World changes);
-                // `game` is exclusively borrowed, so no conflicting access exists.
-                let changed = unsafe {
-                    changed_query.query_unchecked_manual_with_ticks(
-                        game.as_unsafe_world_cell_readonly(), last_run, this_run)
-                };
-                for (entity, value) in changed.iter() {
-                    seen.insert(entity);
-                    pending.push((entity, value.clone()));
-                    stats.components_copied += 1;
-                }
             }
             insert_mirrored(render, &mut pending);
         })
@@ -703,6 +676,10 @@ impl ExtractSet {
         })
     }
     pub fn run(&mut self, game: &mut World, render: &mut World) {
+        if render.get_resource::<ExtractedAt>().is_some_and(|at| at.source != game.id()) {
+            render.remove_resource::<country_core::render::asset_ack::AppliedAssetRevisions>();
+            render.remove_resource::<country_core::render::asset_ack::AppliedAssetOperations>();
+        }
         // The first extract copies everything.
         let last_run = self.last_run.unwrap_or(Tick::new(0));
         let this_run = game.change_tick();
@@ -809,11 +786,6 @@ impl RenderExchange {
 }
 
 impl country_core::render::extract::RenderExtract for RenderExchange {
-    fn component<C: Component + Clone>(&mut self) {
-        if self.first::<C>(0) {
-            self.extract.mirror::<C>();
-        }
-    }
     fn component_journaled<C: country_core::render::extract::JournaledComponent>(&mut self) {
         if self.first::<C>(0) { self.extract.mirror_journaled::<C>(); }
     }
@@ -830,10 +802,8 @@ impl country_core::render::extract::RenderExtract for RenderExchange {
             self.extract.copy_changed_with_revision::<R>(revision);
         }
     }
-    fn resource_incremental<R: Resource + Clone>(
-        &mut self, revision: fn(&R) -> u64, update: fn(&R, &mut R),
-    ) {
-        if self.first::<R>(1) { self.extract.copy_incremental::<R>(revision, update); }
+    fn asset_library<R: country_core::render::asset_ack::AssetSnapshot>(&mut self) {
+        if self.first::<R>(1) { self.extract.copy_asset_library::<R>(); }
     }
     fn events<E: Event + Clone>(&mut self) {
         if self.first::<E>(2) {
@@ -914,9 +884,9 @@ impl country_core::render::extract::RenderExtract for RenderExchange {
                 if current.world != source.world || (guarded && current != source) {
                     return;
                 }
-                if let Some(mut current) = game.get_resource_mut::<R>()
+                if let Some(current) = game.get_resource_mut::<R>()
                 {
-                    apply(&mut current);
+                    apply(current);
                 }
             }));
         }));
@@ -1070,7 +1040,12 @@ mod tests {
         assert!(worker.update_allowed());
         assert!(woke.load(Ordering::Acquire));
         let (wrote, received) = std::sync::mpsc::channel();
-        let writer = std::thread::spawn(move || { drop(buffers.write()); drop(textures.write()); wrote.send(()).unwrap(); });
+        let writer = std::thread::spawn(move || {
+            let first = wrote.clone();
+            buffers.write_or_defer(0, move || { first.send(()).unwrap(); Ok(()) }).unwrap();
+            textures.write_or_defer(0, move || { wrote.send(()).unwrap(); Ok(()) }).unwrap();
+        });
+        received.recv_timeout(std::time::Duration::from_secs(5)).unwrap();
         received.recv_timeout(std::time::Duration::from_secs(5)).unwrap();
         present.send(()).unwrap();
         worker.reclaim();
@@ -1186,52 +1161,141 @@ mod tests {
     }
 
     #[test]
-    fn incremental_library_revisions_apply_once_and_are_acknowledged_per_hand_over() {
-        use country_core::render::asset_ack::AppliedAssetRevisions;
-        #[derive(Resource, Clone, Default)]
-        struct Library { revision: u64, applied: u32 }
+    fn asset_snapshot_publications_are_idempotent_and_remain_eligible_after_failure() {
+        use country_core::{asset_libraries::mesh_library::{AssetMeshLibrary, MeshAsset},
+            render::{mesh::Mesh, asset_ack::AppliedAssetRevisions}};
         let (mut game, mut render) = (World::new(), World::new());
-        game.insert_resource(Library { revision: 1, applied: 0 });
+        game.init_resource::<AssetMeshLibrary>();
         let mut extract = ExtractSet::default();
-        extract.copy_incremental::<Library>(|library| library.revision, |source, destination| {
-            destination.revision = source.revision;
-            destination.applied += 1;
-        });
+        extract.copy_asset_library::<AssetMeshLibrary>();
         extract.run(&mut game, &mut render);
-        assert_eq!(render.remove_resource::<AppliedAssetRevisions>().unwrap().0,
-            [(std::any::TypeId::of::<Library>(), 1)]);
-        // The same revision is never re-applied (idempotent hand-over).
+        let first = render.resource::<AppliedAssetRevisions>().0.clone();
+        assert_eq!(first.len(), 1);
         extract.run(&mut game, &mut render);
-        assert!(render.get_resource::<AppliedAssetRevisions>().is_none());
-        game.resource_mut::<Library>().revision = 2;
+        assert_eq!(extract.stats().resources_copied, 0);
+        assert_eq!(render.resource::<AppliedAssetRevisions>().0, first,
+            "unchanged versions remain eligible after a failed frame");
+        let handle = game.resource::<AssetMeshLibrary>().add(MeshAsset::new(Mesh::new("new"), None));
         extract.run(&mut game, &mut render);
-        assert_eq!(render.resource::<Library>().applied, 1, "an existing copy is updated, not recreated");
-        assert_eq!(render.resource::<AppliedAssetRevisions>().0, [(std::any::TypeId::of::<Library>(), 2)]);
+        assert_eq!(extract.stats().resources_copied, 1);
+        assert!(render.resource::<AppliedAssetRevisions>().0[0].1 > first[0].1);
+        assert!(render.resource::<AssetMeshLibrary>().get(handle).is_some());
+        game.remove_resource::<AssetMeshLibrary>();
+        extract.run(&mut game, &mut render);
+        assert!(!render.contains_resource::<AssetMeshLibrary>());
+        assert_eq!(render.resource::<AppliedAssetRevisions>().0.len(), 1,
+            "resource removal must also retain its publication until submitted");
     }
 
     #[test]
-    fn extraction_counts_distinguish_static_scans_from_copies() {
+    fn asset_entry_changes_keep_deletions_through_journal_gaps_and_resource_replacement() {
+        use country_core::{asset_libraries::mesh_library::{AssetMeshLibrary, MeshAsset},
+            render::{mesh::Mesh, asset_ack::{AppliedAssetOperations, AssetEntryKey, AssetOperationKind}}};
+        let (mut game, mut render) = (World::new(), World::new());
+        game.init_resource::<AssetMeshLibrary>();
+        let mut extract = ExtractSet::default();
+        extract.copy_asset_library::<AssetMeshLibrary>();
+        extract.run(&mut game, &mut render);
+        let removed = game.resource::<AssetMeshLibrary>().add(MeshAsset::new(Mesh::new("removed"), Some("removed".into())));
+        let kept = game.resource::<AssetMeshLibrary>().add(MeshAsset::new(Mesh::new("kept"), Some("kept".into())));
+        extract.run(&mut game, &mut render);
+        let first = render.resource_mut::<AppliedAssetOperations>().feedback(true);
+        assert_eq!(first.len(), 4);
+        assert!(first.iter().all(|operation| operation.kind == AssetOperationKind::Upsert));
+        extract.run(&mut game, &mut render);
+        assert!(render.resource_mut::<AppliedAssetOperations>().feedback(false).is_empty());
+        game.resource_mut::<AssetMeshLibrary>().remove(removed);
+        for _ in 0..4100 { let _ = game.resource_mut::<AssetMeshLibrary>().get_mut(kept); }
+        extract.run(&mut game, &mut render);
+        let retry = render.resource_mut::<AppliedAssetOperations>().feedback(false);
+        assert!(retry.iter().any(|operation| operation.entry == AssetEntryKey::Id(removed.id().raw())
+            && operation.kind == AssetOperationKind::Remove));
+        assert!(retry.iter().any(|operation| operation.entry == AssetEntryKey::Name("removed".into())
+            && operation.kind == AssetOperationKind::Remove));
+        // No new producer write between an unsuccessful frame and its retry.
+        extract.run(&mut game, &mut render);
+        assert_eq!(render.resource_mut::<AppliedAssetOperations>().feedback(true).len(), retry.len());
+        let same_owner = game.remove_resource::<AssetMeshLibrary>().unwrap();
+        extract.run(&mut game, &mut render);
+        let removal = render.resource_mut::<AppliedAssetOperations>().feedback(true);
+        assert!(removal.iter().all(|operation| operation.kind == AssetOperationKind::Remove));
+        let removed_at = removal.iter().map(|operation| operation.revision).max().unwrap();
+        game.insert_resource(same_owner);
+        extract.run(&mut game, &mut render);
+        let reinserted = render.resource_mut::<AppliedAssetOperations>().feedback(true);
+        assert!(reinserted.iter().all(|operation| operation.kind == AssetOperationKind::Upsert && operation.revision > removed_at));
+        game.insert_resource(AssetMeshLibrary::new());
+        extract.run(&mut game, &mut render);
+        let retired = render.resource_mut::<AppliedAssetOperations>().feedback(false);
+        assert!(retired.iter().all(|operation| operation.kind == AssetOperationKind::Remove));
+        assert!(retired.iter().any(|operation| operation.entry == AssetEntryKey::Id(kept.id().raw())));
+        let mut incoming = World::new();
+        incoming.init_resource::<AssetMeshLibrary>();
+        extract.run(&mut incoming, &mut render);
+        assert!(render.resource_mut::<AppliedAssetOperations>().feedback(false).is_empty(), "old World operations crossed Apps");
+    }
+
+    #[test]
+    fn placement_logged_clear_and_reload_publish_removals_and_new_owners() {
+        use country_core::{asset_libraries::placement_data_library::AssetPlacementDataLibrary,
+            render::{test_device::TestDevice, asset_ack::{AppliedAssetOperations, AssetEntryKey, AssetOperationKind}}};
+        let dir = tempfile::tempdir().unwrap();
+        let first = dir.path().join("first.json");
+        let second = dir.path().join("second.json");
+        std::fs::write(&first, "[]").unwrap(); std::fs::write(&second, "[]").unwrap();
+        let (mut game, mut render) = (World::new(), World::new());
+        let mut library = AssetPlacementDataLibrary::new();
+        let (_, old) = library.load(&TestDevice(1), first);
+        game.insert_resource(library);
+        let mut extract = ExtractSet::default();
+        extract.copy_asset_library::<AssetPlacementDataLibrary>();
+        extract.run(&mut game, &mut render);
+        render.resource_mut::<AppliedAssetOperations>().feedback(true);
+        game.resource_mut::<AssetPlacementDataLibrary>().clear();
+        extract.run(&mut game, &mut render);
+        assert!(render.resource::<AssetPlacementDataLibrary>().paths().is_empty());
+        assert!(render.resource::<AssetPlacementDataLibrary>().buffers().is_empty());
+        let removed = render.resource_mut::<AppliedAssetOperations>().feedback(true);
+        assert_eq!(removed.len(), 2);
+        assert!(removed.iter().all(|operation| operation.kind == AssetOperationKind::Remove));
+        assert!(removed.iter().any(|operation| operation.entry == AssetEntryKey::Id(old.id().raw())));
+        let mut library = game.resource_mut::<AssetPlacementDataLibrary>();
+        let (_, new) = library.load(&TestDevice(1), second);
+        extract.run(&mut game, &mut render);
+        let snapshot = render.resource::<AssetPlacementDataLibrary>();
+        assert!(!snapshot.buffers().contains_key(&old) && snapshot.buffers().contains_key(&new));
+        let operations = render.resource_mut::<AppliedAssetOperations>().feedback(true);
+        assert!(operations.iter().any(|operation| operation.entry == AssetEntryKey::Id(new.id().raw())
+            && operation.kind == AssetOperationKind::Upsert));
+    }
+
+    #[test]
+    fn extraction_counts_visit_only_journaled_writes_after_initial_copy() {
         #[derive(Component, Clone)]
+        #[component(on_insert = country_core::render::extract::record_component_change::<Position>,
+            on_remove = country_core::render::extract::record_component_change::<Position>)]
         struct Position;
+        impl country_core::render::extract::JournaledComponent for Position {}
         let (mut game, mut render) = (World::new(), World::new());
         game.insert_resource(Frame(1));
         let entity = game.spawn(Position).id();
         let mut extract = ExtractSet::default();
-        extract.copy_changed::<Frame>().mirror::<Position>();
+        extract.copy_changed::<Frame>().mirror_journaled::<Position>();
         extract.run(&mut game, &mut render);
         assert_eq!(extract.stats().resources_copied, 1);
         assert_eq!(extract.stats().components_copied, 1);
         extract.run(&mut game, &mut render);
-        assert_eq!(extract.stats().component_rows_scanned, 1);
+        assert_eq!(extract.stats().component_rows_scanned, 0);
         assert_eq!(extract.stats().resources_copied, 0);
         assert_eq!(extract.stats().components_copied, 0);
-        // A mutable write through `&mut C` reaches the changed-row filter.
+        // Structural and mutable producers share the same journal.
         let other = game.spawn(Position).id();
         extract.run(&mut game, &mut render);
         assert_eq!(extract.stats().components_copied, 1);
-        bevy_ecs::change_detection::DetectChangesMut::set_changed(&mut game.get_mut::<Position>(entity).unwrap());
+        use country_core::render::extract::WorldComponentWrite;
+        bevy_ecs::change_detection::DetectChangesMut::set_changed(&mut game.component_mut::<Position>(entity).unwrap());
         extract.run(&mut game, &mut render);
-        assert_eq!((extract.stats().components_copied, extract.stats().component_rows_scanned), (1, 2));
+        assert_eq!((extract.stats().components_copied, extract.stats().component_rows_scanned), (1, 0));
         game.despawn(other);
         extract.run(&mut game, &mut render);
         game.despawn(entity);
@@ -1243,18 +1307,22 @@ mod tests {
     #[test]
     fn component_removal_journal_handles_reinsertion_gaps_and_empty_shells() {
         #[derive(Component, Clone, PartialEq, Debug)]
+        #[component(on_insert = country_core::render::extract::record_component_change::<Position>,
+            on_remove = country_core::render::extract::record_component_change::<Position>)]
         struct Position(u32);
+        impl country_core::render::extract::JournaledComponent for Position {}
         #[derive(Component)]
         struct SimulationOnly;
         let (mut game, mut render) = (World::new(), World::new());
         let entity = game.spawn((Position(1), SimulationOnly)).id();
         let mut extract = ExtractSet::default();
-        extract.mirror::<Position>();
+        extract.mirror_journaled::<Position>();
         extract.run(&mut game, &mut render);
         game.entity_mut(entity).remove::<Position>().insert(Position(2));
         extract.run(&mut game, &mut render);
         assert_eq!(render.get::<Position>(entity), Some(&Position(2)));
-        assert_eq!(extract.stats().component_removal_events, 1);
+        assert_eq!(extract.stats().components_copied, 1);
+        assert_eq!(extract.stats().component_rows_scanned, 0);
         game.entity_mut(entity).remove::<Position>();
         extract.run(&mut game, &mut render);
         assert!(game.get_entity(entity).is_ok());
@@ -1263,10 +1331,44 @@ mod tests {
         extract.run(&mut game, &mut render);
         assert_eq!(render.get::<Position>(entity), Some(&Position(3)));
         game.entity_mut(entity).remove::<Position>();
-        for _ in 0..3 { game.clear_trackers(); }
+        for _ in 0..4100 { game.entity_mut(entity).insert(Position(3)).remove::<Position>(); }
         extract.run(&mut game, &mut render);
         assert_eq!(extract.stats().component_removal_rescans, 1);
         assert!(render.get_entity(entity).is_err(), "a dropped journal entry must trigger reconciliation");
+    }
+
+    #[test]
+    fn mutable_transform_producers_extract_only_journaled_entities_and_rebuild_after_gaps() {
+        use country_core::{utils::components::transform::Transform,
+            render::extract::{ComponentWrite, WorldComponentWrite}};
+        let (mut game, mut render) = (World::new(), World::new());
+        let entities = (0..100).map(|_| game.spawn(Transform::identity()).id()).collect::<Vec<_>>();
+        let mut extract = ExtractSet::default();
+        extract.mirror_journaled::<Transform>();
+        extract.run(&mut game, &mut render);
+        assert_eq!(extract.stats().component_rows_scanned, 100);
+        extract.run(&mut game, &mut render);
+        assert_eq!((extract.stats().component_rows_scanned, extract.stats().components_copied), (0, 0));
+        game.query::<ComponentWrite<Transform>>().get_mut(&mut game, entities[1]).unwrap().translation.x = 4.;
+        game.component_mut::<Transform>(entities[2]).unwrap().translation.y = 7.;
+        extract.run(&mut game, &mut render);
+        assert_eq!((extract.stats().component_rows_scanned, extract.stats().components_copied), (0, 2));
+        assert_eq!(render.get::<Transform>(entities[1]).unwrap().translation.x, 4.);
+        assert_eq!(render.get::<Transform>(entities[2]).unwrap().translation.y, 7.);
+        game.entity_mut(entities[1]).remove::<Transform>();
+        game.entity_mut(entities[2]).remove::<Transform>().insert(Transform::from_scale(glam::Vec3::splat(2.)));
+        extract.run(&mut game, &mut render);
+        assert!(render.get_entity(entities[1]).is_err());
+        assert_eq!(render.get::<Transform>(entities[2]).unwrap().scale.x, 2.);
+        for n in 0..4100 { game.component_mut::<Transform>(entities[2]).unwrap().translation.x = n as f32; }
+        extract.run(&mut game, &mut render);
+        assert_eq!(extract.stats().component_rows_scanned, 99);
+        assert_eq!(render.get::<Transform>(entities[2]).unwrap().translation.x, 4099.);
+        let mut incoming = World::new();
+        let new_entity = incoming.spawn(Transform::from_scale(glam::Vec3::splat(3.))).id();
+        extract.run(&mut incoming, &mut render);
+        assert_eq!(render.get::<Transform>(new_entity).unwrap().scale.x, 3.);
+        assert!(render.get::<Transform>(entities[2]).is_none());
     }
 
     #[test]
@@ -1284,10 +1386,13 @@ mod tests {
     #[test]
     fn component_batches_replace_reused_entity_generations_without_leaving_old_rows() {
         #[derive(Component, Clone, PartialEq, Debug)]
+        #[component(on_insert = country_core::render::extract::record_component_change::<Position>,
+            on_remove = country_core::render::extract::record_component_change::<Position>)]
         struct Position(u32);
+        impl country_core::render::extract::JournaledComponent for Position {}
         let (mut game, mut render) = (World::new(), World::new());
         let mut extract = ExtractSet::default();
-        extract.mirror::<Position>();
+        extract.mirror_journaled::<Position>();
         let old = game.spawn(Position(1)).id();
         extract.run(&mut game, &mut render);
         game.despawn(old);
@@ -1302,13 +1407,16 @@ mod tests {
     #[test]
     fn retargeting_an_unchanged_source_populates_the_new_render_world() {
         #[derive(Component, Clone, PartialEq, Debug)]
+        #[component(on_insert = country_core::render::extract::record_component_change::<Position>,
+            on_remove = country_core::render::extract::record_component_change::<Position>)]
         struct Position(u32);
+        impl country_core::render::extract::JournaledComponent for Position {}
         let mut game = World::new();
         let mut first = World::new();
         let mut second = World::new();
         let entity = game.spawn(Position(5)).id();
         let mut extract = ExtractSet::default();
-        extract.mirror::<Position>();
+        extract.mirror_journaled::<Position>();
         extract.run(&mut game, &mut first);
         extract.run(&mut game, &mut second);
         assert_eq!(second.get::<Position>(entity), Some(&Position(5)));
@@ -1318,14 +1426,17 @@ mod tests {
     #[test]
     fn mirrored_queries_rebind_when_the_source_world_changes() {
         #[derive(Component, Clone, PartialEq, Debug)]
+        #[component(on_insert = country_core::render::extract::record_component_change::<Position>,
+            on_remove = country_core::render::extract::record_component_change::<Position>)]
         struct Position(u32);
+        impl country_core::render::extract::JournaledComponent for Position {}
         let mut first = World::new();
         let mut second = World::new();
         let mut render = World::new();
         let one = first.spawn(Position(1)).id();
         let two = second.spawn(Position(2)).id();
         let mut extract = ExtractSet::default();
-        extract.mirror::<Position>();
+        extract.mirror_journaled::<Position>();
         extract.run(&mut first, &mut render);
         assert_eq!(render.get::<Position>(one), Some(&Position(1)));
         extract.run(&mut second, &mut render);

@@ -4,6 +4,7 @@ pub mod curve_slice;
 pub mod curve_u;
 pub mod curve_u_circular;
 mod resample;
+use crate::scalar::clamp01;
 pub use curve_u::CurveU;
 use glam::{Vec2, Vec3};
 use std::{
@@ -229,10 +230,6 @@ impl CurveInternalCoord {
         }
     }
 }
-fn clamp01(value: f32) -> f32 {
-    let lo = if 0.0 <= value { value } else { 0.0 };
-    if lo <= 1.0 { lo } else { 1.0 }
-}
 impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     /// Takes an authoritative serialized curve, including its cached parameters.
     /// No recomputation or geometry policy is applied by this ownership constructor.
@@ -320,28 +317,7 @@ impl<T: CurvePoint, S: CurveMetric<T>> Curve<T, S> {
     }
     /// Clamp a finite coordinate and select the segment after repeated knots.
     pub fn get_coord_at_u(&self, u: f32) -> CurveInternalCoord {
-        assert!(u.is_finite());
-        if u >= 1.0 {
-            return CurveInternalCoord {
-                segment: self.points.len() - 2,
-                t: 1.0,
-            };
-        }
-        if u <= 0.0 {
-            return CurveInternalCoord { segment: 0, t: 0.0 };
-        }
-        // Keep the original right bias at repeated cumulative coordinates;
-        // searching a sorted slice is provided by std, not a game algorithm.
-        let next = self.points_u.partition_point(|&value| value <= u);
-        assert!(next > 0 && next < self.points_u.len());
-        let segment = next - 1;
-        let a = self.points_u[segment];
-        let b = self.points_u[next];
-        assert!(a != b);
-        CurveInternalCoord {
-            segment,
-            t: clamp01((u - a) / (b - a)),
-        }
+        coord_at_cached_u(self.points.len(), &self.points_u, u)
     }
     pub fn coord_at_u(&self, u: f32) -> (usize, f32) {
         let c = self.get_coord_at_u(u);
@@ -620,6 +596,33 @@ pub fn approx_curve_coord<P>(
     best
 }
 
+/// 借用权威曲线的参数缓存，保持原 get_coord_at_u 的右偏与边界行为。
+/// 上层切片不必为复用曲线算法逐帧克隆整条点列/参数列。
+pub fn coord_at_cached_u(point_count: usize, points_u: &[f32], u: f32) -> CurveInternalCoord {
+    assert!(u.is_finite());
+    if u >= 1.0 {
+        return CurveInternalCoord {
+            segment: point_count - 2,
+            t: 1.0,
+        };
+    }
+    if u <= 0.0 {
+        return CurveInternalCoord { segment: 0, t: 0.0 };
+    }
+    // Keep the original right bias at repeated cumulative coordinates;
+    // searching a sorted slice is provided by std, not a game algorithm.
+    let next = points_u.partition_point(|&value| value <= u);
+    assert!(next > 0 && next < points_u.len());
+    let segment = next - 1;
+    let a = points_u[segment];
+    let b = points_u[next];
+    assert!(a != b);
+    CurveInternalCoord {
+        segment,
+        t: clamp01((u - a) / (b - a)),
+    }
+}
+
 /// Native195B approximate-U wrapper over the same actual cached coordinate data.
 pub fn approx_curve_u<P>(
     points: &[P],
@@ -665,7 +668,12 @@ mod borrowed_nearest_original_tests {
 
     fn fixture_curve(points: Vec<Vec2>, points_u: Vec<f32>) -> Curve2 {
         // Explicit leaf fixture, not native constructor or loaded-world evidence.
-        Curve { points, points_u, length: 1.0, semantic: PhantomData }
+        Curve {
+            points,
+            points_u,
+            length: 1.0,
+            semantic: PhantomData,
+        }
     }
 
     #[test]
@@ -675,9 +683,15 @@ mod borrowed_nearest_original_tests {
         let query = Vec2::new(1e18, 0.0);
         let curve = fixture_curve(points.map(Vec2::from_array).to_vec(), cached_u.to_vec());
         let expected = CurveInternalCoord { segment: 0, t: 0.0 };
-        assert_eq!(approx_curve_coord(&points, query, |p| Vec2::from_array(*p)), expected);
+        assert_eq!(
+            approx_curve_coord(&points, query, |p| Vec2::from_array(*p)),
+            expected
+        );
         assert_eq!(curve.get_approx_coord_from_pos(query), expected);
-        assert_eq!(approx_curve_u(&points, &cached_u, query, |p| Vec2::from_array(*p)), 0.0);
+        assert_eq!(
+            approx_curve_u(&points, &cached_u, query, |p| Vec2::from_array(*p)),
+            0.0
+        );
         assert_eq!(curve.get_approx_u_from_pos(query), 0.0);
     }
 
@@ -694,27 +708,47 @@ mod borrowed_nearest_original_tests {
             (Vec2::new(1.0, 1.0), 0, 0.5, 0.1),
         ] {
             let expected = CurveInternalCoord { segment, t };
-            assert_eq!(approx_curve_coord(&points, query, |p| Vec2::from_array(*p)), expected);
+            assert_eq!(
+                approx_curve_coord(&points, query, |p| Vec2::from_array(*p)),
+                expected
+            );
             assert_eq!(curve.get_approx_coord_from_pos(query), expected);
-            assert_eq!(approx_curve_u(&points, &cached_u, query, |p| Vec2::from_array(*p)), u);
+            assert_eq!(
+                approx_curve_u(&points, &cached_u, query, |p| Vec2::from_array(*p)),
+                u
+            );
             assert_eq!(curve.get_approx_u_from_pos(query), u);
         }
         let repeated = [[0.0, 0.0], [0.0, 0.0], [2.0, 0.0]];
-        assert_eq!(approx_curve_coord(&repeated, Vec2::X, |p| Vec2::from_array(*p)),
-            CurveInternalCoord { segment: 1, t: 0.5 });
+        assert_eq!(
+            approx_curve_coord(&repeated, Vec2::X, |p| Vec2::from_array(*p)),
+            CurveInternalCoord { segment: 1, t: 0.5 }
+        );
     }
 
     #[test]
     fn actual_vec3_family_projects_xz_and_retains_its_cached_u() {
-        let points = [Vec3::new(0.0, 100.0, 0.0), Vec3::new(2.0, -100.0, 0.0), Vec3::new(2.0, 500.0, 2.0)];
+        let points = [
+            Vec3::new(0.0, 100.0, 0.0),
+            Vec3::new(2.0, -100.0, 0.0),
+            Vec3::new(2.0, 500.0, 2.0),
+        ];
         let curve: Curve3 = Curve {
-            points: points.to_vec(), points_u: vec![0.0, 0.2, 1.0],
-            length: 1.0, semantic: PhantomData,
+            points: points.to_vec(),
+            points_u: vec![0.0, 0.2, 1.0],
+            length: 1.0,
+            semantic: PhantomData,
         };
         let query = Vec2::new(2.0, 1.0);
-        assert_eq!(curve.get_approx_coord_from_pos(query), CurveInternalCoord { segment: 1, t: 0.5 });
+        assert_eq!(
+            curve.get_approx_coord_from_pos(query),
+            CurveInternalCoord { segment: 1, t: 0.5 }
+        );
         assert_eq!(curve.get_approx_u_from_pos(query), 0.6);
-        assert_eq!(approx_curve_u(&points, &curve.points_u, query, |p| Vec2::new(p.x, p.z)), 0.6);
+        assert_eq!(
+            approx_curve_u(&points, &curve.points_u, query, |p| Vec2::new(p.x, p.z)),
+            0.6
+        );
     }
 
     #[test]
@@ -724,15 +758,29 @@ mod borrowed_nearest_original_tests {
         for short in [&points[..0], &points[..1]] {
             assert_eq!(approx_curve_coord(short, Vec2::ZERO, |p| *p), zero);
             let calls = std::cell::Cell::new(0);
-            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                approx_curve_u(short, &[], Vec2::ZERO, |p| { calls.set(calls.get() + 1); *p })
-            })).is_err());
+            assert!(
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    approx_curve_u(short, &[], Vec2::ZERO, |p| {
+                        calls.set(calls.get() + 1);
+                        *p
+                    })
+                }))
+                .is_err()
+            );
             assert_eq!(calls.get(), 0);
         }
-        for cached_u in [&[][..], &[0.0][..], &[f32::NAN, 1.0][..], &[f32::INFINITY, 1.0][..]] {
-            assert!(std::panic::catch_unwind(|| {
-                approx_curve_u(&points, cached_u, Vec2::new(0.5, 0.0), |p| *p)
-            }).is_err());
+        for cached_u in [
+            &[][..],
+            &[0.0][..],
+            &[f32::NAN, 1.0][..],
+            &[f32::INFINITY, 1.0][..],
+        ] {
+            assert!(
+                std::panic::catch_unwind(|| {
+                    approx_curve_u(&points, cached_u, Vec2::new(0.5, 0.0), |p| *p)
+                })
+                .is_err()
+            );
         }
     }
 }
@@ -868,7 +916,11 @@ mod native_constructor_tests {
     }
     #[test]
     fn original_xz_parameters_preserve_nonfinite_y_but_xyz_output_still_fails() {
-        for y in [f32::from_bits(0x7fc1_2345), f32::INFINITY, f32::NEG_INFINITY] {
+        for y in [
+            f32::from_bits(0x7fc1_2345),
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+        ] {
             let points = vec![Vec3::new(0.0, y, 0.0), Vec3::new(3.0, y, 4.0)];
             let old_xz = Curve3XZ::try_new_from_points(points.clone(), true).unwrap();
             assert_eq!(old_xz.length, 5.0);
@@ -938,5 +990,4 @@ mod native_constructor_tests {
             ));
         }
     }
-
 }

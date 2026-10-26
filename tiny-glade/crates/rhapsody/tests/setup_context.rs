@@ -211,7 +211,11 @@ fn consecutive_setup_calls_reuse_one_pool_without_any_caller_holding_the_context
     assert_eq!(stats.commands_recycled, 11, "{stats:?}");
     device.try_collect_all_completed().unwrap();
     // The parked pools hold no device reference: no Arc cycle.
-    assert_eq!(Arc::strong_count(&device), buffer_owners, "setup cache owns no device reference");
+    assert_eq!(
+        Arc::strong_count(&device),
+        buffer_owners,
+        "setup cache owns no device reference"
+    );
     drop(buffer);
     assert_eq!(Arc::strong_count(&device), 1);
 }

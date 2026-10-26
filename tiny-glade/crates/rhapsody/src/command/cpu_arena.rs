@@ -4,10 +4,10 @@
 use crate::{
     Error, Result,
     device::BudgetCategory,
+    collections::cpu_pool::{CpuPool, CpuPoolLease, CpuPoolLimits, CpuPoolValue},
     raw::allocator::{AllocatorStats, CpuMemoryReservation},
 };
 use bumpalo::Bump;
-use parking_lot::Mutex;
 use std::{cell::Cell, sync::Arc};
 
 #[derive(Clone, Copy, Debug)]
@@ -57,6 +57,7 @@ pub struct CpuArenaStats {
     pub peak_checked_out: usize,
     /// Actual backing allocations, not the number of bump allocation requests.
     pub backing_allocations: u64,
+    /// Requests from returned leases; active workers keep local non-atomic counters.
     pub bump_requests: u64,
     pub capacity_stalls: u64,
     pub peak_used_bytes: usize,
@@ -110,124 +111,71 @@ impl Arena {
         })
     }
 }
-struct State {
-    idle: Vec<Arena>,
-    _idle_memory: CpuMemoryReservation,
-    stats: CpuArenaStats,
+#[derive(Clone, Copy, Default)]
+struct ArenaStatistics {
+    requests: u64,
+    failures: u64,
+    peak_used: usize,
 }
-struct Shared {
-    config: CpuArenaConfig,
-    budget: Arc<AllocatorStats>,
-    state: Mutex<State>,
+impl CpuPoolValue for Arena {
+    type Statistics = ArenaStatistics;
+    fn capacity_bytes(&self) -> usize { self.bytes }
+    fn reset(&mut self) {
+        // All CPU borrows have ended; this storage never backs GPU memory.
+        self.bump.reset();
+    }
+    fn record_return(&mut self, stats: &mut ArenaStatistics) {
+        stats.requests = stats.requests.saturating_add(self.requests.replace(0));
+        stats.failures = stats.failures.saturating_add(self.failures.replace(0));
+        stats.peak_used = stats.peak_used.max(self.peak_used.replace(0));
+    }
+    fn reclassify(&mut self, category: BudgetCategory) { self.reservation.reclassify(category); }
 }
 #[derive(Clone)]
 pub struct CpuArenaPool {
-    shared: Arc<Shared>,
+    pool: CpuPool<Arena>,
+    config: CpuArenaConfig,
+    budget: Arc<AllocatorStats>,
 }
 impl CpuArenaPool {
     pub fn new(config: CpuArenaConfig, budget: Arc<AllocatorStats>) -> Result<Self> {
         config.validate()?;
-        let mut idle = Vec::new();
-        idle.try_reserve_exact(config.max_arenas)
-            .map_err(|_| Error::OutOfHostMemory)?;
-        let metadata_bytes = idle
-            .capacity()
-            .checked_mul(std::mem::size_of::<Arena>())
-            .ok_or_else(|| Error::invalid_usage("CPU free-list size overflow"))?;
-        if metadata_bytes >= config.max_total_bytes {
-            return Err(Error::invalid_usage(
-                "CPU arena limit cannot hold its fixed free-list",
-            ));
-        }
-        let idle_memory = budget.reserve_cpu_bytes(metadata_bytes as u64, BudgetCategory::Live)?;
-        Ok(Self {
-            shared: Arc::new(Shared {
-                config,
-                budget,
-                state: Mutex::new(State {
-                    idle,
-                    _idle_memory: idle_memory,
-                    stats: CpuArenaStats {
-                        metadata_bytes,
-                        peak_total_bytes: metadata_bytes,
-                        ..Default::default()
-                    },
-                }),
-            }),
-        })
+        let pool = CpuPool::new(CpuPoolLimits {
+            items: config.max_arenas, total_bytes: config.max_total_bytes,
+            cached_bytes: config.max_cached_bytes, full: || Error::Timeout,
+        }, budget.clone())?;
+        Ok(Self { pool, config, budget })
     }
-    /// Acquire inside the actual worker task. The !Sync lease cannot be shared
-    /// across concurrent workers; moving it transfers its exclusive CPU owner.
+    /// Acquire inside the worker. Bump's !Sync property prevents sharing a
+    /// lease between concurrent workers while allowing exclusive transfer.
     pub fn checkout(&self) -> Result<CpuArenaLease> {
-        let mut state = self.shared.state.lock();
-        let mut arena = if let Some(arena) = state.idle.pop() {
-            state.stats.cached_bytes -= arena.bytes;
-            state.stats.cached_arenas -= 1;
-            arena
-        } else {
-            if state.stats.checked_out >= self.shared.config.max_arenas {
-                state.stats.capacity_stalls += 1;
-                return Err(Error::Timeout);
-            }
-            let arena = Arena::new(self.shared.config, &self.shared.budget)?;
-            if state
-                .stats
-                .live_bytes
-                .checked_add(state.stats.metadata_bytes)
-                .and_then(|bytes| bytes.checked_add(arena.bytes))
-                .is_none_or(|total| total > self.shared.config.max_total_bytes)
-            {
-                state.stats.capacity_stalls += 1;
-                return Err(Error::Timeout);
-            }
-            state.stats.backing_allocations += 1;
-            arena
-        };
-        arena.reservation.reclassify(BudgetCategory::Live);
-        state.stats.checked_out += 1;
-        state.stats.live_bytes += arena.bytes;
-        state.stats.peak_checked_out = state.stats.peak_checked_out.max(state.stats.checked_out);
-        state.stats.peak_total_bytes = state
-            .stats
-            .peak_total_bytes
-            .max(state.stats.live_bytes + state.stats.cached_bytes + state.stats.metadata_bytes);
-        Ok(CpuArenaLease {
-            arena: Some(arena),
-            shared: self.shared.clone(),
-        })
+        Ok(CpuArenaLease { lease: self.pool.checkout(|| Arena::new(self.config, &self.budget))? })
     }
     pub fn stats(&self) -> CpuArenaStats {
-        self.shared.state.lock().stats
-    }
-    pub fn config(&self) -> CpuArenaConfig {
-        self.shared.config
-    }
-    /// Clear only cached CPU blocks. Outstanding leases keep their reservation
-    /// and storage, independent of any GPU completion or cache eviction request.
-    pub fn trim_idle(&self, target_bytes: usize) -> usize {
-        let mut state = self.shared.state.lock();
-        let mut freed = 0;
-        while state.stats.cached_bytes > target_bytes {
-            let Some(arena) = state.idle.pop() else {
-                break;
-            };
-            state.stats.cached_bytes -= arena.bytes;
-            state.stats.cached_arenas -= 1;
-            freed += arena.bytes;
-            drop(arena);
+        let stats = self.pool.stats();
+        CpuArenaStats {
+            checked_out: stats.checked_out, cached_arenas: stats.cached,
+            live_bytes: stats.live_bytes, cached_bytes: stats.cached_bytes,
+            metadata_bytes: stats.metadata_bytes, peak_total_bytes: stats.peak_total_bytes,
+            peak_checked_out: stats.peak_checked_out, backing_allocations: stats.creations,
+            bump_requests: stats.payload.requests,
+            capacity_stalls: stats.capacity_stalls.saturating_add(stats.payload.failures),
+            peak_used_bytes: stats.payload.peak_used,
         }
-        freed
     }
+    pub fn config(&self) -> CpuArenaConfig { self.config }
+    /// Release whole cached blocks until at most `target_bytes` remain. The
+    /// returned byte count can exceed the difference because blocks are indivisible.
+    pub fn trim_idle(&self, target_bytes: usize) -> usize { self.pool.trim_idle(target_bytes) }
 }
 /// The allocator's borrows prevent reset/return while temporary slices are used.
 /// Copy-only allocations intentionally exclude destructors and GPU Arc owners.
 pub struct CpuArenaLease {
-    arena: Option<Arena>,
-    shared: Arc<Shared>,
+    lease: CpuPoolLease<Arena>,
 }
 impl CpuArenaLease {
     fn arena(&self) -> &Arena {
-        self.arena.as_ref().expect("active CPU lease")
+        self.lease.value()
     }
     fn check_layout<T>(len: usize) -> Result<()> {
         std::alloc::Layout::array::<T>(len)
@@ -283,46 +231,7 @@ impl CpuArenaLease {
     pub fn backing_bytes(&self) -> usize {
         self.arena().bytes
     }
-    pub fn available_bytes(&self) -> usize {
-        self.arena().bump.chunk_capacity()
-    }
-}
-impl Drop for CpuArenaLease {
-    fn drop(&mut self) {
-        let Some(mut arena) = self.arena.take() else {
-            return;
-        };
-        // CPU borrows have ended. GPU work may still be in flight; this block
-        // contains no GPU-visible memory and must not wait for that work.
-        arena.bump.reset();
-        let mut state = self.shared.state.lock();
-        state.stats.checked_out -= 1;
-        state.stats.live_bytes -= arena.bytes;
-        state.stats.bump_requests = state
-            .stats
-            .bump_requests
-            .saturating_add(arena.requests.replace(0));
-        state.stats.capacity_stalls = state
-            .stats
-            .capacity_stalls
-            .saturating_add(arena.failures.replace(0));
-        state.stats.peak_used_bytes = state.stats.peak_used_bytes.max(arena.peak_used.replace(0));
-        if state
-            .stats
-            .cached_bytes
-            .checked_add(arena.bytes)
-            .is_some_and(|total| total <= self.shared.config.max_cached_bytes)
-            && !matches!(
-                self.shared.budget.budget_action(),
-                crate::device::BudgetAction::EvictCache | crate::device::BudgetAction::Backpressure
-            )
-        {
-            arena.reservation.reclassify(BudgetCategory::Cache);
-            state.stats.cached_bytes += arena.bytes;
-            state.stats.cached_arenas += 1;
-            state.idle.push(arena);
-        }
-    }
+
 }
 /// Internal fallback for CPU test/third-party backends that do not provide the
 /// production pool. Vulkan always supplies an arena; no implicit growth occurs.

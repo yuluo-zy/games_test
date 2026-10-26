@@ -10,7 +10,6 @@
 //! PlacementDataSsbo uses the canonical 48-byte record and allocation owner.
 //! Each config entry emits one identity drawable plus a placement handle;
 //! draw callback env5 consumes that same handle to select the instance count.
-use super::register_mesh_file;
 use crate::asset_libraries::{
     mesh_library::{AssetMeshLibrary, MeshAsset},
     meshwatch::MeshWatch,
@@ -22,7 +21,7 @@ use crate::render::{shader::boundary::ShaderBackend, ssbo::rhapsody_boundary::Gr
 use crate::resources::session::ActiveSession;
 use crate::systems::render_loop::draw_passes::draw_callbacks_b::InstancedDrawFromPlacementData;
 use crate::utils::components::transform::Transform;
-use bevy_ecs::prelude::{Commands, Res};
+use bevy_ecs::prelude::Commands;
 use std::path::{Path, PathBuf};
 
 pub const PLANTS_FILE_NAME: &str = "plants.json";
@@ -101,35 +100,6 @@ pub fn init_meadow(
     Ok(())
 }
 
-/// ECS 产者：读取会话格调的 plants.json 并注册真实网格文件。
-pub fn startup_meadow_asset_files(
-    meshes: Res<AssetMeshLibrary>,
-    session: Option<Res<ActiveSession>>,
-) {
-    let Some(session) = session else {
-        return;
-    };
-    let assets_root = session.assets_root();
-    let path = plants_json_path(&assets_root);
-    let plants = match load_plants(&path) {
-        Ok(plants) => plants,
-        Err(error) => {
-            log::error!(
-                target: "country_core::startup::startup_meadow",
-                "deserialize plants: {error:#}"
-            );
-            return;
-        }
-    };
-    for plant in &plants {
-        let mesh_path = format!("assets/meshes/{}.json", plant.mesh);
-        if Path::new(&mesh_path).is_file() {
-            register_mesh_file(&meshes, &mesh_path, Some(&plant.mesh));
-        }
-    }
-    // CPU-only loader; the GPU owner calls init_meadow for complete entities.
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -194,8 +164,8 @@ mod tests {
         let records: Vec<crate::resources::placement_data::PlacementDataSsbo> =
             serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
         assert!(!records.is_empty());
-        let handle = library.paths[&path];
-        let (buffer, count) = &library.buffers[&handle];
+        let handle = library.paths()[&path];
+        let (buffer, count) = &library.buffers()[&handle];
         assert_eq!(*count, records.len());
         assert_eq!(buffer.buffer.byte_size, (records.len() * 48) as u64);
         let mut query = world.query::<(

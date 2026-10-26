@@ -45,7 +45,7 @@ pub struct UiToolbarButtonResetAllCooldowns;
 /// （不再有 `WidgetByteState`）；bevy `&mut` 自动记 changed-tick（原生 stride-4 u32
 /// 写面即此记账，非业务写面）。
 pub fn toolbar_button_keep_focus(
-    mut query: Query<(&mut ToolbarButtonCooldown, &mut UiInteractionState)>,
+    mut query: Query<(&mut ToolbarButtonCooldown, ComponentWrite<UiInteractionState>)>,
     mut reset_events: EventReader<UiToolbarButtonResetAllCooldowns>,
     time: Res<Time>,
 ) {
@@ -101,7 +101,7 @@ pub fn toolbar_button_keep_focus(
 ///
 /// 残余 U：B 事件 id 字段（`uVar3`）由 bevy 自动管理，不单独建模。
 pub fn switch_app_mode_button(
-    mut query: Query<(Entity, &SwitchAppModeButton, &mut UiInteractionState)>,
+    mut query: Query<(Entity, &SwitchAppModeButton, ComponentWrite<UiInteractionState>)>,
     mut click_events: EventReader<crate::ui_interaction::UiClickEvent>,
     mut app_mode_events: EventWriter<RequestAppModeChange>,
     app_mode: Res<country_core::systems::mode_manager::AppMode>,
@@ -153,7 +153,7 @@ pub fn switch_app_mode_button(
 /// (toolbar.current == button.category)`**；per-widget `+2` 置选中标志（=
 /// `interaction.selected`，**B 组件本身**）。
 pub fn switch_toolbar_category_button(
-    mut query: Query<(Entity, &SwitchToolbarCategoryButton, &mut UiInteractionState)>,
+    mut query: Query<(Entity, &SwitchToolbarCategoryButton, ComponentWrite<UiInteractionState>)>,
     mut click_events: EventReader<crate::ui_interaction::UiClickEvent>,
     mut category_events: EventWriter<RequestToolbarCategoryChange>,
     mut mode_changed: EventReader<country_core::resources::events::ModeJustChanged>,
@@ -204,7 +204,7 @@ pub fn switch_toolbar_category_button(
 /// widget 命中经组件
 /// `Query<Entity, With<TimeOfDayButtonV2>>` 代理（B 经 UiNavState hashbrown）。
 pub fn tod_v2_button(
-    mut query: Query<(&TimeOfDayButtonV2, &mut UiInteractionState)>,
+    mut query: Query<(&TimeOfDayButtonV2, ComponentWrite<UiInteractionState>)>,
     widget_entities: Query<Entity, With<TimeOfDayButtonV2>>,
     mut click_events: EventReader<crate::ui_interaction::UiClickEvent>,
     mut tod_screen: ResMut<country_core::resources::gui::TimeOfDayScreen>,
@@ -290,3 +290,5 @@ mod native_switch_app_mode_tests {
         assert!(world.get::<UiPlaySelectAnimation>(entity).is_some());
     }
 }
+
+use country_core::render::extract::ComponentWrite;

@@ -19,6 +19,39 @@ enum MeshChange {
     Name(String),
     Path(PathBuf),
 }
+impl MeshChange {
+    fn entry_key(self) -> AssetEntryKey {
+        match self {
+            Self::Mesh(handle) => AssetEntryKey::Id(handle.id().raw()),
+            Self::Name(name) => AssetEntryKey::Name(name),
+            Self::Path(path) => AssetEntryKey::Path(path),
+        }
+    }
+}
+impl crate::render::asset_ack::AssetSnapshot for AssetMeshLibrary {
+    fn asset_cursor(&self) -> AssetChangeCursor { AssetChangeCursor(self.changes.cursor()) }
+    fn asset_changes(&self, cursor: Option<AssetChangeCursor>) -> Option<(AssetChangeCursor, Vec<AssetEntryKey>)> {
+        self.changes.since(cursor.map(|cursor| cursor.0)).map(|(cursor, keys)|
+            (AssetChangeCursor(cursor), keys.into_iter().map(MeshChange::entry_key).collect()))
+    }
+    fn asset_keys(&self) -> Vec<AssetEntryKey> {
+        let mut keys = Vec::with_capacity(self.mesh_entries.len());
+        self.mesh_entries.for_each_entry(|handle, _| keys.push(AssetEntryKey::Id(handle.id().raw())));
+        keys.extend(self.names.read().keys().cloned().map(AssetEntryKey::Name));
+        keys.extend(self.paths.read().keys().cloned().map(AssetEntryKey::Path));
+        keys
+    }
+    fn asset_contains(&self, key: &AssetEntryKey) -> bool {
+        match key {
+            AssetEntryKey::Id(id) => self.mesh_entries.get(&Handle::from_raw(*id)).is_some(),
+            AssetEntryKey::Name(name) => self.names.read().contains_key(name),
+            AssetEntryKey::Path(path) => self.paths.read().contains_key(path),
+            _ => false,
+        }
+    }
+    fn update_asset_snapshot(&self, destination: &mut Self) { self.update_render_snapshot(destination); }
+}
+use crate::render::asset_ack::{AssetChangeCursor, AssetEntryKey};
 
 /// 待注册网格及其可选名字。
 pub struct MeshAsset {

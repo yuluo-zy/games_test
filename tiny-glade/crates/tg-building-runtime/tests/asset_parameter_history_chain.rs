@@ -1321,7 +1321,7 @@ fn withdrawn_world_opening_recovers_when_prior_valid_roof_state_returns() {
             .contains_key(&id)
     );
     let valid_roof = app.world().get::<Roof>(roof_entity).unwrap().0;
-    app.world_mut().get_mut::<Roof>(roof_entity).unwrap().0[0x3c] = 2;
+    app.world_mut().component_mut::<Roof>(roof_entity).unwrap().0[0x3c] = 2;
     app.update();
     assert!(
         !app.world()
@@ -1329,7 +1329,7 @@ fn withdrawn_world_opening_recovers_when_prior_valid_roof_state_returns() {
             .0
             .contains_key(&id)
     );
-    app.world_mut().get_mut::<Roof>(roof_entity).unwrap().0 = valid_roof;
+    app.world_mut().component_mut::<Roof>(roof_entity).unwrap().0 = valid_roof;
     step(&mut app, 0.);
     assert!(
         app.world()
@@ -1338,3 +1338,5 @@ fn withdrawn_world_opening_recovers_when_prior_valid_roof_state_returns() {
             .contains_key(&id)
     );
 }
+
+use country_core::render::extract::WorldComponentWrite as _;

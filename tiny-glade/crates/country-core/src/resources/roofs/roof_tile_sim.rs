@@ -2,6 +2,8 @@
 use bevy_ecs::component::Component;
 
 #[derive(Component, Clone, Debug)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct RoofTileSimulation(
     pub(crate) crate::resources::roofs::components::RoofTileSimulation,
 );
@@ -37,3 +39,5 @@ impl RoofTileSimulation {
         self.0 = crate::resources::roofs::components::RoofTileSimulation::from_observed(bytes);
     }
 }
+
+impl crate::render::extract::JournaledComponent for RoofTileSimulation {}

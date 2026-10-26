@@ -25,7 +25,7 @@ fn published_walls() -> PublicWalls {
         sampling_fix: false,
     };
     let mut walls = PublicWalls::default();
-    walls.consume(&mut inner, &terrain);
+    walls.consume_with_paths(&mut inner, &terrain, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
     let wall = walls.get_mut(WallId(0x9876)).unwrap();
     // Post-initialization fixture supplies the independently owned freeform
     // cache. Production lookup/height/world-coordinate functions remain real.

@@ -34,6 +34,8 @@ harness = false
 pprof = { version = "0.14", optional = true, default-features = false }
 mimalloc = { version = "0.1", default-features = false, optional = true }
 glam.workspace = true
+dolly = "=0.6.0"
+fastrand.workspace = true
 tg-terrain.workspace = true
 tg-history.workspace = true
 tg-text = { path = "../tg-text" }
@@ -59,6 +61,7 @@ paths.workspace = true
 lang-lib.workspace = true
 toolbar.workspace = true
 tg-iced = { path = "../tg-iced" }
+tg-theme = { path = "../tg-theme" }
 tg-package-integrity = { path = "../tg-package-integrity" }
 ash.workspace = true
 anyhow.workspace = true
@@ -72,15 +75,15 @@ hashbrown.workspace = true
 log.workspace = true
 puffin.workspace = true
 spin_sleep = "=1.1.1"
-once_cell.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 image.workspace = true
 uuid = { version = "=1.15.1", features = ["v4"] }
 tempfile = "=3.20.0"
 crossbeam-channel = "=0.5.6"
+smallvec = "=1.13.2"
 bevy_app.workspace = true
-bevy_ecs.workspace = true
+bevy_ecs = { workspace = true, features = ["multi_threaded"] }
 bevy_tasks.workspace = true
 bevy_time = { version = "=0.16.0", default-features = false, features = ["std"] }
 bevy_state = { version = "=0.16.0", default-features = false, features = ["std", "bevy_app"] }
@@ -91,6 +94,7 @@ rfd.workspace = true
 webbrowser.workspace = true
 winit = "0.29"
 zip = "=0.6.6"
+# Pin zip 0.6.6's crc32fast to the original B lock identity.
 crc32fast = "=1.3.2"
 backtrace = { version = "=0.3.71", features = ["serialize-serde"] }
 sentry-types = "=0.31.7"
@@ -102,23 +106,29 @@ sentry-types = "=0.31.7"
 # per resource.
 deadlock-detection = ["parking_lot/deadlock_detection"]
 # Sampling profiler for the host binary (TG_PROFILE_OUT=<file>, see tiny-glade-host.rs).
-profile = ["dep:pprof"]
+# Implies cpu-probe so a sampling-profiler build also records clean per-frame
+# render-thread CPU intervals.
+profile = ["dep:pprof", "cpu-probe"]
+# Clean per-frame render-thread CPU interval recorder (crate::render_cpu_probe),
+# without the pprof sampling profiler. Separated from `profile` so the recorder
+# and its unit tests build on any host without pprof's transitive deps; the
+# actual CLOCK_THREAD_CPUTIME_ID read inside the module is macOS-only. Off by
+# default: a normal build carries no recorder type and no clock overhead.
+cpu-probe = []
 # mimalloc as the process-wide allocator of the shipped binaries. The default
 # system allocator (the Windows heap in particular) serializes the many small
 # per-frame allocations of the ECS, declaration and recording paths. Library
 # crates and their tests keep the system allocator; disable with
 # `--no-default-features`.
-default = ["mimalloc", "ecs-multithreaded"]
+default = ["mimalloc"]
 mimalloc = ["dep:mimalloc"]
 # FMOD-backed audio. Always on for Windows (original target); other hosts opt in
 # when libfmod/libfmodstudio are available to link.
 native-audio = ["country-core/native-audio"]
-# Enabled by default. ecs_order pins conflicting accesses on schedule rebuild;
-# TG_ECS_EXECUTOR=single remains the reference execution policy. Deferred command
-# visibility still requires explicit business dependencies and sync points.
-ecs-multithreaded = ["bevy_ecs/multi_threaded"]
 
 [dev-dependencies]
+blake3.workspace = true
+rhapsody = { workspace = true, features = ["test-support"] }
 rspirv.workspace = true
 country-core = { workspace = true, features = ["test-support"] }
 # Lets tests/main_chain_audit.rs record every failed system instead of panicking on the first.
@@ -134,6 +144,7 @@ country-core = { workspace = true, features = ["native-audio"] }
 winapi = { version = "=0.3.9", features = ["wingdi", "winuser", "winbase", "winnt"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+libc = "=0.2.170"
 objc = "=0.2.7"
 core-foundation = "=0.9.3"
 core-graphics = "=0.23.1"

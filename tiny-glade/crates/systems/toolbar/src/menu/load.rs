@@ -12,6 +12,7 @@ use country_core::input::action_set::ActionSetAction;
 use country_core::resources::gui::LoadMenuThumbnailMetrics;
 use country_core::resources::time_of_day::time_continuous_lerp_mut;
 use glam::Vec2;
+use ::utils::scalar::{max_f32, min_f32};
 use std::sync::Arc;
 
 // Use the existing core re-export of parking_lot; toolbar's canonical owner
@@ -66,12 +67,6 @@ impl DefaultNodeContent for ThumbnailScrollContent {
         }
     }
 }
-fn native_min(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
-}
-fn native_max(a: f32, b: f32) -> f32 {
-    if a > b { a } else { b }
-}
 
 /// O inline (source line 165) `run_count`: number of thumbnail lines for
 /// `count` cells at `cells_per_line`, rounded up, never zero (the native
@@ -101,7 +96,7 @@ pub fn max_scroll_pos(cell: f32, gap: f32, primary_extent: f32, lines: u32) -> f
 /// O inline (source line 197) `nav_scroll_speed`: keyboard navigation lerp
 /// speed, inversely proportional to the remaining distance.
 pub fn nav_scroll_speed(distance: f32) -> f32 {
-    15. / native_min(1., native_max(0.01, distance))
+    15. / min_f32(1., max_f32(0.01, distance))
 }
 
 /// O inline (source line 133) `hovered_item_pos`: the hovered thumbnail
@@ -347,7 +342,7 @@ impl ThumbnailScrollContent {
                 self.drag_distance += movement.abs() * pixels_per_point;
                 let displacement = movement * self.units_to_cells;
                 self.scroll += displacement;
-                self.velocity = displacement / native_max(delta, 0.00001);
+                self.velocity = displacement / max_f32(delta, 0.00001);
                 self.previous_cursor = primary_cursor;
             }
             assert_ne!(self.cells_per_line, 0, "thumbnail cells_per_line divisor");
@@ -385,7 +380,7 @@ impl ThumbnailScrollContent {
                 time_continuous_lerp_mut(&mut self.scroll, target, delta, self.navigation_speed);
             }
         }
-        self.units_to_cells = 1. / native_max(cell, 0.00001);
+        self.units_to_cells = 1. / max_f32(cell, 0.00001);
         let gap_ratio = self.gap_fraction / self.cell_fraction + 1.;
         let half_line = self.cells_per_line.wrapping_sub(1) as f32 * 0.5;
         let (offset, scroll_offset) = if self.column_major {

@@ -12,7 +12,27 @@ use std::sync::Arc;
 pub(super) struct UploadSlot {
     buffer: Option<Arc<Buffer>>,
     pub last_use: SyncSet,
+    pub leased: bool,
     used: u64,
+}
+/// An upload slot remains exclusive while packing/recording outside the
+/// staging lock. The irreversible submit point is published even on error.
+pub(super) struct UploadLease {
+    pub staging: Arc<parking_lot::Mutex<Staging>>,
+    pub index: Option<usize>,
+    pub submitted: Option<SyncPoint>,
+}
+impl Drop for UploadLease {
+    fn drop(&mut self) {
+        if let Some(index) = self.index {
+            let mut staging = self.staging.lock();
+            let slot = &mut staging.uploads[index];
+            if let Some(point) = self.submitted {
+                slot.last_use = SyncSet::from_point(point);
+            }
+            slot.leased = false;
+        }
+    }
 }
 pub(super) struct ReadbackSlot {
     buffer: Option<Arc<Buffer>>,
@@ -97,6 +117,7 @@ impl Staging {
             staging.uploads.push(UploadSlot {
                 buffer: None,
                 last_use: SyncSet::EMPTY,
+                leased: false,
                 used: 0,
             });
             staging.readbacks.push(ReadbackSlot {
@@ -193,7 +214,7 @@ impl Staging {
     /// The first upload slot whose last use completed, preferring resident
     /// buffers over evicted ones.
     pub fn free_upload(&self, completed: &CompletedValues) -> Option<usize> {
-        let free = |slot: &UploadSlot| slot.last_use.is_reached(completed);
+        let free = |slot: &UploadSlot| !slot.leased && slot.last_use.is_reached(completed);
         self.uploads
             .iter()
             .position(|slot| slot.buffer.is_some() && free(slot))
@@ -241,7 +262,7 @@ impl Staging {
         let mut candidates: smallvec::SmallVec<[(u64, bool, usize); 16]> =
             smallvec::SmallVec::new();
         for (index, slot) in self.uploads.iter().enumerate() {
-            if slot.buffer.is_some() && slot.last_use.is_reached(completed) {
+            if !slot.leased && slot.buffer.is_some() && slot.last_use.is_reached(completed) {
                 candidates.push((slot.used, true, index));
             }
         }

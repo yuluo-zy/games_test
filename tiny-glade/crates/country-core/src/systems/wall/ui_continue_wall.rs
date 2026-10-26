@@ -342,15 +342,14 @@ mod tests {
         let wall = walls.new_wall_from_curve(source);
         walls.update_freehand_ty(wall, 1);
         let mut public = PublicWalls::default();
-        public.consume(
+        public.consume_with_paths(
             &mut walls,
             &TerrainHeightGrid512 {
                 encoded: vec![0; 512 * 512].into(),
                 minimum_y: -2.0,
                 maximum_y: -2.0,
                 sampling_fix: false,
-            },
-        );
+            }, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         world.insert_resource(walls);
         world.insert_resource(public);
         let mut colors = WallColorIds::new();

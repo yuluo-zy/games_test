@@ -116,7 +116,7 @@ fn actual_world_changes_stage_upload_and_despawn_releases_cpu_registration_once(
     world.resource_mut::<DeferredNaniRequests>().0.clear();
     schedule.run(&mut world);
     assert!(world.resource::<DeferredNaniRequests>().0.is_empty());
-    world.entity_mut(entity).get_mut::<Roof>().unwrap().0[0x4c..0x50]
+    world.entity_mut(entity).component_mut::<Roof>().unwrap().0[0x4c..0x50]
         .copy_from_slice(&5_f32.to_le_bytes());
     schedule.run(&mut world);
     assert!(
@@ -280,3 +280,5 @@ fn nonfinite_roof_uploads_are_rejected_before_staging() {
         Err(StoneFloorProjectionError::NonfiniteGeometry)
     );
 }
+
+use country_core::render::extract::EntityComponentWrite as _;

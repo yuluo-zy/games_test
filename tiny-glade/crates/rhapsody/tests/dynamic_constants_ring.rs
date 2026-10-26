@@ -22,6 +22,40 @@ fn config() -> DynamicConstantsConfig {
     }
 }
 struct Unblock(Arc<TimelineSemaphore>, bool);
+
+#[test]
+fn idle_constant_writes_obey_the_same_buffer_host_gate() {
+    let Some(device) = gpu_test_support::initialize(
+        "constant host gate", Device::new_headless(&DeviceConfig::headless()),
+    ) else { return; };
+    let mut constants = DynamicConstants::with_config(device, config()).unwrap();
+    let chunk = constants.allocate(16).unwrap();
+    let buffer = chunk.buffer.clone();
+    let (locked_tx, locked_rx) = std::sync::mpsc::channel();
+    let (release_tx, release_rx) = std::sync::mpsc::channel();
+    let (started_tx, started_rx) = std::sync::mpsc::channel();
+    let (done_tx, done_rx) = std::sync::mpsc::channel();
+    std::thread::scope(|scope| {
+        let holder = scope.spawn(move || buffer.with_host_write(0, 16, || {
+            locked_tx.send(()).unwrap();
+            release_rx.recv().unwrap();
+        }));
+        locked_rx.recv().unwrap();
+        let writer = scope.spawn(move || {
+            started_tx.send(()).unwrap();
+            let result = chunk.write_bytes(&[7; 16]);
+            done_tx.send(()).unwrap();
+            result
+        });
+        started_rx.recv().unwrap();
+        let blocked = done_rx.recv_timeout(std::time::Duration::from_millis(50)).is_err();
+        // Always release the holder before an assertion can unwind the scope.
+        release_tx.send(()).unwrap();
+        holder.join().unwrap().unwrap();
+        writer.join().unwrap().unwrap();
+        assert!(blocked, "idle writes bypassed the active host transaction");
+    });
+}
 impl Unblock {
     fn signal(&mut self) {
         if !self.1 {
@@ -227,14 +261,18 @@ fn many_chunk_writes_on_one_idle_page_are_exact_and_cheap() {
     assert!(chunks.iter().all(|(_, c)| c.buffer.raw_handle() == page));
     let start = std::time::Instant::now();
     for (index, chunk) in &chunks {
-        let bytes: Vec<u8> = (0..256).map(|b| (*index as u8).wrapping_add(b as u8)).collect();
+        let bytes: Vec<u8> = (0..256)
+            .map(|b| (*index as u8).wrapping_add(b as u8))
+            .collect();
         chunk.write_bytes(&bytes).unwrap();
     }
     eprintln!("900 constant writes: {:?}", start.elapsed());
     for (index, chunk) in &chunks {
         let mut out = vec![0u8; 256];
         chunk.buffer.read_bytes(chunk.offset, &mut out).unwrap();
-        let expected: Vec<u8> = (0..256).map(|b| (*index as u8).wrapping_add(b as u8)).collect();
+        let expected: Vec<u8> = (0..256)
+            .map(|b| (*index as u8).wrapping_add(b as u8))
+            .collect();
         assert_eq!(out, expected, "chunk {index}");
     }
 }

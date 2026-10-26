@@ -189,6 +189,8 @@ pub struct LogoAnimationView {
 }
 /// `RoofFlagCloth`（组件，TypeId 0x983a5c6eded1c4e5/0x929a707bdcc6a79c，真实类型 `(pub Gap)`）：`u32 @+0`。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct RoofFlagClothView(pub u32);
 pub use crate::resources::critters::CritterControl;
 /// `components::drawable::PrevTransform`（TypeId 0xa0da022fc84ca3d9/0xfc62e38c26a7c4c9，真实类型 `(pub Gap)`）：
@@ -196,6 +198,8 @@ pub use crate::resources::critters::CritterControl;
 pub use crate::components::drawable::PrevTransform as PrevTransformView;
 /// `resources::critters::Duck`（TypeId 0x272a1f294225ce7f/0xd79870fafff409bc，crate 里不存在）：`f32 @+0xf0/+0xf4/+0xf8`、`u8 @+0xfc`。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct Duck {
     pub f_f0: f32,
     pub f_f4: f32,
@@ -204,10 +208,14 @@ pub struct Duck {
 }
 /// `resources::critters::DuckState`（TypeId 0x3a8f7d4d3ac26bd0/0xff6d570a464cbf09，枚举，首字节判别）。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct DuckState(pub u8);
 /// `asset_libraries::placement_data_library::InstancedDrawFromPlacementData`（组件，TypeId 0xed76c1eeabfaeba0/0x282debdb03116a9c）：
 /// `u64 @+0` = `GlobalId`（传给 `draw_instanced_from_placement_data`）。crate 里不存在。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct InstancedDrawFromPlacementData(pub u64);
 /// `RockyTerrainMeshVertCount`（TypeId 0xfa44538b95ae76c6/0x12146c4ea814069b；真实类型 `(pub u32)` 无 `Resource` 派生）。
 #[cfg(test)]
@@ -726,7 +734,7 @@ pub fn wren_cb(b: DrawBuilder<'_>, _p: &EntityDrawParams, w: &World) {
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
     m.resource::<GpuWorld>();
-    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
+    m.asset_library::<AssetSsboLibrary>();
     m.resource::<EditingHighlightView>();
     m.resource::<CursorTerrainRaycast>();
     m.resource::<EraserSizeMultiplier>();
@@ -743,12 +751,12 @@ pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
     m.resource::<ActiveSession>();
     m.resource::<GladeSettings>();
     m.resource::<CritterControl>();
-    m.component::<InstancedDrawFromPlacementData>();
-    m.component::<RoofFlagClothView>();
-    m.component::<ColorId>();
-    m.component::<PrevTransformView>();
-    m.component::<Duck>();
-    m.component::<DuckState>();
+    m.component_journaled::<InstancedDrawFromPlacementData>();
+    m.component_journaled::<RoofFlagClothView>();
+    m.component_journaled::<ColorId>();
+    m.component_journaled::<PrevTransformView>();
+    m.component_journaled::<Duck>();
+    m.component_journaled::<DuckState>();
 }
 
 #[cfg(test)]
@@ -1559,3 +1567,8 @@ mod tests {
         assert!(r.is_err());
     }
 }
+
+impl crate::render::extract::JournaledComponent for RoofFlagClothView {}
+impl crate::render::extract::JournaledComponent for InstancedDrawFromPlacementData {}
+impl crate::render::extract::JournaledComponent for Duck {}
+impl crate::render::extract::JournaledComponent for DuckState {}

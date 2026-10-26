@@ -1,5 +1,5 @@
 //! 实际加载器 fallback、实例能力检查与显式 layer 白名单接口；原隐式 layer 注入控制仍未知。
-use super::error::{Error, Result};
+use crate::{Error, Result};
 use ash::{Entry, vk};
 use std::{
     ffi::{CStr, CString},
@@ -241,10 +241,7 @@ impl InstanceBuilder {
         }
         Ok(true)
     }
-    /// 从请求列表中移除指定层（若存在）。
-    pub fn legacy_disable_layer(&mut self, name: &str) {
-        self.layers.retain(|layer| layer.to_string_lossy() != name);
-    }
+
 }
 
 /// `apply_vulkan_blocklist`（0x140c0a530）里 16 个 `DISABLE_*` 环境变量，按原调用顺序。
@@ -431,7 +428,6 @@ pub fn vulkan_debug_messenger(
     severity: vk::DebugUtilsMessageSeverityFlagsEXT,
     types: vk::DebugUtilsMessageTypeFlagsEXT,
 ) -> Result<(ash::ext::debug_utils::Instance, vk::DebugUtilsMessengerEXT)> {
-    let loader = ash::ext::debug_utils::Instance::new(&instance.entry, &instance.instance);
     if !instance
         .enabled_extensions
         .iter()
@@ -439,6 +435,7 @@ pub fn vulkan_debug_messenger(
     {
         return Err(Error::unsupported("实例未启用 VK_EXT_debug_utils"));
     }
+    let loader = ash::ext::debug_utils::Instance::new(&instance.entry, &instance.instance);
     // ash 需要函数指针；使用 no-op 回调，实际诊断仍经 marker/读回路径。
     unsafe extern "system" fn callback(
         _severity: vk::DebugUtilsMessageSeverityFlagsEXT,
@@ -536,7 +533,9 @@ impl ValidationMessenger {
                     unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned()
                 }
             };
-            collector.messages.lock().push(DebugMessage {
+            let mut messages = collector.messages.lock();
+            if messages.len() == 8192 { messages.remove(0); }
+            messages.push(DebugMessage {
                 severity,
                 types,
                 id_name: text(data.p_message_id_name),

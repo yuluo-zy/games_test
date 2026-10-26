@@ -330,7 +330,7 @@ impl TemporalRenderGraphState {
                 return Err(TemporalError::AlreadyRequested(key));
             }
             let replace = match (old.resource.descriptor, descriptor) {
-                (Descriptor::Buffer(_), Descriptor::Buffer(_)) => false,
+                (Descriptor::Buffer(a), Descriptor::Buffer(b)) => a != b,
                 (Descriptor::Image(a), Descriptor::Image(b)) => {
                     if a.words_at_00_through_18[3..6] != b.words_at_00_through_18[3..6] {
                         true
@@ -638,10 +638,19 @@ impl TemporalRenderGraphState {
             if record.history_invalid && !initialized[handle.raw() as usize] {
                 continue;
             }
-            graph
-                .export(handle, TEMPORAL_EXPORT_ACCESS)
-                .map_err(TemporalError::Backend)?;
-            record.resource.access = TEMPORAL_EXPORT_ACCESS;
+            // A consumer may already have published this whole named output
+            // in its required boundary layout. Keep that state rather than
+            // adding a second, incompatible export for the same image.
+            let access = if let Some(export) = graph.declaration.exports.iter().find(|export|
+                export.resource_index == handle.raw()
+                    && export.range == super::resource::AccessRange::Whole) {
+                export.access_code
+            } else {
+                graph.export(handle, TEMPORAL_EXPORT_ACCESS)
+                    .map_err(TemporalError::Backend)?;
+                TEMPORAL_EXPORT_ACCESS
+            };
+            record.resource.access = access;
             record.state = TemporalRecordState::Exported;
             self.frame_exports.insert(key.clone(), handle);
         }
@@ -787,6 +796,23 @@ mod recorder_tests {
         let mut pass = graph.add_pass("initialize history");
         pass.add_resource_access(lookup.handle, 0x34, 0).unwrap();
         pass.render(|_| true);
+    }
+
+    #[test]
+    fn explicit_whole_export_keeps_the_consumers_boundary_layout_on_reuse() {
+        let mut state = TemporalRenderGraphState::default();
+        let mut graph = RenderGraph::new();
+        let first = state.get_or_create_temporal(&mut graph, "final color", image(), || Ok(91)).unwrap();
+        initialize(&mut graph, first);
+        graph.export(first.handle, 0x22).unwrap();
+        state.export_temporal(&mut graph).unwrap();
+        assert_eq!(graph.declaration.exports.len(), 1,
+            "named publication must not append an incompatible second export");
+        state.confirm_exports();
+        let mut next = RenderGraph::new();
+        let again = state.get_or_create_temporal(&mut next, "final color", image(), || unreachable!()).unwrap();
+        assert_eq!(again.resource.access, 0x22);
+        assert!(again.reused);
     }
 
     #[test]

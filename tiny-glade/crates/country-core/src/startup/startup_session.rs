@@ -89,12 +89,6 @@ pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<
     Ok(())
 }
 
-// 兼容尚未注入 GameConfig 的宿主；新宿主优先使用各自 World 中的 demo 配置。
-static STARTUP_DEMO_MODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-pub fn set_startup_demo_mode(demo: bool) {
-    STARTUP_DEMO_MODE.store(demo, std::sync::atomic::Ordering::Relaxed);
-}
-
 /// 消费一次会话请求。准备失败时保留请求，且不发布事件、活动会话或半成品任务。
 #[allow(clippy::too_many_arguments)]
 pub fn load_game_session(
@@ -106,7 +100,7 @@ pub fn load_game_session(
     mut load_manager: ResMut<LoadGameManager>,
     mut app_mode: ResMut<AppMode>,
     mut glade_settings: ResMut<GladeSettings>,
-    config: Option<Res<GameConfig>>,
+    config: Res<GameConfig>,
     mut new_session_events: EventWriter<NewSessionStartedCmd>,
     mut session_loaded_events: EventWriter<SessionLoadedCmd>,
     mut corrupted_save_events: EventWriter<DisplayCorruptedSaveFileWarning>,
@@ -132,6 +126,7 @@ pub fn load_game_session(
     let requested_id = match request.kind {
         NextSessionKind::LoadSavedGame => saved_sessions.sessions.first().map(|session| session.id),
         NextSessionKind::LoadOnLoad | NextSessionKind::LoadParsedGame => Some(request.id),
+        NextSessionKind::Create => None,
         NextSessionKind::None => unreachable!(),
     };
     // Native case3 does not run readiness again or fall back to a starting build.
@@ -142,10 +137,7 @@ pub fn load_game_session(
     } else {
         requested_id.filter(|id| is_session_ok_to_load(*id, &auto_save.unsaved_files).is_ok())
     };
-    let demo = config.as_deref().map_or_else(
-        || STARTUP_DEMO_MODE.load(std::sync::atomic::Ordering::Relaxed),
-        |config| config.dev.demo,
-    );
+    let demo = config.dev.demo;
     let is_new = valid_session.is_none();
     let (session_id, history_path) = if let Some(session_id) = valid_session {
         (
@@ -153,8 +145,19 @@ pub fn load_game_session(
             session_id.save_folder_path().join("history.json"),
         )
     } else {
-        let build = select_starting_build(demo, profile.new_glade_count)?;
-        let history_path = build.join("history.json");
+        let new_options = if request.kind == NextSessionKind::Create {
+            Some(
+                request
+                    .new_session_options()
+                    .ok_or_else(|| anyhow::anyhow!("新建会话请求缺少拥有的起始历史与元数据"))?,
+            )
+        } else {
+            None
+        };
+        let history_path = match new_options.and_then(|options| options.history_path.as_ref()) {
+            Some(path) => path.clone(),
+            None => select_starting_build(demo, profile.new_glade_count)?.join("history.json"),
+        };
         if request.kind != NextSessionKind::LoadParsedGame && !history_path.is_file() {
             return Err(format!("起始场景缺少历史文件：{}", history_path.display()).into());
         }
@@ -169,15 +172,17 @@ pub fn load_game_session(
                 meta.glade
             });
         let session_id = SessionId::new();
-        let meta = SessionMeta {
-            glade: previous_theme,
-            ..Default::default()
-        };
-        create_session_files(
-            &session_id.save_folder_path(),
-            &meta,
-            &build.join("snapshots"),
-        )?;
+        let meta = new_options
+            .map(|options| options.metadata.clone())
+            .unwrap_or_else(|| SessionMeta {
+                glade: previous_theme,
+                ..Default::default()
+            });
+        let snapshots = history_path
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("起始历史文件没有父目录：{}", history_path.display()))?
+            .join("snapshots");
+        create_session_files(&session_id.save_folder_path(), &meta, &snapshots)?;
         (session_id, history_path)
     };
     if request.kind != NextSessionKind::LoadParsedGame && !history_path.is_file() {

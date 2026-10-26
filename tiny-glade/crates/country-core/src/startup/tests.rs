@@ -8,7 +8,7 @@ use crate::{
         session::{NextSession, NextSessionKind, OnLoadEntry, SessionId},
     },
     systems::{
-        audio::music::music_player::{MusicBackend, MusicEvent, MusicPlayer, StopMode},
+        audio::music::music_player::{MusicBackend, MusicEvent, StopMode},
         mode_manager::AppMode,
         save::load_game::{
             ActiveLoadOptions, LoadGameManager, LoadGameSource, LoadGameState, PostGameLoadCommand,
@@ -257,6 +257,7 @@ fn completion_retry_does_not_duplicate_commands_or_release_fences_early() {
 #[test]
 fn empty_request_is_consumed_once_and_absence_is_safe_on_later_frames() {
     let mut world = World::new();
+    world.init_resource::<crate::game_config::GameConfig>();
     world.init_resource::<MetaCommander>();
     world.init_resource::<AppMode>();
     // The session schedule runs the actual commander; these canonical owners
@@ -352,34 +353,30 @@ fn theme_audio_reads_config_and_replaces_playlist_without_growing_instances() {
     )
     .unwrap();
     let backend = Backend::default();
-    let mut player = MusicPlayer::init(&backend);
+    let mut state = crate::systems::audio::music::music_system::MusicAudioState::init(&backend);
+    let meta = crate::resources::session::SessionMeta { glade: GladeType::Winter, ..Default::default() };
     for _ in 0..3 {
-        player.current_track = Some(0);
-        player.playlist.push(99);
-        load_glade_audio::load_theme_audio(&mut player, &backend, &theme_dir, GladeType::Winter)
-            .unwrap();
-        assert_eq!(player.track_names, ["winter-a", "winter-b"]);
-        assert_eq!(player.tracks.len(), 2);
-        assert!(player.playlist.is_empty());
-        assert_eq!(player.current_track, None);
+        state.player.current_track = Some(0);
+        state.player.playlist.push(99);
+        load_glade_audio::load_session_audio(&mut state, &backend, &theme_dir, &meta);
+        assert_eq!(state.player.track_names, ["winter-a", "winter-b"]);
+        assert_eq!(state.player.tracks.len(), 2);
+        assert!(state.player.playlist.is_empty());
+        assert_eq!(state.player.current_track, None);
     }
     assert_eq!(
         &backend.parameters.lock().unwrap()[..2],
         &[("GladeType".into(), 4.0), ("IsHalloween".into(), 0.0)]
     );
-    assert_eq!(player.glade_theme_flag, 0.25);
-    let calls_before_failure = backend.parameters.lock().unwrap().len();
+    assert_eq!(state.richness, 0.25);
+    assert_eq!(state.target_richness, 0.25);
+    // B GladeAudio::load uses the default description on read/parse failure.
     std::fs::write(theme_dir.join("audio.json"), "{").unwrap();
-    assert!(
-        load_glade_audio::load_theme_audio(&mut player, &backend, &theme_dir, GladeType::Winter)
-            .is_err()
-    );
-    assert_eq!(player.track_names, ["winter-a", "winter-b"]);
-    assert_eq!(player.tracks.len(), 2);
-    assert_eq!(
-        backend.parameters.lock().unwrap().len(),
-        calls_before_failure
-    );
+    load_glade_audio::load_session_audio(&mut state, &backend, &theme_dir, &meta);
+    assert_eq!(state.player.track_names, ["event:/Music/mus_MainMenu"]);
+    assert_eq!(state.player.tracks.len(), 1);
+    assert!(state.player.playlist.is_empty());
+    assert_eq!(state.player.current_track, None);
 }
 
 #[test]

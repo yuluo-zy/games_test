@@ -96,7 +96,7 @@ fn knob_is_recycled_every_frame_and_zero_extent_removes_it() {
         assert_eq!(extent.size, Vec2::splat(12.));
         assert_eq!(world.query::<&Ui2dImage>().iter(&world).count(), 1);
     }
-    world.get_mut::<Ui2dExtent>(entity).unwrap().size = Vec2::ZERO;
+    world.component_mut::<Ui2dExtent>(entity).unwrap().size = Vec2::ZERO;
     schedule.run(&mut world);
     assert!(world
         .get::<UiSlider>(entity)
@@ -372,3 +372,5 @@ fn session_reload_discards_slider_grab_and_armed_navigation_before_new_focus() {
     schedule.run(&mut world);
     assert_eq!(world.resource::<ImageFormationConfigs>().current().params_18[1], 2.5);
 }
+
+use country_core::render::extract::WorldComponentWrite as _;

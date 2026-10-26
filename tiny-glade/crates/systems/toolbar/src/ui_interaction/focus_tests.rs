@@ -17,8 +17,8 @@ fn full_visibility_system_matches_all_2048_original_byte_camera_branches() {
             had_flag=flag;
         }
         world.resource_mut::<PhotomodeState>().camera_mode=match mode {0=>PhotoModeCameraMode::TiltShift,1=>PhotoModeCameraMode::Free,2=>PhotoModeCameraMode::Walk,3=>PhotoModeCameraMode::TopDown,_=>unreachable!()};
-        world.get_mut::<UiInteractionState>(root).unwrap().keep=keep;
-        world.get_mut::<UiInteractionState>(child).unwrap().state=99;
+        world.component_mut::<UiInteractionState>(root).unwrap().keep=keep;
+        world.component_mut::<UiInteractionState>(child).unwrap().state=99;
         schedule.run(&mut world);
         let actual=world.get::<UiInteractionState>(child).unwrap();
         assert_eq!(actual.state,expected,"original flag={flag} camera={mode} parent.keep={keep}");
@@ -64,7 +64,7 @@ fn persistent_focus_entries_and_zst_hint_events_match_all_original_frames() {
     let ids:Vec<_>=(0..6).map(|i|world.spawn(UiInteractionState {state:i,keep:0,selected:i+40}).id()).collect();
     let mut schedule=Schedule::default();schedule.add_systems((ui_send_focus_begin_events,ui_notify_hints_if_toolbar_in_focus));
     for (frame,&(keeps,expected_begin,expected_notify)) in native::EVENTS.iter().enumerate() {
-        for (id,keep) in ids.iter().zip(keeps) {world.get_mut::<UiInteractionState>(*id).unwrap().keep=keep;}
+        for (id,keep) in ids.iter().zip(keeps) {world.component_mut::<UiInteractionState>(*id).unwrap().keep=keep;}
         schedule.run(&mut world);
         let events:Vec<_>=world.resource_mut::<Events<UiJustBecameInFocusEvent>>().drain().map(|e|ids.iter().position(|id|*id==e.entity).unwrap()).collect();
         assert_eq!(events,expected_begin,"original persistent frame{frame}");
@@ -112,3 +112,5 @@ fn session_exit_releases_focus_membership_before_new_entity_generations_enter() 
         previous = Some(entity);
     }
 }
+
+use country_core::render::extract::WorldComponentWrite as _;

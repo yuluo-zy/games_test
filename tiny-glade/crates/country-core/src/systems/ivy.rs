@@ -14,6 +14,8 @@
 //! 段步长 0x38 B：`p0.xy @0x00`、`p1.xy @0x08`、`extra_a @0x10`、`extra_b @0x14`、`h0 @0x18`、`h1 @0x1c`，
 //! 其后 24 B 未恢复。未找到时原函数不写有效的 index/extra，这里返回 `None`。
 use glam::Vec2;
+
+use ::utils::scalar::{clamp01, max_f32};
 pub mod ivy_branch_thickness_animation;
 pub mod ivy_grower;
 pub mod ivy_leaf_animation;
@@ -63,16 +65,6 @@ impl core::fmt::Display for ParameterOutOfRange {
 
 impl std::error::Error for ParameterOutOfRange {}
 
-/// SSE `maxss dst, src`。
-fn sse_max(dst: f32, src: f32) -> f32 {
-    if dst > src { dst } else { src }
-}
-
-/// SSE `minss dst, src`。
-fn sse_min(dst: f32, src: f32) -> f32 {
-    if dst < src { dst } else { src }
-}
-
 /// `closest_segment_index`（0x14094c800）。
 pub fn closest_segment_index(
     point: Vec2,
@@ -89,7 +81,7 @@ pub fn closest_segment_index(
         let dir = seg.p1 - seg.p0;
         let dot = to_point.y * dir.y + to_point.x * dir.x;
         let len_sq = dir.y * dir.y + dir.x * dir.x;
-        let t = sse_min(1.0, sse_max(0.0, dot / sse_max(len_sq, MIN_LENGTH_SQ)));
+        let t = clamp01(dot / max_f32(len_sq, MIN_LENGTH_SQ));
         let height = seg.h1 * t + seg.h0 * (1.0 - t);
         if height > max_height {
             continue;

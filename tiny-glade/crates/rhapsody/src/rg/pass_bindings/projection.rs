@@ -1,4 +1,5 @@
 //! Reusable CPU projections of the actual physical resource registry.
+use crate::resource::identity::PhysicalIdentity;
 use super::*;
 use crate::{
     Error, Result,
@@ -30,11 +31,7 @@ pub struct ManagedProjectionStats {
     pub reused_rows: u64,
     pub capacity_stalls: u64,
 }
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
-enum PhysicalIdentity {
-    Buffer(usize),
-    Image(usize),
-}
+
 struct Resolved {
     identity: PhysicalIdentity,
     physical: u16,
@@ -388,6 +385,8 @@ impl ManagedPassResources {
 struct Slot {
     value: Arc<ManagedPassResources>,
     last_used: u64,
+    // Non-owning cache hint only. Actual rows still match physical Arc identity.
+    plan_hint: usize,
 }
 pub(crate) struct ManagedProjectionPool {
     slots: Vec<Slot>,
@@ -481,6 +480,13 @@ impl ManagedProjectionPool {
             }
         }
     }
+    pub(crate) fn park_idle(&mut self) {
+        for slot in &mut self.slots {
+            if let Some(value) = Arc::get_mut(&mut slot.value) {
+                value.projection.memory.reclassify(BudgetCategory::Cache);
+            }
+        }
+    }
     pub(crate) fn clear_idle(&mut self) {
         for slot in &mut self.slots {
             if let Some(value) = Arc::get_mut(&mut slot.value) {
@@ -493,7 +499,8 @@ impl ManagedProjectionPool {
         device: &Arc<Device>,
         source: &ResourceRegistry<u64, u64, Other>,
         stores: &ManagedResources,
-        resolve: impl FnMut(u64) -> Option<super::super::vulkan::GpuResource>,
+        plan_hint: usize,
+        mut resolve: impl FnMut(u64) -> Option<super::super::vulkan::GpuResource>,
     ) -> Result<Arc<ManagedPassResources>> {
         if device.is_device_lost() {
             return Err(Error::DeviceLost);
@@ -503,17 +510,23 @@ impl ManagedProjectionPool {
                 "projection pool belongs to another device",
             ));
         }
-        let selected = self
-            .slots
-            .iter()
-            .enumerate()
-            .filter(|(_, slot)| {
-                Arc::strong_count(&slot.value) == 1 && Arc::weak_count(&slot.value) == 0
-            })
-            .max_by_key(|(_, slot)| slot.last_used)
-            .map(|(index, _)| index);
-        let mut index = if let Some(index) = selected {
-            index
+        let idle = |slot: &Slot| Arc::strong_count(&slot.value) == 1
+            && Arc::weak_count(&slot.value) == 0;
+        let matching = self.slots.iter().enumerate()
+            .filter(|(_, slot)| idle(slot) && slot.plan_hint == plan_hint)
+            .max_by_key(|(_, slot)| slot.last_used).map(|(index, _)| index);
+        let idle_count = self.slots.iter().filter(|slot| idle(slot)).count();
+        let lru = self.slots.iter().enumerate().filter(|(_, slot)| idle(slot))
+            .min_by_key(|(_, slot)| slot.last_used).map(|(index, _)| index);
+        let new_bytes = self.stats().bytes
+            .checked_add(shared_cpu_bytes::<ManagedPassResources>()? as usize)
+            .ok_or(Error::OutOfHostMemory)?;
+        let selected = matching.or_else(|| {
+            if idle_count >= 2 || self.slots.len() >= self.config.max_snapshots
+                || new_bytes > self.config.max_bytes { lru } else { None }
+        });
+        let (mut index, created) = if let Some(index) = selected {
+            (index, false)
         } else {
             if self.slots.len() >= self.config.max_snapshots {
                 self.stalls += 1;
@@ -528,41 +541,63 @@ impl ManagedProjectionPool {
                 self.stalls += 1;
                 return Err(Error::Timeout);
             }
-            self.slots.push(Slot {
-                value: Arc::new(ManagedPassResources::empty(stores, &self.budget)?),
-                last_used: 0,
-            });
-            self.slots.len() - 1
-        };
-        // Idle surplus snapshots are no longer needed after external owners
-        // release them. Free their actual backing before admitting a new shape.
-        for other in (0..self.slots.len()).rev() {
-            if other != index && Arc::get_mut(&mut self.slots[other].value).is_some() {
-                self.remove_slot(other);
-                index -= usize::from(other < index);
+            match ManagedPassResources::empty(stores, &self.budget) {
+                Ok(value) => {
+                    self.slots.push(Slot { value: Arc::new(value), last_used: 0, plan_hint: 0 });
+                    (self.slots.len() - 1, true)
+                }
+                Err(Error::OutOfHostMemory) if lru.is_some() => (lru.unwrap(), false),
+                Err(error) => return Err(error),
             }
+        };
+        // Keep two idle shapes (main/presentation), regardless of how many
+        // externally pinned snapshots were released since the previous frame.
+        while self.slots.iter().filter(|slot| idle(slot)).count() > 2 {
+            let victim = self.slots.iter().enumerate()
+                .filter(|(other, slot)| *other != index && idle(slot))
+                .min_by_key(|(_, slot)| slot.last_used).map(|(other, _)| other)
+                .expect("an idle surplus snapshot");
+            self.remove_slot(victim);
+            index -= usize::from(victim < index);
         }
-        let others = self.metadata_bytes
-            + self
-                .slots
-                .iter()
-                .enumerate()
+        let refill = |pool: &mut Self, index: usize, resolve: &mut _| {
+            let others = pool.metadata_bytes + pool.slots.iter().enumerate()
                 .filter(|(other, _)| *other != index)
-                .map(|(_, slot)| slot.value.projection.bytes)
-                .sum::<usize>();
-        let available = self.config.max_bytes.saturating_sub(others);
-        let value = Arc::get_mut(&mut self.slots[index].value).ok_or(Error::Timeout)?;
-        if value.buffers.identity() != stores.buffers.identity()
-            || value.textures.identity() != stores.textures.identity()
-        {
-            return Err(Error::invalid_usage("projection stores changed"));
+                .map(|(_, slot)| slot.value.projection.bytes).sum::<usize>();
+            let available = pool.config.max_bytes.saturating_sub(others);
+            let value = Arc::get_mut(&mut pool.slots[index].value).ok_or(Error::Timeout)?;
+            if value.buffers.identity() != stores.buffers.identity()
+                || value.textures.identity() != stores.textures.identity() {
+                return Err(Error::invalid_usage("projection stores changed"));
+            }
+            value.refill(device, source, pool.config, available, resolve)
+        };
+        let mut result = refill(self, index, &mut resolve);
+        // Retry only the reversible CPU refill, after releasing other idle
+        // capacity. Never repeat graph allocation, recording or native submit.
+        let capacity_error = matches!(result, Err(Error::Timeout | Error::OutOfHostMemory | Error::Exhausted(_)));
+        let within_resource_bound = !capacity_error || [source.resources.len(),
+            source.backing_resources.len(), source.exported_logical_handles.len()]
+            .into_iter().all(|count| count <= self.config.max_resources);
+        if capacity_error && within_resource_bound {
+            let mut reclaimed = false;
+            for other in (0..self.slots.len()).rev() {
+                if other != index && idle(&self.slots[other]) {
+                    self.remove_slot(other);
+                    index -= usize::from(other < index);
+                    reclaimed = true;
+                }
+            }
+            if reclaimed { result = refill(self, index, &mut resolve); }
         }
-        if let Err(error) = value.refill(device, source, self.config, available, resolve) {
+        if let Err(error) = result {
             self.stalls += u64::from(matches!(error, Error::Timeout));
+            if created { self.remove_slot(index); }
             return Err(error);
         }
         self.clock = self.clock.saturating_add(1);
         self.slots[index].last_used = self.clock;
+        self.slots[index].plan_hint = plan_hint;
         Ok(self.slots[index].value.clone())
     }
 }

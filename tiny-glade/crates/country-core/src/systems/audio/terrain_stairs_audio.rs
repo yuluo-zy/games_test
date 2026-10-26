@@ -31,6 +31,7 @@ use crate::{
     utils::audio_utils::AudioLoop,
 };
 use bevy_ecs::prelude::*;
+use ::utils::scalar::clamp01;
 /// Original B14161ddb0 mapped counter: one u32, explicit zero upload for None.
 /// The pass alias and startup library use this same canonical element.
 #[repr(transparent)]
@@ -132,10 +133,6 @@ pub fn terrain_stairs_audio_init_system<S: Studio + Send + Sync + 'static>(
     mut commands: Commands,
 ) {
     commands.insert_resource(TerrainStairsAudioState::<S::Event>::new(&core));
-}
-
-fn clamp01(value: f32) -> f32 {
-    value.max(0.0).min(1.0)
 }
 
 /// `terrain_stairs_audio_system` (0x141462dc0).

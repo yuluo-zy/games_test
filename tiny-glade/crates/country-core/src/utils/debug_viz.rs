@@ -152,6 +152,80 @@ impl DebugRectangle3d {
     }
 }
 
+impl DebugRectangle3d {
+    /// 原 140b02ed0：上下两个闭合轮廓及四条竖边各自拥有工厂身份和生命周期。
+    pub fn show(&self, stream: &mut UiSignifierStream) {
+        let rect = ::utils::geometry::Rectangle2d {
+            axis: glam::Vec2::new(self.rect[0], self.rect[1]),
+            center: glam::Vec2::new(self.rect[2], self.rect[3]),
+            size: glam::Vec2::new(self.rect[4], self.rect[5]),
+        };
+        let [bottom, top] = [self.rect[6], self.rect[7]];
+        for height in [bottom, top] {
+            let name = format!("{height:?}{rect:?}{:?}{}", self.color, self.dashed);
+            self.append_line(
+                stream,
+                &name,
+                rect.as_curve3(height).points,
+                rect.perimeter(),
+            );
+        }
+        for index in 0..4 {
+            let point = rect.get_point(index);
+            let from = Vec3::new(point.x, bottom, point.y);
+            let to = Vec3::new(point.x, top, point.y);
+            let name = format!("{from:?}{to:?}{:?}{}", self.color, self.dashed);
+            // 原顺序先 dy²+dx²，再加 dz²，不能使用 SIMD dot 的不同归约次序。
+            let delta = to - from;
+            let length = (delta.z * delta.z + (delta.y * delta.y + delta.x * delta.x)).sqrt();
+            self.append_line(stream, &name, vec![from, to], length);
+        }
+    }
+
+    fn append_line(
+        &self,
+        stream: &mut UiSignifierStream,
+        name: &str,
+        points: Vec<Vec3>,
+        length: f32,
+    ) {
+        let color = self.color.rgb();
+        let line_width = self.line_width;
+        let dashed = self.dashed;
+        let factory = SignifierFactory::from_closure(
+            name,
+            Arc::new(
+                move |meshes: &AssetMeshLibrary,
+                      shaders: &AssetShaderLibrary,
+                      commands: &mut Commands| {
+                    let entity = SignifierEntityBuilder::new(SignifierMesh::PointsWithColors {
+                        colors: vec![color; points.len()],
+                        points: points.clone(),
+                    })
+                    .animation_duration(0.0)
+                    .custom_shader(if dashed {
+                        "dashed_line"
+                    } else {
+                        "vertex_color_shader"
+                    })
+                    .build(meshes, shaders, commands);
+                    commands
+                        .entity(entity)
+                        .insert(DrawTopology::Alt(line_width));
+                    // 两个原闭包 140b03a50/140b04040 均乘 6，区别于 DebugLine 的乘 4。
+                    if dashed {
+                        commands
+                            .entity(entity)
+                            .insert(DashedLineLength(length * 6.0));
+                    }
+                    vec![entity]
+                },
+            ),
+        );
+        stream.write_factory(&factory);
+    }
+}
+
 impl DebugSphere {
     /// 原 140b02520/140b027d0：提交具名工厂，按真实共享构建器生成球体。
     pub fn show(&self, stream: &mut UiSignifierStream) {
@@ -349,6 +423,84 @@ mod tests {
         systems::render_loop::draw_passes::draw_lists::UiPass,
         utils::components::transform::Transform,
     };
+
+    #[test]
+    fn rectangle_wakes_six_original_factories_and_uses_six_times_dash_length() {
+        use crate::systems::ui::signifiers::signifier_create::UiSignifierEntry;
+        use bevy_ecs::{
+            prelude::{Res, ResMut},
+            system::RunSystemOnce,
+            world::World,
+        };
+        let mut stream = UiSignifierStream::default();
+        DebugRectangle3d::new([1., 0., 0., 0., 2., 4., 3., 8.])
+            .color(DebugColor::Green)
+            .line_width(2.)
+            .dashed_line()
+            .show(&mut stream);
+        assert_eq!(stream.committed_len(), 6);
+        let entries = stream.take_entries();
+        let names: Vec<_> = entries
+            .iter()
+            .map(|e| match e {
+                UiSignifierEntry::Factory(f) => f.name().unwrap(),
+                _ => panic!(),
+            })
+            .collect();
+        assert_eq!(
+            names.iter().collect::<std::collections::HashSet<_>>().len(),
+            6
+        );
+        assert!(names[0].starts_with("3.0Rectangle2d"));
+        assert!(names[1].starts_with("8.0Rectangle2d"));
+        assert!(names.iter().all(|n| n.ends_with("Greentrue")));
+        let mut world = World::new();
+        world.init_resource::<AssetMeshLibrary>();
+        let shaders = AssetShaderLibrary::new();
+        shaders.add_raster(
+            crate::render::shader::RasterShaderProgram::new_draw(
+                "dashed_line",
+                crate::rhapsody_types::RasterPipelineDesc::default(),
+                &crate::render::test_device::TestDevice(1),
+            ),
+            false,
+        );
+        world.insert_resource(shaders);
+        world.init_resource::<UiSignifierStream>();
+        for entry in entries {
+            if let UiSignifierEntry::Factory(f) = entry {
+                world.resource_mut::<UiSignifierStream>().write_factory(&f);
+            }
+        }
+        fn wake(
+            mut commands: Commands,
+            meshes: Res<AssetMeshLibrary>,
+            shaders: Res<AssetShaderLibrary>,
+            mut stream: ResMut<UiSignifierStream>,
+        ) {
+            for entry in stream.take_entries() {
+                if let UiSignifierEntry::Factory(f) = entry {
+                    assert_eq!(f.wake(&meshes, &shaders, &mut commands).len(), 1);
+                }
+            }
+        }
+        world.run_system_once(wake).unwrap();
+        let mut query = world.query::<(
+            &DashedLineLength,
+            &DrawTopology,
+            &UiPass,
+            &crate::systems::ui::signifiers::animation::SignifierAnimation,
+            &TransientMesh,
+        )>();
+        let mut lengths = Vec::new();
+        for (dash, topology, _, animation, _) in query.iter(&world) {
+            lengths.push(dash.0);
+            assert_eq!(*topology, DrawTopology::Alt(2.));
+            assert_eq!(animation.duration, 0.);
+        }
+        lengths.sort_by(f32::total_cmp);
+        assert_eq!(lengths, [30., 30., 30., 30., 72., 72.]);
+    }
 
     #[test]
     fn colour_tags_follow_the_original_table_order() {

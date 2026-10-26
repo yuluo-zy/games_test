@@ -13,6 +13,7 @@ pub mod frozen_map;
 pub mod game_config;
 pub mod app_loading_state;
 pub mod game_profile;
+pub mod game_key_bindings;
 pub mod geometry;
 pub mod input;
 pub mod meta_commander;
@@ -53,6 +54,8 @@ pub mod systems {
     pub mod clear_canvas;
     pub mod ivy;
     pub mod main_camera;
+    pub mod ui_raise_shape;
+    pub mod ui_focus_mode_shape_height;
     pub mod mode_manager;
     pub mod paths;
     pub mod ui_2d_follow_mouse;

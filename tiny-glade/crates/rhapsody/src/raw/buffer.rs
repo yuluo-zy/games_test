@@ -1,8 +1,8 @@
 //! Buffer creation, memory binding and mapped host reads/writes.
+use crate::{Error, Result};
 use super::{
     allocator::MemoryBlock,
     device::Device,
-    error::{Error, Result},
     graveyard::Doomed,
 };
 use ash::vk;
@@ -224,12 +224,7 @@ pub fn plan_buffer_update(
     Ok(BufferUpdatePlan { total, regions })
 }
 
-/// Persistent host mapping `(ptr, len)` returned by `create_mapped_buffer`
-/// (host-coherent memory only).
-pub struct MappedBufferParts {
-    pub ptr: *mut u8,
-    pub len: usize,
-}
+
 
 pub struct Buffer {
     dynamic_constants_page: bool,
@@ -409,7 +404,7 @@ impl Buffer {
                 vk::SharingMode::EXCLUSIVE
             })
             .queue_family_indices(sharing.families());
-        let handle = super::error::observe_vulkan(&device, unsafe {
+        let handle = crate::error::observe_vulkan(&device, unsafe {
             device.core.device.create_buffer(&info, None)
         })?;
         let mut dedicated_requirements = vk::MemoryDedicatedRequirements::default();
@@ -519,7 +514,7 @@ impl Buffer {
             unsafe {
                 device.core.device.destroy_buffer(handle, None);
             }
-            return super::error::observe_vulkan(&device, Err(error));
+            return crate::error::observe_vulkan(&device, Err(error));
         }
         // Host-visible dedicated memory is mapped once here and stays mapped;
         // suballocations use gpu-allocator's persistent block mapping.
@@ -539,7 +534,7 @@ impl Buffer {
                 Ok(pointer) => Some(pointer as usize),
                 Err(error) => {
                     unsafe { device.core.device.destroy_buffer(handle, None) };
-                    return super::error::observe_vulkan(&device, Err(error));
+                    return crate::error::observe_vulkan(&device, Err(error));
                 }
             }
         } else {
@@ -621,7 +616,7 @@ impl Buffer {
             }
             None => {
                 self.device.wait(&self.last_use.snapshot(), u64::MAX)?;
-                let pointer = super::error::observe_vulkan(&self.device, unsafe {
+                let pointer = crate::error::observe_vulkan(&self.device, unsafe {
                     self.device.core.device.map_memory(
                         self.allocation.handle,
                         0,
@@ -748,8 +743,7 @@ impl Buffer {
                 self.device.limits().non_coherent_atom_size.max(1)
             },
         )?;
-        let deadline = wait_ns
-            .map(|ns| std::time::Instant::now().checked_add(std::time::Duration::from_nanos(ns)));
+        let wait_started = wait_ns.map(|ns| (std::time::Instant::now(), ns));
         let mut completed = self.device.completed();
         let mut polled = false;
         loop {
@@ -783,15 +777,12 @@ impl Buffer {
                 polled = true;
                 continue;
             }
-            let Some(deadline) = deadline else {
+            let Some((started, budget_ns)) = wait_started else {
                 return Err(Error::Timeout);
             };
-            let remaining = deadline.map_or(u64::MAX, |deadline| {
-                deadline
-                    .saturating_duration_since(std::time::Instant::now())
-                    .as_nanos()
-                    .min(u128::from(u64::MAX)) as u64
-            });
+            let remaining = budget_ns.saturating_sub(
+                started.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64,
+            );
             self.device.wait(&pending, remaining)?;
             completed = self.device.completed();
         }
@@ -822,7 +813,7 @@ impl Buffer {
             .or(self.mapped_ptr.map(|a| a as *mut u8));
         let pointer = match shared_pointer {
             Some(pointer) => pointer.cast(),
-            None => super::error::observe_vulkan(&self.device, unsafe {
+            None => crate::error::observe_vulkan(&self.device, unsafe {
                 self.device.core.device.map_memory(
                     self.allocation.handle,
                     0,
@@ -850,7 +841,7 @@ impl Buffer {
         } else {
             Ok(())
         };
-        if let Err(error) = super::error::observe_vulkan(&self.device, result) {
+        if let Err(error) = crate::error::observe_vulkan(&self.device, result) {
             unmap();
             return Err(error);
         }
@@ -866,7 +857,7 @@ impl Buffer {
             super::dynamic_constants::HostFlush::Now => {
                 let result = unsafe { self.device.core.device.flush_mapped_memory_ranges(&range) };
                 unmap();
-                super::error::observe_vulkan(&self.device, result)
+                crate::error::observe_vulkan(&self.device, result)
             }
             // Deferred flushes require a persistent mapping (constants pages).
             super::dynamic_constants::HostFlush::Deferred if shared_pointer.is_some() => {
@@ -880,7 +871,7 @@ impl Buffer {
             super::dynamic_constants::HostFlush::Deferred => {
                 let result = unsafe { self.device.core.device.flush_mapped_memory_ranges(&range) };
                 unmap();
-                super::error::observe_vulkan(&self.device, result)
+                crate::error::observe_vulkan(&self.device, result)
             }
         }
     }
@@ -1049,6 +1040,12 @@ impl Buffer {
         else {
             return Ok(false);
         };
+        // Match host_access_with's lock order. A page cursor gives disjoint
+        // allocations, but public chunk/buffer owners can revisit a range or
+        // submit it concurrently. Hold both gates through the idle proof and
+        // copy without rebuilding the native range table for every chunk.
+        let _host = self.host_access.lock();
+        let _submission = self.last_use.lock_submission();
         if !self.last_use.is_reached(&self.device.completed()) {
             return Ok(false);
         }
@@ -1142,11 +1139,6 @@ impl Drop for Buffer {
 
 impl crate::resource::GpuUse for Buffer {
     fn visit_uses(&self, visitor: &mut crate::resource::UseVisitor<'_>) -> crate::Result<()> {
-        visitor(&self.last_use)?;
-        if let Some(cell) = &self.allocation_use {
-            visitor(cell)?;
-        }
-
-        Ok(())
+        crate::resource::tracked::visit_cells(visitor, std::iter::once(&self.last_use).chain(self.allocation_use.iter()))
     }
 }

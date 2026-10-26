@@ -18,6 +18,8 @@ pub use crate::components::drawable::{AlbedoMap as AlbedoMapView, AlphaMap as Al
 /// `components::WallFlagCloth`（TypeId 0x0e2c5c63fb76ee91/0xc662ff3d29b2c8d6；真实类型 `(pub Gap)`）：
 /// `i32 @+0`、`f32 @+4/+8/+0xc`、`bool @+0x10`。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct WallFlagClothView {
     pub id: i32,
     pub f4: f32,
@@ -28,11 +30,15 @@ pub struct WallFlagClothView {
 
 /// `components::RoofFlagCloth`（TypeId 0x983a5c6eded1c4e5/0x929a707bdcc6a79c）：`u32 @+0`。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct RoofFlagClothView(pub u32);
 
 /// `components::WoodenGate`（TypeId 0x3b633fbe5a39b5b4/0xd54faa3a72d3ee09；真实类型 `(pub Gap)`）：
 /// `qword @+0x18`（取低 32 位写 `i32` uniform）、`i32 @+0x30`。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct WoodenGateView {
     pub q18: u64,
     pub d30: i32,
@@ -40,12 +46,16 @@ pub struct WoodenGateView {
 
 /// `components::SplashParticle`（TypeId 0x73873257d5f05e11/0xdb3ade5ce1f0e7df）：`f32 @+8`。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct SplashParticleView {
     pub f8: f32,
 }
 
 /// `components::ArrowGizmo`（TypeId 0xf26b1f0dd0e37102/0x4ea1410c87a9f297）：`f32 @+0`、`f32 @+4`。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct ArrowGizmoView {
     pub f0: f32,
     pub f4: f32,
@@ -138,3 +148,9 @@ pub struct RoofHighlight {
     pub value: u32,
     pub tag: u8,
 }
+
+impl crate::render::extract::JournaledComponent for SplashParticleView {}
+impl crate::render::extract::JournaledComponent for RoofFlagClothView {}
+impl crate::render::extract::JournaledComponent for WallFlagClothView {}
+impl crate::render::extract::JournaledComponent for ArrowGizmoView {}
+impl crate::render::extract::JournaledComponent for WoodenGateView {}

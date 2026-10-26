@@ -161,7 +161,7 @@ pub mod path_brush_preview_size {
 
     pub fn path_brush_preview_size(
         mode: Res<AppMode>,
-        mut query: Query<&mut Transform, With<SetSizeBasedOnAppModePath>>,
+        mut query: Query<ComponentWrite<Transform>, With<SetSizeBasedOnAppModePath>>,
         brush: Res<BrushSizes>,
     ) {
         // O：`ADD EAX,-7; CMP EAX,1; JA return` → native tag ∈ {7,8}。
@@ -998,3 +998,5 @@ mod native_preview_cardinality_tests {
         }
     }
 }
+
+use crate::render::extract::ComponentWrite;

@@ -84,8 +84,7 @@ fn pressure_evicts_idle_staging_but_keeps_leased_slots_then_allocation_succeeds(
         )
         .unwrap(),
     );
-    manager
-        .upload_buffer(destination.clone(), 0, &[9; 64])
+    gpu_test_support::submit_upload(&mut manager, destination.clone(), 0, &[9; 64])
         .unwrap()
         .wait(10_000_000_000)
         .unwrap();

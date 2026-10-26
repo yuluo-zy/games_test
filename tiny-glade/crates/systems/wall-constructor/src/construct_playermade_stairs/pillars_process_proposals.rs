@@ -43,6 +43,7 @@
 //! 未命中 reserve_rehash 插入空 Vec）与 `UpdateRtWorldEvent`（Event 载荷）后，
 //! 按宿主反编译全序实现第 4-6 步。
 use bevy_ecs::prelude::*;
+use ::utils::bytes::{read_f32_le as read_f32, write_f32_le as write_f32};
 use country_core::resources::stairs_walls::{StairsPillarProposal, StairsPillarProposals};
 use country_core::systems::collision::world::RaycastWorld;
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
@@ -144,13 +145,6 @@ pub fn process_playermade_stair_pillars_proposals(
     )
 }
 
-fn read_f32(bytes: &[u8], offset: usize) -> f32 {
-    f32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap())
-}
-
-fn write_f32(bytes: &mut [u8], offset: usize, value: f32) {
-    bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
-}
 
 #[cfg(test)]
 mod tests {

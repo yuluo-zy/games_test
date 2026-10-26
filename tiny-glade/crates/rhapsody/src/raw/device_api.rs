@@ -1,7 +1,7 @@
+use crate::{Error, Result};
 use super::{
-    buffer::{Buffer, BufferDesc, MappedBufferParts, MemoryLocation, plan_buffer_update},
+    buffer::{Buffer, BufferDesc, plan_buffer_update},
     device::Device,
-    error::{Error, Result},
     managed::{
         buffer::ManagedBuffer,
         texture::{ManagedTexture, ManagedTextureView},
@@ -84,40 +84,6 @@ impl Device {
             }
         }
         self.caches.resources.buffers.allocate(buffer)
-    }
-
-    pub fn create_mapped_buffer(
-        &self,
-        desc: &BufferDesc,
-        name: &str,
-    ) -> Result<(ManagedBuffer, MappedBufferParts)> {
-        if !matches!(
-            desc.memory_location,
-            MemoryLocation::CpuToGpu | MemoryLocation::GpuToCpu
-        ) {
-            return Err(Error::invalid_usage(
-                "映射缓冲需要 CpuToGpu 或 GpuToCpu 内存",
-            ));
-        }
-        let managed = self.create_buffer(desc, name, ())?;
-        // The raw pointer has no flush/invalidate path, so it is only handed
-        // out for host-coherent memory.
-        if !managed
-            .memory_properties()
-            .contains(vk::MemoryPropertyFlags::HOST_COHERENT)
-        {
-            return Err(Error::unsupported(
-                "mapped buffer pointers require HOST_COHERENT memory",
-            ));
-        }
-        let mapped = managed
-            .persistent_host_ptr()
-            .ok_or_else(|| Error::invalid_usage("缓冲内存未映射"))?;
-        let parts = MappedBufferParts {
-            ptr: mapped,
-            len: managed.size as usize,
-        };
-        Ok((managed, parts))
     }
 
     /// Borrow this buffer's persistent host mapping.

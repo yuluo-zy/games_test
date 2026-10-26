@@ -96,7 +96,8 @@ pub struct NaniDrawPlan {
     /// 间接参数缓冲内字节偏移 = `cmd_slot * 20`（O）。
     pub args_offset_bytes: u64,
     pub mode: NaniIndirectMode,
-    /// count 路径的 `max_draw_count`（O：`MAX_DRAWS_PER_LIST[kind]`）；raw 路径为 `None`。
+    /// Count capacity from the original table. The owned producer's live input
+    /// bound is applied when the packet is built; raw paths have no counter.
     pub max_draw_count: Option<u64>,
 }
 
@@ -217,8 +218,22 @@ impl NaniDrawExt for DrawBuilder<'_> {
                     plan.args_offset_bytes,
                     DRAW_INDEXED_INDIRECT_STRIDE as u64,
                     plan.count_offset_bytes,
-                    plan.max_draw_count
-                        .expect("count path always carries max_draw_count"),
+                    match subset {
+                        // Keep the actual GPU counter. Main cull emits at most
+                        // one command per occupied mesh bin in each 32-input
+                        // group; the producer snapshot owns N and its bin mask.
+                        GpuWorldSubset::Owned(owned) => plan.max_draw_count
+                            .expect("count path always carries max_draw_count")
+                            .min(match kind {
+                                GpuWorldSubsetKind::Canopy | GpuWorldSubsetKind::TreeTrunk =>
+                                    owned.main_cull_command_bound(),
+                                // Custom cull can source its part from typed
+                                // instance data, so its safe input bound is N.
+                                _ => owned.instance_count() as u64,
+                            }),
+                        GpuWorldSubset::External(_) => plan.max_draw_count
+                            .expect("count path always carries max_draw_count"),
+                    },
                 ],
             ),
             NaniIndirectMode::Raw => builder.draw_indexed_indirect_raw(
@@ -231,8 +246,6 @@ impl NaniDrawExt for DrawBuilder<'_> {
     }
 }
 
-/// 引用类型：仅用于名称对齐（GpuWorld 资源类型存在于 ECS）。
-pub type GpuWorldResource = GpuWorld;
 
 #[cfg(test)]
 mod tests {
@@ -275,7 +288,7 @@ mod tests {
             false
         ));
         assert!(!uses_indirect_count(
-            GpuWorldSubsetKind::CurvedHalftimber,
+            GpuWorldSubsetKind::CurvedHalfTimber,
             false,
             false
         ));
@@ -363,7 +376,7 @@ mod tests {
         let dev = MockDevice::default();
         let mut gw = GpuWorld::new(&dev);
         // Explicit fixture: seven mesh parts and an independent live count.
-        let mut sub = OwnedGpuWorldSubset::new_with_mesh_parts::<PlantInstanceData>(&dev, kind, 7);
+        let mut sub = OwnedGpuWorldSubset::new::<PlantInstanceData>(&dev, kind, 7);
         let items = vec![InstanceCullData::new(Vec3::ZERO, 1.0, 0); instances];
         sub.extend_no_data(kind, &items, |_| {});
         gw.assign_subset(kind, GpuWorldSubset::Owned(sub));
@@ -451,13 +464,31 @@ mod tests {
                         cmd_slot as u64 * 20,
                         0x14,
                         list_index as u64 * 4,
-                        MAX_DRAWS_PER_LIST[1]
+                        1
                     ]
                 );
             }
             other => panic!("expected IndexedIndirectCount, got {other:?}"),
         }
         p.rendered.0 = true;
+    }
+
+    #[test]
+    fn fine_count_bound_tracks_live_bins_without_using_mesh_part_count() {
+        for kind in [GpuWorldSubsetKind::Canopy, GpuWorldSubsetKind::TreeTrunk] {
+            for instances in [0, 1, 65, 8193] {
+                let (gw, lib, mut rg) = world_and_library(kind, instances);
+                let mut p = pass();
+                builder(&mut p, 0).nani_draw(kind, &gw, &lib, &mut rg);
+                match &p.draws[0].kind {
+                    DrawKind::IndexedIndirectCount { args, .. } => {
+                        assert_eq!(args[3], (instances.min(kind.max_instances()) as u64).div_ceil(32).min(MAX_DRAWS_PER_LIST[kind as usize]));
+                    }
+                    other => panic!("expected fine Count, got {other:?}"),
+                }
+                p.rendered.0 = true;
+            }
+        }
     }
 
     #[test]

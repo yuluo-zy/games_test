@@ -72,7 +72,7 @@ pub fn sheep_floaties(
         (Entity, &Transform, &CritterLocomotion, &mut FloatieHolder),
         With<Sheep>,
     >,
-    mut accessories: Query<(&mut SheepAccessory, &mut Transform), Without<Sheep>>,
+    mut accessories: Query<(&mut SheepAccessory, ComponentWrite<Transform>), Without<Sheep>>,
 ) {
     let dt = time.delta;
 
@@ -160,3 +160,5 @@ pub struct Floatie {
     pub phase: f32,
     pub owner: Option<Entity>,
 }
+
+use country_core::render::extract::ComponentWrite;

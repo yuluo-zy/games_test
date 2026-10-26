@@ -199,7 +199,10 @@ fn run() -> Option<Samples> {
         imports.push_back(run_frame(&mut session, frame));
         assert!(session.pending_frame_count() <= 2);
         let state = sample(&session, imports.len());
-        assert!(state.commands <= state.command_bound, "frame {frame}: {state:?}");
+        assert!(
+            state.commands <= state.command_bound,
+            "frame {frame}: {state:?}"
+        );
         if frame % COLLECT_EVERY == MID_PHASE {
             mid.push(sample(&session, imports.len()));
         }

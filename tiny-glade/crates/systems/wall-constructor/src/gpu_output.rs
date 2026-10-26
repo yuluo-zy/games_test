@@ -156,14 +156,14 @@ pub fn flush_constructor_output(
     } = &mut output.gpu;
     *last_device_error = None;
     if let Some(storage) = library.get_mut::<BrickTransformSsbo>() {
-        if let Err(error) = storage.try_gpu_flush(runtime.buffer_device()) {
+        if let Err(error) = storage.gpu_flush(runtime.buffer_device()) {
             *last_device_error = Some(error.to_string());
         }
     } else if !bricks.is_empty() {
         *last_device_error = Some("BrickTransformSsbo is not registered".into());
     }
     if let Some(storage) = library.get_mut::<WoodenPlankSsbo>() {
-        if let Err(error) = storage.try_gpu_flush(runtime.buffer_device()) {
+        if let Err(error) = storage.gpu_flush(runtime.buffer_device()) {
             *last_device_error = Some(error.to_string());
         }
     } else if !planks.is_empty() {

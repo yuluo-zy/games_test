@@ -10,11 +10,12 @@
 pub use crate::device::DeviceQueue;
 pub use crate::raw::debug::DebugUtils;
 pub use crate::raw::init::{
-    GraphicsInstance, GraphicsInstanceLayerAllowlist, GraphicsInstanceLayerAllowlistEntry,
-    create_headless_device, create_headless_device_configured,
+    AvailableGraphicsDevice, AvailableGraphicsDeviceInitState, GraphicsInstance,
+    GraphicsInstanceLayerAllowlist, GraphicsInstanceLayerAllowlistEntry, create_headless_device,
+    create_headless_device_configured,
 };
 pub use crate::raw::instance::{
     DebugMessage, GraphicsInstanceLoader, InstanceBuilder, KHRONOS_VALIDATION_LAYER,
     ValidationMessenger, VulkanInstance,
 };
-pub use crate::raw::physical_device::PhysicalDevice;
+pub use crate::raw::physical_device::{PhysicalDevice, enumerate_physical_devices};

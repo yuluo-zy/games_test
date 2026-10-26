@@ -5,7 +5,7 @@ use system_critters::bird_spots::{BirdSpot, BirdSpotManager};
 use system_critters::wren::{recycle::recycle_returned_bird_spots, SittableForBirds};
 
 fn recycle(mut manager: ResMut<BirdSpotManager>,
-    mut wrens: Query<(Entity, &mut Transform, &mut Wren), Without<SittableForBirds>>) {
+    mut wrens: Query<(Entity, ComponentWrite<Transform>, &mut Wren), Without<SittableForBirds>>) {
     recycle_returned_bird_spots(&mut manager, &mut wrens);
 }
 #[test]
@@ -56,3 +56,5 @@ fn spawned_wren_starts_in_original_airborne_state() {
     let wren = Wren::new_airborne(glam::Vec3::new(1.0, 2.0, 3.0));
     assert_eq!(wren.spot.state, 2);
 }
+
+use country_core::render::extract::ComponentWrite;

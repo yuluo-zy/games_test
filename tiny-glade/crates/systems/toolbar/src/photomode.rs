@@ -112,7 +112,7 @@ pub fn photomode_buttons(
     mut query: Query<(
         Entity,
         &PhotomodeButton,
-        &mut UiInteractionState,
+        ComponentWrite<UiInteractionState>,
         Option<&UiLocked>,
     )>,
     mut clicks: EventReader<UiClickEvent>,
@@ -277,6 +277,7 @@ pub fn photomode_focus(
     screen: Res<PhotomodeScreen>,
     menu: Res<EscMenuState>,
     actions: Res<country_core::input::action_set::ActionSetStates>,
+    modifiers: Res<country_core::systems::backend::input::mod_key::Modifiers>,
     cursor: Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,
     window: Res<country_core::resources::window::WindowSize>,
     library: Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,
@@ -285,6 +286,7 @@ pub fn photomode_focus(
     mut photo: ResMut<PhotomodeState>,
     mut mei: ResMut<crate::MeiContext>,
     readbacks: Option<Res<country_core::render::gpu_readback::GpuReadbacks>>,
+    mut rollercoaster: EventWriter<country_core::resources::events::DisplayRollercoasterPrompt>,
 ) {
     use country_core::systems::render_loop::compute_passes::dof_autofocus::DofFocusReadbackSsbo;
     if !screen.enabled {
@@ -299,9 +301,10 @@ pub fn photomode_focus(
         .expect("photomode requires the original DofFocusReadbackSsbo");
     // The render thread's latest completed autofocus response; before the
     // first one the buffer still holds its zero-initialized element.
-    let response = country_core::render::gpu_readback::latest::<DofFocusReadbackSsbo>(readbacks.as_deref())
-        .and_then(|samples| samples.first().copied())
-        .unwrap_or_default();
+    let response =
+        country_core::render::gpu_readback::latest::<DofFocusReadbackSsbo>(readbacks.as_deref())
+            .and_then(|samples| samples.first().copied())
+            .unwrap_or_default();
     let marker = update_photo_focus(
         &mut camera,
         &mut photo,
@@ -312,6 +315,61 @@ pub fn photomode_focus(
     );
     if photo.show_focus_marker && menu.is_closed() && !matches!(camera.mode_byte(), 3 | 4) {
         draw_photo_focus_marker(&mut mei, marker);
+    }
+    draw_photo_walk_ghost(&mut mei, &camera, *modifiers);
+    // 原 B14234bfb2..c0fe：步行穿透提示抢占本分支；没有菜单门控，且每帧
+    // 发一个事件供后续引导系统消费。这里不能 take/swap 清除原写者的状态。
+    if rollercoaster_prompt_visible(
+        camera.mode_byte(),
+        modifiers.disable_snapping(),
+        country_core::systems::main_camera::PROMPT_ROLLERCOASTER
+            .load(std::sync::atomic::Ordering::Relaxed),
+    ) {
+        rollercoaster.write(country_core::resources::events::DisplayRollercoasterPrompt);
+    }
+}
+
+fn rollercoaster_prompt_visible(camera_mode: u8, ghost: bool, requested: bool) -> bool {
+    camera_mode == 3 && !ghost && requested
+}
+
+#[cfg(test)]
+mod rollercoaster_tail_tests {
+    #[test]
+    fn original_tail_preserves_all_cameras_modifier_priority_and_event_gate() {
+        let cases: Vec<(u8, u8, bool, usize)> = ron::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../tests/fixtures/native/toolbar-rollercoaster-tail.ron"
+        )))
+        .unwrap();
+        assert_eq!(cases.len(), 48);
+        for (mode, modifier, requested, native_events) in cases {
+            assert_eq!(
+                usize::from(super::rollercoaster_prompt_visible(
+                    mode,
+                    country_core::systems::backend::input::mod_key::Modifiers {
+                        flags: u32::from(modifier),
+                    }
+                    .disable_snapping(),
+                    requested,
+                )),
+                native_events,
+                "camera={mode} modifier={modifier} request={requested}",
+            );
+        }
+    }
+}
+
+/// 原 B14234bfb2..c09c。0x1408c5680 在此读取的是 Modifiers 首字节，
+/// 不是反编译器选择的同址 StructureType::is_fence 别名。
+fn draw_photo_walk_ghost(
+    mei: &mut crate::MeiContext,
+    camera: &MainCamera,
+    modifiers: country_core::systems::backend::input::mod_key::Modifiers,
+) {
+    if camera.mode_byte() == 3 && modifiers.disable_snapping() {
+        mei.safe_frame("camera ghost", false)
+            .template("other/camera_ghost");
     }
 }
 
@@ -482,6 +540,14 @@ mod photo_focus_tests {
         },
     };
     use glam::{Mat4, Vec2};
+
+    /// Original release UI asset (`B版本内容/assets/ui/<relative>`), resolved from
+    /// the manifest dir. Not part of the repository.
+    fn original_ui_asset(relative: &str) -> std::path::PathBuf {
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../../B版本内容/assets/ui")
+            .join(relative)
+    }
 
     fn camera(tag: u32) -> MainCamera {
         let mut camera = MainCamera::new(1.);
@@ -728,19 +794,24 @@ mod photo_focus_tests {
         }
         for pinned in [false, true] {
             let mut mei = crate::MeiContext::default();
+            // Read at run time, like the other original-asset tests in this
+            // module: the original release files are not in the repository, so a
+            // compile-time include_str! would break `cargo check --all-targets`
+            // on every machine without them. A missing file still fails this test
+            // loudly instead of skipping it.
             let (template, config): (&str, crate::mei::config::NodeConfig) = if pinned {
                 (
                     "other/camera_focus_pinned",
-                    ron::from_str(include_str!(
-                        "../../../../../Tiny Glade/assets/ui/other/camera_focus_pinned.ron"
+                    crate::mei::config::read_node_config_from_file(&original_ui_asset(
+                        "other/camera_focus_pinned.ron",
                     ))
                     .unwrap(),
                 )
             } else {
                 (
                     "other/camera_focus",
-                    ron::from_str(include_str!(
-                        "../../../../../Tiny Glade/assets/ui/other/camera_focus.ron"
+                    crate::mei::config::read_node_config_from_file(&original_ui_asset(
+                        "other/camera_focus.ron",
                     ))
                     .unwrap(),
                 )
@@ -765,6 +836,9 @@ mod photo_focus_tests {
                 }
             );
             assert_eq!(mei.nodes[&root].flags & 2, 2);
+            // 原版在 post_update 布局遍历时将输入屏蔽传播到模板后代；
+            // 建树阶段的 TemplateView.context 仍指向调用者，不能提前检查子节点。
+            mei.perform_layout(Vec2::new(2000., 1000.));
             let frames: Vec<_> = mei
                 .nodes
                 .values()
@@ -780,6 +854,56 @@ mod photo_focus_tests {
                     .iter()
                     .any(|(node, frame)| frame.shapes == shapes && node.flags & 2 != 0)
             );
+            assert_eq!(mei.z_order.len(), 2);
+            for id in &mei.z_order {
+                let node = &mei.nodes[id];
+                assert_eq!(node.flags & 2, 2);
+                assert_eq!(node.size, Vec2::splat(marker.size));
+                assert_eq!(node.pos, marker.position - Vec2::splat(marker.size * 0.5));
+            }
+        }
+    }
+
+    #[test]
+    fn walk_ghost_uses_real_modifier_byte_and_original_installed_template() {
+        use crate::mei::{
+            core::{FrameKind, GlobalId},
+            widgets::LabelContent,
+        };
+        use country_core::systems::backend::input::mod_key::Modifiers;
+        for mode in 0..6 {
+            for flags in [0, 1, 0x100, 0x101] {
+                let mut camera = camera(0);
+                camera.set_mode_byte(CameraMode(mode));
+                let mut mei = crate::MeiContext::default();
+                mei.font_table = std::sync::Arc::new(
+                    tg_text::FontTable::from_ron(include_str!(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/tests/fixtures/welcome/font-table.ron"
+                    )))
+                    .unwrap(),
+                );
+                let path = original_ui_asset("other/camera_ghost.ron");
+                let config = crate::mei::config::read_node_config_from_file(&path).unwrap();
+                mei.configs
+                    .insert("other/camera_ghost".into(), std::sync::Arc::new(config));
+                draw_photo_walk_ghost(&mut mei, &camera, Modifiers { flags });
+                if mode == 3 && flags & 0xff != 0 {
+                    assert_eq!(mei.frame_events.len(), 1);
+                    assert_eq!(mei.frame_events[0].id, GlobalId::new("camera ghost"));
+                    assert_eq!(mei.frame_events[0].kind, FrameKind::Safe);
+                    assert_eq!(mei.nodes[&GlobalId::new("camera ghost")].flags & 1, 0);
+                    assert!(mei.nodes.values().any(|node| {
+                        let content: &dyn std::any::Any = node.content.as_ref();
+                        content
+                            .downcast_ref::<LabelContent>()
+                            .is_some_and(|label| label.pending_text.as_deref() == Some("👻"))
+                    }));
+                } else {
+                    assert!(mei.frame_events.is_empty());
+                    assert!(mei.nodes.is_empty());
+                }
+            }
         }
     }
 
@@ -813,7 +937,7 @@ pub fn photomode_camera_buttons(
     mode: Res<AppMode>,
     mut query: Query<(
         &PhotomodeButton,
-        &mut country_core::components::UiInteractionState,
+        ComponentWrite<country_core::components::UiInteractionState>,
         Option<&UiLocked>,
     )>,
     mut clicks: EventReader<UiClickEvent>,
@@ -1329,7 +1453,7 @@ mod slider_restoration_tests {
                 "gfn/screenshot_msg"
             };
             let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../../../Tiny Glade/assets/ui")
+                .join("../../../../B版本内容/assets/ui")
                 .join(format!("{template}.ron"));
             let config = crate::mei::config::read_node_config_from_file(&path).unwrap();
             mei.configs
@@ -1548,3 +1672,5 @@ mod slider_restoration_tests {
         assert_eq!(world.resource::<MainCamera>().read_f32(lens + 8), 73.);
     }
 }
+
+use country_core::render::extract::ComponentWrite;

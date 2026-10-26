@@ -43,19 +43,33 @@ fn production_compilation_and_observations_share_the_interned_declaration_name()
         PlanContext::default(),
     )
     .unwrap();
-    assert!(std::ptr::eq(interned.as_str(), definition.passes[0].name.as_str()));
+    assert!(std::ptr::eq(
+        interned.as_str(),
+        definition.passes[0].name.as_str()
+    ));
     let plan = compile_definition(definition).unwrap();
     let mut frames = PassPgoFrames::default();
     frames.current.record(PassPgoDuration::new(
         PassPgoNameId::from_resource_name(plan.definition.passes[0].name),
         10,
     ));
-    assert_eq!(frames.current.get(&PassPgoNameId::from_name("shared producer")), Some(10));
+    assert_eq!(
+        frames
+            .current
+            .get(&PassPgoNameId::from_name("shared producer")),
+        Some(10)
+    );
     // A second graph naming the pass differently-allocated still hits the same identity.
     let mut again = RenderGraph::new();
-    again.add_pass("shared producer").with_side_effect().render(|_| true);
+    again
+        .add_pass("shared producer")
+        .with_side_effect()
+        .render(|_| true);
     let (second, _, _) = again.build().into_parts();
-    assert!(std::ptr::eq(interned.as_str(), second.passes[0].name.as_str()));
+    assert!(std::ptr::eq(
+        interned.as_str(),
+        second.passes[0].name.as_str()
+    ));
     frames.current.reset();
     assert!(frames.current.is_empty());
 }

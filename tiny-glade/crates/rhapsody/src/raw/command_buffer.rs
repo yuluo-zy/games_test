@@ -105,6 +105,7 @@ pub struct VulkanCommandPool {
     max_resources: usize,
     cpu_validation: Mutex<super::temp_list::TempList<OwnershipValidationState>>,
     cpu_state_patches: Mutex<super::temp_list::TempList<crate::resource::range_state::StatePatch>>,
+    cpu_state_buckets: Mutex<super::temp_list::TempList<(usize, u8, usize, usize)>>,
     _memory: super::allocator::CpuMemoryReservation,
 }
 
@@ -133,6 +134,10 @@ pub struct CommandPoolAllocation {
     device: ash::Device,
     handle: vk::CommandPool,
     lock: Mutex<PoolSync>,
+    last_use: Arc<crate::resource::SyncCell>,
+    // Native commands still owned by a wrapper or detached cache. Retired
+    // commands are protected by last_use and no longer need CPU exclusivity.
+    live_owned_commands: AtomicUsize,
     _memory: super::allocator::CpuMemoryReservation,
 }
 #[derive(Default)]
@@ -218,30 +223,36 @@ impl VulkanCommandPool {
             max_validation_items,
             device.memory.stats.clone(),
         )?);
+        let cpu_state_buckets = Mutex::new(super::temp_list::TempList::new(
+            usize::MAX, device.memory.stats.clone(),
+        )?);
         if family != device.queues.primary_family
             && !device.queues.additional.iter().any(|q| q.family == family)
         {
             return Err(crate::Error::invalid_usage("命令状态或队列族无效"));
         }
-        let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
         let memory =
             super::allocator::reserve_shared_cpu_metadata::<Self>(&device.memory.stats, 0)?;
         let allocation = match existing {
             Some(allocation) => allocation,
             None => {
+                let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
                 let info = vk::CommandPoolCreateInfo::default()
                     .queue_family_index(family)
                     .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER);
                 let allocation_memory = super::allocator::reserve_shared_cpu_metadata::<
                     CommandPoolAllocation,
                 >(&device.memory.stats, 0)?;
-                let handle = super::error::observe_vulkan(&device, unsafe {
+                let handle = crate::error::observe_vulkan(&device, unsafe {
                     device.core.device.create_command_pool(&info, None)
                 })?;
                 Arc::new(CommandPoolAllocation {
                     device: device.core.device.clone(),
                     handle,
                     lock: Mutex::new(PoolSync::default()),
+                    last_use: crate::resource::SyncCell::for_device(device.generation())
+                        .into_reserved_arc(sync_storage),
+                    live_owned_commands: AtomicUsize::new(0),
                     _memory: allocation_memory,
                 })
             }
@@ -250,8 +261,8 @@ impl VulkanCommandPool {
             max_resources: max_validation_items,
             cpu_validation,
             cpu_state_patches,
-            last_use: crate::resource::SyncCell::for_device(device.generation())
-                .into_reserved_arc(sync_storage),
+            cpu_state_buckets,
+            last_use: allocation.last_use.clone(),
             device,
             handle: allocation.handle,
             family,
@@ -279,13 +290,15 @@ impl VulkanCommandPool {
             .command_pool(self.handle)
             .level(vk::CommandBufferLevel::PRIMARY)
             .command_buffer_count(1);
-        let handle = super::error::observe_vulkan(&self.device, unsafe {
+        let handle = crate::error::observe_vulkan(&self.device, unsafe {
             self.device.core.device.allocate_command_buffers(&info)
         })?[0];
+        self.allocation.live_owned_commands.fetch_add(1, Ordering::Relaxed);
         drop(_guard);
         match self.wrap(handle) {
             Ok(command) => Ok(command),
             Err(error) => {
+                self.allocation.live_owned_commands.fetch_sub(1, Ordering::Relaxed);
                 self.allocation.free(handle);
                 Err(error)
             }
@@ -299,21 +312,14 @@ impl VulkanCommandPool {
         let range_uses = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
         let state_patches = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
         let owners = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
-        let mut uses = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
-        uses.add(self.last_use.clone())?;
+        let uses = crate::resource::tracked::SubmissionUseCells::new(self.max_resources, stats.clone(), &self.last_use)?;
         self.live_commands.fetch_add(1, Ordering::Relaxed);
         Ok(VulkanCommandBuffer {
             handle,
             pool: self.clone(),
             recording: false,
-            executable: false,
             detached: false,
             owners,
-            use_set: {
-                let mut set = crate::rg::token_map::TokenMap::default();
-                set.insert(Arc::as_ptr(&self.last_use) as usize as u64, ());
-                set
-            },
             owner_set: Default::default(),
             uses,
             range_uses,
@@ -336,7 +342,15 @@ impl VulkanCommandPool {
         }
         let _reservation = self.last_use.lock_submission();
         let mut guard = self.allocation.lock.lock();
-        if commands.len() != self.live_commands.load(Ordering::Relaxed)
+        if !self
+            .device
+            .queues
+            .timelines
+            .is_reached(&self.last_use.snapshot())?
+        {
+            return Err(vk::Result::NOT_READY.into());
+        }
+        if commands.len() != self.allocation.live_owned_commands.load(Ordering::Relaxed)
             || commands
                 .iter()
                 .any(|command| !std::ptr::eq(self, command.pool.as_ref()))
@@ -350,15 +364,7 @@ impl VulkanCommandPool {
                 "whole-pool reset requires all live commands from this pool",
             ));
         }
-        if !self
-            .device
-            .queues
-            .timelines
-            .is_reached(&self.last_use.snapshot())?
-        {
-            return Err(vk::Result::NOT_READY.into());
-        }
-        super::error::observe_vulkan(&self.device, unsafe {
+        crate::error::observe_vulkan(&self.device, unsafe {
             self.device
                 .core
                 .device
@@ -381,15 +387,18 @@ impl VulkanCommandPool {
 
     pub fn cpu_scratch_capacity_bytes(&self) -> usize {
         self.cpu_validation.lock().capacity_bytes() + self.cpu_state_patches.lock().capacity_bytes()
+            + self.cpu_state_buckets.lock().capacity_bytes()
     }
     pub fn cpu_scratch_growth_count(&self) -> u64 {
         self.cpu_validation.lock().growth_count() + self.cpu_state_patches.lock().growth_count()
+            + self.cpu_state_buckets.lock().growth_count()
     }
     /// CPU-only validation storage can be trimmed while GPU commands are in
     /// flight; all temporary resource-state references have already been dropped.
     pub fn trim_cpu_scratch(&self) {
         self.cpu_validation.lock().trim_idle();
         self.cpu_state_patches.lock().trim_idle();
+        self.cpu_state_buckets.lock().trim_idle();
     }
 
     pub fn reset_count(&self) -> u64 {
@@ -426,16 +435,13 @@ pub struct VulkanCommandBuffer {
     pub(crate) handle: vk::CommandBuffer,
     pub pool: Arc<VulkanCommandPool>,
     recording: bool,
-    executable: bool,
     /// The native buffer was handed to a cache ([`Self::detach`]); dropping
     /// this wrapper must not retire or free it.
     detached: bool,
     owners: super::temp_list::TempList<crate::raw::binding::ResourceOwner>,
-    uses: super::temp_list::TempList<Arc<crate::resource::SyncCell>>,
-    /// Pointer sets mirroring `uses` / the objects in `owners`: membership was a
-    /// linear scan over every use for each retained resource (O(draws x uses)).
-    use_set: crate::rg::token_map::TokenMap<()>,
-    owner_set: crate::rg::token_map::TokenMap<()>,
+    uses: crate::resource::tracked::SubmissionUseCells,
+    /// Pointer membership for the objects retained in `owners`.
+    owner_set: crate::collections::token_map::TokenMap<()>,
     range_uses: super::temp_list::TempList<RecordedOpaqueUse>,
     state_patches: super::temp_list::TempList<RecordedStatePatch>,
     range_failure: Option<MetadataFailure>,
@@ -447,6 +453,7 @@ impl VulkanCommandBuffer {
     pub fn raw_handle(&self) -> vk::CommandBuffer {
         self.handle
     }
+
 }
 #[derive(Clone, Copy)]
 enum RetainMode {
@@ -580,46 +587,12 @@ impl Drop for PreparedResourceStates {
         }
     }
 }
-/// Reusable index scratch for `prepare_submission_states`; keeps capacity per
-/// thread so steady-state submission does not allocate.
-#[derive(Default)]
-struct BucketScratch {
-    slot_of: std::collections::HashMap<usize, usize>,
-    /// (cell slot, kind: 0 explicit patch / 1 opaque use / 2 private upload read,
-    /// command index, entry index)
-    recorded: Vec<(usize, u8, usize, usize)>,
+/// Recover the recording order inside each physical cell without stable
+/// sort's temporary allocation. The full key is unique for recorded entries.
+fn order_recorded_patches(recorded: &mut [(usize, u8, usize, usize)]) {
+    recorded.sort_unstable_by_key(|&(slot, kind, command, entry)| (slot, command, kind, entry));
 }
-thread_local! {
-    static BUCKET_SCRATCH: std::cell::Cell<Option<BucketScratch>> =
-        const { std::cell::Cell::new(None) };
-}
-impl BucketScratch {
-    fn take() -> BucketGuard {
-        let mut scratch = BUCKET_SCRATCH.with(|slot| slot.take()).unwrap_or_default();
-        scratch.slot_of.clear();
-        scratch.recorded.clear();
-        BucketGuard(Some(scratch))
-    }
-}
-struct BucketGuard(Option<BucketScratch>);
-impl std::ops::Deref for BucketGuard {
-    type Target = BucketScratch;
-    fn deref(&self) -> &BucketScratch {
-        self.0.as_ref().unwrap()
-    }
-}
-impl std::ops::DerefMut for BucketGuard {
-    fn deref_mut(&mut self) -> &mut BucketScratch {
-        self.0.as_mut().unwrap()
-    }
-}
-impl Drop for BucketGuard {
-    fn drop(&mut self) {
-        if let Some(scratch) = self.0.take() {
-            BUCKET_SCRATCH.with(|slot| slot.set(Some(scratch)));
-        }
-    }
-}
+
 /// # Safety
 /// The submission gates for all `uses` must remain held until this guard is
 /// published or dropped. `commands` are in actual native execution order.
@@ -675,64 +648,65 @@ pub(crate) unsafe fn prepare_submission_states(
         }
         return Ok(prepared);
     };
-    let mut scratch = first.pool.cpu_state_patches.lock();
+    let mut scratch = super::temp_list::TempList::checkout(&first.pool.cpu_state_patches);
     // One pass buckets every recorded patch by physical cell (command order,
     // explicit before opaque inside a command), instead of re-filtering all
     // patches once per cell.
-    let mut bucket = BucketScratch::take();
-    let BucketScratch {
-        slot_of,
-        recorded,
-    } = &mut *bucket;
-    for (index, cell) in prepared.cells.iter().enumerate() {
-        assert!(
-            slot_of.insert(Arc::as_ptr(cell) as usize, index).is_none(),
-            "submission uses must name each physical cell once"
-        );
-    }
-    for (command_index, command) in commands.iter().enumerate() {
-        for (entry_index, entry) in command.state_patches.as_slice().iter().enumerate() {
-            if let Some(&slot) = slot_of.get(&(Arc::as_ptr(&entry.cell) as usize)) {
-                recorded.push((slot, 0, command_index, entry_index));
-            }
-        }
-        for (entry_index, entry) in command.range_uses.as_slice().iter().enumerate() {
-            if let Some(&slot) = slot_of.get(&(Arc::as_ptr(&entry.cell) as usize)) {
-                recorded.push((slot, 1, command_index, entry_index));
-            }
-        }
-    }
-    recorded.sort_by_key(|item| item.0);
-    for index in 0..prepared.cells.len() {
-        let cell = prepared.cells[index].clone();
-        let domain = cell.ownership_range().expect("filtered native domain");
-        let start = recorded.partition_point(|item| item.0 < index);
-        let end = recorded.partition_point(|item| item.0 <= index);
-        let own = &recorded[start..end];
-        let count = own.len();
-        let fallback = count == 0;
-        scratch.with_entries(|patches|->crate::Result<()> {
-            patches.reserve(count.max(usize::from(fallback)))?;
-            for &(_, kind, command_index, entry_index) in own {
-                if kind == 0 {
-                    patches.add(commands[command_index].state_patches.as_slice()[entry_index].patch)?;
-                } else {
-                    let entry = &commands[command_index].range_uses.as_slice()[entry_index];
-                    let range = match entry.range {
-                        OpaqueUseRange::Whole => domain,
-                        OpaqueUseRange::Bytes { offset, size } => {
-                            crate::resource::OwnershipRange::Buffer { offset, size }
-                        }
-                    };
-                    patches.add(StatePatch { range, expected_revision: u64::MAX, action: PatchAction::Unknown { queue, family } })?;
+    let mut buckets = super::temp_list::TempList::checkout(&first.pool.cpu_state_buckets);
+    let count = commands.iter().try_fold(0usize, |count, command| {
+        count.checked_add(command.state_patches.as_slice().len())
+            .and_then(|count| count.checked_add(command.range_uses.as_slice().len()))
+            .ok_or(crate::Error::OutOfHostMemory)
+    })?;
+    // Submission uses are already in pointer order. Binary lookup avoids a
+    // second unbudgeted HashMap; the bucket storage follows the pool's CPU
+    // reservation and can be trimmed while GPU work is in flight.
+    buckets.with_reserved(count, |recorded| -> crate::Result<()> {
+        for (command_index, command) in commands.iter().enumerate() {
+            for (entry_index, entry) in command.state_patches.as_slice().iter().enumerate() {
+                if let Ok(slot) = prepared.cells.binary_search_by_key(&(Arc::as_ptr(&entry.cell) as usize), |cell| Arc::as_ptr(cell) as usize) {
+                    recorded.push((slot, 0, command_index, entry_index));
                 }
             }
-            if fallback {
-                patches.add(StatePatch { range: domain, expected_revision: u64::MAX, action: PatchAction::Unknown { queue, family } })?;
+            for (entry_index, entry) in command.range_uses.as_slice().iter().enumerate() {
+                if let Ok(slot) = prepared.cells.binary_search_by_key(&(Arc::as_ptr(&entry.cell) as usize), |cell| Arc::as_ptr(cell) as usize) {
+                    recorded.push((slot, 1, command_index, entry_index));
+                }
             }
-            prepared.prepare_cell(index, patches.as_slice(), family, stats)
-        })?;
-    }
+        }
+        order_recorded_patches(recorded);
+        for index in 0..prepared.cells.len() {
+            let cell = prepared.cells[index].clone();
+            let domain = cell.ownership_range().expect("filtered native domain");
+            let start = recorded.partition_point(|item| item.0 < index);
+            let end = recorded.partition_point(|item| item.0 <= index);
+            let own = &recorded[start..end];
+            let count = own.len();
+            let fallback = count == 0;
+            scratch.with_entries(|patches|->crate::Result<()> {
+                patches.reserve(count.max(usize::from(fallback)))?;
+                for &(_, kind, command_index, entry_index) in own {
+                    if kind == 0 {
+                        patches.add(commands[command_index].state_patches.as_slice()[entry_index].patch)?;
+                    } else {
+                        let entry = &commands[command_index].range_uses.as_slice()[entry_index];
+                        let range = match entry.range {
+                            OpaqueUseRange::Whole => domain,
+                            OpaqueUseRange::Bytes { offset, size } => {
+                                crate::resource::OwnershipRange::Buffer { offset, size }
+                            }
+                        };
+                        patches.add(StatePatch { range, expected_revision: u64::MAX, action: PatchAction::Unknown { queue, family } })?;
+                    }
+                }
+                if fallback {
+                    patches.add(StatePatch { range: domain, expected_revision: u64::MAX, action: PatchAction::Unknown { queue, family } })?;
+                }
+                prepared.prepare_cell(index, patches.as_slice(), family, stats)
+            })?;
+        }
+        Ok(())
+    })??;
     trace.mark("prepare_all_cells");
     trace.count("physical_cells", prepared.cells.len());
     Ok(prepared)
@@ -750,7 +724,7 @@ pub(crate) fn validate_submission_commands(commands: &[&VulkanCommandBuffer]) ->
         if let Some(error) = command.range_failure {
             return Err(error.error());
         }
-        if !command.executable {
+        if !command.uses.is_sealed() {
             return Err(crate::Error::invalid_usage("提交命令尚未结束录制"));
         }
         if first.pool.family != command.pool.family
@@ -776,19 +750,12 @@ fn record_command_uses(uses: &[Arc<crate::resource::SyncCell>], point: crate::sy
 impl VulkanCommandBuffer {
     fn clear_after_reset(&mut self) {
         self.recording = false;
-        self.executable = false;
         self.owners.clear();
-        self.uses.clear();
         self.owner_set.clear();
-        self.use_set.clear();
         self.range_uses.clear();
         self.state_patches.clear();
         self.range_failure = None;
-        self.uses
-            .add(self.pool.last_use.clone())
-            .expect("pool cell capacity was admitted at allocation");
-        self.use_set
-            .insert(Arc::as_ptr(&self.pool.last_use) as usize as u64, ());
+        self.uses.reset(&self.pool.last_use);
         self.last_use = crate::sync::SyncSet::EMPTY;
     }
     pub fn is_recording(&self) -> bool {
@@ -819,7 +786,7 @@ impl VulkanCommandBuffer {
                 self.pool.allocation.end_recording(&mut sync);
                 self.recording = false;
             }
-            super::error::observe_vulkan(&self.pool.device, unsafe {
+            crate::error::observe_vulkan(&self.pool.device, unsafe {
                 self.pool
                     .device
                     .core
@@ -844,7 +811,7 @@ impl VulkanCommandBuffer {
                 self.pool.allocation.end_recording(&mut sync);
                 self.recording = false;
             }
-            super::error::observe_vulkan(&self.pool.device, unsafe {
+            crate::error::observe_vulkan(&self.pool.device, unsafe {
                 self.pool
                     .device
                     .core
@@ -856,19 +823,19 @@ impl VulkanCommandBuffer {
         Ok(())
     }
     pub fn is_executable(&self) -> bool {
-        self.executable
+        self.uses.is_sealed()
     }
     pub fn begin(&mut self) -> crate::Result<()> {
         if self.pool.device.is_device_lost() {
             return Err(crate::Error::DeviceLost);
         }
-        if self.recording || self.executable {
+        if self.recording || self.uses.is_sealed() {
             return Err(crate::Error::invalid_usage("命令状态或队列族无效"));
         }
         let info = vk::CommandBufferBeginInfo::default()
             .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
         let mut sync = self.pool.allocation.lock.lock();
-        super::error::observe_vulkan(&self.pool.device, unsafe {
+        crate::error::observe_vulkan(&self.pool.device, unsafe {
             self.pool
                 .device
                 .core
@@ -891,7 +858,7 @@ impl VulkanCommandBuffer {
         }
         {
             let mut sync = self.pool.allocation.lock.lock();
-            let ended = super::error::observe_vulkan(&self.pool.device, unsafe {
+            let ended = crate::error::observe_vulkan(&self.pool.device, unsafe {
                 self.pool.device.core.device.end_command_buffer(self.handle)
             });
             // A failed end leaves the buffer invalid; either way it no longer
@@ -902,9 +869,8 @@ impl VulkanCommandBuffer {
                 return Err(error);
             }
         }
-        self.normalize_uses();
+        self.uses.seal();
         self.recording = false;
-        self.executable = true;
         Ok(())
     }
     /// # Safety
@@ -1019,20 +985,10 @@ impl VulkanCommandBuffer {
         Ok(())
     }
     fn add_use_cell(&mut self, cell: &Arc<crate::resource::SyncCell>) -> crate::Result<()> {
-        let key = Arc::as_ptr(cell) as usize as u64;
-        if self.use_set.contains_key(&key) {
-            return Ok(());
-        }
-        self.uses.add(cell.clone())?;
-        self.use_set.insert(key, ());
-        if self.executable {
-            // `end` sorted the uses and `use_set` excludes duplicates, so placing
-            // the new cell keeps them sorted (a full sort per patch was quadratic).
-            self.uses.sift_last_by_key(|cell| Arc::as_ptr(cell) as usize);
-        }
-        Ok(())
+        self.uses.insert(cell)
     }
-    fn remember_metadata_error(&mut self, result: &crate::Result<()>) {
+
+    pub(crate) fn remember_metadata_error(&mut self, result: &crate::Result<()>) {
         if let Err(error) = result {
             if error.is_device_lost() {
                 self.pool.device.queues.timelines.mark_device_lost();
@@ -1295,32 +1251,22 @@ impl VulkanCommandBuffer {
         }
         Ok(())
     }
-    pub(crate) fn normalize_uses(&mut self) {
-        self.uses
-            .sort_dedup_by_key(|cell| Arc::as_ptr(cell) as usize);
-    }
     /// # Safety
     /// 调用者必须已等待覆盖此 CB 的提交凭据，不能仅依据 CPU 录制结束。
     pub unsafe fn release_completed_owners(&mut self) {
         self.owners.clear();
-        self.uses.clear();
         self.owner_set.clear();
-        self.use_set.clear();
         self.range_uses.clear();
         self.state_patches.clear();
         self.range_failure = None;
-        self.uses
-            .add(self.pool.last_use.clone())
-            .expect("pool cell capacity was admitted at allocation");
-        self.use_set
-            .insert(Arc::as_ptr(&self.pool.last_use) as usize as u64, ());
+        self.uses.release_completed(&self.pool.last_use);
         self.last_use = crate::sync::SyncSet::EMPTY;
     }
     pub(crate) fn validate_submission(&self) -> crate::Result<()> {
         validate_submission_commands(&[self])
     }
-    pub(crate) fn use_cells(&self) -> &[Arc<crate::resource::SyncCell>] {
-        self.uses.as_slice()
+    pub(crate) fn submission_uses(&self) -> crate::Result<crate::resource::tracked::OrderedSubmissionUses<'_>> {
+        self.uses.ordered()
     }
     pub(crate) fn record_submission(&mut self, point: crate::sync::SyncPoint) {
         self.last_use.insert(point);
@@ -1347,7 +1293,7 @@ impl VulkanCommandBuffer {
         )],
         signals: &[(Arc<super::semaphore::TimelineSemaphore>, u64)],
     ) -> crate::Result<PendingCommand> {
-        if !self.executable {
+        if !self.uses.is_sealed() {
             return Err(crate::Error::invalid_usage("提交命令、队列或同步对象无效"));
         }
         self.validate_submission()?;
@@ -1431,13 +1377,8 @@ impl VulkanCommandBuffer {
         if let Some(memory) = &mut nested_memory {
             memory.resize(prepared[0].heap_capacity_bytes() as u64)?;
         }
-        let uses =
-            super::submit::SubmitScratch::<[Arc<crate::resource::SyncCell>; 32]>::try_collect(
-                self.uses.as_slice().len(),
-                &device.memory.stats,
-                self.uses.as_slice().iter().cloned().map(Ok),
-            )?;
-        let _reservations = crate::resource::tracked::lock_submission_uses(&uses)?;
+        let uses = crate::resource::tracked::collect_submission_uses(&[self.submission_uses()?], &device.memory.stats)?;
+        let _reservations = crate::resource::tracked::lock_submission_uses(uses.ordered(), &device.memory.stats)?;
         self.validate_submission()?;
         let native_states = unsafe {
             prepare_submission_states(
@@ -1483,6 +1424,9 @@ impl Drop for VulkanCommandBuffer {
                 self.pool.allocation.end_recording(&mut sync);
             }
             self.pool.live_commands.fetch_sub(1, Ordering::Relaxed);
+            if !self.detached {
+                self.pool.allocation.live_owned_commands.fetch_sub(1, Ordering::Relaxed);
+            }
         }
         // Retained objects live until the command's completion, not until this
         // wrapper is dropped.
@@ -1601,6 +1545,20 @@ mod native_state_submission_tests {
             published: false,
         }
     }
+    #[test]
+    fn cell_bucketing_preserves_command_explicit_and_opaque_patch_order() {
+        let mut actual = Vec::new();
+        for command in 0..16 {
+            for kind in 0..2_u8 {
+                for entry in 0..37 { actual.push(((entry * 3 + command) % 5, kind, command, entry)); }
+            }
+        }
+        let mut expected = actual.clone();
+        expected.sort_by_key(|item| item.0);
+        order_recorded_patches(&mut actual);
+        assert_eq!(actual, expected);
+    }
+
     #[test]
     fn failed_native_submission_cancels_staged_state_and_retry_publishes_once() {
         let stats = Arc::new(super::super::allocator::AllocatorStats::default());
@@ -1756,7 +1714,7 @@ mod native_state_submission_tests {
                 |_| panic!("a failed preview must not expose its partial program"),
             )
             .unwrap_err();
-        assert!(matches!(error, crate::Error::Timeout));
+        assert_eq!(error.kind(), crate::ErrorKind::InvalidUsage);
         cell.with_range_state(NativeState::default(), &stats, |table| {
             assert_eq!(table.cells().len(), 1);
             assert_eq!(table.cells()[0].state.revision, 0);
@@ -1781,7 +1739,7 @@ mod native_state_submission_tests {
                 .unwrap();
             assert!(matches!(
                 prepared.prepare_cell(1, &[access(range(0, 64), 9, 2)], 2, &stats),
-                Err(crate::Error::Timeout)
+                Err(error) if error.kind() == crate::ErrorKind::InvalidUsage
             ));
         }
         for cell in &cells {
@@ -1794,5 +1752,34 @@ mod native_state_submission_tests {
             .unwrap();
             assert!(cell.snapshot().is_empty());
         }
+    }
+}
+
+#[cfg(test)]
+mod allocation_owner_tests {
+    use super::*;
+    #[test]
+    fn detached_commands_and_attached_wrappers_share_pool_ownership() {
+        let device = match Device::new_headless(&crate::device::DeviceConfig::headless()) {
+            Ok(device) => device,
+            Err(error) => {
+                assert_ne!(std::env::var_os("RHAPSODY_REQUIRE_VULKAN").as_deref(), Some(std::ffi::OsStr::new("1")), "required GPU initialization failed: {error}");
+                return;
+            }
+        };
+        let first = VulkanCommandPool::new(device.clone()).unwrap();
+        let command = first.allocate().unwrap();
+        let (handle, _) = command.detach();
+        let second = VulkanCommandPool::attach(device, first.family, first.allocation()).unwrap();
+        assert!(Arc::ptr_eq(&first.last_use, &second.last_use));
+        assert_eq!(first.live_command_count(), 0);
+        assert_eq!(second.reset_completed(&mut []).unwrap_err().kind(), crate::ErrorKind::InvalidUsage);
+        let mut command = second.adopt(handle).unwrap();
+        command.begin().unwrap();
+        second.reset_completed(&mut [&mut command]).unwrap();
+        assert!(!command.is_recording());
+        assert_eq!(first.reset_completed(&mut []).unwrap_err().kind(), crate::ErrorKind::InvalidUsage);
+        drop(command);
+        first.reset_completed(&mut []).unwrap();
     }
 }

@@ -37,7 +37,7 @@ impl Default for GladeAudio {
 }
 
 impl GladeAudio {
-    /// 严格读取主题配置，供热切换使用；出错时调用者保留当前播放状态。
+    /// 读取主题配置；会话加载器按原作策略在失败时使用默认描述。
     pub fn try_load_path(glade_dir: &std::path::Path) -> anyhow::Result<Self> {
         use anyhow::Context;
         let path = glade_dir.join("audio.json");
@@ -50,11 +50,7 @@ impl GladeAudio {
     /// `GladeAudio::load` @0x1408bf460：读 `{glade_dir}/audio.json`，反序列化；
     /// 读文件或反序列化失败 → default 回退（不 panic，O）。
     pub fn load(glade_dir: &str) -> Self {
-        let path = crate::startup::load_glade_audio::audio_json_path(glade_dir);
-        match std::fs::read_to_string(&path) {
-            Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
-            Err(_) => Self::default(),
-        }
+        Self::try_load_path(std::path::Path::new(glade_dir)).unwrap_or_default()
     }
 }
 

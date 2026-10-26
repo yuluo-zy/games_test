@@ -69,7 +69,7 @@ impl LateCameraFrame {
         use country_core::{
             game_config::GameConfig,
             input::{InputRecordReplayMode, action_set::{MainActionSet, DigitalActionPhase}},
-            resources::mouse_capture::CursorCapturedPosition,
+            resources::{mouse_capture::CursorCapturedPosition, gui::EscMenuState},
             systems::{backend::input::input_record_replay::InputRecordReplayState,
                 main_camera::{CameraSnapshot, CameraSnapshotInterpolation},
                 mode_manager::{AppMode, EditSubject}, render_loop::vermeer::VermeerState},
@@ -83,6 +83,7 @@ impl LateCameraFrame {
                 InputRecordReplayMode::None | InputRecordReplayMode::AutoRecordPanicRepro)
             || game.get_resource::<CameraSnapshot>()?.interpolation != CameraSnapshotInterpolation::Disabled
             || game.get_resource::<VermeerState>()?.should_freeze_camera()
+            || !game.get_resource::<EscMenuState>()?.is_closed()
             || !matches!(game.get_resource::<AppMode>()?, AppMode::Editing(EditSubject::None) | AppMode::Photomode)
         { return None; }
         let config = &game.get_resource::<GameConfig>()?.game;
@@ -225,7 +226,7 @@ mod tests {
         use country_core::{
             game_config::GameConfig,
             input::action_set::{MainActionSet, DigitalActionPhase},
-            resources::mouse_capture::CursorCapturedPosition,
+            resources::{mouse_capture::CursorCapturedPosition, gui::EscMenuState},
             systems::{backend::input::input_record_replay::InputRecordReplayState,
                 camera_rig::main_camera::CameraMode,
                 main_camera::CameraSnapshot, mode_manager::AppMode,
@@ -239,6 +240,7 @@ mod tests {
         actions.digital[2].phase = DigitalActionPhase::Held;
         world.insert_resource(actions);
         world.insert_resource(CursorCapturedPosition(Some(glam::Vec2::splat(50.0))));
+        world.insert_resource(country_core::resources::gui::EscMenuState::Closed);
         world.insert_resource(InputRecordReplayState::default());
         world.insert_resource(CameraSnapshot::default());
         world.insert_resource(VermeerState { phase: VermeerPhase::Disabled, ..Default::default() });
@@ -310,6 +312,62 @@ mod tests {
         LateCameraFrame::attach(Some(&frame), &replacement, &mut render);
         assert!(!render.contains_resource::<LateCameraFrame>());
         assert!(!render.contains_resource::<LatchedCameraInput>());
+    }
+
+    #[test]
+    fn late_camera_interaction_matrix_keeps_every_edit_menu_and_capture_owner_frozen() {
+        use country_core::{input::{InputRecordReplayMode, action_set::{MainActionSet, DigitalActionPhase}},
+            resources::{gui::EscMenuState, mouse_capture::CursorCapturedPosition},
+            systems::{mode_manager::{AppMode, EditSubject, WallShape, EraserLayer, DecoratorType},
+                main_camera::{CameraSnapshot, CameraSnapshotInterpolation},
+                render_loop::vermeer::{VermeerState, VermeerPhase},
+                backend::input::input_record_replay::InputRecordReplayState}};
+        let mailbox = LateCameraMailbox::default();
+        let blocked_modes = [AppMode::Editing(EditSubject::Wall(1)), AppMode::Editing(EditSubject::Roof(1)),
+            AppMode::Editing(EditSubject::DecoClutter { decorator_id: 1 }),
+            AppMode::Editing(EditSubject::StairPoint { decorator_id: 1 }), AppMode::Editing(EditSubject::Terrain(1)),
+            AppMode::Wall(WallShape::Freeform), AppMode::Path, AppMode::Cobblestone(1),
+            AppMode::Eraser(EraserLayer::All), AppMode::Terrain, AppMode::Decorator(DecoratorType::CottageWindow),
+            AppMode::Color, AppMode::Replay, AppMode::LoadGame, AppMode::Water, AppMode::Tree,
+            AppMode::Garden, AppMode::Fences, AppMode::CloneClutter];
+        for mode in blocked_modes {
+            let mut game = late_fixture();
+            *game.resource_mut::<AppMode>() = mode;
+            assert!(LateCameraFrame::capture(&game, &mailbox, mailbox.mark()).is_none(), "edit {mode:?}");
+        }
+        for mode in [InputRecordReplayMode::Records, InputRecordReplayMode::Replay, InputRecordReplayMode::DisableInput] {
+            let mut game = late_fixture(); game.resource_mut::<InputRecordReplayState>().mode = mode;
+            assert!(LateCameraFrame::capture(&game, &mailbox, mailbox.mark()).is_none());
+        }
+        for menu in [EscMenuState::Main, EscMenuState::Quit, EscMenuState::Load(Default::default()),
+            EscMenuState::Settings(country_core::resources::gui::SettingsMenuState::Controls), EscMenuState::Photomode(true)] {
+            let mut game = late_fixture(); game.insert_resource(menu);
+            assert!(LateCameraFrame::capture(&game, &mailbox, mailbox.mark()).is_none());
+        }
+        let game = late_fixture();
+        for slot in 0..game.resource::<MainActionSet>().digital.len() {
+            if slot == 2 { continue; }
+            for phase in [DigitalActionPhase::JustPressed, DigitalActionPhase::Held, DigitalActionPhase::JustReleased] {
+                let mut game = late_fixture(); game.resource_mut::<MainActionSet>().digital[slot].phase = phase;
+                assert!(LateCameraFrame::capture(&game, &mailbox, mailbox.mark()).is_none(), "digital slot {slot}");
+            }
+        }
+        for slot in 2..game.resource::<MainActionSet>().analog.len() {
+            let mut game = late_fixture(); game.resource_mut::<MainActionSet>().analog[slot].x = 0.25;
+            assert!(LateCameraFrame::capture(&game, &mailbox, mailbox.mark()).is_none(), "analog slot {slot}");
+        }
+        let mut game = late_fixture(); game.resource_mut::<CursorCapturedPosition>().0 = None;
+        assert!(LateCameraFrame::capture(&game, &mailbox, mailbox.mark()).is_none());
+        for interpolation in [CameraSnapshotInterpolation::Accelerating, CameraSnapshotInterpolation::Slow, CameraSnapshotInterpolation::Decelerating] {
+            let mut game = late_fixture(); game.resource_mut::<CameraSnapshot>().interpolation = interpolation;
+            assert!(LateCameraFrame::capture(&game, &mailbox, mailbox.mark()).is_none());
+        }
+        let mut game = late_fixture(); game.resource_mut::<VermeerState>().phase = VermeerPhase::Pending;
+        assert!(LateCameraFrame::capture(&game, &mailbox, mailbox.mark()).is_none());
+        for mode in [AppMode::default(), AppMode::Photomode] {
+            let mut game = late_fixture(); game.insert_resource(mode); game.insert_resource(EscMenuState::Photomode(false));
+            assert!(LateCameraFrame::capture(&game, &mailbox, mailbox.mark()).is_some());
+        }
     }
 
     #[test]

@@ -17,7 +17,7 @@ use country_core::resources::{
 use bevy_ecs::prelude::*;
 
 pub fn roof_animation(
-    mut roofs: Query<(Entity, &Roof, &mut RoofAnimation, Option<&RoofMarkedForDeletion>)>,
+    mut roofs: Query<(Entity, &Roof, ComponentWrite<RoofAnimation>, Option<&RoofMarkedForDeletion>)>,
     time: Res<GameTime>,
 ) {
     for (_entity, roof, mut animation, marked) in &mut roofs {
@@ -30,3 +30,4 @@ pub fn roof_animation(
         }
     }
 }
+use country_core::render::extract::ComponentWrite;

@@ -7,33 +7,15 @@ use super::{
 use ash::vk;
 use std::sync::{
     Arc,
-    atomic::{AtomicU64, AtomicUsize, Ordering},
+    atomic::{AtomicUsize, Ordering},
 };
 
-#[derive(Default)]
-pub struct TransientBackingCounters {
-    allocations: AtomicU64,
-    frees: AtomicU64,
-    allocated_bytes: AtomicU64,
-    freed_bytes: AtomicU64,
-}
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-/// Unique shared backing ranges, not the parent suballocator's native blocks.
-pub struct TransientBackingStatistics {
-    pub allocations: u64,
-    pub frees: u64,
-    pub allocated_bytes: u64,
-    pub freed_bytes: u64,
-}
-impl TransientBackingCounters {
-    pub fn snapshot(&self) -> TransientBackingStatistics {
-        TransientBackingStatistics {
-            allocations: self.allocations.load(Ordering::Relaxed),
-            frees: self.frees.load(Ordering::Relaxed),
-            allocated_bytes: self.allocated_bytes.load(Ordering::Relaxed),
-            freed_bytes: self.freed_bytes.load(Ordering::Relaxed),
-        }
+crate::collections::atomic_snapshot::atomic_snapshot! {
+    /// Unique shared backing ranges, not parent suballocator native blocks.
+    pub TransientBackingCounters, TransientBackingStatistics {
+        allocations, frees, allocated_bytes, freed_bytes
     }
+    snapshot => load(Ordering::Relaxed);
 }
 
 pub struct SharedBacking {

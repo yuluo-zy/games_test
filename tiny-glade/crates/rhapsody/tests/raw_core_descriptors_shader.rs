@@ -79,12 +79,14 @@ fn attachment_sample_count_requires_an_attachment() {
         .push(color(vk::Format::R8G8B8A8_UNORM).sample_count(4))
         .unwrap();
     assert_eq!(desc.pass_samples().unwrap(), 4);
-    // 有深度时取深度附件的采样数。
+    // Mixed attachment sample counts are not a supported render-pass contract.
     desc.depth = Some((
         color(vk::Format::D32_SFLOAT).sample_count(2),
         DepthAccess::ReadWrite,
     ));
-    assert_eq!(desc.pass_samples().unwrap(), 2);
+    assert!(desc.pass_samples().is_err());
+    desc.depth.as_mut().unwrap().0.sample_count = 4;
+    assert_eq!(desc.pass_samples().unwrap(), 4);
 }
 
 #[test]

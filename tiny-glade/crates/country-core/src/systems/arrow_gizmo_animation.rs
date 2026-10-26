@@ -25,7 +25,7 @@ fn increase(value: f32, delta: f32) -> f32 {
 /// reads cursor deltas when that row sees an enable message. Thus no matched
 /// rows consume no events; later rows see the already advanced reader cursors.
 pub fn arrow_gizmo_animation(
-    mut arrows: Query<&mut ArrowGizmoView, With<Transform>>,
+    mut arrows: Query<ComponentWrite<ArrowGizmoView>, With<Transform>>,
     mut enabled: EventReader<EnableArrowGizmoStretch>,
     mut cursor: EventReader<CursorMovedScreenSpace>,
 ) {
@@ -736,3 +736,5 @@ mod original_cursor_lifecycle_tests {
         assert_eq!(axes(&world, id), [1050253722, 1063675494]);
     }
 }
+
+use crate::render::extract::ComponentWrite;

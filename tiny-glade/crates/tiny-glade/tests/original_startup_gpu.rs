@@ -1,6 +1,9 @@
 //! B's full SSBO producer on a real App PreStartup and actual GPU owners.
 //! This validates the 72-entry producer and its cursor event, not the remaining
 //! mesh/prefab/startup tuple or a complete gameplay world.
+#[path = "support/mod.rs"]
+mod test_support;
+use test_support::ShaderTestDriver as _;
 use ash::vk::Handle;
 use country_core::{
     asset_libraries::{shader_library::AssetShaderLibrary, ssbo_library::AssetSsboLibrary},
@@ -310,7 +313,7 @@ fn original_gameplay_assets_reach_the_same_app_atlases_and_nani_gpu_owners() {
         .mei.output().is_some(), "canonical MEI flush must prepare the actual renderer before graph compilation");
     bridge
         .shader_backend()
-        .prewarm(std::time::Duration::from_secs(60))
+        .prepare_test_pipelines(std::time::Duration::from_secs(60))
         .unwrap();
     eprintln!(
         "actual gameplay startup: {} prefabs, {parts} parts, {registered} registered Nani subsets",

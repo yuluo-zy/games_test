@@ -585,7 +585,7 @@ mod tests {
         let curve = Curve2::try_new(points.to_vec(), false).unwrap();
         let wall = inner.new_wall_from_curve(WallState::new(curve, 4.0, 0, 0, false));
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &terrain_grid());
+        public.consume_with_paths(&mut inner, &terrain_grid(), None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         world.insert_resource(public);
         world.insert_resource(inner);
         world.insert_resource(if editing {

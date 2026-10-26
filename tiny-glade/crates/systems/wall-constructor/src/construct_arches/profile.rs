@@ -9,6 +9,7 @@
 //!
 //! `ArchFunction::remap_t`（0x140765300）：t 重映射函数（拱高曲线）。
 use glam::Vec3;
+use itertools::Itertools;
 
 /// B `create_stone_arch_profile`（0x1407645f0）。输出为重采样后的轮廓点列。
 /// `wall_state` 为墙 0x2a0 投影（+600 段计数、+0xe0/+0xe8 预备切片）。
@@ -24,7 +25,11 @@ pub fn create_stone_arch_profile(
         .get(0x258..0x260)
         .map(|b| u64::from_le_bytes(b.try_into().unwrap()))
         .unwrap_or(0);
-    let total: f32 = points.windows(2).map(|w| (w[1] - w[0]).length()).sum();
+    let total: f32 = points
+        .iter()
+        .tuple_windows()
+        .map(|(a, b)| (*b - *a).length())
+        .sum();
     if total <= MIN_LEN {
         return;
     }

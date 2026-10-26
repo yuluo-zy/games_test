@@ -4,6 +4,7 @@ pub mod asset_ack;
 pub mod extract;
 pub mod gpu_readback;
 pub mod device;
+pub use device::AvailableGraphicsDevices;
 pub mod dirty_index_range;
 pub mod frame_constants;
 pub mod mesh;

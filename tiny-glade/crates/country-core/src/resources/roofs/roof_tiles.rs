@@ -31,6 +31,8 @@ pub struct RoofTile {
 /// `roof_tiles.allocation`，`Some` → `allocation_to_draw_multi_instanced`）。
 /// 渲染提取克隆的分配只记录 chunk，不具有游戏侧原分配的回收权限。
 #[derive(Clone, Component, Debug, Default)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct RoofTiles {
     pub records: Vec<[u8; 64]>,
     /// 屋顶在共享瓦片 SSBO 中的 chunk 分配（`None` = 尚未装配到 GPU）。
@@ -54,3 +56,5 @@ impl RoofTiles {
             .map(|allocation| buffer.allocation_to_draw_multi_instanced(allocation))
     }
 }
+
+impl crate::render::extract::JournaledComponent for RoofTiles {}

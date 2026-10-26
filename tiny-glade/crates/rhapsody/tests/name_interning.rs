@@ -10,7 +10,9 @@ fn repeating_the_same_names_never_grows_the_intern_table_but_new_names_do() {
     let mut frames = PassPgoFrames::default();
     let names = ["pass-a", "pass-b", "pass-c"];
     for name in names {
-        frames.current.record(PassPgoDuration::new(PassPgoNameId::from_name(name), 1));
+        frames
+            .current
+            .record(PassPgoDuration::new(PassPgoNameId::from_name(name), 1));
     }
     let settled = rhapsody::resource::ResourceName::interned_count();
     for _ in 0..1000 {
@@ -22,11 +24,18 @@ fn repeating_the_same_names_never_grows_the_intern_table_but_new_names_do() {
         frames.end_frame();
     }
     assert_eq!(rhapsody::resource::ResourceName::interned_count(), settled);
-    frames
-        .current
-        .record(PassPgoDuration::new(PassPgoNameId::from_name("a-new-pass"), 1));
-    assert_eq!(rhapsody::resource::ResourceName::interned_count(), settled + 1);
+    frames.current.record(PassPgoDuration::new(
+        PassPgoNameId::from_name("a-new-pass"),
+        1,
+    ));
+    assert_eq!(
+        rhapsody::resource::ResourceName::interned_count(),
+        settled + 1
+    );
     // Looking a name up never interns it.
     assert_eq!(frames.current.duration_ns("never-recorded-anywhere"), 0);
-    assert_eq!(rhapsody::resource::ResourceName::interned_count(), settled + 1);
+    assert_eq!(
+        rhapsody::resource::ResourceName::interned_count(),
+        settled + 1
+    );
 }

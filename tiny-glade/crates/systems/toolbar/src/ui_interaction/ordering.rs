@@ -6,7 +6,7 @@ use country_core::components::UiDrawOrder;
 use crate::resouces_and_components::{SwitchAppModeButton, UiInteractionState};
 
 pub fn sort_contextual_buttons_draw_order(
-    mut items: Query<(&UiInteractionState, &mut UiDrawOrder), With<SwitchAppModeButton>>,
+    mut items: Query<(&UiInteractionState, ComponentWrite<UiDrawOrder>), With<SwitchAppModeButton>>,
 ) {
     for (interaction, mut order) in &mut items {
         order.0 = u64::from(interaction.state);
@@ -35,3 +35,5 @@ mod tests {
         assert_eq!(world.get::<UiDrawOrder>(unrelated).unwrap().0, 123);
     }
 }
+
+use country_core::render::extract::ComponentWrite;

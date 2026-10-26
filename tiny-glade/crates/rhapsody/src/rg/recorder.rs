@@ -7,7 +7,6 @@ use std::sync::Arc;
 pub struct Pass {
     pub callback_present: bool,
 }
-pub type PlannedTransition = BoundTransition;
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Outcome {
     pub barrier_commands: u32,
@@ -23,7 +22,6 @@ pub struct Recorder {
 }
 #[derive(Clone, Copy, Debug)]
 pub enum RecordAction {
-    Pass(usize),
     End(u64),
     Transition {
         command: u64,
@@ -42,69 +40,19 @@ impl Recorder {
         phase: BarrierPhase,
         command: u64,
         out: &mut Outcome,
-        boundary: &mut impl FnMut(RecordAction) -> bool,
-    ) -> bool {
+        boundary: &mut impl FnMut(RecordAction) -> crate::Result<()>,
+    ) -> crate::Result<()> {
         let mut count = 0;
         for transition in self.phase(phase) {
-            if !boundary(RecordAction::Transition {
+            boundary(RecordAction::Transition {
                 command,
                 transition,
-            }) {
-                return false;
-            }
+            })?;
             count += 1;
         }
         out.barrier_transitions += count;
         out.barrier_commands += u32::from(count != 0);
-        true
-    }
-    pub fn record_batch(
-        &mut self,
-        passes: &mut [Pass],
-        final_batch: bool,
-        command: Command,
-        mut boundary: impl FnMut(RecordAction) -> bool,
-    ) -> Outcome {
-        let mut out = Outcome::default();
-        let Some(initial) = self.commands.last() else {
-            out.panic = true;
-            return out;
-        };
-        if !self.emit(
-            BarrierPhase::Initial,
-            initial.handle,
-            &mut out,
-            &mut boundary,
-        ) {
-            out.panic = true;
-            return out;
-        }
-        for (index, pass) in passes.iter_mut().enumerate() {
-            if !self.emit(
-                BarrierPhase::BeforePass(self.first_pass + index),
-                command.handle,
-                &mut out,
-                &mut boundary,
-            ) || !std::mem::take(&mut pass.callback_present)
-            {
-                out.panic = true;
-                return out;
-            }
-            out.consumed_passes += 1;
-            if !boundary(RecordAction::Pass(index)) {
-                out.panic = true;
-                return out;
-            }
-        }
-        if !self.finish(
-            &mut out,
-            std::iter::once(command),
-            final_batch,
-            &mut boundary,
-        ) {
-            out.panic = true;
-        }
-        out
+        Ok(())
     }
     /// Emit the batch's initial barriers and collect every pass's barriers
     /// into `planned` (flat), with `ranges[i]` selecting pass `i`'s entries.
@@ -114,36 +62,30 @@ impl Recorder {
         passes: &mut [Pass],
         commands: &[Command],
         chunk_of_pass: &[usize],
-        planned: &mut Vec<PlannedTransition>,
+        planned: &mut Vec<BoundTransition>,
         ranges: &mut Vec<std::ops::Range<usize>>,
-        mut boundary: impl FnMut(RecordAction) -> bool,
-    ) -> Outcome {
+        mut boundary: impl FnMut(RecordAction) -> crate::Result<()>,
+    ) -> crate::Result<Outcome> {
         let mut out = Outcome::default();
         planned.clear();
         ranges.clear();
         if chunk_of_pass.len() != passes.len() {
-            out.panic = true;
-            return out;
+            return Err(crate::Error::invalid_usage("chunk plan does not cover its passes"));
         }
         let Some(initial) = self.commands.last() else {
-            out.panic = true;
-            return out;
+            return Err(crate::Error::invalid_usage("batch initial command is missing"));
         };
-        if !self.emit(
+        self.emit(
             BarrierPhase::Initial,
             initial.handle,
             &mut out,
             &mut boundary,
-        ) {
-            out.panic = true;
-            return out;
-        }
+        )?;
         for (index, pass) in passes.iter_mut().enumerate() {
             if commands.get(chunk_of_pass[index]).is_none()
                 || !std::mem::take(&mut pass.callback_present)
             {
-                out.panic = true;
-                return out;
+                return Err(crate::Error::invalid_usage("chunk command or callback is missing"));
             }
             let start = planned.len();
             planned.extend(self.phase(BarrierPhase::BeforePass(self.first_pass + index)));
@@ -153,26 +95,24 @@ impl Recorder {
             out.consumed_passes += 1;
             ranges.push(start..planned.len());
         }
-        out
+        Ok(out)
     }
     pub fn finish_chunked_batch(
         &mut self,
         out: &mut Outcome,
         commands: impl IntoIterator<Item = Command>,
         final_batch: bool,
-        mut boundary: impl FnMut(RecordAction) -> bool,
-    ) {
-        if !self.finish(out, commands, final_batch, &mut boundary) {
-            out.panic = true;
-        }
+        mut boundary: impl FnMut(RecordAction) -> crate::Result<()>,
+    ) -> crate::Result<()> {
+        self.finish(out, commands, final_batch, &mut boundary)
     }
     fn finish(
         &mut self,
         out: &mut Outcome,
         commands: impl IntoIterator<Item = Command>,
         final_batch: bool,
-        boundary: &mut impl FnMut(RecordAction) -> bool,
-    ) -> bool {
+        boundary: &mut impl FnMut(RecordAction) -> crate::Result<()>,
+    ) -> crate::Result<()> {
         for command in commands {
             if self
                 .commands
@@ -184,20 +124,20 @@ impl Recorder {
         }
         let len = self.commands.len();
         if len == 0 {
-            return false;
+            return Err(crate::Error::invalid_usage("batch commands are empty"));
         }
         for command in &mut self.commands[..len - 1] {
-            if !boundary(RecordAction::End(command.handle)) {
-                return false;
-            }
+            boundary(RecordAction::End(command.handle))?;
             command.state = CommandState::Recorded;
         }
-        !final_batch
-            || self.emit(
+        if final_batch {
+            self.emit(
                 BarrierPhase::Export,
                 self.commands[len - 1].handle,
                 out,
                 boundary,
-            )
+            )?;
+        }
+        Ok(())
     }
 }

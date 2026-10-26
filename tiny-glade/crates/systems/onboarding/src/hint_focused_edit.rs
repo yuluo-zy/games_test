@@ -67,10 +67,12 @@ pub fn hint_focused_edit_condition(
     }
     completed.write(crate::tutorial_completion::TutorialHintComplete { id: 1 });
     if query.iter().next().is_some_and(|b| b.0 == 1) {
-        let _ = sound.write(country_core::systems::ui::resources::widget_params::PlayUiSound {
-            kind: 0x13,
-            _payload: [0; 20],
-        });
+        let _ = sound.write(
+            country_core::systems::ui::resources::widget_params::PlayUiSound {
+                kind: 0x13,
+                _payload: [0; 20],
+            },
+        );
     }
 }
 
@@ -109,7 +111,7 @@ pub fn hint_focused_edit_hint(
     profile: Res<country_core::game_profile::GameProfile>,
 ) {
     use country_core::systems::mode_manager::EditSubject;
-    use country_core::systems::ui_edit_focus::{geo_src_to_edit_subject, GeoSource};
+    use country_core::systems::ui_edit_focus::{GeoSource, geo_src_to_edit_subject};
 
     // 1. state@+8 != 0 → 整个系统早退。
     if state.hint_done {
@@ -182,10 +184,7 @@ fn write_focused_edit_hint(
     let display = crate::hint_clutter_focus_edit::make_focus_or_camera_binding_hint(profile);
     request.write(
         crate::DisplayHintRequest::new(display, crate::hint_orchestrator::HintType::FocusedEdit, 0)
-            .with_placement(crate::HintPlacement::Subject {
-                subject,
-                word_0x10,
-            }),
+            .with_placement(crate::HintPlacement::Subject { subject, word_0x10 }),
     );
 }
 
@@ -202,23 +201,18 @@ mod tests {
 
         let mut world = World::new();
         world.insert_resource(AppMode::Editing(EditSubject::None));
-        world.insert_resource(
-            country_core::resources::walls::public_walls::PublicWalls::default(),
-        );
+        world.insert_resource(country_core::resources::walls::public_walls::PublicWalls::default());
         world.insert_resource(FocusedEditHintConditions::default());
         world.init_resource::<Events<NotifyHintSystemShapeEditWasPerformed>>();
         world.init_resource::<Events<crate::DisplayHintRequest>>();
-        world.insert_resource(
-            country_core::systems::collision::world::RaycastWorld::default(),
-        );
+        world.insert_resource(country_core::systems::collision::world::RaycastWorld::default());
         world.insert_resource(
             country_core::resources::mouse_terrain_raycast::CameraCursorRay::default(),
         );
         world.insert_resource(country_core::game_profile::GameProfile::default());
 
         {
-            let mut events =
-                world.resource_mut::<Events<NotifyHintSystemShapeEditWasPerformed>>();
+            let mut events = world.resource_mut::<Events<NotifyHintSystemShapeEditWasPerformed>>();
             events.send(NotifyHintSystemShapeEditWasPerformed);
             events.send(NotifyHintSystemShapeEditWasPerformed);
         }
@@ -238,20 +232,28 @@ mod tests {
 #[cfg(test)]
 mod canonical_mode_publication_tests {
     use super::*;
-    use country_core::resources::events::ModeJustChanged;
-    use country_core::systems::mode_manager::{
-        send_mode_just_changed_event, AppMode, EditSubject, PreviousAppMode,
-    };
     use crate::hint_clutter_focus_edit::{
-        hint_clutter_focused_edit_condition, FocusedClutterHintConditions,
+        FocusedClutterHintConditions, hint_clutter_focused_edit_condition,
     };
     use crate::tutorial_completion::TutorialHintComplete;
+    use country_core::resources::events::ModeJustChanged;
+    use country_core::systems::mode_manager::{
+        AppMode, EditSubject, PreviousAppMode, send_mode_just_changed_event,
+    };
 
     #[test]
     fn published_latest_mode_controls_both_hint_consumers_and_drains_old_modes() {
         for (target, expected_hint) in [
-            (AppMode::Editing(EditSubject::Wall(0xfedc_ba98_7654_3210)), 1),
-            (AppMode::Editing(EditSubject::DecoClutter { decorator_id: 0xdead_beef }), 9),
+            (
+                AppMode::Editing(EditSubject::Wall(0xfedc_ba98_7654_3210)),
+                1,
+            ),
+            (
+                AppMode::Editing(EditSubject::DecoClutter {
+                    decorator_id: 0xdead_beef,
+                }),
+                9,
+            ),
         ] {
             let mut world = World::new();
             world.init_resource::<country_core::game_profile::GameProfile>();
@@ -264,7 +266,10 @@ mod canonical_mode_publication_tests {
             let mut publish = Schedule::default();
             publish.add_systems(send_mode_just_changed_event);
             let mut consume = Schedule::default();
-            consume.add_systems((hint_focused_edit_condition, hint_clutter_focused_edit_condition));
+            consume.add_systems((
+                hint_focused_edit_condition,
+                hint_clutter_focused_edit_condition,
+            ));
 
             // A qualifying old-buffer mode must not override the newest Path.
             world.insert_resource(target);
@@ -283,8 +288,11 @@ mod canonical_mode_publication_tests {
             world.insert_resource(target);
             publish.run(&mut world);
             consume.run(&mut world);
-            let completed: Vec<_> = world.resource_mut::<Events<TutorialHintComplete>>()
-                .drain().map(|event| event.id).collect();
+            let completed: Vec<_> = world
+                .resource_mut::<Events<TutorialHintComplete>>()
+                .drain()
+                .map(|event| event.id)
+                .collect();
             assert_eq!(completed, vec![expected_hint]);
             consume.run(&mut world);
             assert_eq!(world.resource::<Events<TutorialHintComplete>>().len(), 0);

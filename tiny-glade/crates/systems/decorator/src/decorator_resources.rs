@@ -2,7 +2,6 @@
 //! B14125d180 copies a u64 and a u8 into the name before calling B14128c8e0.
 //! That hash helper writes exactly 8 bytes followed by 1 byte into zero-key
 //! std SipHasher13. A string or its 0xff Hash terminator changes the key.
-use std::{collections::hash_map::DefaultHasher, hash::Hasher};
 use country_core::systems::ui::resources::ui_state::WidgetId;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -10,10 +9,7 @@ pub struct DecoratorHandleName(pub u64, pub u8);
 
 impl DecoratorHandleName {
     pub fn to_widget_name_hash(self) -> u64 {
-        let mut hash = DefaultHasher::new();
-        hash.write_u64(self.0);
-        hash.write_u8(self.1);
-        hash.finish()
+        utils::calculate_hash(&(self.0, self.1))
     }
 
     pub fn to_widget_id(self) -> WidgetId {

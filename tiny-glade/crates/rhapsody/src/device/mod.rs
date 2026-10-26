@@ -30,12 +30,11 @@ pub use budget::{
 };
 pub use caps::{DeviceCaps, Feature, FeatureSet};
 pub use generation::{DeviceGeneration, Generationed};
-pub use init::{DeviceConfig, DevicePreference, SubmissionApi};
+pub use init::{DeviceConfig, DevicePreference};
 pub use logical::Device;
 pub use native::DeviceCapabilities;
 pub use policy::{
-    AllocationStrategy, DescriptorStrategy, ExecutionPolicy, PolicyPreferences, RecordingPolicy,
-    plan_policy,
+    AllocationStrategy, DescriptorStrategy, ExecutionPolicy, PolicyPreferences, plan_policy,
 };
 pub use queue_config::{
     FamilyInfo, PhysicalQueue, QueueClass, QueueConfig, QueuePlan, QueuePreference, plan_queues,

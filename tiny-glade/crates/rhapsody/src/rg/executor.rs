@@ -14,7 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub struct ExecutionChain {
     subgraph_cache: super::subgraph::SubgraphPlanCache,
-    plan_cache: super::cache::BoundedCache<PlanKey, ()>,
+    plan_cache: crate::collections::cache::BoundedCache<PlanKey, ()>,
     plan_cache_enabled: bool,
     recording_ids: recording::RecordingCounters,
     pending_commands: Vec<(crate::sync::SyncPoint, recording::Command)>,
@@ -23,7 +23,7 @@ pub struct ExecutionChain {
     command_records: BTreeMap<u64, recording::Command>,
     recorded_commands: u32,
     pool_family_count: u32,
-    /// 并行录制配置；默认自适应（无统计或轻帧时串行）。
+    /// 并行录制分块配置；所有批次均由工作线程录制。
     pub parallel: crate::rg::parallel::ParallelRecording,
     /// 双缓冲 PGO：分块读 `previous`，本帧耗时写入 `current`，每次执行结束交换。
     ///
@@ -44,7 +44,7 @@ pub struct ExecutionChain {
 struct ChunkScratch {
     begun: Vec<recording::Command>,
     chunk_of_pass: Vec<usize>,
-    planned: Vec<record::PlannedTransition>,
+    planned: Vec<super::sync_plan::BoundTransition>,
     ranges: Vec<std::ops::Range<usize>>,
     transitions: Vec<ChunkTransition>,
 }
@@ -136,7 +136,6 @@ pub enum Error {
     MissingCommand(u64),
     EmptyCommands,
     InvalidLastState,
-    EndFailed,
     Compile(crate::Error),
     ResourceUnavailable(usize),
     CallbackCount,
@@ -158,16 +157,11 @@ pub struct GraphTimelineWait {
     pub value: u64,
     pub stage: vk::PipelineStageFlags,
 }
-#[derive(Clone, Copy, Debug)]
-pub struct GraphTimelineSignal {
-    pub semaphore: vk::Semaphore,
-    pub value: u64,
-}
 /// 外部生产的批次同步与图命令分别生成，避免调用者手填CPU recording identities。
 #[derive(Clone, Debug, Default)]
 pub struct GraphBatchSync {
     pub waits: submit::SubmitArray<GraphTimelineWait>,
-    pub signals: submit::SubmitArray<GraphTimelineSignal>,
+    pub signals: submit::SubmitArray<crate::sync::timeline::SubmitSignal>,
 }
 impl GraphBatchSync {
     fn valid(&self) -> bool {
@@ -291,7 +285,7 @@ pub struct ExecutionStats {
     pub record_ns: u64,
     pub submit_ns: u64,
     pub batches: u32,
-    /// 走并行路径的 batch 数及其总块数（串行 batch 不计块）。
+    /// 实际并行录制的 batch 数及其总块数。
     pub parallel_batches: u32,
     pub chunks: u32,
     /// Pending cross-family ownership acquires recorded into this frame's
@@ -393,22 +387,18 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     /// and validate physical identity, ownership and synchronization here.
     fn prepare_declaration(
         &mut self,
-        declaration: &mut crate::rg::graph::GraphDeclaration,
+        _declaration: &crate::rg::graph::GraphDeclaration,
     ) -> crate::Result<()> {
-        declaration.validate().map_err(Into::into)
+        Ok(())
     }
-    /// The same bounded projection drives serial, parallel and ownership recording.
+    /// The same bounded projection drives worker chunks and ownership preludes.
     fn synchronization_plan(&self) -> std::sync::Arc<super::sync_plan::SynchronizationPlanner>;
     /// Attach pre-reserved physical state deltas to the actual raw batch before
     /// submission. Batch references resolve only to successful actual receipts.
     fn prepare_batch_submission(&mut self, commands: &[u64], batch: usize) -> crate::Result<()>;
-    /// 兼容录制器 bool/生命周期接口期间，取出设备调用的原始错误，避免丢失错误类别。
-    fn take_error(&mut self) -> Option<crate::Error> {
-        None
-    }
     /// 包括 Pool 命中与导入资源；运行回调前重新发布真实物理映射。
-    fn prepare_compiled_resources(&mut self, _compiled: &crate::rg::graph::FrameInstance) -> bool {
-        true
+    fn prepare_compiled_resources(&mut self, _compiled: &crate::rg::graph::FrameInstance) -> crate::Result<()> {
+        Ok(())
     }
     /// 物理对象与 generation 由本次后端解析；未提供时 callback 明确看到 None。
     fn managed_pass_resources(
@@ -426,8 +416,8 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
         &mut self,
         _handle: u64,
         owners: &mut super::owner_storage::ResourceOwners,
-    ) -> bool {
-        owners.is_empty()
+    ) -> crate::Result<()> {
+        if owners.is_empty() { Ok(()) } else { Err(crate::Error::unsupported("backend cannot retain resource owners")) }
     }
     fn graph_queue(&self) -> (recording::Queue, u32) {
         (recording::Queue::Primary, 0)
@@ -436,35 +426,30 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
         GraphBatchSync::default()
     }
     /// 设备和命令创建由后端提供；真实实现见 rg/vulkan.rs。
-    fn command_handle(&mut self) -> Result<u64, recording::Failure>;
+    fn command_handle(&mut self) -> crate::Result<u64>;
     /// 并行录制时第 `chunk` 块使用的命令；真实后端须保证不同块、以及块与主命令来自不同命令池。
-    fn chunk_command_handle(&mut self, _chunk: usize) -> Result<u64, recording::Failure> {
+    fn chunk_command_handle(&mut self, _chunk: usize) -> crate::Result<u64> {
         self.command_handle()
     }
-    fn begin_command(&mut self, handle: u64) -> Result<(), recording::Failure>;
-    fn end_command(&mut self, handle: vk::CommandBuffer) -> bool;
+    fn begin_command(&mut self, handle: u64) -> crate::Result<()>;
+    fn end_command(&mut self, handle: vk::CommandBuffer) -> crate::Result<()>;
     /// CPU 后端可只记录投影；实际后端必须发出 Vulkan 屏障。
     fn transition(
         &mut self,
         _command: u64,
         _token: u64,
         _transition: &super::sync_plan::BoundTransition,
-    ) -> bool {
-        true
+    ) -> crate::Result<()> {
+        Ok(())
     }
-    fn flush_barriers(&mut self, _command: u64) -> bool {
-        true
+    fn flush_barriers(&mut self, _command: u64) -> crate::Result<()> {
+        Ok(())
     }
     fn submit(
         &mut self,
         queue: vk::Queue,
         prepared: &[submit::PreparedSubmit],
     ) -> crate::Result<crate::sync::SyncPoint>;
-    /// Whether [`Self::chunk_recording`] is implemented; otherwise the
-    /// executor always records serially.
-    fn supports_parallel_recording(&self) -> bool {
-        false
-    }
     /// The parallel recording view plus one lease per chunk command, in the
     /// order of `commands` (each from [`Self::chunk_command_handle`] and
     /// begun). Leases must come from disjoint `&mut` borrows of the pools
@@ -482,9 +467,6 @@ pub trait ExecutionBackend: crate::rg::graph::ResourceBackend {
     /// Returns how many were recorded.
     fn drain_pending_acquires(&mut self, _command: u64) -> crate::Result<u32> {
         Ok(0)
-    }
-    fn wait_submission(&self, _receipt: crate::sync::SyncPoint) -> crate::Result<()> {
-        Ok(())
     }
 }
 
@@ -900,7 +882,7 @@ impl ExecutionChain {
     /// physical frame, but never records a callback or submits a command.
     pub fn compile_graph(
         &mut self,
-        mut graph: crate::rg::graph::GraphDeclaration,
+        graph: crate::rg::graph::GraphDeclaration,
         pool: &mut crate::rg::graph::Pool,
         dependency: &mut impl crate::rg::graph::AccessDependency,
         backend: &mut impl ExecutionBackend,
@@ -910,8 +892,9 @@ impl ExecutionChain {
         if callback_count != graph.passes.len() {
             return Err(Error::CallbackCount);
         }
+        graph.validate().map_err(|error| Error::Compile(error.into()))?;
         backend
-            .prepare_declaration(&mut graph)
+            .prepare_declaration(&graph)
             .map_err(Error::Validation)?;
         let (queue, family) = backend.graph_queue();
         if family >= self.pool_family_count {
@@ -939,7 +922,7 @@ impl ExecutionChain {
             found
         } else {
             self.plan_cache
-                .record_bypass(super::cache::CacheReason::Disabled);
+                .record_bypass(crate::collections::cache::CacheReason::Disabled);
             None
         };
         let plan = if let Some(plan) = cached {
@@ -947,7 +930,7 @@ impl ExecutionChain {
             plan
         } else {
             let definition =
-                super::plan::GraphDefinition::from_declaration(&graph, dependency, context)
+                super::plan::GraphDefinition::from_validated_declaration(&graph, dependency, context)
                     .map_err(Error::Compile)?;
             if self.plan_cache_enabled {
                 let reason = self
@@ -955,7 +938,7 @@ impl ExecutionChain {
                     .iter()
                     .map(|(old, _)| old.0.definition.differing_key_reason(&definition))
                     .min_by_key(|reason| *reason as usize)
-                    .unwrap_or(super::cache::CacheReason::Cold);
+                    .unwrap_or(crate::collections::cache::CacheReason::Cold);
                 self.plan_cache.classify_miss(reason);
             }
             let plan = std::sync::Arc::new(
@@ -1141,7 +1124,6 @@ impl ExecutionChain {
                 stats,
             }),
             Err(error) => {
-                let error = backend.take_error().map(Error::Validation).unwrap_or(error);
                 // Unsubmitted commands are always abandoned, even if waiting for
                 // earlier successful batches fails. Never release their resources
                 // or replace the primary error merely because cleanup also failed.
@@ -1212,9 +1194,7 @@ impl ExecutionChain {
             &compiled.declarations.passes[index].name
         })
         .map_err(Error::Validation)?;
-        if !backend.prepare_compiled_resources(compiled) {
-            return Err(Error::ResourceUnavailable(usize::MAX));
-        }
+        backend.prepare_compiled_resources(compiled).map_err(Error::Validation)?;
         let managed = backend.managed_pass_resources();
         let mut exported = scratch_slice(cpu_arena, compiled.info.lifetimes.len(), |_| false)
             .map_err(Error::Validation)?;
@@ -1268,7 +1248,7 @@ impl ExecutionChain {
             } else {
                 recording::Queue::Auxiliary(domain.queue_index - 1)
             };
-            let handle = backend.command_handle().map_err(Error::Lifecycle)?;
+            let handle = backend.command_handle().map_err(Error::Validation)?;
             let first = self.begin(handle, family, queue, backend.begin_command(handle))?;
             recorder.commands.push(first.clone());
             stats.coalesced_acquires += backend
@@ -1342,25 +1322,16 @@ impl ExecutionChain {
             }
             let record_start = std::time::Instant::now();
             stats.batches += 1;
-            let worth_it = !matches!(
+            let mut chunks: smallvec::SmallVec<[_; 8]> = crate::rg::parallel::plan_chunks(
                 self.parallel.strategy,
-                crate::rg::parallel::ChunkStrategy::Serial
-            ) && self.pgo.previous.total_ns() >= self.parallel.min_total_ns
-                && (self.parallel.min_total_ns == 0 || !self.pgo.previous.is_empty());
-            let chunks: smallvec::SmallVec<[_; 8]> =
-                if worth_it && backend.supports_parallel_recording() {
-                    crate::rg::parallel::plan_chunks(
-                        self.parallel.strategy,
-                        &pass_names[batch.pass_range.clone()],
-                        &self.pgo.previous,
-                        // 每个图 pass 自成完整 render pass 实例，任意边界都可切。
-                        &[],
-                    )
-                    .into()
-                } else {
-                    std::iter::once(0..batch.pass_range.len()).collect()
-                };
-            if chunks.len() > 1 {
+                &pass_names[batch.pass_range.clone()],
+                &self.pgo.previous,
+                &[],
+            ).into();
+            // An export-only batch still dispatches its empty recording scope
+            // and lets the same boundary planner emit the final transitions.
+            if chunks.is_empty() { chunks.push(0..0); }
+            {
                 stats.parallel_batches += 1;
                 stats.chunks += chunks.len() as u32;
                 let outcome = self.record_chunked_batch(
@@ -1381,137 +1352,6 @@ impl ExecutionChain {
                     backend,
                 )?;
                 stats.count_barriers(&outcome.1);
-            } else {
-                // A single chunk records into the batch's first command, which
-                // already holds the initial barriers.
-                let new = {
-                    let handle = recorder.commands.last().ok_or(Error::EmptyCommands)?.handle;
-                    self.command_records
-                        .get(&handle)
-                        .ok_or(Error::MissingCommand(handle))?
-                        .clone()
-                };
-                let handle = new.handle();
-                let start = batch.pass_range.start;
-                let owners = std::cell::RefCell::new(
-                    super::owner_storage::ResourceOwners::new(backend.owner_storage_pool())
-                        .map_err(Error::Validation)?,
-                );
-                let errors = std::cell::RefCell::new(None);
-                let mut durations = scratch_slice(cpu_arena, batch.pass_range.len(), |_| None)
-                    .map_err(Error::Validation)?;
-                let mut duration_count = 0;
-                let serial_strategy =
-                    matches!(self.parallel.strategy, crate::rg::parallel::ChunkStrategy::Serial);
-                let outcome = self.record(
-                    &mut recorder,
-                    &mut passes[batch.pass_range.clone()],
-                    batch.export_barriers,
-                    &new,
-                    |action| match action {
-                        record::RecordAction::Pass(offset) => {
-                            if !backend.flush_barriers(handle) {
-                                return false;
-                            }
-                            let pass_index = start + offset;
-                            if let Some(resources) = &managed
-                                && let Err(error) = resources.retain_pass_resources(
-                                    &compiled.declarations.passes[pass_index],
-                                    &mut owners.borrow_mut(),
-                                )
-                            {
-                                errors.borrow_mut().get_or_insert(error);
-                                return false;
-                            }
-                            let gpu = backend.reserve_pass_timestamp(handle, pass_index, pass_names[pass_index]);
-                            if let Some(pair) = gpu {
-                                // SAFETY: this pair was reserved for this exclusively recording command.
-                                unsafe { backend.write_pass_timestamp(handle, pair, false) };
-                            }
-                            let mut record_trace = RecordScope::new(
-                                compiled.declarations.passes[pass_index]
-                                    .graph_id.map_or(0, |id| id.raw()),
-                                pass_index,
-                                new.handle(),
-                                pass_names[pass_index],
-                            );
-                            // Serial recording never reads the per-pass durations.
-                            let timer = (!serial_strategy).then(std::time::Instant::now);
-                            let ok = callbacks[pass_index].record(PassContext {
-                                pass_index,
-                                cpu: cpu_arena,
-                                command: &new,
-                                compiled,
-                                managed: managed.as_deref(),
-                                owners: &owners,
-                                errors: &errors,
-                                coverage: Default::default(),
-                            });
-                            if let Some(pair) = gpu {
-                                // SAFETY: the same command and reserved pair remain exclusively owned.
-                                unsafe { backend.write_pass_timestamp(handle, pair, true) };
-                            }
-                            durations[duration_count] =
-                                timer.map(|timer| timer.elapsed().as_nanos() as u64);
-                            duration_count += 1;
-                            let ok = ok && errors.borrow().is_none();
-                            record_trace.complete(ok);
-                            drop(record_trace);
-                            ok
-                        }
-                        record::RecordAction::End(command) => {
-                            backend.end_command(vk::CommandBuffer::from_raw(command))
-                        }
-                        record::RecordAction::Transition {
-                            command,
-                            transition,
-                        } => {
-                            let backing = compiled.registry.resources[transition.resource as usize]
-                                .backing_index;
-                            let token = crate::rg::graph::payload_projection(
-                                &compiled.registry.backing_resources[backing as usize],
-                            )
-                            .1
-                            .unwrap();
-                            backend.transition(command, token, &transition)
-                        }
-                    },
-                );
-                let mut transfer_trace = SubmitTrace::new("record_owner_transfer");
-                if transfer_trace.enabled() {
-                    let owner_count = owners.borrow().len();
-                    transfer_trace.count("owners", owner_count);
-                    transfer_trace.count("command", handle as usize);
-                    transfer_trace.count(
-                        "graph",
-                        compiled.declarations.passes[start].graph_id.map_or(0, |id| id.raw()) as usize,
-                    );
-                }
-                let retained = backend.retain_command_owners(handle, &mut owners.into_inner());
-                transfer_trace.mark("retain_resources");
-                drop(transfer_trace);
-                if !retained {
-                    return Err(Error::MissingCommand(handle));
-                }
-                // Serial recording never reads these statistics, so skip the
-                // per-pass name hashing (it costs a map insert per pass per frame).
-                if !matches!(self.parallel.strategy, crate::rg::parallel::ChunkStrategy::Serial) {
-                    self.pgo
-                        .current
-                        .extend(durations[..duration_count].iter().enumerate().map(
-                            |(offset, duration)| {
-                                PassPgoDuration::new(
-                                    PassPgoNameId::from_resource_name(*pass_names[start + offset]),
-                                    duration.expect("recorded pass duration"),
-                                )
-                            },
-                        ));
-                }
-                if let Some(error) = errors.into_inner() {
-                    return Err(Error::Validation(error));
-                }
-                let outcome = outcome?;
-                stats.count_barriers(&outcome);
             };
             stats.record_ns += record_start.elapsed().as_nanos() as u64;
             // 各批次之间提交；保留批次中最后一条开放命令，并恢复 end 后的提交数组构造。
@@ -1521,10 +1361,7 @@ impl ExecutionChain {
                 .map(|c| c.handle)
                 .ok_or(Error::EmptyCommands)?;
             let submit_start = std::time::Instant::now();
-            let end_ok = backend.end_command(vk::CommandBuffer::from_raw(ended));
-            if !end_ok {
-                return Err(Error::EndFailed);
-            }
+            backend.end_command(vk::CommandBuffer::from_raw(ended)).map_err(Error::Validation)?;
             let commands = std::mem::take(&mut recorder.commands);
             let handles = commands
                 .iter()
@@ -1589,13 +1426,8 @@ impl ExecutionChain {
         transaction: &mut FrameTransaction,
         stats: &mut ExecutionStats,
     ) -> Result<(), Error> {
-        let limit = compiled
-            .declarations
-            .resources
-            .len()
-            .saturating_mul(4)
-            .saturating_add(1);
-        for _ in 0..limit {
+        let limit = backend.synchronization_plan().bound().batches().len();
+        for _ in 0..=limit {
             let Some(prelude) = backend
                 .next_queue_prelude(compiled, batch)
                 .map_err(Error::Validation)?
@@ -1610,7 +1442,7 @@ impl ExecutionChain {
             } else {
                 recording::Queue::Auxiliary(prelude.domain.queue_index - 1)
             };
-            let handle = backend.command_handle().map_err(Error::Lifecycle)?;
+            let handle = backend.command_handle().map_err(Error::Validation)?;
             let command = self.begin(
                 handle,
                 prelude.domain.family,
@@ -1620,9 +1452,7 @@ impl ExecutionChain {
             backend
                 .record_queue_prelude(handle, prelude)
                 .map_err(Error::Validation)?;
-            if !backend.end_command(vk::CommandBuffer::from_raw(handle)) {
-                return Err(Error::EndFailed);
-            }
+            backend.end_command(vk::CommandBuffer::from_raw(handle)).map_err(Error::Validation)?;
             self.command_records
                 .get_mut(&handle)
                 .ok_or(Error::MissingCommand(handle))?
@@ -1660,7 +1490,7 @@ impl ExecutionChain {
         let auxiliary_count = auxiliary.len() as u32;
         Self {
             subgraph_cache: super::subgraph::SubgraphPlanCache::default(),
-            plan_cache: super::cache::BoundedCache::new(128, 16 * 1024 * 1024),
+            plan_cache: crate::collections::cache::BoundedCache::new(128, 16 * 1024 * 1024),
             plan_cache_enabled: true,
             recording_ids: recording::RecordingCounters::new(auxiliary_count),
             pending_commands: Vec::new(),
@@ -1682,7 +1512,7 @@ impl ExecutionChain {
         self.plan_cache_enabled = enabled;
         if !enabled {
             self.plan_cache
-                .clear_with_reason(super::cache::CacheReason::Disabled);
+                .clear_with_reason(crate::collections::cache::CacheReason::Disabled);
         }
     }
     pub fn set_subgraph_cache_enabled(&mut self, enabled: bool) {
@@ -1691,7 +1521,7 @@ impl ExecutionChain {
     pub fn subgraph_cache_stats(&self) -> super::subgraph::SubgraphCacheStats {
         self.subgraph_cache.stats()
     }
-    pub fn plan_cache_stats(&self) -> super::cache::CacheStats {
+    pub fn plan_cache_stats(&self) -> crate::collections::cache::CacheStats {
         self.plan_cache.stats()
     }
     pub fn plan_cache_bytes(&self) -> usize {
@@ -1703,12 +1533,10 @@ impl ExecutionChain {
         handle: u64,
         family: u32,
         queue: recording::Queue,
-        backend: Result<(), recording::Failure>,
+        backend: crate::Result<()>,
     ) -> Result<recording::Command, Error> {
         let mut command = recording::Command::new(handle, family, queue);
-        if let Err(reason) = backend {
-            return Err(Error::Begin(recording::BeginFailure { reason, command }));
-        }
+        backend.map_err(Error::Validation)?;
         let recording_id = self.recording_ids.next_id(queue).ok_or_else(|| {
             Error::Begin(recording::BeginFailure {
                 reason: recording::Failure::CounterBounds,
@@ -1720,19 +1548,6 @@ impl ExecutionChain {
         self.recorded_commands = self.recorded_commands.saturating_add(1);
         self.command_records.insert(handle, command.clone());
         Ok(command)
-    }
-
-    /// Record graph commands with CPU recording identities and actual resource owners.
-    pub fn record(
-        &mut self,
-        recorder: &mut record::Recorder,
-        passes: &mut [record::Pass],
-        final_batch: bool,
-        command: &recording::Command,
-        boundary: impl FnMut(record::RecordAction) -> bool,
-    ) -> Result<record::Outcome, Error> {
-        let outcome = recorder.record_batch(passes, final_batch, command.clone(), boundary);
-        self.finish_record(recorder, outcome)
     }
 
     /// Propagate callback failure and synchronize the typed CPU command states.
@@ -1779,7 +1594,7 @@ impl ExecutionChain {
             queue,
         } = batch;
         if chunks.iter().map(|r| r.len()).sum::<usize>() != passes.len()
-            || chunks.iter().any(|r| r.is_empty())
+            || (!passes.is_empty() && chunks.iter().any(|r| r.is_empty()))
         {
             return Err(Error::ChunkPlan);
         }
@@ -1794,10 +1609,12 @@ impl ExecutionChain {
         // 串行：每块一条命令缓冲（每块一个独立命令池，Vulkan 要求命令池外部同步）。
         let mut scratch = std::mem::take(&mut self.chunk_scratch);
         scratch.begun.clear();
-        for index in 0..chunks.len() {
-            let handle = backend
-                .chunk_command_handle(index)
-                .map_err(Error::Lifecycle)?;
+        // The owner has finished planning the first command before leasing its
+        // pool to chunk zero. Reuse it instead of submitting an empty prefix.
+        let initial = recorder.commands.last().ok_or(Error::EmptyCommands)?.handle;
+        scratch.begun.push(self.command_records.get(&initial).ok_or(Error::MissingCommand(initial))?.clone());
+        for index in 1..chunks.len() {
+            let handle = backend.chunk_command_handle(index - 1).map_err(Error::Validation)?;
             let command = self.begin(handle, family, queue, backend.begin_command(handle))?;
             scratch.begun.push(command);
         }
@@ -1822,14 +1639,11 @@ impl ExecutionChain {
                 } => {
                     backend.transition(command, token_of(transition.resource as usize), &transition)
                 }
-                _ => true,
+                record::RecordAction::End(_) => unreachable!("planning does not end commands"),
             },
-        );
-        if outcome.panic {
-            self.chunk_scratch = scratch;
-            self.finish_record(recorder, outcome)?;
-            return Err(Error::ChunkPlan);
-        }
+        ).map_err(Error::Validation)?;
+        // Initial transitions must precede worker callbacks in the reused command.
+        backend.flush_barriers(initial).map_err(Error::Validation)?;
         scratch.transitions.clear();
         scratch
             .transitions
@@ -1891,7 +1705,7 @@ impl ExecutionChain {
         }
         let results = {
             let view = &*view;
-            self.parallel.runner.map_chunks(&mut work, |_, work| {
+            super::parallel::map_chunks(&mut work, |_, work| {
                 let owners =
                     match super::owner_storage::ResourceOwners::new(view.owner_storage_pool()) {
                         Ok(owners) => std::cell::RefCell::new(owners),
@@ -1989,7 +1803,7 @@ impl ExecutionChain {
             })
         };
         // The leases (and the view) end with the parallel section; the pools
-        // return to the backend before any further serial recording.
+        // return to the backend before the owner records submission preludes.
         drop(work);
         drop(view);
         // 串行：按块顺序合并耗时与 owner。
@@ -2015,16 +1829,14 @@ impl ExecutionChain {
                 transfer_trace.count("command", command.handle() as usize);
                 transfer_trace.count(
                     "graph",
-                    compiled.declarations.passes[first_pass + range.start]
-                        .graph_id.map_or(0, |id| id.raw()) as usize,
+                    compiled.declarations.passes.get(first_pass + range.start)
+                        .and_then(|pass| pass.graph_id).map_or(0, |id| id.raw()) as usize,
                 );
             }
             let retained = backend.retain_command_owners(command.handle(), &mut result.owners);
             transfer_trace.mark("retain_resources");
             drop(transfer_trace);
-            if !retained {
-                return Err(Error::MissingCommand(command.handle()));
-            }
+            retained.map_err(Error::Validation)?;
             failed |= !result.ok;
             if let Some(error) = result.error {
                 callback_error.get_or_insert(error);
@@ -2049,9 +1861,8 @@ impl ExecutionChain {
                         token_of(transition.resource as usize),
                         &transition,
                     ),
-                    record::RecordAction::Pass(_) => true,
                 },
-            );
+            ).map_err(Error::Validation)?;
         }
         let outcome = self.finish_record(recorder, outcome);
         if let Some(error) = callback_error {
@@ -2095,7 +1906,7 @@ impl ExecutionChain {
 
 /// Owned full-content PGO identity. Cloning a declaration's name shares the
 /// existing allocation, and names disappear with the last plan or observation.
-type TokenHashBuilder = std::hash::BuildHasherDefault<crate::rg::token_map::TokenHasher>;
+type TokenHashBuilder = std::hash::BuildHasherDefault<crate::collections::token_map::TokenHasher>;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PassPgoNameId(crate::resource::ResourceName);
 impl PassPgoNameId {
@@ -2116,11 +1927,6 @@ impl PassPgoNameId {
 impl AsRef<str> for PassPgoNameId {
     fn as_ref(&self) -> &str {
         self.0.as_str()
-    }
-}
-impl PassPgoNameId {
-    pub fn resource_name(&self) -> crate::resource::ResourceName {
-        self.0
     }
 }
 #[derive(Clone, Debug)]
@@ -2219,51 +2025,6 @@ pub struct ExportedResource {
 impl ExportedResource {
     pub fn new(logical: u32, token: u64) -> Self {
         Self { logical, token }
-    }
-}
-
-/// 一次执行导出的资源容器；`take_exported` 一次取全部，`take_resource` 按逻辑索引取单个。
-#[derive(Clone, Debug, Default)]
-pub struct ExportedRenderGraphResources {
-    resources: Vec<ExportedResource>,
-}
-impl ExportedRenderGraphResources {
-    pub fn with_resources(resources: impl IntoIterator<Item = ExportedResource>) -> Self {
-        Self {
-            resources: resources.into_iter().collect(),
-        }
-    }
-    pub fn take_exported(&mut self) -> Vec<ExportedResource> {
-        std::mem::take(&mut self.resources)
-    }
-    pub fn take_resource(&mut self, logical: u32) -> Option<ExportedResource> {
-        let index = self.resources.iter().position(|r| r.logical == logical)?;
-        Some(self.resources.swap_remove(index))
-    }
-    pub fn len(&self) -> usize {
-        self.resources.len()
-    }
-    pub fn is_empty(&self) -> bool {
-        self.resources.is_empty()
-    }
-}
-
-/// 已编译并可退役的执行结果；retire 触发退役回调（资源池回收等）。
-pub struct ExecutedRenderGraph {
-    pub execution: GraphExecution,
-    pub retire: Vec<crate::rg::graph::RetireCallback>,
-}
-impl ExecutedRenderGraph {
-    pub fn new(execution: GraphExecution, retire: Vec<crate::rg::graph::RetireCallback>) -> Self {
-        Self { execution, retire }
-    }
-    pub fn retire(&mut self) {
-        for callback in std::mem::take(&mut self.retire) {
-            callback();
-        }
-    }
-    pub fn take_retire(&mut self) -> Vec<crate::rg::graph::RetireCallback> {
-        std::mem::take(&mut self.retire)
     }
 }
 

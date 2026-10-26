@@ -64,9 +64,7 @@ pub fn bilinear_sample_at_world_xz_130<G: FloatGridCells + ?Sized>(
     bilinear_sample_at_world_xz(grid, x, z, DEFAULT_WORLD_EXTENT, DEFAULT_WORLD_EXTENT)
 }
 
-pub fn lerp(a: f32, b: f32, t: f32) -> f32 {
-    a + (b - a) * t
-}
+pub use crate::scalar::lerp;
 pub trait FloatGrid {
     fn dimensions(&self) -> [usize; 2];
     fn load_index_unchecked(&self, index: usize) -> f32;

@@ -1,6 +1,6 @@
 //! Real OS input -> production dual-App GameLoop -> authoritative toolbar state.
 //! No clicks, modes, hits, menu state, geometry or save commands are fabricated.
-//! Requires X11/XTest; all configuration/save writes use a fresh local account.
+//! X11/XTest 或外部真实 OS 输入驱动；所有配置和存档使用独立测试账号。
 use anyhow::{Context, Result, ensure};
 use bevy_ecs::event::EventCursor;
 use bevy_ecs::prelude::*;
@@ -60,6 +60,10 @@ struct Controller {
     title: String,
     script: PathBuf,
     child: Option<Child>,
+    external: Option<PathBuf>,
+    window: Arc<winit::window::Window>,
+    sequence: u64,
+    pending: bool,
 }
 impl Controller {
     fn spawn(&mut self, action: &str, point: Option<[i32; 2]>) -> Result<()> {
@@ -67,9 +71,35 @@ impl Controller {
     }
     fn spawn_input(&mut self, action: &str, point: Option<[i32; 2]>, key: &str) -> Result<()> {
         ensure!(
-            self.child.is_none(),
+            self.child.is_none() && !self.pending,
             "overlapping physical input controller"
         );
+        if let Some(directory) = &self.external {
+            self.sequence += 1;
+            let scale = self.window.scale_factor();
+            let origin = self.window.inner_position()?;
+            let size = self.window.inner_size();
+            let request = serde_json::json!({
+                "sequence": self.sequence,
+                "pid": std::process::id(),
+                "title": self.title,
+                "action": action,
+                "key": if action == "key" { Some(key) } else { None },
+                "hold_seconds": 1.0,
+                "client_physical": point,
+                "scale_factor": scale,
+                "client_origin_physical": [origin.x, origin.y],
+                "client_size_physical": [size.width, size.height],
+            });
+            // 只发布输入请求；驱动必须实际操作该 PID/标题的窗口。响应仅同步
+            // 驱动完成，后续仍由 winit 释放事件、权威业务和 present 断言验收。
+            let temporary = directory.join("request.tmp");
+            std::fs::write(&temporary, serde_json::to_vec_pretty(&request)?)?;
+            std::fs::rename(temporary, directory.join("request.json"))?;
+            self.pending = true;
+            eprintln!("TOOLBAR_WINDOW external_input_request {request}");
+            return Ok(());
+        }
         let listed = Command::new("python3")
             .arg(&self.script)
             .arg("list")
@@ -111,6 +141,24 @@ impl Controller {
         Ok(())
     }
     fn idle(&mut self) -> Result<bool> {
+        if let Some(directory) = &self.external {
+            if self.pending {
+                let response = match std::fs::read(directory.join("response.json")) {
+                    Ok(bytes) => Some(serde_json::from_slice::<serde_json::Value>(&bytes)?),
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+                    Err(error) => return Err(error.into()),
+                };
+                if let Some(response) = response {
+                    let sequence = response["sequence"].as_u64().context("input response sequence")?;
+                    ensure!(sequence <= self.sequence, "input driver acknowledged a future request");
+                    if sequence == self.sequence {
+                        ensure!(response["ok"] == true, "external input driver failed: {response}");
+                        self.pending = false;
+                    }
+                }
+            }
+            return Ok(!self.pending);
+        }
         if let Some(child) = self.child.as_mut() {
             if let Some(status) = child.try_wait()? {
                 ensure!(
@@ -228,6 +276,21 @@ fn button(world: &mut World, category: ToolbarCategory) -> Option<(Entity, [i32;
         })
 }
 
+// Welcome 按原规则收起 toolbar，不能等待其尺寸恢复后才发送确认键。
+// 取真实布局仍保留的隐藏按钮中心作一次 OS 点击；这里只验证隐藏状态下
+// 不改工具/历史，不将它描述为“可见按钮被遮挡”的窗口验收。
+fn hidden_button_point(world: &mut World, category: ToolbarCategory) -> Option<[i32; 2]> {
+    let size = *world.resource::<WindowSize>();
+    world.query::<(&SwitchToolbarCategoryButton, &Ui2dExtent, &UiInteractionState)>()
+        .iter(world).find_map(|(target, extent, state)| {
+            (target.category == category && state.state == 0
+                && extent.size == glam::Vec2::ZERO && extent.pos.is_finite()
+                && extent.pos.x >= 0. && extent.pos.y >= 0.
+                && extent.pos.x < size.width as f32 && extent.pos.y < size.height as f32)
+                .then_some([extent.pos.x.round() as i32, extent.pos.y.round() as i32])
+        })
+}
+
 fn activation_zone_point(world: &mut World) -> Option<[i32; 2]> {
     let size = *world.resource::<WindowSize>();
     world.query_filtered::<&Ui2dExtent,
@@ -262,6 +325,17 @@ fn snapshot(world: &World, phase: &str, frames: u64) {
     let nav = world.resource::<UiNavState>();
     let history = world.resource::<History>().ledger();
     let meshes = world.resource::<country_core::asset_libraries::mesh_library::AssetMeshLibrary>();
+    let toolbar_bounds: Vec<_> = world.iter_entities().filter_map(|entity| {
+        let category = entity.get::<SwitchToolbarCategoryButton>()?;
+        let extent = entity.get::<Ui2dExtent>()?;
+        Some(serde_json::json!({"category": format!("{:?}", category.category),
+            "center": extent.pos.to_array(), "size": extent.size.to_array()}))
+    }).collect();
+    let activation_bounds: Vec<_> = world.iter_entities().filter_map(|entity| {
+        entity.get::<toolbar::resouces_and_components::DebugToolbarActivationZone>()?;
+        let extent = entity.get::<Ui2dExtent>()?;
+        Some(serde_json::json!({"center": extent.pos.to_array(), "size": extent.size.to_array()}))
+    }).collect();
     let rss_kib = std::fs::read_to_string("/proc/self/status")
         .ok()
         .and_then(|status| {
@@ -289,15 +363,23 @@ fn snapshot(world: &World, phase: &str, frames: u64) {
             "meshes": meshes.len(), "mesh_revision": meshes.registration_revision(),
             "tracked_transient_meshes": meshes.transient_meshes().lock().unwrap().len(),
             "resident_kib": rss_kib,
+            "toolbar_bounds": toolbar_bounds, "activation_bounds": activation_bounds,
+            "window_size": [world.resource::<WindowSize>().width, world.resource::<WindowSize>().height],
         })
     );
 }
 
 fn main() -> Result<()> {
+    let external_input = std::env::var_os("TG_TOOLBAR_EXTERNAL_INPUT_DIR").map(PathBuf::from);
     ensure!(
-        cfg!(target_os = "linux"),
-        "toolbar OS test currently requires Linux X11/XTest"
+        cfg!(target_os = "linux") || external_input.is_some(),
+        "non-X11 toolbar OS test requires TG_TOOLBAR_EXTERNAL_INPUT_DIR and a real input driver"
     );
+    if let Some(directory) = &external_input {
+        ensure!(directory.is_absolute() && directory.is_dir(), "external input directory must exist and be absolute");
+        ensure!(!directory.join("request.json").exists() && !directory.join("response.json").exists(),
+            "use a fresh external input directory to exclude stale acknowledgements");
+    }
     struct TimingLogger;
     impl log::Log for TimingLogger {
         fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
@@ -365,6 +447,7 @@ fn main() -> Result<()> {
         },
         shaders,
     )?;
+    game.set_event_loop_proxy(event_loop.create_proxy());
     let mut monitors = country_core::resources::window::AvailableMonitors::default();
     GameLoop::extract_available_monitors_info(&mut monitors, &event_loop);
     game.app_mut().world_mut().insert_resource(monitors);
@@ -373,6 +456,10 @@ fn main() -> Result<()> {
         script: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests/toolbar_window_chain/x11_controller.py"),
         child: None,
+        external: external_input,
+        window: window.clone(),
+        sequence: 0,
+        pending: false,
     };
     let timeout = Duration::from_secs(
         std::env::var("TG_TOOLBAR_WINDOW_TIMEOUT_SECONDS")
@@ -510,6 +597,10 @@ fn main() -> Result<()> {
                             if let Some((_, position, _)) = button(world, target_category) {
                                 snapshot(world, "ready_blocked_click", frames);
                                 eprintln!("TOOLBAR_WINDOW target={target_category:?} point={position:?}");
+                                controller.spawn("click", Some(position))?;
+                                phase = 1; phase_frame = frames;
+                            } else if let Some(position) = hidden_button_point(world, target_category) {
+                                snapshot(world, "welcome_hidden_toolbar_click", frames);
                                 controller.spawn("click", Some(position))?;
                                 phase = 1; phase_frame = frames;
                             } else if !toolbar_reveal_requested {
@@ -754,7 +845,7 @@ fn main() -> Result<()> {
                     && world.get_resource::<AutoSaveState>().is_some_and(|state| !state.is_command_attached()), "save owner not released on real OS close");
                 ensure!(!game.gameplay_preparation_pending(), "gameplay preparation owner leaked");
                 snapshot(world, "closed_save_preparation_cleanup_verified", frames);
-                eprintln!("PASS: actual XTest mouse/Enter -> production GameLoop Welcome arbitration/tool selection -> Escape synchronous save -> real Load/backups geometry -> same-SessionId backup Reload/OnExit/rebuild/30 native presents -> WM_DELETE_WINDOW/save/preparation shutdown; frames={frames}, native_frames={native_frames}, mouse_releases={mouse_releases}, enter_releases={enter_releases}; GPU teardown requires process exit and validation-layer evidence");
+                eprintln!("PASS: actual OS mouse/Enter -> production GameLoop Welcome arbitration/tool selection -> Escape synchronous save -> real Load/backups geometry -> same-SessionId backup Reload/OnExit/rebuild/30 native presents -> OS close/save/preparation shutdown; frames={frames}, native_frames={native_frames}, mouse_releases={mouse_releases}, enter_releases={enter_releases}; GPU teardown requires process exit and validation-layer evidence");
                 *observed.borrow_mut() = Some(Ok(()));
             } else {
                 ensure!(started.elapsed() < timeout, "OS toolbar chain timed out: phase={phase} frames={frames} mouse={mouse_releases} enter={enter_releases}");

@@ -5,9 +5,7 @@ mod gpu_test_support;
 use ash::vk::{self, Handle};
 use rhapsody::raw::{
     device::Device,
-    init::{DeviceSelectionPolicy, GraphicsInstance},
     instance::{GraphicsInstanceLoader, InstanceBuilder},
-    physical_device::enumerate_physical_devices,
     swapchain::{Surface, Swapchain, SwapchainPolicy},
 };
 use rhapsody::rg::{
@@ -87,30 +85,15 @@ fn headless_parts(
         "headless surface instance",
         builder.build_with_loader(loader),
     )?;
-    let devices = gpu_test_support::initialize(
-        "headless surface GPU enumeration",
-        enumerate_physical_devices(instance.clone()),
-    )?
-    .into_iter()
-    .map(Arc::new)
-    .collect();
-    let graphics = GraphicsInstance {
-        instance: instance.clone(),
-        devices,
-    };
     let loader =
         ash::ext::headless_surface::Instance::new(&instance.entry, instance.raw_instance());
     let handle = gpu_test_support::initialize("headless surface creation", unsafe {
         loader.create_headless_surface(&vk::HeadlessSurfaceCreateInfoEXT::default(), None)
     })?;
     let surface = Arc::new(unsafe { Surface::from_raw(instance.clone(), handle, true) });
-    let selected = gpu_test_support::initialize(
-        "headless present device selection",
-        graphics.available_for_surface(Some(handle), DeviceSelectionPolicy::default()),
-    )?;
     let device = gpu_test_support::initialize(
         "headless present logical device",
-        selected.create_device(&graphics),
+        Device::new(instance.clone(), Some(&surface), &rhapsody::device::DeviceConfig::default()),
     )?;
     Some((device, surface, instance))
 }
@@ -240,10 +223,7 @@ fn canonical_acquire_rejects_null_semaphore_and_fence() {
     };
     let inner = chain(&device, &surface);
     let result = unsafe { inner.acquire_next_image(0, vk::Semaphore::null(), vk::Fence::null()) };
-    assert!(matches!(
-        result,
-        Err(rhapsody::raw::error::Error::InvalidUsage { .. })
-    ));
+    assert!(matches!(result, Err(rhapsody::Error::InvalidUsage { .. })));
     device.wait_idle().unwrap();
 }
 
@@ -849,12 +829,28 @@ fn read_back_image(frame_loop: &mut FrameLoop, wanted: u32) -> [u8; 4] {
         frame_loop.wait_render(receipt, TIMEOUT).unwrap();
         let mut pixel = [0u8; 4];
         readback.read_bytes(0, &mut pixel).unwrap();
-        return match format {
+        let mut pixel = match format {
             vk::Format::B8G8R8A8_UNORM | vk::Format::B8G8R8A8_SRGB => {
                 [pixel[2], pixel[1], pixel[0], pixel[3]]
             }
             _ => pixel,
         };
+        // vkCmdClearColorImage encodes linear RGB when the native image is sRGB.
+        if matches!(
+            format,
+            vk::Format::B8G8R8A8_SRGB | vk::Format::R8G8B8A8_SRGB
+        ) {
+            for channel in &mut pixel[..3] {
+                let encoded = f32::from(*channel) / 255.0;
+                let linear = if encoded <= 0.04045 {
+                    encoded / 12.92
+                } else {
+                    ((encoded + 0.055) / 1.055).powf(2.4)
+                };
+                *channel = (linear * 255.0).round() as u8;
+            }
+        }
+        return pixel;
     }
     panic!("image {wanted} never came around again");
 }

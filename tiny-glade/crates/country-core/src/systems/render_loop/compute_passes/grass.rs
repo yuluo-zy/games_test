@@ -117,6 +117,8 @@ impl crate::render::pass_builder::pass_resource_access::SsboType for GrassBladeD
 /// 物体草 push 数据（O：单个 f32——`movss xmm1,[r8]`、`Layout` 4/4；`#[derive(Component)]`，无 require）。
 /// 查询项 `(&Transform, &ObjectGrassPush)` → `Vec4(translation, push)`（见 `draw_passes::object_grass_push`）。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct ObjectGrassPush(pub f32);
 
 /// 旧原生偏移兼容视图；实际身份为 AppMode，不在当前 App 插入第二资源（O：TypeId 0xc2b8e941c91a6428/0x59f3c6d1d3da43a0；首个 u32 = 模式 tag）。
@@ -730,3 +732,5 @@ mod tests {
         assert_eq!(GladeThemeId::TYPE_ID.lo, (-0x3d4716be36e59bd8_i64) as u64);
     }
 }
+
+impl crate::render::extract::JournaledComponent for ObjectGrassPush {}

@@ -7,10 +7,10 @@
 //! never held across a blocking fence wait or a native WSI call, so state
 //! queries (`desc`, `resize`, focus) never wait behind an acquire. Lock order:
 //! `wsi` -> `inner` -> per-slot/per-image mutexes -> device queue lock.
+use crate::{Error, Result};
 use super::{
     command_buffer::{VulkanCommandBuffer, VulkanCommandPool},
     device::Device,
-    error::{Error, Result},
     instance::VulkanInstance,
 };
 mod fullscreen;
@@ -85,9 +85,6 @@ pub enum SwapchainPolicy {
     Strict,
     /// Acquisition tests and offscreen consumers; presentation is rejected.
     AcquireOnly,
-    /// Explicit compatibility mode. A final unproven generation is retained,
-    /// including its device, rather than destroyed after an unrelated GPU wait.
-    RetainUnproven,
 }
 impl SwapchainPolicy {
     fn validate(self, maintenance1: bool) -> Result<()> {
@@ -634,8 +631,7 @@ impl Swapchain {
             )
         }
     }
-    /// Choose an explicit capability degradation for acquisition-only tests or
-    /// compatibility consumers. Production frame loops require `Strict`.
+    /// Acquisition-only test entry; production frame loops require `Strict`.
     ///
     /// # Safety
     /// The device must enable VK_KHR_swapchain and own the surface's instance.
@@ -1180,13 +1176,15 @@ impl Swapchain {
         self.maintain_fullscreen()?;
         let _wsi = self.wsi.lock();
         let (index, suboptimal) = self.acquire_native(timeout, semaphore, fence)?;
-        Ok(SwapchainImageLease {
-            swapchain: Arc::clone(self),
-            index,
-            suboptimal,
-            released: false,
+        let lease = SwapchainImageLease {
+            swapchain: Arc::clone(self), index, suboptimal, released: false,
             external_acquire_fence: fence,
-        })
+        };
+        if index as usize >= self.images.len() {
+            drop(lease);
+            return Err(Error::invalid_usage("driver returned an invalid swapchain image index"));
+        }
+        Ok(lease)
     }
     /// Native acquire with the WSI lock held by the caller. The state lock is
     /// taken only to validate and to publish, never across the native call.
@@ -1346,7 +1344,6 @@ impl Swapchain {
         if index as usize >= self.images.len() {
             return Err(Error::invalid_usage("交换链图片索引越界"));
         }
-        let _wsi = self.wsi.lock();
         let presentation = {
             let inner = self.inner.read();
             if inner.closing {
@@ -1356,6 +1353,7 @@ impl Swapchain {
         };
         // Bounded fence wait for this image's previous present; no state lock.
         presentation.prepare(ACQUIRE_TIMEOUT_NS)?;
+        let _wsi = self.wsi.lock();
         let has_fence = presentation.fence != vk::Fence::null();
         let chains = [self.handle];
         let indices = [index];
@@ -1401,8 +1399,8 @@ impl Drop for Swapchain {
         if let Err(error) = self.shutdown(ACQUIRE_TIMEOUT_NS)
             && !error.is_device_lost()
         {
-            // Explicit compatibility mode cannot manufacture the missing final
-            // presentation proof. Keep *all* owners alive, including the device
+            // A failed shutdown cannot manufacture final presentation proof.
+            // Keep all owners alive, including the device
             // and surface, so neither a child nor its parent is destroyed early.
             // This is an observable safety fallback, never successful cleanup.
             log::error!(target: "rhapsody::raw::swapchain", "WSI generation {} retained after failed shutdown ({:?}): {error}", self.generation, self.policy);
@@ -1443,9 +1441,9 @@ impl SwapchainImageLease {
     /// satisfy [`Swapchain::present`]'s contract.
     pub unsafe fn present(mut self, wait: &[vk::Semaphore]) -> Result<bool> {
         let result = unsafe { self.swapchain.present_unnoted(self.index, wait) };
-        // Swapchain::present retires the generation on every failed operation;
-        // its caller handles a rejected wait independently from this image lease.
-        self.released = true;
+        // Early failures may precede native presentation. Returning an unconsumed
+        // acquisition makes its generation stale through the existing Drop path.
+        self.released = result.is_ok();
         if result
             .as_ref()
             .is_ok_and(|&present| present || self.suboptimal)
@@ -1611,9 +1609,19 @@ impl ImagePresentation {
             .poll_with(&DeviceFenceOperations(&self.device), self.fence)
     }
     fn prepare(&self, timeout: u64) -> Result<()> {
-        self.progress
-            .lock()
-            .prepare_with(&DeviceFenceOperations(&self.device), self.fence, timeout)
+        let pending = self.progress.lock().pending_fence;
+        let operations = DeviceFenceOperations(&self.device);
+        if let Some(pending) = pending {
+            if pending.certain { operations.wait(self.fence, timeout)?; }
+            else if !operations.signaled(self.fence)? { return Err(Error::SurfaceOutOfDate); }
+            let mut progress = self.progress.lock();
+            if progress.pending_fence == Some(pending) {
+                progress.acquired(pending.serial);
+                progress.pending_fence = None;
+            }
+        }
+        if self.fence != vk::Fence::null() { operations.reset(self.fence)?; }
+        Ok(())
     }
     fn new(device: Arc<Device>) -> Result<Self> {
         let rendered = wsi_call(&device.queues.timelines, || unsafe {
@@ -2239,9 +2247,8 @@ impl AcquiredImageLease {
         }
         let signals = [self.presentation.rendered];
         let commands = [command.handle];
-        let mut uses = command.use_cells().to_vec();
-        crate::resource::tracked::normalize_submission_uses(&mut uses);
-        let _reservations = crate::resource::tracked::lock_submission_uses(&uses)?;
+        let uses = crate::resource::tracked::collect_submission_uses(&[command.submission_uses()?], &device.memory.stats)?;
+        let _reservations = crate::resource::tracked::lock_submission_uses(uses.ordered(), &device.memory.stats)?;
         command.validate_submission()?;
         let native_states = unsafe {
             super::command_buffer::prepare_submission_states(
@@ -2600,7 +2607,6 @@ mod tests {
                 .kind(),
             ErrorKind::Unsupported
         );
-        assert!(SwapchainPolicy::RetainUnproven.validate(false).is_ok());
     }
 
     #[test]

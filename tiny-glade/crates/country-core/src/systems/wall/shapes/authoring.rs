@@ -10,6 +10,7 @@ use crate::resources::walls::freeform_height_cache::rectangle_curve;
 use crate::resources::walls::publication_fields::WallId;
 use crate::resources::walls::publication_fields::WallShapeSnapshot;
 use crate::resources::walls::publication_source::RawWallPublicationSource;
+use ::utils::scalar::{clamp01, max_f32, smoothstep};
 
 #[derive(Clone, Copy, Debug)]
 pub enum AuthoringShape {
@@ -93,18 +94,6 @@ pub fn select_creation_appearance(
     selected
 }
 
-fn source_max(a: f32, b: f32) -> f32 {
-    if a > b { a } else { b }
-}
-fn source_min(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
-}
-fn clamp01(value: f32) -> f32 {
-    source_min(1.0, source_max(0.0, value))
-}
-fn smoothstep(value: f32) -> f32 {
-    (3.0 - (value + value)) * (value * value)
-}
 fn sine_ease_in_out(value: f32) -> f32 {
     // Original private EasingFunction tag2 dispatches to this cosf expression.
     ((value * f32::from_bits(0x40490fdb)).cos() + (-1.0)) * (-0.5)
@@ -135,12 +124,12 @@ pub fn creation_roof_parameters(
             let aspect = if w_ratio.is_nan() {
                 l_ratio
             } else {
-                source_max(l_ratio, w_ratio)
+                max_f32(l_ratio, w_ratio)
             };
             let longest = if width.is_nan() {
                 length
             } else {
-                source_max(length, width)
+                max_f32(length, width)
             };
             let offset = longest + (-2.25);
             let scale = smoothstep(clamp01(offset / 5.25));

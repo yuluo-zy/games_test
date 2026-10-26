@@ -506,7 +506,7 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
     }
 
     /// 将脏 chunk 合并后批量上传；失败保留 dirty 标记，下一帧可重试。
-    pub fn try_gpu_flush(
+    pub fn gpu_flush(
         &mut self,
         device: &dyn GraphicsDevice,
     ) -> Result<(), rhapsody_boundary::BackendError> {
@@ -542,11 +542,6 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
             *word.get_mut() = 0;
         }
         Ok(())
-    }
-
-    /// 兼容旧调用方；需要恢复失败的运行期代码应使用 try_gpu_flush。
-    pub fn gpu_flush(&mut self, device: &dyn GraphicsDevice) {
-        self.try_gpu_flush(device).expect("上传稀疏实例缓冲失败");
     }
 
     /// O — `allocation_to_draw_multi_instanced` 0x1412e3a60：按该分配的 chunk 顺序合并绘制区间。
@@ -713,6 +708,9 @@ fn clear_parts(
 }
 
 impl<T: SparseSsbo + Send + Sync + 'static> Ssbo for SparseInstanceBuffer<T> {
+    fn flush_pending(&mut self, device: &dyn GraphicsDevice) -> Result<(), rhapsody_boundary::BackendError> {
+        self.gpu_flush(device)
+    }
     fn set_change_notifier(&mut self, notify: Arc<dyn Fn() + Send + Sync>) {
         self.change_notifier = Some(notify);
     }
@@ -843,7 +841,7 @@ mod tests {
         buffer.writer(&allocation).push(&Elem(1)).unwrap();
         let first = buffer.snapshot();
         let first_draws = draws(first.as_ref());
-        buffer.gpu_flush(&device);
+        buffer.gpu_flush(&device).unwrap();
         let second = buffer.snapshot();
         assert!(Arc::ptr_eq(&first_draws, &draws(second.as_ref())));
         // Updating only instance bytes must not allocate another draw table.
@@ -1101,7 +1099,7 @@ mod tests {
         // 另外手工标记 chunk 5、70（跨 64 位字）为 dirty。
         bitmap_set(&b.dirty_bitset, 5);
         bitmap_set(&b.dirty_bitset, 70);
-        b.gpu_flush(&d);
+        b.gpu_flush(&d).unwrap();
         // 元素区间 [0,96) [160,192) [2240,2272)，设备收到的是 ×size_of::<Elem>() = ×4 的字节区间。
         assert_eq!(*d.writes.borrow(), vec![vec![0..384, 640..768, 8960..9088]]);
         assert!(
@@ -1110,7 +1108,7 @@ mod tests {
                 .all(|w| w.load(Ordering::Relaxed) == 0)
         );
         // 无 dirty 时原版仍然调用，区间为空（由 gpu_write_ranges_nonoverlapping 内部返回，不触发写）。
-        b.gpu_flush(&d);
+        b.gpu_flush(&d).unwrap();
         assert_eq!(d.writes.borrow().len(), 1);
     }
 
@@ -1123,7 +1121,7 @@ mod tests {
             w.push(&Elem(1)).unwrap();
         }
         drop(a);
-        b.gpu_flush(&d);
+        b.gpu_flush(&d).unwrap();
         assert!(b.waste.lock().is_empty());
         assert_eq!(b.free_chunks.read().len(), 128);
     }

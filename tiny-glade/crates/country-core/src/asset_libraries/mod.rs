@@ -52,6 +52,9 @@ pub struct Handle<T> {
 impl<T: Send + Sync + 'static> crate::render::extract::JournaledComponent for Handle<T> {}
 
 impl<T> Handle<T> {
+    pub(crate) fn from_raw(raw: u64) -> Self {
+        Self { id: HandleId::from_raw(raw), _marker: core::marker::PhantomData }
+    }
     /// 创建初始状态。
     pub fn new() -> Self {
         Handle {

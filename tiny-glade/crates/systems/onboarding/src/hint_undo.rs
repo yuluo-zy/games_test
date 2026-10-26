@@ -37,7 +37,9 @@ pub fn undo_keys_seam() -> (Option<crate::KeyCode>, Option<crate::KeyCode>) {
 pub fn hint_undo(
     profile: Res<country_core::game_profile::GameProfile>,
     mut state: ResMut<UndoHintConditions>,
-    mut erased: EventReader<country_core::resources::onboarding::NotifyHintSystemSomethingWasErased>,
+    mut erased: EventReader<
+        country_core::resources::onboarding::NotifyHintSystemSomethingWasErased,
+    >,
     time: Res<country_core::resources::time::GameTime>,
     mut completed: EventWriter<crate::tutorial_completion::TutorialHintComplete>,
     mut request: EventWriter<crate::DisplayHintRequest>,
@@ -60,11 +62,9 @@ pub fn hint_undo(
     }
     if state.flag == 1 && !profile.undo_completed {
         let (k1, k2) = undo_keys_seam();
-        let display = crate::BindingHintDisplay::Steam(
-            crate::hint_orchestrator::steam_query(
-                country_core::resources::steam::packed_set_plus_one(0),
-            ),
-        )
+        let display = crate::BindingHintDisplay::Steam(crate::hint_orchestrator::steam_query(
+            country_core::resources::steam::packed_set_plus_one(0),
+        ))
         .adjacent(crate::hint_orchestrator::steam_query(
             country_core::resources::steam::packed_set_plus_one(0),
         ))

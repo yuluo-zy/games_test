@@ -1,6 +1,6 @@
 //! Stable symbolic subgraphs. Cached entries never own frame resources.
+use crate::collections::cache::{BoundedCache, CacheDiagnostics, CacheReason};
 use super::{
-    cache::{BoundedCache, CacheDiagnostics, CacheReason},
     graph::{PassDeclaration, RenderGraph},
     plan::{AccessSemantics, GraphDefinition, PlanContext, ResourceDefinition},
     resource::{AccessRange, AccessVersion, ResourceHandle},
@@ -558,7 +558,7 @@ fn local_key(
             access.range = access
                 .range
                 .normalized(definition.resources[access.resource_index as usize].descriptor)
-                .unwrap_or(access.range);
+                .map_err(|_| crate::Error::invalid_usage("subgraph access range is invalid"))?;
             access.version = match access.version {
                 AccessVersion::Read(version) => {
                     AccessVersion::Read(rebase(access.resource_index, version)?)

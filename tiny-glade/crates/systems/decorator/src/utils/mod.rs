@@ -106,19 +106,6 @@ pub fn random_splits(rng: &mut Rng, total: f32, n: usize) -> Vec<f32> {
     splits
 }
 
-/// B utils crate `inverse_lerp`（0x1407d9780 / 0x140c904a0，调用点 O）：
-/// `(v - a) / (b - a)`。
-pub fn inverse_lerp(a: f32, b: f32, v: f32) -> f32 {
-    (v - a) / (b - a)
-}
-
-/// B utils crate `smoothstep`（调用点 O：chimney_assemble_bricks 闭包链）。
-/// Hermite 平滑：`t*t*(3-2t)`，t 钳制 [0,1]。
-pub fn smoothstep(t: f32) -> f32 {
-    let t = t.clamp(0.0, 1.0);
-    t * t * (3.0 - 2.0 * t)
-}
-
 /// 旧三标量接口的调用者尚缺原本地位姿合同；不能假设零中心替换。
 /// **显式未恢复**：返回 None，不以 default 冒充几何。真实 clutter 已由
 /// new_clutter_cuboid 传完整尺寸与本地位姿；本包现明确启用 native-physics。

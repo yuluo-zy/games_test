@@ -10,7 +10,7 @@
 use super::{LayoutPlan, VulkanDescriptorPool, VulkanDescriptorSet, VulkanDescriptorSetLayout};
 use crate::{Error, Result, device::Device};
 use parking_lot::Mutex;
-use std::sync::Arc;
+use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DescriptorPoolRingConfig {
@@ -43,6 +43,16 @@ struct RingPool {
     used: u64,
 }
 
+struct PoolCreation<'a> {
+    state: &'a Mutex<RingState>,
+    committed: bool,
+}
+impl Drop for PoolCreation<'_> {
+    fn drop(&mut self) {
+        if !self.committed { self.state.lock().creating -= 1; }
+    }
+}
+
 /// Driver memory of one descriptor set, for eviction progress accounting.
 /// Descriptor pools live in driver memory outside the device-memory ledger.
 const DESCRIPTOR_SET_BYTES_ESTIMATE: u64 = 256;
@@ -59,11 +69,13 @@ pub struct DescriptorPoolRing {
     plan: LayoutPlan,
     config: DescriptorPoolRingConfig,
     state: Mutex<RingState>,
+    clock: AtomicU64,
+    resets: AtomicU64,
 }
 struct RingState {
-    pools: Vec<RingPool>,
+    pools: Vec<Arc<Mutex<RingPool>>>,
+    creating: usize,
     current: usize,
-    clock: u64,
     stats: DescriptorPoolRingStats,
 }
 
@@ -82,10 +94,12 @@ impl DescriptorPoolRing {
             device,
             plan: plan.clone(),
             config,
+            clock: AtomicU64::new(0),
+            resets: AtomicU64::new(0),
             state: Mutex::new(RingState {
                 pools: Vec::new(),
                 current: 0,
-                clock: 0,
+                creating: 0,
                 stats: DescriptorPoolRingStats::default(),
             }),
         })
@@ -104,6 +118,7 @@ impl DescriptorPoolRing {
         let state = self.state.lock();
         DescriptorPoolRingStats {
             pools: state.pools.len(),
+            resets: self.resets.load(Ordering::Relaxed),
             ..state.stats
         }
     }
@@ -115,70 +130,74 @@ impl DescriptorPoolRing {
                 "descriptor layout does not match the pool ring plan",
             ));
         }
-        let mut state = self.state.lock();
-        if !self.config.transient && state.pools.iter().any(|entry| entry.full) {
-            // Dropped persistent sets are freed through device retirement;
-            // reclaim completed ones so the driver sees their space again.
-            self.device.try_collect_garbage()?;
-            for entry in &mut state.pools {
-                entry.full = false;
-            }
-        }
-        let count = state.pools.len();
-        // Visit every existing pool once, starting from the current one.
+        let (count, start) = { let state = self.state.lock(); (state.pools.len(), state.current) };
+        // Reclamation can enter other device caches. No ring or pool lock is
+        // held while it runs; each native pool is leased independently below.
+        let mut reclaimed = false;
         for step in 0..count {
-            let index = (state.current + step) % count;
-            let RingState { pools, stats, .. } = &mut *state;
-            if !self.make_usable(&mut pools[index], stats)? {
-                continue;
-            }
-            match self.try_allocate(&mut state.pools[index], &layout)? {
-                Some(set) => {
-                    state.current = index;
-                    state.clock += 1;
-                    state.pools[index].used = state.clock;
-                    return Ok(set);
+            let index = (start + step) % count;
+            let entry = self.state.lock().pools.get(index).cloned();
+            let Some(entry) = entry else { continue; };
+            let Some(mut leased) = entry.try_lock() else { continue; };
+            if !self.config.transient && leased.full {
+                if !reclaimed {
+                    drop(leased);
+                    self.device.try_collect_garbage()?;
+                    reclaimed = true;
+                    let Some(retry) = entry.try_lock() else { continue; };
+                    leased = retry;
                 }
-                None => continue,
+                leased.full = false;
+            }
+            if !self.make_usable(&mut leased)? { continue; }
+            if let Some(set) = self.try_allocate(&mut leased, &layout)? {
+                leased.used = self.clock.fetch_add(1, Ordering::Relaxed);
+                drop(leased);
+                self.state.lock().current = index;
+                return Ok(set);
             }
         }
-        if count >= self.config.max_pools {
-            return Err(Error::exhausted(
-                "descriptor pool ring reached its pool limit",
-            ));
+        {
+            let mut state = self.state.lock();
+            if state.pools.len() + state.creating >= self.config.max_pools {
+                return Err(Error::exhausted("descriptor pool ring reached its pool limit"));
+            }
+            let reservations = state.creating + 1;
+            state.pools.try_reserve(reservations).map_err(|_| Error::OutOfHostMemory)?;
+            state.creating += 1;
         }
+        let mut creating = PoolCreation { state: &self.state, committed: false };
         let pool = if self.config.transient {
-            VulkanDescriptorPool::new_transient(
-                self.device.clone(),
-                &self.plan,
-                self.config.sets_per_pool,
-            )?
+            VulkanDescriptorPool::new_transient(self.device.clone(), &self.plan, self.config.sets_per_pool)?
         } else {
             VulkanDescriptorPool::new(self.device.clone(), &self.plan, self.config.sets_per_pool)?
         };
-        state.clock += 1;
-        let used = state.clock;
-        state.pools.push(RingPool {
-            pool,
-            allocated: 0,
-            full: false,
-            used,
-        });
-        state.stats.created += 1;
-        state.current = count;
-        let entry = &mut state.pools[count];
-        self.try_allocate(entry, &layout)?.ok_or_else(|| {
+        let mut entry = RingPool {
+            pool, allocated: 0, full: false,
+            used: self.clock.fetch_add(1, Ordering::Relaxed),
+        };
+        let set = self.try_allocate(&mut entry, &layout)?.ok_or_else(|| {
             Error::exhausted("a new descriptor pool cannot hold one set of its plan")
-        })
+        })?;
+        let entry = Arc::new(Mutex::new(entry));
+        let mut state = self.state.lock();
+        state.creating -= 1;
+        creating.committed = true;
+        state.current = state.pools.len();
+        state.pools.push(entry);
+        state.stats.created += 1;
+        Ok(set)
     }
 
-    /// Reset every idle exhausted transient pool now (normally done lazily).
+    /// Reset idle exhausted transient pools independently of the ring metadata.
     pub fn recycle(&self) -> Result<usize> {
-        let mut state = self.state.lock();
-        let RingState { pools, stats, .. } = &mut *state;
+        let count = self.state.lock().pools.len();
         let mut recycled = 0;
-        for entry in pools.iter_mut() {
-            if entry.allocated != 0 && self.reset_if_idle(entry, stats)? {
+        for index in 0..count {
+            let entry = self.state.lock().pools.get(index).cloned();
+            let Some(entry) = entry else { continue; };
+            let Some(mut entry) = entry.try_lock() else { continue; };
+            if (entry.allocated != 0 || entry.full) && self.reset_if_idle(&mut entry)? {
                 recycled += 1;
             }
         }
@@ -189,11 +208,10 @@ impl DescriptorPoolRing {
     fn make_usable(
         &self,
         entry: &mut RingPool,
-        stats: &mut DescriptorPoolRingStats,
     ) -> Result<bool> {
         if self.config.transient {
             if entry.full || entry.allocated >= self.config.sets_per_pool {
-                return self.reset_if_idle(entry, stats);
+                return self.reset_if_idle(entry);
             }
             return Ok(true);
         }
@@ -203,7 +221,6 @@ impl DescriptorPoolRing {
     fn reset_if_idle(
         &self,
         entry: &mut RingPool,
-        stats: &mut DescriptorPoolRingStats,
     ) -> Result<bool> {
         if entry.pool.live_set_count() != 0 {
             return Ok(false);
@@ -212,7 +229,7 @@ impl DescriptorPoolRing {
             Ok(()) => {
                 entry.allocated = 0;
                 entry.full = false;
-                stats.resets += 1;
+                self.resets.fetch_add(1, Ordering::Relaxed);
                 Ok(true)
             }
             // GPU work still references sets from this pool.
@@ -244,33 +261,27 @@ impl DescriptorPoolRing {
 /// order; the ring recreates pools on demand.
 impl crate::device::Evictable for DescriptorPoolRing {
     fn evict_idle(&self, completed: &crate::sync::CompletedValues, target_bytes: u64) -> u64 {
-        let Some(mut state) = self.state.try_lock() else {
-            return 0;
-        };
         let per_pool = u64::from(self.config.sets_per_pool) * DESCRIPTOR_SET_BYTES_ESTIMATE;
         let mut released = 0;
         while released < target_bytes {
-            let victim = state
-                .pools
-                .iter()
-                .enumerate()
-                .filter(|(_, entry)| {
-                    entry.pool.live_set_count() == 0 && entry.pool.last_use.is_reached(completed)
-                })
-                .min_by_key(|(_, entry)| entry.used)
-                .map(|(index, _)| index);
-            let Some(index) = victim else {
-                break;
+            let removed = {
+                let Some(mut state) = self.state.try_lock() else { break; };
+                let victim = state.pools.iter().enumerate().filter_map(|(index, entry)| {
+                    // A checked-out Arc pins this entry until its allocation
+                    // finishes; eviction never waits for its native pool lock.
+                    if Arc::strong_count(entry) != 1 { return None; }
+                    let entry = entry.try_lock()?;
+                    (entry.pool.live_set_count() == 0 && entry.pool.last_use.is_reached(completed))
+                        .then_some((index, entry.used))
+                }).min_by_key(|(_, used)| *used).map(|(index, _)| index);
+                let Some(index) = victim else { break; };
+                let removed = state.pools.remove(index);
+                if state.current >= index && state.current > 0 { state.current -= 1; }
+                Some(removed)
             };
-            // Dropping retires the pool after its (already reached) last use.
-            state.pools.remove(index);
-            if state.current >= index && state.current > 0 {
-                state.current -= 1;
-            }
+            // Native retirement may enter the device budget controller.
+            drop(removed);
             released += per_pool;
-        }
-        if state.current >= state.pools.len() {
-            state.current = 0;
         }
         released
     }

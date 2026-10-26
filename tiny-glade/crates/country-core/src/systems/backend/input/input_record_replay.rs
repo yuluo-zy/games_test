@@ -201,11 +201,6 @@ pub fn input_record_replay(
                 time_delta_seconds: time.delta,
                 mouse_depth: depth.replay_frame(),
             };
-            // 非法宿主时间不写入不可加载的录制；保留已录好的帧并报告错误。
-            if let Err(error) = frame.validate() {
-                replay.last_error = Some(error.to_string());
-                return;
-            }
             let retention = if replay.mode == InputRecordReplayMode::Records {
                 RecordingRetention::All
             } else {
@@ -218,21 +213,16 @@ pub fn input_record_replay(
             );
         }
         InputRecordReplayMode::Replay => {
-            if let Some(frame) = replay.current_frame().copied() {
-                *actions = frame.actions;
-                values.current = frame.actions.values();
-                cursor.x = frame.cursor_position[0];
-                cursor.y = frame.cursor_position[1];
-                screen_cursor.0 = frame.screen_cursor_position;
-                capture.restore_for_replay(frame.captured_cursor_position);
-                replay.frame_applied = true;
-            } else {
-                // 外部手动切换到空流也不能导致帧索引 panic 或泄漏上一帧按下沿。
-                *actions = ActionSetStates::default();
-                values.current = Default::default();
-                replay.stop();
-                replay.last_error = Some("回放已结束或没有输入帧".into());
-            }
+            // The file/seek boundary admits only a playable frame. Match the
+            // original clock's invariant for direct invalid in-memory states.
+            let frame = replay.current_frame().copied().expect("Out of bounds access");
+            *actions = frame.actions;
+            values.current = frame.actions.values();
+            cursor.x = frame.cursor_position[0];
+            cursor.y = frame.cursor_position[1];
+            screen_cursor.0 = frame.screen_cursor_position;
+            capture.restore_for_replay(frame.captured_cursor_position);
+            replay.frame_applied = true;
         }
         InputRecordReplayMode::DisableInput => {
             *actions = ActionSetStates::default();

@@ -241,7 +241,7 @@ impl MetaCommander {
         original.payloads[2] = fence.as_payload();
         let mut next = NextSession::load(original.session_id())
             .ignore_snapshot(original.payloads[3] as u8 != 0);
-        next.append_fence_release(fence.clone());
+        next.append_fence(fence.clone());
         self.session_fences.insert(fence.as_payload(), fence);
         self.undo_consume(original);
         next

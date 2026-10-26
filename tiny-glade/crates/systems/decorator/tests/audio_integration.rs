@@ -67,6 +67,7 @@ fn drain_stairs(world: &mut World) -> Vec<PlayStairsAudioCmd> {
 fn audio_world() -> World {
     let mut world = World::new();
     world.init_resource::<DecoratorAudioEvents>();
+    world.init_resource::<Events<system_decorator::audio::op_preview_audio::MutePreviewDecoratorOpSounds>>();
     world.init_resource::<Events<DecoratorOpEventKind>>();
     world.init_resource::<Events<PlayDecoratorSoundCmd>>();
     world.init_resource::<Events<PlayStairsAudioCmd>>();
@@ -198,8 +199,8 @@ fn preview_kind_table_matches_original_jump_table() {
 fn preview_kind_matches_original_instructions_for_all_type_and_subtype_bytes() {
     use country_core::resources::walls::decorator::DecoratorType;
     // Produced by executing B1408233a9..1408235d0 with no function hooks.
-    // The evidence directory contains the original binary hash and reproducer.
-    let expected = include_bytes!("../../../../../reverse-engineering/tiny-glade/progress-20261020/central-audio-preview/native-preview-kind.bin");
+    // Workspace tests/fixtures/native records the retained capture provenance.
+    let expected = include_bytes!("../../../../tests/fixtures/native/native-preview-kind.bin");
     for ty in 0..=255u8 {
         for subtype in 0..=255u8 {
             let offset = (usize::from(ty) * 256 + usize::from(subtype)) * 2;

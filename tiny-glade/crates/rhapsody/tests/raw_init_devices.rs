@@ -355,8 +355,10 @@ fn create_by_uuid_selects_that_device_and_returns_unsupported_when_absent() {
         .expect("an available GPU is required");
     // 物化 Vec：克隆而非借用。
     assert_eq!(surface.available_devices().len(), surface.available.len());
-    let device = surface
-        .create_device_by_uuid(&graphics, first.device_uuid)
+    let device = rhapsody::device::Device::new(graphics.instance.clone(), None, &rhapsody::device::DeviceConfig {
+            preferred_device: rhapsody::device::DevicePreference::ByUuid(first.device_uuid),
+            ..rhapsody::device::DeviceConfig::headless()
+        })
         .expect("按 uuid 选中的设备应能创建");
     assert_eq!(device.device_uuid(), first.device_uuid);
     drop(device);
@@ -366,14 +368,18 @@ fn create_by_uuid_selects_that_device_and_returns_unsupported_when_absent() {
         .iter()
         .all(|d| d.device_uuid != missing_uuid)
     {
-        let error = surface
-            .create_device_by_uuid(&graphics, missing_uuid)
+        let error = rhapsody::device::Device::new(graphics.instance.clone(), None, &rhapsody::device::DeviceConfig {
+                preferred_device: rhapsody::device::DevicePreference::ByUuid(missing_uuid),
+                ..rhapsody::device::DeviceConfig::headless()
+            })
             .err()
             .expect("missing UUID must be rejected");
         assert_eq!(error.kind(), rhapsody::ErrorKind::Unsupported);
         // Rejection does not mutate the candidate list or poison later creation.
-        let retried = surface
-            .create_device_by_uuid(&graphics, first.device_uuid)
+        let retried = rhapsody::device::Device::new(graphics.instance.clone(), None, &rhapsody::device::DeviceConfig {
+                preferred_device: rhapsody::device::DevicePreference::ByUuid(first.device_uuid),
+                ..rhapsody::device::DeviceConfig::headless()
+            })
             .unwrap();
         assert_eq!(retried.device_uuid(), first.device_uuid);
     }

@@ -4,6 +4,7 @@
 // Preserve the original instruction-level expression order/NaN policy, API call shapes, and evidence/test transcription. See README.md.
 #![allow(clippy::neg_cmp_op_on_partial_ord)]
 use std::collections::VecDeque;
+use ::utils::scalar::clamp01;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct WallBrick {
     pub aabb: [f32; 4],
@@ -36,10 +37,6 @@ fn from_center(c: [f32; 2], d: [f32; 2]) -> [f32; 4] {
 }
 fn contains(h: [f32; 4], p: [f32; 2]) -> bool {
     h[0] <= p[0] && p[0] <= h[2] && h[1] <= p[1] && p[1] <= h[3]
-}
-fn clamp01(x: f32) -> f32 {
-    let x = if x >= 0.0 { x } else { 0.0 };
-    if x <= 1.0 { x } else { 1.0 }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WallConstructionError {

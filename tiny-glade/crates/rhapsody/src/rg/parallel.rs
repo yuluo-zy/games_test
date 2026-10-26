@@ -1,7 +1,7 @@
 //! 并行录制：pass 分块策略与任务执行器。
 //!
 //! 一个 batch 的 pass 按**上一帧**各 pass 的 CPU 录制耗时切成连续块，每块一条命令缓冲，
-//! 经 `bevy_tasks::ComputeTaskPool` 并行录制。没有上一帧统计或整帧很轻时走串行。
+//! 经 `bevy_tasks::ComputeTaskPool` 并行录制。未知耗时按均值估计，冷帧与轻帧同样使用任务池。
 use super::executor::PassPgoStats;
 use std::ops::Range;
 
@@ -10,8 +10,6 @@ pub type PassCost = Option<u64>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChunkStrategy {
-    /// 不分块，整个 batch 一条命令缓冲。
-    Serial,
     /// 至多 `max_chunks` 块，每块计入 `chunk_overhead_ns` 固定成本，
     /// 未知耗时按已知均值估计，二分预算求最小化最大块的连续切分。
     Balanced {
@@ -34,42 +32,43 @@ pub fn balanced_chunks(
         return Vec::new();
     }
     // 未知耗时按已知均值估计；完全没有数据时视为等价，按 pass 数均分。
-    let known: Vec<u64> = costs.iter().flatten().copied().collect();
-    let fallback = if known.is_empty() {
-        1
-    } else {
-        (known.iter().sum::<u64>() / known.len() as u64).max(1)
-    };
-    let weights: Vec<u64> = costs.iter().map(|c| c.unwrap_or(fallback).max(1)).collect();
+    let (known_sum, known_count) = costs.iter().flatten().fold((0u128, 0u128), |(sum, count), &cost| (sum + u128::from(cost), count + 1));
+    let fallback = if known_count == 0 { 1 } else { (known_sum / known_count).max(1) as u64 };
+    let weight = |cost: &PassCost| u128::from(cost.unwrap_or(fallback).max(1));
+    let chunk_overhead_ns = u128::from(chunk_overhead_ns);
     let allowed = |i: usize| split_allowed.get(i).copied().unwrap_or(true);
     // 给定预算时的贪心切分：块成本 = 固定开销 + 块内耗时；单个超预算 pass 独占一块。
-    let split = |budget: u64| {
-        let mut chunks = Vec::new();
-        let (mut start, mut load) = (0, chunk_overhead_ns);
-        for (i, &w) in weights.iter().enumerate() {
+    // Search only counts partitions. Materialize ranges once, at the final budget.
+    let split = |budget: u128, mut output: Option<&mut Vec<Range<usize>>>| {
+        let (mut start, mut load, mut count) = (0, chunk_overhead_ns, 1usize);
+        for (i, cost) in costs.iter().enumerate() {
+            let w = weight(cost);
             if i > start && load + w > budget && allowed(i - 1) {
-                chunks.push(start..i);
+                if let Some(chunks) = output.as_deref_mut() { chunks.push(start..i); }
+                count += 1;
                 start = i;
                 load = chunk_overhead_ns;
             }
             load += w;
         }
-        chunks.push(start..n);
-        chunks
+        if let Some(chunks) = output { chunks.push(start..n); }
+        count
     };
     let (mut low, mut high) = (
-        chunk_overhead_ns + weights.iter().copied().max().unwrap_or(1),
-        chunk_overhead_ns + weights.iter().sum::<u64>(),
+        chunk_overhead_ns + costs.iter().map(weight).max().unwrap_or(1),
+        chunk_overhead_ns + costs.iter().map(weight).sum::<u128>(),
     );
     while low < high {
         let mid = low + (high - low) / 2;
-        if split(mid).len() <= max_chunks {
+        if split(mid, None) <= max_chunks {
             high = mid;
         } else {
             low = mid + 1;
         }
     }
-    split(low)
+    let mut chunks = Vec::with_capacity(max_chunks.min(n));
+    split(low, Some(&mut chunks));
+    chunks
 }
 
 /// 按策略切分一个 batch；`names` 是 batch 内各 pass 的 PGO 名。
@@ -79,9 +78,8 @@ pub fn plan_chunks<N: AsRef<str>>(
     previous: &PassPgoStats,
     split_allowed: &[bool],
 ) -> Vec<Range<usize>> {
-    let costs: Vec<PassCost> = names.iter().map(|name| previous.get(name)).collect();
+    let costs: smallvec::SmallVec<[PassCost; 32]> = names.iter().map(|name| previous.get(name)).collect();
     match strategy {
-        ChunkStrategy::Serial => std::iter::once(0..names.len()).collect(),
         ChunkStrategy::Balanced {
             max_chunks,
             chunk_overhead_ns,
@@ -89,46 +87,43 @@ pub fn plan_chunks<N: AsRef<str>>(
     }
 }
 
-/// 块的执行方式。`ComputePool` 使用 `bevy_tasks` 的全局计算池（与 Bevy ECS 共用，
-/// 不另起线程池抢核）；`Inline` 在当前线程按块顺序执行，用于确定性测试与对照。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TaskRunner {
-    Inline,
-    ComputePool,
+/// Record chunks on the ECS compute pool and return results in chunk order.
+pub fn map_chunks<T, R>(
+    items: &mut [T], f: impl Fn(usize, &mut T) -> R + Send + Sync,
+) -> smallvec::SmallVec<[R; 8]>
+where T: Send, R: Send + 'static {
+    use bevy_tasks::{ComputeTaskPool, TaskPool};
+    let pool = ComputeTaskPool::get_or_init(TaskPool::default);
+    let mut results = smallvec::SmallVec::<[Option<R>; 8]>::new();
+    results.resize_with(items.len(), || None);
+    // Each worker owns its disjoint output slot. Scope completion joins every
+    // worker, preserving input order without a result Vec or an index sort.
+    // Tick only this recording scope: unrelated ECS producers must not run
+    // under the render owner's thread identity while it owns a frame boundary.
+    let _ = pool.scope_with_executor(false, None, |scope| {
+        for ((index, item), result) in items.iter_mut().enumerate().zip(&mut results) {
+            let f = &f;
+            scope.spawn(async move { *result = Some(f(index, item)); });
+        }
+    });
+    results.into_iter().map(|result| result.expect("joined chunk worker returned no result")).collect()
 }
-impl TaskRunner {
-    /// 对每个块调用 `f(块序号, 块)`，结果按块顺序返回。
-    pub fn map_chunks<T, R>(
-        self,
-        items: &mut [T],
-        f: impl Fn(usize, &mut T) -> R + Send + Sync,
-    ) -> Vec<R>
-    where
-        T: Send,
-        R: Send + 'static,
-    {
-        match self {
-            Self::Inline => items
-                .iter_mut()
-                .enumerate()
-                .map(|(i, item)| f(i, item))
-                .collect(),
-            Self::ComputePool => {
-                use bevy_tasks::{ComputeTaskPool, TaskPool};
-                let pool = ComputeTaskPool::get_or_init(TaskPool::default);
-                // Only run this recording scope's tasks on the caller. Ticking
-                // the global executor here can execute an unrelated ECS writer
-                // under the render owner's thread identity and bypass its frame
-                // read boundary. Callers sharing a pool with blocking producers
-                // must also provide admission or choose Inline.
-                let mut indexed = pool.scope_with_executor(false, None, |scope| {
-                    for (index, item) in items.iter_mut().enumerate() {
-                        let f = &f;
-                        scope.spawn(async move { (index, f(index, item)) });
-                    }
-                });
-                indexed.sort_unstable_by_key(|(index, _)| *index);
-                indexed.into_iter().map(|(_, value)| value).collect()
+
+#[cfg(test)]
+mod chunk_results_tests {
+    #[test]
+    fn scoped_mutations_and_non_copy_results_preserve_chunk_order() {
+        for len in [0, 1, 7, 8, 9, 17] {
+            let mut items = (0..len).map(|index| vec![index]).collect::<Vec<_>>();
+            let results = super::map_chunks(&mut items, |index, item| {
+                if index % 2 == 0 { std::thread::yield_now(); }
+                item.push(index + 1);
+                format!("chunk-{index}")
+            });
+            assert_eq!(results.len(), len);
+            for (index, (item, result)) in items.iter().zip(results).enumerate() {
+                assert_eq!(item, &[index, index + 1]);
+                assert_eq!(result, format!("chunk-{index}"));
             }
         }
     }
@@ -138,27 +133,11 @@ impl TaskRunner {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ParallelRecording {
     pub strategy: ChunkStrategy,
-    pub runner: TaskRunner,
-    /// 上一帧所有 pass 的录制总耗时低于该值（或没有上一帧统计）时整帧走串行；
-    /// 0 表示不设门槛。轻帧的固定开销（命令缓冲、任务调度）会超过并行收益。
-    pub min_total_ns: u64,
 }
 impl ParallelRecording {
-    /// 串行：每个 batch 一条命令缓冲。
-    pub const SERIAL: Self = Self {
-        strategy: ChunkStrategy::Serial,
-        runner: TaskRunner::Inline,
-        min_total_ns: 0,
-    };
-    /// 默认：按上一帧耗时均衡切分，轻帧与第一帧退回串行。门槛取自实测：每 pass 约 2µs 时
-    /// 并行与串行持平，64 个 pass 即约 128µs；取 200µs 留出余量。
-    pub const ADAPTIVE: Self = Self {
-        strategy: ChunkStrategy::Balanced {
-            max_chunks: 8,
-            chunk_overhead_ns: 20_000,
-        },
-        runner: TaskRunner::ComputePool,
-        min_total_ns: 200_000,
+    /// One production worker path. PGO changes chunk weights, never execution mode.
+    pub const PARALLEL: Self = Self {
+        strategy: ChunkStrategy::Balanced { max_chunks: 8, chunk_overhead_ns: 20_000 },
     };
     /// 无门槛、块数不限：即使没有统计也每个 pass 一块（压力测试与基准用）。
     pub const EVERY_PASS: Self = Self {
@@ -166,21 +145,11 @@ impl ParallelRecording {
             max_chunks: usize::MAX,
             chunk_overhead_ns: 0,
         },
-        runner: TaskRunner::ComputePool,
-        min_total_ns: 0,
+
     };
 }
-impl From<crate::device::RecordingPolicy> for ParallelRecording {
-    fn from(policy: crate::device::RecordingPolicy) -> Self {
-        match policy {
-            crate::device::RecordingPolicy::Serial => Self::SERIAL,
-            crate::device::RecordingPolicy::Adaptive => Self::ADAPTIVE,
-        }
-    }
-}
-/// Same default as the device: [`crate::device::RecordingPolicy::default`].
 impl Default for ParallelRecording {
     fn default() -> Self {
-        crate::device::RecordingPolicy::default().into()
+        Self::PARALLEL
     }
 }

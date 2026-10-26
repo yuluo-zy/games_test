@@ -617,14 +617,14 @@ impl<'a, B: CommandBackend> RenderPassApi<'a, B> {
         threads_x: u32,
         threads_y: u32,
         threads_z: u32,
-        group_size_x: u32,
-        group_size_y: u32,
-        group_size_z: u32,
+        group_size_x: std::num::NonZeroU32,
+        group_size_y: std::num::NonZeroU32,
+        group_size_z: std::num::NonZeroU32,
     ) {
         self.dispatch_groups_3d(
-            threads_x.div_ceil(group_size_x.max(1)),
-            threads_y.div_ceil(group_size_y.max(1)),
-            threads_z.div_ceil(group_size_z.max(1)),
+            threads_x.div_ceil(group_size_x.get()),
+            threads_y.div_ceil(group_size_y.get()),
+            threads_z.div_ceil(group_size_z.get()),
         );
     }
 

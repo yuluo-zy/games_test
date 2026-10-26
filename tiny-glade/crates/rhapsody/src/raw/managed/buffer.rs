@@ -1,9 +1,9 @@
 //! 托管缓冲区：raw 创建与映射操作复用 Vulkan 实现，销毁由公共资源存储延后。
 use super::{handle::Managed, resources::ResourceManager};
+use crate::Result;
 use crate::raw::{
     buffer::{Buffer, BufferDesc},
     device::Device,
-    error::Result,
 };
 use ash::vk;
 use std::sync::Arc;

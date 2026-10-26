@@ -87,15 +87,15 @@ impl Device {
     /// require all completed storage to have been returned before continuing.
     pub fn try_collect_all_completed(&self) -> crate::Result<usize> {
         let completed = self.reclamation_completed()?;
-        let count = self
-            .lifetime
-            .retirement
-            .collect_limited(&completed, usize::MAX, usize::MAX, |doomed| {
-                self.destroy_now(doomed)
-            })
-            .destroyed;
+        let count = self.collect_completed_snapshot(&completed);
         self.trim_unused_allocations();
         Ok(count)
+    }
+    pub(crate) fn collect_completed_snapshot(&self, completed: &CompletedValues) -> usize {
+        let count = self.lifetime.retirement
+            .collect_limited(completed, usize::MAX, usize::MAX, |doomed| self.destroy_now(doomed))
+            .destroyed;
+        count
     }
     fn reclamation_completed(&self) -> crate::Result<CompletedValues> {
         match self.poll() {
@@ -117,10 +117,13 @@ impl Device {
     }
     pub fn wait_idle_and_collect(&self) -> crate::Result<usize> {
         self.lifetime.idle_waits.fetch_add(1, Ordering::Relaxed);
-        self.queues.timelines.with_all_queues(|| {
-            unsafe { self.core.device.device_wait_idle() }.map_err(Into::into)
-        })?;
-        self.try_collect_all_completed()
+        let wait = self
+            .queues
+            .timelines
+            .with_all_queues(|| unsafe { self.core.device.device_wait_idle() }.map_err(Into::into));
+        let collected = self.try_collect_all_completed();
+        wait?;
+        collected
     }
     pub fn retirement_stats(&self) -> RetirementStats {
         let submitted = self.queues.timelines.submitted_set();
@@ -142,12 +145,14 @@ impl Device {
         if let Err(error) = unsafe { self.core.device.device_wait_idle() } {
             log::warn!("vkDeviceWaitIdle during device drop failed: {error}");
         }
-        self.lifetime.retirement.collect_limited(
-            &CompletedValues::all(),
-            usize::MAX,
-            usize::MAX,
-            |doomed| self.destroy_now(doomed),
-        );
+        while !self.lifetime.retirement.is_empty() {
+            self.lifetime.retirement.collect_limited(
+                &CompletedValues::all(),
+                usize::MAX,
+                usize::MAX,
+                |doomed| self.destroy_now(doomed),
+            );
+        }
     }
     fn destroy_now(&self, doomed: Doomed) {
         unsafe {

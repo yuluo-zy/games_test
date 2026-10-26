@@ -11,6 +11,33 @@
 use bevy_ecs::resource::Resource;
 use core::ops::Deref;
 
+/// 原AvailableGraphicsDevices：窗口创建时查询的候选设备和真实初始化结果。
+/// 只在启动枚举一次；设置页不再逐帧扫描驱动，也不把兼容性诊断当成创建失败。
+#[derive(Resource, Clone, Debug, Default)]
+pub struct AvailableGraphicsDevices {
+    pub devices: Vec<rhapsody::interop::AvailableGraphicsDevice>,
+    pub init_states: Vec<(uuid::Uuid, rhapsody::interop::AvailableGraphicsDeviceInitState)>,
+}
+impl AvailableGraphicsDevices {
+    pub fn from_enumeration(devices: Vec<rhapsody::interop::AvailableGraphicsDevice>) -> Self {
+        let init_states = devices.iter().map(|device| (uuid::Uuid::from_bytes(device.device_uuid),
+            rhapsody::interop::AvailableGraphicsDeviceInitState { tag: 0 })).collect();
+        Self { devices, init_states }
+    }
+    /// 仅实际设备创建失败的调用者可以写入；候选枚举错误不走这条路径。
+    pub fn record_creation_failure(&mut self, device_uuid: uuid::Uuid) {
+        let (_, state) = self.init_states.iter_mut().find(|(id, _)| *id == device_uuid)
+            .expect("失败设备必须来自同一启动候选快照");
+        state.tag = 1;
+    }
+    /// 设备和swapchain均完成创建后，记录这次启动实际使用的设备。
+    pub fn record_creation_success(&mut self, device_uuid: uuid::Uuid) {
+        let (_, state) = self.init_states.iter_mut().find(|(id, _)| *id == device_uuid)
+            .expect("成功设备必须来自同一窗口的启动候选快照");
+        state.tag = 2;
+    }
+}
+
 /// GPU 设备资源（B `GraphicsDeviceResource`；`gpu_flush_buffers`/`ComputePass::new`
 /// 的 `Res<GraphicsDeviceResource>` 面）。
 #[derive(Resource, Clone)]

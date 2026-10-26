@@ -42,16 +42,16 @@ pub fn construct_timberframe_circle(
         let mut count = 0i64;
         for point in circle.as_points2_ptcount(n) {
             let plank = WoodenPlankSsbo::timberframe(Affine3A::from_scale_rotation_translation(
-                Vec3::new(BEAM_SECTION, params.main_height, BEAM_SECTION),
+                Vec3::new(BEAM_SECTION, params.delta, BEAM_SECTION),
                 Quat::IDENTITY,
-                Vec3::new(point.x, params.skirt_offset, point.y),
+                Vec3::new(point.x, params.previous, point.y),
             ));
             exhausted |= writer.push(&plank).is_err();
             count = count.wrapping_add(1);
         }
-        let skirts = country_core::resources::walls::split_height_into_skirts(params.main_height);
-        for ring in skirts.into_iter().chain([0.0, params.main_height]) {
-            let height = ring + params.skirt_offset;
+        let skirts = country_core::resources::walls::split_height_into_skirts(params.delta);
+        for ring in skirts.into_iter().chain([0.0, params.delta]) {
+            let height = ring + params.previous;
             let offset = Vec3::new(height * 0.0, height, height * 0.0);
             // Original itertools::tuple_windows over the mapped point iterator,
             // not modulo wrapping the already closed sample sequence.
@@ -69,7 +69,7 @@ pub fn construct_timberframe_circle(
             }
         }
         if cmd.roof_gate == 0 {
-            let base = params.skirt_offset + params.main_height;
+            let base = params.previous + params.delta;
             let peak = country_core::resources::roofs::roof_shape::roof_height_ws_from_wall_shape(
                 &cmd.shape,
             ) + base;

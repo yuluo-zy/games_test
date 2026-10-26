@@ -14,7 +14,7 @@ use utils::easing_functions::EasingFunction;
 use super::WindowShutter;
 
 pub fn autoclutter_animation(
-    mut query: Query<(Entity, &mut AutoClutter, &mut Transform,
+    mut query: Query<(Entity, &mut AutoClutter, ComponentWrite<Transform>,
         Option<&WindowShutter>, Option<&ClutterMarkedForDeletion>)>,
     mut commands: Commands,
     time: Res<GameTime>,
@@ -128,3 +128,5 @@ mod tests {
         assert!(world.get_entity(entity).is_ok());
     }
 }
+
+use country_core::render::extract::ComponentWrite;

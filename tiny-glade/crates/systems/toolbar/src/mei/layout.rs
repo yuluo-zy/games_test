@@ -40,18 +40,6 @@ impl LengthPercentage {
     }
 }
 
-impl std::ops::Add for LengthPercentage {
-    type Output = LengthPercentage;
-    /// Native Rect::width/height use two generic adds; absolute lengths add.
-    /// U: the mixed percent/absolute form has no recovered consumer.
-    fn add(self, rhs: LengthPercentage) -> LengthPercentage {
-        LengthPercentage {
-            is_percent: self.is_percent || rhs.is_percent,
-            value: self.value + rhs.value,
-        }
-    }
-}
-
 /// Native 16-byte Size{width@0, height@8}; each component is a
 /// LengthPercentage. LayoutStyle keeps width at +0x28 and height at +0x30
 /// (historical Rust field names `size`/`min` in this crate).
@@ -80,7 +68,8 @@ impl From<Vec2> for Size {
 
 /// Native left/top/right/bottom rect used by the untagged padding
 /// deserializer140fe2560 and Rect::size_vec2. `width`/`height` are the two
-/// absolute edge sums (O: two `core::ops::arith::add` calls).
+/// absolute edge sums。PDB1224:6504指向140fe1173的f32加法；四边先各自points_or_zero，
+/// 不存在LengthPercentage混合相加后整体归零的原算法。
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[repr(C)]
 pub struct Rect {
@@ -91,10 +80,10 @@ pub struct Rect {
 }
 impl Rect {
     pub fn width(self) -> f32 {
-        (self.left + self.right).points_or_zero()
+        self.left.points_or_zero() + self.right.points_or_zero()
     }
     pub fn height(self) -> f32 {
-        (self.top + self.bottom).points_or_zero()
+        self.top.points_or_zero() + self.bottom.points_or_zero()
     }
     /// Original size_vec2 (inline, 4 instances): (width, height).
     pub fn size_vec2(self) -> Vec2 {
@@ -604,5 +593,8 @@ mod native_layout_tests {
         assert_eq!(rect.height(), 8.);
         assert_eq!(rect.size_vec2(), Vec2::new(6., 8.));
         assert_eq!(rect.points(), [2., 3., 4., 5.]);
+        let mixed=Rect {right:LengthPercentage {is_percent:true,value:0.25},..rect};
+        assert_eq!(mixed.width(),2.); // 原先各边转绝对贡献，再相加；百分比不能抹掉另一边。
+
     }
 }

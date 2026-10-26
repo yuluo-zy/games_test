@@ -132,7 +132,12 @@ mod tests {
         use std::collections::{BTreeSet, HashSet};
         let names = ["b", "a", "c", "a"].map(ResourceName::new);
         assert_eq!(names.iter().copied().collect::<HashSet<_>>().len(), 3);
-        let sorted: Vec<_> = names.iter().copied().collect::<BTreeSet<_>>().into_iter().collect();
+        let sorted: Vec<_> = names
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect();
         assert_eq!(sorted, ["a", "b", "c"]);
     }
 }

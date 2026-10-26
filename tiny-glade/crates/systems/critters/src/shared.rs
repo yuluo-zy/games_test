@@ -12,6 +12,7 @@ use country_core::{
         wall::wall_state::wall_spatial_hash::WallSpatialHash},
 };
 use glam::{Mat3,Quat,Vec2,Vec3};
+use ::utils::scalar::clamp01;
 use utils::geometry::line_relation::{LineInterval,LineRelation};
 use crate::components::{BirdSpots,CritterGoal,CritterLocomotion,CritterVelocityMultiplier,
     CritterVelocityTarget,Duck,Sheep,Transform,Velocity};
@@ -79,10 +80,7 @@ fn distance_from_hit(origin:Vec3,hit:Vec3)->f32 {
 fn unchecked_direction(v:Vec3)->Vec3 {
     let inverse=1.0/(v.z*v.z+(v.y*v.y+v.x*v.x)).sqrt();v*inverse
 }
-fn clamp01_native(v:f32)->f32 {
-    let lower=if 0.0>v {0.0}else{v};if 1.0<lower {1.0}else{lower}
-}
-fn path_sum(values:[f32;4])->f32 {clamp01_native(((values[0]+values[1])+values[2])+values[3])}
+fn path_sum(values:[f32;4])->f32 {clamp01(((values[0]+values[1])+values[2])+values[3])}
 
 /// Full native per-entity movement, including blocked-path early returns.
 #[allow(clippy::too_many_arguments)]
@@ -145,7 +143,7 @@ pub fn bird_spot_position(transform:&Transform)->Vec3 {
 #[allow(clippy::too_many_arguments,clippy::type_complexity)]
 pub fn move_critters(time:Res<GameTime>,water:Res<WaterRaster>,garden:Res<GardenRaster>,
     buffers:Res<AssetSsboLibrary>,raycast:Res<RaycastWorld>,walls_hash:Res<WallSpatialHash>,walls:Res<PublicWalls>,
-    mut query:Query<(&mut Transform,&CritterLocomotion,&Velocity,Option<&CritterVelocityMultiplier>,Option<&Duck>,Option<&Sheep>,Option<&mut BirdSpots>)>,
+    mut query:Query<(ComponentWrite<Transform>,&CritterLocomotion,&Velocity,Option<&CritterVelocityMultiplier>,Option<&Duck>,Option<&Sheep>,Option<&mut BirdSpots>)>,
     readbacks:Option<Res<country_core::render::gpu_readback::GpuReadbacks>>) {
     buffers.get::<TerrainRockMaskSsbo>().expect("move_critters requires canonical mapped TerrainRockMaskSsbo");
     // Render-thread publication; the live mapping belongs to the in-flight GPU frame.
@@ -221,3 +219,5 @@ pub fn legacy_spherecast(raycast:&RaycastWorldHandle,origin:Vec3,direction:Vec3,
 #[derive(Resource,Clone,Debug,Default)]
 pub struct TerrainRockMask {mask:Vec<u32>}
 impl TerrainRockMask {pub fn mask(&self)->&[u32] {&self.mask} pub fn set_mask(&mut self,mask:Vec<u32>) {self.mask=mask;}}
+
+use country_core::render::extract::ComponentWrite;

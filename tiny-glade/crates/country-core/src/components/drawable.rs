@@ -97,12 +97,27 @@ mod tests {
             app.world().get::<PrevTransform>(entity).unwrap().translation,
             glam::Vec3::ZERO
         );
-        *app.world_mut().get_mut::<Transform>(entity).unwrap() = moved;
+        use crate::render::extract::ComponentJournal;
+        let cursor = app.world().resource::<ComponentJournal<PrevTransform>>().cursor();
+        app.update();
+        let (cursor, changes) = app.world().resource::<ComponentJournal<PrevTransform>>()
+            .since(Some(cursor)).unwrap();
+        assert!(changes.is_empty(), "stationary previous transforms must not publish");
+        *app.world_mut().component_mut::<Transform>(entity).unwrap() = moved;
         app.update();
         assert_eq!(
             app.world().get::<PrevTransform>(entity).unwrap().translation,
             moved.translation
         );
+        let (cursor, changes) = app.world().resource::<ComponentJournal<PrevTransform>>()
+            .since(Some(cursor)).unwrap();
+        assert_eq!(changes, [entity]);
+        for _ in 0..2 {
+            app.update();
+            assert!(app.world().resource::<ComponentJournal<PrevTransform>>()
+                .since(Some(cursor)).unwrap().1.is_empty(), "stopped motion must stay converged");
+            assert_eq!(*app.world().get::<PrevTransform>(entity).unwrap(), PrevTransform::from(moved));
+        }
     }
 
     #[test]
@@ -157,13 +172,19 @@ mod tests {
 /// Native material disk-texture name hash, eight bytes. The draw callback
 /// reads this same component; no parallel render-only view is constructed.
 #[derive(Clone, bevy_ecs::component::Component, Debug, PartialEq, Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct AlbedoMap(pub u64);
 /// Native alpha-map disk-texture name hash.
 #[derive(Clone, bevy_ecs::component::Component, Debug, PartialEq, Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct AlphaMap(pub u64);
 
 /// One canonical previous object Transform, read by actual sheep/duck draw callbacks.
 #[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct PrevTransform {
     pub rotation: glam::Quat,
     pub translation: glam::Vec3,
@@ -187,10 +208,11 @@ impl From<Transform> for PrevTransform {
 /// B14082bd80/628B, PDB FunctionSystem140b51320: unfiltered
 /// Query<(&Transform, &mut PrevTransform)>. Bevy owns changed ticks.
 pub fn cache_prev_object_transforms(
-    mut transforms: bevy_ecs::system::Query<(&Transform, &mut PrevTransform)>,
+    mut transforms: bevy_ecs::system::Query<(&Transform, ComponentWrite<PrevTransform>)>,
 ) {
     for (current, mut previous) in &mut transforms {
-        *previous = PrevTransform::from(*current);
+        let next = PrevTransform::from(*current);
+        if *previous != next { *previous = next; }
     }
 }
 
@@ -488,3 +510,11 @@ mod auto_clutter_carrier_tests {
         assert_eq!(AutoClutterSource::None.native_tag(), 5);
     }
 }
+
+impl crate::render::extract::JournaledComponent for AlbedoMap {}
+impl crate::render::extract::JournaledComponent for AlphaMap {}
+impl crate::render::extract::JournaledComponent for PrevTransform {}
+
+use crate::render::extract::WorldComponentWrite as _;
+
+use crate::render::extract::ComponentWrite;

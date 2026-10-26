@@ -10,7 +10,7 @@ use super::{
     delete_wall::delete_wall,
     wall_state::{
         publish_public_wall_state::{
-            WallPublicationSubscriptions, collect_wall_publication_dirty, publish_public_wall_state,
+            WallLazySubscriber, collect_wall_publication_dirty, publish_public_wall_state,
         },
         wall_spatial_hash::{WallSpatialHash, spatial_hash_update},
     },
@@ -266,7 +266,7 @@ pub fn add_wall_cpu_systems(schedule: &mut Schedule) {
             .before(publish_public_wall_state)
             .run_if(
                 bevy_ecs::schedule::common_conditions::resource_exists::<
-                    WallPublicationSubscriptions,
+                    WallLazySubscriber,
                 >,
             ),
     );
@@ -320,8 +320,15 @@ mod tests {
 
     #[test]
     fn ecs_wall_create_update_dirty_publication_and_delete() {
-        let mut world = World::new();
+        let mut world = crate::systems::wall::shapes::rectangle::ui_create_rectangle::tests::validation_world(
+            crate::systems::mode_manager::AppMode::default());
         register_wall_cpu_resources(&mut world);
+        world.insert_resource::<crate::resources::history::History>(crate::resources::history::History::empty_glade());
+        crate::systems::history::register_history_events(&mut world);
+        world.init_resource::<Events<crate::resources::roofs::commands::CreateRoofCmd>>();
+        world.init_resource::<Events<crate::resources::color_id::SetGateColorIdCmd>>();
+        world.init_resource::<Events<crate::systems::mode_manager::RequestToolbarCategoryChange>>();
+        world.init_resource::<Events<crate::resources::critters::sheep::CmdCheckForSheepInsideBuilding>>();
         world.init_resource::<crate::asset_libraries::mesh_library::AssetMeshLibrary>();
         world.insert_resource(crate::asset_libraries::shader_library::SharedAssetShaderLibrary(
             std::sync::Arc::new(crate::asset_libraries::shader_library::AssetShaderLibrary::new())));
@@ -459,7 +466,7 @@ mod tests {
         // gatherer, without callers having to wire another system manually.
         let mut primary = tabloid::Publisher::<DirtyTiles>::new();
         let mut secondary = tabloid::Publisher::<DirtyTiles>::new();
-        world.insert_resource(WallPublicationSubscriptions {
+        world.insert_resource(WallLazySubscriber {
             primary: primary.subscribe(),
             secondary: secondary.subscribe(),
         });

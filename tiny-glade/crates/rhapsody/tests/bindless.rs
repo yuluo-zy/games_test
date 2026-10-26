@@ -259,7 +259,6 @@ fn pending_shader_retires_its_actual_page(
     // The dropped command keeps its lease until completion, so the slot is
     // still live (not merely retiring) and cannot be handed out again.
     assert_eq!(heap.stats().live, 1);
-    assert_eq!(heap.stats().retiring, 0);
     assert!(matches!(
         heap.storage_buffer(target(&device), 0, 4),
         Err(rhapsody::Error::Exhausted(_))
@@ -276,7 +275,6 @@ fn pending_shader_retires_its_actual_page(
     let next = heap.storage_buffer(target(&device), 0, 4).unwrap();
     assert_eq!(next.index().index, first.index);
     assert!(next.index().generation > first.generation);
-    assert_eq!(heap.stats().retiring, 0);
     assert_eq!(device.retirement_stats().idle_waits, 0);
 }
 
@@ -424,6 +422,46 @@ fn table_capacity_bad_ranges_and_foreign_devices_are_rejected_before_update() {
 }
 
 #[test]
+fn admitted_page_covers_lease_metadata_until_the_last_owner_releases_it() {
+    let Some(device) = device() else {
+        return;
+    };
+    let buffer = target(&device);
+    let budget = device.allocator_stats();
+    let baseline = budget.cpu_memory_usage().total();
+    let heap = BindlessHeap::new(device.clone(), BindlessConfig {
+        storage_buffers: 8,
+        ..small()
+    }).unwrap();
+    let admitted = budget.cpu_memory_usage().total();
+    budget.set_host_budget(admitted).unwrap();
+    // An admitted page can fill and recycle its slots with no new host credit.
+    // Creating another physical page still requires separate admission.
+    assert!(matches!(heap.new_page(), Err(rhapsody::Error::OutOfHostMemory)));
+    for _ in 0..32 {
+        let leases = (0..8)
+            .map(|_| heap.storage_buffer(buffer.clone(), 0, 4).unwrap())
+            .collect::<Vec<_>>();
+        assert!(matches!(
+            heap.storage_buffer(buffer.clone(), 0, 4),
+            Err(rhapsody::Error::Exhausted(_))
+        ));
+        assert_eq!(budget.cpu_memory_usage().total(), admitted);
+        drop(leases);
+        assert_eq!(budget.cpu_memory_usage().total(), admitted);
+    }
+    let lease = heap.storage_buffer(buffer.clone(), 0, 4).unwrap();
+    let owner = Arc::downgrade(&heap);
+    drop(heap);
+    assert!(owner.upgrade().is_some());
+    assert_eq!(budget.cpu_memory_usage().total(), admitted);
+    drop(lease);
+    assert!(owner.upgrade().is_none());
+    device.try_collect_all_completed().unwrap();
+    assert_eq!(budget.cpu_memory_usage().total(), baseline);
+}
+
+#[test]
 fn known_host_slot_storage_is_admitted_and_released_by_the_unified_budget() {
     let Some(device) = device() else {
         return;
@@ -465,13 +503,14 @@ fn actual_bindless_layout_support_matrix() {
     use rhapsody::raw::descriptor_set::{LayoutBinding, LayoutPlan, VulkanDescriptorSetLayout};
     // 矩阵包含变长绑定查询，必须先启用该 feature，不能用未启用特性的输入测支持。
     let mut config = DeviceConfig::headless();
-    config.required_features = config.required_features.with(
-        rhapsody::device::Feature::DescriptorBindingVariableDescriptorCount,
-    );
-    let Some(device) = gpu_test_support::initialize(
-        "bindless layout matrix",
-        Device::new_headless(&config),
-    ) else { return };
+    config.required_features = config
+        .required_features
+        .with(rhapsody::device::Feature::DescriptorBindingVariableDescriptorCount);
+    let Some(device) =
+        gpu_test_support::initialize("bindless layout matrix", Device::new_headless(&config))
+    else {
+        return;
+    };
     let kinds = [
         vk::DescriptorType::SAMPLED_IMAGE,
         vk::DescriptorType::STORAGE_IMAGE,

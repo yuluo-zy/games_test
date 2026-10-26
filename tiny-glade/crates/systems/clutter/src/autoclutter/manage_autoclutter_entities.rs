@@ -59,7 +59,7 @@ fn emissive(metadata: &ResolvedClutterMesh) -> bool {
 
 pub fn manage_autoclutter_entities(
     state: Res<AutoClutterState>,
-    mut query: Query<(Entity, &AutoClutter, Option<&mut WindowShutter>, &mut Transform),
+    mut query: Query<(Entity, &AutoClutter, Option<&mut WindowShutter>, ComponentWrite<Transform>),
         Without<ClutterMarkedForDeletion>>,
     time: Res<GameTime>,
     mut commands: Commands,
@@ -181,7 +181,7 @@ mod tests {
         assert_eq!(world.get::<NaniInstanceDesc>(entity).unwrap().subset_kind, GpuWorldSubsetKind::SolidVertexColorWindow);
         assert!(matches!(world.get::<NaniInstanceDesc>(entity).unwrap().mesh, NaniInstanceMeshDesc::Named(_)));
 
-        world.get_mut::<Transform>(entity).unwrap().scale = Vec3::splat(0.37);
+        world.component_mut::<Transform>(entity).unwrap().scale = Vec3::splat(0.37);
         let mut updated = candidate(key, WindowAutoClutterKind::DoorBell);
         updated.translation = Vec3::new(-8.0, 5.0, 2.0);
         world.resource_mut::<WindowAutoClutterCandidates>().0.push(updated);
@@ -260,3 +260,7 @@ mod tests {
     }
 
 }
+
+use country_core::render::extract::WorldComponentWrite as _;
+
+use country_core::render::extract::ComponentWrite;

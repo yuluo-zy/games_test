@@ -18,6 +18,7 @@
 
 use glam::{Mat3, Quat, Vec2, Vec3, Vec4};
 
+use ::utils::scalar::max_f32;
 use crate::render::nani::gpu_world::{GpuWorldSubsetKind, InstanceCullData};
 use crate::render::nani::instance_data::*;
 use crate::resources::color_id::ColorId;
@@ -107,11 +108,7 @@ pub fn trs_words12(translation: Vec3, rotation: Quat, scale: Vec3) -> ([u32; 12]
 }
 
 /// `utils::pack_2x16f_uint` (O 0x140c90df0): `f16(a) | f16(b) << 16`.
-pub fn pack_2x16f_uint(a: f32, b: f32) -> u32 {
-    let lo = half::f16::from_f32(a).to_bits() as u32;
-    let hi = half::f16::from_f32(b).to_bits() as u32;
-    (hi << 16) | lo
-}
+pub use ::utils::pack::pack_2x16f_uint;
 
 /// 12-word packed affine shared by every `nani_update_*` (O; same code in
 /// plant 0x142074740 and all of group A):
@@ -425,11 +422,7 @@ pub fn gb_max_abs_scale(scale: Vec3) -> f32 {
 }
 
 /// `utils::pack_2x16f_uint` (O, 0x140c90df0): `f16(a) | f16(b) << 16` (half::f16::from_f32).
-pub fn gb_pack_2x16f(a: f32, b: f32) -> u32 {
-    let lo = half::f16::from_f32(a).to_bits() as u32;
-    let hi = half::f16::from_f32(b).to_bits() as u32;
-    (hi << 16) | lo
-}
+pub use ::utils::pack::pack_2x16f_uint as gb_pack_2x16f;
 
 /// Reinterpret 10 raw words of a binary `Transform`-shaped row (stride 0x30: quat, translation
 /// @+0x10, scale @+0x1c) as `(rotation, translation, scale)`.  Used for `PrevTransform` whose
@@ -1191,12 +1184,6 @@ mod gb_tests {
     }
 }
 
-/// `x86 maxss dst, src` semantics: `dst > src ? dst : src` (returns `src` if either is NaN).
-#[inline]
-fn maxss(dst: f32, src: f32) -> f32 {
-    if dst > src { dst } else { src }
-}
-
 /// Per-row Transform → ( packed 3x3(R*S) column-major + translation = 12 words, translation,
 /// sort_key = max(|sx|,|sy|,|sz|) ) (O).
 ///
@@ -1232,10 +1219,10 @@ pub fn trs_packed(rotation: Quat, translation: Vec3, scale: Vec3) -> ([u32; 12],
     for (o, v) in words.iter_mut().zip(w) {
         *o = v.to_bits();
     }
-    // sort key: y = |s.y|, z = |s.z|; m1 = y.is_nan() ? z : maxss(z, y); m2 = x.is_nan() ? m1 : maxss(m1, x)
+    // sort key: y = |s.y|, z = |s.z|; m1 = y.is_nan() ? z : max_f32(z, y); m2 = x.is_nan() ? m1 : max_f32(m1, x)
     let (ax, ay, az) = (scale.x.abs(), scale.y.abs(), scale.z.abs());
-    let m1 = if ay.is_nan() { az } else { maxss(az, ay) };
-    let sort_key = if ax.is_nan() { m1 } else { maxss(m1, ax) };
+    let m1 = if ay.is_nan() { az } else { max_f32(az, ay) };
+    let sort_key = if ax.is_nan() { m1 } else { max_f32(m1, ax) };
     (words, translation, sort_key)
 }
 

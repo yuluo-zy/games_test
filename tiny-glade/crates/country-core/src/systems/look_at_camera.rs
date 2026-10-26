@@ -6,8 +6,10 @@ use crate::{
 use bevy_ecs::prelude::*;
 #[derive(Component, Debug, Default)]
 pub struct LookAtCamera;
-pub fn look_at_camera(mut query: Query<(&mut Transform, &LookAtCamera)>, camera: Res<MainCamera>) {
+pub fn look_at_camera(mut query: Query<(ComponentWrite<Transform>, &LookAtCamera)>, camera: Res<MainCamera>) {
     for (mut transform, _) in &mut query {
         transform.look_at(camera.eye_position(), glam::Vec3::Y);
     }
 }
+
+use crate::render::extract::ComponentWrite;

@@ -8,6 +8,8 @@ use glam::{Mat4, Quat, Vec3};
 /// 游戏实体的局部变换。
 #[repr(C)]
 #[derive(Component, Clone, Copy, Debug, PartialEq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
 pub struct Transform {
     /// 单位旋转四元数。
     pub rotation: Quat,
@@ -138,3 +140,7 @@ mod tests {
         assert!((t.forward() - Vec3::NEG_X).length() < 1e-6);
     }
 }
+
+impl crate::render::extract::JournaledComponent for Transform {}
+
+

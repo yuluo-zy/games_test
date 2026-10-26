@@ -127,7 +127,10 @@ fn import_bindings_must_match_the_planned_origins_exactly() {
         },
     };
     let d = &plan.definition;
-    assert!(d.declaration_for_frame(None, &[]).is_err(), "missing import");
+    assert!(
+        d.declaration_for_frame(None, &[]).is_err(),
+        "missing import"
+    );
     assert!(
         d.declaration_for_frame(None, &[owned(0, 1), owned(0, 2)])
             .is_err(),

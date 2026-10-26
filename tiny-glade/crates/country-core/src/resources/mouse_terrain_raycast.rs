@@ -105,7 +105,7 @@ fn store_cursor_hit(
 pub fn mouse_terrain_raycast(
     mut followers: bevy_ecs::prelude::Query<(
         &mut crate::components::FollowMouse,
-        &mut crate::utils::components::transform::Transform,
+        ComponentWrite<crate::utils::components::transform::Transform>,
     )>,
     mut cursor: bevy_ecs::prelude::ResMut<super::cursor_terrain_raycast::CursorTerrainRaycast>,
     heights: bevy_ecs::prelude::Res<super::terrain_height::TerrainHeightsData>,
@@ -183,3 +183,5 @@ mod original_ray_tests {
         assert_eq!(cursor.pos, Vec3::X);
     }
 }
+
+use crate::render::extract::ComponentWrite;

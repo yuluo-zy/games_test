@@ -109,12 +109,12 @@ struct CowBudget {
     max_bytes: u64,
     max_buffers: usize,
     forks: u64,
-    fallbacks: u64,
+    deferrals: u64,
 }
 impl Default for CowBudget {
     fn default() -> Self {
         Self { retired: Vec::new(), max_bytes: COW_MAX_RETIRED_BYTES,
-            max_buffers: COW_MAX_RETIRED_BUFFERS, forks: 0, fallbacks: 0 }
+            max_buffers: COW_MAX_RETIRED_BUFFERS, forks: 0, deferrals: 0 }
     }
 }
 impl CowBudget {
@@ -132,14 +132,14 @@ pub struct BufferHost {
     device: Arc<Device>,
     slots: Arc<Mutex<Vec<Slot>>>,
     uploads: Arc<Mutex<Option<BufferUploads>>>,
-    read_boundary: Arc<crate::render_upload_boundary::UploadBoundary>,
+    read_boundary: Option<Arc<crate::render_upload_boundary::UploadBoundary>>,
     /// Serialize rename/publication with stable-address escapes and release.
     publication: Arc<Mutex<()>>,
     cow_budget: Arc<Mutex<CowBudget>>,
     upload_coverage: Arc<UploadCoverageBudget>,
     frame: Option<FrameBufferSnapshot>,
     #[cfg(test)]
-    fail_upload_chunk: Mutex<Option<(usize, bool)>>,
+    fail_upload_chunk: Arc<Mutex<Option<(usize, bool)>>>,
 }
 struct BufferUploads {
     manager: rhapsody::transfer::TransferManager,
@@ -153,6 +153,10 @@ struct MappedHostWriter {
     handle: Buffer,
     host: BufferHost,
 }
+
+#[cfg(test)]
+#[path = "../tests/support/upload_wait.rs"]
+mod upload_test_wait;
 
 #[cfg(test)]
 mod mapped_upload_tests {
@@ -188,13 +192,13 @@ mod mapped_upload_tests {
         thread.join().unwrap();
         let expected = FireflySsbo::from_translation(glam::Vec3::new(7.0, 8.0, 9.0));
         assert_eq!(storage.cpu_contents()[0], expected);
-        assert_eq!(host.read_boundary.pending_jobs(), 1);
+        assert_eq!(host.boundary().pending_jobs(), 1);
         let mut gpu = [0u8; 16];
         native.read_bytes(0, &mut gpu).unwrap();
         let x = |gpu: &[u8; 16]| f32::from_le_bytes(gpu[0..4].try_into().unwrap());
         assert_ne!(x(&gpu), 7.0, "deferred until the frame's reads are registered");
         drop(read);
-        host.flush_pending_uploads().unwrap();
+        host.finish_test_uploads().unwrap();
         native.read_bytes(0, &mut gpu).unwrap();
         assert_eq!([x(&gpu), f32::from_le_bytes(gpu[4..8].try_into().unwrap()), f32::from_le_bytes(gpu[8..12].try_into().unwrap())], [7.0, 8.0, 9.0]);
         // The upload capability pins the allocation even after its host table
@@ -213,20 +217,7 @@ impl country_core::render::ssbo::rhapsody_boundary::MappedUploadWriter for Mappe
         if offset.checked_add(data.len()).is_none_or(|end| end as u64 > self.buffer.size) {
             return Err(BackendError::invalid_usage("mapped write exceeds its owner"));
         }
-        let mut payload = Vec::new();
-        payload.try_reserve_exact(data.len()).map_err(|_| BackendError::OutOfHostMemory)?;
-        payload.extend_from_slice(data);
-        let (host, buffer, handle) = (self.host.detached(), self.buffer.clone(), self.handle);
-        self.host.read_boundary.write_or_defer(payload.capacity(), move ||
-            host.write_now_owned(&buffer, &handle, payload, offset).map_err(|error| error.to_string()))
-            .map_err(BackendError::invalid_usage)
-    }
-    /// In-place edit of the live mapping. Waits for the boundary and for
-    /// overlapping GPU uses; MappedStorageBuffer no longer uses it.
-    fn with_write(&self, offset: usize, bytes: usize, edit: &mut dyn FnMut())
-        -> Result<(), BackendError> {
-        let _publication = self.host.read_boundary.write();
-        self.buffer.with_host_write(offset as u64, bytes as u64, edit)
+        self.host.update_buffer_bytes(&self.handle, data, &[0..data.len()], offset)
     }
     fn try_read(&self, offset: usize, bytes: usize, read: &mut dyn FnMut())
         -> Result<bool, BackendError> {
@@ -247,6 +238,104 @@ mod frame_buffer_tests {
                 None
             }
         }
+    }
+
+    #[test]
+    fn failed_upload_check_obeys_frame_local_creation_lock_order() {
+        let Some(device) = device() else { return; };
+        let host = BufferHost::new(device);
+        let frozen = host.with_frame_snapshot(host.freeze_frame_resources()).unwrap();
+        frozen.upload_coverage.failed.store(1, Ordering::Release);
+        let slots = frozen.slots.lock();
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let local_was_free = std::thread::scope(|scope| {
+            let check = &frozen;
+            let checking = scope.spawn(move || {
+                entered_tx.send(()).unwrap();
+                check.check_upload_transactions()
+            });
+            entered_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+            std::thread::sleep(Duration::from_millis(50));
+            let local_was_free = frozen.frame.as_ref().unwrap().0.local.try_lock().is_some();
+            // Always let the check finish before asserting, including on the
+            // old local -> slots implementation that would fail this test.
+            drop(slots);
+            checking.join().unwrap().unwrap();
+            local_was_free
+        });
+        assert!(local_was_free, "checking must not hold local while waiting for slots held by creation");
+    }
+
+    #[test]
+    fn owned_multichunk_pressure_keeps_its_cursor_and_returns_before_gpu_capacity() {
+        let Some(device) = device() else { return; };
+        let host = BufferHost::new(device.clone());
+        *host.uploads.lock() = Some(BufferUploads {
+            manager: rhapsody::transfer::TransferManager::new_with_queue(device.clone(),
+                rhapsody::transfer::TransferConfig::default(),
+                rhapsody::transfer::UploadQueueConfig { max_jobs: 1, ..Default::default() }).unwrap(),
+            epoch: 0, queued_bytes: 0,
+        });
+        let data = vec![37u8; UPLOAD_CHUNK_BYTES as usize * 3];
+        let handle = host.create_buffer(&BufferDesc::new(data.len(),
+            (vk::BufferUsageFlags::TRANSFER_DST | vk::BufferUsageFlags::TRANSFER_SRC).as_raw(), 1),
+            "owned multi-chunk pressure", None).unwrap();
+        host.update_buffer_bytes(&handle, &data, &[0..data.len()], 0).unwrap();
+        assert_eq!(host.boundary().pending_jobs(), 1, "accepted remainder retains its payload");
+        let started = Instant::now();
+        while !host.poll_pending_uploads().unwrap() {
+            assert!(started.elapsed() < Duration::from_secs(10));
+        }
+        assert_eq!(host.boundary().pending_jobs(), 0);
+        assert_eq!(host.uploads.lock().as_ref().unwrap().manager.upload_queue_stats().submitted_jobs, 3,
+            "a capacity retry must never submit the accepted prefix twice");
+        let mut transfers = rhapsody::transfer::TransferManager::new(device.clone(),
+            rhapsody::transfer::TransferConfig::default()).unwrap();
+        let ticket = transfers.read_buffer(host.managed_buffer(&handle).unwrap().shared(), 0, data.len()).unwrap();
+        ticket.wait(10_000_000_000).unwrap();
+        let mut actual = vec![0; data.len()];
+        assert_eq!(ticket.try_read(&mut actual).unwrap(), Some(data.len()));
+        assert_eq!(actual, data);
+        let cancel_host = BufferHost::new(device.clone());
+        *cancel_host.uploads.lock() = Some(BufferUploads {
+            manager: rhapsody::transfer::TransferManager::new_with_queue(device,
+                rhapsody::transfer::TransferConfig::default(),
+                rhapsody::transfer::UploadQueueConfig { max_jobs: 1, ..Default::default() }).unwrap(),
+            epoch: 0, queued_bytes: 0,
+        });
+        let handle = cancel_host.create_buffer(&BufferDesc::new(data.len(),
+            vk::BufferUsageFlags::TRANSFER_DST.as_raw(), 1), "cancel owned upload", None).unwrap();
+        cancel_host.update_buffer_bytes(&handle, &data, &[0..data.len()], 0).unwrap();
+        assert_eq!(cancel_host.boundary().pending_jobs(), 1);
+        let boundary = Arc::downgrade(cancel_host.boundary());
+        drop(cancel_host);
+        assert!(boundary.upgrade().is_none(), "pending job must not form an ownership cycle with its boundary");
+    }
+
+    #[test]
+    fn partial_upload_rejects_the_graph_until_a_complete_covering_retry() {
+        let Some(device) = device() else { return; };
+        let host = BufferHost::new(device.clone());
+        let handle = host.create_buffer(&BufferDesc::new(16,
+            (vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_DST
+                | vk::BufferUsageFlags::TRANSFER_SRC).as_raw(), 1), "transaction", Some(&[0; 16])).unwrap();
+        *host.fail_upload_chunk.lock() = Some((1, false));
+        let ranges = [0..4, 8..12];
+        assert!(host.update_buffer_bytes(&handle, &[7; 16], &ranges, 0).is_err());
+        assert_eq!(host.upload_coverage.failed.load(Ordering::Acquire), 1);
+        assert!(host.finish_test_uploads().is_err(), "partial prefix cannot reach a graph");
+        assert!(host.update_buffer_bytes(&handle, &[8; 16], &[0..4], 0).is_err(), "retry must cover every dirty range");
+        host.update_buffer_bytes(&handle, &[9; 16], &ranges, 0).unwrap();
+        host.finish_test_uploads().unwrap();
+        assert_eq!(host.upload_coverage.failed.load(Ordering::Acquire), 0,
+            "repaired transactions restore the normal constant-time fast path");
+        let mut transfer = rhapsody::transfer::TransferManager::new(device,
+            rhapsody::transfer::TransferConfig::default()).unwrap();
+        let ticket = transfer.read_buffer(host.managed_buffer(&handle).unwrap().shared(), 0, 16).unwrap();
+        ticket.wait(10_000_000_000).unwrap();
+        let mut bytes = [0; 16];
+        assert_eq!(ticket.try_read(&mut bytes).unwrap(), Some(16));
+        assert_eq!(bytes, [9,9,9,9,0,0,0,0,9,9,9,9,0,0,0,0]);
     }
 
     fn cpu_buffer(host: &BufferHost, value: u8) -> Buffer {
@@ -295,7 +384,7 @@ mod frame_buffer_tests {
         let current = host.managed_buffer(&buffer).unwrap();
         assert!(!Arc::ptr_eq(&old.shared(), &current.shared()));
         assert!(Arc::ptr_eq(&old.shared(), &frozen.managed_buffer(&buffer).unwrap().shared()));
-        host.flush_pending_uploads().unwrap();
+        host.finish_test_uploads().unwrap();
         assert_eq!(gpu_bytes(&device, old.clone()), vec![1; 16]);
         assert_eq!(gpu_bytes(&device, current), vec![2; 16]);
         assert_eq!(host.cow_budget.lock().forks, 1);
@@ -354,7 +443,7 @@ mod frame_buffer_tests {
         receive.recv_timeout(Duration::from_secs(5)).unwrap().unwrap();
         worker.join().unwrap();
         assert!(Arc::ptr_eq(&old.shared(), &host.managed_buffer(&buffer).unwrap().shared()));
-        host.flush_pending_uploads().unwrap();
+        host.finish_test_uploads().unwrap();
         assert_eq!(gpu_bytes(&device, old.clone()), vec![5; 16], "the pending frame still reads the old bytes");
         // Cancellation ends this frame's registration boundary. A live graph
         // would register its physical reads before opening the same boundary.
@@ -362,11 +451,11 @@ mod frame_buffer_tests {
         drop(boundary);
         let current = host.managed_buffer(&buffer).unwrap();
         assert!(Arc::ptr_eq(&old.shared(), &current.shared()));
-        host.flush_pending_uploads().unwrap();
+        host.finish_test_uploads().unwrap();
         assert_eq!(gpu_bytes(&device, current), vec![6; 16]);
         let budget = host.cow_budget.lock();
         assert_eq!(budget.forks, 0);
-        assert_eq!(budget.fallbacks, 1);
+        assert_eq!(budget.deferrals, 1);
         drop(budget);
         assert!(host.release(&buffer));
     }
@@ -389,7 +478,26 @@ mod frame_buffer_tests {
         }
         let Some(device) = device() else { return; };
         let host = BufferHost::new(device.clone());
-        let mut storage = SparseInstanceBuffer::<Value>::try_new(&host).unwrap();
+        // The observation copy requires TRANSFER_SRC; production sparse
+        // allocations deliberately do not opt into readback by default.
+        struct Readable<'a>(&'a BufferHost);
+        impl CoreGraphicsDevice for Readable<'_> {
+            fn create_buffer(&self, desc: &BufferDesc, name: &str, data: Option<&[u8]>) -> Result<Buffer, BackendError> {
+                let mut desc = desc.clone();
+                desc.usage |= vk::BufferUsageFlags::TRANSFER_SRC.as_raw();
+                self.0.create_buffer(&desc, name, data)
+            }
+            unsafe fn register_cpu_authoritative_buffer(&self, buffer: &Buffer) {
+                unsafe { self.0.register_cpu_authoritative_buffer(buffer); }
+            }
+            fn update_cpu_buffer_bytes(&self, buffer: &Buffer, data: &[u8], ranges: &[Range<usize>]) -> Result<(), BackendError> {
+                self.0.update_cpu_buffer_bytes(buffer, data, ranges)
+            }
+            fn update_buffer_bytes(&self, buffer: &Buffer, data: &[u8], ranges: &[Range<usize>], offset: usize) -> Result<(), BackendError> {
+                self.0.update_buffer_bytes(buffer, data, ranges, offset)
+            }
+        }
+        let mut storage = SparseInstanceBuffer::<Value>::try_new(&Readable(&host)).unwrap();
         let read_all = |buffer: ManagedBuffer| {
             let mut transfers = rhapsody::transfer::TransferManager::new(device.clone(),
                 rhapsody::transfer::TransferConfig::default()).unwrap();
@@ -401,15 +509,18 @@ mod frame_buffer_tests {
         };
         let allocation = storage.new_allocation();
         storage.writer(&allocation).replace_all(&[Value(3); 32]).unwrap();
-        storage.try_gpu_flush(&host).unwrap();
-        host.flush_pending_uploads().unwrap();
+        storage.gpu_flush(&host).unwrap();
+        host.finish_test_uploads().unwrap();
         let handle = storage.buffer.buffer;
         let old = host.managed_buffer(&handle).unwrap();
         let expected_old: Vec<_> = (0..32).flat_map(|_| 3u32.to_ne_bytes()).collect();
         assert_eq!(read_all(old.clone()), expected_old);
+        // Start a cold transfer ring so allocator failure cannot be masked by
+        // metadata/staging retained from the first upload on this driver.
+        host.uploads.lock().take();
         let snapshot = host.freeze_frame_resources();
         storage.writer(&allocation).replace_all(&[Value(9); 32]).unwrap();
-        storage.try_gpu_flush(&host).unwrap();
+        storage.gpu_flush(&host).unwrap();
         assert!(storage.dirty_bitset.iter().all(|word| word.load(Ordering::Relaxed) == 0),
             "the producer has already transferred dirty ownership to the queue");
         let next = host.managed_buffer(&handle).unwrap();
@@ -420,10 +531,11 @@ mod frame_buffer_tests {
         // Real allocator failure after acceptance: command metadata cannot
         // reserve any more host bytes. Restore the limit before assertions so
         // test cleanup and recovery remain able to allocate.
+        device.try_collect_all_completed().unwrap();
         let budget = device.allocator_stats();
         let previous_limit = budget.host_budget_limit();
         budget.set_host_budget(budget.cpu_memory_usage().total()).unwrap();
-        let failed = host.flush_pending_uploads();
+        let failed = host.finish_test_uploads();
         budget.set_host_budget(previous_limit).unwrap();
         assert_eq!(failed.unwrap_err().kind(), rhapsody::ErrorKind::OutOfMemory);
         let after = host.uploads.lock().as_ref().unwrap().manager.upload_queue_stats();
@@ -434,7 +546,7 @@ mod frame_buffer_tests {
         // Add a later write to the same newly published owner. FIFO recovery
         // must apply the retained full source first, then this newer interval.
         host.update_buffer_bytes(&handle, &11u32.to_ne_bytes(), &[0..4], 0).unwrap();
-        host.flush_pending_uploads().unwrap();
+        host.finish_test_uploads().unwrap();
         let expected_new: Vec<_> = (0..32).map(|index| if index == 0 { 11u32 } else { 9 })
             .flat_map(u32::to_ne_bytes).collect();
         assert_eq!(read_all(next), expected_new);
@@ -472,7 +584,7 @@ mod stable_frame_buffer_tests {
         host.update_cpu_buffer_bytes(&mapped, &[8; 16], &[0..16]).unwrap();
         assert!(Arc::ptr_eq(&old.shared(), &host.managed_buffer(&mapped).unwrap().shared()));
         // Host-visible targets are written by the same ordered GPU copy.
-        host.flush_pending_uploads().unwrap();
+        host.finish_test_uploads().unwrap();
         let mut observed = [0; 16];
         old.read_bytes(0, &mut observed).unwrap();
         assert_eq!(observed, [8; 16]);
@@ -491,7 +603,7 @@ mod stable_frame_buffer_tests {
             assert_ne!(address, 0);
             let snapshot = host.freeze_frame_resources();
             host.update_cpu_buffer_bytes(&addressable, &[10; 16], &[0..16]).unwrap();
-            host.flush_pending_uploads().unwrap();
+            host.finish_test_uploads().unwrap();
             assert_eq!(address, host.device_address(&addressable));
             assert!(Arc::ptr_eq(&old.shared(), &host.managed_buffer(&addressable).unwrap().shared()));
             let mut transfer = rhapsody::transfer::TransferManager::new(
@@ -576,9 +688,9 @@ mod mapped_raster_gpu_tests {
         let mut raster = WorldRaster::<512>::new(DirtyTilePublisher::unique());
         raster.composite_mut()[0] = 11;
         raster.dirty_mut().set_cell(0, 0);
-        staging.with_cpu_write(|mapped| raster.copy_to_staging(0, bytemuck::cast_slice_mut(mapped))).unwrap();
+        staging.with_cpu_write_regions(|mapped, ranges| raster.copy_to_staging_with_ranges(0, bytemuck::cast_slice_mut(mapped), ranges)).unwrap();
         // Writes are GPU-ordered uploads; a frame submits them before its graph.
-        host.0.flush_pending_uploads().unwrap();
+        host.0.finish_test_uploads().unwrap();
         let mut first = [0u8; 4];
         source.read_bytes(0, &mut first).unwrap();
         assert_eq!(first[0], 11);
@@ -622,7 +734,7 @@ mod mapped_raster_gpu_tests {
             raster.composite_mut()[0] = 22;
             raster.dirty_mut().set_cell(0, 0);
             started.send(()).unwrap();
-            staging.with_cpu_write(|mapped| raster.copy_to_staging(0, bytemuck::cast_slice_mut(mapped))).unwrap();
+            staging.with_cpu_write_regions(|mapped, ranges| raster.copy_to_staging_with_ranges(0, bytemuck::cast_slice_mut(mapped), ranges)).unwrap();
             finished.send(staging).unwrap();
         });
         starts.recv().unwrap();
@@ -635,7 +747,7 @@ mod mapped_raster_gpu_tests {
         worker.join().unwrap();
         assert_eq!(staging.cpu_contents()[0].0, 22);
         // Its bytes travel as a GPU copy ordered after the pending read.
-        host.0.flush_pending_uploads().unwrap();
+        host.0.finish_test_uploads().unwrap();
         release.release();
         pending.wait(10_000_000_000).unwrap();
         assert_eq!(readback.try_cpu_read(|mapped| mapped[0].0).unwrap(), Some(11));
@@ -647,35 +759,53 @@ mod mapped_raster_gpu_tests {
 const UPLOAD_CHUNK_BYTES: u64 = 1 << 20;
 const UPLOAD_STAGING_SLOTS: u32 = 3;
 const UPLOAD_STAGING_BYTES: u64 = 16 << 20;
-const UPLOAD_FLUSH_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// `TG_SYNC_UPLOAD=1` restores the old behaviour: every device-local write waits
-/// for its own completion. Rollback switch for the queued path.
-fn sync_upload_forced() -> bool {
-    static FORCED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *FORCED.get_or_init(|| std::env::var_os("TG_SYNC_UPLOAD").is_some_and(|value| value == "1"))
-}
+#[cfg(test)]
+use std::time::{Duration, Instant};
 
 impl BufferHost {
-    pub(crate) fn begin_frame_read(&self, owner: std::thread::ThreadId) -> crate::render_upload_boundary::ReadLease {
-        self.read_boundary.begin_read(owner)
-    }
-
     pub fn graphics_device(&self) -> &Arc<Device> {
         &self.device
     }
+    fn boundary(&self) -> &Arc<crate::render_upload_boundary::UploadBoundary> {
+        self.read_boundary.as_ref().expect("an owned upload job cannot enter a producer boundary")
+    }
+    fn detached_for_job(&self) -> Self {
+        let mut host = self.detached();
+        // The boundary owns pending jobs; their context must not own the
+        // boundary in return, including after cancellation under pressure.
+        host.read_boundary = None;
+        host
+    }
+
+    #[cfg(test)]
+    fn before_upload_chunk(&self) -> Result<(), BackendError> {
+        let mut fail = self.fail_upload_chunk.lock();
+        if let Some((remaining, permanent)) = fail.as_mut() {
+            if *remaining == 0 {
+                if !*permanent { *fail = None; }
+                return Err(BackendError::OutOfHostMemory);
+            }
+            *remaining -= 1;
+        }
+        Ok(())
+    }
+    pub(crate) fn begin_frame_read(&self, owner: std::thread::ThreadId) -> crate::render_upload_boundary::ReadLease {
+        self.boundary().begin_read(owner)
+    }
+
     pub fn new(device: Arc<Device>) -> Self {
         Self {
             device,
             slots: Arc::new(Mutex::new(Vec::new())),
             uploads: Arc::new(Mutex::new(None)),
-            read_boundary: Default::default(),
+            read_boundary: Some(Default::default()),
             publication: Default::default(),
             cow_budget: Default::default(),
             upload_coverage: Default::default(),
             frame: None,
             #[cfg(test)]
-            fail_upload_chunk: Mutex::new(None),
+            fail_upload_chunk: Default::default(),
         }
     }
 
@@ -701,10 +831,10 @@ impl BufferHost {
         }
         Ok(Arc::new(Self {
             device: self.device.clone(), slots: self.slots.clone(), uploads: self.uploads.clone(),
-            read_boundary: self.read_boundary.clone(), publication: self.publication.clone(),
+            read_boundary: Some(self.boundary().clone()), publication: self.publication.clone(),
             cow_budget: self.cow_budget.clone(), upload_coverage: self.upload_coverage.clone(), frame: Some(snapshot),
             #[cfg(test)]
-            fail_upload_chunk: Mutex::new(None),
+            fail_upload_chunk: self.fail_upload_chunk.clone(),
         }))
     }
 
@@ -749,7 +879,12 @@ impl BufferHost {
         result: Result<(), BackendError>) -> Result<(), BackendError> {
         let mut incomplete = version.incomplete_upload.lock();
         match result {
-            Ok(()) => { incomplete.take(); Ok(()) }
+            Ok(()) => {
+                if let Some(failed) = incomplete.as_ref() && !coverage.covers(&failed.coverage) {
+                    return Err(failed.error.clone().into());
+                }
+                incomplete.take(); Ok(())
+            }
             Err(error) => {
                 let error = Arc::new(error);
                 let original = incomplete.as_ref().map(|failed| failed.error.clone()).unwrap_or_else(|| error.clone());
@@ -771,8 +906,9 @@ impl BufferHost {
         if let Some(frame) = &self.frame {
             for version in frame.0.buffers.values() { check(version)?; }
             // Render-local owners are created after the immutable extraction.
-            let local = frame.0.local.lock();
+            // Match frame-local creation: host slots precede the local table.
             let slots = self.slots.lock();
+            let local = frame.0.local.lock();
             for slot in slots.iter() {
                 if let Some(version) = &slot.buffer
                     && local.values().any(|buffer| Arc::ptr_eq(&buffer.shared(), &version.buffer.shared())) {
@@ -818,7 +954,7 @@ impl BufferHost {
     /// Accepts ordered dirty intervals without GPU work. Each interval owns
     /// its bytes and remains pending across epochs until submitted. A newer
     /// frame must not cancel an earlier sparse update to another interval.
-    /// `flush_pending_uploads` submits them before the graph that reads them.
+    /// The frame owner polls admission before binding the graph that reads them.
     fn queue_upload(
         &self,
         managed: &ManagedBuffer,
@@ -836,17 +972,18 @@ impl BufferHost {
             epoch,
             priority: rhapsody::transfer::UploadPriority::High,
         };
-        let mut result = Ok(());
-        'ranges: for range in ranges.iter().filter(|range| !range.is_empty()) {
+        for range in ranges.iter().filter(|range| !range.is_empty()) {
             let mut cursor = range.start;
             while cursor < range.end {
+                #[cfg(test)]
+                self.before_upload_chunk()?;
                 let bytes = (range.end - cursor).min(UPLOAD_CHUNK_BYTES as usize);
                 let at = offset as u64 + cursor as u64;
                 let slice = &data[cursor..cursor + bytes];
                 let mut payload = Vec::new();
                 payload.try_reserve_exact(bytes).map_err(|_| rhapsody::Error::OutOfHostMemory)?;
                 payload.extend_from_slice(slice);
-                let mut accepted = service.manager.enqueue_upload_owned(
+                let accepted = service.manager.enqueue_upload_owned(
                     managed.shared(),
                     at,
                     payload,
@@ -854,64 +991,37 @@ impl BufferHost {
                     rhapsody::transfer::UploadMode::OrderedDelta,
                 );
                 if let Err(rejected) = accepted {
-                    // Queue or memory pressure: drain what is pending, then retry once.
-                    Self::flush_locked(service)?;
-                    accepted = service.manager.enqueue_upload_owned(
-                        managed.shared(),
-                        at,
-                        rejected.payload,
-                        options_at(service.epoch),
-                        rhapsody::transfer::UploadMode::OrderedDelta,
-                    );
-                }
-                if let Err(error) = accepted {
-                    result = Err(error.error);
-                    break 'ranges;
+                    return Err(rejected.error);
                 }
                 service.queued_bytes += bytes as u64;
                 cursor += bytes;
             }
         }
-        if let Err(error) = result {
-            // Never lose the write: complete everything queued so far, then wait for this one.
-            log::warn!(target: "tiny_glade::upload", "queued upload rejected ({error}); falling back to a waited write");
-            drop(uploads);
-            return self.upload_waited(managed, buffer, data, ranges, offset);
-        }
         Ok(())
     }
 
     /// One validated contiguous write. Runs once no other thread's frame
-    /// reads are pending (directly, or from the lease release). Host-visible
-    /// targets that admit transfers are also written by an ordered GPU copy,
-    /// so neither the producer nor the render thread waits for in-flight GPU
-    /// reads of a persistent mapping.
+    /// reads are pending (directly, or from the lease release). Admission has
+    /// already required TRANSFER_DST. Every target uses an ordered GPU copy;
+    /// neither the producer nor the render thread waits for GPU readers of a
+    /// persistent mapping.
     fn write_now(&self, managed: &ManagedBuffer, buffer: &Buffer, data: &[u8], at: usize)
         -> Result<(), BackendError> {
         let _serial = self.publication.lock();
         let ranges = [0..data.len()];
-        let host_visible = managed.desc.memory_location != MemoryLocation::GpuOnly
-            && managed.persistent_host_ptr().is_some();
-        if host_visible && !managed.desc.usage.contains(vk::BufferUsageFlags::TRANSFER_DST) {
-            return managed.write_bytes(at as u64, data);
-        }
-        if sync_upload_forced() {
-            return self.upload_waited(managed, buffer, data, &ranges, at);
-        }
         self.queue_upload(managed, buffer, data, &ranges, at)
     }
 
     /// [`Self::write_now`] taking ownership: a payload within one upload chunk
     /// is moved into the bounded queue instead of being copied again.
-    fn write_now_owned(&self, managed: &ManagedBuffer, buffer: &Buffer, payload: Vec<u8>, at: usize)
+    fn write_now_owned(&self, managed: &ManagedBuffer, buffer: &Buffer, payload: &mut Vec<u8>, at: usize)
         -> Result<(), BackendError> {
-        let host_visible = managed.desc.memory_location != MemoryLocation::GpuOnly
-            && managed.persistent_host_ptr().is_some();
-        if payload.len() as u64 > UPLOAD_CHUNK_BYTES || sync_upload_forced()
-            || (host_visible && !managed.desc.usage.contains(vk::BufferUsageFlags::TRANSFER_DST)) {
-            return self.write_now(managed, buffer, &payload, at);
+        if payload.len() as u64 > UPLOAD_CHUNK_BYTES {
+            return self.write_now(managed, buffer, payload, at);
         }
         if payload.is_empty() { return Ok(()); }
+        #[cfg(test)]
+        self.before_upload_chunk()?;
         let _serial = self.publication.lock();
         let mut uploads = self.uploads.lock();
         let service = self.upload_service(&mut uploads)?;
@@ -921,126 +1031,39 @@ impl BufferHost {
             epoch,
             priority: rhapsody::transfer::UploadPriority::High,
         };
-        let mut accepted = service.manager.enqueue_upload_owned(managed.shared(), at as u64, payload,
-            options_at(service.epoch), rhapsody::transfer::UploadMode::OrderedDelta);
-        if let Err(rejected) = accepted {
-            Self::flush_locked(service)?;
-            accepted = service.manager.enqueue_upload_owned(managed.shared(), at as u64, rejected.payload,
-                options_at(service.epoch), rhapsody::transfer::UploadMode::OrderedDelta);
-        }
-        match accepted {
+        match service.manager.enqueue_upload_owned(managed.shared(), at as u64, std::mem::take(payload),
+            options_at(service.epoch), rhapsody::transfer::UploadMode::OrderedDelta) {
             Ok(_) => { service.queued_bytes += bytes; Ok(()) }
-            Err(rejected) => {
-                log::warn!(target: "tiny_glade::upload", "queued upload rejected ({}); falling back to a waited write", rejected.error);
-                drop(uploads);
-                let data = rejected.payload;
-                self.upload_waited(managed, buffer, &data, &[0..data.len()], at)
-            }
+            Err(rejected) => { *payload = rejected.payload; Err(rejected.error) },
         }
     }
 
-    /// Submits every queued write to the graphics queue, in order, without
-    /// waiting for their completion. Call after all host writes of a frame and
-    /// before the graph that reads them is submitted: the submitted jobs publish
-    /// their completion into the buffers' range state, so the graph's bind step
-    /// orders itself after them (queue order plus the recorded dependency).
-    /// Waits only while the staging ring is full, bounded by `UPLOAD_FLUSH_TIMEOUT`.
-    pub fn flush_pending_uploads(&self) -> Result<(), BackendError> {
-        let mut uploads = self.uploads.lock();
-        let Some(service) = uploads.as_mut() else {
-            return Ok(());
-        };
-        Self::flush_locked(service)
+    #[cfg(test)]
+    fn finish_test_uploads(&self) -> Result<(), BackendError> {
+        upload_test_wait::until_ready(|| self.poll_pending_uploads())
     }
 
-    fn flush_locked(service: &mut BufferUploads) -> Result<(), BackendError> {
-        if service.queued_bytes == 0 {
-            return Ok(());
-        }
-        let deadline = Instant::now() + UPLOAD_FLUSH_TIMEOUT;
-        loop {
-            // Producers have already handed off their dirty bytes. A submit
-            // allocation failure must keep that accepted payload for the next
-            // explicit recovery attempt, while aborting the current graph.
-            let flush = service.manager.flush_uploads_preserving_oom(usize::MAX)?;
-            if flush.remaining_jobs == 0 {
-                break;
+    /// Bounded render/event-loop progress, without waiting for GPU capacity.
+    /// Accepted owned jobs keep their cursor and bytes until every chunk is
+    /// admitted. Never replay an accepted prefix on a capacity retry.
+    pub fn poll_pending_uploads(&self) -> Result<bool, BackendError> {
+        let mut ready = false;
+        for _ in 0..4 {
+            ready = self.boundary().poll_deferred().map_err(crate::render_upload_boundary::backend_error)?;
+            let mut uploads = self.uploads.lock();
+            if let Some(service) = uploads.as_mut().filter(|service| service.queued_bytes != 0) {
+                let flush = service.manager.flush_uploads(4)?;
+                if flush.remaining_jobs != 0 { ready = false; }
+                else {
+                    service.epoch = service.epoch.checked_add(1)
+                        .ok_or_else(|| BackendError::invalid_usage("buffer upload epoch exhausted"))?;
+                    service.queued_bytes = 0;
+                }
             }
-            if !flush.capacity_deferred {
-                return Err(rhapsody::Error::invalid_usage(
-                    "upload queue stalled without staging pressure",
-                ));
-            }
-            // Staging is full: earlier uploads must finish first. `flush_uploads`
-            // polls the device each call, so back off briefly and retry within the
-            // bound. Counted, because this is a real wait on the GPU.
-            if Instant::now() >= deadline {
-                return Err(rhapsody::Error::Timeout);
-            }
-            crate::frame_counters::record_upload_capacity_wait();
-            std::thread::sleep(Duration::from_micros(100));
+            if ready { break; }
         }
-        // Next frame's writes get a fresh epoch; this frame's jobs are submitted.
-        service.epoch = service
-            .epoch
-            .checked_add(1)
-            .ok_or_else(|| BackendError::invalid_usage("buffer upload epoch exhausted"))?;
-        service.queued_bytes = 0;
-        Ok(())
-    }
-
-    /// Explicit synchronous write: queued writes are submitted first (the waited
-    /// path requires an empty queue), then this write returns once complete.
-    pub fn update_buffer_bytes_wait(
-        &self,
-        buffer: &Buffer,
-        data: &[u8],
-        ranges: &[Range<usize>],
-        offset: usize,
-    ) -> Result<(), BackendError> {
-        let _publication = self.read_boundary.write();
-        let _serial = self.publication.lock();
-        let managed = self.lookup_current(buffer).ok_or_else(|| {
-            BackendError::invalid_usage("buffer host handle is stale or belongs to another host")
-        })?;
-        if self.frame.is_some() && self.lookup(buffer).is_none_or(|frozen|
-            !Arc::ptr_eq(&frozen.shared(), &managed.shared())) {
-            return Err(BackendError::invalid_usage("waited write differs from its frozen owner"));
-        }
-        rhapsody::resource::plan_buffer_update(&managed.desc, data.len(), ranges, offset as u64)?;
-        self.upload_waited(&managed, buffer, data, ranges, offset)
-    }
-
-    fn upload_waited(
-        &self,
-        managed: &ManagedBuffer,
-        buffer: &Buffer,
-        data: &[u8],
-        ranges: &[Range<usize>],
-        offset: usize,
-    ) -> Result<(), BackendError> {
-        let mut uploads = self.uploads.lock();
-        let service = self.upload_service(&mut uploads)?;
-        Self::flush_locked(service)?;
-        service.epoch = service
-            .epoch
-            .checked_add(1)
-            .ok_or_else(|| BackendError::invalid_usage("buffer upload epoch exhausted"))?;
-        let started = crate::frame_counters::start();
-        let result = service.manager.upload_buffer_ranges_wait(
-            managed.shared(),
-            data,
-            ranges,
-            offset as u64,
-            rhapsody::transfer::UploadOptions {
-                key: rhapsody::transfer::UploadKey(buffer.id),
-                epoch: service.epoch,
-                priority: rhapsody::transfer::UploadPriority::High,
-            },
-            u64::MAX,
-        );
-        crate::frame_counters::record_upload_wait(started, data.len());
-        result
+        self.check_upload_transactions()?;
+        Ok(ready)
     }
 
     fn lookup(&self, handle: &Buffer) -> Option<ManagedBuffer> {
@@ -1100,10 +1123,12 @@ impl BufferHost {
     /// caller never waits. The return value reflects validity at the call.
     pub fn release(&self, handle: &Buffer) -> bool {
         if self.current_version(handle).is_none() { return false; }
-        let host = self.detached();
+        let host = self.detached_for_job();
         let handle = *handle;
-        if let Err(error) = self.read_boundary.write_or_defer(0, move || { host.release_now(&handle); Ok(()) }) {
+        if let Err(error) = self.boundary().write_or_defer(0, move || { host.release_now(&handle); Ok(()) }) {
             log::error!(target: "tiny_glade::upload", "earlier deferred buffer write failed: {error}");
+            self.boundary().report_failure(error);
+            return false;
         }
         true
     }
@@ -1113,15 +1138,15 @@ impl BufferHost {
     fn detached(&self) -> Self {
         Self {
             device: self.device.clone(), slots: self.slots.clone(), uploads: self.uploads.clone(),
-            read_boundary: self.read_boundary.clone(), publication: self.publication.clone(),
+            read_boundary: Some(self.boundary().clone()), publication: self.publication.clone(),
             cow_budget: self.cow_budget.clone(), upload_coverage: self.upload_coverage.clone(), frame: None,
             #[cfg(test)]
-            fail_upload_chunk: Mutex::new(None),
+            fail_upload_chunk: self.fail_upload_chunk.clone(),
         }
     }
 
     pub fn boundary_stats(&self) -> crate::render_upload_boundary::BoundaryStats {
-        self.read_boundary.stats()
+        self.boundary().stats()
     }
 
     fn release_now(&self, handle: &Buffer) -> bool {
@@ -1208,7 +1233,7 @@ impl CoreGraphicsDevice for BufferHost {
     fn update_cpu_buffer_bytes(
         &self, handle: &Buffer, data: &[u8], ranges: &[Range<usize>],
     ) -> Result<(), BackendError> {
-        // Render-local producers have the old stable boundary semantics; only
+        // Render-local producers write their frame-owned allocation; only
         // a canonical producer can publish a subsequent physical version.
         if self.frame.is_none() {
             let serial = self.publication.lock();
@@ -1232,11 +1257,7 @@ impl CoreGraphicsDevice for BufferHost {
                     // Every byte comes from the authoritative CPU source. The
                     // existing bounded service owns each accepted upload chunk;
                     // no old queued job is cancelled or retargeted.
-                    let uploaded = if sync_upload_forced() {
-                        self.upload_waited(&next, handle, data, &[0..data.len()], 0)
-                    } else {
-                        self.queue_upload(&next, handle, data, &[0..data.len()], 0)
-                    };
+                    let uploaded = self.queue_upload(&next, handle, data, &[0..data.len()], 0);
                     if let Err(error) = uploaded {
                         // A partially accepted upload may still own the new
                         // buffer. Charge it until those native owners retire.
@@ -1255,7 +1276,7 @@ impl CoreGraphicsDevice for BufferHost {
                     slot.buffer = Some(BufferVersion::new(next));
                     return Ok(());
                 }
-                budget.fallbacks += 1;
+                budget.deferrals += 1;
             }
             // Do not hold publication while waiting for the old frame: its
             // render-local uploads and resource release also need that lock.
@@ -1325,7 +1346,7 @@ impl CoreGraphicsDevice for BufferHost {
         offset: usize,
     ) -> Result<(), BackendError> {
         // Validate synchronously so the producer still sees its own errors.
-        let managed = {
+        let (managed, version) = {
             let _serial = self.publication.lock();
             let managed = self.lookup_current(buffer).ok_or_else(|| {
                 BackendError::invalid_usage("buffer host handle is stale or belongs to another host")
@@ -1335,8 +1356,10 @@ impl CoreGraphicsDevice for BufferHost {
                 return Err(BackendError::invalid_usage("render-local write differs from its frozen owner"));
             }
             rhapsody::resource::plan_buffer_update(&managed.desc, data.len(), ranges, offset as u64)?;
-            managed
+            let version = self.current_version(buffer).expect("validated current buffer");
+            (managed, version)
         };
+        let coverage = self.prepare_upload_coverage(&version, ranges, offset)?;
         // Owned compact payload: only the requested ranges travel.
         let total: usize = ranges.iter().map(|range| range.len()).sum();
         let mut payload = Vec::new();
@@ -1347,21 +1370,32 @@ impl CoreGraphicsDevice for BufferHost {
             payload.extend_from_slice(&data[range.clone()]);
             owned_ranges.push((offset + range.start, start..payload.len()));
         }
-        let host = self.detached();
+        let host = self.detached_for_job();
         let handle = *buffer;
-        self.read_boundary.write_or_defer(payload.capacity(), move || {
-            if let [(at, _)] = owned_ranges[..] {
-                // One contiguous range: the payload itself becomes the queued
-                // upload; no second copy of its bytes.
-                return host.write_now_owned(&managed, &handle, payload, at)
-                    .map_err(|error| error.to_string());
+        let charge = payload.capacity() + owned_ranges.capacity() * std::mem::size_of::<(usize, Range<usize>)>();
+        let mut coverage = Some(coverage);
+        let (mut index, mut cursor) = (0, 0);
+        self.boundary().write_or_defer(charge, move || {
+            let result = (|| {
+                if index == 0 && owned_ranges.len() == 1 && payload.len() as u64 <= UPLOAD_CHUNK_BYTES {
+                    host.write_now_owned(&managed, &handle, &mut payload, owned_ranges[0].0)?;
+                    index = 1;
+                }
+                while index < owned_ranges.len() {
+                    let (at, range) = &owned_ranges[index];
+                    let end = (range.start + cursor + UPLOAD_CHUNK_BYTES as usize).min(range.end);
+                    host.write_now(&managed, &handle, &payload[range.start + cursor..end], at + cursor)?;
+                    cursor = end - range.start;
+                    if end == range.end { index += 1; cursor = 0; }
+                }
+                Ok(())
+            })();
+            if matches!(&result, Err(BackendError::Exhausted(_) | BackendError::Timeout)) {
+                return Err(crate::render_upload_boundary::CAPACITY.to_owned());
             }
-            for (at, range) in owned_ranges {
-                host.write_now(&managed, &handle, &payload[range.clone()], at)
-                    .map_err(|error| error.to_string())?;
-            }
-            Ok(())
-        }).map_err(BackendError::invalid_usage)
+            host.finish_upload_transaction(&version, coverage.take().expect("transaction finishes once"), result)
+                .map_err(crate::render_upload_boundary::job_error)
+        }).map_err(crate::render_upload_boundary::backend_error)
     }
 
     fn mapped_slice_mut(&self, buffer: &Buffer) -> Option<&mut [u8]> {
@@ -1448,9 +1482,55 @@ pub struct TextureHost {
 }
 
 impl TextureHost {
+    fn boundary(&self) -> &Arc<crate::render_upload_boundary::UploadBoundary> { &self.read_boundary }
+
     pub(crate) fn begin_frame_read(&self, owner: std::thread::ThreadId) -> crate::render_upload_boundary::ReadLease {
-        self.read_boundary.begin_read(owner)
+        self.boundary().begin_read(owner)
     }
+    /// Own a rectangular image update until all earlier frame reads have been
+    /// submitted. Native recording validates its region contract once; there
+    /// is no frame-by-frame image state validator here.
+    pub(crate) fn upload_regions(
+        &self,
+        texture: &Texture,
+        bytes: Vec<u8>,
+        regions: Vec<vk::BufferImageCopy>,
+    ) -> rhapsody::Result<()> {
+        let texture = self.get(texture)
+            .ok_or_else(|| rhapsody::Error::invalid_usage("texture upload owner was released"))?
+            .shared();
+        let device = self.device.clone();
+        let charge = bytes.capacity().saturating_add(
+            regions.capacity().saturating_mul(std::mem::size_of::<vk::BufferImageCopy>()));
+        self.boundary().write_or_defer(charge, move || {
+            let result = (|| {
+                let staging = Arc::new(rhapsody::resource::Buffer::new(device.clone(),
+                    &rhapsody::resource::BufferDesc::new_cpu_to_gpu(
+                        bytes.len() as u64, vk::BufferUsageFlags::TRANSFER_SRC))?);
+                staging.write_bytes_unsynchronized(0, &bytes)?;
+                let queue = device.queue(rhapsody::device::QueueClass::Graphics)?;
+                rhapsody::resource::with_setup_command(&device, &[], |command| unsafe {
+                    rhapsody::command::record_texture_regions(command, queue,
+                        texture.clone(), staging, &regions,
+                        vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                })?.into_value();
+                Ok(())
+            })();
+            result.map_err(|error| match error {
+                // Nothing has been submitted on allocation failure. Keep the
+                // owned bytes and rectangles for the next admission poll.
+                rhapsody::Error::OutOfHostMemory | rhapsody::Error::OutOfDeviceMemory =>
+                    crate::render_upload_boundary::CAPACITY.to_owned(),
+                other => crate::render_upload_boundary::job_error(other),
+            })
+        }).map_err(crate::render_upload_boundary::backend_error)
+    }
+
+    /// The frame owner polls accepted writes before native graph binding.
+    pub fn poll_pending_uploads(&self) -> rhapsody::Result<bool> {
+        self.boundary().poll_deferred().map_err(crate::render_upload_boundary::backend_error)
+    }
+
     pub fn new(device: Arc<Device>) -> Self {
         Self {
             device,
@@ -1580,32 +1660,33 @@ impl TextureHost {
     /// program order with deferred updates. The caller never waits.
     pub fn release(&self, texture: &Texture) -> bool {
         if self.get(texture).is_none() { return false; }
-        let host = self.clone();
+        // A queued job must not retain its own boundary through TextureHost.
+        let slots = self.slots.clone();
+        let views = self.views.clone();
+        let view_variants = self.view_variants.clone();
         let texture = texture.clone();
-        if let Err(error) = self.read_boundary.write_or_defer(0, move || { host.release_now(&texture); Ok(()) }) {
+        if let Err(error) = self.boundary().write_or_defer(0, move || {
+            let removed = {
+                let mut slots = slots.lock();
+                let Some(slot) = ((texture.id & 0xffff_ffff) as usize)
+                    .checked_sub(1).and_then(|i| slots.get_mut(i))
+                else { return Ok(()); };
+                if slot.generation != texture.generation() || slot.texture.is_none() {
+                    return Ok(());
+                }
+                slot.generation = 0;
+                slot.texture.take()
+            };
+            let view = views.lock().remove(&texture.id);
+            view_variants.lock().retain(|(id, _), _| *id != texture.id);
+            // Final texture ownership retires after every host-table lock ends.
+            drop((view, removed));
+            Ok(())
+        }) {
             log::error!(target: "tiny_glade::upload", "earlier deferred texture write failed: {error}");
-        }
-        true
-    }
-
-    fn release_now(&self, texture: &Texture) -> bool {
-        if texture.id & (TEXTURE_ID_TAG | BUFFER_TOKEN_TAG) != TEXTURE_ID_TAG { return false; }
-        let mut slots = self.slots.lock();
-        let Some(slot) = ((texture.id & 0xffff_ffff) as usize)
-            .checked_sub(1)
-            .and_then(|i| slots.get_mut(i))
-        else {
-            return false;
-        };
-        if slot.generation != texture.generation() || slot.texture.is_none() {
+            self.boundary().report_failure(error);
             return false;
         }
-        slot.texture = None;
-        slot.generation = 0;
-        self.views.lock().remove(&texture.id);
-        self.view_variants
-            .lock()
-            .retain(|(id, _), _| *id != texture.id);
         true
     }
 
@@ -1779,7 +1860,7 @@ impl country_core::asset_libraries::texture_library::TextureLibraryDevice for Te
         data.try_reserve_exact(update.data.len()).map_err(|_| rhapsody::Error::OutOfHostMemory)?;
         data.extend_from_slice(&update.data);
         let (device, extent, mip_level) = (self.device.clone(), update.extent, update.mip_level);
-        self.read_boundary.write_or_defer(data.capacity(), move || {
+        self.boundary().write_or_defer(data.capacity(), move || {
             let regions: Vec<_> = (0..layer_count)
                 .map(|layer| {
                     let start = layer as usize * bytes_per_layer;
@@ -1792,8 +1873,8 @@ impl country_core::asset_libraries::texture_library::TextureLibraryDevice for Te
                 })
                 .collect();
             rhapsody::resource::update_texture_regions(&device, &managed, &regions)
-                .map_err(|error| error.to_string())
-        }).map_err(rhapsody::Error::invalid_usage)
+                .map_err(crate::render_upload_boundary::job_error)
+        }).map_err(crate::render_upload_boundary::backend_error)
     }
 }
 
@@ -1804,6 +1885,45 @@ impl TextureGeneration for Texture {
     /// core 的 `Texture` 只有 `id: u64`：bit 63 是纹理标记，bits 32..63 是代数，低 32 位是槽位序号。
     fn generation(&self) -> u64 {
         (self.id >> 32) & 0x7fff_ffff
+    }
+}
+
+#[cfg(test)]
+mod texture_release_tests {
+    use super::*;
+
+    #[test]
+    fn cancelled_capacity_retry_does_not_pin_the_texture_host_boundary() {
+        let device = match Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"), "{error}");
+                return;
+            }
+        };
+        let host = TextureHost::new(device);
+        let texture = host.create_texture(
+            "cancelled texture", &TextureDesc::new_2d([1, 1], 0x2b).sampled(), &[],
+        ).unwrap();
+        host.default_view(texture.id).unwrap();
+        let boundary = Arc::downgrade(&host.read_boundary);
+        let slots = Arc::downgrade(&host.slots);
+        let views = Arc::downgrade(&host.views);
+        let read = host.begin_frame_read(std::thread::current().id());
+        let writer = host.clone();
+        std::thread::spawn(move || {
+            writer.read_boundary.write_or_defer(0, || {
+                Err(crate::render_upload_boundary::CAPACITY.to_owned())
+            }).unwrap();
+            assert!(writer.release(&texture));
+        }).join().unwrap();
+        assert_eq!(host.read_boundary.pending_jobs(), 2);
+        drop(read);
+        assert_eq!(host.read_boundary.pending_jobs(), 2);
+        drop(host);
+        assert!(boundary.upgrade().is_none());
+        assert!(slots.upgrade().is_none());
+        assert!(views.upgrade().is_none());
     }
 }
 
@@ -1842,7 +1962,6 @@ use shader_pipeline::{
 use std::{
     collections::BTreeMap,
     path::PathBuf,
-    time::{Duration, Instant},
 };
 
 /// 发行 .bin 里存的反射 → core 的 `ResourceRegistry`：名字哈希 → (set, binding)、uniform 块大小与所在 set、
@@ -1892,20 +2011,46 @@ pub struct ShaderHost {
     passes: Arc<RenderPassHost>,
     frame_globals: Arc<Mutex<Option<Arc<crate::frame_setup::FrameGlobals>>>>,
     indexed_count_adapter: Mutex<Option<Arc<rhapsody::rg::IndexedCountAdapter>>>,
-    /// Requested pipelines not yet observed ready by `prewarm`.
+    /// Requested pipelines not yet observed ready by `poll_preparation`.
     pending_tickets: Mutex<Vec<PendingTicket>>,
 }
 
 struct PendingTicket {
     ticket: PipelineTicket,
-    identity: PrewarmIdentity,
+    identity: PipelineRequest,
 }
 
 /// What a pending ticket was requested for; only used to word failures.
-enum PrewarmIdentity {
+enum PipelineRequest {
     Compute(Arc<ComputeEntry>),
     Raster(Arc<RasterEntry>),
     IndexedCount,
+}
+
+impl PipelineRequest {
+    fn description(&self) -> String {
+        match self {
+                Self::Compute(entry) => format!(
+                    "compute shader={} local_size={:?} ABI={}bytes/{}bindings",
+                    entry.bindings.name,
+                    entry.local_size,
+                    entry.bindings.abi.parameter_bytes,
+                    entry.bindings.abi.bindings.len(),
+                ),
+                Self::Raster(entry) => format!(
+                    "raster shader={} samples={:?} colors={:?} depth={:?} stencil={:?} view_mask={} ABI={}bytes/{}bindings",
+                    entry.bindings.name,
+                    entry.pass.samples,
+                    entry.pass.formats.colors,
+                    entry.pass.formats.depth,
+                    entry.pass.formats.stencil,
+                    entry.pass.formats.view_mask,
+                    entry.bindings.abi.parameter_bytes,
+                    entry.bindings.abi.bindings.len(),
+                ),
+                Self::IndexedCount => "indexed-count platform adapter".to_owned(),
+        }
+    }
 }
 
 /// Bounded attachment signatures used to request dynamic-rendering pipelines.
@@ -2498,7 +2643,7 @@ impl ShaderBindingSnapshot {
         push: &[u8],
         resources: impl Iterator<Item = (BindingLocation, u32, &'a BindlessResource, bool)> + Clone,
         previous: Option<&rhapsody::bindless::PreparedBindlessParameters>,
-        constants: &Mutex<rhapsody::resource::DynamicConstants>,
+        mut allocate: impl FnMut(u64) -> rhapsody::Result<rhapsody::resource::DynamicConstantsChunk>,
     ) -> rhapsody::Result<rhapsody::bindless::PreparedBindlessParameters> {
         if push.len() != self.abi.original_push_bytes as usize {
             return Err(rhapsody::Error::invalid_usage(
@@ -2520,13 +2665,9 @@ impl ShaderBindingSnapshot {
         country_core::render::declare_probe::sub(0, t);
         cursor
             .prepare(|group| {
-                if let Some(previous) =
-                    previous.filter(|previous| previous.belongs_to(group.heap()))
-                {
-                    group.require_slots([0, 0, 1, 0])?;
-                    return previous
-                        .with_push(push, &mut constants.lock())
-                        .map_err(Into::into);
+                if let Some(previous) = previous
+                    && let Some(prepared) = group.with_push(previous, push, &mut allocate)? {
+                    return Ok(prepared);
                 }
                 let t = country_core::render::declare_probe::start();
                 let globals = self
@@ -2547,8 +2688,7 @@ impl ShaderBindingSnapshot {
                     }
                 }
                 group.require_slots(required)?;
-                let mut parameters =
-                    BindlessParameters::new(group.heap().clone(), self.abi.clone(), push)?;
+                let mut parameters = group.parameters(self.abi.clone(), push)?;
                 country_core::render::declare_probe::sub(3, t);
                 let t = country_core::render::declare_probe::start();
                 samplers.write(&self.samplers, &mut parameters)?;
@@ -2584,7 +2724,7 @@ impl ShaderBindingSnapshot {
                 }
                 country_core::render::declare_probe::sub(6, t);
                 let t = country_core::render::declare_probe::start();
-                let prepared = parameters.finish(&mut constants.lock())?;
+                let prepared = parameters.finish(&mut allocate)?;
                 samplers.try_catalog_extras(|required| group.require_slots(required))?;
                 // 实际组和可选目录准备均已完成；不发布半个绑定组或半个目录。
                 if let Some(publication) = publication {
@@ -2802,24 +2942,25 @@ impl ShaderHost {
         if let Some(adapter) = cached.as_ref() {
             return Ok(adapter.clone());
         }
-        let adapter = rhapsody::rg::IndexedCountAdapter::new_paged(
+        let adapter = rhapsody::rg::IndexedCountAdapter::new(
             self.device.clone(),
             self.pages.clone(),
             &self.compiler,
         )?;
-        self.note_pending(adapter.ticket(), PrewarmIdentity::IndexedCount)?;
+        self.note_pending(adapter.ticket(), PipelineRequest::IndexedCount)?;
         *cached = Some(adapter.clone());
         Ok(adapter)
     }
     pub fn set_frame_globals(&self, globals: Arc<crate::frame_setup::FrameGlobals>) {
+        self.pages.advance_frame();
         *self.frame_globals.lock() = Some(globals);
     }
-    /// Tickets that were requested and not yet observed ready by `prewarm`.
+    /// Tickets that were requested and not yet observed ready by `poll_preparation`.
     /// Registered at request time so a warm frame scans nothing.
     fn note_pending(
         &self,
         ticket: PipelineTicket,
-        identity: PrewarmIdentity,
+        identity: PipelineRequest,
     ) -> rhapsody::Result<()> {
         let mut pending = self.pending_tickets.lock();
         pending
@@ -2838,90 +2979,19 @@ impl ShaderHost {
             rhapsody::pipeline::PipelinePoll::Ready(_) => false,
             rhapsody::pipeline::PipelinePoll::Pending => true,
             rhapsody::pipeline::PipelinePoll::Failed(error) => {
-                if failed.is_none() { failed = Some(error); }
+                if failed.is_none() {
+                    log::error!(target: "tiny_glade::pipeline",
+                        "pipeline preparation failed: {}: {error}; compiler={:?}",
+                        request.identity.description(), self.compiler.stats());
+                    failed = Some(error);
+                }
                 true
             }
         });
         if let Some(error) = failed { return Err(error.into()); }
         Ok(pending.is_empty())
     }
-    fn requeue(&self, items: impl Iterator<Item = PendingTicket>) {
-        let mut rest: Vec<_> = items.collect();
-        let mut pending = self.pending_tickets.lock();
-        rest.append(&mut pending);
-        *pending = rest;
-    }
-    /// Explicit startup/prewarm operation. Rendering uses ticket.try_get().
-    ///
-    /// Waits only for tickets registered since the last successful call. A
-    /// failed or timed-out ticket stays registered, so every later call reports
-    /// it again, exactly like the former whole-table scan did.
-    pub fn prewarm(&self, timeout: Duration) -> rhapsody::Result<()> {
-        let deadline = Instant::now()
-            .checked_add(timeout)
-            .ok_or(rhapsody::Error::Timeout)?;
-        // 不持锁等待;保持原等待次序和错误类别;只在失败时补充实际请求身份。
-        let batch = std::mem::take(&mut *self.pending_tickets.lock());
-        let total = batch.len();
-        // Counts every scan, including ones that return early with an error.
-        struct PrewarmSample(Option<Instant>, usize);
-        impl Drop for PrewarmSample {
-            fn drop(&mut self) {
-                crate::frame_counters::record_prewarm(self.0, self.1);
-            }
-        }
-        let _sample = PrewarmSample(crate::frame_counters::start(), total);
-        let mut iter = batch.into_iter().enumerate();
-        while let Some((index, pending)) = iter.next() {
-            let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
-                self.requeue(std::iter::once(pending).chain(iter.map(|(_, rest)| rest)));
-                return Err(rhapsody::Error::Timeout);
-            };
-            let Err(error) = pending.ticket.wait(remaining) else {
-                continue;
-            };
-            let identity = match &pending.identity {
-                PrewarmIdentity::Compute(entry) => format!(
-                    "compute shader={} local_size={:?} ABI={}bytes/{}bindings",
-                    entry.bindings.name,
-                    entry.local_size,
-                    entry.bindings.abi.parameter_bytes,
-                    entry.bindings.abi.bindings.len(),
-                ),
-                PrewarmIdentity::Raster(entry) => format!(
-                    "raster shader={} samples={:?} colors={:?} depth={:?} stencil={:?} view_mask={} ABI={}bytes/{}bindings",
-                    entry.bindings.name,
-                    entry.pass.samples,
-                    entry.pass.formats.colors,
-                    entry.pass.formats.depth,
-                    entry.pass.formats.stencil,
-                    entry.pass.formats.view_mask,
-                    entry.bindings.abi.parameter_bytes,
-                    entry.bindings.abi.bindings.len(),
-                ),
-                PrewarmIdentity::IndexedCount => "indexed-count platform adapter".to_owned(),
-            };
-            let message = format!(
-                "pipeline prewarm failed [{}/{}] {}: {} ({:?}); compiler={:?}",
-                index + 1,
-                total,
-                identity,
-                error,
-                error.kind(),
-                self.compiler.stats(),
-            );
-            log::error!(target: "tiny_glade::pipeline", "{message}");
-            // 集成测试可能未安装 logger；失败诊断仍需在实际运行日志可见。
-            if !log::log_enabled!(target: "tiny_glade::pipeline", log::Level::Error) {
-                eprintln!("{message}");
-            }
-            // Timeout and Failed both stay registered: the next call reports them again.
-            self.requeue(std::iter::once(pending).chain(iter.map(|(_, rest)| rest)));
-            return Err(error.into());
-        }
-        Ok(())
-    }
-    /// Registered tickets `prewarm` has not yet observed ready (diagnostics/tests).
+    /// Registered requests not yet observed ready by the frame owner.
     #[doc(hidden)]
     pub fn pending_ticket_count(&self) -> usize {
         self.pending_tickets.lock().len()
@@ -2971,8 +3041,8 @@ impl ShaderHost {
         self.compute_entry(handle).map(|e| e.registry.clone())
     }
 
-    pub fn bindless_stats(&self) -> rhapsody::bindless::BindlessStats {
-        self.pages.stats()
+    pub fn bindless_occupancy(&self) -> rhapsody::bindless::BindlessOccupancy {
+        self.pages.sampled_occupancy()
     }
     /// Intended retained descriptors in table order (sampled, storage image,
     /// storage buffer, sampler). Compare with heap live counts only after all
@@ -3077,6 +3147,30 @@ impl ShaderBackend for ShaderHost {
     }
 
     fn load_compiled_raster(&self, desc: &RasterPipelineDesc) -> Result<CoreCompiled, ShaderError> {
+        // Presentation owns the resize-aware shaders bundled with this build.
+        // Installed shaders assume equal extents and read black after growth.
+        let presentation: Option<[&[u8]; 2]> = match desc.path.as_str() {
+            "/blit/resolve_to_swapchain.raster.hlsl" => Some([
+                include_bytes!("../shaders/compiled/resolve_to_swapchain-0.bin"),
+                include_bytes!("../shaders/compiled/resolve_to_swapchain-1.bin"),
+            ]),
+            "/blit/resolve_msaa_to_swapchain.raster.hlsl" => Some([
+                include_bytes!("../shaders/compiled/resolve_msaa_to_swapchain-0.bin"),
+                include_bytes!("../shaders/compiled/resolve_msaa_to_swapchain-1.bin"),
+            ]),
+            _ => None,
+        };
+        if let Some(variants) = presentation {
+            let [(name, value)] = desc.defines.as_slice() else {
+                return Err(anyhow::anyhow!("presentation requires its depth variant").into());
+            };
+            let index = match (name.as_str(), value.as_str()) {
+                ("SHADER_VARIANT_DEPTH_ONLY", "0") => 0,
+                ("SHADER_VARIANT_DEPTH_ONLY", "1") => 1,
+                _ => return Err(anyhow::anyhow!("unsupported presentation defines").into()),
+            };
+            return Ok(CoreCompiled(variants[index].to_vec()));
+        }
         let file = shader_pipeline::pipeline_desc::RasterPipelineDesc {
             source_path: desc.path.clone(),
             vertex_entry: String::new(),
@@ -3145,7 +3239,7 @@ impl ShaderBackend for ShaderHost {
             .try_reserve(1)
             .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
         self.sampler_leases.register(entry.bindings.samplers.as_slice());
-        self.note_pending(entry.pipeline.clone(), PrewarmIdentity::Compute(entry.clone()))?;
+        self.note_pending(entry.pipeline.clone(), PipelineRequest::Compute(entry.clone()))?;
         table.push(entry);
         Ok(ComputePipeline {
             id: (self.pipeline_namespaces[0] << 32) | table.len() as u64,
@@ -3172,7 +3266,7 @@ impl ShaderBackend for ShaderHost {
         // The native Egui producer stores its actual 8-byte screen extent in
         // DrawPacket.unknown_bytes (B 0x1400def7e..0x1400defd0). Preserve the
         // package's reflected push ABI here; RasterHost forwards the packet's
-        // bytes to ShaderBindings::parameters, and BindlessParameters::new
+        // bytes to ShaderBindings::parameters, and the group parameter factory
         // rejects any byte count differing from abi.original_push_bytes before
         // recording a draw. A pipeline with a push block is not itself missing
         // a producer; a draw with missing/wrong bytes still fails precisely.
@@ -3255,7 +3349,7 @@ impl ShaderBackend for ShaderHost {
             .try_reserve(1)
             .map_err(|_| rhapsody::Error::OutOfHostMemory)?;
         self.sampler_leases.register(entry.bindings.samplers.as_slice());
-        self.note_pending(entry.pipeline.clone(), PrewarmIdentity::Raster(entry.clone()))?;
+        self.note_pending(entry.pipeline.clone(), PipelineRequest::Raster(entry.clone()))?;
         table.push(entry);
         Ok(RasterPipeline {
             id: (self.pipeline_namespaces[1] << 32) | table.len() as u64,
@@ -3407,58 +3501,23 @@ use rhapsody::{
 };
 /// core `rg_boundary::RenderGraph` 的宿主实现：pass 声明落到 rhapsody 图，动态常量走 rhapsody 的
 /// `DynamicConstants`（原版 256 KiB 页、线性分配）。
-pub struct GraphPasses<'session> {
+pub struct GraphPasses {
     graph: Rc<RefCell<RhGraph>>,
     device: Arc<Device>,
     dynamic: Arc<Mutex<DynamicConstants>>,
     tables: Option<HostTables>,
-    cache_session: Option<GraphSession<'session>>,
+    cache_session: Option<Rc<RefCell<rhapsody::rg::VulkanGraphSession>>>,
     // Same Arc table -> same real constants range within this declaration
     // host. Actual pages remain owned by the existing DynamicConstants pool;
     // the graph/session and commands retain each imported allocation.
     uniform_uploads: Vec<(Arc<[u8]>, DynamicConstantsChunk)>,
 }
-enum GraphSession<'a> {
-    Exclusive(&'a mut rhapsody::rg::VulkanGraphSession),
-    Shared(Rc<RefCell<rhapsody::rg::VulkanGraphSession>>),
-}
-enum SessionBorrow<'a> {
-    Exclusive(&'a mut rhapsody::rg::VulkanGraphSession),
-    Shared(std::cell::RefMut<'a, rhapsody::rg::VulkanGraphSession>),
-}
-impl GraphSession<'_> {
-    fn borrow_mut(&mut self) -> rhapsody::Result<SessionBorrow<'_>> {
-        match self {
-            Self::Exclusive(session) => Ok(SessionBorrow::Exclusive(session)),
-            Self::Shared(session) => {
-                session
-                    .try_borrow_mut()
-                    .map(SessionBorrow::Shared)
-                    .map_err(|_| {
-                        rhapsody::Error::invalid_usage(
-                            "frame session is already borrowed during a graph operation",
-                        )
-                    })
-            }
-        }
-    }
-}
-impl std::ops::Deref for SessionBorrow<'_> {
-    type Target = rhapsody::rg::VulkanGraphSession;
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Exclusive(s) => s,
-            Self::Shared(s) => s,
-        }
-    }
-}
-impl std::ops::DerefMut for SessionBorrow<'_> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        match self {
-            Self::Exclusive(s) => s,
-            Self::Shared(s) => s,
-        }
-    }
+fn borrow_session(
+    session: &Rc<RefCell<rhapsody::rg::VulkanGraphSession>>,
+) -> rhapsody::Result<std::cell::RefMut<'_, rhapsody::rg::VulkanGraphSession>> {
+    session.try_borrow_mut().map_err(|_| rhapsody::Error::invalid_usage(
+        "frame session is already borrowed during a graph operation",
+    ))
 }
 
 /// 计算 Pass 执行时需要按 id 反查的三张宿主表。
@@ -3469,7 +3528,7 @@ pub struct HostTables {
     pub shaders: Arc<ShaderHost>,
 }
 
-impl<'session> GraphPasses<'session> {
+impl GraphPasses {
     pub fn new(graph: Rc<RefCell<RhGraph>>, device: Arc<Device>) -> Result<Self, rhapsody::Error> {
         let dynamic = Arc::new(Mutex::new(DynamicConstants::new(device.clone())?));
         Ok(Self::from_parts(graph, device, dynamic))
@@ -3508,22 +3567,6 @@ impl<'session> GraphPasses<'session> {
         self
     }
 
-    /// Borrow the frame driver's real session only for declaration building.
-    /// Drop this host before executing the frame; neither a second graph nor a
-    /// second cache is introduced.
-    pub fn with_session(
-        mut self,
-        session: &'session mut rhapsody::rg::VulkanGraphSession,
-    ) -> rhapsody::Result<Self> {
-        if !Arc::ptr_eq(&self.device, &session.backend.device()) {
-            return Err(rhapsody::Error::invalid_usage(
-                "upload cache belongs to another device",
-            ));
-        }
-        self.cache_session = Some(GraphSession::Exclusive(session));
-        Ok(self)
-    }
-
     /// The frame facade may lazily import a library SSBO while a compute pass
     /// is being constructed. Hold the actual session identity, taking a short
     /// borrow only inside each declaration/upload operation, never around the
@@ -3543,7 +3586,7 @@ impl<'session> GraphPasses<'session> {
                 "frame session belongs to another device",
             ));
         }
-        self.cache_session = Some(GraphSession::Shared(session));
+        self.cache_session = Some(session);
         Ok(self)
     }
 }
@@ -3599,7 +3642,7 @@ fn declare_label_unique(
     }
 }
 
-impl RgResources for GraphPasses<'_> {
+impl RgResources for GraphPasses {
     fn create_raw_texture(&mut self, name: &str, desc: &TextureDesc) -> RgTexture {
         let tables = self
             .tables
@@ -3613,7 +3656,7 @@ impl RgResources for GraphPasses<'_> {
             .cache_session
             .as_mut()
             .expect("frame resources require the frame driver's session")
-            .borrow_mut()
+            .try_borrow_mut()
             .expect("frame session already borrowed during declaration");
         let handle = declare_label_unique(
             &mut session.backend,
@@ -3635,7 +3678,7 @@ impl RgResources for GraphPasses<'_> {
             .cache_session
             .as_mut()
             .expect("frame resources require the frame driver's session")
-            .borrow_mut()
+            .try_borrow_mut()
             .expect("frame session already borrowed during declaration");
         let handle = declare_label_unique(
             &mut session.backend,
@@ -3664,7 +3707,7 @@ impl RgResources for GraphPasses<'_> {
         let mut session = self
             .cache_session
             .as_mut()
-            .map(GraphSession::borrow_mut)
+            .map(|session| borrow_session(session))
             .transpose()?
             .ok_or_else(|| {
                 rhapsody::Error::invalid_usage("frame resources require the frame driver's session")
@@ -3697,7 +3740,7 @@ impl RgResources for GraphPasses<'_> {
         let mut session = self
             .cache_session
             .as_mut()
-            .map(GraphSession::borrow_mut)
+            .map(|session| borrow_session(session))
             .transpose()?
             .ok_or_else(|| {
                 rhapsody::Error::invalid_usage("frame resources require the frame driver's session")
@@ -3727,7 +3770,7 @@ impl RgResources for GraphPasses<'_> {
         let mut session = self
             .cache_session
             .as_mut()
-            .map(GraphSession::borrow_mut)
+            .map(|session| borrow_session(session))
             .transpose()?
             .ok_or_else(|| {
                 rhapsody::Error::invalid_usage("frame resources require the frame driver's session")
@@ -3744,7 +3787,7 @@ impl RgResources for GraphPasses<'_> {
     }
 }
 
-impl CorePassGraph for GraphPasses<'_> {
+impl CorePassGraph for GraphPasses {
     fn add_pass(&mut self, name: &'static str, resource: u32, access: u8, render: RenderFn) {
         let device = self.device.clone();
         let mut graph = self.graph.borrow_mut();
@@ -3782,7 +3825,7 @@ impl CorePassGraph for GraphPasses<'_> {
         let mut session = self
             .cache_session
             .as_mut()
-            .map(GraphSession::borrow_mut)
+            .map(|session| borrow_session(session))
             .transpose()?
             .ok_or_else(|| {
                 rhapsody::Error::unsupported("staging copies require the frame driver's session")
@@ -3838,7 +3881,8 @@ impl CorePassGraph for GraphPasses<'_> {
                 ));
             }
             chunk.write_bytes(&copy.source.bytes)?;
-            let source = session.import_frame_buffer(&mut graph, chunk.buffer.clone(), 0x25)?;
+            // Import the producer state once; pass accesses below describe GPU consumers.
+            let source = session.import_frame_buffer(&mut graph, chunk.buffer.clone(), 0x35)?;
             declared.push((source, target, chunk.offset, copy.dst_offset, size));
         }
         let mut pass = graph.add_pass(name);
@@ -3924,7 +3968,7 @@ impl CorePassGraph for GraphPasses<'_> {
         let Some(mut session) = self
             .cache_session
             .as_mut()
-            .map(GraphSession::borrow_mut)
+            .map(|session| borrow_session(session))
             .transpose()?
         else {
             return Ok(false);
@@ -3967,7 +4011,7 @@ impl CorePassGraph for GraphPasses<'_> {
             move |session, graph, output| {
                 let chunk = dynamic.lock().allocate(size)?;
                 chunk.write_bytes(bytes)?;
-                let source = session.import_frame_buffer(graph, chunk.buffer.clone(), 0x25)?;
+                let source = session.import_frame_buffer(graph, chunk.buffer.clone(), 0x35)?;
                 graph.subgraph("country.cpu-upload.produce", |scope| {
                     scope.input(
                         source,
@@ -4460,7 +4504,7 @@ impl ComputeExec for ComputeExecHost<'_> {
     }
 }
 
-impl GraphPasses<'_> {
+impl GraphPasses {
     /// 登记一个已声明完毕的计算 Pass：访问声明进图；回调里绑定管线与描述符集（set 0）、
     /// 推 push constants、按模式 dispatch。`pipeline` 是该 Pass 着色器程序创建出的管线句柄。
     pub fn add_compute(
@@ -4522,7 +4566,7 @@ impl GraphPasses<'_> {
             let mut session = self
                 .cache_session
                 .as_mut()
-                .map(GraphSession::borrow_mut)
+                .map(|session| borrow_session(session))
                 .transpose()?
                 .ok_or_else(|| {
                     rhapsody::Error::unsupported(
@@ -4593,7 +4637,7 @@ impl GraphPasses<'_> {
                             "external uniform physical range/device mismatch",
                         ));
                     }
-                    let handle = session.import_frame_buffer(&mut graph, buffer.clone(), 0x1a)?;
+                    let handle = session.import_frame_buffer(&mut graph, buffer.clone(), 0x35)?;
                     (
                         BindlessResource::Buffer {
                             buffer,
@@ -4732,14 +4776,14 @@ impl GraphPasses<'_> {
             let mut session = self
                 .cache_session
                 .as_mut()
-                .map(GraphSession::borrow_mut)
+                .map(|session| borrow_session(session))
                 .transpose()?
                 .ok_or_else(|| {
                     rhapsody::Error::unsupported(
                         "frame constants storage view requires the frame driver's session",
                     )
                 })?;
-            let handle = session.import_frame_buffer(&mut graph, buffer, 0x1a)?;
+            let handle = session.import_frame_buffer(&mut graph, buffer, 0x35)?;
             external_accesses.push((
                 handle,
                 rhapsody::rg::AccessRange::Buffer { offset, size },
@@ -4768,14 +4812,14 @@ impl GraphPasses<'_> {
             let mut session = self
                 .cache_session
                 .as_mut()
-                .map(GraphSession::borrow_mut)
+                .map(|session| borrow_session(session))
                 .transpose()?
                 .ok_or_else(|| {
                     rhapsody::Error::unsupported(
                         "BDA upload ranges require the frame driver's session",
                     )
                 })?;
-            let handle = session.import_frame_buffer(&mut graph, chunk.buffer.clone(), 0x1a)?;
+            let handle = session.import_frame_buffer(&mut graph, chunk.buffer.clone(), 0x35)?;
             device_address_accesses.push((
                 handle,
                 rhapsody::rg::AccessRange::Buffer {
@@ -4813,8 +4857,8 @@ impl GraphPasses<'_> {
             let mut preserves_texture = false;
             let range = if let Some((index, view)) = view {
                 used_image_views[index] = true;
-                contents_unused = inactive_texture_bindings.contains(&(index as u8));
-                allow_undefined = undefined_texture_bindings.contains(&(index as u8));
+                contents_unused = inactive_texture_bindings.contains(&(index as u32));
+                allow_undefined = undefined_texture_bindings.contains(&(index as u32));
                 if allow_undefined
                     && (contents_unused || rhapsody::command::is_write(access.access))
                 {
@@ -4822,7 +4866,7 @@ impl GraphPasses<'_> {
                         "undefined texture read metadata conflicts with its actual access",
                     ));
                 }
-                preserves_texture = preserving_texture_bindings.contains(&(index as u8));
+                preserves_texture = preserving_texture_bindings.contains(&(index as u32));
                 let resource = graph.resource_handle(access.resource)?;
                 // A storage-image (write) view that is not `bind_individual_mips` and
                 // names no level count is a single `RWTexture2D[Array]` operand: the
@@ -4874,7 +4918,7 @@ impl GraphPasses<'_> {
                         })
                 {
                     used_image_views[index] = true;
-                    contents_unused = inactive_texture_bindings.contains(&(index as u8));
+                    contents_unused = inactive_texture_bindings.contains(&(index as u32));
                 }
                 rhapsody::rg::AccessRange::Whole
             };
@@ -5082,6 +5126,11 @@ impl GraphPasses<'_> {
             }
             let mut parameters: Option<rhapsody::bindless::PreparedBindlessParameters> = None;
             let mut bind_parameters = |push: &[u8]| -> rhapsody::Result<()> {
+                // This callback owns one fixed pipeline/resource group. Its
+                // previously bound immutable owner already retains every lease.
+                if parameters.as_ref().is_some_and(|current| current.matches_original_push(push)) {
+                    return Ok(());
+                }
                 let next = snapshot
                     .prepare(
                         &mut cursor,
@@ -5095,7 +5144,7 @@ impl GraphPasses<'_> {
                             )
                         }),
                         parameters.as_ref(),
-                        &dynamic,
+                        |size| dynamic.lock().allocate(size),
                     )
                     .inspect_err(|error| diagnose("parameters.complete_group", error))?;
                 // 原访问范围与上传角色已在同一组内保留；迁页后不使用旧数值下标。
@@ -5580,7 +5629,7 @@ mod sampler_catalog_tests {
     }
 
     #[test]
-    fn optional_partial_host_budget_failure_and_cancel_keep_actual_group_and_old_cache() {
+    fn optional_partial_slot_shortage_and_cancel_keep_actual_group_and_old_cache() {
         let Some(device) = device() else { return };
         let a = binding(&device, "a", "sampler_nnc");
         let b = binding(&device, "b", "sampler_default");
@@ -5591,24 +5640,21 @@ mod sampler_catalog_tests {
         commit(&pages, &heap, std::slice::from_ref(&a));
         let page = pages.state.lock().pages[0].clone();
         let old_stamp = page.leases.lock().catalog.clone().unwrap();
-        let budget = device.allocator_stats();
-        let baseline = budget.cpu_memory_usage().total();
-        let trial = heap.sampler(b.sampler.clone()).unwrap();
-        let one_lease = budget.cpu_memory_usage().total() - baseline;
-        assert!(one_lease > 0);
-        drop(trial);
-        assert_eq!(budget.cpu_memory_usage().total(), baseline);
         pages.register(std::slice::from_ref(&b));
         pages.register(std::slice::from_ref(&c));
         let mut pending = actual(&pages, &heap, std::slice::from_ref(&a));
-        let old_limit = budget.host_budget_limit();
-        budget
-            .set_host_budget(baseline.checked_add(one_lease).unwrap())
-            .unwrap();
-        let result = extras(&mut pending);
-        budget.set_host_budget(old_limit).unwrap();
+        let mut competing = Vec::new();
+        let result = pending.try_catalog_extras(|required| {
+            assert_eq!(required, [0, 0, 0, 2]);
+            // The page metadata is prepaid. Consume capacity after admission
+            // so one extra succeeds and the next fails in materialization.
+            competing.push(heap.sampler(b.sampler.clone())?);
+            competing.push(heap.sampler(c.sampler.clone())?);
+            Ok(())
+        });
+        drop(competing);
         result.unwrap();
-        assert!(!pending.publish_catalog, "部分额外项 OOM 不发布 stamp");
+        assert!(!pending.publish_catalog, "部分额外项耗尽不发布 stamp");
         assert_eq!(pending.values.len(), 1, "实际组不重放也不混入半目录");
         assert_eq!(heap.stats().tables[3].live, 1, "取消所有未发布的额外租约");
         pending.commit();
@@ -5674,13 +5720,16 @@ mod sampler_catalog_tests {
         budget
             .set_host_budget(budget.cpu_memory_usage().total())
             .unwrap();
-        let actual_error = pending.materialize().unwrap_err();
+        let materialized = pending.materialize();
+        let page_error = heap.new_page().err().expect("new page metadata needs host budget");
         budget.set_host_budget(old_limit).unwrap();
-        assert_eq!(
-            actual_error.kind(),
-            rhapsody::ErrorKind::OutOfMemory,
-            "实际组错误仍然失败"
-        );
+        materialized.unwrap();
+        assert_eq!(page_error.kind(), rhapsody::ErrorKind::OutOfMemory);
+        let full = self::heap(&device, 1);
+        let _retained = actual(&pages, &full, std::slice::from_ref(&a));
+        let mut rejected = pages.prepare(&full, std::slice::from_ref(&b)).unwrap();
+        assert_eq!(rejected.materialize().unwrap_err().kind(), rhapsody::ErrorKind::Exhausted,
+            "actual required resources still propagate capacity errors");
     }
 
     #[test]

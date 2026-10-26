@@ -14,6 +14,7 @@ use country_core::resources::roofs::{
 };
 use glam::{Quat, Vec2, Vec3};
 use utils::geometry::{circle::Circle2d, intersect::Triangle, rectangle::Rectangle2d};
+use ::utils::bytes::read_f32_le;
 
 const FLAT_Y: f32 = f32::from_bits(0xbf3d70a4);
 
@@ -76,7 +77,7 @@ pub fn generate_roof_trigger_volume(roof: &Roof) -> RoofTriggerMesh {
 }
 
 fn at(roof: &Roof, offset: usize) -> f32 {
-    f32::from_le_bytes(roof.observed()[offset..offset + 4].try_into().unwrap())
+    read_f32_le(roof.observed(), offset)
 }
 fn blend2(a: Vec2, b: Vec2, t: f32) -> Vec2 {
     b * t + a * (1.0 - t)

@@ -483,7 +483,8 @@ impl<T> UploadQueue<T> {
             .jobs
             .iter()
             .filter(|job| {
-                Self::same_key(job, &target, options.key) && job.options.epoch < options.epoch
+                Self::same_key(job, &target, options.key)
+                    && job.options.epoch < options.epoch
                     && job.mode == UploadMode::Replacement
             })
             .count();
@@ -504,8 +505,11 @@ impl<T> UploadQueue<T> {
         segments.push(Segment { offset, payload });
         let task = self.task()?;
         self.cancel_matching(
-            |job| Self::same_key(job, &target, options.key) && job.options.epoch < options.epoch
-                && job.mode == UploadMode::Replacement,
+            |job| {
+                Self::same_key(job, &target, options.key)
+                    && job.options.epoch < options.epoch
+                    && job.mode == UploadMode::Replacement
+            },
             UploadCancellation::Superseded,
         );
         if let Some(index) = epoch_index {
@@ -542,21 +546,28 @@ impl<T> UploadQueue<T> {
         mode: UploadMode,
     ) -> core::result::Result<Arc<Task>, OwnedUploadError> {
         let admitted = (|| {
-            if bytes.is_empty() || bytes.len() > self.chunk_bytes
+            if bytes.is_empty()
+                || bytes.len() > self.chunk_bytes
                 || offset.checked_add(bytes.len() as u64).is_none()
             {
-                return Err(Error::invalid_usage("queued upload interval exceeds one chunk"));
+                return Err(Error::invalid_usage(
+                    "queued upload interval exceeds one chunk",
+                ));
             }
             let epoch_index = self.fresh(&target, options)?;
-            let supersedes = |job: &Job<T>| mode == UploadMode::Replacement
-                && job.mode == UploadMode::Replacement
-                && Self::same_key(job, &target, options.key)
-                && job.options.epoch < options.epoch;
+            let supersedes = |job: &Job<T>| {
+                mode == UploadMode::Replacement
+                    && job.mode == UploadMode::Replacement
+                    && Self::same_key(job, &target, options.key)
+                    && job.options.epoch < options.epoch
+            };
             let superseded = self.jobs.iter().filter(|job| supersedes(job)).count();
             if self.jobs.len() - superseded >= self.config.max_jobs {
                 return Err(Error::Timeout);
             }
-            let sequence = self.sequence.checked_add(1)
+            let sequence = self
+                .sequence
+                .checked_add(1)
                 .ok_or_else(|| Error::invalid_usage("upload FIFO exhausted"))?;
             // Capacity, not length: retained spare storage consumes budget too.
             let payload_memory = Reservation::new(&self.local, bytes.capacity())?;
@@ -564,32 +575,58 @@ impl<T> UploadQueue<T> {
             let segments = reserve::<Segment>(1)?;
             memory.resize(segments.capacity() * size_of::<Segment>())?;
             let task = self.task()?;
-            Ok((epoch_index, sequence, payload_memory, memory, segments, task))
+            Ok((
+                epoch_index,
+                sequence,
+                payload_memory,
+                memory,
+                segments,
+                task,
+            ))
         })();
-        let (epoch_index, sequence, payload_memory, memory, mut segments, task) =
-            match admitted {
-                Ok(admitted) => admitted,
-                Err(error) => return Err(OwnedUploadError { error, payload: bytes }),
-            };
+        let (epoch_index, sequence, payload_memory, memory, mut segments, task) = match admitted {
+            Ok(admitted) => admitted,
+            Err(error) => {
+                return Err(OwnedUploadError {
+                    error,
+                    payload: bytes,
+                });
+            }
+        };
         segments.push(Segment {
             offset,
-            payload: Payload { data: bytes, _memory: payload_memory },
+            payload: Payload {
+                data: bytes,
+                _memory: payload_memory,
+            },
         });
         if mode == UploadMode::Replacement {
             self.cancel_matching(
-                |job| job.mode == UploadMode::Replacement
-                    && Self::same_key(job, &target, options.key)
-                    && job.options.epoch < options.epoch,
+                |job| {
+                    job.mode == UploadMode::Replacement
+                        && Self::same_key(job, &target, options.key)
+                        && job.options.epoch < options.epoch
+                },
                 UploadCancellation::Superseded,
             );
         }
         if let Some(index) = epoch_index {
             self.epochs[index].epoch = options.epoch;
         } else {
-            self.epochs.push(Epoch { target: Arc::downgrade(&target), key: options.key, epoch: options.epoch });
+            self.epochs.push(Epoch {
+                target: Arc::downgrade(&target),
+                key: options.key,
+                epoch: options.epoch,
+            });
         }
         self.jobs.push(Job {
-            target, options, task: task.clone(), segments, sequence, mode, _memory: memory,
+            target,
+            options,
+            task: task.clone(),
+            segments,
+            sequence,
+            mode,
+            _memory: memory,
         });
         self.sequence = sequence;
         Ok(task)
@@ -652,6 +689,46 @@ impl<T> UploadQueue<T> {
         }
         best
     }
+    /// Pack heads of distinct physical targets, at the same eligible priority.
+    /// A later write to one target stays queued until its earlier submission.
+    pub fn next_batch(
+        &mut self,
+        pressure: BudgetAction,
+        byte_limit: usize,
+        region_limit: usize,
+    ) -> smallvec::SmallVec<[usize; super::MAX_UPLOAD_TARGETS]> {
+        let mut selected = smallvec::SmallVec::new();
+        let Some(first) = self.next(pressure) else {
+            return selected;
+        };
+        let head = &self.jobs[first];
+        let priority = head.options.priority;
+        let mut bytes = head.bytes();
+        let mut regions = head.segments.len();
+        selected.push(first);
+        for (index, job) in self.jobs.iter().enumerate().skip(first + 1) {
+            if selected.len() == super::MAX_UPLOAD_TARGETS {
+                break;
+            }
+            if job.options.priority != priority
+                || self.jobs[..index]
+                    .iter()
+                    .any(|earlier| Arc::ptr_eq(&earlier.target, &job.target))
+            {
+                continue;
+            }
+            let next_bytes = job.bytes();
+            if next_bytes > byte_limit.saturating_sub(bytes)
+                || job.segments.len() > region_limit.saturating_sub(regions)
+            {
+                continue;
+            }
+            bytes += next_bytes;
+            regions += job.segments.len();
+            selected.push(index);
+        }
+        selected
+    }
     pub fn cancel_task(&mut self, task: &Arc<Task>) -> bool {
         self.cancel_matching(
             |job| Arc::ptr_eq(&job.task, task),
@@ -668,12 +745,6 @@ impl<T> UploadQueue<T> {
         let removed = before - self.tasks.len();
         self.counters.evicted_ticket_slots += removed as u64;
         removed
-    }
-    pub fn region_limit(&self) -> usize {
-        self.config.max_regions_per_job
-    }
-    pub fn has_target(&self, target: &Arc<T>) -> bool {
-        self.jobs.iter().any(|job| Arc::ptr_eq(&job.target, target))
     }
     pub fn job(&self, index: usize) -> &Job<T> {
         &self.jobs[index]
@@ -698,10 +769,14 @@ impl<T> UploadQueue<T> {
         self.jobs.clear();
         failure
     }
-    pub fn fail(&mut self, index: usize, error: Error) -> Arc<UploadFailure> {
-        let failure = Self::failure(&self.jobs[index].task, error);
-        *self.jobs[index].task.status.lock() = UploadStatus::Failed(failure.clone());
-        self.jobs.remove(index);
+    /// The selected command was never submitted. Every ticket of that command
+    /// observes the same retained failure; unrelated queued jobs stay pending.
+    pub fn fail_batch(&mut self, indices: &[usize], error: Error) -> Arc<UploadFailure> {
+        let failure = Self::failure(&self.jobs[indices[0]].task, error);
+        for &index in indices.iter().rev() {
+            *self.jobs[index].task.status.lock() = UploadStatus::Failed(failure.clone());
+            self.jobs.remove(index);
+        }
         failure
     }
     pub fn defer(&mut self) {
@@ -750,6 +825,77 @@ mod tests {
         )
         .unwrap()
     }
+    #[test]
+    fn batches_respect_payload_region_target_bounds_and_physical_fifo() {
+        let mut queue = UploadQueue::new(
+            Arc::new(AllocatorStats::default()),
+            UploadQueueConfig {
+                max_jobs: 128,
+                ..Default::default()
+            },
+            1024,
+        )
+        .unwrap();
+        let first = Arc::new(());
+        for epoch in 1..=2 {
+            queue
+                .enqueue_owned(
+                    first.clone(),
+                    0,
+                    vec![epoch as u8; 4],
+                    options(epoch, epoch, UploadPriority::High),
+                    UploadMode::OrderedDelta,
+                )
+                .unwrap();
+        }
+        for key in 3..103 {
+            queue
+                .enqueue_owned(
+                    Arc::new(()),
+                    0,
+                    vec![1; 4],
+                    options(key, 1, UploadPriority::High),
+                    UploadMode::OrderedDelta,
+                )
+                .unwrap();
+        }
+        let bytes = queue.next_batch(BudgetAction::None, 64, 256);
+        assert_eq!(bytes.len(), 16);
+        assert_eq!(&bytes[..3], &[0, 2, 3]);
+        let regions = queue.next_batch(BudgetAction::None, 1024, 3);
+        assert_eq!(&regions[..], &[0, 2, 3]);
+        let targets = queue.next_batch(BudgetAction::None, 1024, 256);
+        assert_eq!(targets.len(), super::super::MAX_UPLOAD_TARGETS);
+        assert!(
+            !targets.contains(&1),
+            "the second write to the same owner stays pending"
+        );
+    }
+    #[test]
+    fn unsubmitted_batch_failure_keeps_unrelated_tickets_pending() {
+        let mut queue = queue(64);
+        let tickets = (0..3)
+            .map(|key| {
+                queue
+                    .enqueue_owned(
+                        Arc::new(()),
+                        0,
+                        vec![1; 4],
+                        options(key, 1, UploadPriority::Normal),
+                        UploadMode::OrderedDelta,
+                    )
+                    .unwrap()
+            })
+            .collect::<Vec<_>>();
+        let failed = queue.fail_batch(&[0, 2], Error::OutOfDeviceMemory);
+        for index in [0, 2] {
+            let status = tickets[index].status.lock();
+            assert!(matches!(&*status, UploadStatus::Failed(error) if Arc::ptr_eq(error, &failed)));
+        }
+        assert!(matches!(*tickets[1].status.lock(), UploadStatus::Pending));
+        assert_eq!(queue.queued_jobs(), 1);
+        assert!(Arc::ptr_eq(&queue.jobs[0].task, &tickets[1]));
+    }
     // Synthetic values test CPU publication only; tests/transfers.rs establishes
     // that production publishes actual native success points.
     fn point(value: u64) -> SyncPoint {
@@ -764,12 +910,28 @@ mod tests {
         let target = Arc::new(());
         let bytes = vec![1, 2, 3, 4];
         let pointer = bytes.as_ptr();
-        let first = queue.enqueue_owned(target.clone(), 0, bytes,
-            options(1, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
-        queue.enqueue_owned(target.clone(), 8, vec![5; 4],
-            options(1, 2, UploadPriority::High), UploadMode::OrderedDelta).unwrap();
+        let first = queue
+            .enqueue_owned(
+                target.clone(),
+                0,
+                bytes,
+                options(1, 1, UploadPriority::Normal),
+                UploadMode::OrderedDelta,
+            )
+            .unwrap();
+        queue
+            .enqueue_owned(
+                target.clone(),
+                8,
+                vec![5; 4],
+                options(1, 2, UploadPriority::High),
+                UploadMode::OrderedDelta,
+            )
+            .unwrap();
         // Even the legacy replacing API must not implicitly cancel a delta.
-        queue.enqueue(target, 16, &[9; 4], options(1, 3, UploadPriority::High)).unwrap();
+        queue
+            .enqueue(target, 16, &[9; 4], options(1, 3, UploadPriority::High))
+            .unwrap();
         assert_eq!(queue.queued_jobs(), 3);
         assert_eq!(queue.job(0).segments[0].bytes().as_ptr(), pointer);
         assert!(matches!(*first.status.lock(), UploadStatus::Pending));
@@ -788,14 +950,29 @@ mod tests {
         bytes.extend_from_slice(&[7; 4]);
         let pointer = bytes.as_ptr();
         let before = queue.stats().known_cpu_bytes;
-        let error = queue.enqueue_owned(target.clone(), 0, bytes,
-            options(1, 9, UploadPriority::Normal), UploadMode::OrderedDelta).err().expect("budget rejection");
+        let error = queue
+            .enqueue_owned(
+                target.clone(),
+                0,
+                bytes,
+                options(1, 9, UploadPriority::Normal),
+                UploadMode::OrderedDelta,
+            )
+            .err()
+            .expect("budget rejection");
         assert_eq!(error.payload.as_ptr(), pointer);
         assert_eq!(error.payload, [7; 4]);
         assert_eq!(queue.queued_jobs(), 0);
         assert_eq!(queue.stats().known_cpu_bytes, before);
-        queue.enqueue_owned(target, 0, vec![1; 4],
-            options(1, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
+        queue
+            .enqueue_owned(
+                target,
+                0,
+                vec![1; 4],
+                options(1, 1, UploadPriority::Normal),
+                UploadMode::OrderedDelta,
+            )
+            .unwrap();
     }
 
     #[test]
@@ -803,8 +980,18 @@ mod tests {
         let mut queue = queue(64);
         let target = Arc::new(());
         let opts = options(1, 1, UploadPriority::Normal);
-        let first = queue.enqueue_owned(target.clone(), 0, vec![1; 4], opts, UploadMode::OrderedDelta).unwrap();
-        let second = queue.enqueue_owned(target, 0, vec![2; 4], opts, UploadMode::OrderedDelta).unwrap();
+        let first = queue
+            .enqueue_owned(
+                target.clone(),
+                0,
+                vec![1; 4],
+                opts,
+                UploadMode::OrderedDelta,
+            )
+            .unwrap();
+        let second = queue
+            .enqueue_owned(target, 0, vec![2; 4], opts, UploadMode::OrderedDelta)
+            .unwrap();
         assert!(!Arc::ptr_eq(&first, &second));
         queue.publish(0, point(1));
         assert!(matches!(*first.status.lock(), UploadStatus::Submitted(_)));
@@ -1062,7 +1249,7 @@ mod tests {
                 options(1, 1, UploadPriority::Normal),
             )
             .unwrap();
-        queue.fail(0, Error::OutOfDeviceMemory);
+        queue.fail_batch(&[0], Error::OutOfDeviceMemory);
         assert!(
             matches!(&*failed.status.lock(), UploadStatus::Failed(error) if matches!(error.error(), Error::OutOfDeviceMemory))
         );
@@ -1099,8 +1286,8 @@ mod tests {
                 options(1, 1, UploadPriority::Normal),
             )
             .unwrap();
-        let failure = queue.fail(
-            0,
+        let failure = queue.fail_batch(
+            &[0],
             Error::invalid_usage("injected structured upload failure"),
         );
         let original = failure.to_error();

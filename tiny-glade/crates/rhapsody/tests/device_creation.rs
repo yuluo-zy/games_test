@@ -1,23 +1,10 @@
-//! Device creation uses the same negotiated capabilities for every entry point.
-use rhapsody::raw::init::GraphicsInstance;
-
+//! Only DeviceConfig negotiates production device creation.
+mod gpu_test_support;
+use rhapsody::device::{Device, DeviceConfig, Feature};
 #[test]
-fn legacy_selection_uses_the_common_device_negotiation() {
-    let Ok(graphics) = GraphicsInstance::new() else {
-        return;
-    };
-    let Ok(devices) = graphics.available_for_surface(None, Default::default()) else {
-        return;
-    };
-    match devices.create_device(&graphics) {
-        Ok(device) => {
-            assert!(
-                device
-                    .caps()
-                    .enabled()
-                    .contains(rhapsody::device::Feature::TimelineSemaphore)
-            );
-        }
-        Err(error) => panic!("默认设备创建失败：{error}"),
+fn configured_creation_enables_the_required_rendering_features() {
+    let Some(device) = gpu_test_support::initialize("configured device creation", Device::new_headless(&DeviceConfig::headless())) else { return; };
+    for feature in [Feature::TimelineSemaphore, Feature::DynamicRendering, Feature::Synchronization2] {
+        assert!(device.caps().enabled().contains(feature));
     }
 }

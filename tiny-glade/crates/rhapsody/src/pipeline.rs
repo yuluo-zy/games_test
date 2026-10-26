@@ -210,19 +210,16 @@ impl Job {
     }
 }
 
-enum Status {
-    Pending,
-    Ready(Arc<VulkanPipeline>),
-    Failed(Arc<Error>),
-}
 struct Completion {
-    status: Mutex<Status>,
+    status: Mutex<PipelinePoll>,
     changed: Condvar,
 }
 #[derive(Clone)]
 pub struct PipelineTicket {
     completion: Arc<Completion>,
+    compiler: std::sync::Weak<Shared>,
 }
+#[derive(Clone)]
 pub enum PipelinePoll {
     Pending,
     Ready(Arc<VulkanPipeline>),
@@ -239,10 +236,25 @@ impl PipelineTicket {
         }
     }
     pub fn poll(&self) -> PipelinePoll {
-        match &*self.completion.status.lock() {
-            Status::Pending => PipelinePoll::Pending,
-            Status::Ready(pipeline) => PipelinePoll::Ready(pipeline.clone()),
-            Status::Failed(error) => PipelinePoll::Failed(error.clone()),
+        self.completion.status.lock().clone()
+    }
+    fn cancel_unshared_queued(&self) {
+        let Some(shared) = self.compiler.upgrade() else {
+            return;
+        };
+        let mut state = shared.state.lock();
+        // Cache + queue + this pending owner. Other tickets keep a merged
+        // request alive; an active native compilation always finishes normally.
+        if Arc::strong_count(&self.completion) != 3 {
+            return;
+        }
+        if let Some(index) = state
+            .queue
+            .iter()
+            .position(|job| Arc::ptr_eq(&job.completion, &self.completion))
+        {
+            let queued = state.queue.remove(index).expect("located queued pipeline");
+            cancel_queued(&mut state, queued);
         }
     }
     /// Intended for startup/prewarming and tests. A render frame should poll
@@ -252,9 +264,9 @@ impl PipelineTicket {
         let mut status = self.completion.status.lock();
         loop {
             match &*status {
-                Status::Ready(pipeline) => return Ok(pipeline.clone()),
-                Status::Failed(error) => return Err(error.clone()),
-                Status::Pending => {
+                PipelinePoll::Ready(pipeline) => return Ok(pipeline.clone()),
+                PipelinePoll::Failed(error) => return Err(error.clone()),
+                PipelinePoll::Pending => {
                     let remaining = deadline
                         .and_then(|deadline| deadline.checked_duration_since(Instant::now()))
                         .ok_or_else(|| Arc::new(Error::Timeout))?;
@@ -263,7 +275,7 @@ impl PipelineTicket {
                         .changed
                         .wait_for(&mut status, remaining)
                         .timed_out()
-                        && matches!(*status, Status::Pending)
+                        && matches!(*status, PipelinePoll::Pending)
                     {
                         return Err(Arc::new(Error::Timeout));
                     }
@@ -300,6 +312,7 @@ struct State {
     peak_pending: usize,
     peak_request_bytes: usize,
     compiled: u64,
+    failed: u64,
     merged: u64,
 }
 struct Shared {
@@ -317,7 +330,9 @@ pub struct CompilerStats {
     pub cached_key_bytes: usize,
     pub peak_pending: usize,
     pub peak_request_bytes: usize,
+    /// Successfully created pipelines. Failed attempts are counted separately.
     pub compiled: u64,
+    pub failed: u64,
     pub merged: u64,
 }
 pub struct AsyncPipelineCompiler {
@@ -344,6 +359,7 @@ impl AsyncPipelineCompiler {
                 peak_pending: 0,
                 peak_request_bytes: 0,
                 compiled: 0,
+                failed: 0,
                 merged: 0,
             }),
         });
@@ -414,21 +430,42 @@ impl AsyncPipelineCompiler {
     /// Own the request and return a stable ticket without caller-side retry or
     /// sleep. Count/byte refusal is explicit allocation pressure, never an
     /// invitation to redeclare a frame. Ready pipelines keep the bounded LRU.
-    pub fn defer_compute(&self, desc: ComputePipelineDesc) -> Result<PipelineTicket> {
-        self.request_inner(Job::Compute(desc), RequestOptions::default(), true)
-    }
+
     pub fn defer_raster(&self, desc: RasterPipelineDesc) -> Result<PipelineTicket> {
         self.request_inner(Job::Raster(Box::new(desc)), RequestOptions::default(), true)
     }
-    pub fn defer_compute_spirv(&self, bytes: Vec<u8>, entry: CString,
-        layout: Arc<PipelineLayout>) -> Result<PipelineTicket> {
-        self.request_inner(Job::ComputeSpirv { bytes: Arc::new(bytes), entry, layout }, RequestOptions::default(), true)
+    pub fn defer_compute_spirv(
+        &self,
+        bytes: Vec<u8>,
+        entry: CString,
+        layout: Arc<PipelineLayout>,
+    ) -> Result<PipelineTicket> {
+        self.request_inner(
+            Job::ComputeSpirv {
+                bytes: Arc::new(bytes),
+                entry,
+                layout,
+            },
+            RequestOptions::default(),
+            true,
+        )
     }
     fn request(&self, job: Job, options: RequestOptions) -> Result<PipelineTicket> {
         self.request_inner(job, options, false)
     }
-    fn request_inner(&self, job: Job, options: RequestOptions, deferred: bool) -> Result<PipelineTicket> {
-        let refused = || if deferred { Error::OutOfHostMemory } else { Error::Timeout };
+    fn request_inner(
+        &self,
+        job: Job,
+        options: RequestOptions,
+        deferred: bool,
+    ) -> Result<PipelineTicket> {
+        let refused = || {
+            if deferred {
+                Error::OutOfHostMemory
+            } else {
+                Error::Timeout
+            }
+        };
         if self.shared.cache.device.is_device_lost() {
             return Err(Error::DeviceLost);
         }
@@ -457,7 +494,10 @@ impl AsyncPipelineCompiler {
                 state.lru.remove(index);
             }
             state.lru.push_back(key);
-            return Ok(PipelineTicket { completion });
+            return Ok(PipelineTicket {
+                completion,
+                compiler: Arc::downgrade(&self.shared),
+            });
         }
         if options.priority == CompilePriority::Background
             && self.shared.cache.device.memory.stats.budget_action()
@@ -465,7 +505,11 @@ impl AsyncPipelineCompiler {
         {
             return Err(refused());
         }
-        let pending_limit = if deferred { self.shared.config.max_deferred_pending } else { self.shared.config.max_pending };
+        let pending_limit = if deferred {
+            self.shared.config.max_deferred_pending
+        } else {
+            self.shared.config.max_pending
+        };
         if state.pending >= pending_limit
             || state
                 .request_bytes
@@ -475,8 +519,13 @@ impl AsyncPipelineCompiler {
             return Err(refused());
         }
         let key_limit = if deferred {
-            self.shared.config.max_cached_requests.saturating_add(self.shared.config.max_deferred_pending)
-        } else { self.shared.config.max_cached_requests };
+            self.shared
+                .config
+                .max_cached_requests
+                .saturating_add(self.shared.config.max_deferred_pending)
+        } else {
+            self.shared.config.max_cached_requests
+        };
         while state.cached.len() >= key_limit
             || state
                 .cache_bytes
@@ -485,7 +534,7 @@ impl AsyncPipelineCompiler {
         {
             let position = state.lru.iter().position(|key| {
                 state.cached.get(key).is_some_and(|entry| {
-                    !matches!(*entry.completion.status.lock(), Status::Pending)
+                    !matches!(*entry.completion.status.lock(), PipelinePoll::Pending)
                 })
             });
             let Some(position) = position else {
@@ -505,7 +554,7 @@ impl AsyncPipelineCompiler {
             .reserve_cpu_bytes(bytes as u64, crate::device::BudgetCategory::Live)?;
         let key = job.key();
         let completion = Arc::new(Completion {
-            status: Mutex::new(Status::Pending),
+            status: Mutex::new(PipelinePoll::Pending),
             changed: Condvar::new(),
         });
         state.cached.insert(
@@ -530,7 +579,10 @@ impl AsyncPipelineCompiler {
         state.peak_pending = state.peak_pending.max(state.pending);
         state.peak_request_bytes = state.peak_request_bytes.max(state.request_bytes);
         self.shared.available.notify_one();
-        Ok(PipelineTicket { completion })
+        Ok(PipelineTicket {
+            completion,
+            compiler: Arc::downgrade(&self.shared),
+        })
     }
     pub fn stats(&self) -> CompilerStats {
         let state = self.shared.state.lock();
@@ -543,6 +595,7 @@ impl AsyncPipelineCompiler {
             peak_pending: state.peak_pending,
             peak_request_bytes: state.peak_request_bytes,
             compiled: state.compiled,
+            failed: state.failed,
             merged: state.merged,
         }
     }
@@ -589,7 +642,8 @@ fn cancel_queued(state: &mut State, queued: Queued) {
     drop(job);
     drop(key);
     drop(removed);
-    *completion.status.lock() = Status::Failed(Arc::new(Error::Timeout));
+    *completion.status.lock() =
+        PipelinePoll::Failed(Arc::new(Error::invalid_usage("pipeline request cancelled")));
     completion.changed.notify_all();
 }
 fn worker(shared: Arc<Shared>) {
@@ -655,7 +709,7 @@ fn worker(shared: Arc<Shared>) {
         };
         state.pending -= 1;
         state.request_bytes -= queued.bytes;
-        state.compiled += 1;
+        if failed { state.failed += 1; } else { state.compiled += 1; }
         let Queued {
             job,
             key,
@@ -666,18 +720,25 @@ fn worker(shared: Arc<Shared>) {
         drop(key);
         drop(removed);
         *completion.status.lock() = match result {
-            Ok(pipeline) => Status::Ready(pipeline),
-            Err(error) => Status::Failed(Arc::new(error)),
+            Ok(pipeline) => PipelinePoll::Ready(pipeline),
+            Err(error) => PipelinePoll::Failed(Arc::new(error)),
         };
         completion.changed.notify_all();
         // Pending keys are retained for deduplication. Once work completes,
         // trim back to the configured completed-request cache bound even when
         // a deferred burst temporarily held more pending keys.
         while state.cached.len() > shared.config.max_cached_requests {
-            let Some(index) = state.lru.iter().position(|key| state.cached.get(key)
-                .is_some_and(|entry| !matches!(*entry.completion.status.lock(), Status::Pending))) else { break; };
+            let Some(index) = state.lru.iter().position(|key| {
+                state.cached.get(key).is_some_and(|entry| {
+                    !matches!(*entry.completion.status.lock(), PipelinePoll::Pending)
+                })
+            }) else {
+                break;
+            };
             let key = state.lru.remove(index).expect("completed LRU entry");
-            if let Some(entry) = state.cached.remove(&key) { state.cache_bytes -= entry.bytes; }
+            if let Some(entry) = state.cached.remove(&key) {
+                state.cache_bytes -= entry.bytes;
+            }
         }
     }
 }
@@ -698,7 +759,7 @@ fn evict_completed_requests(state: &mut State, target_bytes: u64) -> u64 {
     while index < state.lru.len() && released < target_bytes {
         let idle = state.cached.get(&state.lru[index]).is_some_and(|entry| {
             Arc::strong_count(&entry.completion) == 1
-                && !matches!(*entry.completion.status.lock(), Status::Pending)
+                && !matches!(*entry.completion.status.lock(), PipelinePoll::Pending)
         });
         if !idle {
             index += 1;
@@ -746,7 +807,16 @@ impl HotPipeline {
         }
     }
     pub fn stage(&mut self, ticket: PipelineTicket) {
-        self.pending = Some(ticket);
+        if self
+            .pending
+            .as_ref()
+            .is_some_and(|old| Arc::ptr_eq(&old.completion, &ticket.completion))
+        {
+            return;
+        }
+        if let Some(previous) = self.pending.replace(ticket) {
+            previous.cancel_unshared_queued();
+        }
     }
     pub fn current(&self) -> Arc<VulkanPipeline> {
         self.current.clone()
@@ -1005,15 +1075,16 @@ mod tests {
             peak_pending: 0,
             peak_request_bytes: 0,
             compiled: 0,
+                failed: 0,
             merged: 0,
         };
         let mut tickets = Vec::new();
         // (status, ticket alive) in LRU order.
         let entries = [
-            (Status::Failed(Arc::new(Error::OutOfHostMemory)), false),
-            (Status::Pending, false),
-            (Status::Failed(Arc::new(Error::OutOfHostMemory)), true),
-            (Status::Failed(Arc::new(Error::OutOfHostMemory)), false),
+            (PipelinePoll::Failed(Arc::new(Error::OutOfHostMemory)), false),
+            (PipelinePoll::Pending, false),
+            (PipelinePoll::Failed(Arc::new(Error::OutOfHostMemory)), true),
+            (PipelinePoll::Failed(Arc::new(Error::OutOfHostMemory)), false),
         ];
         for (index, (status, referenced)) in entries.into_iter().enumerate() {
             let key: Key = Arc::new(KeyPayload::Raster(vec![index as u64]));
@@ -1092,42 +1163,81 @@ mod tests {
     }
     #[test]
     fn deferred_queue_owns_bounded_pending_requests_and_merges_before_refusing() {
-        let device = match crate::device::Device::new_headless(&crate::device::DeviceConfig::headless()) {
-            Ok(device) => device,
-            Err(error) => {
-                assert!(std::env::var_os("RHAPSODY_REQUIRE_VULKAN").is_none(), "{error}");
-                return;
-            }
-        };
+        let device =
+            match crate::device::Device::new_headless(&crate::device::DeviceConfig::headless()) {
+                Ok(device) => device,
+                Err(error) => {
+                    assert!(
+                        std::env::var_os("RHAPSODY_REQUIRE_VULKAN").is_none(),
+                        "{error}"
+                    );
+                    return;
+                }
+            };
         let layout = PipelineLayout::new(device.clone(), vec![], vec![]).unwrap();
         let mut compiler = AsyncPipelineCompiler::new(
             Arc::new(PipelineCache::new(device, &[]).unwrap()),
-            CompilerConfig { max_pending: 1, max_deferred_pending: 3, max_cached_requests: 1, ..Default::default() },
-        ).unwrap();
+            CompilerConfig {
+                max_pending: 1,
+                max_deferred_pending: 3,
+                max_cached_requests: 1,
+                ..Default::default()
+            },
+        )
+        .unwrap();
         // Stop idle workers before enqueueing to deterministically exercise a
         // saturated queue, independent of native driver compilation speed.
         compiler.shared.state.lock().stopping = true;
         compiler.shared.available.notify_all();
-        for worker in compiler.workers.drain(..) { worker.join().unwrap(); }
+        for worker in compiler.workers.drain(..) {
+            worker.join().unwrap();
+        }
         compiler.shared.state.lock().stopping = false;
         let mut tickets = Vec::new();
         for value in 0..3 {
-            tickets.push(compiler.defer_compute_spirv(vec![value; 4], c"main".to_owned(), layout.clone()).unwrap());
+            tickets.push(
+                compiler
+                    .defer_compute_spirv(vec![value; 4], c"main".to_owned(), layout.clone())
+                    .unwrap(),
+            );
         }
         assert_eq!(compiler.stats().pending, 3);
-        let merged = compiler.defer_compute_spirv(vec![0; 4], c"main".to_owned(), layout.clone()).unwrap();
+        let merged = compiler
+            .defer_compute_spirv(vec![0; 4], c"main".to_owned(), layout.clone())
+            .unwrap();
         assert!(merged.same_request(&tickets[0]));
         let before = compiler.stats();
-        assert!(matches!(compiler.defer_compute_spirv(vec![3; 4], c"main".to_owned(), layout.clone()), Err(Error::OutOfHostMemory)));
-        assert!(matches!(compiler.request_compute_spirv(vec![3; 4], c"main".to_owned(), layout), Err(Error::Timeout)));
+        assert!(matches!(
+            compiler.defer_compute_spirv(vec![3; 4], c"main".to_owned(), layout.clone()),
+            Err(Error::OutOfHostMemory)
+        ));
+        assert!(matches!(
+            compiler.request_compute_spirv(vec![3; 4], c"main".to_owned(), layout),
+            Err(Error::Timeout)
+        ));
         let after = compiler.stats();
-        assert_eq!((before.pending, before.request_bytes, before.cached_key_bytes),
-            (after.pending, after.request_bytes, after.cached_key_bytes));
-        assert!(tickets.iter().all(|ticket| matches!(ticket.poll(), PipelinePoll::Pending)));
+        assert_eq!(
+            (
+                before.pending,
+                before.request_bytes,
+                before.cached_key_bytes
+            ),
+            (after.pending, after.request_bytes, after.cached_key_bytes)
+        );
+        assert!(
+            tickets
+                .iter()
+                .all(|ticket| matches!(ticket.poll(), PipelinePoll::Pending))
+        );
         let shared = compiler.shared.clone();
-        compiler.workers.push(std::thread::spawn(move || worker(shared)));
+        compiler
+            .workers
+            .push(std::thread::spawn(move || worker(shared)));
         for ticket in &tickets {
-            assert!(ticket.wait(Duration::from_secs(10)).is_err(), "invalid SPIR-V must retain its terminal error");
+            assert!(
+                ticket.wait(Duration::from_secs(10)).is_err(),
+                "invalid SPIR-V must retain its terminal error"
+            );
         }
         // Failed jobs leave the request table; no permanently full queue remains.
         let deadline = std::time::Instant::now() + Duration::from_secs(5);

@@ -1,8 +1,7 @@
 //! [`DeviceCore`]: the ash handles, enabled capabilities and negotiated
-//! policy of one logical device. Lock-free; immutable after creation except
-//! the one-shot physical-device wrapper.
+//! policy of one logical device. Lock-free and immutable after creation.
 use ash::vk;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use crate::raw::{instance::VulkanInstance, physical_device::PhysicalDevice};
 
@@ -111,7 +110,7 @@ pub(crate) struct DeviceCore {
     pub(crate) frames_in_flight: u32,
     pub(crate) properties: vk::PhysicalDeviceProperties,
     pub(crate) memory_properties: vk::PhysicalDeviceMemoryProperties,
-    pub(crate) physical_info: OnceLock<Arc<PhysicalDevice>>,
+    pub(crate) physical_info: Arc<PhysicalDevice>,
     pub(crate) capabilities: DeviceCapabilities,
     /// 创建时实际启用的设备扩展名（`vkCreateDevice` 的 `ppEnabledExtensionNames`）。
     pub(crate) enabled_extensions: Vec<String>,
@@ -131,12 +130,13 @@ impl DeviceCore {
     /// # Safety
     /// `info` must be a valid create info for `physical` of `instance`.
     pub(crate) unsafe fn create(
-        instance: Arc<VulkanInstance>,
-        physical: vk::PhysicalDevice,
+        physical_info: Arc<PhysicalDevice>,
         info: &vk::DeviceCreateInfo<'_>,
         runtime: &crate::device::init::RuntimeConfig,
     ) -> crate::Result<Self> {
         unsafe {
+            let instance = physical_info.instance().clone();
+            let physical = physical_info.raw_handle();
             let capabilities = DeviceCapabilities::from_create_info(info);
             let enabled_extensions = if info.pp_enabled_extension_names.is_null() {
                 Vec::new()
@@ -158,10 +158,8 @@ impl DeviceCore {
                 .iter()
                 .any(|name| name == "VK_KHR_synchronization2")
                 .then(|| ash::khr::synchronization2::Device::new(&instance.instance, &device));
-            let memory_properties = instance
-                .instance
-                .get_physical_device_memory_properties(physical);
-            let properties = instance.instance.get_physical_device_properties(physical);
+            let memory_properties = physical_info.memory;
+            let properties = physical_info.properties;
             Ok(Self {
                 generation: crate::device::DeviceGeneration::next(),
                 caps: runtime.caps,
@@ -169,7 +167,7 @@ impl DeviceCore {
                 frames_in_flight: runtime.frames_in_flight,
                 properties,
                 memory_properties,
-                physical_info: OnceLock::new(),
+                physical_info,
                 capabilities,
                 enabled_extensions,
                 synchronization2,

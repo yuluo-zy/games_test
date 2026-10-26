@@ -84,9 +84,13 @@ impl<T> Retirement<T> {
             .points()
             .next()
             .map_or((0, 0), |point| (point.queue.index(), point.value));
-        self.insert(queue, Entry { value, after, item })
-            .map_err(|entry| entry.item)?;
+        // Publish admission before the queue entry can become observable to a
+        // collector; failed insertion returns that reserved count immediately.
         self.len.fetch_add(1, Ordering::AcqRel);
+        if let Err(entry) = self.insert(queue, Entry { value, after, item }) {
+            self.len.fetch_sub(1, Ordering::AcqRel);
+            return Err(entry.item);
+        }
         Ok(())
     }
 

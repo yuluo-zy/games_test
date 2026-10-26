@@ -168,15 +168,3 @@ pub fn startup_duck_assets(
     );
 }
 
-/// Compatibility mesh-only entry used by the old generic core schedule. The
-/// real device App must use system-critters' complete per-session producer.
-pub fn startup_critters_meshes(meshes: Res<AssetMeshLibrary>) {
-    for (path, name) in [
-        ("assets/meshes/butterfly.json", "butterfly"),
-        ("assets/meshes/duck_flying.json", "duck"),
-        ("assets/meshes/duck_heart.json", "duck_heart"),
-        ("assets/meshes/splash.json", "splash"),
-    ] {
-        super::register_mesh_file(&meshes, path, Some(name));
-    }
-}

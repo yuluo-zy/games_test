@@ -26,7 +26,7 @@ pub const DEFAULT_ARCH_HEIGHT: f32 = f32::from_bits(0x40333333);
 
 /// B StructureType（inner_wall_state 域；`hint_camera_display_condition` 0x14227c910
 /// 的 `StructureType::is_fence` 调用面 + `ui_edit_roof` 族）。布局 U（字段表待取证）。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StructureType(pub u8);
 
 impl StructureType {

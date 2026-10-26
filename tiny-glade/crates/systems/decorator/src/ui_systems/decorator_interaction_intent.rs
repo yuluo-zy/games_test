@@ -480,7 +480,7 @@ mod snap_balcony_door_regressions {
             BalconyDoorSnap::RejectedUpperClearance);
         wall.regular_heights.as_mut().unwrap().arch_segment_heights.fill(4.5);
         assert_eq!(invoke(&mut ecs, &wall, &info(0x38), Vec3::Y * 3.0, true, true), expected);
-        ecs.get_mut::<Roof>(current_roof).unwrap().observed_mut()[0x30..0x34]
+        ecs.component_mut::<Roof>(current_roof).unwrap().observed_mut()[0x30..0x34]
             .copy_from_slice(&0.0f32.to_le_bytes());
         assert_eq!(invoke(&mut ecs, &wall, &info(0x38), Vec3::Y * 3.0, true, true),
             BalconyDoorSnap::RejectedUpperClearance);
@@ -539,3 +539,5 @@ mod snap_balcony_door_regressions {
         assert_eq!(snap_max_number(2.0, f32::NAN), 2.0);
     }
 }
+
+use country_core::render::extract::WorldComponentWrite as _;

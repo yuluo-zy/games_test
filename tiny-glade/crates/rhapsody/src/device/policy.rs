@@ -10,20 +10,6 @@ pub enum DescriptorStrategy {
     Bindless,
 }
 
-/// How render-graph batches are recorded. This is the single definition of
-/// the default for devices and graph sessions alike; the chunking parameters
-/// for each variant live in `rg::parallel::ParallelRecording::from`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum RecordingPolicy {
-    /// One command buffer per batch, always on the calling thread.
-    Serial,
-    /// Serial for the first frame and for light frames (no statistics or a
-    /// cheap previous frame); otherwise balanced parallel chunking driven by
-    /// the previous frame's per-pass recording cost.
-    #[default]
-    Adaptive,
-}
-
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum AllocationStrategy {
     #[default]
@@ -33,14 +19,12 @@ pub enum AllocationStrategy {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct PolicyPreferences {
-    pub recording: RecordingPolicy,
     pub allocation: AllocationStrategy,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ExecutionPolicy {
     pub descriptor: DescriptorStrategy,
-    pub recording: RecordingPolicy,
     pub allocation: AllocationStrategy,
 }
 
@@ -71,7 +55,6 @@ pub fn plan_policy(caps: &DeviceCaps, preferences: &PolicyPreferences) -> Result
     caps.require_all_enabled(bindless_features())?;
     Ok(ExecutionPolicy {
         descriptor: DescriptorStrategy::Bindless,
-        recording: preferences.recording,
         allocation: preferences.allocation,
     })
 }
@@ -110,38 +93,15 @@ mod tests {
     }
 
     #[test]
-    fn adaptive_recording_is_the_one_default_for_devices_and_graphs() {
-        assert_eq!(RecordingPolicy::default(), RecordingPolicy::Adaptive);
-        assert_eq!(
-            PolicyPreferences::default().recording,
-            RecordingPolicy::Adaptive
-        );
-        assert_eq!(
-            crate::device::DeviceConfig::default().recording,
-            RecordingPolicy::Adaptive
-        );
-        assert_eq!(
-            crate::rg::parallel::ParallelRecording::default(),
-            crate::rg::parallel::ParallelRecording::from(RecordingPolicy::Adaptive)
-        );
-        assert_eq!(
-            crate::rg::parallel::ParallelRecording::from(RecordingPolicy::Adaptive),
-            crate::rg::parallel::ParallelRecording::ADAPTIVE
-        );
-    }
-
-    #[test]
-    fn policy_carries_recording_and_allocation_preferences() {
+    fn policy_carries_allocation_preferences() {
         let enabled = bindless_features();
         let policy = plan_policy(
             &DeviceCaps::new(enabled, enabled),
             &PolicyPreferences {
-                recording: RecordingPolicy::Serial,
                 allocation: AllocationStrategy::Dedicated,
             },
         )
         .unwrap();
-        assert_eq!(policy.recording, RecordingPolicy::Serial);
         assert_eq!(policy.allocation, AllocationStrategy::Dedicated);
     }
 }

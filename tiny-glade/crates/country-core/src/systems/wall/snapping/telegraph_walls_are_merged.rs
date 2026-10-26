@@ -51,7 +51,7 @@ fn slice_bounds(curve: &Curve3, t: f32, flag: u8) -> (f32, f32) {
 pub fn telegraph_walls_are_merged(
     mut requests: EventReader<PlayLineAcrossWall>,
     public: Res<PublicWalls>,
-    mut lines: Query<(Entity, &mut LineAcrossWallSignifier, &Handle<Mesh>, &mut DashedLineLength)>,
+    mut lines: Query<(Entity, &mut LineAcrossWallSignifier, &Handle<Mesh>, ComponentWrite<DashedLineLength>)>,
     mut meshes: ResMut<AssetMeshLibrary>,
     shaders: Res<SharedAssetShaderLibrary>,
     mut commands: Commands,
@@ -109,7 +109,7 @@ mod tests {
         ));
         let terrain = TerrainHeightGrid512 { encoded: vec![0; 512*512].into(), minimum_y: 0., maximum_y: 0., sampling_fix: false };
         let mut public = PublicWalls::default();
-        public.consume(&mut inner, &terrain);
+        public.consume_with_paths(&mut inner, &terrain, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         assert!(public.get(wall).is_some());
         world.insert_resource(public);
         world.init_resource::<AssetMeshLibrary>();
@@ -175,3 +175,5 @@ mod tests {
         assert_eq!(forward, slice_bounds(&curve, 0.75, 1));
     }
 }
+
+use crate::render::extract::ComponentWrite;

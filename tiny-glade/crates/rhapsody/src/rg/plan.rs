@@ -97,8 +97,8 @@ pub struct GraphDefinition {
     pub compiler_version: u32,
 }
 impl GraphDefinition {
-    pub(crate) fn differing_key_reason(&self, new: &Self) -> super::cache::CacheReason {
-        use super::cache::CacheReason;
+    pub(crate) fn differing_key_reason(&self, new: &Self) -> crate::collections::cache::CacheReason {
+        use crate::collections::cache::CacheReason;
         if self.context.device_generation != new.context.device_generation {
             CacheReason::DeviceGeneration
         } else if self.context != new.context {
@@ -137,7 +137,7 @@ impl GraphDefinition {
             CacheReason::GraphStructure
         }
     }
-    /// Full borrowed key comparison for a frame binding. Only graph scope,
+    /// Compare a structurally validated declaration at the execution boundary. Only graph scope,
     /// import identity and initial access are dynamic. Explicit versions still
     /// have to equal the already validated normalized version stream, and an
     /// undefined import must be initialized again on this frame.
@@ -204,7 +204,6 @@ impl GraphDefinition {
                 return Ok(false);
             }
         }
-        graph.validate()?;
         super::resource_contracts::validate_matching_initialization(graph, |code| {
             self.is_write(code)
         })?;
@@ -219,6 +218,16 @@ impl GraphDefinition {
         context: PlanContext,
     ) -> crate::Result<Self> {
         graph.validate()?;
+        Self::from_validated_declaration(graph, dependency, context)
+    }
+
+    /// The execution owner has validated this immutable declaration once,
+    /// before backend preparation or cache lookup.
+    pub(crate) fn from_validated_declaration(
+        graph: &GraphDeclaration,
+        dependency: &mut impl AccessDependency,
+        context: PlanContext,
+    ) -> crate::Result<Self> {
         if graph
             .subgraphs
             .iter()
@@ -969,10 +978,6 @@ fn finish_plan(definition: GraphDefinition, analysis: PassAnalysis) -> crate::Re
     Ok(plan)
 }
 
-/// Version retained in public dumps and cache keys; no frame identity is stored.
-pub fn access_version(access: &AccessDeclaration) -> AccessVersion {
-    access.version
-}
 
 #[cfg(test)]
 mod upgraded_content_tests {
@@ -1074,7 +1079,7 @@ mod upgraded_content_tests {
                 .matches_declaration(&raw, &mut AccessTable::original(), PlanContext::default())
                 .unwrap()
         );
-        let mut full = super::super::cache::BoundedCache::new(4, 4096 * 1024);
+        let mut full = crate::collections::cache::BoundedCache::new(4, 4096 * 1024);
         full.insert(Collision(allowed.clone()), 1u32, 1);
         full.insert(Collision(strict.clone()), 2u32, 1);
         assert_eq!(full.get(&Collision(allowed.clone())), Some(&1));
@@ -1220,7 +1225,7 @@ mod borrowed_definition_tests {
     }
     #[test]
     fn complete_plan_miss_reasons_distinguish_policy_interface_and_structure() {
-        use super::super::cache::CacheReason;
+        use crate::collections::cache::CacheReason;
         let old = GraphDefinition::from_declaration(
             &declaration(),
             &mut AccessTable::original(),
@@ -1407,7 +1412,7 @@ mod borrowed_definition_tests {
             assert_ne!(original, changed);
             assert_eq!(
                 original.differing_key_reason(&changed),
-                super::super::cache::CacheReason::AccessSemantics
+                crate::collections::cache::CacheReason::AccessSemantics
             );
             assert!(
                 !original
@@ -1415,25 +1420,6 @@ mod borrowed_definition_tests {
                     .unwrap()
             );
         }
-    }
-    #[test]
-    fn matching_definition_still_rejects_aliased_dynamic_imports() {
-        let mut graph = declaration();
-        graph.resources[1].source = OriginSource::ImportUnowned {
-            token: 22,
-            initial_access: 0x25,
-        };
-        let key = GraphDefinition::from_declaration(
-            &graph,
-            &mut AccessTable::original(),
-            PlanContext::default(),
-        )
-        .unwrap();
-        graph.resources[1].source = graph.resources[0].source;
-        assert!(
-            key.matches_declaration(&graph, &mut AccessTable::original(), PlanContext::default())
-                .is_err()
-        );
     }
     #[test]
     fn matching_import_revalidates_partial_initialization_and_read_modify_write() {

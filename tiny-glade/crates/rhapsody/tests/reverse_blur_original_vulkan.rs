@@ -4,7 +4,7 @@ mod gpu_test_support;
 use ash::vk::{self, Handle};
 use rhapsody::{
     bindless::{
-        BindlessConfig, BindlessHeap, BindlessParameters, BindlessResource, BindlessShaderPackage,
+        BindlessConfig, BindlessHeap, BindlessResource, BindlessShaderPackage,
     },
     device::{Device, DeviceConfig},
     pipeline::{AsyncPipelineCompiler, CompilerConfig, PipelineCache},
@@ -160,6 +160,7 @@ fn run_original_reverse(levels: u32) {
     )
     .unwrap();
     let package = BindlessShaderPackage::new(&heap, &original, 64).unwrap();
+    let pages = rhapsody::bindless::BindlessPagePool::new(heap.clone()).unwrap();
     let abi = package.abi.clone();
     let compiler = AsyncPipelineCompiler::new(
         Arc::new(PipelineCache::new(device.clone(), &[]).unwrap()),
@@ -259,9 +260,9 @@ fn run_original_reverse(levels: u32) {
         }
         pass.add_resource_access_range(full, GENERAL, 0, range(mip))
             .unwrap();
-        let (device, heap, abi, pipeline, sampler, dynamic) = (
+        let (device, pages, abi, pipeline, sampler, dynamic) = (
             device.clone(),
-            heap.clone(),
+            pages.clone(),
             abi.clone(),
             pipeline.clone(),
             sampler.clone(),
@@ -286,7 +287,10 @@ fn run_original_reverse(levels: u32) {
                 }
             );
             assert_eq!(output_layout, vk::ImageLayout::GENERAL);
-            let mut bindings = BindlessParameters::new(heap.clone(), abi.clone(), &[])?;
+            let mut cursor = pages.cursor();
+            let prepared = cursor.prepare(|group| {
+            group.require_slots([2, 1, 2, 1])?;
+            let mut bindings = group.parameters(abi.clone(), &[])?;
             // These exact returned layouts enter the actual descriptor writes;
             // bind_pass also independently validates native scope/range/layout.
             bindings.write(
@@ -333,7 +337,8 @@ fn run_original_reverse(levels: u32) {
                     size: uniform.size,
                 },
             )?;
-            let prepared = bindings.finish(&mut dynamic)?;
+            bindings.finish(|size| dynamic.allocate(size)).map_err(Into::into)
+            })?;
             let command = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
                 pipeline.bind_pipeline(command);

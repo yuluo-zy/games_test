@@ -183,9 +183,7 @@ impl Device {
             ..Default::default()
         };
         *self.memory.driver_budget.write() = Some(crate::raw::physical_device::MemoryBudgetSnapshot::from_vk(&budget));
-        if let Some(physical) = self.core.physical_info.get() {
-            physical.publish_memory_budget(&budget);
-        }
+        self.core.physical_info.publish_memory_budget(&budget);
         Ok(Some(budget))
     }
     /// Minimum time between driver budget queries on the frame path.
@@ -203,7 +201,7 @@ impl Device {
             return Ok(None);
         }
         let pressure = self.memory.stats.budget_action() != crate::device::BudgetAction::None;
-        {
+        let queried_at = {
             let mut last = self.memory.budget_refreshed_at.lock();
             let now = std::time::Instant::now();
             if !pressure
@@ -212,8 +210,14 @@ impl Device {
                 return Ok(None);
             }
             *last = Some(now);
+            now
+        };
+        let result = self.refresh_memory_budget();
+        if result.is_err() {
+            let mut last = self.memory.budget_refreshed_at.lock();
+            if *last == Some(queried_at) { *last = None; }
         }
-        self.refresh_memory_budget()
+        result
     }
     /// Last actual driver query, without a Vulkan call. None means unavailable
     /// telemetry, never a zero-byte budget or the allocator's configured cap.
@@ -260,19 +264,16 @@ impl Device {
     /// entries until about `target_bytes` are freed, then destroy what became
     /// collectable. Returns the bytes the caches reported released.
     pub fn evict_idle_caches(&self, target_bytes: u64) -> u64 {
-        if self.memory.evictables.is_empty() {
-            return 0;
-        }
-        let Ok(completed) = self.poll() else {
-            return 0;
+        let completed = match self.poll() {
+            Ok(completed) => completed,
+            Err(error) => { log::error!("idle cache eviction completion query failed: {error}"); return 0; }
         };
         let released = self.memory.evictables.evict(&completed, target_bytes);
-        if released != 0 {
-            if let Err(error) = self.try_collect_all_completed() {
-                log::warn!("collecting evicted cache entries failed: {error}");
-            }
-            let _ = self.trim_unused_suballocations();
-        }
+        // Caches can drop their last physical owner without reporting its
+        // native bytes. Drain the same trusted completion snapshot even when
+        // reported bytes are zero, including when no cache is registered.
+        self.collect_completed_snapshot(&completed);
+        let _ = self.trim_unused_suballocations();
         released
     }
 }

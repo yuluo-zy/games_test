@@ -38,7 +38,7 @@ fn build(
             .import_unowned(
                 "input",
                 ResourceSpec::Buffer(buffers[0].desc).descriptor(),
-                11,
+                (1u64 << 62) | 11,
                 HOST_READ,
             )
             .unwrap(),
@@ -46,7 +46,7 @@ fn build(
             .import_unowned(
                 "output",
                 ResourceSpec::Buffer(buffers[1].desc).descriptor(),
-                12,
+                (1u64 << 62) | 12,
                 HOST_READ,
             )
             .unwrap(),
@@ -140,18 +140,19 @@ fn real_vulkan_session_reports_framework_execution_allocations() {
         backend
             .bind_import_named(
                 if index == 0 { "input" } else { "output" },
-                index as u64 + 11,
+                (1u64 << 62) | (index as u64 + 11),
                 GpuResource::Buffer(buffer.clone()),
             )
             .unwrap();
     }
     let mut session = VulkanGraphSession::new(backend);
-    session.chain.parallel = rhapsody::rg::parallel::ParallelRecording::SERIAL;
+    session.chain.parallel = rhapsody::rg::parallel::ParallelRecording::PARALLEL;
     let recorded = Arc::new(AtomicU64::new(0));
     for _ in 0..300 {
         let graph = build(session.begin_frame().unwrap(), &buffers, &recorded);
         let receipt = session.execute_frame(graph).unwrap();
         assert_eq!(receipt.stats.culled_passes, 0);
+        assert!(receipt.stats.parallel_batches > 0 && receipt.stats.chunks > 0);
         session.wait_frame(receipt.frame, 10_000_000_000).unwrap();
     }
     #[cfg(unix)]
@@ -200,6 +201,7 @@ fn real_vulkan_session_reports_framework_execution_allocations() {
         execution.push(sample);
         assert!(receipt.stats.plan_cache_hit);
         assert_eq!(receipt.stats.culled_passes, 0);
+        assert!(receipt.stats.parallel_batches > 0 && receipt.stats.chunks > 0);
         let ((), sample) = measured(|| session.wait_frame(receipt.frame, 10_000_000_000).unwrap());
         completion.push(sample);
         drop(receipt);
@@ -266,7 +268,7 @@ fn real_vulkan_session_reports_framework_execution_allocations() {
     let graph = build(graph, &buffers, &recorded);
     assert!(matches!(
         session.execute_frame(graph),
-        Err(rhapsody::Error::Timeout)
+        Err(rhapsody::Error::Exhausted(_))
     ));
     assert_eq!(recorded.load(Ordering::Relaxed), before_owner_failure);
     assert_eq!(retired_owner_failure.load(Ordering::Relaxed), 1);
@@ -300,9 +302,9 @@ fn real_vulkan_session_reports_framework_execution_allocations() {
         messenger.collector.warnings()
     );
     let report = serde_json::json!({
-        "scope":"actual serial VulkanGraphSession; current-thread Rust/System allocations; native driver/other threads excluded; callback emits 8 fixed native buffer copies with no allocations",
+        "scope":"actual all-parallel VulkanGraphSession; current-thread Rust/System allocations; native driver/other threads excluded; callback emits 8 fixed native buffer copies with no allocations",
         "warmup_frames":300,"resource_count":2,"retained_passes":8,
-        "native_submit_api": if session.backend.device().caps().is_enabled(rhapsody::device::Feature::Synchronization2) {"synchronization2"} else {"legacy"},"pixel_or_byte_reference":"both 64-byte GPU copy results exact",
+        "native_submit_api":"synchronization2","pixel_or_byte_reference":"both 64-byte GPU copy results exact",
         "begin_frame":summary(&begin),"graph_construction":summary(&construction),
         "framework_execute":summary(&execution),"completion_and_wait":summary(&completion),
         "validation_errors":0,"validation_warnings":0,

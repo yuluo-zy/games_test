@@ -66,11 +66,6 @@ pub fn startup_sky_and_sun(
     spawn_skydome(mesh, shader, commands)
 }
 
-/// Partial compatibility entry, never a substitute for device sky startup.
-pub fn startup_sky_and_sun_meshes(meshes: bevy_ecs::prelude::Res<AssetMeshLibrary>) {
-    super::register_mesh_file(&meshes, SKYDOME_MESH.0, Some(SKYDOME_MESH.1));
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

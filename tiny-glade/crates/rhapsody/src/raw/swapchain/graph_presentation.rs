@@ -9,7 +9,7 @@
 //! unsubmitted cancellation (release/rescue) when nothing reached the GPU.
 use super::{ACQUIRE_TIMEOUT_NS, AcquiredImageLease, PresentTicket, consumed, wsi_call};
 use crate::{
-    raw::error::{Error, Result},
+    error::{Error, Result},
     sync::{SyncPoint, SyncSet},
 };
 use ash::vk;

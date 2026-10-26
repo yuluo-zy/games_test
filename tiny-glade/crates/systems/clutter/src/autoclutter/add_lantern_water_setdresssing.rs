@@ -130,12 +130,7 @@ pub fn add_lantern_water_setdresssing(
 
 /// 放置键（`calculate_hash<tuple<u32,usize,&str>>` 0x141cf7980 语义）。
 pub fn hash_lantern_key(i: usize, decorator_id: u64) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    (i as u32).hash(&mut h);
-    decorator_id.hash(&mut h);
-    "lantern".hash(&mut h);
-    h.finish()
+    utils::calculate_hash(&((i as u32), decorator_id, "lantern"))
 }
 
 /// is_started 资源（O 0x14092e6c0：开始状态门控；宿主输入系统写）。

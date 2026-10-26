@@ -2,6 +2,7 @@
 //! 同一system Local持有真实Arc，命中不重建；未命中保留原有序采样/闭合点。
 
 use country_core::resources::roofs::geometry::surface::RoofSection;
+use ::utils::scalar::clamp01;
 use country_core::resources::roofs::roof_shape::Roof;
 use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform;
 use country_core::systems::collision::world::RaycastMeshData;
@@ -74,15 +75,6 @@ fn roof_section(roof: &Roof, position: Vec3) -> ShapeParameters {
     })
 }
 
-/// 原MAXSS/MINSS无序比较保留第二operand，不能使用会吞NaN的f32::max/min。
-fn sse_max(first: f32, second: f32) -> f32 {
-    if first > second { first } else { second }
-}
-
-fn sse_min(first: f32, second: f32) -> f32 {
-    if first < second { first } else { second }
-}
-
 /// 原全部真实输入→量化查询→有序曲面凸体→同一Local缓存。
 /// rank1..3的width由外层原表提供；此处不以decorator库mesh/bbox代替动态几何。
 #[allow(clippy::too_many_arguments)]
@@ -114,7 +106,7 @@ pub fn get_collision_mesh(
         let lower = f32::from_bits(0x3f66_6667);
         // 原utils::inverse_lerp140c904a0/16B；当前共享导出缺失，按独审批准内联三指令。
         let inverse_lerp = (bottom.as_circle().radius - lower) / (8.0 - lower);
-        1.0 - sse_min(1.0, sse_max(0.0, inverse_lerp))
+        1.0 - clamp01(inverse_lerp)
     } else {
         0.0
     };

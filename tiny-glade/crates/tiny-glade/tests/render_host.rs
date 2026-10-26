@@ -1,4 +1,7 @@
 //! core 的 `GraphicsDevice` 接缝经宿主落到 rhapsody 的冒烟验证；无 Vulkan 设备时跳过（本机可用 lavapipe）。
+#[path = "support/mod.rs"]
+mod test_support;
+use test_support::ShaderTestDriver as _;
 use country_core::render::ssbo::rhapsody_boundary::{BufferDesc, GraphicsDevice};
 
 use tiny_glade::render_host::BufferHost;
@@ -37,8 +40,12 @@ fn core_buffer_roundtrip_through_rhapsody() {
     assert_eq!(buffer.byte_size, 32);
     host.update_buffer_bytes(&buffer, &[8, 8], &[0..2], 4)
         .unwrap();
-    let mapped = host.mapped_slice_mut(&buffer).expect("子分配缓冲持久映射");
-    assert_eq!(&mapped[..6], &[1, 2, 3, 4, 8, 8]);
+    // Owned updates acknowledge admission. Observe only after submission and
+    // actual GPU completion, as a production readback consumer must do.
+    test_support::until_ready(|| host.poll_pending_uploads()).unwrap();
+    let mut actual = [0; 6];
+    host.managed_buffer(&buffer).unwrap().read_bytes(0, &mut actual).unwrap();
+    assert_eq!(actual, [1, 2, 3, 4, 8, 8]);
     assert!(host.release(&buffer));
     // 句柄失效后拒绝，且槽位复用时代数不同。
     assert_eq!(
@@ -177,11 +184,11 @@ fn core_compute_pipeline_loads_compiled_bin_and_creates_vulkan_pipeline() {
     drop(loaded);
     // The requested pipeline is registered once; a warm host scans nothing.
     assert_eq!(host.pending_ticket_count(), 1);
-    host.prewarm(std::time::Duration::from_secs(10)).unwrap();
+    host.prepare_test_pipelines(std::time::Duration::from_secs(10)).unwrap();
     assert_eq!(host.pending_ticket_count(), 0, "ready tickets leave the registry");
-    host.prewarm(std::time::Duration::from_secs(10)).unwrap();
+    host.prepare_test_pipelines(std::time::Duration::from_secs(10)).unwrap();
     assert!(host.compute_pipeline(&pipeline).is_some());
-    foreign_host.prewarm(std::time::Duration::from_secs(10)).unwrap();
+    foreign_host.prepare_test_pipelines(std::time::Duration::from_secs(10)).unwrap();
     assert!(foreign_host.compute_pipeline(&foreign_program.pipeline).is_some());
     assert_eq!(pipeline.id & 0xffff_ffff, foreign_program.pipeline.id & 0xffff_ffff);
     assert!(foreign_host.compute_entry(&pipeline).is_none());
@@ -289,8 +296,8 @@ fn core_passes_execute_on_lavapipe_through_the_rhapsody_session() {
     };
     let gd = device.clone();
     let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
-    let mut session = VulkanGraphSession::new(backend);
-    let graph = Rc::new(RefCell::new(session.begin_frame().unwrap()));
+    let session = Rc::new(RefCell::new(VulkanGraphSession::new(backend)));
+    let graph = Rc::new(RefCell::new(session.borrow_mut().begin_frame().unwrap()));
 
     let buffers = Arc::new(BufferHost::new(gd.clone()));
     let textures = Arc::new(TextureHost::new(gd.clone()));
@@ -299,7 +306,7 @@ fn core_passes_execute_on_lavapipe_through_the_rhapsody_session() {
         .create_buffer(&CoreBufferDesc::new(16, 0x22, 2), "target", None)
         .unwrap();
     let managed = buffers.get_by_id(buffer.id).unwrap();
-    session
+    session.borrow_mut()
         .backend
         .bind_import_named(
             "target",
@@ -313,7 +320,7 @@ fn core_passes_execute_on_lavapipe_through_the_rhapsody_session() {
     let imported = core.import_unowned(buffer.id, 0x34);
     let mut passes = GraphPasses::new(graph.clone(), gd)
         .unwrap()
-        .with_session(&mut session)
+        .with_shared_session(session.clone())
         .unwrap();
     let resource = imported.resource as u32;
     clear_rg_buffer(&mut passes, resource);
@@ -330,8 +337,8 @@ fn core_passes_execute_on_lavapipe_through_the_rhapsody_session() {
     drop(passes);
 
     let built = Rc::try_unwrap(graph).ok().unwrap().into_inner().build();
-    session.execute_frame(built).unwrap();
-    session.wait_submits_done(10_000_000_000).unwrap();
+    session.borrow_mut().execute_frame(built).unwrap();
+    session.borrow_mut().wait_submits_done(10_000_000_000).unwrap();
 
     let mut out = [0u8; 16];
     managed.read_bytes(0, &mut out).unwrap();
@@ -528,11 +535,11 @@ fn run_core_compute_pass_with_heap_parameters(with_push: bool, external: bool) {
             Arc::new(shaders.load_compiled_compute(&desc).unwrap()),
         )
         .unwrap();
-    shaders.prewarm(std::time::Duration::from_secs(10)).unwrap();
+    shaders.prepare_test_pipelines(std::time::Duration::from_secs(10)).unwrap();
 
     let backend = VulkanGraphBackend::new(device, AccessTable::original()).unwrap();
-    let mut session = VulkanGraphSession::new(backend);
-    let graph = Rc::new(RefCell::new(session.begin_frame().unwrap()));
+    let session = Rc::new(RefCell::new(VulkanGraphSession::new(backend)));
+    let graph = Rc::new(RefCell::new(session.borrow_mut().begin_frame().unwrap()));
     let buffers = Arc::new(BufferHost::new(gd.clone()));
     let textures = Arc::new(TextureHost::new(gd.clone()));
     let offset = if external {
@@ -557,7 +564,7 @@ fn run_core_compute_pass_with_heap_parameters(with_push: bool, external: bool) {
         .unwrap();
     let managed = buffers.get_by_id(buffer.id).unwrap();
     if !external {
-        session
+        session.borrow_mut()
             .backend
             .bind_import_named(
                 "out",
@@ -576,7 +583,7 @@ fn run_core_compute_pass_with_heap_parameters(with_push: bool, external: bool) {
     let resource = imported.map_or(0, |resource| resource.resource as u32);
     let mut passes = GraphPasses::new(graph.clone(), gd)
         .unwrap()
-        .with_session(&mut session)
+        .with_shared_session(session.clone())
         .unwrap()
         .with_tables(HostTables {
             buffers: buffers.clone(),
@@ -641,6 +648,9 @@ fn run_core_compute_pass_with_heap_parameters(with_push: bool, external: bool) {
                 program: None,
                 dispatch: if with_push {
                     DispatchMode::With(Box::new(|api| {
+                        api.push_constants(&100_u32.to_le_bytes());
+                        api.push_constants(&100_u32.to_le_bytes());
+                        api.push_constants(&200_u32.to_le_bytes());
                         api.push_constants(&200_u32.to_le_bytes());
                         api.dispatch_1d(4);
                     }))
@@ -667,8 +677,8 @@ fn run_core_compute_pass_with_heap_parameters(with_push: bool, external: bool) {
     drop(core);
     drop(passes);
     let built = Rc::try_unwrap(graph).ok().unwrap().into_inner().build();
-    session.execute_frame(built).unwrap();
-    session.wait_submits_done(10_000_000_000).unwrap();
+    session.borrow_mut().execute_frame(built).unwrap();
+    session.borrow_mut().wait_submits_done(10_000_000_000).unwrap();
 
     let mut out = [0u8; 16];
     managed.read_bytes(offset, &mut out).unwrap();
@@ -676,7 +686,7 @@ fn run_core_compute_pass_with_heap_parameters(with_push: bool, external: bool) {
         let mut untouched = vec![0; offset as usize];
         managed.read_bytes(0, &mut untouched).unwrap();
         assert!(untouched.iter().all(|byte| *byte == 0x5b));
-        assert_eq!(session.frame_import_count(), 0);
+        assert_eq!(session.borrow_mut().frame_import_count(), 0);
     }
     let words: Vec<u32> = out
         .chunks(4)
@@ -852,7 +862,7 @@ fn core_raster_pipeline_creates_from_key_handle_and_opts_bitfield() {
     let pipeline = host
         .create_raster_pipeline(Arc::new(CoreCompiled(compiled.encode().unwrap())), &key)
         .unwrap();
-    host.prewarm(std::time::Duration::from_secs(10)).unwrap();
+    host.prepare_test_pipelines(std::time::Duration::from_secs(10)).unwrap();
     let entry = host.raster_entry(&pipeline).unwrap();
     assert_eq!(entry.pass.color_attachments, 1);
     assert_eq!(
@@ -902,7 +912,7 @@ fn raster_shader_variants_append_the_depth_only_define() {
 }
 
 #[test]
-fn device_local_sparse_updates_use_the_bounded_queue_and_return_only_after_their_points_complete() {
+fn device_local_sparse_updates_use_the_owned_queue_and_publish_real_completion_points() {
     use ash::vk;
     use rhapsody::transfer::{TransferConfig, TransferManager};
     let Some(device) = graphics_device() else {
@@ -924,32 +934,19 @@ fn device_local_sparse_updates_use_the_bounded_queue_and_return_only_after_their
         .collect::<Vec<_>>();
     let ranges = [0..512, 256..1024, 2048..payload.len()];
     let idle = device.retirement_stats().idle_waits;
-    // The explicit synchronous variant keeps the original "complete on return" contract.
-    host.update_buffer_bytes_wait(&buffer, &payload, &ranges, 32)
-        .unwrap();
+    host.update_buffer_bytes(&buffer, &payload, &ranges, 32).unwrap();
+    test_support::until_ready(|| host.poll_pending_uploads()).unwrap();
     let stats = host
         .queued_upload_stats()
         .expect("production GPU-only BufferHost used its queued uploader");
     assert_eq!(stats.queued_jobs, 0);
     assert_eq!(
-        stats.submitted_jobs, 2,
-        "large sparse updates are split into bounded 1MiB batches"
+        stats.submitted_jobs, 3,
+        "each requested interval fits one owned chunk and retains its FIFO position"
     );
-    assert!(stats.merged_requests > 0);
+    assert_eq!(stats.merged_requests, 0,
+        "owned deltas preserve individual completion points instead of replacing queued writes");
     let raw = host.get_by_id(buffer.id).unwrap().shared();
-    let completed = device.poll().unwrap();
-    let mut count = 0;
-    let mut reached = true;
-    rhapsody::resource::GpuUse::visit_uses(raw.as_ref(), &mut |cell| {
-        count += 1;
-        reached &= cell.snapshot().is_reached(&completed);
-        Ok(())
-    })
-    .unwrap();
-    assert!(
-        count != 0 && reached,
-        "the synchronous host update must observe its real upload completion before returning"
-    );
     let mut reads = TransferManager::new(
         device.clone(),
         TransferConfig {
@@ -961,6 +958,20 @@ fn device_local_sparse_updates_use_the_bounded_queue_and_return_only_after_their
     .unwrap();
     let read = reads.read_buffer(raw.clone(), 0, capacity).unwrap();
     read.wait(5_000_000_000).unwrap();
+    let completed = device.poll().unwrap();
+    let mut count = 0;
+    let mut reached = true;
+    rhapsody::resource::GpuUse::visit_uses(raw.as_ref(), &mut |cell| {
+        count += 1;
+        reached &= cell.snapshot().is_reached(&completed);
+        Ok(())
+    })
+    .unwrap();
+    assert!(
+        count != 0 && reached,
+        "readback completion must include every preceding owned upload point"
+    );
+
     let mut actual = vec![0; capacity];
     read.try_read(&mut actual).unwrap().unwrap();
     let mut expected = initial;
@@ -1015,13 +1026,13 @@ fn queued_device_local_updates_coalesce_in_call_order_and_submit_on_flush_withou
     let before = host.queued_upload_stats().expect("queued uploader exists");
     assert!(before.queued_jobs > 0, "nothing is submitted before the flush");
     assert_eq!(before.submitted_jobs, 0);
-    host.flush_pending_uploads().unwrap();
+    test_support::until_ready(|| host.poll_pending_uploads()).unwrap();
     let after = host.queued_upload_stats().unwrap();
     assert_eq!(after.queued_jobs, 0);
     assert!(after.submitted_jobs > 0);
     assert_eq!(device.retirement_stats().idle_waits, idle, "no device idle wait");
     // A second flush with nothing queued is a no-op.
-    host.flush_pending_uploads().unwrap();
+    test_support::until_ready(|| host.poll_pending_uploads()).unwrap();
     assert_eq!(host.queued_upload_stats().unwrap().submitted_jobs, after.submitted_jobs);
 
     let raw = host.get_by_id(buffer.id).unwrap().shared();
@@ -1075,7 +1086,7 @@ fn queue_pressure_flush_in_the_middle_of_a_frame_never_cancels_earlier_writes() 
         let second = [index as u8 | 2; 16];
         host.update_buffer_bytes(&buffers[index], &second, &[0..16], 64).unwrap();
     }
-    host.flush_pending_uploads().unwrap();
+    test_support::until_ready(|| host.poll_pending_uploads()).unwrap();
     let mut reads = TransferManager::new(
         device.clone(),
         TransferConfig { slots: 1, chunk_bytes: 256, max_bytes: 8 << 20 },
@@ -1112,9 +1123,9 @@ fn versioned_country_upload_uses_real_session_subgraph_and_result_caches() {
     };
     let run = |enabled| {
         let backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
-        let mut session = VulkanGraphSession::new(backend);
-        session.set_result_cache_enabled(enabled);
-        session.chain.set_subgraph_cache_enabled(enabled);
+        let session = Rc::new(RefCell::new(VulkanGraphSession::new(backend)));
+        session.borrow_mut().set_result_cache_enabled(enabled);
+        session.borrow_mut().chain.set_subgraph_cache_enabled(enabled);
         let target = Arc::new(
             RawBuffer::new(
                 device.clone(),
@@ -1122,7 +1133,7 @@ fn versioned_country_upload_uses_real_session_subgraph_and_result_caches() {
             )
             .unwrap(),
         );
-        let token = session
+        let token = session.borrow_mut()
             .backend
             .bind_import(GpuResource::Buffer(target.clone()))
             .unwrap();
@@ -1136,7 +1147,7 @@ fn versioned_country_upload_uses_real_session_subgraph_and_result_caches() {
         ];
         let mut outputs = Vec::new();
         for (frame, (version, words)) in inputs.into_iter().enumerate() {
-            let graph = Rc::new(RefCell::new(session.begin_frame().unwrap()));
+            let graph = Rc::new(RefCell::new(session.borrow_mut().begin_frame().unwrap()));
             let id = graph.borrow().graph_id();
             let output = graph
                 .borrow_mut()
@@ -1150,7 +1161,7 @@ fn versioned_country_upload_uses_real_session_subgraph_and_result_caches() {
             {
                 let mut passes = GraphPasses::new(graph.clone(), device.clone())
                     .unwrap()
-                    .with_session(&mut session)
+                    .with_shared_session(session.clone())
                     .unwrap();
                 rg_buffer_copy_from_slice_u32(
                     &mut passes,
@@ -1177,10 +1188,10 @@ fn versioned_country_upload_uses_real_session_subgraph_and_result_caches() {
                 .with_side_effect()
                 .render(|_| true);
             graph.borrow_mut().export(output, 0x26).unwrap();
-            session
+            session.borrow_mut()
                 .execute_frame(Rc::try_unwrap(graph).ok().unwrap().into_inner().build())
                 .unwrap();
-            session.wait_submits_done(10_000_000_000).unwrap();
+            session.borrow_mut().wait_submits_done(10_000_000_000).unwrap();
             let mut bytes = [0; 16];
             target.read_bytes(0, &mut bytes).unwrap();
             let actual: Vec<_> = bytes
@@ -1192,11 +1203,11 @@ fn versioned_country_upload_uses_real_session_subgraph_and_result_caches() {
             assert_eq!(actual, words);
             outputs.push(actual);
         }
-        let cached = session.result_cache_stats();
-        let subgraphs = session.chain.subgraph_cache_stats();
+        let cached = session.borrow_mut().result_cache_stats();
+        let subgraphs = session.borrow_mut().chain.subgraph_cache_stats();
         // The old/default caller explicitly declares unknown content. Even a
         // byte-identical upload must stage again and publish no cache request.
-        let graph = Rc::new(RefCell::new(session.begin_frame().unwrap()));
+        let graph = Rc::new(RefCell::new(session.borrow_mut().begin_frame().unwrap()));
         let output = graph
             .borrow_mut()
             .import_unowned(
@@ -1209,7 +1220,7 @@ fn versioned_country_upload_uses_real_session_subgraph_and_result_caches() {
         {
             let mut passes = GraphPasses::new(graph.clone(), device.clone())
                 .unwrap()
-                .with_session(&mut session)
+                .with_shared_session(session.clone())
                 .unwrap();
             rg_buffer_copy_from_slice_u32(
                 &mut passes,
@@ -1221,10 +1232,10 @@ fn versioned_country_upload_uses_real_session_subgraph_and_result_caches() {
             .unwrap();
         }
         graph.borrow_mut().export(output, 0x26).unwrap();
-        session
+        session.borrow_mut()
             .execute_frame(Rc::try_unwrap(graph).ok().unwrap().into_inner().build())
             .unwrap();
-        session.wait_submits_done(10_000_000_000).unwrap();
+        session.borrow_mut().wait_submits_done(10_000_000_000).unwrap();
         let mut bytes = [0; 16];
         target.read_bytes(0, &mut bytes).unwrap();
         assert_eq!(
@@ -1234,9 +1245,9 @@ fn versioned_country_upload_uses_real_session_subgraph_and_result_caches() {
                 .concat()
                 .as_slice()
         );
-        assert_eq!(session.result_cache_stats().misses, cached.misses);
-        assert_eq!(session.result_cache_stats().hits, cached.hits);
-        session.clear_after_completion().unwrap();
+        assert_eq!(session.borrow_mut().result_cache_stats().misses, cached.misses);
+        assert_eq!(session.borrow_mut().result_cache_stats().hits, cached.hits);
+        session.borrow_mut().clear_after_completion().unwrap();
         (outputs, cached, subgraphs)
     };
     let (baseline, off, _) = run(false);
@@ -1432,7 +1443,7 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
             Arc::new(shaders.load_compiled_compute(&desc).unwrap()),
         )
         .unwrap();
-    shaders.prewarm(std::time::Duration::from_secs(10)).unwrap();
+    shaders.prepare_test_pipelines(std::time::Duration::from_secs(10)).unwrap();
     let textures =
         Arc::new(TextureHost::new(device.clone()).with_extra_usage(
             vk::ImageUsageFlags::TRANSFER_SRC | vk::ImageUsageFlags::TRANSFER_DST,
@@ -1472,13 +1483,13 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
     let target_owner = textures.get_by_id(target.id).unwrap().shared();
     let source_view = textures.default_view(source.id).unwrap();
     let target_view = textures.default_view(target.id).unwrap();
-    let mut session = VulkanGraphSession::new(
+    let session = Rc::new(RefCell::new(VulkanGraphSession::new(
         VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap(),
-    );
-    let graph = Rc::new(RefCell::new(session.begin_frame().unwrap()));
+    )));
+    let graph = Rc::new(RefCell::new(session.borrow_mut().begin_frame().unwrap()));
     let mut passes = GraphPasses::new(graph.clone(), device.clone())
         .unwrap()
-        .with_session(&mut session)
+        .with_shared_session(session.clone())
         .unwrap()
         .with_tables(HostTables {
             buffers,
@@ -1553,9 +1564,9 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
     assert!(textures.release(&target));
     drop(passes);
     let built = Rc::try_unwrap(graph).ok().unwrap().into_inner().build();
-    session.execute_frame(built).unwrap();
-    session.wait_submits_done(10_000_000_000).unwrap();
-    assert_eq!(session.frame_import_count(), 0);
+    session.borrow_mut().execute_frame(built).unwrap();
+    session.borrow_mut().wait_submits_done(10_000_000_000).unwrap();
+    assert_eq!(session.borrow_mut().frame_import_count(), 0);
     let readback = Arc::new(
         RawBuffer::new(
             device.clone(),
@@ -2001,12 +2012,12 @@ fn device_address_chunks_keep_same_page_ranges_until_cancel_or_real_completion()
             Arc::new(shaders.load_compiled_compute(&desc).unwrap()),
         )
         .unwrap();
-    shaders.prewarm(std::time::Duration::from_secs(10)).unwrap();
+    shaders.prepare_test_pipelines(std::time::Duration::from_secs(10)).unwrap();
     let buffers = Arc::new(BufferHost::new(device.clone()));
     let textures = Arc::new(TextureHost::new(device.clone()));
-    let mut session = VulkanGraphSession::new(
+    let session = Rc::new(RefCell::new(VulkanGraphSession::new(
         VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap(),
-    );
+    )));
 
     for submit in [false, true] {
         // Bound to one full page: the next allocation can succeed only after
@@ -2062,13 +2073,13 @@ fn device_address_chunks_keep_same_page_ranges_until_cancel_or_real_completion()
             )
             .unwrap();
         let managed = buffers.managed_buffer(&target).unwrap();
-        let graph = Rc::new(RefCell::new(session.begin_frame().unwrap()));
-        let output = session
+        let graph = Rc::new(RefCell::new(session.borrow_mut().begin_frame().unwrap()));
+        let output = session.borrow_mut()
             .import_frame_buffer(&mut graph.borrow_mut(), managed.shared(), 0x37)
             .unwrap();
         let mut passes = GraphPasses::new(graph.clone(), device.clone())
             .unwrap()
-            .with_session(&mut session)
+            .with_shared_session(session.clone())
             .unwrap()
             .with_tables(HostTables {
                 buffers: buffers.clone(),
@@ -2137,12 +2148,12 @@ fn device_address_chunks_keep_same_page_ranges_until_cancel_or_real_completion()
             "an unsubmitted graph must retain its constants page"
         );
         if submit {
-            let receipt = session.execute_frame(built).unwrap();
+            let receipt = session.borrow_mut().execute_frame(built).unwrap();
             assert!(
                 !receipt.receipts.is_empty(),
                 "actual Vulkan submission required"
             );
-            session.wait_submits_done(10_000_000_000).unwrap();
+            session.borrow_mut().wait_submits_done(10_000_000_000).unwrap();
             let mut bytes = [0; 16];
             managed.read_bytes(0, &mut bytes).unwrap();
             assert_eq!(
@@ -2153,9 +2164,9 @@ fn device_address_chunks_keep_same_page_ranges_until_cancel_or_real_completion()
             // has released owners. The still-unwritten tail means this forces
             // reset rather than append; bytes are observed before overwriting.
         } else {
-            session.cancel_frame(built).unwrap();
+            session.borrow_mut().cancel_frame(built).unwrap();
         }
-        assert_eq!(session.frame_import_count(), 0);
+        assert_eq!(session.borrow_mut().frame_import_count(), 0);
         let reused = constants
             .allocate(16)
             .expect("cancel/completion released imported page");

@@ -13,6 +13,7 @@
 //! 时序 dt = GameTime.delta；RNG = perchance uniform_f32（0x141625ae0）。
 
 use bevy_ecs::prelude::*;
+use ::utils::scalar::inverse_lerp;
 use country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast;
 use country_core::resources::time::GameTime;
 use country_core::resources::world_raster::WorldRaster;
@@ -127,7 +128,7 @@ pub fn plan_duck_trajectories(
     mesh_library: Option<Res<MeshLibraryHandle>>,
     shader_library: Option<Res<ShaderLibraryHandle>>,
     dev: Res<DevHotkeys>,
-    mut ducks: Query<(Entity, &mut Duck, &mut DuckState, &Transform)>,
+    mut ducks: Query<(Entity, ComponentWrite<Duck>, ComponentWrite<DuckState>, &Transform)>,
 ) {
     let _ = time;
     let mut rng_ctx = rng.0.lock().unwrap();
@@ -283,7 +284,7 @@ pub fn plan_duck_trajectories(
                 let mut entity = commands.spawn((
                     duck,
                     DuckState::Initial,
-                    CritterLocomotion(0),
+                    CritterLocomotion::new(0),
                     CritterGoal {
                         position: Vec3::ZERO,
                         goal_tag: 0,
@@ -368,13 +369,13 @@ pub fn move_ducks_along_trajectories(
     water: Res<country_core::systems::audio::water_ambience_audio::WaterAudioGrid>,
     mut query: Query<(
         Entity,
-        &mut Duck,
-        &mut DuckState,
-        &mut Transform,
+        ComponentWrite<Duck>,
+        ComponentWrite<DuckState>,
+        ComponentWrite<Transform>,
         &mut Velocity,
         &mut CritterVelocityMultiplier,
         &mut CritterGoal,
-        &mut ObjectGrassPush,
+        ComponentWrite<ObjectGrassPush>,
     )>,
 ) {
     let dt = time.delta;
@@ -512,12 +513,6 @@ pub fn move_ducks_along_trajectories(
     }
 }
 
-/// `utils::inverse_lerp(a,b,t)` = `(t-a)/(b-a)`（内联叶函数 0x140c904a0）。
-#[inline]
-fn inverse_lerp(a: f32, b: f32, t: f32) -> f32 {
-    (t - a) / (b - a)
-}
-
 /// 沿轨迹分段长度（保留旧 API；新 move 路径用 chord 归一，不再调用）。
 pub fn trajectory_segment_len(points: &[Vec3], progress: f32) -> f32 {
     let p = progress.clamp(0.0, 0.999_999);
@@ -573,7 +568,7 @@ pub fn update_duck_goals(
     rng: Res<CritterRng>,
     mut query: Query<(
         &Transform,
-        &mut Duck,
+        ComponentWrite<Duck>,
         &DuckState,
         &mut CritterGoal,
     )>,
@@ -1014,3 +1009,5 @@ mod recovered_audio_consumption_tests {
         }
     }
 }
+
+use country_core::render::extract::ComponentWrite;

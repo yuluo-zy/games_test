@@ -98,7 +98,7 @@ pub fn do_ui_edit_roof_ridge_dir(
 /// 同值方向也执行全部写入与通知，重复消息不合并。
 pub fn switch_roof_ridge_direction(
     walls: Res<PublicWalls>,
-    mut roofs: Query<&mut Roof>,
+    mut roofs: Query<ComponentWrite<Roof>>,
     mut requests: EventReader<SwitchRoofRidgeDirCmd>,
     mut geometry: EventWriter<RoofGeometryChanged>,
     mut gable: EventWriter<WallGableChanged>,
@@ -147,3 +147,5 @@ pub fn record_switch_roof_ridge_history(
         let _ = history.add(edit.into());
     }
 }
+
+use country_core::render::extract::ComponentWrite;

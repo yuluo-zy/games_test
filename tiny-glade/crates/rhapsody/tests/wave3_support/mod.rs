@@ -8,7 +8,7 @@ use rhapsody::{
         command_buffer::VulkanCommandPool,
         device::Device,
         init::{
-            DeviceSelectionPolicy, GraphicsInstance, GraphicsInstanceLayerAllowlist,
+            GraphicsInstance, GraphicsInstanceLayerAllowlist,
             GraphicsInstanceLayerAllowlistEntry,
         },
         instance::{InstanceBuilder, KHRONOS_VALIDATION_LAYER, ValidationMessenger},
@@ -62,13 +62,12 @@ pub fn validated_env_configured(config: &rhapsody::device::QueueConfig) -> Optio
         "validation messenger",
         ValidationMessenger::new(&graphics.instance),
     )?;
-    let selected = initialize(
-        "validated physical device selection",
-        graphics.available_for_surface(None, DeviceSelectionPolicy::default()),
-    )?;
     let device = initialize(
         "validated logical device",
-        selected.create_device_configured(&graphics, config),
+        Device::new(graphics.instance.clone(), None, &rhapsody::device::DeviceConfig {
+            queues: *config,
+            ..rhapsody::device::DeviceConfig::headless()
+        }),
     )?;
     Some(ValidatedEnv {
         graphics,

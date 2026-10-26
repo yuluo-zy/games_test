@@ -1189,7 +1189,7 @@ mod tests;
 /// Render-thread extraction: what this module reads from the World.
 pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
     m.resource::<GpuWorld>();
-    m.resource_incremental::<AssetSsboLibrary>(AssetSsboLibrary::snapshot_revision, AssetSsboLibrary::update_render_snapshot);
+    m.asset_library::<AssetSsboLibrary>();
     m.resource::<crate::geometry::runtime::WallBrickUploadStatus>();
     m.resource::<WallHighlight>();
     m.resource::<CursorTerrainRaycast>();
@@ -1199,7 +1199,7 @@ pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
     m.resource::<IvyStorage>();
     m.resource_projected::<MainCamera>(MainCamera::render_snapshot);
     m.events::<ShowDemoBorderOverlay>();
-    m.resource_incremental::<AssetMeshLibrary>(AssetMeshLibrary::snapshot_revision, AssetMeshLibrary::update_render_snapshot);
+    m.asset_library::<AssetMeshLibrary>();
     m.resource::<crate::resources::logo_animation::LogoAnimation>();
     m.resource::<LoadingScreenProgressView>();
     m.resource::<ActiveSessionView>();
@@ -1207,25 +1207,25 @@ pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
     m.resource::<RoofHighlight>();
     m.resource::<Weather>();
     m.resource::<AppMode>();
-    m.component::<StairsStepView>();
-    m.component::<WallBrickInstancedDrawProxyView>();
-    m.component::<AlbedoMapView>();
-    m.component::<AlphaMapView>();
-    m.component::<NormalMapView>();
-    m.component::<SemiTransparent>();
-    m.component::<BackgroundTerrain>();
-    m.component::<OverwriteRoughness>();
-    m.component::<DontReceiveContactShadows>();
-    m.component::<PrevTransformView>();
+    m.component_journaled::<StairsStepView>();
+    m.component_journaled::<WallBrickInstancedDrawProxyView>();
+    m.component_journaled::<AlbedoMapView>();
+    m.component_journaled::<AlphaMapView>();
+    m.component_journaled::<NormalMapView>();
+    m.component_journaled::<SemiTransparent>();
+    m.component_journaled::<BackgroundTerrain>();
+    m.component_journaled::<OverwriteRoughness>();
+    m.component_journaled::<DontReceiveContactShadows>();
+    m.component_journaled::<PrevTransformView>();
     m.component_journaled::<Handle<Mesh>>();
-    m.component::<DashedLineLengthView>();
-    m.component::<SplashParticleView>();
-    m.component::<RoofFlagClothView>();
-    m.component::<ColorId>();
-    m.component::<WallFlagClothView>();
-    m.component::<ArrowGizmoView>();
-    m.component::<WoodenGateView>();
+    m.component_journaled::<DashedLineLengthView>();
+    m.component_journaled::<SplashParticleView>();
+    m.component_journaled::<RoofFlagClothView>();
+    m.component_journaled::<ColorId>();
+    m.component_journaled::<WallFlagClothView>();
+    m.component_journaled::<ArrowGizmoView>();
+    m.component_journaled::<WoodenGateView>();
     // read_env2 projects the two canonical gameplay owners through a helper.
-    m.component::<crate::resources::critters::sheep::Sheep>();
-    m.component::<crate::resources::critters::sheep::SheepWalkRecord>();
+    m.component_journaled::<crate::resources::critters::sheep::Sheep>();
+    m.component_journaled::<crate::resources::critters::sheep::SheepWalkRecord>();
 }

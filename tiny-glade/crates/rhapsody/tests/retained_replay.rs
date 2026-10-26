@@ -79,11 +79,15 @@ fn replayed_graph_declares_what_the_normal_path_declared() {
             }),
         )
         .unwrap();
-    let created = replay.declare_planned_create(&definition.resources[1]).unwrap();
+    let created = replay
+        .declare_planned_create(&definition.resources[1])
+        .unwrap();
     replay
         .adopt_planned_passes(definition, callbacks(definition.passes.len()))
         .unwrap();
-    replay.export(replay.resource_handle(0).unwrap(), READ).unwrap();
+    replay
+        .export(replay.resource_handle(0).unwrap(), READ)
+        .unwrap();
     assert_eq!(created.raw(), 1);
 
     let (got, got_callbacks, _) = replay.build().into_parts();
@@ -95,8 +99,12 @@ fn replayed_graph_declares_what_the_normal_path_declared() {
     // Pass names and resolved accesses are what the plan will recompile from.
     assert_eq!(
         compile_definition(
-            GraphDefinition::from_declaration(&got, &mut AccessTable::original(), PlanContext::default())
-                .unwrap()
+            GraphDefinition::from_declaration(
+                &got,
+                &mut AccessTable::original(),
+                PlanContext::default()
+            )
+            .unwrap()
         )
         .unwrap()
         .definition,
@@ -122,19 +130,33 @@ fn adopting_rejects_a_replay_that_differs_from_the_plan() {
     // Missing resource.
     let mut replay = RenderGraph::new();
     owned(&mut replay);
-    assert!(replay.adopt_planned_passes(definition, callbacks(2)).is_err());
+    assert!(
+        replay
+            .adopt_planned_passes(definition, callbacks(2))
+            .is_err()
+    );
     // Renamed resource.
     let mut replay = RenderGraph::new();
     owned(&mut replay);
     replay
         .create_raw_resource("other", origin(OriginSource::Create))
         .unwrap();
-    assert!(replay.adopt_planned_passes(definition, callbacks(2)).is_err());
+    assert!(
+        replay
+            .adopt_planned_passes(definition, callbacks(2))
+            .is_err()
+    );
     // Wrong recorder count.
     let mut replay = RenderGraph::new();
     owned(&mut replay);
-    replay.declare_planned_create(&definition.resources[1]).unwrap();
-    assert!(replay.adopt_planned_passes(definition, callbacks(1)).is_err());
+    replay
+        .declare_planned_create(&definition.resources[1])
+        .unwrap();
+    assert!(
+        replay
+            .adopt_planned_passes(definition, callbacks(1))
+            .is_err()
+    );
     // A planned import cannot be declared as a created resource.
     assert!(
         RenderGraph::new()

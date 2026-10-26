@@ -30,7 +30,7 @@ pub fn set_roof_customization<S: Send + Sync + 'static>(
     mut colors: EventReader<SetRoofColorIdCmd>,
     _styles: EventReader<SetFlatRoofStyleCmd>,
     walls: Res<PublicWalls>,
-    mut roofs: Query<&mut Roof>,
+    mut roofs: Query<ComponentWrite<Roof>>,
     mut roof_colors: ResMut<country_core::resources::color_id::RoofColorIds>,
     mut sounds: EventWriter<PlayWallUiSound>,
     _history: ResMut<country_core::resources::history::History<S>>,
@@ -63,3 +63,5 @@ pub fn set_roof_customization<S: Send + Sync + 'static>(
     // O：样式比较环（SetFlatRoofStyleCmd stride 0x20 / SetFlatRoofRimStyleCmd
     // stride 0x18）+ History::add 记录 + 稀疏位集分块定位——GAP（密集表未建模）。
 }
+
+use country_core::render::extract::ComponentWrite;

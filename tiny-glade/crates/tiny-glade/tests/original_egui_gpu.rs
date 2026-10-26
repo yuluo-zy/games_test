@@ -1,5 +1,9 @@
 //! Actual original-egui-shader consumer test. The black clear and red rectangle
 //! are bounded validation inputs, not a replacement game scene or loading graph.
+#[path = "support/mod.rs"]
+mod test_support;
+use test_support::ShaderTestDriver as _;
+use test_support::BridgeTestDriver as _;
 use ash::vk::{self, Handle};
 use country_core::{
     asset_libraries::shader_library::AssetShaderLibrary,
@@ -59,7 +63,7 @@ fn verify_original_egui(sample_count: u8) {
         "/egui.raster.hlsl",
         "egui",
     );
-    let mut renderer = EguiGpu::new(device.clone(), bridge.hosts().clone());
+    let mut renderer = EguiGpu::new(bridge.hosts().clone());
     let context = egui::Context::default();
     let mut backend = EguiBackend::new(context.clone());
     context.begin_frame(egui::RawInput {
@@ -230,10 +234,10 @@ fn verify_original_egui(sample_count: u8) {
         .unwrap();
     bridge
         .shader_backend()
-        .prewarm(Duration::from_secs(10))
+        .prepare_test_pipelines(Duration::from_secs(10))
         .unwrap();
     let compiled = bridge.compile_built(graph).unwrap();
-    let receipt = bridge.execute_compiled(compiled).unwrap();
+    let receipt = bridge.execute_after_uploads(compiled).unwrap();
     assert!(!receipt.receipts.is_empty());
     bridge.wait_submits_done(10_000_000_000).unwrap();
     let mut pixels = vec![0; 64 * 64 * 4];

@@ -92,7 +92,7 @@ fn world() -> World {
     let kind = GpuWorldSubsetKind::Canopy;
     gpu.assign_subset(
         kind,
-        GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<PlacementDataSsbo>(&device, kind)),
+        GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<PlacementDataSsbo>(&device, kind, 1)),
     );
     world.insert_resource(gpu);
     let name = PrefabName::new("tree/legacy-acceptance");
@@ -342,7 +342,7 @@ fn shipped_themes_execute_actual_asset_producer_and_nonempty_delayed_converter()
         let mut gpu = GpuWorld::new(&device);
         gpu.assign_subset(
             kind,
-            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<PlacementDataSsbo>(&device, kind)),
+            GpuWorldSubset::Owned(OwnedGpuWorldSubset::new::<PlacementDataSsbo>(&device, kind, atlas.get_by_world_subset(kind).atlas.layouts.len())),
         );
         world.insert_resource(gpu);
         world.insert_resource(library);

@@ -1,11 +1,10 @@
 //! 候选初始化路径以实际能力查询建立设备，不推测原作排序名单。
-pub use super::instance::GraphicsInstanceLoader;
+pub use crate::{Error, Result};
 use super::physical_device::{
     DeviceDriverVersion, DriverVendor, GraphicsDeviceKind, PerformanceInfo,
 };
 use super::{
     device::Device,
-    error::{Error, Result},
     instance::{InstanceBuilder, VulkanInstance},
     physical_device::{PhysicalDevice, enumerate_physical_devices},
 };
@@ -54,21 +53,6 @@ impl GraphicsInstanceLayerAllowlist {
     }
     pub fn permits(&self, layer: &GraphicsInstanceLayer) -> bool {
         self.contains_layer(&layer.name) || layer.vendor().is_some_and(|v| self.contains_vendor(v))
-    }
-    /// 直接复用原 Ron fork；既有用户项保留，只追加更高版本 migration。
-    pub fn update_from_ron(&mut self, input: &str) -> std::result::Result<(), String> {
-        let migrations: Vec<AllowlistMigration> =
-            ron::from_str(input).map_err(|e| e.to_string())?;
-        if migrations.windows(2).any(|w| w[0].version >= w[1].version) {
-            return Err("白名单migration版本必须严格递增".into());
-        }
-        for migration in migrations {
-            if migration.version > self.version {
-                self.entries.extend(migration.add);
-                self.version = migration.version;
-            }
-        }
-        Ok(())
     }
 }
 
@@ -408,18 +392,6 @@ pub struct GraphicsDevicesForSurface {
     pub missing: Vec<(usize, Vec<String>)>,
 }
 impl GraphicsDevicesForSurface {
-    pub fn refresh_memory_budgets(&mut self, graphics: &GraphicsInstance) -> Result<()> {
-        for candidate in &mut self.devices {
-            let physical = graphics
-                .devices
-                .get(candidate.index)
-                .filter(|p| p.handle.as_raw() == candidate.handle)
-                .ok_or(Error::invalid_usage("刷新预算时设备清单身份改变"))?;
-            candidate.memory = physical.performance_info()?;
-        }
-        self.order_and_filter_devices();
-        Ok(())
-    }
     pub fn from_candidates(
         devices: Vec<AvailableGraphicsDevice>,
         policy: DeviceSelectionPolicy,
@@ -509,147 +481,11 @@ impl GraphicsDevicesForSurface {
             }
         }
     }
-    /// 原 `missing_devices` + 排序过滤的字面组合（见 [`missing_devices`] / [`order_and_filter_devices_original`]）：
-    /// 返回 (保留设备, 原 0xf0B missing 条目)。不读取、不修改本结构的候选策略结果。
-    pub fn original_order_and_filter(
-        &self,
-        adapters: &[DxgiAdapter],
-    ) -> (Vec<AvailableGraphicsDevice>, Vec<MissingGraphicsDevice>) {
-        let mut devices = self.devices.clone();
-        let mut missing = missing_devices(&devices, adapters);
-        order_and_filter_devices_original(&mut devices, &mut missing);
-        (devices, missing)
-    }
-    /// 原 `create_device`（0x140bdb940，O）：在 available 里**按 16B 键**找第一个设备（缺失即
-    /// `Option::unwrap` panic，init.rs:822），记 info "Attempting to use device .. driver .. uuid .." 与
-    /// debug "Physical device properties: .."，克隆实例 Arc 后只对这一个设备调用 `Device::create`，
-    /// 不做逐候选回退。回退版见 [`Self::create_device`]（候选）。
-    pub fn create_device_by_uuid(
-        &self,
-        graphics: &GraphicsInstance,
-        uuid: [u8; 16],
-    ) -> Result<Arc<Device>> {
-        let (physical, family, strings) = self.uuid_choice(graphics, uuid)?;
-        let names = strings.iter().map(|s| s.as_c_str()).collect::<Vec<_>>();
-        graphics.create_device(&physical, family, &names)
-    }
-    /// `create_device_by_uuid` 的完整路径：创建 `Device` 并挂接物理设备包装
-    /// （原 `Device+0x658`），使 `refresh_memory_budget` 真正委托。
-    pub fn create_graphics_device_by_uuid(
-        &self,
-        graphics: &GraphicsInstance,
-        uuid: [u8; 16],
-    ) -> Result<Arc<super::device::Device>> {
-        let (physical, family, strings) = self.uuid_choice(graphics, uuid)?;
-        let names = strings.iter().map(|s| s.as_c_str()).collect::<Vec<_>>();
-        graphics.create_graphics_device(&physical, family, &names)
-    }
-    /// 按 16B 键选出 (物理设备包装, 图形队列族, 扩展名)；日志与 panic 语义同 `create_device_by_uuid`。
-    fn uuid_choice(
-        &self,
-        graphics: &GraphicsInstance,
-        uuid: [u8; 16],
-    ) -> Result<(Arc<PhysicalDevice>, u32, Vec<std::ffi::CString>)> {
-        let candidate = self
-            .available
-            .iter()
-            .map(|index| &self.devices[*index])
-            .find(|d| d.device_uuid == uuid)
-            .ok_or_else(|| Error::unsupported("请求的设备 UUID 不在可用清单中"))?;
-        let physical = graphics
-            .devices
-            .get(candidate.index)
-            .filter(|p| p.handle.as_raw() == candidate.handle)
-            .ok_or(Error::invalid_usage("设备清单身份已变"))?
-            .clone();
-        log::info!(
-            "Attempting to use device {} driver \"{}\" uuid \"{:02x?}\"",
-            candidate.name,
-            candidate.driver,
-            candidate.device_uuid
-        );
-        log::debug!(
-            "Physical device properties: {:?}",
-            physical.properties.device_name
-        );
-        let family = candidate
-            .graphics_families
-            .iter()
-            .copied()
-            .find(|family| {
-                !self.policy.requires_surface
-                    || candidate
-                        .present_families
-                        .as_ref()
-                        .is_some_and(|p| p.contains(family))
-            })
-            .ok_or(Error::invalid_usage("无可用 graphics 队列族"))?;
-        let strings = self
-            .policy
-            .required_extensions
-            .iter()
-            .map(|s| std::ffi::CString::new(s.as_str()))
-            .collect::<std::result::Result<Vec<_>, _>>()
-            .map_err(|_| Error::invalid_usage("扩展名含 NUL"))?;
-        Ok((physical, family, strings))
-    }
-    pub fn create_device(&self, graphics: &GraphicsInstance) -> Result<Arc<Device>> {
-        self.create_device_configured(
-            graphics,
-            &crate::device::QueueConfig {
-                require_present: self.policy.requires_surface,
-                ..Default::default()
-            },
-        )
-    }
 
-    pub fn create_device_configured(
-        &self,
-        graphics: &GraphicsInstance,
-        config: &crate::device::QueueConfig,
-    ) -> Result<Arc<Device>> {
-        let mut errors = self
-            .missing
-            .iter()
-            .map(|(i, reasons)| format!("{}: {}", self.devices[*i].name, reasons.join("; ")))
-            .collect::<Vec<_>>();
-        for candidate in &self.available_devices() {
-            let Some(physical) = graphics
-                .devices
-                .get(candidate.index)
-                .filter(|p| p.handle.as_raw() == candidate.handle)
-            else {
-                errors.push("设备清单身份已变".into());
-                continue;
-            };
-            let strings = self
-                .policy
-                .required_extensions
-                .iter()
-                .map(|s| std::ffi::CString::new(s.as_str()))
-                .collect::<std::result::Result<Vec<_>, _>>()
-                .map_err(|_| Error::invalid_usage("扩展名含 NUL"))?;
-            let names = strings.iter().map(|s| s.as_c_str()).collect::<Vec<_>>();
-            match graphics.create_device_configured(
-                physical,
-                &names,
-                config,
-                candidate.present_families.as_deref().unwrap_or(&[]),
-            ) {
-                Ok(device) => return Ok(device),
-                Err(error @ Error::Unsupported(_)) => {
-                    errors.push(format!("{}: {error}", candidate.name))
-                }
-                Err(error) => return Err(error),
-            }
-        }
-        Err(Error::unsupported(errors.join("; ")))
-    }
 }
 pub struct GraphicsInstance {
     pub instance: Arc<VulkanInstance>,
-    /// 物理设备包装可共享（`Arc`）：创建的 `Device` 经 `attach_physical_device_info` 持有同一份
-    /// （原 `Device+0x658` 指向物理设备包装）。
+    /// Enumerated adapter metadata used for selection and settings.
     pub devices: Vec<Arc<PhysicalDevice>>,
 }
 
@@ -762,94 +598,7 @@ impl GraphicsInstance {
     fn wrap_devices(devices: Vec<PhysicalDevice>) -> Vec<Arc<PhysicalDevice>> {
         devices.into_iter().map(Arc::new).collect()
     }
-    /// 原 `Device::create`（0x140bf2560）完整路径：Vulkan 设备创建段 + 创建尾段（分配器日志 /
-    /// crash tracking buffer / 管线缓存），并把 `physical` 挂到设备上（`attach_physical_device_info`）。
-    /// 旧入口 [`Self::create_device`]（只返回 `Device`）保留。
-    pub fn create_graphics_device(
-        &self,
-        physical: &Arc<PhysicalDevice>,
-        queue_family: u32,
-        extensions: &[&std::ffi::CStr],
-    ) -> Result<Arc<super::device::Device>> {
-        let device = self.create_device(physical, queue_family, extensions)?;
-        let graphics = device;
-        graphics
-            .attach_physical_device_info(Arc::clone(physical))
-            .map_err(|_| Error::invalid_usage("物理设备包装已挂接"))?;
-        Ok(graphics)
-    }
-    /// 保留显式物理设备与图形族选择，特性协商统一走 DeviceConfig 创建入口。
-    pub fn create_device(
-        &self,
-        physical: &PhysicalDevice,
-        queue_family: u32,
-        extensions: &[&std::ffi::CStr],
-    ) -> Result<Arc<Device>> {
-        let mut families = physical
-            .queues
-            .iter()
-            .enumerate()
-            .map(|(index, props)| {
-                let mut info = crate::device::FamilyInfo::from_properties(props, false);
-                if index as u32 != queue_family {
-                    info.flags &= !vk::QueueFlags::GRAPHICS;
-                }
-                info
-            })
-            .collect::<Vec<_>>();
-        if families
-            .get(queue_family as usize)
-            .is_none_or(|f| !f.flags.contains(vk::QueueFlags::GRAPHICS))
-        {
-            return Err(Error::invalid_usage("请求的图形队列族不存在"));
-        }
-        families[queue_family as usize].present = true;
-        let plan = crate::device::plan_queues(&families, &crate::device::QueueConfig::default())?;
-        self.create_device_with_plan(physical, extensions, plan)
-    }
 
-    /// 按配置创建实际队列；呈现支持必须来自该设备与目标 surface 的查询结果。
-    pub fn create_device_configured(
-        &self,
-        physical: &PhysicalDevice,
-        extensions: &[&std::ffi::CStr],
-        config: &crate::device::QueueConfig,
-        present_families: &[u32],
-    ) -> Result<Arc<Device>> {
-        let families = physical
-            .queues
-            .iter()
-            .enumerate()
-            .map(|(index, props)| {
-                crate::device::FamilyInfo::from_properties(
-                    props,
-                    present_families.contains(&(index as u32)),
-                )
-            })
-            .collect::<Vec<_>>();
-        let plan = crate::device::plan_queues(&families, config)?;
-        self.create_device_with_plan(physical, extensions, plan)
-    }
-
-    fn create_device_with_plan(
-        &self,
-        physical: &PhysicalDevice,
-        extensions: &[&std::ffi::CStr],
-        plan: crate::device::QueuePlan,
-    ) -> Result<Arc<Device>> {
-        if !Arc::ptr_eq(&physical.instance, &self.instance) {
-            return Err(Error::invalid_usage("物理设备不属于此实例"));
-        }
-        crate::device::init::create_candidate(
-            self.instance.clone(),
-            physical.handle,
-            physical.properties,
-            None,
-            &crate::device::DeviceConfig::headless(),
-            Some(plan),
-            extensions,
-        )
-    }
 }
 
 pub fn create_headless_device() -> Result<Arc<Device>> {

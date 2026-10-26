@@ -250,12 +250,8 @@ impl PipelineCache {
             .retain(|entry| Arc::strong_count(&entry.slot) > 1 || entry.slot.try_lock().is_none());
     }
     pub fn cached_compute_count(&self) -> usize {
-        self.compute
-            .lock()
-            .as_slice()
-            .iter()
-            .filter(|entry| entry.slot.lock().pipeline.is_some())
-            .count()
+        let slots: Vec<_> = self.compute.lock().as_slice().iter().map(|entry| entry.slot.clone()).collect();
+        slots.iter().filter(|slot| slot.lock().pipeline.is_some()).count()
     }
 }
 /// Upper bound for driver pipeline-cache blobs, in memory and on disk.

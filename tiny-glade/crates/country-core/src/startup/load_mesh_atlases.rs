@@ -132,6 +132,24 @@ fn load_nani_meshes_if(
     Ok(())
 }
 
+/// Atlas ordinals are assigned once in semantic prefab order. Parts retain
+/// their canonical published order so every GPU/RT/audio consumer agrees.
+fn add_prefab_meshes(
+    prefabs: &PrefabLibrary,
+    atlases: &mut MeshAtlasLibrary,
+    mut selected: impl FnMut(&PrefabName, GpuWorldSubsetKind) -> bool,
+) {
+    let mut ordered: Vec<_> = prefabs.iter().collect();
+    ordered.sort_unstable_by(|(left, _), (right, _)| left.0.cmp(&right.0));
+    for (name, prefab) in ordered {
+        for part in &prefab.parts {
+            if !part.render_mesh.indices.is_empty() && selected(name, part.render_subset) {
+                atlases.add(part.render_subset, name.clone(), &part.render_mesh);
+            }
+        }
+    }
+}
+
 /// Original load_mesh_atlases@14129f400: runtime prefab render meshes first,
 /// then RON meshes, five procedural families and register_meshes@1412a00ae.
 /// This must run after load_prefabs and before startup_nani in PreStartup's
@@ -144,13 +162,7 @@ pub fn load_mesh_atlases(
     watcher: Option<&mut PrefabWatcher>,
     demo: bool,
 ) -> anyhow::Result<()> {
-    for (name, prefab) in prefabs.iter() {
-        for part in &prefab.parts {
-            if !part.render_mesh.indices.is_empty() {
-                atlases.add(part.render_subset, name.clone(), &part.render_mesh);
-            }
-        }
-    }
+    add_prefab_meshes(prefabs, atlases, |_, _| true);
     load_nani_meshes(installation, atlases, watcher, demo)?;
     generate_procedural_meshes(atlases);
     atlases.register_meshes(meshes);
@@ -188,15 +200,8 @@ pub fn reload_mesh_atlases(
     }
     // @1153/117d..123e: subset hit OR prefab name hit; @119c tests
     // Arc header16 + Mesh.indices.len@10, not an attributes-table counter.
-    for (name, prefab) in prefabs.iter() {
-        for part in &prefab.parts {
-            if (changed.contains(&part.render_subset) || modified_prefabs.contains(name))
-                && !part.render_mesh.indices.is_empty()
-            {
-                atlases.add(part.render_subset, name.clone(), &part.render_mesh);
-            }
-        }
-    }
+    add_prefab_meshes(prefabs, atlases, |name, subset|
+        changed.contains(&subset) || modified_prefabs.contains(name));
     if !changed.is_empty() {
         load_nani_meshes_for_subsets(installation, atlases, Some(watcher), demo, &changed)?;
     }
@@ -294,4 +299,41 @@ pub fn generate_procedural_meshes(atlases: &mut MeshAtlasLibrary) {
     let mut mesh = Mesh::new("grid cw");
     grid_gen_cw(&mut mesh.indices, 0, 12, 50, 12);
     atlases.add(GpuWorldSubsetKind::Smoke, "smoke", &mesh);
+}
+
+#[cfg(test)]
+mod deterministic_prefab_atlas_tests {
+    use super::*;
+    use crate::resources::prefab::{Prefab, PrefabPart};
+    use std::sync::Arc;
+
+    #[test]
+    fn initial_and_selected_atlas_assembly_share_stable_semantic_ordinals() {
+        let kind = GpuWorldSubsetKind::Canopy;
+        for order in [[2, 0, 1], [1, 2, 0], [0, 1, 2], [2, 1, 0]] {
+            let mut prefabs = PrefabLibrary::default();
+            for index in order {
+                let mut mesh = Mesh::new("fixture");
+                mesh.indices = vec![0, 1, 2];
+                mesh.set_attribute("Vertex_Position", vec![Vec3::new(index as f32, 0.0, 0.0),
+                    Vec3::new(index as f32, 1.0, 0.0), Vec3::new(index as f32, 0.0, 1.0)]);
+                prefabs.add(PrefabName::new(["a", "m", "z"][index]), Prefab { parts: vec![PrefabPart {
+                    name: "body".into(), render_mesh: Arc::new(mesh), render_subset: kind,
+                    ..Default::default()
+                }] });
+            }
+            for selected in [false, true] {
+                let mut atlases = MeshAtlasLibrary::default();
+                add_prefab_meshes(&prefabs, &mut atlases, |_, subset| !selected || subset == kind);
+                for (index, name) in ["a", "m", "z"].iter().enumerate() {
+                    assert_eq!(atlases.get_by_name(&PrefabName::new(name))[0].part_index, index as u32);
+                }
+                let atlas = &atlases.get_by_world_subset(kind).atlas;
+                assert_eq!(atlas.layouts.iter().map(|layout| layout.base_index).collect::<Vec<_>>(), [0, 3, 6]);
+                assert_eq!(atlas.mesh.indices, [0, 1, 2, 3, 4, 5, 6, 7, 8]);
+                let positions = atlas.mesh.positions_without_indices();
+                assert_eq!([positions[0].x, positions[3].x, positions[6].x], [0.0, 1.0, 2.0]);
+            }
+        }
+    }
 }

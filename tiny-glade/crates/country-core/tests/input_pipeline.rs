@@ -158,7 +158,7 @@ fn input_pipeline_failed_load_and_rewind_preserve_existing_state() {
 }
 
 #[test]
-fn input_pipeline_disabled_and_empty_replay_never_leak_live_buttons() {
+fn disabled_input_never_leaks_buttons_and_invalid_empty_replay_fails_before_consumers() {
     let (mut world, mut schedule) = fixture();
     world.resource_mut::<MouseButtonInput>().press(0);
     world.resource_mut::<InputRecordReplayState>().mode = InputRecordReplayMode::DisableInput;
@@ -168,16 +168,17 @@ fn input_pipeline_disabled_and_empty_replay_never_leak_live_buttons() {
         MainActionSet::default()
     );
     assert!(!world.resource::<ActionSetValues>().current.digital[0]);
+    let consumed = world.resource::<ObservedActions>().0.len();
     world.resource_mut::<InputRecordReplayState>().mode = InputRecordReplayMode::Replay;
-    schedule.run(&mut world);
-    assert_eq!(
-        *world.resource::<ActionSetStates>(),
-        MainActionSet::default()
-    );
-    assert_eq!(
-        world.resource::<InputRecordReplayState>().mode,
-        InputRecordReplayMode::None
-    );
+    // B time_update 140922c61..c83 rejects a replay index without a frame.
+    // Invalid in-memory state must not silently switch to live clock/input.
+    let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule.run(&mut world))).unwrap_err();
+    let message = panic.downcast_ref::<String>().map(String::as_str)
+        .or_else(|| panic.downcast_ref::<&str>().copied()).unwrap_or("");
+    assert!(message.contains("Out of bounds access"), "{message}");
+    assert_eq!(*world.resource::<ActionSetStates>(), MainActionSet::default());
+    assert_eq!(world.resource::<ObservedActions>().0.len(), consumed);
+    assert_eq!(world.resource::<InputRecordReplayState>().mode, InputRecordReplayMode::Replay);
 }
 
 #[test]

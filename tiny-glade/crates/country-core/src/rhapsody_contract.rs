@@ -303,16 +303,6 @@ pub struct RenderPassDesc {
 #[derive(Clone, Debug, Default)]
 pub struct RenderPass;
 
-/// Render-pass attachment descriptor
-/// (reused `rhapsody::pipeline::RenderPassAttachmentDesc`).
-#[derive(Clone, Copy, Debug, Default)]
-pub struct RenderPassAttachmentDesc;
-impl RenderPassAttachmentDesc {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
 /// Pass resource slot（游戏侧占位；WIRING §1：真实 = `rg::binding::PassResourceSlot`，resource 为
 /// `ResourceHandle`，缓冲槽带 offset/size、图像槽带 layout）。
 #[derive(Clone, Copy, Debug)]
@@ -333,61 +323,6 @@ pub struct RenderPassBinding {
     /// 此前占位类型丢了它，宿主无法知道光栅 pass 的 RG 纹理该绑哪个视图。`None` = 缓冲或默认视图。
     pub view: Option<crate::rhapsody_types::TextureViewDesc>,
 }
-
-/// `rhapsody::rg::bind` — record one resource access binding.
-/// WIRING §4.6：真实没有 `rg::pass_api::bind` 自由函数；真实构造 = `PassBinding::{buffer,image}` +
-/// `PassBuilder::add_resource_access`。此函数保留为游戏侧声明的占位。
-pub fn bind(resource_index: u32, access_type: u8) -> RenderPassBinding {
-    RenderPassBinding {
-        resource_index,
-        access_type,
-        view: None,
-    }
-}
-
-/// `rhapsody::rg::PassBuilder<UD>` — pass-declaration builder.
-/// 游戏侧占位；真实构图走 `rg::pass_builder::PassBuilder`（`add_resource_access(ResourceHandle, u8, u32)`
-/// / `render_with_context`），见 `render_frame.rs` 的 ExecutionChain 接线与 WIRING §2.4/§3.3。
-#[derive(Debug)]
-pub struct PassBuilder<'a, UD> {
-    _marker: PhantomData<&'a mut UD>,
-}
-impl<'a, UD> PassBuilder<'a, UD> {
-    /// `PassBuilder::add_resource_access`（O: resource_index + access_code + group）。
-    /// WIRING §4.7：真实 `resolve_resource` 不存在；哈希→(set,resource) typed gap 待取证。
-    pub fn add_resource_access(
-        &mut self,
-        _resource_index: u32,
-        _access_type: u8,
-        _sync_group: u32,
-    ) {
-        panic!("Detached pass builder cannot register accesses; supply RecordingPassBuilder")
-    }
-    /// `PassBuilder::resolve_resource` — hash → (set_index, resource_index) (typed gap).
-    pub fn resolve_resource(_hash: u64) -> (u32, u32) {
-        panic!("Detached pass builder cannot resolve resources")
-    }
-    /// `PassBuilder::render<PassResources, closure>` (O path; wired in integration).
-    pub fn render(self, _callback: impl FnOnce(u64) -> bool + 'static) {
-        panic!("Detached pass builder cannot execute callbacks")
-    }
-}
-
-// B-phase append (a4_compute): a builder not attached to a recorder — used by
-// `ComputePass`'s `BindGameResources::as_pass_builder` view; the live accesses are
-// recorded in `pass_resource_access::RecordingPassBuilder`.
-impl<'a, UD> PassBuilder<'a, UD> {
-    pub fn detached() -> Self {
-        PassBuilder {
-            _marker: PhantomData,
-        }
-    }
-}
-
-/// Render-graph handle（游戏侧占位；WIRING §1/§3.4：真实 = `rg::graph::RenderGraph`，
-/// `import_unowned/import_owned` 返回 `ResourceHandle`）。
-#[derive(Default)]
-pub struct RenderGraph;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PipelineError {

@@ -43,3 +43,5 @@ pub use sharing::{QueueFamilies, ResourceSharing};
 
 pub use handle::{Handle, ResourceStore};
 pub use tracked::{GpuUse, OwnershipRange, SyncCell, UseVisitor};
+
+pub(crate) mod identity;

@@ -19,8 +19,27 @@ use crate::rhapsody_types::{ImportedBuffer, RenderGraph};
 
 pub const RG_BUFFER_ACCESS: u8 = 0x37;
 
+impl crate::render::asset_ack::AssetSnapshot for AssetSsboLibrary {
+    fn asset_cursor(&self) -> AssetChangeCursor { AssetChangeCursor(self.changes.cursor()) }
+    fn asset_changes(&self, cursor: Option<AssetChangeCursor>) -> Option<(AssetChangeCursor, Vec<AssetEntryKey>)> {
+        self.changes.since(cursor.map(|cursor| cursor.0)).map(|(cursor, keys)|
+            (AssetChangeCursor(cursor), keys.into_iter().map(|id| AssetEntryKey::Id(id.0.0)).collect()))
+    }
+    fn asset_keys(&self) -> Vec<AssetEntryKey> {
+        let mut keys = Vec::with_capacity(self.buffers.len());
+        self.buffers.for_each_entry(|id, _| keys.push(AssetEntryKey::Id(id.0.0)));
+        keys
+    }
+    fn asset_contains(&self, key: &AssetEntryKey) -> bool {
+        matches!(key, AssetEntryKey::Id(id) if self.buffers.get(&SsboId(NameHash(*id))).is_some())
+    }
+    fn update_asset_snapshot(&self, destination: &mut Self) { self.update_render_snapshot(destination); }
+}
+use crate::render::asset_ack::{AssetChangeCursor, AssetEntryKey};
+
 /// 存储对象的公共访问面；句柄按值返回，不依赖内存布局强转。
 pub trait Ssbo: Send + Sync {
+    fn flush_pending(&mut self, _device: &dyn GraphicsDevice) -> Result<(), crate::render::ssbo::rhapsody_boundary::BackendError> { Ok(()) }
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn buffer(&self) -> &Buffer;
@@ -49,6 +68,9 @@ pub trait Ssbo: Send + Sync {
 impl<T: StorageElement + bytemuck::NoUninit + Send + Sync + 'static> Ssbo
     for crate::render::shadowed_buffer::ShadowedBuffer<T>
 {
+    fn flush_pending(&mut self, device: &dyn GraphicsDevice) -> Result<(), crate::render::ssbo::rhapsody_boundary::BackendError> {
+        self.gpu_flush(device)
+    }
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -119,6 +141,9 @@ impl<T: StorageElement + Send + Sync + 'static> Ssbo for InstanceBuffer<T> {
 }
 
 impl<T: StorageElement + Send + Sync + 'static> Ssbo for MappedStorageBuffer<'static, T> {
+    fn flush_pending(&mut self, _device: &dyn GraphicsDevice) -> Result<(), crate::render::ssbo::rhapsody_boundary::BackendError> {
+        self.flush_pending_uploads()
+    }
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -290,6 +315,9 @@ impl Default for AssetSsboLibrary {
 }
 
 impl AssetSsboLibrary {
+    pub fn flush_pending_uploads(&mut self, device: &dyn GraphicsDevice) -> Result<(), crate::render::ssbo::rhapsody_boundary::BackendError> {
+        self.buffers.try_for_each_mut(|state| state.data.flush_pending(device))
+    }
     pub fn new() -> Self {
         Self::default()
     }

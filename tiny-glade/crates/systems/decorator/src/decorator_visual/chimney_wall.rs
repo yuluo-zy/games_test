@@ -3,6 +3,7 @@
 //! 此处只闭合碰撞/source/entry链；烟雾与视觉装配参数的既有缺口仍未全部恢复。
 
 use bevy_ecs::prelude::*;
+use ::utils::scalar::max_f32;
 use country_core::asset_libraries::mesh_library::AssetMeshLibrary;
 use country_core::resources::walls::{
     cached_decorator_transforms::{CachedDecoratorTransform, CachedDecoratorTransforms},
@@ -114,11 +115,6 @@ fn vent_pipe_triangles(
         .collect()
 }
 
-/// 原MAXSS(first,second)：相等或无序时选第二operand。
-fn sse_max(first: f32, second: f32) -> f32 {
-    if first > second { first } else { second }
-}
-
 /// 借真实点表重用原XZ距离采样，不创建另一份曲线或累计长度缓存。
 fn coord_at_distance(points: &[[f32; 3]], distance: f32) -> CurveInternalCoord {
     let start = CurveInternalCoord { segment: 0, t: 0.0 };
@@ -158,10 +154,10 @@ fn wall_chimney_triangles(
     let max_y = wall.max_y();
     let dst = info.dst_as_wall().wall_space_coord();
     let original_points = wall.geometry.outline.as_slice();
-    let coord = coord_at_distance(original_points, sse_max(dst.u, 0.0));
+    let coord = coord_at_distance(original_points, max_f32(dst.u, 0.0));
     let ground_y = (1.0 - coord.t) * original_points[coord.segment][1]
         + coord.t * original_points[coord.segment + 1][1];
-    let height = extra_height + (sse_max(max_y - dst.y, 0.0) + 3.0);
+    let height = extra_height + (max_f32(max_y - dst.y, 0.0) + 3.0);
     let first_offset = cached.rotation * Vec3::new(0.0, 0.0, f32::from_bits(0x3eaaaaab));
     let second_offset = cached.rotation * Vec3::new(0.0, 0.0, f32::from_bits(0x3e19999a));
     let position = Vec3::new(
@@ -185,7 +181,7 @@ fn wall_chimney_triangles(
     let difference = dst.y - ground_y;
     // 原2dee有序<5；NaN和>=5都不进入lower候选，不能写成 !(difference>=5)。
     if !relative_height_blocks && difference < 5.0 {
-        let lower_height = sse_max(difference, 1.5);
+        let lower_height = max_f32(difference, 1.5);
         let lower = Transform {
             rotation: body.rotation,
             translation: Vec3::new(
@@ -424,7 +420,7 @@ mod canonical_collision_chain_tests {
         )
         .unwrap();
         let mut walls = PublicWalls::default();
-        walls.consume(&mut inner, &terrain);
+        walls.consume_with_paths(&mut inner, &terrain, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
         walls
             .get_mut(WallId(7))
             .unwrap()

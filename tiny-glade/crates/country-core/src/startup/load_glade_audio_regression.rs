@@ -1,7 +1,6 @@
-// Pending insertion as a cfg(test) module under startup/load_glade_audio.rs.
-// Exercises the original session loader, including real resource replacement
-// order. This must fail before pending-music-load-ownership.patch is applied.
+// Exercises the production session loader and resource replacement order.
 use super::*;
+use crate::systems::audio::music::music_player::MusicEvent;
 use crate::resources::{audio_instance::PlaybackState, session::SessionMutator};
 use std::{
     convert::Infallible,

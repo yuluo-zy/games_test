@@ -1,5 +1,6 @@
 //! 原 built-in sampler 的策略未恢复；此接口接受明确 Vulkan 描述符。
-use super::{device::Device, error::Result};
+use crate::Result;
+use super::device::Device;
 use ash::vk;
 use std::sync::Arc;
 pub struct Sampler {
@@ -45,7 +46,7 @@ impl Sampler {
             return Err(crate::Error::DeviceLost);
         }
         let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
-        let handle = super::error::observe_vulkan(&device, unsafe {
+        let handle = crate::error::observe_vulkan(&device, unsafe {
             device.core.device.create_sampler(info, None)
         })?;
         Ok(Self {
@@ -315,12 +316,6 @@ pub const BUILTIN_SAMPLER_SPECS: [BuiltinSamplerSpec; 13] = [
     ),
 ];
 
-/// `vkCreateSampler` 失败路径文案（O）：`Result::expect("create_sampler")`，位置
-/// `crates/rhapsody/src/raw/sampler.rs:191:66`（`.expect` 消息 0x142fe8968 len 0xe，Location 0x142fe8998）。
-pub const CREATE_SAMPLER_EXPECT_MSG: &str = "create_sampler";
-/// `get_built_in_sampler` 缺失文案前缀（sampler.rs:201:?，字符串 0x142b16bfd）。
-pub const SAMPLER_NOT_FOUND_PREFIX: &str = "Sampler not found: ";
-
 /// 按名字查规格（原 `HashMap<name, vk::Sampler>` 的键集）。
 pub fn builtin_sampler_spec(name: &str) -> Option<&'static BuiltinSamplerSpec> {
     BUILTIN_SAMPLER_SPECS.iter().find(|s| s.name == name)
@@ -328,8 +323,6 @@ pub fn builtin_sampler_spec(name: &str) -> Option<&'static BuiltinSamplerSpec> {
 
 impl crate::resource::GpuUse for Sampler {
     fn visit_uses(&self, visitor: &mut crate::resource::UseVisitor<'_>) -> crate::Result<()> {
-        visitor(&self.last_use)?;
-
-        Ok(())
+        crate::resource::tracked::visit_cells(visitor, [&self.last_use])
     }
 }

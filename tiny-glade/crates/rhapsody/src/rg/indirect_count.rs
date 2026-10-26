@@ -5,7 +5,7 @@
 use crate::{
     Error, Result,
     bindless::{
-        BindlessHeap, BindlessParameters, BindlessResource, BindlessShaderAbi,
+        BindlessParameters, BindlessResource, BindlessShaderAbi,
         BindlessShaderPackage,
     },
     device::{Device, Feature},
@@ -84,32 +84,17 @@ impl IndexedCountRequest {
 
 pub struct IndexedCountAdapter {
     device: Arc<Device>,
-    heap: Arc<BindlessHeap>,
-    pages: Option<Arc<crate::bindless::BindlessPagePool>>,
+    pages: Arc<crate::bindless::BindlessPagePool>,
     abi: Arc<BindlessShaderAbi>,
     pipeline: PipelineTicket,
 }
 impl IndexedCountAdapter {
     pub fn new(
         device: Arc<Device>,
-        heap: Arc<BindlessHeap>,
-        compiler: &AsyncPipelineCompiler,
-    ) -> Result<Arc<Self>> {
-        Self::new_inner(device, heap, compiler, None)
-    }
-    pub fn new_paged(
-        device: Arc<Device>,
         pages: Arc<crate::bindless::BindlessPagePool>,
         compiler: &AsyncPipelineCompiler,
     ) -> Result<Arc<Self>> {
-        Self::new_inner(device, pages.template().clone(), compiler, Some(pages))
-    }
-    fn new_inner(
-        device: Arc<Device>,
-        heap: Arc<BindlessHeap>,
-        compiler: &AsyncPipelineCompiler,
-        pages: Option<Arc<crate::bindless::BindlessPagePool>>,
-    ) -> Result<Arc<Self>> {
+        let heap = pages.template();
         if !Arc::ptr_eq(&device, &heap.layout.device) {
             return Err(Error::invalid_usage(
                 "indirect count adapter heap belongs to another device",
@@ -139,7 +124,6 @@ impl IndexedCountAdapter {
         )?;
         Ok(Arc::new(Self {
             device,
-            heap,
             pages,
             abi: package.abi,
             pipeline,
@@ -171,14 +155,8 @@ impl IndexedCountAdapter {
                 .caps()
                 .require_enabled(Feature::MultiDrawIndirect)?;
         }
-        let properties = unsafe {
-            self.device
-                .core
-                .instance
-                .instance
-                .get_physical_device_properties(self.device.core.physical)
-        };
-        if request.maximum_draws.div_ceil(64) > properties.limits.max_compute_work_group_count[0] {
+        let limits = self.device.limits();
+        if request.maximum_draws.div_ceil(64) > limits.max_compute_work_group_count[0] {
             return Err(Error::unsupported(
                 "indexed count adaptation exceeds device dispatch limit",
             ));
@@ -218,14 +196,14 @@ impl IndexedCountAdapter {
         // Descriptor offsets obey the actual device alignment. The few prefix
         // bytes included by alignment are conservatively declared as reads;
         // shader word offsets remain relative to these very same ranges.
-        let alignment = properties.limits.min_storage_buffer_offset_alignment.max(4);
+        let alignment = limits.min_storage_buffer_offset_alignment.max(4);
         let command_base = request.command_offset / alignment * alignment;
         let count_base = request.count_offset / alignment * alignment;
         let command_range = (request.command_offset - command_base) + source_span;
         let count_range = (request.count_offset - count_base) + 4;
         if [command_range, count_range, scratch_desc.size]
             .iter()
-            .any(|size| *size > u64::from(properties.limits.max_storage_buffer_range))
+            .any(|size| *size > u64::from(limits.max_storage_buffer_range))
         {
             return Err(Error::unsupported(
                 "indexed count descriptor exceeds device storage range",
@@ -299,10 +277,10 @@ impl IndexedCountAdapter {
                 }),
             )?;
             required[2] += 1;
-            let build =
-                |heap: &Arc<BindlessHeap>| -> Result<crate::bindless::PreparedBindlessParameters> {
-                    let mut parameters =
-                        BindlessParameters::new(heap.clone(), adapter.abi.clone(), &push)?;
+            let mut cursor = adapter.pages.cursor();
+            let prepared = cursor.prepare(|group| {
+                    group.require_slots(required)?;
+                    let mut parameters = group.parameters(adapter.abi.clone(), &push)?;
                     for (binding, resource) in resources.iter().enumerate() {
                         parameters.write(
                             BindingLocation {
@@ -313,17 +291,8 @@ impl IndexedCountAdapter {
                             resource.clone(),
                         )?;
                     }
-                    parameters.finish(&mut constants.lock())
-                };
-            let prepared = if let Some(pages) = &adapter.pages {
-                let mut cursor = pages.cursor();
-                cursor.prepare(|group| {
-                    group.require_slots(required)?;
-                    build(group.heap()).map_err(Into::into)
-                })?
-            } else {
-                build(&adapter.heap)?
-            };
+                    parameters.finish(|size| constants.lock().allocate(size)).map_err(Into::into)
+            })?;
             let pipeline = adapter.pipeline.try_get()?;
             unsafe {
                 let command = vk::CommandBuffer::from_raw(ctx.command.handle());

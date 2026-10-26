@@ -9,6 +9,7 @@
 
 use bevy_ecs::resource::Resource;
 use glam::{Mat4, Quat, Vec3};
+use ::utils::bytes::{read_f32_le, write_f32_le, write_u64_le};
 
 pub const MAIN_CAMERA_SIZE: usize = 0x4e0;
 pub const MODE_OFFSET: usize = 0x4d0;
@@ -475,7 +476,7 @@ impl MainCamera {
     }
 
     pub fn read_f32(&self, offset: usize) -> f32 {
-        f32::from_le_bytes(self.raw[offset..offset + 4].try_into().unwrap())
+        read_f32_le(&self.raw[..], offset)
     }
 
     /// Original @14090e6f0: preserve the normal camera's actual current
@@ -511,11 +512,11 @@ impl MainCamera {
     }
 
     pub fn write_f32(&mut self, offset: usize, value: f32) {
-        self.raw[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+        write_f32_le(&mut self.raw[..], offset, value);
     }
 
     pub fn write_u64(&mut self, offset: usize, value: u64) {
-        self.raw[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
+        write_u64_le(&mut self.raw[..], offset, value);
     }
 
     pub fn read_matrix(&self, offset: usize) -> Mat4 {

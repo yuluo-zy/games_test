@@ -4,7 +4,7 @@ mod gpu_test_support;
 use ash::vk;
 use rhapsody::{
     Error,
-    device::{Device, DeviceConfig, SubmissionApi},
+    device::{Device, DeviceConfig},
     raw::{
         buffer::{Buffer, BufferDesc},
         command_buffer::{PendingCommand, VulkanCommandPool},
@@ -55,7 +55,7 @@ impl Drop for SignalOnDrop {
         }
     }
 }
-fn fixture(api: SubmissionApi) -> Option<(Arc<Device>, ValidationMessenger)> {
+fn fixture() -> Option<(Arc<Device>, ValidationMessenger)> {
     gpu_test_support::initialize(
         "host buffer interval ledger",
         (|| -> rhapsody::Result<_> {
@@ -68,7 +68,6 @@ fn fixture(api: SubmissionApi) -> Option<(Arc<Device>, ValidationMessenger)> {
                 instance.build()?,
                 None,
                 &DeviceConfig {
-                    submission_api: api,
                     validation: true,
                     ..DeviceConfig::headless()
                 },
@@ -175,8 +174,8 @@ fn assert_validation_empty(validation: &ValidationMessenger) {
 }
 #[test]
 fn a_disjoint_host_write_succeeds_while_real_gpu_work_is_blocked_in_both_submit_apis() {
-    for api in [SubmissionApi::Auto, SubmissionApi::Legacy] {
-        let Some((device, validation)) = fixture(api) else {
+    {
+        let Some((device, validation)) = fixture() else {
             return;
         };
         let (buffer, span) = buffer(&device);
@@ -210,7 +209,7 @@ fn a_disjoint_host_write_succeeds_while_real_gpu_work_is_blocked_in_both_submit_
 }
 #[test]
 fn generic_reference_cannot_be_overridden_by_an_earlier_or_later_precise_use() {
-    let Some((device, validation)) = fixture(SubmissionApi::Auto) else {
+    let Some((device, validation)) = fixture() else {
         return;
     };
     for unknown_first in [true, false] {
@@ -230,7 +229,7 @@ fn generic_reference_cannot_be_overridden_by_an_earlier_or_later_precise_use() {
 }
 #[test]
 fn metadata_admission_failure_stays_on_the_command_and_publishes_no_completion_point() {
-    let Some((device, validation)) = fixture(SubmissionApi::Auto) else {
+    let Some((device, validation)) = fixture() else {
         return;
     };
     let (buffer, span) = buffer(&device);

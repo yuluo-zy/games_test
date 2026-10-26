@@ -568,6 +568,9 @@ impl RangeProgram {
         batches: &[super::compiled::Batch],
         schedule: &super::queue_schedule::QueueSchedule,
     ) -> Result<Self> {
+        if schedule.domains.len() != batches.len() || schedule.dependencies.len() != batches.len() {
+            return Err(Error::invalid_usage("queue schedule does not match compiled batches"));
+        }
         let separate_depth_stencil = definition.context.separate_depth_stencil_layouts;
         let mut result = Self {
             separate_depth_stencil,

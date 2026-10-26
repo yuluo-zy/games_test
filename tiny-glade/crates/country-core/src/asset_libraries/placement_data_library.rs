@@ -10,12 +10,60 @@ use crate::asset_libraries::Handle;
 use crate::render::ssbo::TypedStorageBuffer;
 use crate::render::ssbo::rhapsody_boundary::GraphicsDevice;
 use crate::resources::placement_data::PlacementDataSsbo;
+use crate::render::{extract::{ChangeCursor, ChangeJournal}, asset_ack::{AssetChangeCursor, AssetEntryKey, AssetSnapshot}};
 
 /// 持有已加载的摆放数据缓冲及来源索引。
-#[derive(Clone, Resource)]
+#[derive(Resource)]
 pub struct AssetPlacementDataLibrary {
-    pub buffers: HashMap<Handle<PlacementDataSsbo>, (TypedStorageBuffer<PlacementDataSsbo>, usize)>,
-    pub paths: HashMap<PathBuf, Handle<PlacementDataSsbo>>,
+    buffers: HashMap<Handle<PlacementDataSsbo>, (TypedStorageBuffer<PlacementDataSsbo>, usize)>,
+    paths: HashMap<PathBuf, Handle<PlacementDataSsbo>>,
+    changes: ChangeJournal<AssetEntryKey>,
+    source_cursor: Option<ChangeCursor>,
+}
+
+impl Clone for AssetPlacementDataLibrary {
+    fn clone(&self) -> Self {
+        let source_cursor = Some(self.changes.cursor());
+        Self { buffers: self.buffers.clone(), paths: self.paths.clone(),
+            changes: ChangeJournal::default(), source_cursor }
+    }
+}
+impl AssetSnapshot for AssetPlacementDataLibrary {
+    fn asset_cursor(&self) -> AssetChangeCursor { AssetChangeCursor(self.changes.cursor()) }
+    fn asset_changes(&self, cursor: Option<AssetChangeCursor>) -> Option<(AssetChangeCursor, Vec<AssetEntryKey>)> {
+        self.changes.since(cursor.map(|cursor| cursor.0)).map(|(cursor, keys)| (AssetChangeCursor(cursor), keys))
+    }
+    fn asset_keys(&self) -> Vec<AssetEntryKey> {
+        self.buffers.keys().map(|handle| AssetEntryKey::Id(handle.id().raw()))
+            .chain(self.paths.keys().cloned().map(AssetEntryKey::Path)).collect()
+    }
+    fn asset_contains(&self, key: &AssetEntryKey) -> bool {
+        match key {
+            AssetEntryKey::Id(id) => self.buffers.contains_key(&Handle::from_raw(*id)),
+            AssetEntryKey::Path(path) => self.paths.contains_key(path),
+            _ => false,
+        }
+    }
+    fn update_asset_snapshot(&self, destination: &mut Self) {
+        let Some((cursor, keys)) = self.changes.since(destination.source_cursor) else {
+            *destination = self.clone(); return;
+        };
+        for key in keys.into_iter().collect::<std::collections::HashSet<_>>() {
+            match key {
+                AssetEntryKey::Id(id) => {
+                    let handle = Handle::from_raw(id);
+                    if let Some(entry) = self.buffers.get(&handle) { destination.buffers.insert(handle, entry.clone()); }
+                    else { destination.buffers.remove(&handle); }
+                }
+                AssetEntryKey::Path(path) => {
+                    if let Some(handle) = self.paths.get(&path) { destination.paths.insert(path, *handle); }
+                    else { destination.paths.remove(&path); }
+                }
+                _ => unreachable!(),
+            }
+        }
+        destination.source_cursor = Some(cursor);
+    }
 }
 
 impl AssetPlacementDataLibrary {
@@ -24,12 +72,24 @@ impl AssetPlacementDataLibrary {
         AssetPlacementDataLibrary {
             buffers: HashMap::new(),
             paths: HashMap::new(),
+            changes: ChangeJournal::default(),
+            source_cursor: None,
         }
+    }
+
+    /// Read the registered owners without exposing unjournaled table edits.
+    pub fn buffers(&self) -> &HashMap<Handle<PlacementDataSsbo>, (TypedStorageBuffer<PlacementDataSsbo>, usize)> {
+        &self.buffers
+    }
+
+    pub fn paths(&self) -> &HashMap<PathBuf, Handle<PlacementDataSsbo>> {
+        &self.paths
     }
 
     /// B uninit_clearing@140a7a5fd..60c drops buffers before path keys.
     /// Retain table allocations, and let each typed buffer release its real lease.
     pub fn clear(&mut self) {
+        for key in self.asset_keys() { self.changes.record(key); }
         self.buffers.clear();
         self.paths.clear();
     }
@@ -53,6 +113,8 @@ impl AssetPlacementDataLibrary {
         let handle = Handle::new();
         self.buffers
             .insert(handle, (storage_buffer, placements.len()));
+        self.changes.record(AssetEntryKey::Id(handle.id().raw()));
+        self.changes.record(AssetEntryKey::Path(path.clone()));
         self.paths.insert(path, handle);
         (placements, handle)
     }
@@ -82,6 +144,24 @@ mod tests {
         let lib = AssetPlacementDataLibrary::new();
         assert!(lib.buffers.is_empty());
         assert!(lib.paths.is_empty());
+    }
+
+    #[test]
+    fn placement_registration_and_clear_publish_entry_changes_and_preserve_snapshot_owners() {
+        let mut library = AssetPlacementDataLibrary::new();
+        let path = tmp_file("entry_ack", "[]");
+        let before = library.asset_cursor();
+        let (_, handle) = library.load(&Device(1), path.clone());
+        let keys = library.asset_changes(Some(before)).unwrap().1;
+        assert!(keys.contains(&AssetEntryKey::Id(handle.id().raw())));
+        assert!(keys.contains(&AssetEntryKey::Path(path)));
+        let mut render = library.clone();
+        let before = library.asset_cursor();
+        library.clear();
+        assert!(!render.buffers.is_empty());
+        assert_eq!(library.asset_changes(Some(before)).unwrap().1.len(), 2);
+        library.update_asset_snapshot(&mut render);
+        assert!(render.buffers.is_empty() && render.paths.is_empty());
     }
 
     #[test]

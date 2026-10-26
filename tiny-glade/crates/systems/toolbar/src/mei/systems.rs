@@ -363,6 +363,7 @@ pub fn mei_post_update(
     _steam_client: Option<Res<SteamClientResource>>,
     _steam_input: Option<Res<SteamInput>>,
     input_mode: Res<ActiveInputModeTracker>,
+    mut file_images: Option<ResMut<crate::mei::widgets::FileImageCache>>,
 ) {
     let scale = window_size.height as f32 / 1000.0;
     let window_points = Vec2::new(window_size.width as f32 / scale, 1000.0);
@@ -396,6 +397,7 @@ pub fn mei_post_update(
                     text: &mut text,
                     device: &device,
                     textures: &mut textures,
+                    file_images: file_images.as_deref_mut(),
                     state: &mut node.state_bits,
                     actions: &actions,
                     window_points,

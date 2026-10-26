@@ -157,8 +157,8 @@ impl WorldRasterResources<'_> {
                 let buffer = library
                     .get_mut::<$staging>()
                     .expect("called `Option::unwrap()` on a `None` value");
-                buffer.with_cpu_write(|mapped|
-                    self.$field.copy_to_staging(0, bytemuck::cast_slice_mut(mapped)))
+                buffer.with_cpu_write_regions(|mapped, ranges|
+                    self.$field.copy_to_staging_with_ranges(0, bytemuck::cast_slice_mut(mapped), ranges))
                     .expect("world raster staging write failed");
             }};
         }
@@ -331,8 +331,8 @@ impl AllWorldRasterWrite<'_> {
                 let buffer = library
                     .get_mut::<$staging>()
                     .expect("called `Option::unwrap()` on a `None` value");
-                buffer.with_cpu_write(|mapped|
-                    self.$field.copy_to_staging(0, bytemuck::cast_slice_mut(mapped)))
+                buffer.with_cpu_write_regions(|mapped, ranges|
+                    self.$field.copy_to_staging_with_ranges(0, bytemuck::cast_slice_mut(mapped), ranges))
                     .expect("world raster staging write failed");
             }};
         }

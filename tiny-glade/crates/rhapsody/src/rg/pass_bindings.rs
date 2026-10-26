@@ -27,7 +27,6 @@ pub enum PassBindingError {
     WrongResourceKind,
     UndeclaredAccess,
     WrongDevice,
-    MissingManagedGeneration,
     InvalidRange,
     InvalidView,
     Vulkan(vk::Result),
@@ -193,10 +192,9 @@ impl ManagedPassResources {
             .get(mapping.backing_index as usize)
             .ok_or(PassBindingError::MissingPhysical)?
         {
-            RegistryResource::OwnedBuffer(b) | RegistryResource::UnownedBuffer(b) => self
-                .buffers
-                .get(b.handle.key())
-                .ok_or(PassBindingError::MissingManagedGeneration),
+            RegistryResource::OwnedBuffer(b) | RegistryResource::UnownedBuffer(b) => {
+                Ok(b.handle.clone())
+            }
             _ => Err(PassBindingError::WrongResourceKind),
         }
     }
@@ -216,10 +214,9 @@ impl ManagedPassResources {
             .get(mapping.backing_index as usize)
             .ok_or(PassBindingError::MissingPhysical)?
         {
-            RegistryResource::OwnedTexture(t) | RegistryResource::UnownedTexture(t) => self
-                .textures
-                .get(t.handle.key())
-                .ok_or(PassBindingError::MissingManagedGeneration),
+            RegistryResource::OwnedTexture(t) | RegistryResource::UnownedTexture(t) => {
+                Ok(t.handle.clone())
+            }
             _ => Err(PassBindingError::WrongResourceKind),
         }
     }
