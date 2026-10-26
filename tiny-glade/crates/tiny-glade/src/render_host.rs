@@ -1189,6 +1189,20 @@ impl BufferHost {
         Some(self.lookup(handle)?.desc)
     }
 
+    /// (manager identity, submitted jobs, submitted payload bytes), cumulative.
+    /// Excludes texture/setup, mapped writes, and graph copies. The private
+    /// service only changes None -> Some once; all frame/detached hosts retain
+    /// the same uploads Arc, with no take/replace/reset. Identity 0 is reserved
+    /// for that lazy, empty initial state; later identities are process-local
+    /// tokens, never workload signatures to compare across binaries. Readers
+    /// must reject a manager change, decreasing counters, or an error.
+    #[cfg(feature = "cpu-probe")]
+    pub fn probe_upload_submissions(&self) -> rhapsody::Result<(u64, u64, u64)> {
+        self.uploads.lock().as_ref().map_or(Ok((0, 0, 0)), |service| {
+            service.manager.upload_submitted_snapshot()
+        })
+    }
+
     /// Diagnostics for the actual bounded device-local sparse update service.
     pub fn queued_upload_stats(&self) -> Option<rhapsody::transfer::UploadQueueStats> {
         self.uploads
@@ -1501,6 +1515,20 @@ pub struct TextureHost {
     read_boundary: Arc<crate::render_upload_boundary::UploadBoundary>,
 }
 
+/// Payload actually copied by the direct-region helper's validated RGBA8,
+/// single-layer 2D contract. Row pitch, buffer offsets, and allocation padding
+/// are staging address spans, not image payload. Each recorded region counts
+/// once, even when two regions happen to overlap.
+#[cfg(feature = "cpu-probe")]
+fn rgba8_region_payload_bytes(regions: &[vk::BufferImageCopy]) -> Option<u64> {
+    regions.iter().try_fold(0u64, |sum, region| {
+        u64::from(region.image_extent.width)
+            .checked_mul(u64::from(region.image_extent.height))
+            .and_then(|size| size.checked_mul(4))
+            .and_then(|size| sum.checked_add(size))
+    })
+}
+
 impl TextureHost {
     fn boundary(&self) -> &Arc<crate::render_upload_boundary::UploadBoundary> { &self.read_boundary }
 
@@ -1534,6 +1562,10 @@ impl TextureHost {
                         texture.clone(), staging, &regions,
                         vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
                 })?.into_value();
+                #[cfg(feature = "cpu-probe")]
+                device.record_texture_upload_submission(
+                    rhapsody::device::TextureUploadProbeKind::HostDirectRegions,
+                    rgba8_region_payload_bytes(&regions));
                 Ok(())
             })();
             result.map_err(|error| match error {
@@ -3998,6 +4030,10 @@ impl CorePassGraph for GraphPasses {
                 error: None,
             };
             render(&mut host);
+            #[cfg(feature = "cpu-probe")]
+            if host.error.is_none() {
+                ctx.record_command_workload(host.api.take_command_workload());
+            }
             host.error.map_or(Ok(()), Err)
         });
     }
@@ -4097,6 +4133,8 @@ impl CorePassGraph for GraphPasses {
             let managed = ctx
                 .managed
                 .ok_or_else(|| rhapsody::Error::invalid_usage("staging copy has no resources"))?;
+            #[cfg(feature = "cpu-probe")]
+            let mut copy_workload = rhapsody::rg::CommandWorkload::default();
             for &(source, target, src_offset, dst_offset, size) in &declared {
                 let source = managed.buffer_for(source.raw()).map_err(|error| {
                     rhapsody::Error::invalid_usage_with("staging source", error)
@@ -4116,7 +4154,11 @@ impl CorePassGraph for GraphPasses {
                         }],
                     );
                 }
+                #[cfg(feature = "cpu-probe")]
+                copy_workload.merge(recorded_copy_workload(CopyWorkload::StagingH2d, size));
             }
+            #[cfg(feature = "cpu-probe")]
+            ctx.record_command_workload(copy_workload);
             Ok(())
         });
         Ok(())
@@ -4244,6 +4286,9 @@ impl CorePassGraph for GraphPasses {
                                 }],
                             );
                         }
+                        #[cfg(feature = "cpu-probe")]
+                        ctx.record_command_workload(recorded_copy_workload(
+                            CopyWorkload::ImmutableProducerH2d, size));
                         Ok(())
                     });
                     scope.output(output, AccessRange::Whole, 0x34)
@@ -4284,12 +4329,32 @@ impl CorePassGraph for GraphPasses {
                         }],
                     );
                 }
+                #[cfg(feature = "cpu-probe")]
+                ctx.record_command_workload(recorded_copy_workload(CopyWorkload::CachedD2d, size));
                 Ok(())
             });
             scope.output(target, AccessRange::Buffer { offset: 0, size }, 0x34)
         })?;
         Ok(true)
     }
+}
+
+/// Only explicitly identified graph copies are covered. These are payload
+/// bytes recorded by real native commands, not CPU writes or logical dirtiness.
+/// Complete-success execution receipts establish their submission scope.
+#[cfg(feature = "cpu-probe")]
+#[derive(Clone, Copy)]
+enum CopyWorkload { StagingH2d, ImmutableProducerH2d, CachedD2d }
+
+#[cfg(feature = "cpu-probe")]
+fn recorded_copy_workload(kind: CopyWorkload, bytes: u64) -> rhapsody::rg::CommandWorkload {
+    let mut workload = rhapsody::rg::CommandWorkload::default();
+    match kind {
+        CopyWorkload::StagingH2d => workload.staging_h2d_copy_recorded_bytes = bytes,
+        CopyWorkload::ImmutableProducerH2d => workload.immutable_producer_h2d_copy_recorded_bytes = bytes,
+        CopyWorkload::CachedD2d => workload.cached_d2d_copy_recorded_bytes = bytes,
+    }
+    workload
 }
 
 struct PassApiHost<'a, B: CommandBackend> {
@@ -4657,6 +4722,28 @@ struct ComputeExecHost<'a> {
     managed: &'a ManagedPassResources,
     bind_parameters: &'a mut dyn FnMut(&[u8]) -> rhapsody::Result<()>,
     parameters: ComputeParameterState,
+    #[cfg(feature = "cpu-probe")]
+    command_workload: rhapsody::rg::CommandWorkload,
+}
+
+/// Executes the same admission checks as the native path. The closure returns
+/// None when an indirect source could not be resolved; neither that case nor a
+/// rejected parameter state records a native dispatch. No GPU is needed to test
+/// this boundary. Only the probe build contains this counting adapter.
+#[cfg(feature = "cpu-probe")]
+fn issue_counted_compute_dispatch(
+    parameters: &mut ComputeParameterState,
+    workload: &mut rhapsody::rg::CommandWorkload,
+    indirect: bool,
+    issue: impl FnOnce() -> Option<()>,
+) -> Option<()> {
+    if !parameters.can_dispatch() { return Some(()); }
+    issue()?;
+    let mut issued = rhapsody::rg::CommandWorkload::default();
+    if indirect { issued.indirect_dispatch_api_calls = 1; }
+    else { issued.direct_dispatch_api_calls = 1; }
+    workload.merge(issued);
+    Some(())
 }
 
 impl ComputeExec for ComputeExecHost<'_> {
@@ -4667,20 +4754,41 @@ impl ComputeExec for ComputeExecHost<'_> {
     fn issue_full_pipeline_barrier(&mut self) {}
     fn count_dispatch(&mut self) {}
     fn cmd_dispatch(&mut self, x: u32, y: u32, z: u32) {
+        #[cfg(feature = "cpu-probe")]
+        {
+            let (device, command) = (self.device, self.command);
+            let _ = issue_counted_compute_dispatch(&mut self.parameters, &mut self.command_workload, false, || {
+                unsafe { device.cmd_dispatch(command, x, y, z) };
+                Some(())
+            });
+        }
+        #[cfg(not(feature = "cpu-probe"))]
         if self.parameters.can_dispatch() {
             unsafe { self.device.cmd_dispatch(self.command, x, y, z) };
         }
     }
     fn cmd_dispatch_indirect(&mut self, buffer: u32, offset: u64) -> Option<()> {
-        if !self.parameters.can_dispatch() {
-            return Some(());
+        #[cfg(feature = "cpu-probe")]
+        {
+            let (device, command, managed) = (self.device, self.command, self.managed);
+            issue_counted_compute_dispatch(&mut self.parameters, &mut self.command_workload, true, || {
+                let buffer = managed.buffer_for(buffer).ok()?;
+                unsafe { device.cmd_dispatch_indirect(command, buffer.raw_handle(), offset) };
+                Some(())
+            })
         }
-        let buffer = self.managed.buffer_for(buffer).ok()?;
-        unsafe {
-            self.device
-                .cmd_dispatch_indirect(self.command, buffer.raw_handle(), offset)
-        };
-        Some(())
+        #[cfg(not(feature = "cpu-probe"))]
+        {
+            if !self.parameters.can_dispatch() {
+                return Some(());
+            }
+            let buffer = self.managed.buffer_for(buffer).ok()?;
+            unsafe {
+                self.device
+                    .cmd_dispatch_indirect(self.command, buffer.raw_handle(), offset)
+            };
+            Some(())
+        }
     }
     fn local_size(&self) -> [u32; 3] {
         self.local_size
@@ -5350,6 +5458,8 @@ impl GraphPasses {
                 managed,
                 bind_parameters: &mut bind_parameters,
                 parameters: parameter_state,
+                #[cfg(feature = "cpu-probe")]
+                command_workload: Default::default(),
             };
             // An explicit initial payload is already bound. Otherwise the first
             // callback push must bind a valid payload before either dispatch kind.
@@ -5358,6 +5468,10 @@ impl GraphPasses {
                 dispatch,
             }
             .execute(&mut exec);
+            #[cfg(feature = "cpu-probe")]
+            if exec.parameters.error.is_none() {
+                ctx.record_command_workload(exec.command_workload);
+            }
             exec.parameters.error.map_or(Ok(()), Err)
         });
         Ok(())
@@ -5443,6 +5557,95 @@ mod buffer_description_tests {
             .unwrap();
             assert_eq!(usize::from(converted.alignment), alignment);
         }
+    }
+}
+
+#[cfg(all(test, feature = "cpu-probe"))]
+mod command_workload_probe_tests {
+    use super::{ComputeParameterState, CopyWorkload, issue_counted_compute_dispatch, recorded_copy_workload};
+    use rhapsody::rg::CommandWorkload;
+
+    #[test]
+    fn rejected_or_unresolved_dispatch_never_records_a_native_command() {
+        for indirect in [false, true] {
+            let mut parameters = ComputeParameterState::new(20, &[], &mut |_| Ok(())).unwrap();
+            let mut workload = CommandWorkload::default();
+            assert_eq!(issue_counted_compute_dispatch(&mut parameters, &mut workload, indirect,
+                || panic!("rejected parameters must not reach the native issue closure")), Some(()));
+            assert_eq!(workload.direct_dispatch_api_calls, 0);
+            assert_eq!(workload.indirect_dispatch_api_calls, 0);
+            assert!(workload.valid);
+        }
+        let mut parameters = ComputeParameterState::new(0, &[], &mut |_| Ok(())).unwrap();
+        let mut workload = CommandWorkload::default();
+        assert_eq!(issue_counted_compute_dispatch(&mut parameters, &mut workload, true, || None), None);
+        assert_eq!(workload.indirect_dispatch_api_calls, 0);
+        assert!(workload.valid);
+    }
+
+    #[test]
+    fn successful_native_dispatches_fold_once_and_overflow_is_sticky() {
+        let mut parameters = ComputeParameterState::new(0, &[], &mut |_| Ok(())).unwrap();
+        let mut workload = CommandWorkload::default();
+        let mut actual_issues = 0;
+        for indirect in [false, true, false] {
+            assert_eq!(issue_counted_compute_dispatch(&mut parameters, &mut workload, indirect,
+                || { actual_issues += 1; Some(()) }), Some(()));
+        }
+        assert_eq!(actual_issues, 3);
+        assert_eq!(workload.direct_dispatch_api_calls, 2);
+        assert_eq!(workload.indirect_dispatch_api_calls, 1);
+        assert!(workload.valid);
+        workload.direct_dispatch_api_calls = u64::MAX;
+        let _ = issue_counted_compute_dispatch(&mut parameters, &mut workload, false, || Some(()));
+        assert!(!workload.valid);
+        let _ = issue_counted_compute_dispatch(&mut parameters, &mut workload, true, || Some(()));
+        assert!(!workload.valid, "a later successful issue must not repair counter overflow");
+    }
+
+    #[test]
+    fn direct_region_payload_omits_pitch_offsets_and_reports_overflow() {
+        use ash::vk;
+        let region = vk::BufferImageCopy {
+            buffer_offset: 1024,
+            buffer_row_length: 512,
+            buffer_image_height: 64,
+            image_extent: vk::Extent3D { width: 3, height: 2, depth: 1 },
+            ..Default::default()
+        };
+        assert_eq!(super::rgba8_region_payload_bytes(&[]), Some(0));
+        assert_eq!(super::rgba8_region_payload_bytes(&[region, region]), Some(48));
+        let huge = vk::BufferImageCopy {
+            image_extent: vk::Extent3D { width: u32::MAX, height: u32::MAX, depth: 1 },
+            ..Default::default()
+        };
+        assert_eq!(super::rgba8_region_payload_bytes(&[huge]), None);
+    }
+
+    #[test]
+    fn graph_copy_categories_remain_disjoint_and_use_native_payload_sizes() {
+        let staging = recorded_copy_workload(CopyWorkload::StagingH2d, 64);
+        assert_eq!(staging.staging_h2d_copy_recorded_bytes, 64);
+        assert_eq!(staging.immutable_producer_h2d_copy_recorded_bytes, 0);
+        assert_eq!(staging.cached_d2d_copy_recorded_bytes, 0);
+        let producer = recorded_copy_workload(CopyWorkload::ImmutableProducerH2d, 128);
+        assert_eq!(producer.staging_h2d_copy_recorded_bytes, 0);
+        assert_eq!(producer.immutable_producer_h2d_copy_recorded_bytes, 128);
+        assert_eq!(producer.cached_d2d_copy_recorded_bytes, 0);
+        let cached = recorded_copy_workload(CopyWorkload::CachedD2d, 256);
+        assert_eq!(cached.staging_h2d_copy_recorded_bytes, 0);
+        assert_eq!(cached.immutable_producer_h2d_copy_recorded_bytes, 0);
+        assert_eq!(cached.cached_d2d_copy_recorded_bytes, 256);
+        let mut folded = CommandWorkload::default();
+        for part in [staging, producer, cached] { folded.merge(part); }
+        assert_eq!(folded.staging_h2d_copy_recorded_bytes, 64);
+        assert_eq!(folded.immutable_producer_h2d_copy_recorded_bytes, 128);
+        assert_eq!(folded.cached_d2d_copy_recorded_bytes, 256);
+        assert_eq!(folded.direct_draw_api_calls, 0);
+        assert_eq!(folded.direct_dispatch_api_calls, 0);
+        assert!(folded.valid);
+        folded.merge(recorded_copy_workload(CopyWorkload::StagingH2d, u64::MAX));
+        assert!(!folded.valid);
     }
 }
 

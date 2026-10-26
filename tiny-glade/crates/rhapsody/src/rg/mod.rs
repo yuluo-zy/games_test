@@ -37,6 +37,11 @@ internal_mod!(
     indirect_count,
 );
 
+#[cfg(feature = "cpu-probe")]
+mod command_workload;
+#[cfg(feature = "cpu-probe")]
+pub use command_workload::CommandWorkload;
+
 // Curated render-graph surface; the submodules are implementation detail.
 pub use crate::collections::cache::{CacheReason, CacheStats};
 pub use crate::raw::transient_backing::TransientBackingCounters;

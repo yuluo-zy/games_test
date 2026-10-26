@@ -393,17 +393,17 @@ fn cached_plans_cull_dead_callbacks_and_rebind_each_frames_imports() {
             first_plan = Some(execution.compiled.plan.clone());
         }
     }
-    assert_eq!(
-        *calls.lock().unwrap(),
-        [
-            (0, "output"),
-            (0, "effect"),
-            (1, "output"),
-            (1, "effect"),
-            (2, "output"),
-            (2, "effect")
-        ]
-    );
+    let calls = calls.lock().unwrap();
+    assert_eq!(calls.len(), 6, "exactly two retained callbacks per frame");
+    for (frame, frame_calls) in calls.chunks_exact(2).enumerate() {
+        assert!(frame_calls.iter().all(|&(observed_frame, _)| observed_frame == frame as u64),
+            "callbacks must remain grouped in frame execution order");
+        // These passes share no dependency. Only their per-frame membership,
+        // not the worker callbacks' arrival order, is part of this test.
+        let mut names = [frame_calls[0].1, frame_calls[1].1];
+        names.sort_unstable();
+        assert_eq!(names, ["effect", "output"]);
+    }
     assert_eq!(chain.plan_cache_stats().hits, 2);
     assert!(chain.plan_cache_bytes() <= 16 * 1024 * 1024);
 }
@@ -1179,4 +1179,126 @@ fn parallel_chunks_record_only_through_their_own_pool_leases() {
         leased.dedup();
         assert_eq!(leased.len(), chunks as usize);
     }
+}
+#[cfg(feature = "cpu-probe")]
+#[test]
+fn native_command_workload_joins_callback_cells_once_across_real_executor_workers() {
+    use rhapsody::rg::{CommandWorkload, CommandBackend, RenderPassApi};
+    struct NativeCapture;
+    impl CommandBackend for NativeCapture {
+        fn dispatch(&mut self, _: vk::CommandBuffer, _: rhapsody::rg::pass_api::Command<'_>) {}
+    }
+    let mut backend = Mock::default();
+    let mut chain = chain();
+    let mut graph = RenderGraph::new();
+    for index in 0..32u64 {
+        graph.add_pass(format!("measured-{index}")).with_side_effect().render_with_context(move |ctx| {
+            let mut native = NativeCapture;
+            let mut first = RenderPassApi::new(&mut native, vk::CommandBuffer::null(), 0, false);
+            for _ in 0..=index { first.draw(3, 1000, 0, 0); }
+            ctx.record_command_workload(first.take_command_workload());
+            ctx.record_command_workload(first.take_command_workload()); // already consumed
+            drop(first);
+            let mut second = RenderPassApi::new(&mut native, vk::CommandBuffer::null(), 0, false);
+            second.draw_indexed(6, 2000, 0, 0, 0);
+            second.dispatch_threads_3d(16, 16, 16,
+                std::num::NonZeroU32::new(8).unwrap(), std::num::NonZeroU32::new(8).unwrap(),
+                std::num::NonZeroU32::new(8).unwrap());
+            ctx.record_command_workload(second.take_command_workload());
+            ctx.record_command_workload(CommandWorkload {
+                staging_h2d_copy_recorded_bytes: index + 1, ..Default::default()
+            });
+            true
+        });
+    }
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    let execution = chain.execute_graph_with_context(declaration, &mut Pool::default(),
+        &mut Dependency, &mut backend, &mut callbacks).unwrap();
+    assert!(execution.stats.chunks > 1, "exercise real worker chunk aggregation");
+    assert_eq!(execution.stats.command_workload, CommandWorkload {
+        direct_draw_api_calls: 528, indexed_draw_api_calls: 32, direct_dispatch_api_calls: 32,
+        staging_h2d_copy_recorded_bytes: 528, ..Default::default()
+    });
+}
+
+#[cfg(feature = "cpu-probe")]
+#[test]
+fn native_command_workload_partial_callback_or_submit_failure_is_explicitly_invalid() {
+    use rhapsody::rg::CommandWorkload;
+    for failure_mode in 0..4 {
+        let mut backend = Mock { fail_submit_at: (failure_mode == 3).then_some(2), ..Default::default() };
+        let mut chain = chain();
+        let mut graph = RenderGraph::new();
+        graph.batch_per_pass(true);
+        let ordering = graph.import_unowned("prefix completion", buffer(), 77, 0x25).unwrap();
+        let mut prefix = graph.add_pass("successful prefix").with_side_effect();
+        prefix.add_resource_access(ordering, WRITE, 0).unwrap();
+        prefix.render_with_context(|ctx| {
+            ctx.record_command_workload(CommandWorkload { direct_draw_api_calls: 1, ..Default::default() });
+            true
+        });
+        let mut suffix = graph.add_pass("failed suffix").with_side_effect();
+        suffix.add_resource_access(ordering, 0x25, 0).unwrap();
+        suffix.render_with_context(move |ctx| {
+            ctx.record_command_workload(CommandWorkload { direct_draw_api_calls: 99, ..Default::default() });
+            match failure_mode {
+                0 => false,
+                1 => { ctx.report_error(rhapsody::Error::OutOfHostMemory); true }
+                2 => panic!("injected callback panic after recorded calls"),
+                _ => true,
+            }
+        });
+        let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+        assert!(declaration_error.is_none());
+        let error = chain.execute_graph_with_context(declaration, &mut Pool::default(),
+            &mut Dependency, &mut backend, &mut callbacks).unwrap_err();
+        let Error::PartialSubmission { execution, .. } = error else { panic!("prefix receipt retained"); };
+        assert!(!execution.stats.command_workload.valid, "partial work cannot become valid zero/full-frame evidence");
+        assert_eq!(execution.transaction.receipts().len(), 1);
+        assert_eq!(execution.stats.command_workload.direct_draw_api_calls,
+            if failure_mode < 3 { 1 } else { 100 }, "failed callback excluded; recorded but failed submit stays explicitly invalid");
+    }
+}
+
+#[cfg(feature = "cpu-probe")]
+#[test]
+fn native_command_workload_overflow_invalidates_evidence_without_rejecting_execution() {
+    use rhapsody::rg::CommandWorkload;
+    let mut backend = Mock::default();
+    let mut chain = chain();
+    let mut graph = RenderGraph::new();
+    graph.add_pass("overflow diagnostic").with_side_effect().render_with_context(|ctx| {
+        ctx.record_command_workload(CommandWorkload { cached_d2d_copy_recorded_bytes: u64::MAX, ..Default::default() });
+        ctx.record_command_workload(CommandWorkload { cached_d2d_copy_recorded_bytes: 1, ..Default::default() });
+        true
+    });
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    let execution = chain.execute_graph_with_context(declaration, &mut Pool::default(),
+        &mut Dependency, &mut backend, &mut callbacks).unwrap();
+    assert!(!execution.stats.command_workload.valid);
+    assert_eq!(execution.stats.command_workload.cached_d2d_copy_recorded_bytes, u64::MAX);
+    assert_eq!(execution.transaction.receipts().len(), 1, "probe overflow never rejects real submission");
+}
+
+#[cfg(feature = "cpu-probe")]
+#[test]
+fn native_command_workload_preparation_is_invalid_but_successful_zero_native_graph_is_valid() {
+    let mut backend = Mock::default();
+    let mut chain = chain();
+    let mut graph = RenderGraph::new();
+    graph.add_pass("prepare only").with_side_effect().render_with_context(|_| true);
+    let (declaration, callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    let prepared = chain.compile_graph(declaration, &mut Pool::default(), &mut Dependency,
+        &mut backend, callbacks.len()).unwrap();
+    assert!(!prepared.stats.command_workload.valid);
+    drop(prepared);
+    let graph = RenderGraph::new();
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    let execution = chain.execute_graph_with_context(declaration, &mut Pool::default(),
+        &mut Dependency, &mut backend, &mut callbacks).unwrap();
+    assert_eq!(execution.stats.command_workload, rhapsody::rg::CommandWorkload::default());
 }

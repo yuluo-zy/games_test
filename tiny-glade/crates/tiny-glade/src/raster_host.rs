@@ -2506,6 +2506,8 @@ impl PassHost for RasterPassHost {
                 country_core::render::declare_probe::rec_draw_call(probe_draw);
             }
             api.end_render_pass();
+            #[cfg(feature = "cpu-probe")]
+            ctx.record_command_workload(api.take_command_workload());
             true
         });
     }

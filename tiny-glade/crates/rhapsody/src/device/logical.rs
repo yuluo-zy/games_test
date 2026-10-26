@@ -38,6 +38,8 @@ use super::queues::Queues;
 /// lock order and teardown order.
 pub struct Device {
     self_ref: std::sync::Weak<Self>,
+    #[cfg(feature = "cpu-probe")]
+    upload_probe: super::texture_upload_probe::TextureUploadProbeCounters,
     pub(crate) caches: Caches,
     pub(crate) lifetime: Lifetime,
     pub(crate) memory: Memory,
@@ -47,6 +49,17 @@ pub struct Device {
 }
 
 impl Device {
+    /// Instrument a known producer only after its real successful upload submit.
+    /// Do not duplicate a setup/transfer hook. None invalidates payload evidence
+    /// without changing the real submit. Counts never imply GPU completion.
+    #[cfg(feature = "cpu-probe")]
+    pub fn record_texture_upload_submission(&self, kind: super::TextureUploadProbeKind, payload: Option<u64>) {
+        self.upload_probe.record(kind, payload);
+    }
+    #[cfg(feature = "cpu-probe")]
+    pub fn texture_upload_probe_snapshot(&self) -> super::TextureUploadProbeSnapshot {
+        self.upload_probe.snapshot(self.generation().value())
+    }
     /// Every public device is constructed in an Arc. Internal caches hold only weak
     /// references; this upgrade is used while an external caller already owns it.
     pub(crate) fn shared(&self) -> Arc<Self> {
@@ -70,6 +83,8 @@ impl Device {
         let memory = Memory::create(&core, stats, &runtime)?;
         let device = Arc::new_cyclic(|weak| Self {
             self_ref: weak.clone(),
+            #[cfg(feature = "cpu-probe")]
+            upload_probe: Default::default(),
             caches,
             lifetime: Lifetime::new(runtime.reclamation),
             memory,

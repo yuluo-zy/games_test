@@ -407,6 +407,9 @@ pub fn upload_regions(
             )
         },
     )?;
+    #[cfg(feature = "cpu-probe")]
+    device.record_texture_upload_submission(crate::device::TextureUploadProbeKind::SetupRegions,
+        regions.iter().try_fold(0u64, |sum, region| sum.checked_add(u64::try_from(region.data.len()).ok()?)));
     Ok(submission.point)
 }
 

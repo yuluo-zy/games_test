@@ -479,6 +479,8 @@ impl TransferManager {
                 .map(|&index| self.queued.job(index).bytes())
                 .sum();
             let mut staging = self.staging.lock();
+            #[cfg(feature = "cpu-probe")]
+            let mut submitted_payload = None;
             let mut uploader = Uploader {
                 device: &self.device,
                 graphics: &self.graphics,
@@ -486,12 +488,18 @@ impl TransferManager {
                 staging: &mut staging,
                 stalls: &mut self.capacity_stalls,
             };
-            match uploader.submit(batch.iter().flat_map(|&index| {
+            let submission = uploader.submit(batch.iter().flat_map(|&index| {
                 let job = self.queued.job(index);
                 job.segments
                     .iter()
                     .map(move |segment| (&job.target, segment.offset, segment.bytes()))
-            })) {
+            }),
+                #[cfg(feature = "cpu-probe")]
+                &mut submitted_payload,
+            );
+            #[cfg(feature = "cpu-probe")]
+            self.queued.record_native_submission(batch.len(), submitted_payload);
+            match submission {
                 Ok(point) => {
                     for &index in batch.iter().rev() {
                         self.queued.publish(index, point);
@@ -644,8 +652,19 @@ impl TransferManager {
         if let Ok(point) = &result {
             lease.submitted = Some(*point);
         }
-        let point = result?;
-        Ok(point)
+        // This lease is fresh (submitted: None) for this invocation. The
+        // transfer helper sets its proof immediately after the copy submit,
+        // before fallible acquire registration; graphics sets it on Ok above.
+        #[cfg(feature = "cpu-probe")]
+        if lease.submitted.is_some() {
+            let payload = uploads.iter().try_fold(0u64, |sum, upload| {
+                upload.regions.iter().try_fold(sum, |sum, region| {
+                    u64::try_from(region.data.len()).ok().and_then(|bytes| sum.checked_add(bytes))
+                })
+            });
+            self.device.record_texture_upload_submission(crate::device::TextureUploadProbeKind::TransferTextures, payload);
+        }
+        Ok(result?)
     }
 
     /// Ownership acquires queued on the device for the graphics family (by
@@ -846,6 +865,7 @@ impl Uploader<'_> {
     fn submit<'b>(
         &mut self,
         segments: impl Iterator<Item = (&'b Arc<Buffer>, u64, &'b [u8])> + Clone,
+        #[cfg(feature = "cpu-probe")] submitted_payload: &mut Option<u64>,
     ) -> crate::Result<SyncPoint> {
         self.device.try_collect_garbage()?;
         let completed = self.device.poll()?;
@@ -969,6 +989,8 @@ impl Uploader<'_> {
         self.device
             .reserve_pending_acquires(groups.iter().map(|group| group.3.len()).sum())?;
         let submitted = command.submit_to(target.queue, &[], &[])?;
+        #[cfg(feature = "cpu-probe")]
+        { *submitted_payload = Some(packed); }
         recorded.submitted();
         self.staging.uploads[index].last_use = SyncSet::from_point(submitted.point);
         for group in groups {

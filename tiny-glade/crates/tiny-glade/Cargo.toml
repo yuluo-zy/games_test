@@ -114,7 +114,7 @@ profile = ["dep:pprof", "cpu-probe"]
 # and its unit tests build on any host without pprof's transitive deps; the
 # actual CLOCK_THREAD_CPUTIME_ID read inside the module is macOS-only. Off by
 # default: a normal build carries no recorder type and no clock overhead.
-cpu-probe = []
+cpu-probe = ["country-core/cpu-probe", "rhapsody/cpu-probe"]
 # mimalloc as the process-wide allocator of the shipped binaries. The default
 # system allocator (the Windows heap in particular) serializes the many small
 # per-frame allocations of the ECS, declaration and recording paths. Library

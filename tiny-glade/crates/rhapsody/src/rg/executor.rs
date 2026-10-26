@@ -116,6 +116,8 @@ struct ChunkResult {
     ok: bool,
     error: Option<crate::Error>,
     recorded_durations: usize,
+    #[cfg(feature = "cpu-probe")]
+    command_workload: super::CommandWorkload,
     owners: super::owner_storage::ResourceOwners,
 }
 
@@ -277,6 +279,10 @@ pub trait ChunkRecorder: Sync {
 /// 一次图执行的阶段耗时与分块统计（性能追踪用）。
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ExecutionStats {
+    /// Native API calls/host copy bytes from complete successful recording.
+    /// Not GPU-completed work. Partial/error execution explicitly invalidates it.
+    #[cfg(feature = "cpu-probe")]
+    pub command_workload: super::CommandWorkload,
     /// Commands successfully begun for this execution, including ownership preludes.
     pub commands_recorded: u32,
     pub plan_cache_hit: bool,
@@ -509,6 +515,10 @@ impl GraphExecution {
 
 /// 本次录制的命令和编译图；绑定消费者不能另外分配序号或重新构造资源映射。
 pub struct PassContext<'a> {
+    /// Callback-local Copy accumulator. Fold one completed API object into it;
+    /// the executor publishes it only after this callback succeeds.
+    #[cfg(feature = "cpu-probe")]
+    pub command_workload: &'a std::cell::Cell<super::CommandWorkload>,
     pub pass_index: usize,
     /// CPU-only scratch, valid through this callback; never GPU upload backing.
     pub cpu: Option<&'a CpuArenaLease>,
@@ -543,6 +553,13 @@ impl PassCoverage {
     }
 }
 impl PassContext<'_> {
+    #[cfg(feature = "cpu-probe")]
+    pub fn record_command_workload(&self, workload: super::CommandWorkload) {
+        let mut local = self.command_workload.get();
+        local.merge(workload);
+        self.command_workload.set(local);
+    }
+
     /// Native layout of this exact image range in the current scheduled pass.
     /// Queries validated declarations only; it grants no additional access.
     /// A descriptor spanning missing uses or different layouts is rejected.
@@ -967,6 +984,9 @@ impl ExecutionChain {
             crate::rg::graph::instantiate_validated_plan(plan, graph, pool, backend, dependency)
                 .map_err(Error::Compile)?;
         stats.compile_ns = compile_start.elapsed().as_nanos() as u64;
+        // Compilation is not a successful native execution.
+        #[cfg(feature = "cpu-probe")]
+        stats.command_workload.invalidate();
         let original_pass_count = callback_count;
         Ok(PreparedGraph {
             compiled,
@@ -1057,6 +1077,8 @@ impl ExecutionChain {
             original_pass_count,
             pgo_key: _,
         } = prepared;
+        #[cfg(feature = "cpu-probe")]
+        { stats.command_workload = super::CommandWorkload::default(); }
         self.recorded_commands = 0;
         if callbacks.len() != original_pass_count {
             crate::rg::graph::reclaim_failed_resources(
@@ -1124,6 +1146,8 @@ impl ExecutionChain {
                 stats,
             }),
             Err(error) => {
+                #[cfg(feature = "cpu-probe")]
+                stats.command_workload.invalidate();
                 // Unsubmitted commands are always abandoned, even if waiting for
                 // earlier successful batches fails. Never release their resources
                 // or replace the primary error merely because cleanup also failed.
@@ -1334,8 +1358,7 @@ impl ExecutionChain {
             {
                 stats.parallel_batches += 1;
                 stats.chunks += chunks.len() as u32;
-                let outcome = self.record_chunked_batch(
-                    ChunkedBatch {
+                let batch = ChunkedBatch {
                         recorder: &mut recorder,
                         passes: &mut passes[batch.pass_range.clone()],
                         callbacks: &mut callbacks[batch.pass_range.clone()],
@@ -1348,9 +1371,11 @@ impl ExecutionChain {
                         cpu: cpu_arena,
                         family,
                         queue,
-                    },
-                    backend,
-                )?;
+                    };
+                #[cfg(feature = "cpu-probe")]
+                let outcome = self.record_chunked_batch(batch, backend, &mut stats.command_workload)?;
+                #[cfg(not(feature = "cpu-probe"))]
+                let outcome = self.record_chunked_batch(batch, backend)?;
                 stats.count_barriers(&outcome.1);
             };
             stats.record_ns += record_start.elapsed().as_nanos() as u64;
@@ -1575,6 +1600,7 @@ impl ExecutionChain {
         &mut self,
         batch: ChunkedBatch<'_, C>,
         backend: &mut impl ExecutionBackend,
+        #[cfg(feature = "cpu-probe")] command_workload: &mut super::CommandWorkload,
     ) -> Result<(recording::Command, record::Outcome), Error>
     where
         C: PassRecord,
@@ -1703,6 +1729,8 @@ impl ExecutionChain {
                 gpu_timings: &gpu_timings[range.clone()],
             });
         }
+        #[cfg(feature = "cpu-probe")]
+        let mut batch_workload = super::CommandWorkload::default();
         let results = {
             let view = &*view;
             super::parallel::map_chunks(&mut work, |_, work| {
@@ -1714,6 +1742,8 @@ impl ExecutionChain {
                                 ok: false,
                                 error: Some(error),
                                 recorded_durations: 0,
+                                #[cfg(feature = "cpu-probe")]
+                                command_workload: super::CommandWorkload::invalid(),
                                 owners: super::owner_storage::ResourceOwners::empty(),
                             };
                         }
@@ -1730,10 +1760,14 @@ impl ExecutionChain {
                             ok: false,
                             error: Some(error),
                             recorded_durations: 0,
+                            #[cfg(feature = "cpu-probe")]
+                            command_workload: super::CommandWorkload::invalid(),
                             owners: super::owner_storage::ResourceOwners::empty(),
                         };
                     }
                 };
+                #[cfg(feature = "cpu-probe")]
+                let mut chunk_workload = super::CommandWorkload::default();
                 let mut duration_count = 0;
                 let mut ok = true;
                 for (offset, callback) in work.callbacks.iter_mut().enumerate() {
@@ -1769,8 +1803,12 @@ impl ExecutionChain {
                         work.command.handle(),
                         pass_names[pass_index],
                     );
+                    #[cfg(feature = "cpu-probe")]
+                    let pass_workload = std::cell::Cell::new(super::CommandWorkload::default());
                     let timer = std::time::Instant::now();
                     let good = callback.record(PassContext {
+                        #[cfg(feature = "cpu-probe")]
+                        command_workload: &pass_workload,
                         pass_index,
                         cpu: cpu.as_ref(),
                         command: work.command,
@@ -1789,12 +1827,18 @@ impl ExecutionChain {
                     let good = good && errors.borrow().is_none();
                     record_trace.complete(good);
                     drop(record_trace);
+                    #[cfg(feature = "cpu-probe")]
+                    if good { chunk_workload.merge(pass_workload.get()); }
                     if !good {
                         ok = false;
                         break;
                     }
                 }
+                #[cfg(feature = "cpu-probe")]
+                if !ok { chunk_workload.invalidate(); }
                 ChunkResult {
+                    #[cfg(feature = "cpu-probe")]
+                    command_workload: chunk_workload,
                     ok,
                     error: errors.into_inner(),
                     recorded_durations: duration_count,
@@ -1837,6 +1881,8 @@ impl ExecutionChain {
             transfer_trace.mark("retain_resources");
             drop(transfer_trace);
             retained.map_err(Error::Validation)?;
+            #[cfg(feature = "cpu-probe")]
+            if result.ok { batch_workload.merge(result.command_workload); }
             failed |= !result.ok;
             if let Some(error) = result.error {
                 callback_error.get_or_insert(error);
@@ -1871,6 +1917,8 @@ impl ExecutionChain {
         let outcome = outcome?;
         let last = begun.last().cloned().ok_or(Error::ChunkPlan)?;
         self.chunk_scratch = scratch;
+        #[cfg(feature = "cpu-probe")]
+        command_workload.merge(batch_workload);
         Ok((last, outcome))
     }
 

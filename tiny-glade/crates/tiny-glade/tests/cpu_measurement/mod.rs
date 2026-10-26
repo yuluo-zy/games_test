@@ -19,6 +19,10 @@ static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
 mod input;
 #[path = "../support/performance_workload.rs"]
 mod workload;
+#[cfg(feature = "cpu-probe")]
+mod workload_probe;
+#[cfg(feature = "cpu-probe")]
+mod gpu_diagnostic;
 
 #[test]
 #[ignore = "explicit frozen-binary CPU/ETW run; requires TG_CPU_PROBE_OUT"]
@@ -59,6 +63,11 @@ fn run() -> Result<()> {
         "this binary was compiled without cpu-probe; only TG_CPU_PROBE_MODE=off is supported");
     anyhow::ensure!(cfg!(feature = "cpu-probe") || !bill,
         "TG_CPU_BILL requires a binary compiled with cpu-probe");
+    let gpu_diagnostic = std::env::var("TG_GPU_DIAGNOSTIC").is_ok_and(|s| s == "1");
+    anyhow::ensure!(!gpu_diagnostic || (cfg!(feature = "cpu-probe") && mode == "on" && !bill),
+        "GPU diagnostic needs cpu-probe/on and cannot be combined with management bill");
+    anyhow::ensure!(std::env::var("TG_GPU_TIMING").is_err(),
+        "TG_GPU_TIMING must be absent; this fixture exclusively owns diagnostic timing");
     let mut workload = workload::PerformanceWorkload::from_environment()?
         .unwrap_or(workload::PerformanceWorkload::new("static")?);
     anyhow::ensure!(workload.scenario() == "static" || warmup >= 200,
@@ -80,6 +89,25 @@ fn run() -> Result<()> {
     if mode == "on" && bill { detailed_bills.try_reserve_exact(samples + 1)?; }
     #[cfg(feature = "cpu-probe")]
     if mode == "on" { rows.try_reserve_exact(samples + 1)?; }
+    // Hold exactly one BufferHost for the entire fixed App/session. Its
+    // manager token is process-local proof, never paired scene identity.
+    #[cfg(feature = "cpu-probe")]
+    let upload_host = bridge.compute_device().buffers.clone();
+    #[cfg(feature = "cpu-probe")]
+    let mut actual_workload = (mode == "on").then(|| workload_probe::WorkloadProbe::new(
+        samples + 1, upload_host.probe_upload_submissions(), device.texture_upload_probe_snapshot()))
+        .transpose()?;
+    #[cfg(feature = "cpu-probe")]
+    let mut gpu = if gpu_diagnostic {
+        let frames = warmup.checked_add(samples).and_then(|n| n.checked_add(1))
+            .context("GPU diagnostic frame count overflow")?;
+        let capacity = number("TG_GPU_DIAGNOSTIC_CAPACITY", frames.saturating_mul(128).min(2_000_000))?;
+        Some(gpu_diagnostic::GpuDiagnostic::new(&mut bridge, &device, frames, capacity)?)
+    } else {
+        // A clean run must not inherit a timestamp ring from renderer warmup.
+        bridge.with_session(|s| s.backend.configure_gpu_timing(None))?;
+        None
+    };
     let mut initial_input = serde_json::Value::Null;
     let mut trajectory = None;
     let mut begin = [0u64; 3];
@@ -137,6 +165,14 @@ fn run() -> Result<()> {
         #[cfg(feature = "cpu-probe")]
         let receipt = frame.receipt.frame;
         #[cfg(feature = "cpu-probe")]
+        let workload_stats = frame.receipt.stats;
+        #[cfg(feature = "cpu-probe")]
+        let workload_completion_points = frame.receipt.receipts.len();
+        #[cfg(feature = "cpu-probe")]
+        let workload_retained_passes = frame.receipt.snapshot.pass_order.len();
+        #[cfg(feature = "cpu-probe")]
+        if let Some(gpu) = &mut gpu { gpu.observe(measured, tick, index as u64 + 1, &frame.receipt); }
+        #[cfg(feature = "cpu-probe")]
         if active { points[7] = clock::wall_ticks(); }
         world.resource_mut::<country_core::render::RenderTemporalState>().frame_render_returned();
         let extent = frame.texture.desc.extent();
@@ -147,6 +183,14 @@ fn run() -> Result<()> {
             std::array::from_fn(|i| lists.list(i).len());
         workload.after_frame(world, index as u64 + 1, output_extent, &lengths)?;
         if let Some(trajectory) = &mut trajectory { trajectory.observe(world, index as u64 + 1)?; }
+        #[cfg(feature = "cpu-probe")]
+        if let Some(actual) = &mut actual_workload {
+            actual.observe(measured, tick, receipt, index as u64 + 1, workload_stats,
+                workload_completion_points, workload_retained_passes, lengths,
+                upload_host.probe_upload_submissions(), device.texture_upload_probe_snapshot());
+        }
+        #[cfg(feature = "cpu-probe")]
+        if let Some(gpu) = &mut gpu { gpu.drain(&mut bridge)?; }
         #[cfg(feature = "cpu-probe")]
         if active {
             points[8] = clock::wall_ticks();
@@ -161,6 +205,8 @@ fn run() -> Result<()> {
         }
     }
     let (end, end_boundary) = read_cpu_envelope()?;
+    #[cfg(feature = "cpu-probe")]
+    if let Some(actual) = &mut actual_workload { actual.finish(); }
     let lengths: Vec<_> = (0..country_core::systems::render_loop::draw_passes::draw_lists::DRAW_LIST_COUNT)
         .map(|i| lists.list(i).len()).collect();
     let mut final_input = input::scene_manifest(driver.app_mut().world_mut(), &lengths)?;
@@ -168,6 +214,16 @@ fn run() -> Result<()> {
     final_input["workload"] = workload.summary();
     final_input["transform_trajectory"] = trajectory.as_ref().context("missing trajectory owner")?.summary();
     bridge.wait_submits_done(120_000_000_000)?;
+    #[cfg(feature = "cpu-probe")]
+    if let Some(gpu) = &mut gpu { gpu.drain(&mut bridge)?; }
+    #[cfg(feature = "cpu-probe")]
+    let gpu_report = gpu.as_ref().map(gpu_diagnostic::GpuDiagnostic::report);
+    #[cfg(not(feature = "cpu-probe"))]
+    let gpu_report: Option<serde_json::Value> = None;
+    #[cfg(feature = "cpu-probe")]
+    let actual_workload_report = actual_workload.as_ref().map(workload_probe::WorkloadProbe::report);
+    #[cfg(not(feature = "cpu-probe"))]
+    let actual_workload_report: Option<serde_json::Value> = None;
     #[cfg(feature = "cpu-probe")]
     let session = recorder.as_ref().map(CpuProbeSession::to_json);
     #[cfg(not(feature = "cpu-probe"))]
@@ -177,7 +233,9 @@ fn run() -> Result<()> {
     let input_unchanged = initial_input == final_input;
     let clock_valid = begin[0] > 0 && end[0] > begin[0]
         && end[1] >= begin[1] && end[2] >= begin[2] && clock::wall_frequency() > 0;
-    let valid = clock_valid && session.as_ref().is_none_or(|s| s["valid"] == true);
+    let valid = clock_valid && session.as_ref().is_none_or(|s| s["valid"] == true)
+        && actual_workload_report.as_ref().is_none_or(|s| s["valid"] == true)
+        && gpu_report.as_ref().is_none_or(|s| s["valid"] == true);
     let management_modes = bridge.raster_resources().draw_management_modes();
     #[cfg(feature = "cpu-probe")]
     anyhow::ensure!(!bill || detailed_bills.len() == rows.len(), "incomplete detailed management bill");
@@ -186,6 +244,9 @@ fn run() -> Result<()> {
         "process_id":std::process::id(), "thread_id":clock::current_thread_id(), "qpc_frequency":clock::wall_frequency(),
         "warmup":warmup, "samples":samples, "mode":mode, "diagnostic_bill":bill,
         "scenario":workload.scenario(), "boot_clock":boot_clock,
+        "measurement_class":if gpu_diagnostic {"gpu_diagnostic"} else if bill {"management_diagnostic"} else {"clean_cpu"},
+        "clean_cpu_acceptance_eligible":!gpu_diagnostic && !bill,
+        "actual_workload":actual_workload_report,"gpu_diagnostic":gpu_report,
         "management_modes":{"reflection_scope":management_modes[0],
             "vao_typed_lookup":management_modes[1], "vao_wrapper_reuse":management_modes[2],
             "constant_batch":bridge.raster_resources().constant_batch_enabled()},

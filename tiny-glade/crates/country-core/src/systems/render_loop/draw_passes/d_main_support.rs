@@ -332,6 +332,8 @@ fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry
     let mut batches: Vec<Vec<_>> = (0..layer.len()).map(|_| Vec::new()).collect();
     let mut positions = [0usize; 8];
     for wave in pages.chunks_mut(8) {
+        #[cfg(feature = "cpu-probe")]
+        let count_wave = crate::render::declare_probe::collect_count_wave(true);
         let mut offsets = [0usize; 8];
         if constant_plan.is_some() {
             for (slot, (index, items)) in wave.iter().enumerate() {
@@ -350,6 +352,8 @@ fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry
             (*index, local.into_draw_batch())
         });
         for (index, batch) in results { batches[index].push(batch); }
+        #[cfg(feature = "cpu-probe")]
+        count_wave.complete(wave.len());
     }
     crate::render::declare_probe::collect_stage(1, started);
     drop(constant_plan); // All scoped workers joined; Commit may reuse this slot.
@@ -368,6 +372,8 @@ fn collect_layer(ctx: &mut DrawPassCtx<'_>, layer: &[(&ListPass<'_>, &[DrawEntry
 }
 
 fn reject_collect_layer(ctx: &mut DrawPassCtx<'_>, spec: &ListPass<'_>, error: rhapsody::Error) -> bool {
+    #[cfg(feature = "cpu-probe")]
+    crate::render::declare_probe::collect_counts_failed();
     let mut pass = ctx.raster_pass(spec.name, spec.colors, spec.depth, spec.viewport);
     pass.host.record_collect_error(error);
     pass.render();
@@ -449,10 +455,16 @@ pub(crate) fn collect_draw_pages<T: Sync, R: Send + 'static>(
         let mut constant_plan = if pass.host.collect_constant_plan_enabled() {
             let mut plan = match pass.host.checkout_draw_scratch() {
                 Ok(plan) => plan,
-                Err(error) => { pass.host.record_collect_error(error); return; }
+                Err(error) => {
+                    #[cfg(feature = "cpu-probe")]
+                    crate::render::declare_probe::collect_counts_failed();
+                    pass.host.record_collect_error(error); return;
+                }
             };
             if let Err(error) = crate::render::pass_builder::draw_commit_scratch::prepare_constant_plan(&mut plan, count) {
                 drop(plan);
+                #[cfg(feature = "cpu-probe")]
+                crate::render::declare_probe::collect_counts_failed();
                 pass.host.record_collect_error(error);
                 return;
             }
@@ -475,6 +487,8 @@ pub(crate) fn collect_draw_pages<T: Sync, R: Send + 'static>(
         // At most eight in-flight tasks; each receives the configured 64 draws
         // by default. Completed pages are committed before accepting more.
         for wave in items[offset..end].chunks(chunk_draws.saturating_mul(8)) {
+            #[cfg(feature = "cpu-probe")]
+            let count_wave = crate::render::declare_probe::collect_count_wave(false);
             let started = crate::render::declare_probe::start();
             let mut chunks = wave.chunks(chunk_draws).collect::<smallvec::SmallVec<[_; 8]>>();
             let batches = rhapsody::rg::map_chunks(&mut chunks, |slot, chunk| {
@@ -491,6 +505,8 @@ pub(crate) fn collect_draw_pages<T: Sync, R: Send + 'static>(
             for (batch, result) in batches { pass.commit_draw_batch(batch); commit(result); }
             crate::render::declare_probe::collect_stage(2, started);
             crate::render::declare_probe::collected(chunks.len());
+            #[cfg(feature = "cpu-probe")]
+            count_wave.complete(chunks.len());
             plan_offset += wave.len();
         }
         offset = end;
@@ -511,11 +527,13 @@ mod collect_page_tests {
     fn pages_bound_worker_inputs_and_merge_uneven_results_without_owner_execution() {
         use crate::render::pass_builder::draw_stream::test_host::MockHost;
         let owner = std::thread::current().id();
-        for count in [0, 1, 63, 64, 65, 513, 4097] {
+        for count in [0usize, 1, 63, 64, 65, 513, 4097] {
             let (host, _) = MockHost::new();
             let mut pass = RasterPass::collector(host.boxed(), [1280, 720]);
             let items: Vec<_> = (0..count).collect();
             let mut observed = Vec::new();
+            #[cfg(feature = "cpu-probe")]
+            assert!(crate::render::declare_probe::collect_counts_begin());
             collect_draw_pages(&mut pass, &items, |_, _| 0,
                 |_, chunk| {
                     if chunk[0] % 2 == 0 { std::thread::yield_now(); }
@@ -526,6 +544,15 @@ mod collect_page_tests {
                     observed.extend(chunk);
                 });
             assert_eq!(observed, items);
+            #[cfg(feature = "cpu-probe")]
+            {
+                let counts = crate::render::declare_probe::collect_counts_end();
+                let tasks = count.div_ceil(64);
+                let waves = count.div_ceil(512);
+                assert_eq!((counts.tasks, counts.waves), (tasks as u64, waves as u64));
+                assert_eq!((counts.cross_pass_tasks, counts.cross_pass_waves), (0, 0));
+                assert!(counts.valid && !counts.overflow);
+            }
             drop(pass.into_draw_batch());
         }
     }
@@ -542,9 +569,17 @@ mod collect_page_tests {
             let recorded = host.constant_plans.clone();
             let mut pass = RasterPass::collector(host.boxed(), [1280, 720]);
             let workers = AtomicUsize::new(0);
+            #[cfg(feature = "cpu-probe")]
+            assert!(crate::render::declare_probe::collect_counts_begin());
             collect_draw_pages(&mut pass, &[1u32; 64], |_, _| 96,
                 |_, _| { workers.fetch_add(1, Ordering::Relaxed); }, |_| {});
             pass.render();
+            #[cfg(feature = "cpu-probe")]
+            {
+                let counts = crate::render::declare_probe::collect_counts_end();
+                assert_eq!((counts.tasks, counts.waves), if enabled { (0, 0) } else { (1, 1) });
+                assert_eq!(counts.valid, !enabled, "admission refusal invalidates without inventing jobs");
+            }
             let log = log.borrow();
             if enabled {
                 assert_eq!(workers.load(Ordering::Relaxed), 0);
@@ -645,7 +680,16 @@ mod collect_page_tests {
         let layer: Vec<_> = specs.iter().zip(&inputs).map(|(spec, input)| (spec, input.as_slice())).collect();
         let mut world = World::new();
         let mut ctx = DrawPassCtx::new(&mut world, Duration::ZERO, &mut factory, &NoShaders);
+        #[cfg(feature = "cpu-probe")]
+        assert!(crate::render::declare_probe::collect_counts_begin());
         run_list_layer(&mut ctx, &layer);
+        #[cfg(feature = "cpu-probe")]
+        {
+            let counts = crate::render::declare_probe::collect_counts_end();
+            assert_eq!((counts.tasks, counts.waves), (12, 2));
+            assert_eq!((counts.cross_pass_tasks, counts.cross_pass_waves), (12, 2));
+            assert!(counts.valid && !counts.overflow);
+        }
 
         let mut actual = plans.lock().unwrap().clone();
         actual.sort_by_key(|plan| plan[0]); // Worker completion order is arbitrary.

@@ -48,7 +48,11 @@ fn graph_passes_commit_atomically_and_callbacks_are_consumed_once() {
     let command = chain.begin(10, 0, Queue::Primary, Ok(())).unwrap();
     let owners = std::cell::RefCell::new(rhapsody::rg::owner_storage::ResourceOwners::default());
     let errors = std::cell::RefCell::new(None);
+    #[cfg(feature = "cpu-probe")]
+    let command_workload = std::cell::Cell::new(rhapsody::rg::CommandWorkload::default());
     let context = || rhapsody::rg::executor::PassContext {
+        #[cfg(feature = "cpu-probe")]
+        command_workload: &command_workload,
         cpu: None,
         pass_index: 0,
         command: &command,

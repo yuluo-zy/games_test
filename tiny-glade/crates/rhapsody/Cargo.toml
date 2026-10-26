@@ -15,6 +15,8 @@ suballocation = ["dep:gpu-allocator"]
 # Run the independent plan verifiers on every plan-cache miss in release builds
 # (debug builds always run them; `rg::set_plan_validation` enables them at runtime).
 validation = []
+# Measurement-only local native command counts; absent from default builds.
+cpu-probe = []
 # Exposes internal modules (`raw`, …) to this crate's own integration tests
 # and benches. Not part of the public API; enabled only through the
 # self dev-dependency below.

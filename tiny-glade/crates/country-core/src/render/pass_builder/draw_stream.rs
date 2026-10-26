@@ -710,6 +710,8 @@ impl RasterPass {
     /// accesses that the original per-pass binding caches would have skipped.
     pub fn commit_draw_batch(&mut self, mut batch: DrawBatch) {
         if let Some(error) = batch.collect_error.take() {
+            #[cfg(feature = "cpu-probe")]
+            crate::render::declare_probe::collect_counts_failed();
             self.host.record_collect_error(error);
             return;
         }
@@ -717,10 +719,16 @@ impl RasterPass {
         self.host.commit_collected_image_views(core::mem::take(&mut batch.image_views));
         let mut scratch_lease = match self.host.checkout_draw_scratch() {
             Ok(lease) => lease,
-            Err(error) => { self.host.record_collect_error(error); return; }
+            Err(error) => {
+                #[cfg(feature = "cpu-probe")]
+                crate::render::declare_probe::collect_counts_failed();
+                self.host.record_collect_error(error); return;
+            }
         };
         if let Err(error) = super::draw_commit_scratch::prepare(&mut scratch_lease,
             batch.deferred.len(), batch.bindings.len(), batch.accesses.len(), !self.body.bindings.is_empty()) {
+            #[cfg(feature = "cpu-probe")]
+            crate::render::declare_probe::collect_counts_failed();
             self.host.record_collect_error(error);
             return;
         }

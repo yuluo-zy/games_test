@@ -282,6 +282,9 @@ impl Device {
                     .device
                     .cmd_copy_buffer(command, staging.handle, target.handle, &copies);
             })?;
+        #[cfg(feature = "cpu-probe")]
+        self.record_texture_upload_submission(crate::device::TextureUploadProbeKind::BufferSetup,
+            copies.iter().try_fold(0u64, |sum, copy| sum.checked_add(copy.size)));
         Ok(())
     }
 }

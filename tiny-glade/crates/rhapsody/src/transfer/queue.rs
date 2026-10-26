@@ -12,6 +12,15 @@ use std::sync::{
     atomic::{AtomicUsize, Ordering},
 };
 
+// Diagnostic identity is unique only inside this process. Never compare it
+// across binary runs; run identity remains the caller's report responsibility.
+#[cfg(any(test, feature = "cpu-probe"))]
+static NEXT_MANAGER_PROBE_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+#[cfg(any(test, feature = "cpu-probe"))]
+fn next_manager_probe_id() -> u64 {
+    NEXT_MANAGER_PROBE_ID.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |next| next.checked_add(1)).unwrap_or(0)
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct UploadQueueConfig {
     pub max_jobs: usize,
@@ -278,6 +287,14 @@ pub(super) struct UploadQueue<T> {
     sequence: u64,
     minimum_epoch: u64,
     counters: UploadQueueStats,
+    #[cfg(any(test, feature = "cpu-probe"))]
+    manager_probe_id: u64,
+    #[cfg(any(test, feature = "cpu-probe"))]
+    native_submitted_jobs: u64,
+    #[cfg(any(test, feature = "cpu-probe"))]
+    submitted_bytes: u64,
+    #[cfg(any(test, feature = "cpu-probe"))]
+    submission_counters_overflowed: bool,
     _memory: Reservation,
     local: Arc<LocalBudget>,
 }
@@ -340,6 +357,14 @@ impl<T> UploadQueue<T> {
             sequence: 0,
             minimum_epoch: 0,
             counters: UploadQueueStats::default(),
+            #[cfg(any(test, feature = "cpu-probe"))]
+            manager_probe_id: next_manager_probe_id(),
+            #[cfg(any(test, feature = "cpu-probe"))]
+            native_submitted_jobs: 0,
+            #[cfg(any(test, feature = "cpu-probe"))]
+            submitted_bytes: 0,
+            #[cfg(any(test, feature = "cpu-probe"))]
+            submission_counters_overflowed: false,
             _memory: memory,
             local,
         })
@@ -754,6 +779,39 @@ impl<T> UploadQueue<T> {
         self.jobs.remove(index);
         self.counters.submitted_jobs += 1;
     }
+    /// Record exactly one native-submit proof, before any fallible acquire
+    /// registration or ticket publication. `None` means no native submission.
+    /// Repeating a real GPU copy on retry counts again, even for the same ticket.
+    #[cfg(any(test, feature = "cpu-probe"))]
+    pub(super) fn record_native_submission(&mut self, jobs: usize, payload: Option<u64>) {
+        let Some(payload) = payload else { return; };
+        if let Some(jobs) = u64::try_from(jobs).ok()
+            .and_then(|jobs| self.native_submitted_jobs.checked_add(jobs))
+        {
+            self.native_submitted_jobs = jobs;
+        } else {
+            self.submission_counters_overflowed = true;
+        }
+        if !self.submission_counters_overflowed {
+            if let Some(bytes) = self.submitted_bytes.checked_add(payload) {
+                self.submitted_bytes = bytes;
+            } else {
+                // Diagnostics cannot roll back a real native submission.
+                self.submission_counters_overflowed = true;
+            }
+        }
+    }
+    /// O(1) cumulative native-submit counters. No pending-job traversal.
+    #[cfg(any(test, feature = "cpu-probe"))]
+    fn submitted_snapshot(&self) -> Result<(u64, u64)> {
+        if self.manager_probe_id == 0 {
+            Err(Error::invalid_usage("upload manager probe identity exhausted"))
+        } else if self.submission_counters_overflowed {
+            Err(Error::invalid_usage("upload submission counters overflowed"))
+        } else {
+            Ok((self.native_submitted_jobs, self.submitted_bytes))
+        }
+    }
     fn failure(task: &Arc<Task>, error: Error) -> Arc<UploadFailure> {
         task.failure
             .error
@@ -803,6 +861,28 @@ impl<T> Drop for UploadQueue<T> {
         for job in &self.jobs {
             *job.task.status.lock() = UploadStatus::Cancelled(UploadCancellation::ManagerDropped);
         }
+    }
+}
+
+#[cfg(feature = "cpu-probe")]
+impl super::TransferManager {
+    /// `(process_local_manager_id, submitted_jobs, submitted_payload_bytes)`.
+    /// Actually submitted queued CPU-buffer H2D job executions and effective
+    /// payload bytes, cumulative for this manager's lifetime. A later acquire
+    /// registration or publication error preserves the native prefix. A real
+    /// repeated copy on retry counts again; this is not a unique-ticket or
+    /// command count. Several jobs may share one point. Direct/texture/setup/D2D
+    /// paths are outside this scope. Admission, deferral and cancellation do
+    /// not count. A later flush error does not erase its successful prefix.
+    ///
+    /// O(1), with no pending queue traversal or extra lock. Sticky overflow is
+    /// an explicit invalid sample. Callers must establish a fresh baseline
+    /// across manager/App replacement rather than wrapping a negative delta.
+    /// The nonzero manager token is unique only within this process, never a
+    /// cross-run or cross-binary signature. Exhausted tokens invalidate samples.
+    pub fn upload_submitted_snapshot(&self) -> crate::Result<(u64, u64, u64)> {
+        let (jobs, bytes) = self.queued.submitted_snapshot()?;
+        Ok((self.queued.manager_probe_id, jobs, bytes))
     }
 }
 
@@ -896,13 +976,151 @@ mod tests {
         assert_eq!(queue.queued_jobs(), 1);
         assert!(Arc::ptr_eq(&queue.jobs[0].task, &tickets[1]));
     }
-    // Synthetic values test CPU publication only; tests/transfers.rs establishes
-    // that production publishes actual native success points.
+    // Synthetic values test CPU accounting/publication only; production records
+    // the proof at command.submit_to success, before fallible acquire registration.
     fn point(value: u64) -> SyncPoint {
         SyncPoint {
             queue: QueueId::new(0).unwrap(),
             value,
         }
+    }
+    fn record_and_publish(queue: &mut UploadQueue<()>, index: usize, point: SyncPoint) {
+        let bytes = queue.job(index).bytes() as u64;
+        queue.record_native_submission(1, Some(bytes));
+        queue.publish(index, point);
+    }
+    #[test]
+    fn submitted_snapshot_native_proof_survives_post_submit_acquire_error_without_publication() {
+        let mut queue = queue(64);
+        let ticket = queue.enqueue_owned(Arc::new(()), 0, vec![1; 4],
+            options(1, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
+        // Failure before native submission produces no proof and no work.
+        queue.record_native_submission(1, None);
+        assert_eq!(queue.submitted_snapshot().unwrap(), (0, 0));
+        // Model native success followed by acquire registration failure: the
+        // original protocol leaves this accepted job pending, but GPU work ran.
+        let submitted_payload = Some(queue.job(0).bytes() as u64);
+        let post_submit_result: Result<()> = Err(Error::OutOfHostMemory);
+        queue.record_native_submission(1, submitted_payload);
+        assert!(post_submit_result.is_err());
+        assert_eq!(queue.submitted_snapshot().unwrap(), (1, 4));
+        assert_eq!(queue.counters.submitted_jobs, 0);
+        assert!(matches!(*ticket.status.lock(), UploadStatus::Pending));
+        // The retry submits the same payload again: two physical executions,
+        // one published ticket. Publication itself must not count a third copy.
+        queue.record_native_submission(1, submitted_payload);
+        queue.publish(0, point(2));
+        assert_eq!(queue.submitted_snapshot().unwrap(), (2, 8));
+        assert_eq!(queue.counters.submitted_jobs, 1);
+        assert!(matches!(*ticket.status.lock(), UploadStatus::Submitted(p) if p == point(2)));
+    }
+    #[test]
+    fn submitted_snapshot_manager_identity_changes_on_rebuild_and_exhaustion_is_invalid() {
+        let first_id = {
+            let queue = queue(64);
+            assert!(queue.manager_probe_id != 0);
+            assert_eq!(queue.submitted_snapshot().unwrap(), (0, 0));
+            queue.manager_probe_id
+        };
+        let mut replacement = queue(64);
+        assert!(replacement.manager_probe_id != 0);
+        assert_ne!(replacement.manager_probe_id, first_id);
+        // Simulate identity allocation exhaustion without mutating the global
+        // token source shared by parallel tests or the production queue protocol.
+        replacement.manager_probe_id = 0;
+        assert!(matches!(replacement.submitted_snapshot(), Err(Error::InvalidUsage { .. })));
+        let ticket = replacement.enqueue_owned(Arc::new(()), 0, vec![1; 4],
+            options(1, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
+        record_and_publish(&mut replacement, 0, point(1));
+        assert!(matches!(*ticket.status.lock(), UploadStatus::Submitted(p) if p == point(1)));
+        assert!(replacement.submitted_snapshot().is_err());
+    }
+    #[test]
+    fn submitted_snapshot_keeps_successful_prefix_after_failure_cancel_and_refusal() {
+        let mut queue = queue(64);
+        let first = queue.enqueue_owned(Arc::new(()), 0, vec![1; 4],
+            options(1, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
+        let failed = queue.enqueue_owned(Arc::new(()), 0, vec![2; 8],
+            options(2, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
+        let cancelled = queue.enqueue_owned(Arc::new(()), 0, vec![3; 12],
+            options(3, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
+        assert_eq!(queue.submitted_snapshot().unwrap(), (0, 0));
+        queue.defer();
+        assert_eq!(queue.submitted_snapshot().unwrap(), (0, 0));
+        record_and_publish(&mut queue, 0, point(1));
+        assert!(matches!(*first.status.lock(), UploadStatus::Submitted(p) if p == point(1)));
+        assert_eq!(queue.submitted_snapshot().unwrap(), (1, 4));
+        queue.fail_batch(&[0], Error::OutOfDeviceMemory);
+        assert!(matches!(*failed.status.lock(), UploadStatus::Failed(_)));
+        assert!(queue.cancel_task(&cancelled));
+        assert_eq!(queue.submitted_snapshot().unwrap(), (1, 4));
+        let mut oversized = Vec::with_capacity(queue.config.max_cpu_bytes);
+        oversized.extend_from_slice(&[7; 4]);
+        let pointer = oversized.as_ptr();
+        let refused = queue.enqueue_owned(Arc::new(()), 0, oversized,
+            options(4, 1, UploadPriority::Normal), UploadMode::OrderedDelta).err().expect("real CPU budget refusal");
+        assert_eq!(refused.payload.as_ptr(), pointer);
+        assert_eq!(queue.submitted_snapshot().unwrap(), (1, 4));
+        queue.enqueue_owned(Arc::new(()), 0, vec![8; 6],
+            options(5, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
+        assert_eq!(queue.submitted_snapshot().unwrap(), (1, 4));
+        record_and_publish(&mut queue, 0, point(2));
+        assert_eq!(queue.submitted_snapshot().unwrap(), (2, 10));
+    }
+    #[test]
+    fn submitted_snapshot_counts_effective_regions_not_gaps_or_merged_request_bytes() {
+        let mut queue = queue(64);
+        let target = Arc::new(());
+        let opts = options(1, 1, UploadPriority::Normal);
+        queue.enqueue(target.clone(), 0, &[1; 4], opts).unwrap();
+        queue.enqueue(target.clone(), 8, &[2; 4], opts).unwrap();
+        assert_eq!(queue.job(0).bytes(), 8); // Four-byte gap is not a payload.
+        record_and_publish(&mut queue, 0, point(1));
+        assert_eq!(queue.submitted_snapshot().unwrap(), (1, 8));
+        queue.enqueue(target.clone(), 0, &[1; 4], opts).unwrap();
+        queue.enqueue(target.clone(), 8, &[2; 4], opts).unwrap();
+        queue.enqueue(target, 3, &[3; 6], opts).unwrap();
+        assert_eq!(queue.job(0).bytes(), 12); // Request lengths sum to14, overlap is copied once.
+        record_and_publish(&mut queue, 0, point(2));
+        assert_eq!(queue.submitted_snapshot().unwrap(), (2, 20));
+    }
+    #[test]
+    fn submitted_snapshot_counts_jobs_sharing_a_success_point_independently() {
+        let mut queue = queue(64);
+        for key in 0..2 {
+            queue.enqueue_owned(Arc::new(()), 0, vec![key as u8; 4],
+                options(key, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
+        }
+        record_and_publish(&mut queue, 1, point(7));
+        record_and_publish(&mut queue, 0, point(7));
+        assert_eq!(queue.submitted_snapshot().unwrap(), (2, 8));
+    }
+    #[test]
+    fn submitted_snapshot_overflow_is_sticky_without_reverting_real_publication() {
+        for (jobs, bytes) in [(u64::MAX, 0), (0, u64::MAX - 3)] {
+            let mut queue = queue(64);
+            queue.native_submitted_jobs = jobs;
+            queue.submitted_bytes = bytes;
+            let ticket = queue.enqueue_owned(Arc::new(()), 0, vec![1; 4],
+                options(1, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
+            record_and_publish(&mut queue, 0, point(1));
+            assert!(matches!(*ticket.status.lock(), UploadStatus::Submitted(p) if p == point(1)));
+            assert_eq!(queue.queued_jobs(), 0);
+            assert!(matches!(queue.submitted_snapshot(), Err(Error::InvalidUsage { .. })));
+            assert_eq!((queue.native_submitted_jobs, queue.submitted_bytes), (jobs.saturating_add(1), bytes));
+            queue.enqueue_owned(Arc::new(()), 0, vec![2; 1],
+                options(2, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
+            record_and_publish(&mut queue, 0, point(2));
+            assert!(queue.submitted_snapshot().is_err());
+            assert_eq!((queue.native_submitted_jobs, queue.submitted_bytes), (jobs.saturating_add(2), bytes));
+        }
+        let mut queue = queue(64);
+        queue.native_submitted_jobs = u64::MAX - 1;
+        queue.submitted_bytes = u64::MAX - 4;
+        queue.enqueue_owned(Arc::new(()), 0, vec![3; 4],
+            options(1, 1, UploadPriority::Normal), UploadMode::OrderedDelta).unwrap();
+        record_and_publish(&mut queue, 0, point(1));
+        assert_eq!(queue.submitted_snapshot().unwrap(), (u64::MAX, u64::MAX));
     }
     #[test]
     fn owned_deltas_preserve_all_epochs_and_the_original_allocation() {

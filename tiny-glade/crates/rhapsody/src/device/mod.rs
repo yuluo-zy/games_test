@@ -4,6 +4,10 @@ pub use crate::raw::allocator::AllocatorStats;
 pub use crate::raw::graveyard::RetirementStats;
 pub use crate::raw::stats::{RenderStats, StatsSnapshot};
 pub use memory::GpuMemoryUsage;
+#[cfg(feature = "cpu-probe")]
+mod texture_upload_probe;
+#[cfg(feature = "cpu-probe")]
+pub use texture_upload_probe::{TextureUploadProbeKind, TextureUploadProbeSnapshot};
 mod cpu_storage;
 pub use cpu_storage::CpuStorageReservation;
 internal_mod!(

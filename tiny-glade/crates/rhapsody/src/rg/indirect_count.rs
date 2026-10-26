@@ -305,6 +305,11 @@ impl IndexedCountAdapter {
                     1,
                 );
             }
+            #[cfg(feature = "cpu-probe")]
+            ctx.record_command_workload(crate::rg::CommandWorkload {
+                direct_dispatch_api_calls: 1,
+                ..Default::default()
+            });
             Ok(())
         });
         Ok(())
