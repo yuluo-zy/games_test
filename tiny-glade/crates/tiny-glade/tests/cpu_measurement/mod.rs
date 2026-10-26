@@ -31,6 +31,20 @@ fn number(name: &str, default: usize) -> Result<usize> {
     std::env::var(name).ok().map(|s| s.parse().map_err(Into::into)).unwrap_or(Ok(default))
 }
 
+// Session endpoints only: keep the legacy [QPC, owner CPU, process CPU]
+// envelope and publish each OS API's uncertainty window without correcting it.
+fn read_cpu_envelope() -> Result<([u64; 3], [[u64; 2]; 2])> {
+    let qpc = clock::wall_ticks();
+    let owner_before = clock::wall_ticks();
+    let owner_cpu = clock::read_thread_cpu_ns().context("owner CPU clock failed")?;
+    let owner_after = clock::wall_ticks();
+    let process_before = clock::wall_ticks();
+    let process_cpu = clock::process_cpu_ns().context("process CPU clock failed")?;
+    let process_after = clock::wall_ticks();
+    Ok(([qpc, owner_cpu, process_cpu],
+        [[owner_before, owner_after], [process_before, process_after]]))
+}
+
 fn run() -> Result<()> {
     let output = PathBuf::from(std::env::var_os("TG_CPU_PROBE_OUT").context("TG_CPU_PROBE_OUT required")?);
     let warmup = number("TG_CPU_PROBE_WARMUP", 600)?;
@@ -40,6 +54,7 @@ fn run() -> Result<()> {
         .unwrap_or_else(|_| if cfg!(feature = "cpu-probe") { "on" } else { "off" }.into());
     anyhow::ensure!(mode == "on" || mode == "off", "unknown probe mode");
     let bill = std::env::var("TG_CPU_BILL").is_ok_and(|s| s == "1");
+    anyhow::ensure!(!bill || mode == "on", "diagnostic bill requires active probe mode");
     anyhow::ensure!(cfg!(feature = "cpu-probe") || mode == "off",
         "this binary was compiled without cpu-probe; only TG_CPU_PROBE_MODE=off is supported");
     anyhow::ensure!(cfg!(feature = "cpu-probe") || !bill,
@@ -60,10 +75,15 @@ fn run() -> Result<()> {
     })).transpose()?;
     let mut rows: Vec<Row> = Vec::new();
     #[cfg(feature = "cpu-probe")]
+    let mut detailed_bills: Vec<(serde_json::Value, serde_json::Value)> = Vec::new();
+    #[cfg(feature = "cpu-probe")]
+    if mode == "on" && bill { detailed_bills.try_reserve_exact(samples + 1)?; }
+    #[cfg(feature = "cpu-probe")]
     if mode == "on" { rows.try_reserve_exact(samples + 1)?; }
     let mut initial_input = serde_json::Value::Null;
     let mut trajectory = None;
     let mut begin = [0u64; 3];
+    let mut begin_boundary = [[0u64; 2]; 2];
     #[cfg(feature = "cpu-probe")]
     let _ = country_core::render::declare_probe::take();
     for index in 0..warmup + samples + 1 {
@@ -85,8 +105,7 @@ fn run() -> Result<()> {
                     std::thread::sleep(Duration::from_millis(1));
                 }
             }
-            begin = [clock::wall_ticks(), clock::read_thread_cpu_ns().context("owner CPU clock failed")?,
-                clock::process_cpu_ns().context("process CPU clock failed")?];
+            (begin, begin_boundary) = read_cpu_envelope()?;
         }
         #[cfg(feature = "cpu-probe")]
         let active = measured && mode == "on";
@@ -133,12 +152,15 @@ fn run() -> Result<()> {
             points[8] = clock::wall_ticks();
             let counts = bill.then(|| bridge.raster_resources().draw_management_counts());
             let declaration = bill.then(country_core::render::declare_probe::take);
+            if bill {
+                detailed_bills.push((bridge.raster_resources().constant_pool_bill(),
+                    bridge.raster_resources().draw_scratch_bill()));
+            }
             rows.push((tick, receipt, index as u64 + 1, points, counts, declaration));
             recorder.as_mut().unwrap().record(tick, Some(receipt), index as u64 + 1, true);
         }
     }
-    let end = [clock::wall_ticks(), clock::read_thread_cpu_ns().context("owner CPU clock failed")?,
-        clock::process_cpu_ns().context("process CPU clock failed")?];
+    let (end, end_boundary) = read_cpu_envelope()?;
     let lengths: Vec<_> = (0..country_core::systems::render_loop::draw_passes::draw_lists::DRAW_LIST_COUNT)
         .map(|i| lists.list(i).len()).collect();
     let mut final_input = input::scene_manifest(driver.app_mut().world_mut(), &lengths)?;
@@ -156,11 +178,17 @@ fn run() -> Result<()> {
     let clock_valid = begin[0] > 0 && end[0] > begin[0]
         && end[1] >= begin[1] && end[2] >= begin[2] && clock::wall_frequency() > 0;
     let valid = clock_valid && session.as_ref().is_none_or(|s| s["valid"] == true);
+    let management_modes = bridge.raster_resources().draw_management_modes();
+    #[cfg(feature = "cpu-probe")]
+    anyhow::ensure!(!bill || detailed_bills.len() == rows.len(), "incomplete detailed management bill");
     let report = json!({
         "schema":"headless-cpu-closure-v1", "valid":valid, "scope":"App and renderer share owner thread; fixed-step real scene stimuli and autonomous animation retained; phase CPU requires ETW; no WSI acceptance",
         "process_id":std::process::id(), "thread_id":clock::current_thread_id(), "qpc_frequency":clock::wall_frequency(),
         "warmup":warmup, "samples":samples, "mode":mode, "diagnostic_bill":bill,
         "scenario":workload.scenario(), "boot_clock":boot_clock,
+        "management_modes":{"reflection_scope":management_modes[0],
+            "vao_typed_lookup":management_modes[1], "vao_wrapper_reuse":management_modes[2],
+            "constant_batch":bridge.raster_resources().constant_batch_enabled()},
         "workload":workload.summary(),
         "maintenance_scope":"includes identical real ECS/raster stimuli and transform trajectory hashing on both binaries; not production render-only CPU",
         "cpu_probe_feature":cfg!(feature = "cpu-probe"), "clock_valid":clock_valid,
@@ -168,9 +196,22 @@ fn run() -> Result<()> {
         "input_policy":"fixed_step_scripted_scene; paired_before_after_trajectory_must_match",
         "allocator":if cfg!(feature="mimalloc") {"mimalloc"} else {"System"},
         "envelope":{"begin":begin,"end":end,"frames":samples+1}, "session":session,
+        "boundary_uncertainty":{"schema":"cpu-envelope-brackets-v1", "clock":"qpc",
+            "begin_owner":begin_boundary[0], "begin_process":begin_boundary[1],
+            "end_owner":end_boundary[0], "end_process":end_boundary[1]},
         "phase_names":["app_update","pacing","draw_lists_vao","declare","compile","pending_admission","record_submit","maintenance"],
         "management_names":["reflection_queries","reflection_hits","constant_block_takes","collected_uniform_write_bytes","binding_resource_inputs","prepared_bindless_draws","vao_full_refreshes","vao_list_entries","vao_queried_entities","vao_unique_visits","vao_publications","vao_snapshot_allocations","cached_reflection_variants"],
-        "frames":rows.iter().map(|(tick,receipt,attempt,points,counts,declaration)|json!({"world_tick":tick,"receipt":receipt,"attempt":attempt,"qpc":points,"management":counts,"declaration":declaration})).collect::<Vec<_>>(),
+        "frames":rows.iter().enumerate().map(|(_index,(tick,receipt,attempt,points,counts,declaration))| {
+            #[allow(unused_mut)]
+            let mut row = json!({"world_tick":tick,"receipt":receipt,"attempt":attempt,
+                "qpc":points,"management":counts,"declaration":declaration});
+            #[cfg(feature = "cpu-probe")]
+            if let Some((constants, scratch)) = detailed_bills.get(_index) {
+                row["constant_pool_bill"] = constants.clone();
+                row["draw_scratch_bill"] = scratch.clone();
+            }
+            row
+        }).collect::<Vec<_>>(),
         "input_before":initial_input,"input_after":final_input,
     });
     std::fs::write(&output, serde_json::to_vec_pretty(&report)?)?;

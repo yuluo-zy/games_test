@@ -9,8 +9,8 @@ use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc, time::Duration};
 #[global_allocator]
 static GLOBAL_ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-#[path = "support/performance_input.rs"]
-mod performance_input;
+#[path = "support/performance_workload.rs"]
+mod performance_workload;
 
 use anyhow::{Context, Result};
 use country_core::{
@@ -1197,21 +1197,19 @@ fn exercise_fullscreen_failure_callback(window: &winit::window::Window) -> Resul
     Ok(())
 }
 
-/// Test-only workloads on the real desktop loop; no production benchmark switch.
+/// Window logging wraps the shared real ECS/raster stimulus protocol.
 struct PerformanceWorkload {
-    scenario: String,
+    inner: performance_workload::PerformanceWorkload,
     last_frame: u64,
-    clones_created: usize,
-    edits: u64,
     announced: bool,
     diagnostics: bool,
 }
 impl PerformanceWorkload {
     fn from_environment() -> Result<Option<Self>> {
-        let Some(value) = std::env::var_os("TG_PERF_SCENARIO") else { return Ok(None); };
-        let scenario = value.into_string().map_err(|_| anyhow::anyhow!("invalid performance scenario"))?;
-        anyhow::ensure!(["static", "many_draws", "local_edit", "continuous_edit", "loading_switch"].contains(&scenario.as_str()), "unknown scenario {scenario}");
-        Ok(Some(Self { scenario, last_frame: 0, clones_created: 0, edits: 0, announced: false, diagnostics: std::env::var("TG_PERF_DIAGNOSTICS").is_ok_and(|value| value == "1") }))
+        Ok(performance_workload::PerformanceWorkload::from_environment()?.map(|inner| Self {
+            inner, last_frame: 0, announced: false,
+            diagnostics: std::env::var("TG_PERF_DIAGNOSTICS").is_ok_and(|value| value == "1"),
+        }))
     }
     fn after_frame(&mut self, world: &mut bevy_ecs::world::World, frame: u64,
         observation: Option<&tiny_glade::production_renderer::ProductionFrameObservation>, elapsed: Duration) -> Result<()> {
@@ -1238,49 +1236,21 @@ impl PerformanceWorkload {
                 "game_frame":clock.frame_count,"game_total_bits":clock.total_secs.to_bits(),
                 "game_delta_bits":clock.delta.to_bits(),"paused":clock.paused,"ran":clock.ran,
             }));
-            eprintln!("PERF_WORLD_FIRST scenario={} wall_ms={:.3} world={:?}", self.scenario, elapsed.as_secs_f64()*1000., world.id());
+            eprintln!("PERF_WORLD_FIRST scenario={} wall_ms={:.3} world={:?}", self.inner.scenario(), elapsed.as_secs_f64()*1000., world.id());
         }
-        if self.scenario == "many_draws" && frame == 10 {
-            let sources = performance_input::select_sources(world)?;
-            // Clone complete current ECS tuples, retaining real asset/buffer owners.
-            // This is an entity/renderer stress workload, not a saved native scene.
-            for source in sources {
-                for _ in 0..15 {
-                    let target = world.spawn_empty().id();
-                    bevy_ecs::entity::EntityCloner::build(world).clone_entity(source, target);
-                    self.clones_created += 1;
-                }
-            }
-            eprintln!("PERF_WORKLOAD cloned_actual_entities={}", self.clones_created);
+        let observation = observation.context("missing actual input observation")?;
+        let delta = self.inner.after_frame(world, frame, observation.output_extent, &observation.draw_list_lengths)?;
+        if delta.clones_created > 0 {
+            eprintln!("PERF_WORKLOAD cloned_actual_entities={}", delta.clones_created);
         }
         if frame == 199 {
-            let observation = observation.context("missing actual input observation")?;
-            let input = performance_input::scene_manifest(world, &observation.draw_list_lengths)?;
-            eprintln!("PERF_INPUT_SCENE {}", serde_json::to_string(&input)?);
-            if self.scenario == "many_draws" {
-                let draws = observation.draw_list_lengths.iter().sum::<usize>();
-                anyhow::ensure!(draws >= 1000, "stress sources failed actual draw lists: {draws}");
-                eprintln!("PERF_WORKLOAD actual_draw_list_entries={draws}");
+            eprintln!("PERF_INPUT_SCENE {}", serde_json::to_string(self.inner.first_scene().unwrap())?);
+            if self.inner.scenario() == "many_draws" {
+                eprintln!("PERF_WORKLOAD actual_draw_list_entries={}", observation.draw_list_lengths.iter().sum::<usize>());
             }
         }
-        if frame >= 200 && (self.scenario == "continuous_edit" || (self.scenario == "local_edit" && frame % 30 == 0)) {
-            use country_core::{resources::world_raster_defs::{PathRaster, PathRasterStagingSsbo}, asset_libraries::ssbo_library::AssetSsboLibrary};
-            let value = if self.edits % 2 == 0 { 255 } else { 0 };
-            // An actual bounded raster producer edit. Upload/extraction and GPU
-            // consumers remain unchanged. Do not use a full-raster dirty mark.
-            world.resource_scope(|world, mut raster: bevy_ecs::change_detection::Mut<PathRaster>| -> Result<()> {
-                let pixels = raster.composite_mut();
-                for y in 248..264 { pixels[y*512+248..y*512+264].fill(value); }
-                for y in 31..33 { for x in 31..33 { raster.dirty_mut().set_cell(x,y); } }
-                world.resource_mut::<AssetSsboLibrary>().get_mut::<PathRasterStagingSsbo>()
-                    .context("missing actual PathRaster staging owner")?
-                    .with_cpu_write_regions(|mapped, ranges| raster.copy_to_staging_with_ranges(0, bytemuck::cast_slice_mut(mapped), ranges))?;
-                Ok(())
-            })?;
-            self.edits += 1;
-        }
         if self.diagnostics && frame % 200 == 0 {
-            eprintln!("PERF_WORKLOAD frame={frame} scenario={} clones={} edits={}", self.scenario, self.clones_created, self.edits);
+            eprintln!("PERF_WORKLOAD {}", self.inner.summary());
             let config = world.resource::<country_core::render::render_config::FrameRenderConfig>();
             eprintln!("PERF_CONFIG frame={frame} output={}x{} world={}x{} inner={}x{} world_scale={}",
                 config.extent_0[0], config.extent_0[1], config.extent_8[0], config.extent_8[1],
