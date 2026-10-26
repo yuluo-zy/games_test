@@ -1,5 +1,34 @@
 # Windows performance work
 
+## Latest checkpoint: 2026-10-27 / c98be8e
+
+Native Collect's isolated strict GPU recovery test passed (1/0/0, 0.87s,
+zero VUID): real 579-worker-draw/12-task/2-wave workload, cancellation while A
+remains submitted, real budget refusal before workers and complete pixel recovery.
+New targeted checks passed: Rust trace 6 / Wall source 3 / Nani observer 3,
+Python parser 8 / trace-source controller 9. These do not accept shipped surface
+pixels, full GPU inputs, CPU gains or 16ms.
+
+The clean c98be8e rich debug EXE is frozen (064462bf22ced894f19848bf7dffc81f726cde663e9fb8f5207847450141092a).
+Only its requested target completed; the whole Cargo invocation is not accepted.
+Its static 60/30 trace/source OFF/ON investigation completed with valid diagnostic
+structure but both raw CPU runs invalid: all 31 rows differ (OFF 355 / ON 357
+direct dispatch), with 59 full-actual and 1,333 Wall-source field differences.
+These source differences do not prove binding causality; the direction reverses
+the old pair. The original mismatch and strict water/ice failures remain invalid.
+Baseline common 000e7cc Release is frozen/imported; candidate Release is
+pending. Both common trees share workload helper SHA256 3890c544d3f79c2d8a542acf064d70ef66cdae351a5b33d297d6bd2b6359eae4.
+Portable importer 26 and series/import binding 88 tests passed separately.
+
+Latest diagnostics have not received fresh default/probe workspace all-target
+checks. Release ETW/overhead/four-scene A/B, strict surface pixels, complete
+pressure/long runs, WSI (user deferred) and macOS remain open. No push occurred.
+See [latest tasks](C:/game/docs/performance/remaining-tasks-20261026.md) and
+[latest identities/evidence](C:/game/docs/performance/status.json), whose
+latest_progress_20261027 section supersedes the historical snapshots below.
+
+## Historical progress snapshots (retained at their original source boundaries)
+
 Source: codex/render-cpu-cleanup-20261026 at 6957077f9; independent Cgame repository.
 Current committed source is 370f795: demand plan 7c42f3a and the test-only
 timeline fixture 370f795 are committed. Fresh all-target checks remain pending;

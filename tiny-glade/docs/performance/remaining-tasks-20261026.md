@@ -1,5 +1,21 @@
 # 当前进度与未完成任务（最新证据更新：2026-10-27）
 
+## 最新进展：2026-10-27 / c98be8e
+
+**最新 checkpoint：c98be8e。Native Collect 真实恢复夹具已通过；新 trace/Wall/Nani 定向检查通过，正式 CPU 收益、16ms 与严格水冰像素仍未验收。**
+
+- [Native Collect 隔离运行](C:/game/.perf/native-collect-exact-validation-3/result.json) `valid=true`，exact 1 pass / 0 ignored，0.87s、零 VUID、源码前后不变；测试源码 SHA256 `b872baddc9db36a1be84fde46a9213c9f05b6379c4aaf038ab29f043314f7ed3`。579 个真实 worker draws、12 tasks / 2 waves，A 在途时取消未提交 B，冷计划真实预算拒收在 worker 前发生，恢复后完整像素等于参考。这是指定原生夹具验证，不能代替代表性草/UI/水冰场景正确性。
+- 本批 Rust 定向检查分别为 trace 6、Wall source 3、Nani observer 3；Python parser 8、trace-source controller 9，均实际执行通过。Nani 的 3 个 CPU 测试没有运行水冰 GPU 夹具；范围观察不能冒充 native dispatch 或完整 GPU 输入证据。
+- [rich debug 冻结](C:/game/.perf/headless-builds/rich-workload-debug-c98be8e/build.json)：clean `c98be8e`，源码内容 `3ba1628503802a31bc83e90850aa9729d80a8d8b43491d430fd58f71e8f5d855`，EXE `064462bf22ced894f19848bf7dffc81f726cde663e9fb8f5207847450141092a`，PDB `b35671b6d6c92c53651119102ac1aa23559909971ad1f4931b5cdc4513772f8f`。requested target 已完成；整个 Cargo invocation 未通过/未被接受，不能扩称全工程验证。
+- [rich-workload-debug-c98be8e-trace-1](C:/game/.perf/binding-trace-source/rich-workload-debug-c98be8e-trace-1/summary.json) 同 EXE binding OFF/ON 60 warmup / 30 samples 已完成：诊断结构有效，两轮 trace 有效，但两个 raw run 均 `valid=false`，不具 CPU 验收资格。31 行 native 差异均为本轮 OFF 355 / ON 357 direct dispatch；完整 actual 有 59 项差异、Wall source 有 1,333 项差异，二者均不相等。方向与旧 OFF 357 / ON 355 pair 相反；源输入差异是调查发现，不能据此归因 binding 或声称 CPU 收益。trace 是录制 scope，Wall 是 prepare 前源输入；不建立不存在的提交 receipt join，也不改判旧工作量失败。
+- [baseline Release 导入](C:/game/.perf/formal-baseline-import-000e7cc-execute.log)已完成，source `000e7cc8abd332d7508480c1d6384a3d64b9e6a9`、EXE `483998fb7ef50b0a4d5e1563f8cb97a02c1ee5e25556ec8eb343d7b99f52ec9d`；candidate Release 尚待构建冻结。baseline/candidate common 同步的工作量 helper SHA256 为 `3890c544d3f79c2d8a542acf064d70ef66cdae351a5b33d297d6bd2b6359eae4`（原补丁 4107fbf，baseline 000e7cc，candidate common 6612）。portable importer 26 与 series/import seal 88 tests 分别通过；旧失败日志保留，导入通过不是性能结果。
+
+最新诊断改动之后尚未重跑 default/probe workspace 全目标检查；下方旧通过记录仅覆盖各自源码。Release 600/3000 ETW、探针开销 ≤1%、四场景 AB/BA/AB、全路径成本转移审查、严格水冰像素和完整压力/长跑仍待验。用户暂缓的 WSI 兼容、macOS 与旧浮点失败保持开放；尚未推送远程。
+
+当前依赖顺序：完成本次 trace/source 定位并保留全部差异 → 相同 common/helper 下冻结 candidate Release → 有效 ETW/开销闭环 → 四场景同工作量正式对照 → 代表性像素、完整压力与长跑 → 达标后发布。任何诊断先行通过均不越过后续门槛。
+
+## 前一轮进度快照（原文保留，以上方最新状态为准）
+
 **短程真实工作量与独立GPU诊断已实跑；最新CPU smoke没有ETW，严格水冰像素仍失败，Release收益与16ms未验收。**
 证据见[测量补线与真实常量账单](C:/game/docs/performance/evidence-update-workload-probe-20261026.md)。新binding实现仍是实验候选，不能从旧PROFILE热点或锁次数减少宣布CPU收益。
 

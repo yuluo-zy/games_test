@@ -1,7 +1,7 @@
 {
   "source_commit": "6957077f905ab1ef1bb9d16ca3521ce555fa488e",
   "branch": "codex/perf-windows-20261026",
-  "implementation_status": "short_debug_actual_workload_and_separate_gpu_diagnostic_valid; latest_cpu_smoke_has_no_ETW_and_is_invalid_for_CPU; full_constants_equal_but_surface_pixels_fail; binding_debug_bill_reductions_observed_but_actual_workload_mismatch_invalidates_comparison; release_AB_and16ms_open",
+  "implementation_status": "native_Collect_exact_recovery_passed; trace_Wall_Nani_targeted_tests_passed; rich_debug_c98_frozen_requested_target_only; trace_OFF_ON_completed_with_Wall_source_and_actual_workload_differences; baseline_Release_imported_candidate_Release_pending; CPU_gain16ms_and_strict_surface_pixels_open",
   "hardware": {
     "cpu": "Intel Core i7-9700",
     "gpu": "Intel UHD Graphics 630",
@@ -12,10 +12,10 @@
     "present_id": false
   },
   "checks": {
-    "current_default_workspace_all_targets": "passed .perf/workload-probe-workspace-default-check.log (2m45s)",
-    "current_cpu_probe_workspace_all_targets": "passed .perf/workload-probe-workspace-enabled-check.log (2m39s)",
+    "current_default_workspace_all_targets": "Not rerun at c98be8e after latest diagnostic additions; historical prior result: passed .perf/workload-probe-workspace-default-check.log (2m45s)",
+    "current_cpu_probe_workspace_all_targets": "Not rerun at c98be8e after latest diagnostic additions; historical prior result: passed .perf/workload-probe-workspace-enabled-check.log (2m39s)",
     "current_targeted_unit_and_gpu_tests": "new Rhapsody473+2ignored zeroVUID; consumers27+1; Collect8; draw-passes264(no test-support); fixture8; Tinyhost4. Previous Tinyfull remains306pass/1preexistingfloatfail/5ignored.",
-    "current_candidate_frozen_release": "not frozen; old29095eb release pair and a2a8fce debug artifacts have separate identities",
+    "current_candidate_frozen_release": "Baseline common 000e7cc Release frozen/imported; current candidate Release build/freeze pending. Rich c98be8e freeze is debug and requested-target-only.",
     "measurement_fixture_source": "committed29095eb",
     "measurement_tools_source": "prospective policy a2a8fce100tests; paddingc81975c15; portable3e3b29c24pass0skip; previousc5a6125 archive76 retained",
     "frozen_requested_integration_test_targets_completed": true,
@@ -2128,5 +2128,154 @@
     "surface_comparator_v3": "20 Python tests passed; source wiring compiled; new GPU run pending",
     "workload_consistency_fix_and_per_pass_diagnostics": "in_progress",
     "acceptance_boundary": "Compilation and comparator tests do not supersede strict pixel failures or establish CPU benefit."
+  },
+  "latest_progress_20261027": {
+    "checkpoint_commit": "c98be8eafd524c6a66215b91603cd7fd1f349be1",
+    "scope": "Latest targeted diagnostics and native recovery only; all historical raw failures remain unchanged.",
+    "native_collect_recovery": {
+      "path": ".perf/native-collect-exact-validation-3/result.json",
+      "valid": true,
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "seconds": 0.87,
+      "vuid_in_test_log": 0,
+      "source_unchanged": true,
+      "test_source_sha256": "b872baddc9db36a1be84fde46a9213c9f05b6379c4aaf038ab29f043314f7ed3",
+      "coverage": "579 real worker draws / 12 tasks / 2 waves; submitted A physically pending, unsubmitted B cancelled, real nonzero CPU-budget refusal before workers, full reference pixel recovery.",
+      "boundary": "This synthetic native fixture does not accept shipped grass/UI/water/ice scene pixels or CPU performance."
+    },
+    "new_targeted_tests": {
+      "rust_trace": 6,
+      "rust_wall_source": 3,
+      "rust_nani_observer": 3,
+      "python_trace_parser": 8,
+      "python_trace_source_controller": 9,
+      "scope": "Separate executed groups, zero ignored; Rust Nani tests did not run the surface GPU fixture."
+    },
+    "rich_debug_freeze": {
+      "label": "rich-workload-debug-c98be8e",
+      "source_commit": "c98be8eafd524c6a66215b91603cd7fd1f349be1",
+      "source_content_sha256": "3ba1628503802a31bc83e90850aa9729d80a8d8b43491d430fd58f71e8f5d855",
+      "executable_sha256": "064462bf22ced894f19848bf7dffc81f726cde663e9fb8f5207847450141092a",
+      "files": {
+        "original_gameplay_chain-2654367002312a69.exe": "064462bf22ced894f19848bf7dffc81f726cde663e9fb8f5207847450141092a",
+        "original_gameplay_chain-2654367002312a69.pdb": "b35671b6d6c92c53651119102ac1aa23559909971ad1f4931b5cdc4513772f8f",
+        "fmod.dll": "d563ad96042c096985735b0d1fdab80fe5c7f27663171ff1550ac8ebf4c7eba6",
+        "fmodstudio.dll": "dc61fae2e70ec3a16fa78b678a0fc9ff1852491077a21c2b9c11bf4d160207ff"
+      },
+      "profile": "debug",
+      "requested_test_target_completed": true,
+      "entire_cargo_build_passed": false
+    },
+    "trace_source_investigation": {
+      "series": "rich-workload-debug-c98be8e-trace-1",
+      "state": "diagnostic_completed_with_real_workload_and_source_differences",
+      "diagnostic_structure_valid": true,
+      "both_raw_runs_valid_for_cpu": false,
+      "both_recording_traces_valid": true,
+      "observation_count": 31,
+      "off_direct_dispatch_calls_each_row": 355,
+      "on_direct_dispatch_calls_each_row": 357,
+      "normalized_actual_workload_equal": false,
+      "wall_source_equal": false,
+      "native_differences": 31,
+      "full_actual_differences": 59,
+      "wall_source_differences": 1333,
+      "scope": "Static 60 warmup / 30 samples, same frozen EXE OFF/ON; record/source diagnostic only, no ETW or CPU acceptance.",
+      "causality_boundary": "Direction is reversed from the old 357/355 pair; source differences are findings, not proof binding reuse caused native differences or CPU changes. No receipt mapping exists for recording scopes.",
+      "original_binding_comparison_reclassified": false
+    },
+    "release_preparation": {
+      "baseline": {
+        "label": "formal-base-common-000e7cc-on",
+        "source_commit": "000e7cc8abd332d7508480c1d6384a3d64b9e6a9",
+        "source_content_sha256": "9e4834e2c064ba0d9f68efe7b5f3eb66d45ee23b0ffc85d21765fab87ed3cc74",
+        "executable_sha256": "483998fb7ef50b0a4d5e1563f8cb97a02c1ee5e25556ec8eb343d7b99f52ec9d",
+        "files": {
+          "original_gameplay_chain-b649166bcb42df52.exe": "483998fb7ef50b0a4d5e1563f8cb97a02c1ee5e25556ec8eb343d7b99f52ec9d",
+          "original_gameplay_chain-b649166bcb42df52.pdb": "a73b2d8dd4e797d6bf3ac85fb680eed4931dfe663d89cb9c99c3a90c2c4696d4",
+          "fmod.dll": "d563ad96042c096985735b0d1fdab80fe5c7f27663171ff1550ac8ebf4c7eba6",
+          "fmodstudio.dll": "dc61fae2e70ec3a16fa78b678a0fc9ff1852491077a21c2b9c11bf4d160207ff"
+        },
+        "profile": "release",
+        "requested_test_target_completed": true,
+        "entire_cargo_build_passed": false
+      },
+      "baseline_bundle_imported": true,
+      "candidate_release": "pending_build_and_freeze",
+      "shared_workload_helper_sha256": "3890c544d3f79c2d8a542acf064d70ef66cdae351a5b33d297d6bd2b6359eae4",
+      "shared_helper_source_commits": {
+        "original_patch": "4107fbf",
+        "baseline": "000e7cc",
+        "candidate_common": "6612"
+      },
+      "importer_portable_tests": 26,
+      "series_import_binding_tests": 88,
+      "boundary": "Frozen/imported artifact identity is not a valid performance round or an entire Cargo invocation passing."
+    },
+    "latest_diagnostic_all_target_checks": "Not rerun after 3460876/e6c11d5/c98be8e diagnostic/test/tool additions. Prior all-target checks remain historical at their exact sources.",
+    "acceptance": {
+      "cpu_gain_verified": false,
+      "four_scene_16ms_accepted": false,
+      "probe_overhead_at_most_one_percent_accepted": false,
+      "strict_water_ice_pixels_accepted": false,
+      "long_runs_complete": false,
+      "remote_pushed": false
+    },
+    "evidence": [
+      {
+        "path": ".perf/native-collect-exact-validation-3/result.json",
+        "sha256": "69ecd28dbeb189e4c11b853524d0297469e23324e0520c65d233ff15a7349151"
+      },
+      {
+        "path": ".perf/native-collect-exact-validation-3/test.stdout.log",
+        "sha256": "451141b3ef2596fe91c5e9b6038c554e9bb5f1a3dfc16cf75afc47756ae4c000"
+      },
+      {
+        "path": ".perf/native-pass-trace-rust-tests.log",
+        "sha256": "618dbb924bbcafae6dfd7d377a7af910a3ec69030aa132b47b70b9ceacc39282"
+      },
+      {
+        "path": ".perf/wall-source-rust-tests.log",
+        "sha256": "6a893c013fdd2d1f850451dfe1c1a79581b006bd86e095440a3a729a427fd26c"
+      },
+      {
+        "path": ".perf/surface-nani-rust-tests.log",
+        "sha256": "40cc0ae4c32408e95db76d661bdb28a7ddc3e087b4a046add5621d5bb4b017f6"
+      },
+      {
+        "path": ".perf/native-pass-trace-parser-tests.log",
+        "sha256": "86cb777ab29cb4c128a8ba4fb7b1266dc73123f01fc8340bbf673bceac91d1dc"
+      },
+      {
+        "path": ".perf/binding-trace-source-tests.log",
+        "sha256": "bd966bd268baa636b878026b764803b5cd4252270098f7b36df3b01f76e59393"
+      },
+      {
+        "path": ".perf/frozen-bundle-importer-tests-portable.log",
+        "sha256": "a9c54998506592cd3eced37a607ab6b965e810adad479405869d702b757a1a7a"
+      },
+      {
+        "path": ".perf/headless-series-import-binding-tests.log",
+        "sha256": "4fad104d0580c527e6c22781f88da20ea42555b553ba48e0cba79445dcc9f35e"
+      },
+      {
+        "path": ".perf/formal-baseline-import-000e7cc-execute.log",
+        "sha256": "86109df1f3db96653b5e73a038e81e08382557bb9bd8166fb30c41a48b45b724"
+      },
+      {
+        "path": ".perf/headless-builds/rich-workload-debug-c98be8e/build.json",
+        "sha256": "19da973efd7caeb873805d9b60631493be265017332c88a70e8ead1095685ad2"
+      },
+      {
+        "path": ".perf/headless-builds/formal-base-common-000e7cc-on/build.json",
+        "sha256": "a58d5bfefd788cd128e16fbc193a5e058626a5ba3f7dcdc45697dcb8ff8c5e9e"
+      },
+      {
+        "path": ".perf/binding-trace-source/rich-workload-debug-c98be8e-trace-1/summary.json",
+        "sha256": "4384d58f4506d06853f5a3013203a8330525055fab7e08d3e9a716ac48d31725"
+      }
+    ]
   }
 }
