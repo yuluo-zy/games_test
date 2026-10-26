@@ -831,7 +831,6 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
         )))?;
     }
     let mut rows: Vec<FrameRow> = Vec::new();
-    let mut in_flight = std::collections::VecDeque::<u64>::new();
     let mut allocation_peak_dumped = false;
     for index in 0..frames {
         let update_started = std::time::Instant::now();
@@ -844,8 +843,13 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
         while bridge.with_session(|session| session.pending_frame_count())
             >= device.frames_in_flight() as usize
         {
-            let oldest = in_flight.pop_front().context("pending frame without receipt")?;
-            bridge.with_session(|session| session.wait_frame(oldest, 120_000_000_000))?;
+            // The session also retires frames opportunistically. A second
+            // receipt FIFO can point at an already collected frame; pace from
+            // the session's actual queue front, then retire real completion.
+            let completed = bridge.with_session(|session| session.wait_gpu_queue_trim(120_000_000_000))?;
+            anyhow::ensure!(completed, "timed out waiting for the pending gameplay frame");
+            anyhow::ensure!(bridge.collect_completed_frames()? > 0,
+                "completed gameplay queue front was not reclaimed");
         }
         let world = driver.app_mut().world_mut();
         let frame_counter = world
@@ -891,7 +895,6 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
             stats.record_ns as f64 / 1e6,
             device.retirement_stats(),
         );
-        in_flight.push_back(frame.receipt.frame);
         let (cache, passes) = bridge.with_session(|session| {
             let passes = session
                 .chain
