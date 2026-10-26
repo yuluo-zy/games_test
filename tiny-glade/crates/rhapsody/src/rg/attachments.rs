@@ -114,6 +114,7 @@ impl Attachment {
             levels: self.view.level_count,
             layer: self.view.base_layer,
             layers: self.view.layer_count,
+            usage: self.view.usage.as_raw(),
         }
     }
 }
@@ -130,6 +131,7 @@ struct ViewKey {
     levels: u32,
     layer: u32,
     layers: u32,
+    usage: u32,
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum RenderingPolicy {
@@ -630,6 +632,7 @@ impl AttachmentCache {
             }
             depth_seen = a.depth_stencil;
             let desc = &a.texture.desc;
+            a.view.validate(desc)?;
             if a.view.view_type != vk::ImageViewType::TYPE_2D
                 && a.view.view_type != vk::ImageViewType::TYPE_2D_ARRAY
             {
@@ -673,6 +676,7 @@ impl AttachmentCache {
             if a.view.aspect.is_empty()
                 || !expected_aspect.contains(a.view.aspect)
                 || !desc.usage.contains(usage)
+                || !a.view.usage.contains(usage)
             {
                 return Err(Error::invalid_usage("附件 aspect 或 usage 不兼容"));
             }

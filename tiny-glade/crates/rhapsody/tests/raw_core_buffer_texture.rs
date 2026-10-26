@@ -79,7 +79,7 @@ fn sparse_update_plan_preserves_destinations_and_rejects_invalid_ranges() {
 
 #[test]
 fn texture_view_ranges_check_exact_remainders_zero_and_overflow() {
-    let texture = TextureDesc::new_2d_array(8, 8, 4, vk::Format::R8G8B8A8_UNORM).mip_levels(3);
+    let texture = TextureDesc::new_2d_array(8, 8, 4, vk::Format::R8G8B8A8_UNORM).mip_levels(3).sampled();
     let full = TextureViewDesc::new(&texture).unwrap();
     assert!(full.validate(&texture).is_ok());
     let mut view = full;

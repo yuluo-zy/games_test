@@ -369,10 +369,10 @@ impl TextureDesc {
         self.usage.contains(vk::ImageUsageFlags::SAMPLED)
             && vk_format_valid_aspect_flags(self.format) == vk::ImageAspectFlags::COLOR
     }
-    /// `usage |= SAMPLED`, `flags |= MUTABLE_FORMAT | BLOCK_TEXEL_VIEW_COMPATIBLE`.
+    /// `usage |= SAMPLED`, `flags |= MUTABLE_FORMAT | EXTENDED_USAGE` (native 0x108).
     pub fn sampled_with_different_format(mut self) -> Self {
         self.usage |= vk::ImageUsageFlags::SAMPLED;
-        self.flags |= vk::ImageCreateFlags::from_raw(0x108);
+        self.flags |= vk::ImageCreateFlags::MUTABLE_FORMAT | vk::ImageCreateFlags::EXTENDED_USAGE;
         self
     }
     pub fn usage(mut self, usage: vk::ImageUsageFlags) -> Self {
@@ -459,6 +459,9 @@ impl TextureViewDesc {
     }
     /// Validate a nonempty subresource range without truncation or overflow.
     pub fn validate(&self, texture: &TextureDesc) -> Result<()> {
+        if self.usage.is_empty() || !texture.usage.contains(self.usage) {
+            return Err(Error::invalid_usage("image view usage must be a nonempty subset of its image usage"));
+        }
         let layers = texture.array_layers()?;
         let valid_kind = match texture.kind {
             TextureKind::D1 | TextureKind::D1Array => matches!(
@@ -793,7 +796,12 @@ impl Texture {
             .level_count(desc.level_count)
             .base_array_layer(desc.base_layer)
             .layer_count(desc.layer_count);
+        // A mutable-format sampled view need not support the image's real
+        // storage/attachment purposes. Honor the caller's existing view usage;
+        // never silently intersect away an explicitly requested purpose.
+        let mut usage = vk::ImageViewUsageCreateInfo::default().usage(desc.usage);
         let info = vk::ImageViewCreateInfo::default()
+            .push_next(&mut usage)
             .image(self.handle)
             .view_type(desc.view_type)
             .format(desc.format)
