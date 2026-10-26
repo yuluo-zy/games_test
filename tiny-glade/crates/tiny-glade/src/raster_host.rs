@@ -282,7 +282,8 @@ pub struct AssetTables {
     /// Writers copy only while an earlier scope still retains its snapshot.
     pub collect: Arc<CollectAssets>,
     /// VAO refreshes do not copy the independent Collect query snapshot.
-    vaos: IdMap<Arc<VaoSnapshot>>,
+    vaos: Option<Arc<VaoSnapshotTable>>,
+    wrapper_reuse: Option<Arc<VaoSnapshotTable>>,
 }
 
 #[derive(Clone, Default)]
@@ -387,6 +388,46 @@ struct VaoScopeState {
     table_revision: u64,
 }
 
+/// One physical owner for the publication's actual map capacity and Arc data.
+/// Reuse guards clone this owner without constructing another map.
+struct VaoSnapshotTable {
+    entries: IdMap<Arc<VaoSnapshot>>,
+    // Storage is freed before budget credit is returned.
+    _memory: rhapsody::device::CpuStorageReservation,
+}
+
+impl VaoSnapshotTable {
+    fn metadata_bytes() -> u64 {
+        let (layout, _) = std::alloc::Layout::new::<[usize; 2]>()
+            .extend(std::alloc::Layout::new::<Self>()).expect("VAO table Arc layout");
+        layout.pad_to_align().size() as u64
+    }
+
+    fn map_bytes(capacity: usize) -> u64 {
+        if capacity == 0 { return 0; }
+        capacity.saturating_add(1).checked_next_power_of_two().unwrap_or(usize::MAX)
+            .saturating_mul(std::mem::size_of::<(u64, Arc<VaoSnapshot>)>() + 1)
+            .saturating_add(16) as u64
+    }
+}
+
+/// A synchronous world declaration may temporarily publish a terrain subset.
+/// This guard keeps its preceding full wrappers available as *candidates* only:
+/// every candidate still needs current typed and physical-owner validation.
+pub struct VaoWrapperReuseScope {
+    shared: Arc<RasterShared>,
+    active: bool,
+    _owner: std::marker::PhantomData<Rc<()>>,
+}
+impl Drop for VaoWrapperReuseScope {
+    fn drop(&mut self) {
+        if self.active {
+            let previous = self.shared.assets.lock().wrapper_reuse.take();
+            drop(previous);
+        }
+    }
+}
+
 /// Closes the reuse window opened by [`RasterShared::begin_vao_scope`] on drop.
 pub struct VaoScope(Arc<RasterShared>);
 impl Drop for VaoScope {
@@ -414,6 +455,8 @@ pub struct RasterShared {
     vao_snapshot_allocations: std::sync::atomic::AtomicU64,
     #[cfg(feature = "cpu-probe")]
     management_counts: [std::sync::atomic::AtomicU64; 6],
+    #[cfg(feature = "cpu-probe")]
+    management_modes: [bool; 3],
     /// The global texture table's (resource, range) reads for the graph being
     /// declared. Every raster pass of one graph reads the same table, so it is
     /// imported and range-declared once per graph instead of once per pass.
@@ -476,16 +519,19 @@ impl Drop for VaoRefreshMeasurement<'_> {
 fn draw_vao_handles(
     world: &mut bevy_ecs::world::World,
     lists: &country_core::systems::render_loop::draw_passes::draw_lists::DrawLists,
+    typed_lookup: bool,
     mut timing: Option<&mut VaoRefreshTiming>,
 ) -> rhapsody::Result<Vec<country_core::asset_libraries::Handle<country_core::render::vao::Vao>>> {
     use country_core::asset_libraries::Handle as AssetHandle;
     use country_core::render::vao::Vao;
+    #[cfg(not(feature = "cpu-probe"))]
+    let typed_lookup = { let _ = typed_lookup; true };
     let mut wanted = std::collections::BTreeSet::new();
     let mut handles = HashMap::new();
     for index in 0..country_core::systems::render_loop::draw_passes::draw_lists::DRAW_LIST_COUNT {
         for (item, _) in lists.list(index) {
             if let Some(counts) = timing.as_mut() { counts.list_entries += 1; }
-            if wanted.insert(item.vao) {
+            if wanted.insert(item.vao) && typed_lookup {
                 if let Some(counts) = timing.as_mut() { counts.queried_entities += 1; }
                 if let Some(handle) = world.get::<AssetHandle<Vao>>(item.params.entity)
                     && handle.id().raw() == item.vao {
@@ -537,7 +583,7 @@ mod vao_handle_resolution_tests {
             }
         }
         let mut counts = VaoRefreshTiming::default();
-        assert_eq!(draw_vao_handles(&mut world, &lists, Some(&mut counts)).unwrap(), [handle]);
+        assert_eq!(draw_vao_handles(&mut world, &lists, true, Some(&mut counts)).unwrap(), [handle]);
         assert_eq!(counts.list_entries, (DRAW_LIST_COUNT * 64) as u64);
         assert_eq!(counts.unique_vaos, 1);
         assert_eq!(counts.queried_entities, 1, "one typed lookup rather than 1001-row ECS scan");
@@ -553,11 +599,11 @@ mod vao_handle_resolution_tests {
         item.vao = handle.id().raw();
         lists.list_mut(0).push((item, unused));
         let mut counts = VaoRefreshTiming::default();
-        assert_eq!(draw_vao_handles(&mut world, &lists, Some(&mut counts)).unwrap(), [handle]);
+        assert_eq!(draw_vao_handles(&mut world, &lists, true, Some(&mut counts)).unwrap(), [handle]);
         assert_eq!(counts.queried_entities, 2, "failed entity lookup plus legacy scan");
         let invalid = AssetHandle::<Vao>::new();
         lists.list_mut(0)[0].0.vao = invalid.id().raw();
-        assert!(draw_vao_handles(&mut world, &lists, None).is_err());
+        assert!(draw_vao_handles(&mut world, &lists, true, None).is_err());
     }
 
     #[test]
@@ -574,9 +620,9 @@ mod vao_handle_resolution_tests {
             item.params.entity = second_entity;
             lists.list_mut(0).push((item, unused));
         }
-        assert_eq!(draw_vao_handles(&mut world, &lists, None).unwrap(), [first, second]);
+        assert_eq!(draw_vao_handles(&mut world, &lists, true, None).unwrap(), [first, second]);
         world.despawn(second_entity);
-        assert!(draw_vao_handles(&mut world, &lists, None).is_err());
+        assert!(draw_vao_handles(&mut world, &lists, true, None).is_err());
     }
 }
 
@@ -588,6 +634,19 @@ impl RasterShared {
     fn buffer_host(&self) -> Arc<BufferHost> {
         self.frame_buffers.lock().as_ref().unwrap_or(&self.buffers).clone()
     }
+    #[inline]
+    fn management_mode(&self, index: usize) -> bool {
+        #[cfg(feature = "cpu-probe")]
+        { self.management_modes[index] }
+        #[cfg(not(feature = "cpu-probe"))]
+        { let _ = index; true }
+    }
+    /// Constructor-frozen diagnostic modes: reflection scope, typed VAO lookup,
+    /// scoped VAO wrapper reuse. Does not change the original 13 counter fields.
+    pub fn draw_management_modes(&self) -> [bool; 3] {
+        [self.management_mode(0), self.management_mode(1), self.management_mode(2)]
+    }
+
     fn count_management(&self, index: usize, amount: u64) {
         #[cfg(feature = "cpu-probe")]
         if crate::render_cpu_probe::management_enabled() {
@@ -640,7 +699,7 @@ impl RasterShared {
             started: std::time::Instant::now(),
             counts: VaoRefreshTiming::default(),
         });
-        let handles = draw_vao_handles(world, lists,
+        let handles = draw_vao_handles(world, lists, self.management_mode(1),
             timing.as_mut().map(|measurement| &mut measurement.counts))?;
         self.refresh_vao_handles(world, &handles)
     }
@@ -656,7 +715,32 @@ impl RasterShared {
         let vaos = world.get_resource::<AssetVAOLibrary>().ok_or_else(|| {
             rhapsody::Error::invalid_usage("AssetVAOLibrary producer has not run")
         })?;
+        // Reserve the conservative growth bound before allocating the map.
+        // Duplicated handles can only reduce its actual unique entry count.
+        let predicted = if handles.is_empty() { 0 } else { handles.len().saturating_mul(2).max(3) };
+        let reserve = || self.device.allocator_stats().reserve_cpu_storage(
+            VaoSnapshotTable::metadata_bytes().saturating_add(VaoSnapshotTable::map_bytes(predicted)));
+        let mut table_memory = match reserve() {
+            Ok(memory) => memory,
+            Err(error) => {
+                // Optional wrapper reuse must not require a third table's
+                // permanent headroom. Release only our saved cache owner,
+                // outside the lock, before one ordinary admission retry.
+                // No local backup Arc has been taken at this point.
+                let backup = self.assets.lock().wrapper_reuse.take();
+                if backup.is_none() { return Err(error); }
+                drop(backup);
+                reserve()?
+            }
+        };
         let mut snapshots = IdMap::default();
+        snapshots.try_reserve(handles.len()).map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+        table_memory.resize(VaoSnapshotTable::metadata_bytes()
+            .saturating_add(VaoSnapshotTable::map_bytes(snapshots.capacity())))?;
+        let (current_table, reusable) = {
+            let assets = self.assets.lock();
+            (assets.vaos.clone(), assets.wrapper_reuse.clone())
+        };
         for handle in handles {
             let id = handle.id().raw();
             let entry = vaos.shared_by_handle(*handle).ok_or_else(|| {
@@ -681,8 +765,12 @@ impl RasterShared {
             // A published VAO entry is immutable. Reuse the complete native
             // view, while still checking live host generations: an externally
             // released buffer must not silently become valid through the cache.
-            let cached = self.assets.lock().vaos.get(&id).filter(|snapshot|
-                Arc::ptr_eq(&snapshot.source, entry) && Arc::ptr_eq(&snapshot.index, &index)).cloned();
+            let matches = |snapshot: &&Arc<VaoSnapshot>|
+                Arc::ptr_eq(&snapshot.source, entry) && Arc::ptr_eq(&snapshot.index, &index);
+            let cached = current_table.as_ref()
+                .and_then(|table| table.entries.get(&id)).filter(matches).cloned()
+                .or_else(|| reusable.as_ref()
+                    .and_then(|table| table.entries.get(&id)).filter(matches).cloned());
             if let Some(cached) = cached {
                 let mut same_versions = cached.bindings.len() == entry.vao.bindings.len();
                 for (binding, (_, owner)) in entry.vao.bindings.iter().zip(&cached.bindings) {
@@ -724,11 +812,26 @@ impl RasterShared {
         }
         // Move old owners out before releasing them: final leases may retire
         // native objects and must not extend the asset-table critical section.
-        let previous = std::mem::replace(&mut self.assets.lock().vaos, snapshots);
+        let table = Arc::new(VaoSnapshotTable { entries: snapshots, _memory: table_memory });
+        let previous = std::mem::replace(&mut self.assets.lock().vaos, Some(table));
         drop(previous);
         self.vao_table_revision
             .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
         Ok(())
+    }
+
+    /// Keep only this declaration's preceding full wrappers across a temporary
+    /// terrain publication. Never bypasses actual physical identity checks.
+    /// The guard must not outlive one synchronous world-graph declaration.
+    pub fn preserve_vao_wrappers(self: &Arc<Self>) -> Option<VaoWrapperReuseScope> {
+        #[cfg(feature = "cpu-probe")]
+        if !self.management_mode(2) { return None; }
+        let mut assets = self.assets.lock();
+        // A nested guard never replaces or extends the outer owner. Dropping
+        // guards out of order can only stop reuse early, never retain old data.
+        let active = assets.wrapper_reuse.is_none() && assets.vaos.is_some();
+        if active { assets.wrapper_reuse = assets.vaos.clone(); }
+        Some(VaoWrapperReuseScope { shared: self.clone(), active, _owner: std::marker::PhantomData })
     }
 
     /// Number of times the VAO snapshot table was replaced (diagnostics/tests).
@@ -842,6 +945,9 @@ impl RasterShared {
             vao_snapshot_allocations: std::sync::atomic::AtomicU64::new(0),
             #[cfg(feature = "cpu-probe")]
             management_counts: [const { std::sync::atomic::AtomicU64::new(0) }; 6],
+            #[cfg(feature = "cpu-probe")]
+            management_modes: ["TG_REFLECTION_SCOPE", "TG_VAO_TYPED_LOOKUP", "TG_VAO_WRAPPER_REUSE"]
+                .map(|name| std::env::var(name).ok().is_none_or(|value| value != "0")),
             table_reads: Mutex::new(None),
             frame_constants: Mutex::new(None),
             vao_scope: Mutex::new(None),
@@ -1167,6 +1273,11 @@ impl PassHost for RasterCollectHost {
 
 impl PassHost for RasterPassHost {
     fn begin_collect_scope(&self) {
+        #[cfg(feature = "cpu-probe")]
+        if !self.shared.management_mode(0) {
+            *self.scope_reflections.borrow_mut() = None;
+            return;
+        }
         *self.scope_reflections.borrow_mut() = crate::draw_template_cache::ReflectionScope::try_new(
             self.shared.device.allocator_stats()).ok().map(Arc::new);
     }
@@ -1668,7 +1779,8 @@ impl PassHost for RasterPassHost {
                         .assets
                         .lock()
                         .vaos
-                        .get(&draw.packet.head[1])
+                        .as_ref()
+                        .and_then(|table| table.entries.get(&draw.packet.head[1]))
                         .cloned()
                         .ok_or_else(|| {
                             rhapsody::Error::invalid_usage(
