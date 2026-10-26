@@ -1227,11 +1227,14 @@ mod tests {
     }
 
     mod cross_family {
-        //! Cross-family uploads are simulated: the release state is recorded
-        //! on the resource as if family 1 had submitted it, then registered
-        //! through the same path as a transfer-queue upload.
+        //! Synthetic cross-family protocol is inspected by the CPU recorder.
+        //! Its fictitious barriers are never issued to Vulkan. Real upload,
+        //! graph and readback commands below use only the actual primary family;
+        //! these tests do not claim native cross-family hardware coverage.
         use super::*;
-        use crate::device::pending_acquire::tests::{owner, released_buffer_with};
+        use crate::device::pending_acquire::tests::{
+            complete_synthetic_acquire_metadata, owner, released_buffer_with,
+        };
         use crate::resource::range_state::{RangeOwner, RangeTransfer};
         use crate::sync::QueueId;
 
@@ -1241,7 +1244,16 @@ mod tests {
         };
 
         fn device() -> Option<Arc<Device>> {
-            crate::device::Device::new_headless(&crate::device::DeviceConfig::headless()).ok()
+            let mut config = crate::device::DeviceConfig::headless();
+            // Native copy coverage is deliberately same-family on every GPU.
+            config.queues.transfer = crate::device::QueuePreference::Off;
+            match crate::device::Device::new_headless(&config) {
+                Ok(device) => Some(device),
+                Err(error) => {
+                    assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"), "{error}");
+                    None
+                }
+            }
         }
         fn submitted(device: &Device) -> u64 {
             device.queues.timelines.submitted(GRAPHICS).unwrap()
@@ -1272,7 +1284,7 @@ mod tests {
         }
 
         #[test]
-        fn uploads_followed_by_a_graph_frame_cost_no_extra_submit() {
+        fn synthetic_scope_then_same_family_graph_costs_no_extra_native_submit() {
             use crate::raw::buffer::BufferDesc;
             use crate::rg::vulkan::{
                 AccessTable, ResourceSpec, VulkanGraphBackend, VulkanGraphSession,
@@ -1284,6 +1296,8 @@ mod tests {
             let uploads = released_uploads(&device, 8, vk::BufferUsageFlags::TRANSFER_DST);
             let manager = TransferManager::new(device.clone(), TransferConfig::default()).unwrap();
             assert_eq!(manager.pending_acquire_count(), 8);
+            assert_eq!(complete_synthetic_acquire_metadata(&device), 8);
+            assert_eq!(manager.pending_acquire_count(), 0);
             let backend = VulkanGraphBackend::new(device.clone(), AccessTable::original()).unwrap();
             let mut session = VulkanGraphSession::new(backend);
             let before = submitted(&device);
@@ -1303,21 +1317,21 @@ mod tests {
             pass.add_resource_access(scratch, 0x34, 0).unwrap();
             pass.render(|_| true);
             let receipt = session.execute_frame(graph.build()).unwrap();
-            assert_eq!(receipt.stats.coalesced_acquires, 8);
+            assert_eq!(receipt.stats.coalesced_acquires, 0);
             assert_eq!(
                 submitted(&device) - before,
                 u64::from(receipt.stats.batches),
-                "the acquires ride in the graph's own submits"
+                "the native same-family graph costs only its own submits"
             );
             assert_eq!(manager.pending_acquire_count(), 0);
             session.wait_submits_done(10_000_000_000).unwrap();
             for (buffer, _) in &uploads {
-                assert_eq!(owner(buffer), RangeOwner::Owned(0));
+                assert_eq!(owner(buffer), RangeOwner::Owned(device.queues.primary_family));
             }
         }
 
         #[test]
-        fn flush_acquires_records_every_pending_acquire_in_one_submit() {
+        fn synthetic_cpu_batch_and_empty_same_family_flush_have_separate_submit_counts() {
             let Some(device) = device() else {
                 eprintln!("SKIP: no Vulkan device");
                 return;
@@ -1329,7 +1343,7 @@ mod tests {
             // A raw command touching a released range fails validation
             // instead of racing the release.
             let pool =
-                crate::raw::command_buffer::VulkanCommandPool::new_for_family(device.clone(), 0)
+                crate::raw::command_buffer::VulkanCommandPool::new_for_family(device.clone(), device.queues.primary_family)
                     .unwrap();
             let mut command = pool.allocate().unwrap();
             command.begin().unwrap();
@@ -1349,25 +1363,21 @@ mod tests {
             assert!(error.to_string().contains("pending acquire"), "{error}");
             drop(command);
             let before = submitted(&device);
-            let point = manager
-                .flush_acquires()
-                .unwrap()
-                .expect("one acquire submit");
+            assert_eq!(complete_synthetic_acquire_metadata(&device), 6);
+            assert_eq!(manager.flush_acquires().unwrap(), None,
+                "native same-family flush must not issue synthetic barriers");
             assert_eq!(submitted(&device), before + 1);
             assert_eq!(manager.pending_acquire_count(), 0);
-            manager
-                .device
-                .wait(&SyncSet::from_point(point), 10_000_000_000)
-                .unwrap();
+
             for (buffer, _) in &uploads {
-                assert_eq!(owner(buffer), RangeOwner::Owned(0));
+                assert_eq!(owner(buffer), RangeOwner::Owned(device.queues.primary_family));
             }
             assert_eq!(manager.flush_acquires().unwrap(), None);
             assert_eq!(submitted(&device), before + 1);
         }
 
         #[test]
-        fn graphics_transfer_commands_record_pending_acquires_first() {
+        fn cpu_acquires_precede_legal_same_family_upload_and_readback() {
             let Some(device) = device() else {
                 eprintln!("SKIP: no Vulkan device");
                 return;
@@ -1376,8 +1386,10 @@ mod tests {
             let uploads = released_uploads(&device, 2, usage);
             let mut manager =
                 TransferManager::new(device.clone(), TransferConfig::default()).unwrap();
-            // An upload to a still-released destination acquires it (and
-            // every other pending acquire) in its own command.
+            assert_eq!(manager.pending_acquire_count(), 2);
+            assert_eq!(complete_synthetic_acquire_metadata(&device), 2);
+            // The synthetic protocol has been checked without native barriers.
+            // Real copies now operate on legal same-family resources.
             let accepted = manager.enqueue_upload(uploads[0].0.clone(), 16, &[7; 32], UploadOptions {
                 key: UploadKey(0), epoch: 0, priority: UploadPriority::High,
             }).unwrap();
@@ -1386,7 +1398,7 @@ mod tests {
             assert_eq!(manager.pending_acquire_count(), 0);
             ticket.wait(10_000_000_000).unwrap();
             for (buffer, _) in &uploads {
-                assert_eq!(owner(buffer), RangeOwner::Owned(0));
+                assert_eq!(owner(buffer), RangeOwner::Owned(device.queues.primary_family));
             }
             let readback = manager.read_buffer(uploads[0].0.clone(), 16, 32).unwrap();
             readback.wait(10_000_000_000).unwrap();
@@ -1395,10 +1407,11 @@ mod tests {
             assert_eq!(bytes, [7; 32]);
             // A readback of a released source acquires it the same way.
             let released = released_uploads(&device, 1, usage);
+            assert_eq!(complete_synthetic_acquire_metadata(&device), 1);
             let readback = manager.read_buffer(released[0].0.clone(), 0, 16).unwrap();
             assert_eq!(manager.pending_acquire_count(), 0);
             readback.wait(10_000_000_000).unwrap();
-            assert_eq!(owner(&released[0].0), RangeOwner::Owned(0));
+            assert_eq!(owner(&released[0].0), RangeOwner::Owned(device.queues.primary_family));
         }
     }
 }
