@@ -156,6 +156,8 @@ def load_build(path):
 # arbitrary code supplied by an imported manifest; hash the exact bytes first.
 IMPORTER_SHA256 = 'cab6757fffd00eecd7eb786b293b9999c1d99d34bfea48fe359b0af7f767b6d1'
 IMPORT_CONTRACT = 'sealed-imported-frozen-bundle-v1'
+CANONICAL_IMPORT_CONTRACT = 'sealed-canonical-imported-frozen-bundle-v2'
+CANONICAL_IMPORTER_SHA256 = 'da1e9a41f394efec2bf51e57d94c099ee5a2e65d6219693473ba4710d2e3495b'
 IMPORT_FILES = ('original-build.json', 'original-inventory.json', 'bundle-import-plan.json',
                 'bundle-importer.py', 'frozen-bundle-import.json')
 
@@ -163,7 +165,7 @@ IMPORT_FILES = ('original-build.json', 'original-inventory.json', 'bundle-import
 def import_verifier(bundle):
     path = Path(bundle)/'bundle-importer.py'
     raw = path.read_bytes()
-    require(hashlib.sha256(raw).hexdigest() == IMPORTER_SHA256,
+    require(hashlib.sha256(raw).hexdigest() in (IMPORTER_SHA256, CANONICAL_IMPORTER_SHA256),
             'unqualified frozen bundle importer')
     namespace = {'__name__': '_reviewed_frozen_bundle_importer', '__file__': str(path)}
     exec(compile(raw, str(path), 'exec'), namespace)
@@ -205,6 +207,8 @@ def bundle_import_binding(build_path, *, declared=None, initial=False):
     require(initial or declared is not None, 'imported proof was not predeclared')
     verifier = import_verifier(folder)
     manifest = verifier['verify_import'](folder, check_origin=initial)
+    importer_sha = digest(folder/'bundle-importer.py')
+    import_contract = (CANONICAL_IMPORT_CONTRACT if importer_sha == CANONICAL_IMPORTER_SHA256 else IMPORT_CONTRACT)
     inventory = verifier['inventory'](folder)
     build = read(build_path)
     if initial:
@@ -212,7 +216,7 @@ def bundle_import_binding(build_path, *, declared=None, initial=False):
         raw_commit = verifier['git'](plan['source_root'], 'cat-file', 'commit', build['source_commit'])
         commit = frozen_commit(raw_commit, build['source_commit'])
     else:
-        require(declared.get('schema') == IMPORT_CONTRACT, 'unknown imported proof contract')
+        require(declared.get('schema') == import_contract, 'unknown imported proof contract')
         commit = declared['frozen_source_commit']
         try:
             raw_commit = base64.b64decode(commit['raw_base64'], validate=True)
@@ -220,16 +224,28 @@ def bundle_import_binding(build_path, *, declared=None, initial=False):
             raise ValueError('invalid frozen commit encoding') from error
         require(frozen_commit(raw_commit, build['source_commit']) == commit,
                 'frozen source commit proof changed')
-    result = {'schema': IMPORT_CONTRACT, 'bundle': str(folder),
+    result = {'schema': import_contract, 'bundle': str(folder),
         'source_commit': build['source_commit'], 'source_content_sha256': build['source_content_sha256'],
         'derived_build_sha256': digest(build_path),
         'original_build_sha256': manifest['original_build_sha256'],
-        'importer_sha256': IMPORTER_SHA256, 'import_nonce': manifest['import_nonce'],
+        'importer_sha256': importer_sha, 'import_nonce': manifest['import_nonce'],
         'frozen_source_commit': commit,
         'artifacts': {name: {'path': str(folder/name), **record} for name, record in inventory.items()}}
+    if import_contract == CANONICAL_IMPORT_CONTRACT:
+        result['canonical_source_contract'] = manifest['canonical_source_contract']
     if not initial:
         require(result == declared, 'imported bundle bytes/identity changed after declaration')
     return result
+
+
+def check_import_harness(binding, source_contract):
+    if binding is None:
+        return
+    expected = CANONICAL_IMPORT_CONTRACT if source_contract is not None else IMPORT_CONTRACT
+    require(binding['schema'] == expected, 'mixed import/harness contract versions rejected')
+    if source_contract is not None:
+        require(binding.get('canonical_source_contract') == source_contract,
+                'imported canonical archive differs from producer source review')
 
 
 def module_identity(tools_dir):
@@ -256,13 +272,15 @@ def make_plan(series, baseline_path, candidate_path, calibration_path, tools_dir
     require(build_common(baseline) == build_common(candidate), 'build configuration differs')
     producer_paths = {'A': baseline_producer_review, 'B': candidate_producer_review}
     require(all(producer_paths.values()), 'predeclared source-reviewed producer capabilities required for both builds')
+    common_source, source_contracts, harnesses = {}, {}, {}
     for side, build in (('A', baseline), ('B', candidate)):
         source_files = read(Path(build['executable']).with_name('source.json'))['files']
-        workload.review_capability(producer_paths[side], build, source_files)
-    common_source = {}
-    for side, build in (('A', baseline), ('B', candidate)):
-        source_files = read(Path(build['executable']).with_name('source.json'))['files']
-        common_source[side] = {name: source_files[name] for name in workload.COMMON_HARNESS_FILES}
+        cap = workload.review_capability(producer_paths[side], build, source_files)
+        common_source[side] = workload.common_source(cap, source_files)
+        source_contracts[side] = workload.harness_contract(cap)
+        harnesses[side] = workload.harness(cap)
+        check_import_harness(import_bindings[side], source_contracts[side])
+    require(harnesses['A'] == harnesses['B'], 'mixed historical/canonical harness versions rejected')
     require(common_source['A'] == common_source['B'], 'baseline/candidate common CPU harness source bytes differ')
     require((baseline['source_commit'], baseline['source_content_sha256']) !=
             (candidate['source_commit'], candidate['source_content_sha256']),
@@ -303,10 +321,12 @@ def make_plan(series, baseline_path, candidate_path, calibration_path, tools_dir
         'producer_reviews': {side: reference(path) for side, path in producer_paths.items()},
         'algorithm_selection': workload.ALGORITHM_SELECTION,
         'common_harness_source_sha256': common_source['A'],
+        'harness': harnesses['A'], 'canonical_source_contracts': source_contracts,
+        'canonical_contract_module_sha256': digest(workload.canonical.__file__),
         'python': reference(python),
         'tools_dir': str(tools_dir), 'measurement_tools': ids,
         'calibration': reference(calibration_path), 'clock_policy': policy,
-        'import_proof_contract': IMPORT_CONTRACT, 'import_bindings': import_bindings,
+        'import_proof_contract': (CANONICAL_IMPORT_CONTRACT if harnesses['A'] == workload.canonical.HARNESS else IMPORT_CONTRACT), 'import_bindings': import_bindings,
         'import_required': import_required,
         'builds': {'A': reference(baseline_path), 'B': reference(candidate_path)},
         'build_records': {'A': baseline, 'B': candidate}, 'entries': entries,
@@ -327,8 +347,14 @@ def validate_plan(plan):
     checked_ref(plan['python'])
     checked_ref(plan['calibration'])
     require(module_identity(plan['tools_dir']) == plan['measurement_tools'], 'measurement tools changed')
-    require(plan.get('import_proof_contract') == IMPORT_CONTRACT
-            and set(plan.get('import_bindings', {})) == {'A', 'B'}, 'missing versioned import declarations')
+    selected_harness = plan.get('harness', workload.canonical.LEGACY_HARNESS)
+    expected_import = (CANONICAL_IMPORT_CONTRACT if selected_harness == workload.canonical.HARNESS else IMPORT_CONTRACT)
+    require(selected_harness in (workload.canonical.LEGACY_HARNESS, workload.canonical.HARNESS)
+            and plan.get('import_proof_contract') == expected_import
+            and set(plan.get('import_bindings', {})) == {'A', 'B'}, 'missing versioned import declarations or unknown contract')
+    if selected_harness == workload.canonical.HARNESS or 'canonical_contract_module_sha256' in plan:
+        require(plan.get('canonical_contract_module_sha256') == digest(workload.canonical.__file__),
+                'canonical contract module missing/changed after declaration')
     require(set(plan.get('import_required', {})) == {'A', 'B'}
             and all(type(value) is bool for value in plan['import_required'].values()),
             'missing required-import declaration')
@@ -339,9 +365,14 @@ def validate_plan(plan):
         require(load_build(checked_ref(plan['builds'][side])) == plan['build_records'][side],
                 'build identity changed after declaration')
         source_files = read(Path(plan['build_records'][side]['executable']).with_name('source.json'))['files']
-        workload.review_capability(checked_ref(plan['producer_reviews'][side]), plan['build_records'][side], source_files)
+        cap = workload.review_capability(checked_ref(plan['producer_reviews'][side]), plan['build_records'][side], source_files)
+        contract = workload.harness_contract(cap)
+        require(workload.harness(cap) == selected_harness
+                and contract == plan.get('canonical_source_contracts', {}).get(side),
+                'canonical/historical source contract differs from declaration')
+        check_import_harness(plan['import_bindings'][side], contract)
         require(plan['algorithm_selection'] == workload.ALGORITHM_SELECTION
-                and {name: source_files[name] for name in workload.COMMON_HARNESS_FILES}
+                and workload.common_source(cap, source_files)
                 == plan['common_harness_source_sha256'], 'common source-default contract differs from declaration')
     expected = [(pair, scene, side) for pair, order in enumerate(RULES['orders'], 1)
                 for scene in SCENES for side in order]
@@ -403,7 +434,7 @@ def load_run(plan, entry, replay=None, *, require_seal=True):
     require(session.get('measurement_class') == 'clean_cpu'
             and session.get('clean_cpu_acceptance_eligible') is True
             and session.get('gpu_diagnostic') is None
-            and session.get('harness') == 'common-cpu-workload-v1'
+            and session.get('harness') == plan.get('harness', workload.canonical.LEGACY_HARNESS)
             and session.get('management_diagnostics_available') is False
             and session.get('algorithm_selection') == plan['algorithm_selection'] == workload.ALGORITHM_SELECTION,
             'unversioned/diagnostic/unknown common CPU algorithm selection rejected')
@@ -566,7 +597,7 @@ def decide(results):
             'five_pair_upper_bounds': upper, 'near_threshold_signals': near}
 
 
-def seal_artifacts(folder, import_binding=None):
+def seal_artifacts(folder, import_binding=None, source_contract=None):
     run = read(Path(folder)/'run.json')
     paths = {
         'run': Path(folder)/'run.json', 'session': Path(folder)/'session.json',
@@ -583,6 +614,8 @@ def seal_artifacts(folder, import_binding=None):
         result['frozen_bundle_import'] = {'binding_sha256': signature(import_binding),
             'artifacts': import_binding['artifacts'],
             'frozen_source_commit': import_binding['frozen_source_commit']}
+    if source_contract is not None:
+        result['canonical_source_contract'] = source_contract
     return result
 
 
@@ -592,7 +625,8 @@ def verify_seal(plan, entry):
             'strict raw-trace audit required before cached evaluation')
     require(seal['plan_sha256'] == signature(plan) and seal['ordinal'] == entry['ordinal']
             and seal['comparator_sha256'] == digest(__file__), 'audit seal belongs to another series/tool/run')
-    require(seal['artifacts'] == seal_artifacts(entry['run_dir'], plan['import_bindings'][entry['side']]), 'raw/account/workload bytes changed after audit')
+    require(seal['artifacts'] == seal_artifacts(entry['run_dir'], plan['import_bindings'][entry['side']],
+            plan.get('canonical_source_contracts', {}).get(entry['side'])), 'raw/account/workload bytes changed after audit')
 
 
 def audit_run(plan_path, ordinal):
@@ -605,7 +639,8 @@ def audit_run(plan_path, ordinal):
     seal = {'schema': 'headless-series-audit-v2', 'plan_sha256': signature(plan),
         'ordinal': ordinal, 'raw_replay_valid': True, 'comparator_sha256': digest(__file__),
         'audited_utc': datetime.now(timezone.utc).isoformat(),
-        'artifacts': seal_artifacts(entry['run_dir'], plan['import_bindings'][entry['side']]),
+        'artifacts': seal_artifacts(entry['run_dir'], plan['import_bindings'][entry['side']],
+            plan.get('canonical_source_contracts', {}).get(entry['side'])),
         'integrity_scope': 'SHA binds reviewed bytes; not a cryptographic attestation of producer honesty'}
     write_new(Path(entry['run_dir'])/'series-audit.json', seal)
     return seal

@@ -1,5 +1,6 @@
 """Frozen rich EXE OFF/ON recording/source investigation; no CPU acceptance."""
 import argparse
+import base64
 from collections import defaultdict
 from contextlib import contextmanager
 import json
@@ -10,11 +11,13 @@ import perf_binding_scope_diagnostic as counts
 
 runner = counts.runner
 require = counts.require
+CANONICAL_CONTRACT_SHA256 = '98d7d1cebad9556bb31fcc8fd03811a300ef2b4a5d76eaf65fe7ebf10a9437e4'
 
 
-def tool_identities():
+def tool_identities(canonical_layout=False):
     identities = counts.tool_identities()
-    for module in (native_trace,):
+    modules = (native_trace, canonical_contract()) if canonical_layout else (native_trace,)
+    for module in modules:
         path = Path(module.__file__).resolve()
         identities[path.name] = counts.frozen_tools.digest(path)
     path = Path(__file__).resolve()
@@ -23,19 +26,78 @@ def tool_identities():
 
 
 @contextmanager
-def trace_environment():
+def trace_environment(canonical_layout=False):
     """The existing requested_environment still owns cleanup/bill/binding."""
     original = runner.environment
     def environment(diagnostic=False):
         env = original(diagnostic)
         require(diagnostic is True, 'trace/source requires rich diagnostic capture')
         env['RHAPSODY_SUBMIT_TRACE'] = '1'
+        if canonical_layout:
+            env['TG_PERF_CANONICAL_WALL_LAYOUT'] = '1'
         return env
     runner.environment = environment
     try:
         yield
     finally:
         runner.environment = original
+
+
+def canonical_contract():
+    # Optional cold controller dependency; historical/default captures do not
+    # need a new canonical-capable EXE or this contract module.
+    import perf_canonical_contract
+    module_path = Path(perf_canonical_contract.__file__).resolve(strict=True)
+    require(module_path == Path(__file__).resolve().with_name('perf_canonical_contract.py'),
+            'canonical contract module is not the reviewed sibling tool')
+    require(counts.frozen_tools.digest(module_path) == CANONICAL_CONTRACT_SHA256,
+            'unreviewed canonical source/stamp contract module')
+    return perf_canonical_contract
+
+
+def canonical_source_evidence(args, frozen_identity):
+    """Bind reviewed rich cold-hook bytes to this frozen source inventory.
+
+    Read-only checkout bytes must match source.json, not merely resemble a
+    current helper. Archive those exact bytes separately from frozen metadata.
+    The source audit does not establish successful native owner preflight.
+    """
+    build_path = runner.PERF / 'headless-builds' / runner.label(args.build_label) / 'build.json'
+    source_path = build_path.parent / 'source.json'
+    require(counts.frozen_tools.digest(source_path) == frozen_identity['source_json_sha256'],
+            'canonical frozen source inventory changed')
+    source = json.loads(source_path.read_text(encoding='utf-8'))
+    require(source.get('content_sha256') == frozen_identity['source_content_sha256']
+            and counts.frozen_tools.signature(source['files']) == source['content_sha256'],
+            'canonical source content identity differs')
+    contract = canonical_contract()
+    raw = {name: (runner.ROOT / name).read_bytes() for name in contract.REQUIRED}
+    capability = contract.rich_source_contract(source['files'], raw)
+    return {'schema': 'rich-optional-canonical-source-archive-v1',
+            'source_json_sha256': frozen_identity['source_json_sha256'],
+            'source_commit': source['commit'], 'source_content_sha256': source['content_sha256'],
+            'contract': capability,
+            'files': {name: {'sha256': contract.bytes_sha(value),
+                             'raw_base64': base64.b64encode(value).decode('ascii')}
+                      for name, value in raw.items()},
+            'scope': 'Source-audited cold-hook capability only; actual fresh-process native owner checks still required'}
+
+
+def canonical_preparation(report):
+    """Require actual opt-in stamps; never infer them from source capability."""
+    contract = canonical_contract()
+    require(report.get('canonical_layout_input_policy') == contract.PREPARATION
+            and report.get('measurement_class') == 'management_diagnostic'
+            and report.get('clean_cpu_acceptance_eligible') is False,
+            'requested rich canonical preparation policy was not honored')
+    prep = contract.preparation_stamp(report.get('canonical_brick_layout'),
+                                      report.get('input_before'), report.get('input_after'))
+    return {'requested_TG_PERF_CANONICAL_WALL_LAYOUT': '1',
+            'canonical_layout_input_policy': report['canonical_layout_input_policy'],
+            'canonical_brick_layout': prep,
+            'input_before_canonical_brick_layout': report['input_before']['canonical_brick_layout'],
+            'input_after_canonical_brick_layout': report['input_after']['canonical_brick_layout'],
+            'scope': 'Same original pre-warmup preparation stamp at both input endpoints; not a final/current per-frame layout observation'}
 
 
 def wall_observations(report):
@@ -128,7 +190,12 @@ def by_pass_name(trace):
             } for name, rows in sorted(groups.items())]}
 
 
-def compare_sources(off, on):
+def compare_sources(off, on, canonical_layout=False):
+    # Both newly requested reports must prove the hook actually returned.
+    # The original strict input comparison below still includes ALL raw stamps.
+    if canonical_layout:
+        canonical_preparation(off)
+        canonical_preparation(on)
     a, b = counts.validate_report(off, False), counts.validate_report(on, True)
     left, right = wall_observations(off), wall_observations(on)
     for key in ('input', 'workload', 'management_modes'):
@@ -153,21 +220,30 @@ def compare_sources(off, on):
             'interpretation': 'Differences are investigation findings, never performance gains or permission to reclassify an earlier failed comparison'}
 
 
-def capture_role(args, role, frozen_identity, tools):
-    require(tool_identities() == tools, 'trace/source controller dependencies changed')
+def capture_role(args, role, frozen_identity, tools, canonical_source=None):
+    canonical_layout = getattr(args, 'canonical_layout', False)
+    require(tool_identities(canonical_layout) == tools, 'trace/source controller dependencies changed')
     path = runner.PERF / 'headless-runs' / runner.label(args.series + '-' + role)
     record = None
     try:
-        with trace_environment():
+        if canonical_layout:
+            require(canonical_source is not None
+                    and canonical_source_evidence(args, frozen_identity) == canonical_source,
+                    'canonical source capability changed before capture')
+        with trace_environment(canonical_layout):
             report, record = counts.capture_mode(args, role, frozen_identity, counts.tool_identities())
         wall_observations(report)
+        if canonical_layout:
+            record['canonical_preparation'] = canonical_preparation(report)
+            require(canonical_source_evidence(args, frozen_identity) == canonical_source,
+                    'canonical source capability changed during capture')
         parsed = native_trace.parse_trace((path / 'fixture.log').read_text(encoding='utf-8', errors='strict'))
         runner.dump(path / 'native-pass-trace.json', parsed)
         require(parsed.get('trace_valid') is True and parsed.get('errors') == []
                 and parsed.get('submission_receipt_association') == 'not_available_scope_only',
                 'native pass trace invalid or unexpected receipt claim')
         runner.dump(path / 'native-pass-name-view.json', by_pass_name(parsed))
-        require(tool_identities() == tools, 'trace/source controller dependencies changed during capture')
+        require(tool_identities(canonical_layout) == tools, 'trace/source controller dependencies changed during capture')
         require(counts.seal_capture(path) == record['artifacts'], 'raw capture changed during trace parsing')
         record.update(raw_run_valid=False, trace_valid=True,
                       trace_scope='recording scopes only, not GPU submission/completion or receipt association')
@@ -195,7 +271,8 @@ def run(args):
     require(not any(path.exists() for path in paths), 'fresh per-role output directories required')
     build_path = runner.PERF / 'headless-builds' / runner.label(args.build_label) / 'build.json'
     _, identity = counts.frozen_tools.frozen_identity(build_path)
-    tools = tool_identities()
+    canonical_layout = getattr(args, 'canonical_layout', False)
+    tools = tool_identities(canonical_layout)
     destination.mkdir(parents=True, exist_ok=False)
     result = {'schema': 'binding-trace-source-diagnostic-v1', 'valid': False,
               'measurement_class': 'trace_source_diagnostic', 'diagnostic_only': True,
@@ -206,16 +283,35 @@ def run(args):
               'settings': {'scene': 'static', 'warmup': 60, 'samples': 30, 'order': ['off', 'on'],
                            'etw': False, 'cpu_bill': True, 'RHAPSODY_SUBMIT_TRACE': '1'}, 'runs': []}
     try:
+        canonical_source = None
+        if canonical_layout:
+            canonical_source = canonical_source_evidence(args, identity)
+            archive_path = destination / 'canonical-source-archive.json'
+            runner.dump(archive_path, canonical_source)
+            result['canonical_source_archive'] = {'path': str(archive_path),
+                'sha256': counts.frozen_tools.digest(archive_path), 'contract': canonical_source['contract']}
+            result['settings']['TG_PERF_CANONICAL_WALL_LAYOUT'] = '1'
+            result['canonical_preparation_scope'] = (
+                'Both fresh processes explicitly request the same reviewed pre-warmup layout policy; '
+                'runtime owner preflight success is required, not assumed; preparation is not final layout')
         reports = {}
         for role, path in zip(('off', 'on'), paths):
             entry = {'role': role, 'path': str(path), 'capture_completed': False}
             result['runs'].append(entry)
             runner.dump(destination / 'progress.json', result)
-            reports[role], record = capture_role(args, role, identity, tools)
+            if canonical_layout:
+                reports[role], record = capture_role(args, role, identity, tools, canonical_source)
+            else:
+                reports[role], record = capture_role(args, role, identity, tools)
             entry.update(record, capture_completed=True)
             runner.dump(destination / 'progress.json', result)
-        result['source_investigation'] = compare_sources(reports['off'], reports['on'])
-        require(tool_identities() == tools, 'trace/source tools changed before finalization')
+        result['source_investigation'] = compare_sources(reports['off'], reports['on'], canonical_layout)
+        if canonical_layout:
+            require(canonical_source_evidence(args, identity) == canonical_source,
+                    'canonical source capability changed before finalization')
+            require(counts.frozen_tools.digest(archive_path) == result['canonical_source_archive']['sha256'],
+                    'canonical source archive changed')
+        require(tool_identities(canonical_layout) == tools, 'trace/source tools changed before finalization')
         result['valid'] = True
     except BaseException as error:
         result['error'] = repr(error)
@@ -234,6 +330,8 @@ def main():
     parser.add_argument('build_label')
     parser.add_argument('series')
     parser.add_argument('--timeout', type=int, default=3600)
+    parser.add_argument('--canonical-layout', action='store_true',
+                        help='explicitly request reviewed rich fresh-boot canonical preparation in both diagnostic processes')
     args = parser.parse_args()
     args.scene, args.warmup, args.samples = 'static', 60, 30
     print(json.dumps(run(args), ensure_ascii=False, indent=2))

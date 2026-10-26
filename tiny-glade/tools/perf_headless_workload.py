@@ -7,6 +7,8 @@ import hashlib
 import json
 from pathlib import Path
 
+import perf_canonical_contract as canonical
+
 SCHEMA = 'headless-actual-workload-v1'
 ALGORITHM_SELECTION = 'compiled_source_defaults_no_runtime_ablation'
 COMMON_HARNESS_FILES = tuple('crates/tiny-glade/tests/cpu_measurement/'+name
@@ -80,8 +82,12 @@ def review_capability(path, build, source_files):
     bool supplied by a runtime report. Every referenced artifact is SHA checked.
     """
     cap = read(path)
-    require(cap.get('schema') == 'headless-producer-capability-v1'
+    require(Path(canonical.__file__).resolve() == Path(__file__).with_name('perf_canonical_contract.py').resolve(),
+            'shadowed canonical contract from another checkout')
+    version = cap.get('schema')
+    require(version in ('headless-producer-capability-v1', 'headless-producer-capability-v2')
             and cap.get('raw_schema') == SCHEMA, 'unreviewed/unknown workload capability')
+    canonical_version = version == 'headless-producer-capability-v2'
     require(cap['source_content_sha256'] == build['source_content_sha256'],
             'producer capability belongs to another frozen source')
     require(cap['source_commit'] == build['source_commit'], 'producer review source commit differs')
@@ -97,7 +103,7 @@ def review_capability(path, build, source_files):
     common_mod = Path(files[COMMON_HARNESS_FILES[0]]['path']).read_text(encoding='utf-8')
     require(ALGORITHM_SELECTION in common_mod, 'common source lacks versioned algorithm selection marker')
     review = read(checked_reference(cap['review_report']))
-    require(review.get('schema') == 'headless-producer-source-review-v1'
+    require(review.get('schema') == ('headless-producer-source-review-v2' if canonical_version else 'headless-producer-source-review-v1')
             and review['source_content_sha256'] == build['source_content_sha256']
             and review['source_commit'] == build['source_commit'], 'producer source review identity differs')
     require(review['source_sha256'] == {name: ref['sha256'] for name, ref in files.items()},
@@ -120,7 +126,28 @@ def review_capability(path, build, source_files):
     require(review.get('receipt_attribution_checked') is True
             and review.get('successful_prefix_failure_invalid_checked') is True
             and review.get('counter_overflow_checked') is True, 'producer review obligations incomplete')
+    if canonical_version:
+        canonical.capability_contract(cap, review, source_files)
+    else:
+        require(cap.get('canonical_source_contract') is None
+                and review.get('canonical_source_contract') is None
+                and canonical.HARNESS not in common_mod
+                and 'before_first_gameplay_warmup' not in common_mod,
+                'canonical producer cannot claim historical v1 contract')
     return cap
+
+
+def harness_contract(cap):
+    return cap.get('canonical_source_contract')
+
+
+def common_source(cap, source_files):
+    names = canonical.SHARED if harness_contract(cap) is not None else COMMON_HARNESS_FILES
+    return {name: source_files[name] for name in names}
+
+
+def harness(cap):
+    return canonical.HARNESS if harness_contract(cap) is not None else canonical.LEGACY_HARNESS
 
 
 def device_snapshot(snapshot, field):
@@ -143,6 +170,12 @@ def queued_snapshot(snapshot, field):
 
 
 def validate_actual(session, cpu, cap):
+    if harness_contract(cap) is not None:
+        canonical.session_preparation(session)
+    else:
+        require(session.get('canonical_brick_layout') is None
+                and session.get('canonical_layout_input_policy') is None,
+                'historical v1 producer cannot be upgraded by a preparation annotation')
     raw = session.get('actual_workload')
     require(isinstance(raw, dict) and raw.get('schema') == SCHEMA,
             'actual_workload producer absent; legacy proof cannot be upgraded')
