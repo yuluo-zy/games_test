@@ -18,7 +18,7 @@ def manifest(mode='collect', season='water'):
     scene = {'schema': 2, 'draw_lists': lengths, 'meshes': [], 'nani': [], 'session': {'glade': season}}
     commands = [{'frame': index, 'pass_names': ['Ice plane' if season == 'ice' else 'Water plane'],
                  'input': {'frame_counter': index, 'game_time_sec': 1, 'game_time_frac_bits': index,
-                           'delta_time_bits': 1015580809, 'inner_resolution': [1280, 720],
+                           'delta_time_bits': 1015580809, 'inner_resolution': [1280, 736],
                            'render_overrides': 0, 'time_of_day_bits': 1, 'camera_bits': [0] * 16,
                            'water_raster_blake3': '2' * 64, 'scene': copy.deepcopy(scene)}}
                 for index in range(30)]
@@ -74,6 +74,17 @@ class PixelGateTests(unittest.TestCase):
         del self.right['initial_scene_input']
         self.save()
         self.assertFalse(pixels.compare(self.a, self.b)['passes'])
+
+    def test_inner_extent_requires_renderer_32_pixel_padding_not_output_dimensions(self):
+        self.assertEqual(pixels.EXPECTED_INNER_EXTENT, [1280, 736])
+        self.assertTrue(pixels.compare(self.a, self.b)['passes'])
+        for extent in ([1280, 720], [1280, 704], [1280, 768], [1248, 736]):
+            with self.subTest(extent=extent):
+                self.left, self.right = manifest('inline'), manifest('collect')
+                self.left['commands'][4]['input']['inner_resolution'] = extent
+                self.right['commands'][4]['input']['inner_resolution'] = extent
+                self.save()
+                self.assertFalse(pixels.compare(self.a, self.b)['passes'])
 
     def test_two_empty_manifests_and_malformed_json_never_pass(self):
         for data in ('{}', '[]', '{bad json'):

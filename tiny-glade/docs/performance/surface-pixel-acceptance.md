@@ -46,6 +46,8 @@ Outputs:
 
 The comparator checks scene identity, nonempty lake raster, full draw-list inputs, all 30 ordered camera/clock/scene records, selected season pass and exact frame-20/frame-30 captures. It rejects missing fields even when both reports omit the same field. It verifies 30 surface calls and the exact draw total derived from each frame's actual list 15, with real worker tasks and no owner fallback in Collect mode. Cross-mode comparisons require matching source and binary declarations; the controller additionally binds both runs to its verified frozen EXE SHA256.
 
+Output captures remain exactly 1280×720. `FrameConstants.inner_rendering_resolution` uses the renderer's separate 32-pixel padding at fixed world/TGSR scale 1: `clamp((axis + 31) & ~31, 32, 10912)`. Therefore its expected value is exactly `[1280,736]`. The comparator accepts that formula-derived extent, rejects unpadded or arbitrary larger/smaller values, and still compares every actual input bit between the two runs. This does not reclassify a prior VUID-invalid run as valid.
+
 BLAKE3 values in fixture manifests are retained as **fixture declarations**, not independently verified Python hashes. Actual file evidence always uses independently computed SHA256. RGBA bytes are compared directly; an unchanged declared BLAKE3 never hides changed pixels. No image tolerance or clock/entity difference is silently ignored.
 
 For existing evidence, run the strict comparator directly:

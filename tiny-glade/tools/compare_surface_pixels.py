@@ -8,6 +8,10 @@ import re
 SCHEMA = 'surface-collect-correctness-v1'
 SCENE = 'assets/starting-builds/full/05-rocky-lake/history.json'
 SCENE_SHA256 = 'f85cba25b4a193d517402a57df3590323f3d388b4f8181899c4b7fed7272fec3'
+OUTPUT_EXTENT = (1280, 720)
+# frame_resolution::dimensions at world/TGSR scale 1: add 31, clear five
+# low bits, then clamp to [32,10912]. This is padding, not output resizing.
+EXPECTED_INNER_EXTENT = [max(32, min(10912, (axis + 31) & ~31)) for axis in OUTPUT_EXTENT]
 INPUTS = ('schema', 'season', 'scene', 'expected_original_scene_sha256',
           'scene_blake3', 'water_raster_blake3', 'wet_raster_pixels',
           'initial_draw_list_lengths', 'frames', 'fixed_step', 'world_scale',
@@ -87,7 +91,7 @@ def manifest_errors(row, side):
             draws = scene.get('draw_lists') if isinstance(scene, dict) else None
             if (any(key not in inputs or inputs[key] is None for key in required) or
                     not isinstance(inputs.get('camera_bits'), list) or len(inputs['camera_bits']) != 16 or
-                    inputs.get('inner_resolution') != [1280, 720] or
+                    inputs.get('inner_resolution') != EXPECTED_INNER_EXTENT or
                     inputs.get('water_raster_blake3') != row.get('water_raster_blake3') or
                     not scene_input_valid(scene)):
                 valid_commands = False
