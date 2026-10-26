@@ -608,7 +608,13 @@ pub struct ProductionRenderer {
     timing: Option<RenderStageTiming>,
     timing_gameplay_count: u64,
     #[cfg(feature = "cpu-probe")]
-    cpu_recorder: Option<crate::render_cpu_probe::CpuIntervalRecorder>,
+    cpu_recorder: Option<crate::render_cpu_probe::CpuProbeSession>,
+    #[cfg(feature = "cpu-probe")]
+    cpu_attempt: u64,
+    #[cfg(feature = "cpu-probe")]
+    cpu_world_tick: u64,
+    #[cfg(feature = "cpu-probe")]
+    cpu_gameplay: bool,
     gpu_span_window: crate::frame_counters::GpuSpanWindow,
     compiled_shader_root: PathBuf,
     pending: VecDeque<PresentTicket>,
@@ -770,6 +776,12 @@ impl ProductionRenderer {
             timing_gameplay_count: 0,
             #[cfg(feature = "cpu-probe")]
             cpu_recorder: None,
+            #[cfg(feature = "cpu-probe")]
+            cpu_attempt: 0,
+            #[cfg(feature = "cpu-probe")]
+            cpu_world_tick: 0,
+            #[cfg(feature = "cpu-probe")]
+            cpu_gameplay: false,
             gpu_span_window: Default::default(),
             compiled_shader_root,
             pending: VecDeque::new(),
@@ -945,6 +957,8 @@ impl ProductionRenderer {
             self.acquired.is_none() && self.presentation.is_none(),
             "cannot switch App while its WSI acquisition is live"
         );
+        #[cfg(feature = "cpu-probe")]
+        self.reset_cpu_recorder_baseline();
         let key = Arc::as_ptr(&shaders) as usize;
         let previous = Arc::as_ptr(&self.shaders) as usize;
         let mut next = match self.other_applications.remove(&key) {
@@ -1008,6 +1022,8 @@ impl ProductionRenderer {
         Ok(())
     }
     pub fn suspend(&mut self) -> Result<()> {
+        #[cfg(feature = "cpu-probe")]
+        self.reset_cpu_recorder_baseline();
         self.suspended = true;
         if let Some(image) = self.acquired.take() {
             image.cancel(timeout_ns())?;
@@ -1015,6 +1031,8 @@ impl ProductionRenderer {
         Ok(())
     }
     pub fn resume(&mut self) -> Result<()> {
+        #[cfg(feature = "cpu-probe")]
+        self.reset_cpu_recorder_baseline();
         if let Some(platform) = &self.platform { platform.update(&self.window)?; }
         self.suspended = false;
         self.swapchain.mark_stale();
@@ -1415,6 +1433,12 @@ impl ProductionRenderer {
             timing_gameplay_count: 0,
             #[cfg(feature = "cpu-probe")]
             cpu_recorder: None,
+            #[cfg(feature = "cpu-probe")]
+            cpu_attempt: 0,
+            #[cfg(feature = "cpu-probe")]
+            cpu_world_tick: 0,
+            #[cfg(feature = "cpu-probe")]
+            cpu_gameplay: false,
             gpu_span_window: Default::default(),
             compiled_shader_root,
             pending: VecDeque::new(),
@@ -1734,7 +1758,7 @@ impl ProductionRenderer {
     #[cfg(feature = "cpu-probe")]
     pub fn install_cpu_recorder(
         &mut self,
-        recorder: crate::render_cpu_probe::CpuIntervalRecorder,
+        recorder: crate::render_cpu_probe::CpuProbeSession,
     ) {
         self.cpu_recorder = Some(recorder);
     }
@@ -1744,7 +1768,7 @@ impl ProductionRenderer {
     #[cfg(feature = "cpu-probe")]
     pub fn take_cpu_recorder(
         &mut self,
-    ) -> Option<crate::render_cpu_probe::CpuIntervalRecorder> {
+    ) -> Option<crate::render_cpu_probe::CpuProbeSession> {
         self.cpu_recorder.take()
     }
 
@@ -1768,11 +1792,7 @@ impl ProductionRenderer {
     #[cfg(feature = "cpu-probe")]
     fn record_cpu_interval(&mut self, frame: u64, receipt: Option<u64>, attempt: u64, observed: bool) {
         if let Some(recorder) = self.cpu_recorder.as_mut() {
-            if observed {
-                recorder.record_observed(frame, receipt, attempt);
-            } else {
-                recorder.record_unobserved(frame, attempt);
-            }
+            recorder.record(frame, receipt, attempt, observed);
         }
     }
 
@@ -1784,6 +1804,15 @@ impl ProductionRenderer {
         self.bridge.end_display_frame();
         // Drain the per-frame counters even for frames that are not logged, so
         // a logged frame never carries totals from skipped ones.
+        #[cfg(feature = "cpu-probe")]
+        if self.cpu_gameplay {
+            let receipt = self.frame_observation.as_ref().and_then(|observation|
+                matches!(observation.kind, ProductionGraphKind::Main { world_rendered: true, .. })
+                    .then_some(observation.receipt_frame));
+            let observed = self.first_error.is_none() && !self.cancel_preparation
+                && self.frame_present_queued && receipt.is_some();
+            self.record_cpu_interval(self.cpu_world_tick, receipt, self.cpu_attempt, observed);
+        }
         let counters = self.timing.is_some().then(crate::frame_counters::take);
         // Drain every timed frame, including those omitted by log sampling.
         // Otherwise the next sampled line reports many frames as one frame.
@@ -1792,18 +1821,6 @@ impl ProductionRenderer {
         let every = crate::game_loop::frame_timing_every();
         if let Some(t) = self.timing.take() {
             let emit = t.frame <= 3 || t.frame % every == 0;
-            // The clean CPU recorder fires on every completion point, not just
-            // logged frames: it is independent of the frame-timing log and its
-            // sampling gate. Failed/cancelled frames advance the baseline as
-            // unobserved so a later clean interval does not absorb their CPU.
-            #[cfg(feature = "cpu-probe")]
-            {
-                let observed = self.first_error.is_none() && !self.cancel_preparation;
-                let attempt = self.timing_gameplay_count;
-                let receipt = t.receipt;
-                let frame = t.frame;
-                self.record_cpu_interval(frame, receipt, attempt, observed);
-            }
             if !emit { return self.take_error().map_or(Ok(()), Err); }
             let ms = |d: Duration| d.as_secs_f64() * 1000.0;
             let c = counters.unwrap_or_default();
@@ -1891,6 +1908,15 @@ impl ProductionRenderer {
     }
     fn front_host<'a>(&'a mut self, world: &'a mut World, egui: &'a mut EguiBackend) -> ProductionRenderHost<'a> {
         world.remove_resource::<crate::gpu_readback::SubmittedFrameCompletion>();
+        #[cfg(feature = "cpu-probe")]
+        {
+            self.cpu_attempt += 1;
+            self.cpu_gameplay = world.contains_resource::<crate::run_game::GameplayApplication>();
+            self.cpu_world_tick = world.get_resource::<crate::render_thread::ExtractedAt>()
+                .map(|at| u64::from(at.game.get()))
+                .or_else(|| world.get_resource::<country_core::resources::game_clock::GameClock>()
+                    .map(|clock| u64::from(clock.frame_count))).unwrap_or(self.cpu_attempt);
+        }
         self.timing = if crate::game_loop::frame_timing_enabled() && world.contains_resource::<crate::run_game::GameplayApplication>() {
             self.timing_gameplay_count += 1;
             Some(RenderStageTiming { frame: self.timing_gameplay_count, ..Default::default() })

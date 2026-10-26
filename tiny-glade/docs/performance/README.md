@@ -21,3 +21,27 @@ measurements are separate runs. Do not count clock errors or truncated reports.
 Use TG_INSTALL_ROOT to reference the original installation externally. Never copy
 original game executables, caches or the full reverse-engineering tree here.
 Generated binaries, symbols, JSON and logs belong under ignored .perf/.
+
+## Implemented measurement entry point
+
+Run with a Python 3.11+ interpreter:
+
+    python tools/perf_windows.py calibrate
+    python tools/perf_windows.py build win-baseline-v1
+    python tools/perf_windows.py run win-baseline-v1 static-r1 --scene static
+    python tools/perf_windows.py compare static-r1 candidate-static-r1
+
+Run ETW capture from an elevated terminal. The tool refuses to replace an existing
+NT Kernel Logger and stops only the session it successfully started. Every run
+retains the raw ETL, scheduling CSV, raw completion points and build identity.
+Use --without-etw only for aggregate/overhead diagnostics; it cannot pass p95.
+
+Windows GetThreadTimes on this machine advanced in 15.625ms steps. It is used
+only for cumulative crosschecks. Per-frame values come from CSwitch QPC running
+intervals, with unioned DPC/interrupt intervals subtracted. A >2% cumulative
+crosscheck error, trace loss or missing completion invalidates a measurement.
+
+Current checks: source-only workspace all-target check passed; recorder 10 tests
+passed; ETW accounting 5 tests passed; real-window probe target check passed.
+Release runtime, probe/ETW overhead, Windows workload baseline, optimization
+benefit and final long runs remain unverified until raw run records exist.

@@ -255,6 +255,10 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
     };
 
     let mut performance = PerformanceWorkload::from_environment()?;
+    #[cfg(feature = "cpu-probe")]
+    let mut cpu_probe = CpuProbeValidation::from_environment()?;
+    #[cfg(not(feature = "cpu-probe"))]
+    anyhow::ensure!(std::env::var_os("TG_CPU_PROBE_OUT").is_none(), "build with --features cpu-probe");
     let fullscreen_capture_path = std::env::var_os("TG_VALIDATE_FULLSCREEN_CAPTURE").map(PathBuf::from);
     let fullscreen_capture_result = Arc::new(std::sync::Mutex::new(None::<std::result::Result<[u32; 2], String>>));
     let mut fullscreen_capture_queued = false;
@@ -431,7 +435,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                             world_frames += 1;
                             world_started.get_or_insert_with(std::time::Instant::now);
                             native_world_frame = Some(frame.clone());
-                            if performance.is_none() || world_frames % 200 == 0 {
+                            if performance.is_none() {
                             eprintln!("GAMEPLAY_WSI world_frame={world_frames} receipt={} native_successes={} draws={:?}",
                                 frame.receipt_frame, frame.native_present_successes, frame.draw_list_lengths);
                             }
@@ -467,6 +471,10 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                             "暂停关闭返回时尚未完成取消、join 和退出请求");
                         close_completed_before_loop_exiting = true;
                     }
+                }
+                #[cfg(feature = "cpu-probe")]
+                if let Some(probe) = &mut cpu_probe {
+                    probe.after_frame(&mut game, world_frames, observation.as_ref())?;
                 }
                 if let Some(performance) = &mut performance {
                     performance.after_frame(game.app_mut().world_mut(), world_frames, observation.as_ref(), started.elapsed())?;
@@ -527,6 +535,8 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                     if mode == WindowValidationMode::WindowCycle {
                         cycle.queue_capture(&mut game, 6)?;
                     }
+                    #[cfg(feature = "cpu-probe")]
+                    if let Some(probe) = &mut cpu_probe { probe.finish(&mut game)?; }
                     close_requested = true;
                     game.main_loop(Event::WindowEvent {
                         window_id: window.id(), event: WindowEvent::CloseRequested,
@@ -1194,19 +1204,20 @@ struct PerformanceWorkload {
     clones_created: usize,
     edits: u64,
     announced: bool,
+    diagnostics: bool,
 }
 impl PerformanceWorkload {
     fn from_environment() -> Result<Option<Self>> {
         let Some(value) = std::env::var_os("TG_PERF_SCENARIO") else { return Ok(None); };
         let scenario = value.into_string().map_err(|_| anyhow::anyhow!("invalid performance scenario"))?;
         anyhow::ensure!(["static", "many_draws", "local_edit", "continuous_edit", "loading_switch"].contains(&scenario.as_str()), "unknown scenario {scenario}");
-        Ok(Some(Self { scenario, last_frame: 0, clones_created: 0, edits: 0, announced: false }))
+        Ok(Some(Self { scenario, last_frame: 0, clones_created: 0, edits: 0, announced: false, diagnostics: std::env::var("TG_PERF_DIAGNOSTICS").is_ok_and(|value| value == "1") }))
     }
     fn after_frame(&mut self, world: &mut bevy_ecs::world::World, frame: u64,
         observation: Option<&tiny_glade::production_renderer::ProductionFrameObservation>, elapsed: Duration) -> Result<()> {
         if frame == 0 || frame == self.last_frame { return Ok(()); }
         self.last_frame = frame;
-        if let Some(observation) = observation {
+        if self.diagnostics && let Some(observation) = observation {
             eprintln!("PERF_FRAME frame={frame} elapsed_ns={} receipt={} native_successes={}",
                 elapsed.as_nanos(), observation.receipt_frame, observation.native_present_successes);
         }
@@ -1268,13 +1279,71 @@ impl PerformanceWorkload {
             })?;
             self.edits += 1;
         }
-        if frame % 200 == 0 {
+        if self.diagnostics && frame % 200 == 0 {
             eprintln!("PERF_WORKLOAD frame={frame} scenario={} clones={} edits={}", self.scenario, self.clones_created, self.edits);
             let config = world.resource::<country_core::render::render_config::FrameRenderConfig>();
             eprintln!("PERF_CONFIG frame={frame} output={}x{} world={}x{} inner={}x{} world_scale={}",
                 config.extent_0[0], config.extent_0[1], config.extent_8[0], config.extent_8[1],
                 config.extent_10[0], config.extent_10[1], config.world_resolution_scale);
         }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "cpu-probe")]
+struct CpuProbeValidation {
+    output: PathBuf,
+    config: tiny_glade::render_cpu_probe::CpuProbeConfig,
+    main: Option<tiny_glade::render_cpu_probe::CpuProbeSession>,
+    last: Option<(bevy_ecs::world::WorldId, u64)>,
+    dumped: bool,
+}
+
+#[cfg(feature = "cpu-probe")]
+impl CpuProbeValidation {
+    fn from_environment() -> Result<Option<Self>> {
+        let Some(output) = std::env::var_os("TG_CPU_PROBE_OUT") else { return Ok(None); };
+        let number = |name, default| -> Result<usize> {
+            Ok(std::env::var(name).ok().map(|value| value.parse()).transpose()?.unwrap_or(default))
+        };
+        let sample_frames = number("TG_CPU_PROBE_SAMPLES", 3000)?;
+        Ok(Some(Self { output: PathBuf::from(output),
+            config: tiny_glade::render_cpu_probe::CpuProbeConfig {
+                label: std::env::var("TG_PERF_SCENARIO").unwrap_or_else(|_| "window".into()),
+                warmup_frames: number("TG_CPU_PROBE_WARMUP", 600)? as u64,
+                sample_frames, capacity: sample_frames.checked_add(65).context("probe capacity overflow")?,
+            }, main: None, last: None, dumped: false }))
+    }
+
+    fn after_frame(&mut self, game: &mut tiny_glade::game_loop::GameLoop, frame: u64,
+        observation: Option<&tiny_glade::production_renderer::ProductionFrameObservation>) -> Result<()> {
+        if self.dumped || frame == 0 { return Ok(()); }
+        let Some(observation) = observation.filter(|observation|
+            matches!(observation.kind, tiny_glade::production_renderer::ProductionGraphKind::Main { world_rendered: true, .. })) else { return Ok(()); };
+        let identity = (observation.world, observation.receipt_frame);
+        if self.last == Some(identity) { return Ok(()); }
+        if self.main.is_none() {
+            game.start_cpu_probe(self.config.clone())?;
+            self.main = Some(tiny_glade::render_cpu_probe::CpuProbeSession::new(self.config.clone())?);
+        }
+        if self.last.is_some_and(|previous| previous.0 != identity.0) {
+            self.main.as_mut().unwrap().reset_baseline();
+        }
+        self.last = Some(identity);
+        self.main.as_mut().unwrap().record(frame, Some(observation.receipt_frame), frame, true);
+        Ok(())
+    }
+
+    fn finish(&mut self, game: &mut tiny_glade::game_loop::GameLoop) -> Result<()> {
+        if self.dumped { return Ok(()); }
+        let render = game.finish_cpu_probe().context("render probe was not installed")?.to_json();
+        let main = self.main.as_ref().context("main probe was not installed")?.to_json();
+        let valid = render["valid"] == true && main["valid"] == true;
+        let report = serde_json::json!({ "schema": "windows-perf-session-v1", "render": render, "main": main });
+        if let Some(parent) = self.output.parent() { std::fs::create_dir_all(parent)?; }
+        std::fs::write(&self.output, serde_json::to_vec_pretty(&report)?)?;
+        self.dumped = true;
+        anyhow::ensure!(valid, "CPU probe incomplete/invalid; see {}", self.output.display());
         Ok(())
     }
 }

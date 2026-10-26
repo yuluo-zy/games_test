@@ -18,14 +18,11 @@
 //!   a clock-regression sample as an error rather than panicking;
 //! - resets its baseline across App switches.
 //!
-//! The recorder is compiled only for profile builds (`feature = "profile"`), so
-//! normal builds carry no recorder type and no clock overhead. The actual
-//! `CLOCK_THREAD_CPUTIME_ID` read is additionally `target_os = "macos"` (the
-//! only host with that owner-CPU path and the QoS policy this measurement
-//! isolates); on other hosts `record_observed`/`record_unobserved` report a
-//! clock error. The pure bookkeeping (buffer bounds, baseline reset, receipt
-//! association, JSON shape) is unit-testable on any host through
-//! [`CpuIntervalRecorder::push_interval_ns`], which does not touch the clock.
+//! Compiled only with `cpu-probe` (also implied by `profile`). Windows keeps
+//! GetThreadTimes cumulative CPU for aggregate checks; its percentiles require
+//! ETW scheduling intervals because FILETIME units do not guarantee resolution.
+//! macOS uses CLOCK_THREAD_CPUTIME_ID. Completion points retain QPC timestamps
+//! for offline ETW alignment without hot-path event/log serialization.
 #![cfg(feature = "cpu-probe")]
 
 use serde_json::{Value, json};
@@ -120,7 +117,7 @@ impl CpuIntervalRecorder {
     /// `None` on a `clock_gettime` failure. Only macOS has the owner-CPU path;
     /// other hosts return `None` so the sample is recorded as a clock error.
     #[cfg(target_os = "macos")]
-    fn read_thread_cpu_ns() -> Option<u64> {
+    pub fn read_thread_cpu_ns() -> Option<u64> {
         let mut stamp = libc::timespec {
             tv_sec: 0,
             tv_nsec: 0,
@@ -133,10 +130,19 @@ impl CpuIntervalRecorder {
         Some(stamp.tv_sec as u64 * 1_000_000_000 + stamp.tv_nsec as u64)
     }
 
-    #[cfg(not(target_os = "macos"))]
-    fn read_thread_cpu_ns() -> Option<u64> {
-        None
+    #[cfg(windows)]
+    pub fn read_thread_cpu_ns() -> Option<u64> {
+        use winapi::{shared::minwindef::FILETIME,
+            um::processthreadsapi::{GetCurrentThread, GetThreadTimes}};
+        let mut times = [FILETIME { dwLowDateTime: 0, dwHighDateTime: 0 }; 4];
+        let [create, exit, kernel, user] = &mut times;
+        if unsafe { GetThreadTimes(GetCurrentThread(), create, exit, kernel, user) } == 0 { return None; }
+        let raw = |time: FILETIME| (u64::from(time.dwHighDateTime) << 32) | u64::from(time.dwLowDateTime);
+        raw(times[2]).checked_add(raw(times[3]))?.checked_mul(100)
     }
+
+    #[cfg(not(any(windows, target_os = "macos")))]
+    pub fn read_thread_cpu_ns() -> Option<u64> { None }
 
     /// Record a completion point for a real observed frame. Reads the clock and
     /// stores the interval since the previous completion. Call exactly once per
@@ -328,7 +334,7 @@ impl CpuIntervalRecorder {
         json!({
             "schema": "render-cpu-clean-v1",
             "label": label,
-            "clock": "CLOCK_THREAD_CPUTIME_ID",
+            "clock": if cfg!(windows) { "GetThreadTimes(user+kernel)" } else { "CLOCK_THREAD_CPUTIME_ID" },
             "notes": "owner CPU between consecutive render completion points; sleep/GPU excluded, busy-wait included; no log formatting on the hot path",
             "capacity": self.capacity,
             "recorded": self.samples.len(),
@@ -339,6 +345,219 @@ impl CpuIntervalRecorder {
             "clean_p95_ns": self.clean_p95_ns(),
             "samples": samples,
         })
+    }
+}
+
+/// A session is installed on the resident owner once and retrieved once.
+/// Warmup counts actual world observations, not render attempts or loading frames.
+#[derive(Clone, Debug)]
+pub struct CpuProbeConfig {
+    pub label: String,
+    pub warmup_frames: u64,
+    pub sample_frames: usize,
+    pub capacity: usize,
+}
+
+#[derive(Clone, Copy)]
+struct CompletionPoint {
+    app_epoch: u64,
+    world_tick: u64,
+    receipt: Option<u64>,
+    attempt: u64,
+    qpc: u64,
+    cumulative_cpu_ns: Option<u64>,
+    observed: bool,
+}
+
+pub struct CpuProbeSession {
+    config: CpuProbeConfig,
+    recorder: CpuIntervalRecorder,
+    points: Vec<CompletionPoint>,
+    warmup_left: u64,
+    app_epoch: u64,
+    last_receipt: Option<u64>,
+    invalid: bool,
+    thread_id: u64,
+    process_start: Option<u64>,
+    process_end: Option<u64>,
+}
+
+impl CpuProbeSession {
+    pub fn new(config: CpuProbeConfig) -> anyhow::Result<Self> {
+        anyhow::ensure!(config.sample_frames > 0 && config.capacity > config.sample_frames,
+            "CPU probe needs positive samples and capacity >= samples + 1");
+        let recorder = CpuIntervalRecorder::with_capacity(config.capacity)
+            .ok_or_else(|| anyhow::anyhow!("CPU probe buffer allocation failed"))?;
+        let mut points = Vec::new();
+        points.try_reserve_exact(config.capacity)?;
+        Ok(Self { warmup_left: config.warmup_frames, config, recorder, points,
+            app_epoch: 0, last_receipt: None, invalid: false,
+            thread_id: current_thread_id(), process_start: None, process_end: None })
+    }
+
+    pub fn reset_baseline(&mut self) {
+        self.app_epoch += 1;
+        self.last_receipt = None;
+        self.recorder.reset_baseline();
+    }
+
+    pub fn complete(&self) -> bool {
+        self.recorder.samples.len() >= self.config.sample_frames
+    }
+
+    pub fn record(&mut self, world_tick: u64, receipt: Option<u64>, attempt: u64, observed: bool) {
+        if self.complete() { return; }
+        if self.warmup_left != 0 {
+            if observed { self.warmup_left -= 1; }
+            self.recorder.reset_baseline();
+            return;
+        }
+        self.record_reading(world_tick, receipt, attempt, observed,
+            CpuIntervalRecorder::read_thread_cpu_ns(), wall_ticks());
+    }
+
+    fn record_reading(&mut self, world_tick: u64, receipt: Option<u64>, attempt: u64,
+        observed: bool, cpu: Option<u64>, qpc: u64) {
+        if self.complete() { return; }
+        if self.points.len() >= self.config.capacity {
+            self.invalid = true;
+            self.recorder.truncated = true;
+            self.recorder.dropped += 1;
+            return;
+        }
+        if self.points.is_empty() { self.process_start = process_cpu_ns(); }
+        let observed = observed && receipt.is_some();
+        if !observed || (observed && self.last_receipt.is_some_and(|previous| receipt.unwrap() <= previous)) {
+            self.invalid = true;
+        }
+        if observed { self.last_receipt = receipt; }
+        self.points.push(CompletionPoint { app_epoch: self.app_epoch, world_tick,
+            receipt, attempt, qpc, cumulative_cpu_ns: cpu, observed });
+        match cpu {
+            Some(now) => self.recorder.record_reading(world_tick, receipt, attempt, now,
+                if observed { SampleKind::Clean } else { SampleKind::NotObserved }),
+            None => {
+                self.invalid = true;
+                self.recorder.baseline = None;
+                self.recorder.store(CpuSample { frame: world_tick, receipt, attempt,
+                    interval_frames: 0, cpu_ns: 0, kind: SampleKind::ClockError });
+            }
+        }
+        if self.complete() { self.process_end = process_cpu_ns(); }
+    }
+
+    pub fn to_json(&self) -> Value {
+        let mut value = self.recorder.to_json(&self.config.label);
+        value["schema"] = json!("render-cpu-clean-v2");
+        value["thread_id"] = json!(self.thread_id);
+        value["process_id"] = json!(std::process::id());
+        value["qpc_frequency"] = json!(wall_frequency());
+        value["warmup_frames"] = json!(self.config.warmup_frames);
+        value["requested_samples"] = json!(self.config.sample_frames);
+        value["complete"] = json!(self.complete());
+        value["valid"] = json!(self.complete() && !self.invalid && !self.recorder.truncated
+            && self.recorder.samples.iter().all(|sample| sample.kind == SampleKind::Clean));
+        value["percentiles_require_etw_on_windows"] = json!(cfg!(windows));
+        value["process_cpu_start_ns"] = json!(self.process_start);
+        value["process_cpu_end_ns"] = json!(self.process_end);
+        value["completion_points"] = Value::Array(self.points.iter().map(|point| json!({
+            "app_epoch": point.app_epoch, "world_tick": point.world_tick,
+            "receipt": point.receipt, "attempt": point.attempt, "qpc": point.qpc,
+            "cumulative_cpu_ns": point.cumulative_cpu_ns, "observed": point.observed,
+        })).collect());
+        value
+    }
+}
+
+pub fn current_thread_id() -> u64 {
+    #[cfg(windows)]
+    { unsafe { winapi::um::processthreadsapi::GetCurrentThreadId() as u64 } }
+    #[cfg(target_os = "macos")]
+    {
+        let mut id = 0;
+        unsafe { libc::pthread_threadid_np(0, &mut id); }
+        id
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
+    { 0 }
+}
+
+pub fn wall_ticks() -> u64 {
+    #[cfg(windows)]
+    {
+        let mut value = unsafe { std::mem::zeroed::<winapi::shared::ntdef::LARGE_INTEGER>() };
+        if unsafe { winapi::um::profileapi::QueryPerformanceCounter(&mut value) } == 0 { return 0; }
+        unsafe { *value.QuadPart() as u64 }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let mut stamp = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+        if unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut stamp) } != 0 { return 0; }
+        stamp.tv_sec as u64 * 1_000_000_000 + stamp.tv_nsec as u64
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
+    { 0 }
+}
+
+pub fn wall_frequency() -> u64 {
+    #[cfg(windows)]
+    {
+        let mut value = unsafe { std::mem::zeroed::<winapi::shared::ntdef::LARGE_INTEGER>() };
+        if unsafe { winapi::um::profileapi::QueryPerformanceFrequency(&mut value) } == 0 { return 0; }
+        unsafe { *value.QuadPart() as u64 }
+    }
+    #[cfg(not(windows))]
+    { 1_000_000_000 }
+}
+
+pub fn process_cpu_ns() -> Option<u64> {
+    #[cfg(windows)]
+    {
+        use winapi::{shared::minwindef::FILETIME, um::processthreadsapi::{GetCurrentProcess, GetProcessTimes}};
+        let mut times = [FILETIME { dwLowDateTime: 0, dwHighDateTime: 0 }; 4];
+        let [create, exit, kernel, user] = &mut times;
+        if unsafe { GetProcessTimes(GetCurrentProcess(), create, exit, kernel, user) } == 0 { return None; }
+        let raw = |time: FILETIME| (u64::from(time.dwHighDateTime) << 32) | u64::from(time.dwLowDateTime);
+        raw(times[2]).checked_add(raw(times[3]))?.checked_mul(100)
+    }
+    #[cfg(not(windows))]
+    { None }
+}
+
+#[cfg(test)]
+mod session_tests {
+    use super::*;
+    fn session(samples: usize) -> CpuProbeSession {
+        CpuProbeSession::new(CpuProbeConfig { label: "test".into(), warmup_frames: 0,
+            sample_frames: samples, capacity: samples + 2 }).unwrap()
+    }
+    #[test]
+    fn completed_session_is_bounded_and_retains_raw_alignment() {
+        let mut session = session(2);
+        for index in 0..10 { session.record_reading(index, Some(index), index, true, Some(index * 100), index * 1000); }
+        let value = session.to_json();
+        assert_eq!(value["complete"], true);
+        assert_eq!(value["valid"], true);
+        assert_eq!(value["completion_points"].as_array().unwrap().len(), 3);
+        assert_eq!(value["clean_samples"], 2);
+    }
+    #[test]
+    fn failed_or_duplicate_receipts_invalidate_acceptance() {
+        let mut session = session(2);
+        session.record_reading(1, Some(1), 1, true, Some(100), 1);
+        session.record_reading(2, None, 2, false, Some(200), 2);
+        session.record_reading(3, Some(1), 3, true, Some(300), 3);
+        assert_eq!(session.to_json()["valid"], false);
+    }
+    #[test]
+    fn app_epoch_changes_allow_new_receipts_without_cross_app_interval() {
+        let mut session = session(2);
+        session.record_reading(100, Some(100), 1, true, Some(100), 1);
+        session.reset_baseline();
+        session.record_reading(1, Some(1), 2, true, Some(10000), 2);
+        session.record_reading(2, Some(2), 3, true, Some(10100), 3);
+        assert_eq!(session.recorder.samples[0].cpu_ns, 100);
+        assert_eq!(session.points[1].app_epoch, 1);
     }
 }
 
