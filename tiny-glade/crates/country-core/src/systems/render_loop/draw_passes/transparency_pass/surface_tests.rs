@@ -963,3 +963,87 @@ fn collected_surface_pages_merge_trace_in_original_draw_order() {
         }
     }
 }
+
+#[test]
+fn collected_water_and_ice_pages_keep_distinct_draw_identity_order() {
+    // Repeating identical operation traces alone cannot detect a permutation.
+    // A distinct original VAO identity on every draw makes page/draw reversal
+    // observable while exercising each real water/ice declaration function.
+    for count in [65, 513, 4097] {
+        let mut s = scene(count);
+        for (index, (item, _)) in s.lists.list_mut(SURFACE_LIST).iter_mut().enumerate() {
+            item.vao = 0x10000 + index as u64;
+        }
+        for water in [true, false] {
+            let r = run(water, &s, 1);
+            let log = r.log.borrow();
+            assert_eq!(log.submissions.len(), 1);
+            let observed: Vec<_> = log.submissions[0]
+                .draws
+                .iter()
+                .map(|draw| draw.head[1])
+                .collect();
+            let expected: Vec<_> = (0..count).map(|index| 0x10000 + index as u64).collect();
+            assert_eq!(observed, expected, "water={water}, draws={count}");
+        }
+    }
+}
+
+#[cfg(feature = "test-support")]
+#[test]
+fn surface_inline_reference_matches_collect_declarations_and_restores_scope() {
+    use super::surface_support::{
+        take_surface_collect_test_stats, with_surface_collect_mode_for_test,
+    };
+    for water in [true, false] {
+        let mut s = scene(65);
+        for (index, (item, _)) in s.lists.list_mut(SURFACE_LIST).iter_mut().enumerate() {
+            item.vao = 0x20000 + index as u64;
+        }
+        let _ = take_surface_collect_test_stats();
+        let inline = with_surface_collect_mode_for_test(true, || run(water, &s, 1));
+        let inline_stats = take_surface_collect_test_stats();
+        assert_eq!(
+            (inline_stats.inline_calls, inline_stats.inline_draws),
+            (1, 65)
+        );
+        assert_eq!(inline_stats.worker_tasks, 0);
+        // Returning from the scoped inline run restores the previous worker mode.
+        let collected = run(water, &s, 1);
+        let worker_stats = take_surface_collect_test_stats();
+        assert_eq!(worker_stats.inline_calls, 0);
+        assert_eq!(worker_stats.worker_calls, 1);
+        assert_eq!(worker_stats.worker_draws, 65);
+        assert_eq!(worker_stats.worker_tasks, 2);
+        assert_eq!(worker_stats.owner_collect_tasks, 0);
+        assert_eq!(inline.trace, collected.trace);
+        assert_eq!(inline.graph.passes, collected.graph.passes);
+        assert_eq!(inline.paths, collected.paths);
+        let inline_log = inline.log.borrow();
+        let worker_log = collected.log.borrow();
+        assert_eq!(
+            inline_log.submissions[0].accesses,
+            worker_log.submissions[0].accesses
+        );
+        for (a, b) in inline_log.submissions[0]
+            .draws
+            .iter()
+            .zip(&worker_log.submissions[0].draws)
+        {
+            assert_eq!(a.head, b.head);
+            assert_eq!(a.state, b.state);
+            assert_eq!(a.accesses, b.accesses);
+            assert_eq!(a.bindings.len(), b.bindings.len());
+            for (index, binding) in &a.bindings {
+                assert_eq!(binding.binding, b.bindings[index].binding);
+            }
+        }
+    }
+    let panic = std::panic::catch_unwind(|| {
+        with_surface_collect_mode_for_test(true, || panic!("scope rollback"))
+    });
+    assert!(panic.is_err());
+    let _ = take_surface_collect_test_stats();
+    let _ = run(true, &scene(1), 1);
+    assert_eq!(take_surface_collect_test_stats().inline_calls, 0);
+}
