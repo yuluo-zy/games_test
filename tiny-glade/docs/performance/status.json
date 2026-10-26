@@ -1,7 +1,7 @@
 {
   "source_commit": "6957077f905ab1ef1bb9d16ca3521ce555fa488e",
   "branch": "codex/perf-windows-20261026",
-  "implementation_status": "source_candidates_through_stage5; Windows_performance_acceptance_open; WSI_deferred_by_user",
+  "implementation_status": "ownership_constants_scratch_graph_surface_committed; default_probe_core16_graph5_library_strict_passed_after_fixture_fix; representative_pixels_pending; clock_policy_staging_P2_under_correction; closure_unaccepted; WSI_deferred",
   "hardware": {
     "cpu": "Intel Core i7-9700",
     "gpu": "Intel UHD Graphics 630",
@@ -12,33 +12,38 @@
     "present_id": false
   },
   "checks": {
-    "default_workspace_all_targets": "passed",
-    "cpu_probe_unit_tests": 10,
-    "etw_accounting_unit_tests": 5,
-    "cpu_probe_workspace_all_targets": "passed",
-    "debug_window_build": "passed",
-    "production_window_run": "failed: strict presentation shutdown requires swapchainMaintenance1",
-    "release_build": "failed: country-core rustc allocation failure, j2; no frozen binary",
-    "coarse_clock_min_positive_ns": 15625000,
-    "etw_official_crosscheck_relative_error": 8.554622141460925e-05,
-    "coarse_os_counter_relative_error": 0.07283719565091142,
-    "candidate_default_workspace_all_targets": "passed; CARGO_INCREMENTAL=0, -j1, --locked --offline",
-    "candidate_cpu_probe_workspace_all_targets": "passed; CARGO_INCREMENTAL=0, -j1, --locked --offline",
-    "rhapsody_library_tests_passed": 445,
-    "rhapsody_library_diagnostics_ignored_not_passed": 2,
-    "rhapsody_integration_tests_passed": 55,
-    "rhapsody_explicit_validation_layer_integration_tests_passed": 55,
-    "retirement_reservation_tests_passed": 6,
-    "candidate_raster_gpu_tests_passed": 15,
-    "draw_pass_tests_passed": 260,
-    "headless_original_gameplay_30frames_1280x720": "passed; correctness diagnostic, not WSI performance acceptance"
+    "current_default_workspace_all_targets": "passed new Graph declaration-error API checked snapshot: declaration-rejection-workspace-check.log,2m40s",
+    "current_cpu_probe_workspace_all_targets": "passed new Graph API snapshot: declaration-rejection-probe-check.log, 2m36s",
+    "current_targeted_unit_and_gpu_tests": "core16 16/0/0, graph5 5/0/0 strict passes; corrected full library 458/0/2 ignored strict pass, no VUID/Validation Error. Country pass_builder166/lease1/drawpasses262 all pass, 0ignored. Representative water/ice pixels pending.",
+    "current_candidate_frozen_release": "not frozen; frozen pair belongs to29095eb only",
+    "measurement_fixture_source": "committed29095eb",
+    "measurement_tools_source": "committed c5a6125;76 passed/0skipped with owned Job smoke; earlier a84ad66 63/0 retained",
+    "frozen_requested_integration_test_targets_completed": true,
+    "entire_frozen_cargo_invocations_passed": false,
+    "current_owner_cpu_crosscheck": "passed this600/3000 run:0.53423%",
+    "current_process_cpu_crosscheck": "failed this600/3000 run:4.75882%",
+    "current_measurement_round_valid": false,
+    "probe_feature_off_overhead_at_most_one_percent": "not accepted",
+    "production_window_run": "previous failure: strict swapchainMaintenance1 requirement; user deferred compatibility work",
+    "macos_compile_and_runtime": "unverified",
+    "latest_python_tool_tests_passed": 76,
+    "latest_python_tool_tests_skipped": 0,
+    "current_rhapsody_library_ignored_not_passed": 2,
+    "current_new_cpu_storage_bytes_scratch_tests_passed": 8,
+    "current_tiny_constant_default_tests": "9 passed,0failed,0ignored",
+    "current_rhapsody_library_validation_gate_passed": true,
+    "current_rhapsody_library_test_count_scope": "latest corrected fixture strict rerun: 458 passed, 0 failed, 2 ignored; ignored not counted as passed",
+    "current_rhapsody_library_logical_tests_passed": 458
   },
   "unverified": [
-    "probe/ETW overhead <=1%",
-    "representative Windows baseline",
-    "stable optimization gains",
-    "all four scenes p95<=16ms",
-    "three 30-minute stability runs",
+    "representative water/ice real GPU pixel/command comparisons, full scene correctness; actual distinct-family hardware unverified",
+    "ETW/GetProcessTimes cumulative discrepancy<=2%",
+    "complete feature-off probe/ETW overhead<=1%",
+    "valid representative Windows four-scene baseline",
+    "stable individual and combined optimization gains",
+    "all four scenes every-run render-thread CPU p95<=16ms",
+    "representative water/ice pixels and commands, supported cancellation and all recovery branches",
+    "full pressure/fault acceptance and three30-minute/10000-frame stability runs",
     "macOS runtime/compilation"
   ],
   "evidence": [
@@ -125,9 +130,215 @@
     {
       "path": ".perf/candidate-headless-gameplay-receipts.log",
       "sha256": "320b5e6ef7a92847a4b87198739f6f4f8508b452767ae8826a6973b15e5d4c4e"
+    },
+    {
+      "path": ".perf/headless-builds/closure-feature-pair.json",
+      "sha256": "a7559512d089f6905218964f51bd339d6b39ac3f0aa1eac54c1cbc0421224694"
+    },
+    {
+      "path": ".perf/headless-builds/closure-base-on/build.json",
+      "sha256": "37e506b376a2b8443457588055664312c182d1f5f16eedc6e61a037b9d400e05"
+    },
+    {
+      "path": ".perf/headless-builds/closure-base-off/build.json",
+      "sha256": "b0488766f3e71771f01c63256cccdc5009bfc3f6c454c5e0a20cf539efc986d9"
+    },
+    {
+      "path": ".perf/headless-runs/closure-etw-smoke/run.json",
+      "sha256": "2f86ebe099bf1a57657ff6319aaf9c0e70038b324031db98547cce08685a6513"
+    },
+    {
+      "path": ".perf/headless-runs/closure-static-long-1/run.json",
+      "sha256": "61272362573e3edf4cfaa302651e5837bb15a2f34b6f726bfe39ae969df15368"
+    },
+    {
+      "path": ".perf/headless-runs/closure-static-long-1/session.json",
+      "sha256": "248eba23958f9054639c7f98f450e4839c6c56336dc86a581949a99c6f234b43"
+    },
+    {
+      "path": ".perf/headless-runs/closure-static-long-1/cpu.json",
+      "sha256": "82ef94917183feb3a74213a9b7b2fff54965c46eb10d4cbcc2d5f43460069768"
+    },
+    {
+      "path": ".perf/closure-debug-smoke.log",
+      "sha256": "817903a402d58194e053e4cd9faa5ee3b6f070db672645495c83b89f8512f119"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check.log",
+      "sha256": "f6cadb69617a0a5b0e8e5c38ddff82050b43191eaebf9da9847f23317e89219a"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check-2.log",
+      "sha256": "89af041bc70616e4fac20eb375ffaa273d52653c78a20de600c85d28f15b6da0"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check-3.log",
+      "sha256": "2f88899384efb3700c6513015d27af545505e82c7eddfc971ea934669160aa17"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check-4.log",
+      "sha256": "04ec1267ade76fc002343f266ad784197011ff94fb3d0ded4ee5403fe3d9a192"
+    },
+    {
+      "path": ".perf/candidate-ownership-probe-check.log",
+      "sha256": "be0277d2e97610b79a592dbebb078d04335a1a714771e18a3cb65d91919925d7"
+    },
+    {
+      "path": ".perf/tool-integration-20261026-tests-full.log",
+      "sha256": "a8931857a2b40f642321b93f58da556a90acdd0d0bdcb7c66c52289915f2fbce"
+    },
+    {
+      "path": ".perf/tool-integration-20261026-tests.log",
+      "sha256": "66c22c1aa31d9fc417f2ab5c466d9abacf4c459d835ce71cdf25706cd7922d0a"
+    },
+    {
+      "path": ".perf/tool-integration-20261026.json",
+      "sha256": "f160c39346b37e10eed2b6a813a5e4f12a218de8d37f088c8fa6ee46811edd30"
+    },
+    {
+      "path": ".perf/candidate-ownership-rhapsody-lib.log",
+      "sha256": "7dde92430bca0684258c9f50eca04ca3cf6c72de8e0aee8016408309637fcbd0"
+    },
+    {
+      "path": ".perf/candidate-ownership-constant-default.log",
+      "sha256": "82e7a75e800633c913f81485ee890a7b23148bf980960dc6b5a65fe675d86a03"
+    },
+    {
+      "path": ".perf/candidate-unit-draw_template_cache__scope_tests__.log",
+      "sha256": "4ddcc8416af5aa7cd831a1d21702385e2478b1599eeb5863253663c3387ccdce"
+    },
+    {
+      "path": ".perf/candidate-unit-raster_host__vao_handle_resolution_tests__.log",
+      "sha256": "47110b594479abadd32d0ec7f07c5cb156e71e0533d73a60cd1f21473bd262a2"
+    },
+    {
+      "path": ".perf/candidate-unit-raster_host__constant_batch_gpu_tests__.log",
+      "sha256": "ce353dbf6625f7aad80b761b059b884e60ec0df9fc1f09b80227ec98412e527e"
+    },
+    {
+      "path": ".perf/candidate-unit-render_host__texture_release_tests__.log",
+      "sha256": "cb7d41f5b3f3513e0317d40b3b73a6babbbbf61f500e1875d828f705e9388d8e"
+    },
+    {
+      "path": ".perf/candidate-ownership-original_raster_gpu.log",
+      "sha256": "ed2fb816f0f6de411653a385bce272d6b2dd8b81e605d6f388edd8671a2d2c41"
+    },
+    {
+      "path": ".perf/candidate-ownership-vao_scope.log",
+      "sha256": "0f174bfe4451febbbdf6a36bc12be46d3c86f1ee52c5b1106ac4a3527519d9f8"
+    },
+    {
+      "path": ".perf/candidate-ownership-raster-gpu.log",
+      "sha256": "19a81c1027d6c377d5f59f2d14386a911d63a8c889100a29a1f17cbb2b7a2940"
+    },
+    {
+      "path": ".perf/candidate-budget-error-diagnostic.log",
+      "sha256": "0778baadd0798543e5c8956ef4f4155f7846106396781d2ed8304abdbbed8358"
+    },
+    {
+      "path": ".perf/declaration-rejection-workspace-check.log",
+      "sha256": "b53848ca5924303432f38806d1f471d62cca994126d92a5014a0f4135ff30bb2"
+    },
+    {
+      "path": ".perf/trace-archive-tools-20261026.json",
+      "sha256": "b6a8d4dcf8586102ff1e9c79df1e64118e1a78bcf861b8811b43d63f7e65b734"
+    },
+    {
+      "path": ".perf/trace-archive-tools-tests.log",
+      "sha256": "2ee59ffc026634e8ed2b2a1d2207b64138d1182bc764e3bcd0b5166671ca92ed"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-game-w600-n600-1/capture.json",
+      "sha256": "5005b4a13aa78bb2a6496ce1adc1748a3171fdd46a283a4219cdf72343b11097"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-game-w600-n600-1/native-counters.json",
+      "sha256": "16dc29bd7c2f0f6bb9624659095838d470fb0b401386cce81bc826817d3e459d"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-game-w600-n600-1/thread-cpu.json",
+      "sha256": "1d52ba40e47782c01e3c4e55970210264ace09368b41ee29defc6f8989ae1396"
+    },
+    {
+      "path": ".perf/thread-cpu-calibrations/thread-clock-quick-1/summary.json",
+      "sha256": "6bb02f1b07ead2c20b6e57bd5a73113df13f137e8c89b929e8ad676cd0f1661f"
+    },
+    {
+      "path": "C:\\Users\\liyu\\.codex\\visualizations\\2026\\10\\26\\01a17714-b237-7ed3-8e87-7aeaa53c4a51\\thread-diagnostic\\actual-results-20261026.md",
+      "sha256": "a51eef1acbafcc85ad1ac9fdd3abc075c427e38cd441cde250deffd7afff781f",
+      "scope": "staged actual clock evidence; no clean performance acceptance"
+    },
+    {
+      "path": "C:\\Users\\liyu\\.codex\\visualizations\\2026\\10\\26\\01a17714-b237-7ed3-8e87-7aeaa53c4a51\\thread-diagnostic\\README.md",
+      "sha256": "01d258454153df36a2a8ad44c796b252c81962f64362d5fad89a12a4c3ac8315",
+      "scope": "staged actual clock evidence; no clean performance acceptance"
+    },
+    {
+      "path": ".perf/declaration-rejection-core-raster.log",
+      "sha256": "4d30660ff131178456ee7d966d1909e3f3664553a7a05c72016dc0ef594886bd"
+    },
+    {
+      "path": ".perf/declaration-rejection-five-strict.log",
+      "sha256": "1eb1e73a9d96f2b5f7b4b6d0b49c4da27322b9ab69e398025fed9582ede54018"
+    },
+    {
+      "path": ".perf/declaration-rejection-rhapsody-lib.log",
+      "sha256": "a4b14b8d238064565c9c6af570478f1eff6cc22ce0c28e4c4a7e1bcfc666c14c"
+    },
+    {
+      "path": ".perf/thread-cpu-calibrations/thread-clock-4w-long-1/summary.json",
+      "sha256": "3054073e0a3bb15e039d9d8cddf3b347770f44039462d76dc961cb026c97ee10"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-4w-long-1-1-continuous/thread-cpu.json",
+      "sha256": "75d0037a973824a187d24dd0877898c49c5b1a1934ebab13e1d98a8a0e2a2398"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-4w-long-1-1-burst/thread-cpu.json",
+      "sha256": "a7c8cd139a938c5d40062b281371385050fea8dab9866332b7571e879208c749"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-4w-long-1-2-burst/thread-cpu.json",
+      "sha256": "9896a563d7f212d37b7d9c1a10dc3d4e098af572c00cc0c608a602345016550c"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-4w-long-1-2-continuous/thread-cpu.json",
+      "sha256": "6e6cb2858d1efd72e5aef88763bc3d3f0be1727d809dd56a875db1fdb4644c63"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-4w-long-1-3-continuous/thread-cpu.json",
+      "sha256": "379b0cfd626d98fb483b242878634583c2a5fbe3a2a392523b4c511ab73f5266"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-4w-long-1-3-burst/thread-cpu.json",
+      "sha256": "f7472d649027a60f43e3a808375d33110013454fc7ded5f0c24595ee1054d14e"
+    },
+    {
+      "path": ".perf/rhapsody-validation-fixtures-fixed.log",
+      "sha256": "ce64f57cc14738ffaaa0ec412ff217cd7335799748da15f61f81f20a6f41db66"
+    },
+    {
+      "path": ".perf/rhapsody-validation-fixtures-fixed-2.log",
+      "sha256": "8711d037f5a39ee88f6be52938abb01d9aca0c441c9e8696d09b36568eeb276e"
+    },
+    {
+      "path": ".perf/declaration-rejection-probe-check.log",
+      "sha256": "48f617e7c3b598fa45e26d2c41778907f86811e92fa6365c9490689716f34390"
+    },
+    {
+      "path": ".perf/candidate-country-pass-builder.log",
+      "sha256": "c933dce1865ff0a1e5a4fa351fd6f7bca61c03dfc3a980407858c14be94ff8fb"
+    },
+    {
+      "path": ".perf/candidate-country-1.log",
+      "sha256": "21929188e210336cfe311b91616582677dd21750134eb8d1a96918719a8971f1"
+    },
+    {
+      "path": ".perf/candidate-country-262.log",
+      "sha256": "cf9d7b8542561e9d1944496f089a15951aa7bcdff29646993affdf2cc7f33d53"
     }
   ],
-  "source_candidate_commit": "53bbbef87fd2ce63906e478dc0ea2b109c14a398",
+  "source_candidate_commit": "fa90e4a4e0d1df1a508c76755a3ec9e2c8a7764c",
   "candidate_commits": {
     "ownership_short_locks": "b792e4c",
     "graph_version_index": "50d8885",
@@ -135,7 +346,23 @@
     "collect_convergence": "1da8d40",
     "reserved_retirement_owners": "67ddafa",
     "device_lost_fixture": "53e9bb1",
-    "headless_receipt_fixture": "53bbbef"
+    "headless_receipt_fixture": "53bbbef",
+    "measurement_fixture": "29095eb",
+    "etw_accounting_and_target_freeze": "27f77c5",
+    "measurement_identity_and_clock_diagnostics": "a84ad66",
+    "exclusive_cpu_storage_owners": "44956f8",
+    "collect_reflection_scope": "b79443e",
+    "typed_entity_vao_lookup": "cca55ad",
+    "scoped_vao_wrapper_reuse": "6ecdb2f",
+    "view_publication_generation_and_globals": "19c52eb",
+    "verified_trace_csv_archive": "c5a6125",
+    "task_batched_constants": "709d717",
+    "bounded_device_owned_commit_scratch": "a36fbd3",
+    "first_declaration_error_retention": "6a85ec8",
+    "native_safe_synthetic_transfer_fixtures": "f4e3e04",
+    "scoped_surface_reference_and_worker_order": "fb778bd",
+    "management_modes_and_cpu_read_brackets": "e38ae7f",
+    "original_lake_production_graph_capture": "fa90e4a"
   },
   "headless_diagnostic": {
     "profile": "debug",
@@ -171,7 +398,9 @@
         "path": "target/debug/deps/original_gameplay_chain-fe3723ef539e956d.pdb",
         "sha256": "8bb9797334ce2295f0296e0afb8d825adf83fe5b0cd6ebdf1179526782747b35"
       }
-    ]
+    ],
+    "source_commit": "53bbbef87fd2ce63906e478dc0ea2b109c14a398",
+    "scope": "Historical53bbbef debug correctness run; not the currently modified source or WSI performance acceptance."
   },
   "diagnostic_failures_retained": [
     {
@@ -185,16 +414,56 @@
     {
       "path": ".perf/candidate-headless-gameplay-j1.log",
       "reason": "fixture receipt FIFO out of sync with session collection; fixed without weakening assertions and rerun"
+    },
+    {
+      "path": ".perf/closure-debug-smoke.log",
+      "reason": "old endpoint-equality assertion rejected three moving sheep and six accessories; retained as failed diagnostic"
+    },
+    {
+      "path": ".perf/headless-runs/closure-etw-smoke/run.json",
+      "reason": "owner/process OS cumulative discrepancies exceeded2%; round remains invalid"
+    },
+    {
+      "path": ".perf/headless-runs/closure-static-long-1/run.json",
+      "reason": "owner0.53423% passes but process4.75882% fails; whole600/3000 round invalid"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check.log",
+      "reason": "first current combined-source compilation failure; retained, not counted passed"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check-2.log",
+      "reason": "second current combined-source compilation failure; retained, not counted passed"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check-3.log",
+      "reason": "third current combined-source compilation failure; corrected before check4 success; original log retained"
+    },
+    {
+      "path": ".perf/candidate-ownership-raster-gpu.log",
+      "reason": "core16 overall failed14passed/2failed; expected original budget errors were masked"
+    },
+    {
+      "path": ".perf/candidate-budget-error-diagnostic.log",
+      "reason": "focused run failed0passed/1failed; original OOM surfaced as graph UninitializedRead"
+    },
+    {
+      "path": ".perf/declaration-rejection-rhapsody-lib.log",
+      "reason": "458 logical successes/2 ignored but forced validation emits buffer-09095 VUID; whole gate failed; synthetic family fixture corrected but not rerun"
+    },
+    {
+      "path": ".perf/rhapsody-validation-fixtures-fixed.log",
+      "reason": "Intermediate synthetic queue-family fixture attempt failed; retained before corrected strict rerun"
     }
   ],
   "stage_progress": {
-    "0": "source/build/tooling implemented; production window exit gate open",
-    "1": "probe and ETW implemented; game-run correlation/overhead acceptance open",
-    "2": "representative Windows baseline not acquired",
-    "3": "version index and selected ownership work implemented; projection gains, scratch and constant batch work open",
-    "4": "remaining selected loops migrated; real workload, pixels and cancellation/performance gates open",
-    "5": "reserved node and bounded reclaim source implemented; full pressure/fault/stability acceptance open",
-    "6": "final release identities, A/B, long runs and macOS acceptance not completed"
+    "0": "source/tooling and29095eb frozen Release integration-test pair exist; full Cargo invocations and production WSI not accepted",
+    "1": "measurement wired;600/3000 owner0.53423% passes but process4.75882% fails; entire round invalid; feature-off overhead gate open",
+    "2": "valid representative four-scene Windows baseline not acquired",
+    "3": "Ownership/constants/scratch source committed; new default/probe and strict library rerun pass; no accepted performance gains",
+    "4": "core16/graph5 and country166/1/262 passed; surface controls/order source committed; full representative lake/four-scene acceptance open",
+    "5": "reserved nodes and bounded reclaim source previously validated; complete sustained-pressure/fault/stability acceptance still open; legacy raw retire fallback remains",
+    "6": "final candidate freezing, valid A/B/16ms/four-scene/long-run/macOS acceptance incomplete; WSI compatibility deferred"
   },
   "local_diagnostics_not_frame_gains": {
     "graph_version_query_100000_debug_ns": {
@@ -208,7 +477,28 @@
       "statistics_release",
       "unused_dedicated_buffer_drop"
     ],
-    "whole_frame_improvement_percent": null
+    "whole_frame_improvement_percent": null,
+    "evidence_scope": "Historical targeted source diagnostics; current combined candidate still requires rerun. No whole-frame speedup is accepted.",
+    "historical_debug_management_bill": {
+      "source": ".perf/closure-debug-smoke/session.json",
+      "scope": "Historical30-frame debug difference counters; not exclusive CPU costs or current-source gains",
+      "per_frame_deltas": {
+        "reflection_queries": 777,
+        "reflection_hits": 777,
+        "constant_block_takes": 384,
+        "collected_uniform_write_bytes": 19636,
+        "binding_resource_inputs": 1301,
+        "prepared_bindless_draws": 361,
+        "vao_full_refreshes": 2,
+        "vao_list_entries": 344,
+        "vao_queried_entities": 190,
+        "vao_unique_visits": 128,
+        "vao_publications": 3,
+        "vao_snapshot_allocations": 63
+      },
+      "end_cache_stock_not_per_frame_unique_variants": 118,
+      "whole_frame_distinct_physical_owner_or_vao_count": null
+    }
   },
   "html_audit": {
     "path": "C:/Users/liyu/.codex/visualizations/2026/10/26/01a17788-ae30-7cc2-b9aa-d5ce9dd05608/static-frame-cpu-report.html",
@@ -216,5 +506,650 @@
     "source_hashes_matching_at_agent_review": "21/22; profiling.rs changed with retirement work",
     "result": "source candidates confirmed; no static frame counts/bytes/CPU/FPS measurements"
   },
-  "remaining_task_list": "docs/performance/remaining-tasks-20261026.md"
+  "remaining_task_list": "docs/performance/remaining-tasks-20261026.md",
+  "schema": "windows-perf-progress-v2",
+  "updated_local_date": "2026-10-26",
+  "source_candidate_worktree_dirty": true,
+  "source_candidate_identity_note": "Committed through fa90e4a; recorded strict library/default/probe/country/core successes retain their checked-snapshot scope. New measurement/surface fixture commits are not performance acceptance. Frozen EXEs remain 29095eb; actual docs writes paused for freezing.",
+  "historical_validation": {
+    "source_commit": "53bbbef87fd2ce63906e478dc0ea2b109c14a398",
+    "scope": "Earlier source through53bbbef; none of these successes verifies the current combined ownership/Collect candidate.",
+    "checks": {
+      "default_workspace_all_targets": "passed",
+      "cpu_probe_unit_tests": 10,
+      "etw_accounting_unit_tests": 5,
+      "cpu_probe_workspace_all_targets": "passed",
+      "debug_window_build": "passed",
+      "production_window_run": "failed: strict presentation shutdown requires swapchainMaintenance1",
+      "release_build": "failed: country-core rustc allocation failure, j2; no frozen binary",
+      "coarse_clock_min_positive_ns": 15625000,
+      "etw_official_crosscheck_relative_error": 8.554622141460925e-05,
+      "coarse_os_counter_relative_error": 0.07283719565091142,
+      "candidate_default_workspace_all_targets": "passed; CARGO_INCREMENTAL=0, -j1, --locked --offline",
+      "candidate_cpu_probe_workspace_all_targets": "passed; CARGO_INCREMENTAL=0, -j1, --locked --offline",
+      "rhapsody_library_tests_passed": 445,
+      "rhapsody_library_diagnostics_ignored_not_passed": 2,
+      "rhapsody_integration_tests_passed": 55,
+      "rhapsody_explicit_validation_layer_integration_tests_passed": 55,
+      "retirement_reservation_tests_passed": 6,
+      "candidate_raster_gpu_tests_passed": 15,
+      "draw_pass_tests_passed": 260,
+      "headless_original_gameplay_30frames_1280x720": "passed; correctness diagnostic, not WSI performance acceptance"
+    },
+    "ignored_tests_count_as_passed": false
+  },
+  "current_applied_candidates": [
+    {
+      "area": "reflection",
+      "implementation": "immutable Collect-scope(shader,variant) reflection Arc map with32MiB retention bound, real capacity/rehash-peak CPU reservation; fixed single draws keep resolver fallback",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "gain": null
+    },
+    {
+      "area": "vao",
+      "implementation": "typed entity VAO lookup plus unresolved legacy scan; same-frame full/subset/full wrapper reuse with actual generation/native-owner revalidation and budgeted table backing; both consumers retained",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "gain": null
+    },
+    {
+      "area": "constants",
+      "implementation": "opaque non-Clone-budgeted CpuBytes, task block stock/batch returns, bounded64-item owner native-range allocation then writes outside allocator lock; failure retains original CPU lease",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "gain": null
+    },
+    {
+      "area": "commit_scratch",
+      "implementation": "exclusive device-budgeted leases over existing bounded CpuPool;8 leases/8MiB total/1MiB cached,1MiB per lease; reset graph-local state on return",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "gain": null
+    },
+    {
+      "area": "view_generation",
+      "implementation": "lock-free-of-native-creation miss; short slots-before-cache publish with complete generation and physical-owner recheck; rejected/duplicate native candidate dropped outside locks",
+      "classification": "correctness_fix_with_unmeasured_cost",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "gain": null
+    },
+    {
+      "area": "frame_globals",
+      "implementation": "clone/replace immutable Arc under mutex, clone sampled table/drop old owners outside mutex",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "gain": null
+    },
+    {
+      "area": "collect_acceptance",
+      "implementation": "test-support genuine inline/worker surface reference, unique-VAO ordering, transparent pixels, completed-Collect/unsubmitted-graph cancellation, CPU/native constant and write-error recovery test code; real rocky-lake Autumn/Winter raw-capture fixture",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "mid_worker_cancellation_supported": false,
+      "gain": null
+    }
+  ],
+  "remaining_ownership_candidates": [
+    "binding templates/static draw-description reuse: require exact physical identities and measured repeat rate",
+    "upload payload preparation outside uploads lock with original FIFO, capacity and partial-acceptance protocol",
+    "COW budget lease with outstanding reservations and partially uploaded-owner lifetime",
+    "lazy binding requirements and compatible native bind dedup: require measurement before default-path implementation"
+  ],
+  "frozen_release_pair": {
+    "scope": "Actual29095eb release integration-test EXE/PDB pair only; not later ownership source or production-window acceptance",
+    "metadata_path": ".perf/headless-builds/closure-feature-pair.json",
+    "valid_same_source_build_config": true,
+    "source_unchanged_after_both_builds": true,
+    "requested_test_targets_completed": true,
+    "entire_cargo_builds_passed": false,
+    "on": {
+      "label": "closure-base-on",
+      "executable": "C:\\game\\.perf\\headless-builds\\closure-base-on\\original_gameplay_chain-00f90e0721e8c60b.exe",
+      "executable_sha256": "7113e4960d6e972a8e9f258699eb29a043a1a8b718d5d488d390e22ac523fdeb",
+      "files": {
+        "original_gameplay_chain-00f90e0721e8c60b.exe": "7113e4960d6e972a8e9f258699eb29a043a1a8b718d5d488d390e22ac523fdeb",
+        "original_gameplay_chain-00f90e0721e8c60b.pdb": "e26076fe3f8938e0b0a72f4869a4f73cdb1f4b529a2f5d1dd6f4498dcd58bee9",
+        "fmod.dll": "d563ad96042c096985735b0d1fdab80fe5c7f27663171ff1550ac8ebf4c7eba6",
+        "fmodstudio.dll": "dc61fae2e70ec3a16fa78b678a0fc9ff1852491077a21c2b9c11bf4d160207ff"
+      },
+      "source_commit": "29095eb143a029eb32edef56176bc1b6e3577c77",
+      "source_content_sha256": "f7468a9e3df20837c620e6a4b00751d5c40389efb9c2c11fa9f4790eb7860590",
+      "dirty": false,
+      "profile": "release",
+      "features": [
+        "default(mimalloc)",
+        "cpu-probe"
+      ],
+      "cpu_probe_feature": true,
+      "allocator": "mimalloc",
+      "incremental": false,
+      "jobs": 1,
+      "build_environment_sha256": "75ad81a2ed761327f3f04438c064bd7c77a833f67575e08cd5ec70c76d74556e",
+      "cargo_lock_sha256": "61808d35effd5095a81591fa326e63adc5c3a2439f459fc3656742bdc87ede36",
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+      "requested_test_target_completed": true,
+      "entire_cargo_build_passed": false,
+      "source_verified_after_freeze": true,
+      "metadata_path": ".perf/headless-builds/closure-base-on/build.json",
+      "artifact_sizes": {
+        "original_gameplay_chain-00f90e0721e8c60b.exe": 38108672,
+        "original_gameplay_chain-00f90e0721e8c60b.pdb": 148484096,
+        "fmod.dll": 1852416,
+        "fmodstudio.dll": 1519104
+      }
+    },
+    "off": {
+      "label": "closure-base-off",
+      "executable": "C:\\game\\.perf\\headless-builds\\closure-base-off\\original_gameplay_chain-9002b51216012401.exe",
+      "executable_sha256": "a98475d2d8ae27a7f68a96372be8ff1eeb82f253f49758e3c1bcff34dac717c6",
+      "files": {
+        "original_gameplay_chain-9002b51216012401.exe": "a98475d2d8ae27a7f68a96372be8ff1eeb82f253f49758e3c1bcff34dac717c6",
+        "original_gameplay_chain-9002b51216012401.pdb": "a90ad7c334ee71e8e9a4cbac554b5c7262b87259cc004c2e8bc0a4f30e1b0bf9",
+        "fmod.dll": "d563ad96042c096985735b0d1fdab80fe5c7f27663171ff1550ac8ebf4c7eba6",
+        "fmodstudio.dll": "dc61fae2e70ec3a16fa78b678a0fc9ff1852491077a21c2b9c11bf4d160207ff"
+      },
+      "source_commit": "29095eb143a029eb32edef56176bc1b6e3577c77",
+      "source_content_sha256": "f7468a9e3df20837c620e6a4b00751d5c40389efb9c2c11fa9f4790eb7860590",
+      "dirty": false,
+      "profile": "release",
+      "features": [
+        "default(mimalloc)"
+      ],
+      "cpu_probe_feature": false,
+      "allocator": "mimalloc",
+      "incremental": false,
+      "jobs": 1,
+      "build_environment_sha256": "75ad81a2ed761327f3f04438c064bd7c77a833f67575e08cd5ec70c76d74556e",
+      "cargo_lock_sha256": "61808d35effd5095a81591fa326e63adc5c3a2439f459fc3656742bdc87ede36",
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+      "requested_test_target_completed": true,
+      "entire_cargo_build_passed": false,
+      "source_verified_after_freeze": true,
+      "metadata_path": ".perf/headless-builds/closure-base-off/build.json",
+      "artifact_sizes": {
+        "original_gameplay_chain-9002b51216012401.exe": 38066176,
+        "original_gameplay_chain-9002b51216012401.pdb": 148336640,
+        "fmod.dll": 1852416,
+        "fmodstudio.dll": 1519104
+      }
+    },
+    "overhead_acceptance": false
+  },
+  "measurement_closure": {
+    "status": "invalid_process_OS_cumulative_crosscheck",
+    "source_commit": "29095eb143a029eb32edef56176bc1b6e3577c77",
+    "long_round_path": ".perf/headless-runs/closure-static-long-1/run.json",
+    "warmup_frames": 600,
+    "valid_observation_samples_requested": 3000,
+    "envelope_executed_frames": 3001,
+    "envelope_wall_ms": 474606.775,
+    "owner_etw_cpu_ms": 38263.2384,
+    "owner_os_cpu_ms": 38468.75,
+    "owner_os_relative_error": 0.0053422999187652314,
+    "owner_gate_passed": true,
+    "process_etw_cpu_ms": 147930.3571,
+    "process_os_cpu_ms": 140890.625,
+    "process_os_relative_error": 0.04758815051897147,
+    "process_gate_passed": false,
+    "official_process_cpu_ms": 147929.839,
+    "own_vs_official_process_relative_error_percent": 0.0003502,
+    "official_process_nonzero_threads": 20,
+    "independent_ETW_integration_does_not_override_OS_failure": true,
+    "round_valid": false,
+    "production_16ms_acceptance": false,
+    "short_round_path": ".perf/headless-runs/closure-etw-smoke/run.json",
+    "short_round_valid": false,
+    "short_owner_os_relative_error": 0.04236004765957447,
+    "short_process_os_relative_error": 0.040580423108999814,
+    "same_input_performance_AB": false,
+    "next_steps": [
+      "External per-TID/bracket diagnostics completed but do not close the inner failed round",
+      "Three predeclared long pairs completed; continuous passes and all burst runs fail; prospective clock policy unaccepted",
+      "Review policy before any fresh clean capture",
+      "Repeat complete closure and feature-off<=1% without rewriting old failures"
+    ],
+    "investigation": "docs/performance/windows-clock-accounting-20261026.md",
+    "new_fixture_source": {
+      "commit": "e38ae7f",
+      "management_mode_identity": true,
+      "constant_scratch_bill": true,
+      "cumulative_cpu_api_qpc_brackets": true,
+      "raw_cpu_values_adjusted": false,
+      "old_frozen_artifact_contains_change": false,
+      "old_invalid_runs_reclassified": false
+    }
+  },
+  "remote_delivery": {
+    "authorized_after_requested_work_completed": true,
+    "pushed": false,
+    "remote": "git@github.com:yuluo-zy/games_test.git",
+    "source_branch": "codex/render-cpu-cleanup-20261026",
+    "intended_new_branch": "codex/perf-windows-20261026",
+    "audited_remote_tip": "8fd2a3c2c90d4f241332bee1a595e7f038a76546",
+    "real_source_commit": "6957077f905ab1ef1bb9d16ca3521ce555fa488e",
+    "real_source_parent_equals_remote_tip": true,
+    "local_import_root_not_publication_parent": "b91d512",
+    "project_path_mapping": "Cgame/<path> -> upstream/tiny-glade/<path>",
+    "import_source_eol_only_differences": [
+      "crates/systems/critters/src/bird_spots.rs",
+      "crates/systems/critters/src/startup_sheep.rs",
+      "tests/fixtures/native/photo-tree-demo.txt",
+      "tests/fixtures/native/photo-tree-full.txt"
+    ],
+    "source695_import_semantic_differences": [],
+    "preserve_upstream_history_and_omitted_RE_assets_reports": true,
+    "remote_project_archive_report_paths_absent_from_copy": 11417,
+    "strategy": "Start separate publication branch from real695 descendant of8fd, explicitly record four-file import-byte normalization, replay only post-b91d512 stage commits under tiny-glade/, verify final mapped source identity and recheck remote; do not force-push independent import root."
+  },
+  "evidence_identity_scope": "Historical evidence hashes retained unchanged. New core16/graph5 strict passes and full-library VUID failure are separately hashed, with six completed small clock reports; no large ETL/CSV scanned. Earlier probe does not cover new Graph API.",
+  "current_compile_validation": {
+    "scope": "Checked working-tree snapshots only; current targeted/GPU verification and later source changes are not implied passes.",
+    "default": {
+      "passed": true,
+      "log": ".perf/candidate-ownership-default-check-4.log",
+      "elapsed": "2m33s"
+    },
+    "cpu_probe": {
+      "passed": true,
+      "log": ".perf/candidate-ownership-probe-check.log",
+      "elapsed": "38.64s"
+    },
+    "followup_source_fix": "6a85ec8 first declaration error and into_parts consumers; new default/probe/core16/graph5 passed; f4e3e04 native-safe fixture strict library rerun passed",
+    "prior_compilation_failures_retained": 3,
+    "declaration_rejection_default": {
+      "passed": true,
+      "elapsed": "2m40s",
+      "log": ".perf/declaration-rejection-workspace-check.log"
+    },
+    "latest_probe_api_check": {
+      "passed": true,
+      "elapsed": "2m36s",
+      "log": ".perf/declaration-rejection-probe-check.log"
+    }
+  },
+  "latest_tool_validation": {
+    "commit": "c5a6125",
+    "passed": 76,
+    "skipped": 0,
+    "owned_job_smoke": true,
+    "manifest": ".perf/trace-archive-tools-20261026.json",
+    "log": ".perf/trace-archive-tools-tests.log",
+    "tool_sha256": {
+      "perf_headless.py": "e0c74891d058a03952046fbe1314c1d0bf902ed2d7d1019813a2a648dd4d5e7f",
+      "perf_headless_account.py": "27e6cb6081843421141af914e1acc6483dc02c66488cd358d3297d0443a8c0c8",
+      "perf_etw.py": "abdfd9165cd49d3814b48cca3ca882315ef1467dad683b1b72f20e3c79ccb97d",
+      "perf_trace_archive.py": "90062b4a1982e41344adfc8cdf3a7b008bfd36410c3d51eea0de30bbe8c27702",
+      "test_perf_trace_archive.py": "7e4fa84eaffbed5531096aa21d3d432f038ff159f9bf1feee45387477393cf56"
+    },
+    "old_runs_modified": false,
+    "acceptance_gates_changed": false,
+    "scope": "Lossless archive, metadata identity, accounting and Job tools only; not performance acceptance"
+  },
+  "current_runtime_validation": {
+    "source_scope": "Recorded strict core16/graph5 and corrected library rerun pass; new probe and country targets pass. Representative pixels/scene performance remain unaccepted.",
+    "rhapsody_library": {
+      "passed": 458,
+      "failed": 0,
+      "ignored_not_passed": 2,
+      "elapsed_seconds": 8.18,
+      "logical_test_result_ok": true,
+      "validation_gate_passed": true,
+      "vuid_observed": false,
+      "validation_error_observed": false,
+      "log": ".perf/rhapsody-validation-fixtures-fixed-2.log",
+      "fixture_fix_commit": "f4e3e04",
+      "real_distinct_family_hardware": "unverified"
+    },
+    "new_cpu_storage_bytes_scratch_subset": {
+      "passed": 8,
+      "failed": 0,
+      "included_in_library_total": true
+    },
+    "tiny_constant_default": {
+      "passed": 9,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-ownership-constant-default.log"
+    },
+    "remaining_gpu_correctness_and_performance": "pending",
+    "reflection_scope": {
+      "passed": 6,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-unit-draw_template_cache__scope_tests__.log"
+    },
+    "typed_vao": {
+      "passed": 3,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-unit-raster_host__vao_handle_resolution_tests__.log"
+    },
+    "native_constant": {
+      "passed": 3,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-unit-raster_host__constant_batch_gpu_tests__.log"
+    },
+    "texture_lifetime": {
+      "passed": 4,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-unit-render_host__texture_release_tests__.log"
+    },
+    "original_shader_gpu": {
+      "passed": 2,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-ownership-original_raster_gpu.log"
+    },
+    "vao_scope": {
+      "passed": 4,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-ownership-vao_scope.log"
+    },
+    "strict_gpu_scope": "Actual strict core16/graph5 and latest corrected full library have no VUID/Validation Error; earlier full-library VUID failure retained separately",
+    "core_raster_draw": {
+      "passed": 16,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "suite_passed": true,
+      "validation_gate_passed": true,
+      "vuid_observed": false,
+      "elapsed_seconds": 3.24,
+      "log": ".perf/declaration-rejection-core-raster.log"
+    },
+    "previous_rhapsody_library_snapshot": {
+      "passed": 453,
+      "failed": 0,
+      "ignored_not_passed": 2,
+      "elapsed_seconds": 8.21,
+      "log": ".perf/candidate-ownership-rhapsody-lib.log"
+    },
+    "previous_core_raster_draw_failure": {
+      "passed": 14,
+      "failed": 2,
+      "ignored_not_passed": 0,
+      "suite_passed": false,
+      "log": ".perf/candidate-ownership-raster-gpu.log",
+      "failure": "Expected original OutOfHostMemory masked by graph UninitializedRead",
+      "diagnostic_log": ".perf/candidate-budget-error-diagnostic.log",
+      "corrected_graph5_and_core16_retry": "pending"
+    },
+    "graph_first_error": {
+      "passed": 5,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "suite_passed": true,
+      "validation_gate_passed": true,
+      "vuid_observed": false,
+      "elapsed_seconds": 0.39,
+      "log": ".perf/declaration-rejection-five-strict.log"
+    },
+    "previous_rhapsody_library_validation_failure": {
+      "passed": 458,
+      "failed": 0,
+      "ignored_not_passed": 2,
+      "elapsed_seconds": 8.78,
+      "logical_test_result_ok": true,
+      "validation_gate_passed": false,
+      "validation_error": "VUID-VkBufferMemoryBarrier2-buffer-09095",
+      "log": ".perf/declaration-rejection-rhapsody-lib.log",
+      "cause": "Synthetic fake family 1-to-0 transfer submitted to actual single-family GPU",
+      "corrected_fixtures": [
+        "crates/rhapsody/src/device/pending_acquire.rs",
+        "crates/rhapsody/src/transfer.rs"
+      ],
+      "corrected_fixtures_rerun": "pending",
+      "real_distinct_family_hardware": "unverified"
+    },
+    "country_pass_builder": {
+      "passed": 166,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-country-pass-builder.log"
+    },
+    "country_lease": {
+      "passed": 1,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-country-1.log"
+    },
+    "country_draw_passes": {
+      "passed": 262,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-country-262.log"
+    },
+    "representative_water_ice_fixture": {
+      "commit": "fa90e4a",
+      "actual_fixture_run": false,
+      "gpu_pixel_acceptance": false,
+      "scope": "Original rocky-lake Autumn water/Winter ice through production graph; fixture source committed, not executed"
+    }
+  },
+  "historical_tool_validations": [
+    {
+      "full_suite": {
+        "passed": 63,
+        "skipped": 0,
+        "TG_BUILD_JOB_SMOKE": "1",
+        "log": ".perf/tool-integration-20261026-tests-full.log"
+      },
+      "tool_sha256": {
+        "perf_headless.py": "fa6a44934d5ea5a152e80bc0ebe5b0a15d7092bcd2ec8c96e53a3660e91287ad",
+        "perf_headless_account.py": "ddbdaf38fe5844f692874994773eda0ab55a1b814373fec3dcb2b2680a95eb32",
+        "perf_etw.py": "bfbd5ab2db32e634171a78d31119b6efde14c670d13b4a72a57ff301b079ed2a",
+        "perf_build_target.py": "7fdd373b73872490d52a4e1ce8a41832dbfc2d997c45688b6c1c7dd8dfb02b88",
+        "test_perf_etw.py": "c0ea9bcae61a6da3d466ae49cf0987907850864101429d35e3a5f607c3697d10",
+        "test_perf_headless.py": "13935a7f5bf51bf5b1c28fe17b8063b7dc51d88f663dcc9e568fc86f9b7f48f1",
+        "test_perf_boundary.py": "01ca69d85c2657a5f9e489688c9fd97e4942939409763780dffbae4f137230ad"
+      },
+      "scope": "Python/accounting/Job ownership tools only; does not validate Rust rendering or close real OS-counter discrepancy",
+      "commit": "a84ad66",
+      "current_manifest": ".perf/tool-integration-20261026.json",
+      "current_manifest_result": {
+        "passed": 63,
+        "skipped": []
+      },
+      "initial_log_result": {
+        "passed": 62,
+        "skipped": 1,
+        "log": ".perf/tool-integration-20261026-tests.log"
+      }
+    }
+  ],
+  "external_thread_clock_diagnostic": {
+    "diagnostic_only": true,
+    "clean_AB": false,
+    "production_16ms_acceptance": false,
+    "source_commit": "29095eb143a029eb32edef56176bc1b6e3577c77",
+    "helper_tests_passed": 17,
+    "helper_test_evidence": "Primary agent reported17 passes; helper source and actual capture identities retained in staged diagnostic/capture metadata",
+    "quick_pair": {
+      "matched_workload": true,
+      "pairs": 1,
+      "workers": 1,
+      "bytes_per_pattern": 268435456,
+      "continuous_worker_os_ms": 953.125,
+      "continuous_worker_etw_ms": 947.9598,
+      "continuous_worker_relative_error_percent": 0.5419,
+      "burst_worker_os_ms": 1453.125,
+      "burst_worker_etw_ms": 993.6653,
+      "burst_os_minus_etw_ms": 459.4597,
+      "burst_relative_error_percent": 31.6187,
+      "burst_direction": "OS overcounts; not undercounts",
+      "within_existing_flags": false
+    },
+    "game": {
+      "warmup": 600,
+      "samples": 600,
+      "external_window_seconds": 86.3495494,
+      "inner_executed_frames": 601,
+      "external_scope": "ready/go to complete process exit; includes post-envelope manifests/drain/shutdown. Not the Rust frame envelope or a clean performance run.",
+      "retained_threads": 21,
+      "coverage_complete": true,
+      "thread_os_sum_ms": 26796.875,
+      "process_os_delta_sandwich_ms": [
+        26796.875,
+        26796.875
+      ],
+      "before": {
+        "os_cpu_ms": 26796.875,
+        "os_kernel_ms": 2593.75,
+        "os_user_ms": 24203.125,
+        "etw_nominal_cpu_ms": 27222.4667,
+        "etw_read_window_lower_ms": 27222.4667,
+        "etw_read_window_upper_ms": 27222.4667,
+        "read_window_width_ms": 0.0,
+        "os_minus_etw_ms": -425.59170000000086,
+        "nominal_relative_error": 0.015633840411677345,
+        "within_existing_2pct": true,
+        "begin_api_wall_ms": 0.006200000000000001,
+        "end_api_wall_ms": 0.0025,
+        "begin_qpc": [
+          2654599280669,
+          2654599280731
+        ],
+        "end_qpc": [
+          2655462776163,
+          2655462776188
+        ],
+        "acceptance_adjusted": false
+      },
+      "after": {
+        "os_cpu_ms": 26796.875,
+        "os_kernel_ms": 2593.75,
+        "os_user_ms": 24203.125,
+        "etw_nominal_cpu_ms": 27220.3017,
+        "etw_read_window_lower_ms": 27220.3017,
+        "etw_read_window_upper_ms": 27220.3017,
+        "read_window_width_ms": 0.0,
+        "os_minus_etw_ms": -423.4267,
+        "nominal_relative_error": 0.015555547644793371,
+        "within_existing_2pct": true,
+        "begin_api_wall_ms": 0.003,
+        "end_api_wall_ms": 0.006200000000000001,
+        "begin_qpc": [
+          2654599694962,
+          2654599694992
+        ],
+        "end_qpc": [
+          2655462774514,
+          2655462774576
+        ],
+        "acceptance_adjusted": false
+      },
+      "offsetting_thread_errors": true,
+      "compute0_os_minus_etw_ms": 591.1493,
+      "unnamed_os_minus_etw_ms": -818.4044,
+      "bvh_os_minus_etw_ms": -666.8491,
+      "aggregate_approximately_1_56_percent_is_not_full_closure": true,
+      "microsoft_same_trace_crosscheck": {
+        "cpu_ms": 27222.731,
+        "relative_error": 9.708798136340968e-06,
+        "within_existing_2pct": true,
+        "input_trace_shared": true
+      }
+    },
+    "next": "Three predeclared long pairs complete; review prospective clock policy before freezing and rerunning clean measurements. No retrospective gate or old-failure changes.",
+    "acceptance_gate_changed": false,
+    "old_invalid_runs_stay_invalid": true,
+    "report": "C:\\Users\\liyu\\.codex\\visualizations\\2026\\10\\26\\01a17714-b237-7ed3-8e87-7aeaa53c4a51\\thread-diagnostic\\actual-results-20261026.md",
+    "game_path": ".perf/thread-cpu-diagnostics/thread-clock-game-w600-n600-1/thread-cpu.json",
+    "quick_summary": ".perf/thread-cpu-calibrations/thread-clock-quick-1/summary.json",
+    "long_predeclared_series": {
+      "summary": ".perf/thread-cpu-calibrations/thread-clock-4w-long-1/summary.json",
+      "pairs": 3,
+      "order": "AB,BA,AB; A continuous, B burst",
+      "completed_runs": 6,
+      "workers": 4,
+      "chunks_per_worker": 4096,
+      "chunk_bytes": 1048576,
+      "burst_wait_ms": 10,
+      "same_workload": true,
+      "all_runs_within_existing_2pct": false,
+      "policy_accepted": false,
+      "acceptance_gate_changed": false,
+      "runs": [
+        {
+          "directory": "C:\\game\\.perf\\thread-cpu-diagnostics\\thread-clock-4w-long-1-1-continuous",
+          "pattern": "continuous",
+          "coverage_complete": true,
+          "workload_sha256": "bfbaae1eb6959dc93c97e5672cc8e2a186d3ca27968e175293d0bf84bf3534be",
+          "os_cpu_ms": 68000.0,
+          "etw_cpu_ms": 67805.6161,
+          "os_minus_etw_ms": 194.38390000000072,
+          "signed_relative_error": 0.002858586764705893,
+          "process_within_existing_2pct": true,
+          "all_primary_workers_within_existing_2pct": true
+        },
+        {
+          "directory": "C:\\game\\.perf\\thread-cpu-diagnostics\\thread-clock-4w-long-1-1-burst",
+          "pattern": "burst",
+          "coverage_complete": true,
+          "workload_sha256": "bfbaae1eb6959dc93c97e5672cc8e2a186d3ca27968e175293d0bf84bf3534be",
+          "os_cpu_ms": 65125.0,
+          "etw_cpu_ms": 73515.2785,
+          "os_minus_etw_ms": -8390.2785,
+          "signed_relative_error": -0.11412972474830521,
+          "process_within_existing_2pct": false,
+          "all_primary_workers_within_existing_2pct": false
+        },
+        {
+          "directory": "C:\\game\\.perf\\thread-cpu-diagnostics\\thread-clock-4w-long-1-2-burst",
+          "pattern": "burst",
+          "coverage_complete": true,
+          "workload_sha256": "bfbaae1eb6959dc93c97e5672cc8e2a186d3ca27968e175293d0bf84bf3534be",
+          "os_cpu_ms": 63406.25,
+          "etw_cpu_ms": 73504.3007,
+          "os_minus_etw_ms": -10098.050700000007,
+          "signed_relative_error": -0.13738040636852158,
+          "process_within_existing_2pct": false,
+          "all_primary_workers_within_existing_2pct": false
+        },
+        {
+          "directory": "C:\\game\\.perf\\thread-cpu-diagnostics\\thread-clock-4w-long-1-2-continuous",
+          "pattern": "continuous",
+          "coverage_complete": true,
+          "workload_sha256": "bfbaae1eb6959dc93c97e5672cc8e2a186d3ca27968e175293d0bf84bf3534be",
+          "os_cpu_ms": 68125.0,
+          "etw_cpu_ms": 67764.0904,
+          "os_minus_etw_ms": 360.90959999999905,
+          "signed_relative_error": 0.0052977555963302616,
+          "process_within_existing_2pct": true,
+          "all_primary_workers_within_existing_2pct": true
+        },
+        {
+          "directory": "C:\\game\\.perf\\thread-cpu-diagnostics\\thread-clock-4w-long-1-3-continuous",
+          "pattern": "continuous",
+          "coverage_complete": true,
+          "workload_sha256": "bfbaae1eb6959dc93c97e5672cc8e2a186d3ca27968e175293d0bf84bf3534be",
+          "os_cpu_ms": 66390.625,
+          "etw_cpu_ms": 66265.6266,
+          "os_minus_etw_ms": 124.99839999999676,
+          "signed_relative_error": 0.001882771852200469,
+          "process_within_existing_2pct": true,
+          "all_primary_workers_within_existing_2pct": true
+        },
+        {
+          "directory": "C:\\game\\.perf\\thread-cpu-diagnostics\\thread-clock-4w-long-1-3-burst",
+          "pattern": "burst",
+          "coverage_complete": true,
+          "workload_sha256": "bfbaae1eb6959dc93c97e5672cc8e2a186d3ca27968e175293d0bf84bf3534be",
+          "os_cpu_ms": 59109.375,
+          "etw_cpu_ms": 72744.6982,
+          "os_minus_etw_ms": -13635.323199999999,
+          "signed_relative_error": -0.1874407831414991,
+          "process_within_existing_2pct": false,
+          "all_primary_workers_within_existing_2pct": false
+        }
+      ],
+      "conclusion": "Continuous meets existing 2%; all burst runs fail with OS undercount, opposite quick one-worker burst direction. No universal correction or real-game closure acceptance."
+    },
+    "prospective_policy_staging": {
+      "tests_passed": 92,
+      "independent_review_issue": "P2 under correction",
+      "accepted": false,
+      "closure_accepted": false,
+      "source_scope": "staging only; no original gate changed",
+      "merged": false
+    }
+  },
+  "progress_document_freeze_boundary": "After this batch, actual docs writing paused for source identity freezing; subsequent evidence staged first"
 }
