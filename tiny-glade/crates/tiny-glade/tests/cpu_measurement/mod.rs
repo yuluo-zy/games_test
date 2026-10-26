@@ -19,6 +19,8 @@ static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
 mod input;
 #[path = "../support/performance_workload.rs"]
 mod workload;
+#[path = "../support/performance_sparse_layout.rs"]
+mod sparse_layout;
 #[cfg(feature = "cpu-probe")]
 mod workload_probe;
 #[cfg(feature = "cpu-probe")]
@@ -62,6 +64,11 @@ fn run() -> Result<()> {
     let mode = std::env::var("TG_CPU_PROBE_MODE")
         .unwrap_or_else(|_| if cfg!(feature = "cpu-probe") { "on" } else { "off" }.into());
     anyhow::ensure!(mode == "on" || mode == "off", "unknown probe mode");
+    let canonical_wall_layout = match std::env::var("TG_PERF_CANONICAL_WALL_LAYOUT").as_deref() {
+        Err(std::env::VarError::NotPresent) | Ok("0") => false,
+        Ok("1") => true,
+        _ => anyhow::bail!("TG_PERF_CANONICAL_WALL_LAYOUT must be absent, 0 or 1"),
+    };
     let bill = std::env::var("TG_CPU_BILL").is_ok_and(|s| s == "1");
     anyhow::ensure!(!bill || mode == "on", "diagnostic bill requires active probe mode");
     anyhow::ensure!(cfg!(feature = "cpu-probe") || mode == "off",
@@ -86,6 +93,9 @@ fn run() -> Result<()> {
     anyhow::ensure!(workload.scenario() == "static" || warmup >= 200,
         "edit/many-draw protocol needs at least 200 warmup frames (acceptance uses 600)");
     let BootedSession { mut driver, context, mut bridge, shaders: _shaders, device, _boot } = boot_shipped_session()?;
+    let canonical_brick_layout = if canonical_wall_layout {
+        Some(sparse_layout::before_first_gameplay_warmup(driver.app_mut().world_mut(), &mut bridge)?)
+    } else { None };
     let boot_clock = clock_input(driver.app().world());
     tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, driver.app_mut().world_mut())?;
     bridge.accept_gameplay_warmup(driver.app().world().resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>())?;
@@ -144,6 +154,7 @@ fn run() -> Result<()> {
             initial_input = input::scene_manifest(driver.app_mut().world_mut(), &lengths)?;
             initial_input["clock_camera"] = clock_input(driver.app().world());
             initial_input["workload"] = workload.summary();
+            if let Some(layout) = &canonical_brick_layout { initial_input["canonical_brick_layout"] = serde_json::to_value(layout)?; }
             trajectory = Some(input::TransformTrajectory::capture(driver.app_mut().world_mut())?);
             if let Some(parent) = output.parent() { std::fs::create_dir_all(parent)?; }
             if std::env::var_os("TG_CPU_PROBE_GATE").is_some() {
@@ -245,6 +256,7 @@ fn run() -> Result<()> {
     let mut final_input = input::scene_manifest(driver.app_mut().world_mut(), &lengths)?;
     final_input["clock_camera"] = clock_input(driver.app().world());
     final_input["workload"] = workload.summary();
+    if let Some(layout) = &canonical_brick_layout { final_input["canonical_brick_layout"] = serde_json::to_value(layout)?; }
     final_input["transform_trajectory"] = trajectory.as_ref().context("missing trajectory owner")?.summary();
     bridge.wait_submits_done(120_000_000_000)?;
     #[cfg(feature = "cpu-probe")]
@@ -305,13 +317,13 @@ fn run() -> Result<()> {
     let management_modes = bridge.raster_resources().draw_management_modes();
     #[cfg(feature = "cpu-probe")]
     anyhow::ensure!(!bill || detailed_bills.len() == rows.len(), "incomplete detailed management bill");
-    let report = json!({
+    let mut report = json!({
         "schema":"headless-cpu-closure-v1", "valid":valid, "scope":"App and renderer share owner thread; fixed-step real scene stimuli and autonomous animation retained; phase CPU requires ETW; no WSI acceptance",
         "process_id":std::process::id(), "thread_id":clock::current_thread_id(), "qpc_frequency":clock::wall_frequency(),
         "warmup":warmup, "samples":samples, "mode":mode, "diagnostic_bill":bill,
         "scenario":workload.scenario(), "boot_clock":boot_clock,
-        "measurement_class":if gpu_diagnostic {"gpu_diagnostic"} else if bill {"management_diagnostic"} else if wall_source_diagnostic {"wall_dispatch_source_diagnostic"} else {"clean_cpu"},
-        "clean_cpu_acceptance_eligible":!gpu_diagnostic && !wall_source_diagnostic,
+        "measurement_class":if gpu_diagnostic {"gpu_diagnostic"} else if bill {"management_diagnostic"} else if wall_source_diagnostic {"wall_dispatch_source_diagnostic"} else if canonical_wall_layout {"canonical_layout_diagnostic"} else {"clean_cpu"},
+        "clean_cpu_acceptance_eligible":!gpu_diagnostic && !wall_source_diagnostic && !canonical_wall_layout,
         "wall_dispatch_source_bill":wall_dispatch_source_bill,
         "actual_workload":actual_workload_report,"gpu_diagnostic":gpu_report,
         "binding_scope_reuse_enabled":binding_scope_reuse_enabled,
@@ -348,6 +360,10 @@ fn run() -> Result<()> {
         }).collect::<Vec<_>>(),
         "input_before":initial_input,"input_after":final_input,
     });
+    if let Some(layout) = canonical_brick_layout {
+        report["canonical_brick_layout"] = serde_json::to_value(layout)?;
+        report["canonical_layout_input_policy"] = "canonical-brick-layout-v1".into();
+    }
     std::fs::write(&output, serde_json::to_vec_pretty(&report)?)?;
     anyhow::ensure!(valid, "incomplete probe or invalid clock envelope; inspect {}", output.display());
     Ok(())

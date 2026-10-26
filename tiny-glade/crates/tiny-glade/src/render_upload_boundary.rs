@@ -89,6 +89,8 @@ impl UploadBoundary {
         if let Some(error) = deferred.failed.take() { return Err(error); }
         Ok(if owner.is_some() { deferred.jobs.iter().all(|entry| !entry.1) } else { deferred.jobs.is_empty() })
     }
+    pub(crate) fn fixture_has_active_reader(&self) -> bool { self.owner.lock().is_some() }
+
     pub(crate) fn stats(&self) -> BoundaryStats { *self.stats.lock() }
     pub(crate) fn report_failure(&self, error: String) {
         self.deferred.lock().failed.get_or_insert(error);

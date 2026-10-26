@@ -465,6 +465,11 @@ impl TransferManager {
         Ok(self.queued.cancel_task(&ticket.task))
     }
 
+    #[doc(hidden)]
+    pub fn fixture_buffer_weak_history_count(&self, target: &Arc<Buffer>) -> usize {
+        self.queued.fixture_weak_history_count(target)
+    }
+
     pub fn upload_queue_stats(&self) -> UploadQueueStats {
         self.queued.stats()
     }

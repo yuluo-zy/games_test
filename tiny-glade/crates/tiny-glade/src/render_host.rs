@@ -98,6 +98,20 @@ impl FrameBufferSnapshot {
     pub fn buffer_count(&self) -> usize { self.0.buffers.len() }
 }
 
+#[doc(hidden)]
+#[derive(Debug, Clone, Copy)]
+pub struct BufferFixtureReferences {
+    pub frame_bound: bool,
+    pub active_read_lease: bool,
+    pub version_strong: usize,
+    pub version_weak: usize,
+    pub snapshot_pins: usize,
+    pub physical_strong: usize,
+    pub physical_weak: usize,
+    pub known_queue_history_weak: usize,
+    pub known_cow_retired_weak: usize,
+}
+
 const COW_MAX_RETIRED_BYTES: u64 = 256 << 20;
 const COW_MAX_RETIRED_BUFFERS: usize = 64;
 struct RetiredBuffer {
@@ -1204,6 +1218,28 @@ impl BufferHost {
             slot.stable_address = true;
             slot.cpu_authoritative = false;
         }
+    }
+
+    #[doc(hidden)]
+    pub fn fixture_reference_state(&self, target: &Buffer) -> Result<BufferFixtureReferences, BackendError> {
+        let _serial = self.publication.lock();
+        let version = self.current_version(target).ok_or_else(|| BackendError::invalid_usage("fixture target is stale/foreign"))?;
+        let raw = version.buffer.shared();
+        let known_queue_history_weak = self.uploads.lock().as_ref().map_or(0,
+            |service| service.manager.fixture_buffer_weak_history_count(&raw));
+        let known_cow_retired_weak = self.cow_budget.lock().retired.iter()
+            .filter(|entry| entry.owner.as_ptr() == Arc::as_ptr(&raw)).count();
+        Ok(BufferFixtureReferences {
+            frame_bound: self.frame.is_some(),
+            active_read_lease: self.boundary().fixture_has_active_reader(),
+            version_strong: Arc::strong_count(&version) - 1,
+            version_weak: Arc::weak_count(&version),
+            snapshot_pins: version.pins.load(Ordering::Acquire),
+            physical_strong: Arc::strong_count(&raw) - 1,
+            physical_weak: Arc::weak_count(&raw),
+            known_queue_history_weak,
+            known_cow_retired_weak,
+        })
     }
 
     /// Resolve a retained core buffer only while its slot generation is live.

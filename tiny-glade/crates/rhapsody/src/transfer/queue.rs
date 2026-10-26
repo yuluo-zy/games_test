@@ -845,6 +845,10 @@ impl<T> UploadQueue<T> {
     pub fn queued_jobs(&self) -> usize {
         self.jobs.len()
     }
+    pub(super) fn fixture_weak_history_count(&self, target: &Arc<T>) -> usize {
+        self.epochs.iter().filter(|entry| entry.target.as_ptr() == Arc::as_ptr(target)).count()
+    }
+
     pub fn stats(&self) -> UploadQueueStats {
         UploadQueueStats {
             queued_jobs: self.jobs.len(),
