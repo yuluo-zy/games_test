@@ -53,9 +53,12 @@ pub struct NotifyHintSystemTerrain {
     pub tag: u8,
 }
 
-/// 窗通知（O：register_event 顺序 9）。
+/// 窗通知（O：register_event 顺序 9）。事件实例 `{EventId 8B, flag u8 @+8}`：
+/// `hint_unlink_windows` 0x14227d760 逐事件读该字节，`!=0` → 完成 id 8，`==0` → 展示提示。
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct NotifyHintSystemWindow;
+pub struct NotifyHintSystemWindow {
+    pub flag: u8,
+}
 
 /// 工具刚使用通知（O：register_event 顺序 10；既有）。
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -71,9 +74,13 @@ pub struct NotifyHintSystemTerrainSteepness {
     pub tag: u8,
 }
 
-/// 屋顶形状通知（O：register_event 顺序 13；宿主载荷 `[+1]` 门控字节待上层补证）。
+/// 屋顶形状通知（O：register_event 顺序 13）。事件实例 `{EventId 8B, flag u8 @+8}`：
+/// `hint_roof_shape` 0x142284ed0 逐事件读该字节，`==0` → `hint_done=1`；`!=0` →
+/// `event_byte=1` 并完成 id 7。生产者在屋顶编辑系统（`ui_edit_roof`，不属 M01）。
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct NotifyHintSystemRoofShape;
+pub struct NotifyHintSystemRoofShape {
+    pub flag: u8,
+}
 
 /// 杂乱移动通知（O：register_event 顺序 14）。
 #[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]

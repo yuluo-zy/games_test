@@ -1,0 +1,48 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "cases": 5400,
+  "fixture": "toolbar-rollercoaster-speed.windows-ucrt.ron",
+  "fixture_sha256": "2e336b88b8dcfe2ba0cca880ee7d64d73fc5eb4de5e8cf9f1f23800edbc4fbe1",
+  "ranges": [
+    [
+      "0x1403b841e",
+      "0x1403b844e"
+    ],
+    [
+      "0x1403b861b",
+      "0x1403b883a"
+    ]
+  ],
+  "native_helpers": [
+    "0x1408c5680 raw byte load",
+    "0x140c904d0 lerp",
+    "0x140c904e0 time_continuous_lerp"
+  ],
+  "bridges": [
+    {
+      "address": "0x142923ec0",
+      "kind": "import expf",
+      "replacement": "host Darwin libm expf(c_float)->c_float",
+      "calls": 14580,
+      "limitation": "不能宣称UCRT expf逐位相等；候选差分应明确最多ULP与exp库边界，不遮掩其他差异"
+    }
+  ],
+  "supplied_boundaries": [
+    "已归一化的drive/brake输入，原native阻尼与min-speed算术仍执行",
+    "Spline当前切线Y与t_min=0/t_max=50，车数；不含Spline求值",
+    "原raw byte flag从单字节地址读入，语义类型需调用方确认"
+  ],
+  "columns": [
+    "old_speed_bits",
+    "tangent_y_bits",
+    "drive_bits",
+    "brake_bits",
+    "raw_flag",
+    "old_t_bits",
+    "cart_count",
+    "speed_bits",
+    "t_bits",
+    "braking_flag_u8"
+  ],
+  "scope": "速度、重力、加速、阻尼、上限/下限、尾车末端smoothstep减速、t clamp以及触底布尔；不含accumulator与每车动态。"
+}

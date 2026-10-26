@@ -29,6 +29,12 @@ def clone_seed(directory):
     if project.exists() and any(project.iterdir()):
         raise ValueError('Partial project exists; inspect it before reusing this worker')
     for row in manifest['files']:
+        # Ghidra rotates ~index.bak/~journal.bak every time a project is opened. They hold
+        # no program content, so a later open of the seed must not invalidate the frozen
+        # database (.gbf), properties and index files that are still verified below.
+        name = Path(row['path']).name
+        if name.startswith('~') and name.endswith('.bak'):
+            continue
         path = (SEED / 'project' / row['path']).resolve()
         if not path.is_relative_to((SEED / 'project').resolve()): raise ValueError('Seed path escapes project')
         with path.open('rb') as stream:

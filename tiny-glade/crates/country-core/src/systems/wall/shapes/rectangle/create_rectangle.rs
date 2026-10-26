@@ -279,11 +279,18 @@ mod tests {
 
     #[test]
     fn rectangle_roof_parameters_match_original_instructions() {
-        let rows: Vec<(u32, u32, u32, u32, u8)> = ron::from_str(include_str!(concat!(
+        // See the circle test: NaN results carry the bridged platform libm's sign.
+        #[cfg(windows)]
+        const FIXTURE: &str = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/fixtures/native/shape-create-rectangle-roof-parameters.windows-ucrt.ron"
+        ));
+        #[cfg(not(windows))]
+        const FIXTURE: &str = include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../tests/fixtures/native/shape-create-rectangle-roof-parameters.ron"
-        )))
-        .unwrap();
+        ));
+        let rows: Vec<(u32, u32, u32, u32, u8)> = ron::from_str(FIXTURE).unwrap();
         let mut canonical_nan_sign_boundaries = 0;
         for (case, (x, y, height, ridge, direction)) in rows.into_iter().enumerate() {
             let dimensions = glam::Vec2::new(f32::from_bits(x), f32::from_bits(y));

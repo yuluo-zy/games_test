@@ -143,7 +143,7 @@ pub fn add_terrain_tool_systems<S: Send + Sync + 'static>(schedule: &mut Schedul
     schedule.add_systems(
         (
             terrain_hover_idx::terrain_hover_idx,
-            crate::systems::ui_edit_focus::ui_edit_focus_terrain.before(
+            crate::systems::ui_edit_focus::ui_edit_focus.before(
                 crate::systems::mode_manager::mode_manager::<
                     crate::resources::history::EditType,
                     S,
@@ -192,7 +192,7 @@ pub fn add_terrain_tool_systems<S: Send + Sync + 'static>(schedule: &mut Schedul
 /// history_record_terrain.in_set(GameSystemSet(0x22))))`（chain 0x140945613，`MOV byte,0xf` 0x140945618，
 /// in_set_inner 0x14094563d；`DL=0x22` in_set 0x14094569c；add_systems 0x140945742；顺序取自单体
 /// 0x141755b40 的 `into_configs` 调用序；无 `run_if`）。原版此函数不含 terrain_hover_idx /
-/// replay_terrain / ui_edit_focus_terrain / arrow_gizmo_animation（本仓库 `add_terrain_tool_systems`
+/// replay_terrain / ui_edit_focus / arrow_gizmo_animation（本仓库 `add_terrain_tool_systems`
 /// 另行挂载，原版挂载点未定位，见报告）。
 ///
 /// `insert_terrain_resources`（顺序）：MouseActivityTimer（0x1409457f2，**本仓库无此类型，未闭合**）、

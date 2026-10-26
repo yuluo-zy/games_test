@@ -229,11 +229,20 @@ mod tests {
 
     #[test]
     fn circle_roof_parameters_match_original_instructions() {
-        let rows: Vec<(u32, u32)> = ron::from_str(include_str!(concat!(
+        // The original calls the platform `cosf`; the fixtures bridged it to the host libm,
+        // and NaN results carry the host's sign (Darwin positive, Windows UCRT negative).
+        // Each platform compares against original-binary results made with its own libm.
+        #[cfg(windows)]
+        const FIXTURE: &str = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/fixtures/native/shape-create-circle-roof-parameters.windows-ucrt.ron"
+        ));
+        #[cfg(not(windows))]
+        const FIXTURE: &str = include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../tests/fixtures/native/shape-create-circle-roof-parameters.ron"
-        )))
-        .unwrap();
+        ));
+        let rows: Vec<(u32, u32)> = ron::from_str(FIXTURE).unwrap();
         for (case, (radius, expected)) in rows.into_iter().enumerate() {
             let actual = circle_roof_height_01(f32::from_bits(radius)).to_bits();
             assert_eq!(

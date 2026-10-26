@@ -496,6 +496,10 @@ mod original_coaster_target_tests {
     }
 
     fn exercise_recovered_ride(unload_first: bool) {
+        // `PROMPT_ROLLERCOASTER` is a process-wide flag written by every `rollercoaster_update`;
+        // the two ride tests must not interleave their updates around its assertions.
+        static SERIAL: std::sync::Mutex<()> = std::sync::Mutex::new(());
+        let _serial = SERIAL.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         use country_core::{
             render::nani::{
                 gpu_world::{GpuWorldSubsetKind, InstanceDataMarker},
@@ -729,6 +733,15 @@ mod original_coaster_target_tests {
             )
                 .chain_ignore_deferred(),
         );
+        // Idle photomode frame with the walk camera on the real stair carts: the original ride
+        // system itself raises `PROMPT_ROLLERCOASTER` (the flag the photomode tail turns into
+        // `DisplayRollercoasterPrompt`) — and only while no ride is running.
+        app.update();
+        assert!(
+            country_core::systems::main_camera::PROMPT_ROLLERCOASTER
+                .load(std::sync::atomic::Ordering::Relaxed),
+            "an eligible cart in photomode must raise the rollercoaster prompt"
+        );
         app.world_mut()
             .resource_mut::<country_core::input::action_set::ActionSetStates>()
             .digital[19] = country_core::input::action_set::DigitalActionState {
@@ -736,6 +749,13 @@ mod original_coaster_target_tests {
             timer_seconds: 0.0,
         };
         app.update();
+        // The original raises the flag as soon as a target is found, before it checks the
+        // confirm key, so the starting frame still carries the prompt.
+        assert!(
+            country_core::systems::main_camera::PROMPT_ROLLERCOASTER
+                .load(std::sync::atomic::Ordering::Relaxed),
+            "the frame that starts the ride still carries the prompt"
+        );
         let temporary: Vec<Entity> = app
             .world_mut()
             .query_filtered::<Entity, With<InstanceDataMarker<VelocityOnlyInstanceData>>>()
@@ -769,6 +789,12 @@ mod original_coaster_target_tests {
             });
         }
         app.update();
+        // A running ride is "not idle": the original clears the prompt and finds no new target.
+        assert!(
+            !country_core::systems::main_camera::PROMPT_ROLLERCOASTER
+                .load(std::sync::atomic::Ordering::Relaxed),
+            "no prompt while a ride is in progress"
+        );
         assert_ne!(
             *app.world().get::<Transform>(originals[0].0).unwrap(),
             originals[0].1
@@ -949,11 +975,21 @@ mod original_coaster_target_tests {
     #[test]
     fn original_speed_step_keeps_gravity_controls_drag_and_tail_slowdown() {
         type Case = (u32, u32, u32, u32, u8, u32, usize, u32, u32, u8);
-        let cases: Vec<Case> = ron::from_str(include_str!(concat!(
+        // The original calls the platform CRT `expf`; Rust's `f32::exp` calls the
+        // same platform libm. Apple's libm differs from the Windows UCRT by 1 ULP
+        // on 9 of these 5400 inputs (all in the speed column), so each platform is
+        // compared against original-binary results produced with its own `expf`.
+        #[cfg(windows)]
+        const FIXTURE: &str = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/fixtures/native/toolbar-rollercoaster-speed.windows-ucrt.ron"
+        ));
+        #[cfg(not(windows))]
+        const FIXTURE: &str = include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../tests/fixtures/native/toolbar-rollercoaster-speed.ron"
-        )))
-        .unwrap();
+        ));
+        let cases: Vec<Case> = ron::from_str(FIXTURE).unwrap();
         assert_eq!(cases.len(), 5400);
         for (index, (speed, tangent, drive, brake, flag, t, count, new_speed, new_t, bottom)) in
             cases.into_iter().enumerate()

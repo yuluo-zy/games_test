@@ -4,7 +4,7 @@
 //! - `Local<TimeSinceMouseMoved>` 累加 dt；`CursorMovedScreenSpace` 有事件 → 归零。
 //! - 每帧 `GameProfile[0x1f0] += dt`（累加器；仅当鼠标事件或 local<30.0 时）。
 //! - 两对 (计时,冷却)：A=0x1e0/0x1e4、B=0x1e8/0x1ec；冷却缺省 720.0（0x44340000）。
-//! - 对 A：读事件（**读者类型 U**，本重建以 DisplayHintRequest 承载）→ 计时归零、
+//! - 对 A：读 `ToolSelectionCancelled` 事件 → 计时归零、
 //!   `cooldown=clamp(old*1.5,720,10800)` 写回、写 SaveGameProfileCmd。
 //! - 对 B：读 `ModeJustChanged`（0x28B 步长，首载荷工具 id ∈ {1,2} 才触发）→ 同上。
 //! - 标志 A（profile[0x1f4]）/ B（profile[0x1f5]）：`local<10.0` 才计时+=dt、
@@ -12,7 +12,8 @@
 //!   写 SaveGameProfileCmd + 清对应条件资源（10B）+ 清标志。
 //!
 //! **已重建（2026-10-17，coregap-2 GameProfile 计时区 + SaveGameProfileCmd 落库）**；
-//! 分歧点：对 A 读者事件类型 U（候选 DisplayHintRequest，stride 无取证）。
+//! 2026-10-26：对 A 的读者类型由 PDB 参数表确认为 `ToolSelectionCancelled`（原先误为
+//! DisplayHintRequest 的候选）；A 触发后清的正是 `DeselectToolHintConditions`。
 
 use bevy_ecs::prelude::*;
 use country_core::game_profile::TutorialCooldowns;
@@ -29,7 +30,7 @@ pub fn exponential_back_off(
     time: Res<GameTime>,
     mut profile: ResMut<country_core::game_profile::GameProfile>,
     mut writer: EventWriter<country_core::game_profile::SaveGameProfileCmd>,
-    mut trigger_a: EventReader<crate::DisplayHintRequest>,
+    mut trigger_a: EventReader<country_core::systems::ui_edit_focus::ToolSelectionCancelled>,
     mut mode_b: EventReader<country_core::resources::events::ModeJustChanged>,
     mut deselect: ResMut<crate::hint_deselect_tool::DeselectToolHintConditions>,
     mut focused: ResMut<crate::hint_focused_edit::FocusedEditHintConditions>,
@@ -137,7 +138,7 @@ mod canonical_mode_backoff_tests {
         world.init_resource::<Events<ModeJustChanged>>();
         world.init_resource::<Events<SaveGameProfileCmd>>();
         world.init_resource::<Events<country_core::resources::window::CursorMovedScreenSpace>>();
-        world.init_resource::<Events<crate::DisplayHintRequest>>();
+        world.init_resource::<Events<country_core::systems::ui_edit_focus::ToolSelectionCancelled>>();
         world.resource_mut::<GameTime>().delta = 0.0;
         world
             .resource_mut::<country_core::game_profile::GameProfile>()

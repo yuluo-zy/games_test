@@ -257,7 +257,9 @@ fn real_load_menu_parsed_owner_survives_missing_primary_across_two_session_state
         std::fs::create_dir_all(id.save_folder_path()).unwrap();
         std::fs::copy(&fixture, id.save_folder_path().join("history.json")).unwrap();
         SessionMeta::default().write_to_disk(*id).unwrap();
-        std::fs::File::open(id.save_folder_path().join("history.json"))
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(id.save_folder_path().join("history.json"))
             .unwrap()
             .set_modified(SystemTime::UNIX_EPOCH + Duration::from_secs(1_750_000_000 + i as u64))
             .unwrap();

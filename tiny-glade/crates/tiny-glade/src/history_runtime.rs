@@ -163,7 +163,7 @@ fn install_domain_lifecycles(app: &mut App) {
     app.add_event::<sys::terrain::PlayTerrainSound>();
     app.add_event::<sys::history::replay_raster::RasterReplayFeedback>();
     // OPEN (not closed): original registration points of replay_terrain,
-    // terrain_hover_idx and ui_edit_focus_terrain are NOT in the recovered
+    // terrain_hover_idx and ui_edit_focus are NOT in the recovered
     // add_terrain_systems@1409455f0; they stay mounted here (arrow_gizmo_animation is
     // mounted in run_game_thread set 7). Constraints are those of country-core's
     // add_terrain_tool_systems: hover -> focus before mode_manager; replay in set 40.
@@ -177,7 +177,7 @@ fn install_domain_lifecycles(app: &mut App) {
         Update,
         (
             sys::terrain::terrain_hover_idx::terrain_hover_idx,
-            sys::ui_edit_focus::ui_edit_focus_terrain,
+            sys::ui_edit_focus::ui_edit_focus,
         )
             .chain()
             .before(sys::mode_manager::mode_manager::<res::history::EditType, res::history::MaybePendingSnapshotId>),

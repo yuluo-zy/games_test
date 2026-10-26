@@ -67,6 +67,14 @@ use crate::resources::walls::decorator::DecoratorId;
 use crate::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
 use crate::systems::mode_manager::{AppMode, EditSubject};
 
+/// `country_core::systems::ui_edit_focus::ToolSelectionCancelled`（PDB 事件类型；
+/// `ui_edit_focus` 0x1409771f0 的 EventWriter 之一）。消费者只判断"本帧有无未读事件"：
+/// `hint_deselect_tool` 0x1422853c0、`hint_stairs` 0x142285a20、`exponential_back_off`
+/// 0x142284800 的读者从不读取载荷，因此这里不声明任何字段。生产者（`ui_edit_focus` 的
+/// Wall/Roof/DecoClutter/StairPoint 分支，经 3 张跳表分派）尚未恢复，当前没有代码发送它。
+#[derive(bevy_ecs::event::Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ToolSelectionCancelled;
+
 /// 命中结果前 24 字节（`RaycastWorldResult.handle` / `ColliderRegistryEntry`
 /// 头部，或地形 `0xB` 哨兵），即原版 `GeoSource` 的字节投影。
 ///
@@ -263,41 +271,131 @@ fn terrain_focus_target(
     (geometry_distance > terrain_distance && hovered.tag == 1).then_some(hovered.id as u32)
 }
 
-/// Uses the real input, UI, collider query and terrain hover resources. Optional
-/// host resources defer the system until their actual owners install them;
-/// there is no fabricated cursor/raycast/action fallback.
-pub fn ui_edit_focus_terrain(
+/// `country_core::systems::ui_edit_focus::TerrainFocusModeOrigin`（PDB `Local`，1 字节）。
+/// 原版每帧在 0x14097742c 写 `mode == 10`（`Terrain` 工具），在 0x140977b3c / 0x140977c68 读。
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TerrainFocusModeOrigin(pub bool);
+
+/// 把原版 `RequestAppModeChange` 实例里的 `{tag u32 @+0, u32 @+4, u64 @+8}` 还原成 `AppMode`
+/// （`0x140977ac5` / `0x140977c74` / `0x140977cde` 三处写入点共用同一布局）。
+fn app_mode_from_native(tag: u32, id32: u32, id64: u64) -> AppMode {
+    match tag {
+        0 => AppMode::Editing(EditSubject::None),
+        1 => AppMode::Editing(EditSubject::Wall(id64)),
+        2 => AppMode::Editing(EditSubject::Roof(id64)),
+        3 => AppMode::Editing(EditSubject::DecoClutter { decorator_id: id32 }),
+        4 => AppMode::Editing(EditSubject::StairPoint { decorator_id: id32 }),
+        5 => AppMode::Editing(EditSubject::Terrain(id32)),
+        0xa => AppMode::Terrain,
+        other => unreachable!("RequestAppModeChange tag {other}"),
+    }
+}
+
+/// B `country_core::systems::ui_edit_focus::ui_edit_focus` @0x1409771f0，3424B，17 个 SystemParam
+/// （PDB 参数表见 `reports/module-recovery-2026-10-23/m01-system-params-from-pdb.md`；
+/// 第 14..17 个在原版被 `tuple$<..>` 打包）。逐段对应 `uef.asm`：
+///
+/// 1. **校验当前被编辑对象仍存在**（0x140977250..0x140977426）：
+///    `Editing(Wall|Roof)`：`PublicWalls::get`（内联断言 `w.simplified_curve_2d.is_valid()`），
+///    缺失 → `RequestAppModeChange(Editing(None))` 并返回；
+///    `Editing(DecoClutter|StairPoint)`：仅当 `History` **未在记录**（`[history+0x30] == i64::MIN`
+///    的 niche）时查 `DecoratorStorage::lookup_decorator_info`，缺失 → 同上并返回。
+/// 2. `TerrainFocusModeOrigin = (mode == Terrain)`（每帧）；`UiNavState.focus` 为 None 且
+///    `digital[18]`（ui_cancel）`just_pressed` → `RequestAppModeChange(None)`，当前模式判别 >= 6
+///    再写 `ToolSelectionCancelled`，返回。
+/// 3. 模式判别 >= 6（工具模式）：`digital[1]`（right_click）`just_pressed`；`Terrain` 且悬停地形
+///    笔画（`hovered.tag & 1`）→ 进入 4；否则非 `Photomode(0x13)` → `RequestAppModeChange(None)`
+///    + `ToolSelectionCancelled`；返回。
+/// 4. 判别 < 6，或 Terrain 悬停：注册 `edit_focus_canvas` 控件；right_click `just_pressed`
+///    → 对象选取（`raycast_simple` mask 0x3f43，tag 0x0c 写 `EvRightClickedAutoClutter`，
+///    地形比几何近且悬停 tag==1 → 选地形）→ `RequestAppModeChange`（点同一对象 = 取消选中，见
+///    `edit_focus_toggle_native_tag`）+ 选中地形时 `NotifyHintSystemTerrain{tag:2}`。
+/// 5. 判别 < 6：画布被点击（`clicked()`）→ `raycast(mask 0xfb)`，未命中或命中不可聚焦的 tag
+///    （6/7/10/11，或解析为 None 的装饰物）→ `RequestAppModeChange(None)`；随后 `Editing(Wall|Roof)`
+///    每帧写 `OutlineWallCmd{wall, strength 1.0, kind 2}`。
+#[allow(clippy::too_many_arguments)]
+pub fn ui_edit_focus(
     mode: bevy_ecs::prelude::Res<AppMode>,
-    actions: Option<bevy_ecs::prelude::Res<crate::input::action_set::MainActionSet>>,
-    ui: Option<bevy_ecs::prelude::Res<crate::systems::ui::resources::ui_state::UiState>>,
-    navigation: Option<
-        bevy_ecs::prelude::Res<crate::systems::ui::resources::widget_params::UiNavState>,
+    ui: bevy_ecs::prelude::Res<crate::systems::ui::resources::ui_state::UiState>,
+    navigation: bevy_ecs::prelude::Res<crate::systems::ui::resources::widget_params::UiNavState>,
+    actions: bevy_ecs::prelude::Res<crate::input::action_set::ActionSetStates>,
+    mut request: bevy_ecs::event::EventWriter<crate::systems::mode_manager::RequestAppModeChange>,
+    mut cancelled: bevy_ecs::event::EventWriter<ToolSelectionCancelled>,
+    mut outline: bevy_ecs::event::EventWriter<crate::systems::wall::structure_outline::OutlineWallCmd>,
+    camera: bevy_ecs::prelude::Res<crate::resources::mouse_terrain_raycast::CameraCursorRay>,
+    raycast: bevy_ecs::prelude::Res<crate::systems::collision::world::RaycastWorld>,
+    walls: bevy_ecs::prelude::ResMut<crate::resources::walls::public_walls::PublicWalls>,
+    decorators: bevy_ecs::prelude::Res<DecoratorStorage>,
+    mut autoclutter: bevy_ecs::event::EventWriter<
+        crate::systems::ui_clutter::rmb_autoclutter::EvRightClickedAutoClutter,
     >,
-    camera: Option<
-        bevy_ecs::prelude::Res<crate::resources::mouse_terrain_raycast::CameraCursorRay>,
-    >,
-    collision: Option<bevy_ecs::prelude::Res<crate::systems::collision::world::RaycastWorld>>,
-    hovered: bevy_ecs::prelude::Res<
-        crate::systems::terrain::terrain_hover_idx::HoveredTerrainStrokeId,
-    >,
-    cursor: Option<
+    history: bevy_ecs::prelude::Res<crate::resources::history::History>,
+    (hovered, cursor, mut hint_terrain, mut origin): (
+        bevy_ecs::prelude::Res<crate::systems::terrain::terrain_hover_idx::HoveredTerrainStrokeId>,
         bevy_ecs::prelude::Res<crate::resources::cursor_terrain_raycast::CursorTerrainRaycast>,
-    >,
-    mut requests: bevy_ecs::event::EventWriter<crate::systems::mode_manager::RequestAppModeChange>,
-    mut hints: bevy_ecs::event::EventWriter<crate::resources::onboarding::NotifyHintSystemTerrain>,
+        bevy_ecs::event::EventWriter<crate::resources::onboarding::NotifyHintSystemTerrain>,
+        bevy_ecs::system::Local<TerrainFocusModeOrigin>,
+    ),
 ) {
+    use crate::systems::collision::world::RAYCAST_WORLD_RESULT_MISS;
+    use crate::systems::mode_manager::RequestAppModeChange;
     use crate::systems::ui::resources::widget_params::{UiSounds, WidgetParams, WidgetVolumeShape};
-    let (Some(actions), Some(ui), Some(navigation), Some(camera), Some(collision), Some(cursor)) =
-        (actions, ui, navigation, camera, collision, cursor)
-    else {
-        return;
-    };
-    if !terrain_focus_input_enabled(*mode, &navigation, &actions, &hovered) {
+    use crate::systems::wall::structure_outline::OutlineWallCmd;
+
+    let none = AppMode::Editing(EditSubject::None);
+    let tag = mode.native_tag();
+
+    // 1. 0x140977250..0x140977426。
+    match *mode {
+        AppMode::Editing(EditSubject::Wall(id)) | AppMode::Editing(EditSubject::Roof(id)) => {
+            // 0x1409772d9：`PublicWalls::get`（内联断言 simplified_curve_2d.is_valid()）。
+            if walls.get(WallId(id)).is_none() {
+                request.write(RequestAppModeChange(none));
+                return;
+            }
+        }
+        AppMode::Editing(EditSubject::DecoClutter { decorator_id })
+        | AppMode::Editing(EditSubject::StairPoint { decorator_id }) => {
+            // 0x140977281：`cmp 0,[history+0x30]; jno` —— 仅 niche（未在记录）时校验。
+            if !history.is_recording()
+                && decorators
+                    .lookup_decorator_info(DecoratorId(decorator_id))
+                    .is_none()
+            {
+                request.write(RequestAppModeChange(none));
+                return;
+            }
+        }
+        _ => {}
+    }
+
+    // 2. 0x140977429。
+    origin.0 = tag == 10;
+    if navigation.focus.is_none() && actions.digital[CANCEL_SLOT].just_pressed() {
+        request.write(RequestAppModeChange(none));
+        if tag >= 6 {
+            cancelled.write(ToolSelectionCancelled);
+        }
         return;
     }
-    // B @140977467..504: actual edit_focus_canvas with volume tag5, max
-    // distance in size.x, empty sounds and occlude_by_world byte0.
-    ui.add(
+
+    let right_click = actions.digital[RIGHT_CLICK_SLOT];
+
+    // 3. 工具模式（0x1409776ae）。
+    if tag >= 6 {
+        if tag == 10 && terrain_focus_input_enabled(*mode, &navigation, &actions, &hovered) {
+            // T2[just_pressed] + `test byte [hovered],1` → 0x140977467。
+        } else {
+            if right_click.just_pressed() && tag != 0x13 {
+                request.write(RequestAppModeChange(none));
+                cancelled.write(ToolSelectionCancelled);
+            }
+            return;
+        }
+    }
+
+    // 4. 0x140977467：画布控件，随后按 right_click 相位（T4）分派。
+    let canvas = ui.add(
         "edit_focus_canvas",
         WidgetParams::new_with_sounds_and_volume(
             UiSounds::empty(),
@@ -310,13 +408,164 @@ pub fn ui_edit_focus_terrain(
         )
         .occlude_by_world(false),
     );
-    let geometry = collision.raycast_simple(camera.origin, camera.dir, 0x3f43);
-    if let Some(stroke_id) = terrain_focus_target(&camera, &cursor, &hovered, &geometry) {
-        // B @140977ce6..d75: request first, then terrain notification byte2.
-        requests.write(crate::systems::mode_manager::RequestAppModeChange(
-            AppMode::Editing(EditSubject::Terrain(stroke_id)),
-        ));
-        hints.write(crate::resources::onboarding::NotifyHintSystemTerrain { tag: 2 });
+    if right_click.just_pressed() {
+        focus_attempt(
+            &mode,
+            &camera,
+            &raycast,
+            &walls,
+            &decorators,
+            &hovered,
+            &cursor,
+            &origin,
+            &mut request,
+            &mut autoclutter,
+            &mut hint_terrain,
+        );
+    }
+
+    // 5. 0x140977536：只有判别 < 6 才处理点击。
+    if tag >= 6 {
+        return;
+    }
+    if canvas.clicked() {
+        // 0x14097758b..0x140977593：`Rapier::raycast`（max_toi = f32::MAX, mask 0xfb）。
+        let hit = raycast.raycast(camera.origin, camera.dir, 0xfb);
+        if hit.discriminant == RAYCAST_WORLD_RESULT_MISS {
+            request.write(RequestAppModeChange(none));
+        } else {
+            // stack90 跳表 0x142ab7438，下标 = 句柄首字节。
+            match hit.handle[0] as u8 {
+                0 | 1 | 2 | 8 | 9 | 13 | 14 => {}
+                6 | 7 | 10 | 11 => {
+                    request.write(RequestAppModeChange(none));
+                }
+                4 | 5 => {
+                    // 0x140977e11：`DecoratorStorage::decorator_info` 缺失或 ty 0x38..=0x3d → None。
+                    if geo_src_to_edit_subject_w_deco_clutter(
+                        GeoSource::from_hit_handle(hit.handle),
+                        Some(&decorators),
+                    ) == EditSubject::None
+                    {
+                        request.write(RequestAppModeChange(none));
+                    }
+                }
+                3 | 12 | 15 | 16 => geo_src_unreachable(),
+                other => unreachable!("RaycastWorldResult handle tag {other}"),
+            }
+        }
+    }
+    // 0x140977640：被编辑的是墙或屋顶时每帧写轮廓命令。
+    if let AppMode::Editing(EditSubject::Wall(id)) | AppMode::Editing(EditSubject::Roof(id)) = *mode {
+        outline.write(OutlineWallCmd {
+            wall: WallId(id),
+            strength: 1.0,
+            kind: 2,
+        });
+    }
+}
+
+/// `digital[18]` = `ui_cancel`、`digital[1]` = `right_click`（`DIGITAL_NAMES`）；原版读
+/// `ActionSetStates+0x90` / `+0x08`。
+const CANCEL_SLOT: usize = 18;
+const RIGHT_CLICK_SLOT: usize = 1;
+
+/// 0x14097770d..0x140977d75：right_click 按下那一帧的对象选取与模式请求。
+#[allow(clippy::too_many_arguments)]
+fn focus_attempt(
+    mode: &AppMode,
+    camera: &crate::resources::mouse_terrain_raycast::CameraCursorRay,
+    raycast: &crate::systems::collision::world::RaycastWorld,
+    walls: &crate::resources::walls::public_walls::PublicWalls,
+    decorators: &DecoratorStorage,
+    hovered: &crate::systems::terrain::terrain_hover_idx::HoveredTerrainStrokeId,
+    cursor: &crate::resources::cursor_terrain_raycast::CursorTerrainRaycast,
+    origin: &TerrainFocusModeOrigin,
+    request: &mut bevy_ecs::event::EventWriter<crate::systems::mode_manager::RequestAppModeChange>,
+    autoclutter: &mut bevy_ecs::event::EventWriter<
+        crate::systems::ui_clutter::rmb_autoclutter::EvRightClickedAutoClutter,
+    >,
+    hint_terrain: &mut bevy_ecs::event::EventWriter<
+        crate::resources::onboarding::NotifyHintSystemTerrain,
+    >,
+) {
+    use crate::systems::mode_manager::RequestAppModeChange;
+
+    let geometry = raycast.raycast_simple(camera.origin, camera.dir, 0x3f43);
+    // `ebx`（候选类型）与 `r10d` / `r11`（u32 / u64 载荷）。
+    let (mut kind, mut id32, mut id64) = (0u32, 0u32, 0u64);
+    if !geometry.is_miss() {
+        if geometry.handle[0] as u8 == 0x0c {
+            // 0x1409777fc：自动杂物，payload = 句柄 +8 的 u64；候选类型保持 None。
+            autoclutter.write(
+                crate::systems::ui_clutter::rmb_autoclutter::EvRightClickedAutoClutter {
+                    entity: geometry.handle[1],
+                },
+            );
+        } else {
+            // 0x14097796f：GeoSource 跳表 0x142ab73dc（含 4/5 的装饰物解析）。
+            match geo_src_to_edit_subject_w_deco_clutter(
+                GeoSource::from_hit_handle(geometry.handle),
+                Some(decorators),
+            ) {
+                EditSubject::None => {}
+                EditSubject::Wall(id) => (kind, id64) = (1, id),
+                EditSubject::Roof(id) => (kind, id64) = (2, id),
+                EditSubject::DecoClutter { decorator_id } => (kind, id32) = (3, decorator_id),
+                EditSubject::StairPoint { decorator_id } => (kind, id32) = (4, decorator_id),
+                EditSubject::Terrain(id) => (kind, id32) = (5, id),
+            }
+        }
+    }
+    // 0x140977a75：地形比几何近且悬停 tag == 1 → 候选改为地形。
+    if let Some(stroke) = terrain_focus_target(camera, cursor, hovered, &geometry) {
+        kind = 5;
+        id32 = stroke;
+    }
+
+    // r15d：当前模式判别；Terrain 工具模式下原版在 0x14097772d 把它清零。
+    let current = mode.native_tag();
+    let current_kind = if current == 10 { 0 } else { current };
+    let (cur32, cur64) = match *mode {
+        AppMode::Editing(EditSubject::Wall(id)) | AppMode::Editing(EditSubject::Roof(id)) => (0, id),
+        AppMode::Editing(EditSubject::DecoClutter { decorator_id })
+        | AppMode::Editing(EditSubject::StairPoint { decorator_id }) => (decorator_id, 0),
+        AppMode::Editing(EditSubject::Terrain(id)) => (id, 0),
+        _ => (0, 0),
+    };
+
+    if current_kind == kind {
+        // r15eq 跳表 0x142ab7420：同类型时比较 id。
+        let same = match current_kind {
+            0 => true,
+            1 | 2 => cur64 == id64,
+            3 | 4 | 5 => cur32 == id32,
+            other => unreachable!("current_kind {other}"),
+        };
+        if same {
+            let tag = if current_kind == 5 && origin.0 { 0xa } else { 0 };
+            request.write(RequestAppModeChange(app_mode_from_native(tag, id32, id64)));
+            return;
+        }
+    }
+
+    // 0x140977b4d：类型或 id 不同。
+    let wall_candidate_missing = (kind == 1 || kind == 2) && walls.get(WallId(id64)).is_none();
+    let mut kind_after = kind;
+    let new_tag = if wall_candidate_missing {
+        // 0x140977c22：候选墙已不存在 → None（当前为地形焦点时按 origin 回到 Terrain）。
+        kind_after = 0;
+        if current_kind == 5 && origin.0 { 0xa } else { 0 }
+    } else if current_kind == 5 && kind == 0 {
+        // 0x140977c60..0x140977c71：当前在地形焦点且候选为 None。
+        if origin.0 { 0xa } else { 0 }
+    } else {
+        kind
+    };
+    request.write(RequestAppModeChange(app_mode_from_native(new_tag, id32, id64)));
+    // 0x140977d08：候选是地形 → NotifyHintSystemTerrain 的 byte2。
+    if kind_after == 5 {
+        hint_terrain.write(crate::resources::onboarding::NotifyHintSystemTerrain { tag: 2 });
     }
 }
 
@@ -691,10 +940,7 @@ mod terrain_focus_producer_tests {
 
     #[test]
     fn terrain_right_click_uses_real_query_and_request_consumer() {
-        use crate::resources::{
-            gui::TimeOfDayScreen,
-            history::transactions::{HistoryTransactions, ObservedHistoryLedger},
-        };
+        use crate::resources::gui::TimeOfDayScreen;
         let mut world = World::new();
         world.insert_resource(AppMode::Terrain);
         let mut actions = MainActionSet::default();
@@ -714,16 +960,8 @@ mod terrain_focus_producer_tests {
             ..Default::default()
         });
         world.init_resource::<Events<NotifyHintSystemTerrain>>();
-        world.insert_resource(HistoryTransactions::<(), ()>::from_observed(
-            ObservedHistoryLedger {
-                entries: vec![],
-                cursor: -1,
-                undo_anchor: -1,
-                resolved_snapshots: vec![],
-                observed_count_58: 0,
-                mutation_nonce: 0,
-            },
-        ));
+        world.insert_resource(crate::resources::history::History::<crate::resources::history::MaybePendingSnapshotId>::empty_glade());
+        insert_edit_focus_resources(&mut world);
         world.insert_resource(TimeOfDayScreen::default());
         world.insert_resource(mode_manager::ModeManagerUiContext {
             probe: mode_manager::EscMenuProbe {
@@ -734,8 +972,8 @@ mod terrain_focus_producer_tests {
             esc_menu_canvas_id: 55,
         });
         let mut schedule = Schedule::default();
-        mode_manager::configure_mode_manager::<(), ()>(&mut world, &mut schedule, false);
-        schedule.add_systems(ui_edit_focus_terrain.before(mode_manager::mode_manager::<(), ()>));
+        mode_manager::configure_mode_manager::<crate::resources::history::EditType, crate::resources::history::MaybePendingSnapshotId>(&mut world, &mut schedule, false);
+        schedule.add_systems(ui_edit_focus.before(mode_manager::mode_manager::<crate::resources::history::EditType, crate::resources::history::MaybePendingSnapshotId>));
         schedule.run(&mut world);
         assert_eq!(
             *world.resource::<AppMode>(),
@@ -770,5 +1008,160 @@ mod terrain_focus_producer_tests {
         world.resource_mut::<MainActionSet>().digital[1].phase = DigitalActionPhase::Held;
         schedule.run(&mut world);
         assert_eq!(world.resource::<Events<NotifyHintSystemTerrain>>().len(), 1);
+    }
+
+    /// Resources the full 17-parameter system needs besides the ones each test sets itself.
+    fn insert_edit_focus_resources(world: &mut World) {
+        use crate::systems::wall::structure_outline::OutlineWallCmd;
+        world.init_resource::<crate::resources::walls::public_walls::PublicWalls>();
+        world.init_resource::<DecoratorStorage>();
+        world.init_resource::<Events<ToolSelectionCancelled>>();
+        world.init_resource::<Events<OutlineWallCmd>>();
+        world.init_resource::<Events<crate::systems::ui_clutter::rmb_autoclutter::EvRightClickedAutoClutter>>();
+        world.init_resource::<Events<RequestAppModeChange>>();
+        world.init_resource::<Events<NotifyHintSystemTerrain>>();
+    }
+
+    struct Rig {
+        world: World,
+        schedule: Schedule,
+    }
+    impl Rig {
+        fn new(mode: AppMode) -> Self {
+            let mut world = World::new();
+            world.insert_resource(mode);
+            world.insert_resource(MainActionSet::default());
+            world.insert_resource(UiNavState::default());
+            world.insert_resource(UiState::at_startup());
+            world.insert_resource(CameraCursorRay { origin: Vec3::ZERO, dir: Vec3::Z });
+            world.insert_resource(RaycastWorld::new());
+            world.insert_resource(HoveredTerrainStrokeId { tag: 0, id: -1 });
+            world.insert_resource(CursorTerrainRaycast::default());
+            world.insert_resource(crate::resources::history::History::<crate::resources::history::MaybePendingSnapshotId>::empty_glade());
+            insert_edit_focus_resources(&mut world);
+            let mut schedule = Schedule::default();
+            schedule.add_systems(ui_edit_focus);
+            Self { world, schedule }
+        }
+        fn run(&mut self) {
+            self.schedule.run(&mut self.world);
+        }
+        fn press(&mut self, slot: usize) {
+            self.world.resource_mut::<MainActionSet>().digital[slot].phase = DigitalActionPhase::JustPressed;
+        }
+        fn requests(&mut self) -> Vec<AppMode> {
+            self.world.resource_mut::<Events<RequestAppModeChange>>().drain().map(|r| r.0).collect()
+        }
+        fn cancelled(&mut self) -> usize {
+            self.world.resource_mut::<Events<ToolSelectionCancelled>>().drain().count()
+        }
+    }
+    const NONE: AppMode = AppMode::Editing(EditSubject::None);
+
+    /// 1. 被编辑的墙/屋顶已不存在 → Editing(None) 并立即返回（后续取消键也不会再写事件）。
+    #[test]
+    fn missing_wall_or_roof_subject_requests_none_and_returns() {
+        for mode in [AppMode::Editing(EditSubject::Wall(7)), AppMode::Editing(EditSubject::Roof(7))] {
+            let mut rig = Rig::new(mode);
+            rig.press(CANCEL_SLOT);
+            rig.run();
+            assert_eq!(rig.requests(), [NONE], "{mode:?}");
+            assert_eq!(rig.cancelled(), 0, "提前返回，没有走取消键分支");
+        }
+    }
+
+    /// 1. 装饰物类焦点：仅在 History 未记录时才校验；缺失 → None。
+    #[test]
+    fn missing_decorator_subject_requests_none_unless_history_is_recording() {
+        for mode in [
+            AppMode::Editing(EditSubject::DecoClutter { decorator_id: 5 }),
+            AppMode::Editing(EditSubject::StairPoint { decorator_id: 5 }),
+        ] {
+            let mut rig = Rig::new(mode);
+            rig.run();
+            assert_eq!(rig.requests(), [NONE], "{mode:?}");
+        }
+    }
+
+    /// 2. ui_cancel（digital[18]）且无 UI 焦点：编辑模式只写 Editing(None)；工具模式再写
+    /// ToolSelectionCancelled；有 UI 焦点时整条被跳过。
+    #[test]
+    fn ui_cancel_leaves_edit_mode_and_cancels_tools() {
+        let mut rig = Rig::new(AppMode::Editing(EditSubject::None));
+        rig.press(CANCEL_SLOT);
+        rig.run();
+        assert_eq!(rig.requests(), [NONE]);
+        assert_eq!(rig.cancelled(), 0);
+
+        let mut rig = Rig::new(AppMode::Path);
+        rig.press(CANCEL_SLOT);
+        rig.run();
+        assert_eq!(rig.requests(), [NONE]);
+        assert_eq!(rig.cancelled(), 1);
+
+        let mut rig = Rig::new(AppMode::Path);
+        rig.press(CANCEL_SLOT);
+        rig.world.resource_mut::<UiNavState>().focus = crate::systems::ui::resources::widget_params::UiFocus::TOOLBAR;
+        rig.run();
+        assert!(rig.requests().is_empty(), "UI 持有焦点时取消键不属于世界");
+    }
+
+    /// Repeating 相位按 `timer <= 0` 才算 just_pressed（FUN_14093fa90 的 ucomiss 分支）。
+    #[test]
+    fn repeating_cancel_needs_a_non_positive_timer() {
+        let mut rig = Rig::new(AppMode::Path);
+        rig.world.resource_mut::<MainActionSet>().digital[CANCEL_SLOT] =
+            crate::input::action_set::DigitalActionState { phase: DigitalActionPhase::Repeating, timer_seconds: 0.1 };
+        rig.run();
+        assert!(rig.requests().is_empty());
+        rig.world.resource_mut::<MainActionSet>().digital[CANCEL_SLOT].timer_seconds = 0.0;
+        rig.run();
+        assert_eq!(rig.requests(), [NONE]);
+    }
+
+    /// 3. 工具模式 right_click：取消工具（Photomode 例外，Terrain 无悬停笔画时同样取消）。
+    #[test]
+    fn right_click_in_a_tool_mode_cancels_it_except_photomode() {
+        for (mode, cancels) in [
+            (AppMode::Path, true),
+            (AppMode::Terrain, true),
+            (AppMode::Water, true),
+            (AppMode::Photomode, false),
+        ] {
+            let mut rig = Rig::new(mode);
+            rig.press(RIGHT_CLICK_SLOT);
+            rig.run();
+            assert_eq!(rig.requests(), if cancels { vec![NONE] } else { vec![] }, "{mode:?}");
+            assert_eq!(rig.cancelled(), usize::from(cancels), "{mode:?}");
+        }
+        // 没按 right_click：什么也不发。
+        let mut rig = Rig::new(AppMode::Path);
+        rig.run();
+        assert!(rig.requests().is_empty());
+    }
+
+    /// 4. 编辑模式下 right_click 打到空处，当前焦点是 None → 同类型同 id，仍写 Editing(None)。
+    /// 当前焦点是墙而点到空处 → 候选类型 None，写 Editing(None)。
+    #[test]
+    fn right_click_on_nothing_requests_none() {
+        let mut rig = Rig::new(NONE);
+        rig.press(RIGHT_CLICK_SLOT);
+        rig.run();
+        assert_eq!(rig.requests(), [NONE]);
+        assert_eq!(rig.world.resource::<Events<NotifyHintSystemTerrain>>().len(), 0);
+    }
+
+    /// 编辑模式每帧注册画布；Wall/Roof 焦点每帧写 OutlineWallCmd{wall, 1.0, kind 2}，且需要墙存在。
+    #[test]
+    fn edit_modes_register_the_canvas_every_frame() {
+        let mut rig = Rig::new(NONE);
+        rig.run();
+        let ui = rig.world.resource::<UiState>();
+        let widget = ui.widget(WidgetId::from_name("edit_focus_canvas")).unwrap();
+        assert_eq!(widget.volume.tag, 5);
+        // 工具模式不注册（除非 Terrain 悬停笔画）。
+        let mut rig = Rig::new(AppMode::Path);
+        rig.run();
+        assert!(rig.world.resource::<UiState>().widget(WidgetId::from_name("edit_focus_canvas")).is_none());
     }
 }

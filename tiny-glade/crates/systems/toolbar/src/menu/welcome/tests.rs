@@ -129,7 +129,15 @@ fn welcome_desktop_real_template_confirm_consumer_and_profile_contract() {
     let profile = app.world().resource::<GameProfile>();
     assert!(profile.welcome_was_dismissed());
     assert!(!profile.tutorial);
-    assert_eq!(ron::to_string(profile).unwrap(), persisted_before);
+    // Original +0x206 is `welcome_message_read`, the 19th serialized tutorial field (serializer
+    // 140a65fe0): dismissal changes exactly that persisted byte and nothing else.
+    let persisted_after = ron::to_string(profile).unwrap();
+    assert_eq!(
+        persisted_after,
+        persisted_before.replacen("welcome_message_read:false", "welcome_message_read:true", 1)
+    );
+    let reloaded: GameProfile = ron::from_str(&persisted_after).unwrap();
+    assert!(reloaded.welcome_was_dismissed(), "dismissal must survive a save/reload");
     assert!(app.world().resource::<EscMenuState>().is_closed());
     assert_eq!(save_count(&mut app), 1);
     app.update();

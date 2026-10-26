@@ -1,0 +1,300 @@
+   Compiling serde v1.0.200
+   Compiling windows-sys v0.48.0
+   Compiling cc v1.9.0
+   Compiling winapi v0.3.9
+   Compiling crossbeam-utils v0.8.12
+   Compiling hashbrown v0.15.2
+   Compiling ahash v0.8.11
+   Compiling slotmap v1.1.1
+   Compiling num-traits v0.2.19
+   Compiling hashbrown v0.12.3
+   Compiling fastrand v2.3.0
+   Compiling bevy_platform v0.16.0
+   Compiling futures-lite v2.3.0
+   Compiling indexmap v1.9.1
+   Compiling hashbrown v0.14.5
+   Compiling crossbeam-queue v0.3.8
+   Compiling derive_more v1.0.0
+   Compiling async-task v4.7.1
+   Compiling zeno v0.2.2
+   Compiling fontdb v0.16.2
+   Compiling bevy_utils v0.16.0
+   Compiling bevy_tasks v0.16.0
+   Compiling euclid v0.22.9
+   Compiling hashlink v0.8.4
+   Compiling ring v0.16.20
+   Compiling swash v0.1.16
+   Compiling indexmap v2.7.1
+   Compiling concurrent-queue v2.5.0
+   Compiling variadics_please v1.1.0
+   Compiling etagere v0.2.10
+   Compiling yaml-rust2 v0.8.0
+   Compiling miniz_oxide v0.5.4
+   Compiling blake3 v1.5.3
+   Compiling bitflags v2.9.0
+   Compiling serde_json v1.0.85
+   Compiling rustybuzz v0.12.1
+   Compiling ron v0.8.1 (https://github.com/PounceLight/ron?rev=2787d8c#2787d8c0)
+   Compiling arc-swap v1.7.1
+   Compiling bevy_ecs v0.16.0
+   Compiling flate2 v1.0.24
+   Compiling mio v0.8.11
+   Compiling known-folders v1.0.1
+   Compiling rustls v0.21.7
+   Compiling winreg v0.50.0
+   Compiling serde_urlencoded v0.7.1
+   Compiling paths v0.1.0 (D:\game\tiny-glade\crates\paths)
+   Compiling tokio v1.37.0
+   Compiling parking_lot_core v0.9.3
+   Compiling parking_lot v0.12.1
+   Compiling sct v0.7.0
+   Compiling rustls-webpki v0.101.6
+   Compiling lang-lib v0.1.0 (D:\game\tiny-glade\crates\lang-lib)
+   Compiling cosmic-text v0.11.2 (https://github.com/PounceLight/cosmic-text.git?rev=3da2a14ea3d063875fdc55695431e74405302b0f#3da2a14e)
+   Compiling zip v0.6.6
+   Compiling tabloid v0.1.0 (D:\game\tiny-glade\crates\tabloid)
+   Compiling tg-history v0.1.0 (D:\game\tiny-glade\crates\tg-history)
+   Compiling tokio-util v0.7.8
+   Compiling h2 v0.3.19
+   Compiling tokio-rustls v0.24.1
+   Compiling motomoto v0.1.0 (D:\game\tiny-glade\crates\motomoto)
+   Compiling hyper v0.14.28
+   Compiling tg-text v0.1.0 (D:\game\tiny-glade\crates\tg-text)
+   Compiling hyper-rustls v0.24.0
+   Compiling reqwest v0.11.22
+   Compiling tg-theme v0.1.0 (D:\game\tiny-glade\crates\tg-theme)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 33.83s
+     Running unittests src\lib.rs (target\debug\deps\lang_lib-58d61663c40b2f12.exe)
+
+running 12 tests
+test diagnostics::tests::a_panicking_logger_does_not_disable_future_diagnostics ... ok
+test language_library::tests::pack_strings_are_reclaimed_after_last_reader ... ok
+test language_library::tests::flat_keys_and_owned_missing_cache ... ok
+test language_library::tests::schema_errors_return_errors ... ok
+test missing_cache::tests::missing_cache_is_bounded_and_cached_lookups_reuse_allocation ... ok
+test service::tests::explicit_fallback_policy_and_snapshot_cache_lifetime ... ok
+test service::tests::logger_can_reenter_lookup_and_load_without_recursion_or_deadlock ... ok
+test service::tests::transactional_failure_preserves_old_snapshot_and_readers ... ok
+test service::tests::malformed_requested_pack_falls_back_but_malformed_default_returns_error ... ok
+test service::tests::write_and_replacement_errors_preserve_old_file_and_cleanup ... ok
+test service::tests::preference_roundtrip_trimming_and_invalid_identifiers ... ok
+test service::tests::concurrent_loads_commit_complete_snapshots_and_matching_preferences ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.51s
+
+     Running tests\global_configuration.rs (target\debug\deps\global_configuration-98c380dad85e4698.exe)
+
+running 2 tests
+test global_child ... ok
+test global_configuration_in_subprocesses ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running unittests src\lib.rs (target\debug\deps\motomoto-84964847f803fbcf.exe)
+
+running 12 tests
+test tests::partial_writes_preserve_complete_header_and_payload ... ok
+test tests::streamed_chunks_match_wire_format_and_borrow_payloads ... ok
+test tests::every_truncation_and_extreme_length_returns_one_terminal_error ... ok
+test tests::tags_pack_utf8_bytes_and_truncate ... ok
+test writer::tests::checked_positions_reject_overflow_and_backward_stream ... ok
+test writer::tests::every_io_failure_poisoned_writer_without_followup_io ... ok
+test writer::tests::flush_keeps_chunk_open_until_explicit_finish ... ok
+test writer::tests::forgotten_chunk_cannot_be_reported_as_complete ... ok
+test writer::tests::actual_bufwriter_roundtrip_nonzero_start ... ok
+test writer::tests::append_only_files_cannot_silently_corrupt_backfilled_lengths ... ok
+test writer::tests::interrupted_payload_writes_retry_and_write_zero_is_terminal ... ok
+test writer::tests::actual_file_roundtrip_nonzero_start ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (target\debug\deps\paths-b1c763941e104829.exe)
+
+running 6 tests
+test tests::platform_policies_and_missing_environment ... ok
+test tests::invalid_injected_path_fails_before_creating_directories ... ok
+test tests::non_unicode_windows_profile_is_supported ... ok
+test tests::failed_initialization_can_retry_and_reinitialization_has_no_side_effects ... ok
+test tests::concurrent_initialization_runs_one_builder ... ok
+test tests::account_paths_and_partial_failure ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests\global_initialization.rs (target\debug\deps\global_initialization-12f58e03117c084d.exe)
+
+running 2 tests
+test global_child ... ok
+test global_initialization_in_subprocess ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src\lib.rs (target\debug\deps\tabloid-1fc2194a21e907bf.exe)
+
+running 8 tests
+test tests::independent_boundaries_and_stable_readers ... ok
+test tests::retired_states_are_dropped_after_unlocking ... ok
+test tests::cloned_subscribers_share_take ... ok
+test tests::failed_preparation_drops_candidates_after_unlocking ... ok
+test tests::each_pending_batch_is_applied_once ... ok
+test tests::exhaustion_is_transactional ... ok
+test tests::abandoned_subscription_and_batch_are_reclaimed ... ok
+test tests::concurrent_consumption_preserves_every_delta_once ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests\dirty_tiles.rs (target\debug\deps\dirty_tiles-7d524e140877581a.exe)
+
+running 4 tests
+test dirty_grid_batches_or_accumulate_per_subscriber ... ok
+test cloned_subscription_shares_take_state ... ok
+test held_grid_reader_is_a_nonblocking_immutable_snapshot ... ok
+test late_subscriber_only_receives_subsequent_batches ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (target\debug\deps\tg_history-a59a789c95ec0cbf.exe)
+
+running 9 tests
+test tests::preserves_large_ids_unknown_commands_and_cursor_tail ... ok
+test tests::decodes_the_four_observed_roof_variants ... ok
+test tests::exposes_entry_sidecars_and_snapshot_refs_without_replay_assumptions ... ok
+test tests::invalid_enum_shape_returns_pointer ... ok
+test tests::summarizing_does_not_force_lazy_roof_decoding ... ok
+test tests::snapshot_selection_handles_resolution_ties_duplicates_and_extreme_indices ... ok
+test tests::borrowed_views_preserve_identity_and_escape_unknown_tag_pointers ... ok
+test tests::recognizes_observed_command_families_and_keeps_future_tags ... ok
+test tests::validates_structure_and_integer_boundaries_with_located_errors ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src\lib.rs (target\debug\deps\tg_text-29ed624fbaa9588e.exe)
+
+running 8 tests
+test color::tests::editor_colors_and_opacity_share_the_shader_channel_order ... ok
+test renderer::atlas::tests::rejects_foreign_stale_and_modified_handles_without_touching_valid_prefix ... ok
+test renderer::atlas::tests::grows_within_budget_then_reports_exhaustion ... ok
+test renderer::atlas::tests::eviction_rejects_reused_allocator_ids_and_u64_frames_do_not_wrap ... ok
+test validation::tests::batch_validation_rejects_malformed_packets_uploads_and_unbounded_targets ... ok
+test renderer::tests::rejected_callback_and_append_preserve_frame_data ... ok
+test renderer::tests::empty_shape_rect_is_solid_and_invalid_inputs_leave_the_stream_unchanged ... ok
+test renderer::tests::validates_configuration_scaling_and_counter_exhaustion ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\behavior.rs (target\debug\deps\behavior-01234ddc9745132e.exe)
+
+running 3 tests
+test shape_encoding_preserves_packets_and_rolls_back_failures ... ok
+test shape_configuration_and_resolver_order_are_explicit ... ok
+test font_configuration_validates_roles_and_scaled_metrics ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\followup_contract.rs (target\debug\deps\followup_contract-8f291fe59216bcfe.exe)
+
+running 4 tests
+test role_round_trip_and_metric_updates_use_current_role ... ok
+test missing_roles_and_invalid_numbers_return_errors_without_mutation ... ok
+test metrics_preserve_editor_state_and_take_discards_old_actions ... ok
+test layout_and_direct_editor_mutation_invalidate_and_missing_fonts_return_errors ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\gpu_pipeline.rs (target\debug\deps\gpu_pipeline-2fa7aac704be528f.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests\text_pipeline.rs (target\debug\deps\text_pipeline-2fd2c2884c130914.exe)
+
+running 3 tests
+test bounded_growth_requires_redraw_and_never_emits_old_generation ... ok
+test real_font_warm_cache_and_same_frame_reset_rebuild ... ok
+test renderer_revisions_are_distinct_and_font_errors_are_recoverable ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src\lib.rs (target\debug\deps\tg_theme-d988181163992c32.exe)
+
+running 11 tests
+test model::tests::interval_checks_order_adjustment_and_boundaries ... ok
+test model::tests::content_ids_require_canonical_digest ... ok
+test http::tests::invalid_timeouts_are_rejected_before_building_client ... ok
+test protocol::tests::validation_preserves_order_and_enforces_limits ... ok
+test protocol::tests::invalid_members_reject_the_whole_response ... ok
+test cache::tests::ownership_lock_releases_and_trim_recovers_abandoned_staging ... ok
+test service::tests::clocks_are_sampled_after_io_and_success_resets_backoff ... ok
+test cache::tests::enforces_archive_file_and_total_limits ... ok
+test cache::tests::rejects_directory_payload_and_inconsistent_zip_size ... ok
+test cache::tests::installs_verifies_and_recovers_corrupt_or_extra_contents ... ok
+test cache::tests::rejects_bad_archives_without_publishing_or_leaking_staging ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests\delivery.rs (target\debug\deps\delivery-778730cef573beab.exe)
+
+running 10 tests
+test response_count_and_stream_size_limits_reject_before_package_download ... ok
+test revalidation_directives_override_max_age_and_no_store_discards_validator ... ok
+test dropping_consumed_subscription_wakes_unchanged_worker_and_shutdown_joins ... ok
+test worker_panic_notifies_consumers_and_is_reported_by_shutdown ... ok
+test cached_date_uses_age_and_headerless_304_keeps_refresh_policy ... ok
+test conditional_response_recalculates_boundaries_after_clock_correction ... ok
+test refresh_reuses_package_and_last_overlap_has_half_open_boundaries ... ok
+test failed_selected_package_does_not_starve_other_downloads ... ok
+test rejected_schedule_does_not_commit_etag_and_304_keeps_accepted_data ... ok
+test subscription_expires_active_theme_while_prefetch_is_blocked ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.59s
+
+   Doc-tests lang_lib
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests motomoto
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests paths
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests tabloid
+
+running 1 test
+test crates\tabloid\src\../README.md - (line 41) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+all doctests ran in 0.45s; merged doctests compilation took 0.42s
+   Doc-tests tg_history
+
+running 1 test
+test crates\tg-history\src\lib.rs - (line 43) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+all doctests ran in 0.54s; merged doctests compilation took 0.52s
+   Doc-tests tg_text
+
+running 1 test
+test crates\tg-text\src\../README.md - (line 34) - compile ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.46s; merged doctests compilation took 0.45s
+   Doc-tests tg_theme
+
+running 1 test
+test crates\tg-theme\src\lib.rs - (line 78) - compile ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.84s; merged doctests compilation took 0.83s

@@ -109,13 +109,6 @@ pub fn configure(world: &mut World, schedule: &mut bevy_ecs::schedule::Schedule)
     );
 }
 
-/// NotifyHintSystem* 事件宿主载荷字节 seam（O：native 各 hint_* 读 `事件+8` 载荷字节
-/// 分支展示/完成；country-core 事件为 unit，**载荷字节 U** 未落字段）。本重建以常量 0
-/// （展示路径）建模——完成路径不触发，登记 U 待 core 补载荷字段后替换。
-pub fn event_payload_byte_seam() -> u8 {
-    0
-}
-
 /// 原 B `prompt_rollercoaster`（0x14227bb70）：整批提示事件合并成一个
 /// ScreenCenter 请求。Steam 动作 20 的打包查询是 0x1401；键盘候选取玩家档案
 /// 中的 `ui_confirm`（槽 29，原 GameProfile+0x15c），因此改键后立即生效。

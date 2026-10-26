@@ -130,7 +130,9 @@ fn original_main_prefix_imports_owned_world_resets_indirect_and_builds_luts_once
             continue;
         }
         let name = entry.path().strip_prefix(&root).unwrap().with_extension("");
-        let name = name.to_str().unwrap();
+        // NameHash input uses '/' separators; Windows paths use '\'.
+        let name = name.to_str().unwrap().replace('\\', "/");
+        let name = name.as_str();
         if NameHash::compute(name).0 != 0x6ec9_5f7a_9d9f_0faf {
             continue;
         }

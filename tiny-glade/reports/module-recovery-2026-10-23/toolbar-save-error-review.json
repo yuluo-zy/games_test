@@ -1,0 +1,129 @@
+{
+  "task": "TB-R3 save error chain independent review and repair",
+  "created_at": "2026-10-24T17:17:08.720867+08:00",
+  "status": "implemented_and_bounded_cpu_consumers_passed",
+  "original": {
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "analysis_exe_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "ui": "0x141ec0ce0",
+    "slots": [
+      "0x140fc8100",
+      "0x140fc8530",
+      "0x140fc87b0"
+    ],
+    "error_from": "0x141720490",
+    "pending_retain": "0x14130f900",
+    "unsaved_add": "0x14171ff80",
+    "date_format_slice": "0x142bb4010"
+  },
+  "source_sha256": {
+    "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/save/save_thread.rs": "567a4f268129201ef5b48e0968bfc2772e48423d64622adcd7447add236c4c17",
+    "/Users/yuluo/Desktop/game/tiny-glade/crates/systems/toolbar/src/menu/save_error.rs": "37c330531eeee50c5c89304079b981b5ceaf93aba5c69b89d290086f1be8ef46",
+    "/Users/yuluo/Desktop/game/tiny-glade/crates/systems/toolbar/Cargo.toml": "7b69712ec713be6af5299c09ee01d4ae8e085650f329b57b368df51b7e0c36b6",
+    "/Users/yuluo/Desktop/game/tiny-glade/Cargo.lock": "57ab0932c38ecdec6a2056504fec3695970859798b63f33a3ba93b1ff2db503a",
+    "/Users/yuluo/Desktop/game/tiny-glade/crates/utils/src/local_time.rs": "def3f6f87633441b01a7e5c0d35eeb7109f21bb6cc4cc9044b42fb68c0fa1621"
+  },
+  "asset_sha256": {
+    "/Users/yuluo/Desktop/game/B版本内容/assets/ui/menu/save_error.ron": "0bd5e1aea6a9daf1a6304402b773341e8e4125fb473e7b4f9f20e5356b60f830",
+    "/Users/yuluo/Desktop/game/B版本内容/assets/ui/menu/save_error_resolved.ron": "b14bcce9ddac64e5f9639b0e0de98b81f4a6d3e132ce257a34e4c2f55310fced",
+    "/Users/yuluo/Desktop/game/B版本内容/assets/fonts/table.ron": "0b9b4cd55916b7c4af0dd1322ce5d5330f72cfcb5fa6be1582d60b93961d8834",
+    "/Users/yuluo/Desktop/game/B版本内容/assets/lang/en-US.yml": "ddd2eadfdf54266938222f4fa4c5090f76ddbe1a01573594aadd99fd99c30a93"
+  },
+  "candidate_binaries": {
+    "country_core-d26da56c989ea968": {
+      "sha256": "1bd6fee62b7799ef8634b1e40c07bc1a91a1f122c7fca4634645b0b6715c4599",
+      "size": 120388400,
+      "mtime_ns": 1792833985097042969
+    },
+    "toolbar-915c23623f7db7e1": {
+      "sha256": "92236bf7725e72c447d7f4a6be887f01ce362f579320aed589ce0849f2b5b31a",
+      "size": 50026056,
+      "mtime_ns": 1792833591630453361
+    }
+  },
+  "verification": [
+    {
+      "command": "cargo test -p country-core --lib systems::save::save_thread:: --offline",
+      "exit_code": 0,
+      "passed": 16,
+      "new_contract_tests_included": 6,
+      "seconds_running_tests": 3.16,
+      "log": "toolbar-save-error-review-worker-final.log",
+      "rerun_reason": "shared test executable was relinked by another owner; reran same 16 tests to bind current executable hash"
+    },
+    {
+      "command": "target/debug/deps/country_core-d26da56c989ea968 --exact systems::save::tests::unsaved_file_list_uses_the_native_0x80_byte_entry",
+      "exit_code": 0,
+      "passed": 1,
+      "meaning": "compatibility path marker only; not pending ShadowFile ABI proof",
+      "log": "toolbar-save-error-review-marker-compat.log"
+    },
+    {
+      "command": "cargo test -p toolbar --lib menu::save_error --offline --no-run",
+      "exit_code": 0,
+      "log": "toolbar-save-error-review-final-build.log"
+    },
+    {
+      "command": "TG_INSTALL_ROOT=/Users/yuluo/Desktop/game/B版本内容 target/debug/deps/toolbar-915c23623f7db7e1 menu::save_error --include-ignored --nocapture",
+      "cwd": "/Users/yuluo/Desktop/game/tiny-glade",
+      "exit_code": 0,
+      "passed": 3,
+      "log": "toolbar-save-error-review-final-consumer-tests.log",
+      "seconds_running_tests": 2.15,
+      "real_continuous_worker_channel_ui": true
+    }
+  ],
+  "recovered": [
+    "first-error page and raw async snapshot owner",
+    "StorageFull exact io downcast and inner payload text; generic anyhow context",
+    "current error retry even with zero dirty blocks",
+    "Close/Open failed old file ownership and complete deferred bytes",
+    "pending-file retry/error ordering/partial recovery/successful unload",
+    "backup count/latest SystemTime/date format",
+    "15 second recovery/menu gate/opacity/reset",
+    "healthy frame avoids backup path work"
+  ],
+  "boundaries": [
+    "No real OS input; deferred by user",
+    "No GPU window or visual comparison",
+    "No actual full disk or OS sync fault injection; standard IO kind classification tested",
+    "Original instruction/static branch evidence; no full Windows executable UI differential",
+    "Legacy path-only load-protection markers remain compatibility entries and are never fabricated as recoverable ShadowFile payloads",
+    "Not toolbar-wide or whole-game acceptance",
+    "Real Steam SDK TB-R8 excluded by user",
+    "Synthetic real-channel snapshots cover error variants/order; one continuous actual OpenFile filesystem failure -> worker -> same receiver -> ui -> successful disk retry -> recovery ui also passes"
+  ],
+  "historical_failures": [
+    "toolbar-save-error-review-consumer-initial-failure.log"
+  ],
+  "experience": [
+    "Distinguish dirty flush from OS sync; last_error must drive retry",
+    "Retain complete failed file owner through session close; path-only recording loses unsaved bytes and creates false recovery",
+    "anyhow downcast differs from walking arbitrary source errors",
+    "Decode format-item fat slices before inferring date text",
+    "Isolate global paths/localization in a subprocess; configure original asset root explicitly"
+  ],
+  "evidence_sha256": {
+    "toolbar-save-error-review-anyhow-display.asm": "4e5f763088745a26d955fb1e899af4f22700f80d5294ae9fa8b7787191947bdb",
+    "toolbar-save-error-review-anyhow-formatter.asm": "7cd10204f5158faf9fb3c7fe042aa2505ebbfb9b5aa815dc3127176110cc4dc2",
+    "toolbar-save-error-review-consumer-initial-failure.log": "c3814c64ed4c3995a2ed0ee730d16715588da218ae52ae6ffed6f125bf8f6f3e",
+    "toolbar-save-error-review-convert-native.json": "9c51497169848a51fcb1a7918ae5eae967037581450bceb31ed0656dd6d87daa",
+    "toolbar-save-error-review-convert.asm": "ef55f161b71aac75fa9f4f24ac01138ea33ecc2ed7978d9b512051e78802973b",
+    "toolbar-save-error-review-core-tests.log": "f3c7734e66612bd01e079130e2b56a5bb1116270141f3c0e7f2f9e81d35c79ca",
+    "toolbar-save-error-review-date-format.json": "4e55d64f53f653cb9c7eb52e27f856c09d7e3a4968e2cdc18dce5589ec17d0c1",
+    "toolbar-save-error-review-final-build.log": "3da7adf9842e245c64ea792d869e7c0e0bdf2389109a44d5ab8ba944e7ae5e08",
+    "toolbar-save-error-review-final-consumer-tests.log": "5b096825cdd2986c87c2ce37ea80b2b01fbf5161491cce577c05e281be658008",
+    "toolbar-save-error-review-formatters-native.json": "b2dca0d954bf8d43d362919ed1485824239c306f2ad373f1305a7b5cd91bdcca",
+    "toolbar-save-error-review-io-formatter.asm": "c25a59668703b18a78cdffad633824cf0ef2938e3a7325b147ff2d441c0d348d",
+    "toolbar-save-error-review-marker-compat.log": "b2f7e683ccd2f8f370620cc7e3922266198b315838ed0082835d014abd7a469b",
+    "toolbar-save-error-review-pending-closure.asm": "1fdcbdcc867def2ad9850fa64fdf389ea02d0922ab564a3055585f49823dd1e3",
+    "toolbar-save-error-review-pending-native.json": "e4710befafaaeeb6f2dafe4432dfa730b92d2ba4764ecdf06cb879760debf417",
+    "toolbar-save-error-review-producer-native.json": "e35443098a37b2cb41eb54f18831cb7e47d2758cd544426baf9f981009dab152",
+    "toolbar-save-error-review-worker-final.log": "7b130a56f826e8309a45ce0250e13fe633466952bca337cb8f956cb163e7486a",
+    "toolbar-save-error-review-worker-head.asm": "d49652cfc184ef75ab0a63b8318ce25d94d004058d551adb89f794bd9e8c8b6e",
+    "toolbar-save-error-review-worker-regression.log": "7f73e661c1ed7faf777d4c9d95dadab80a6e20859b6569caa57712dda3bb8ae9",
+    "toolbar-save-error-review-worker-start.asm": "3d58bd023b40e05a9bc7d3e2c42f96c18236021ae4fd3d4322966db9a7a933d0",
+    "toolbar-save-error-review.md": "7aa33c04a6492bbbf6c61cae19324d9a71d98294966b40d6533d0e7b21d5be13"
+  }
+}

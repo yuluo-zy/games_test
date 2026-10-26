@@ -241,7 +241,9 @@ fn original_nonempty_load_modal_delete_theme_and_sync_backup_owner_chains() {
     for (i, id) in ids.iter().enumerate() {
         copy_tree(&fixture, &id.save_folder_path());
         SessionMeta::default().write_to_disk(*id).unwrap();
-        std::fs::File::open(id.save_folder_path().join("history.json"))
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(id.save_folder_path().join("history.json"))
             .unwrap()
             .set_modified(SystemTime::UNIX_EPOCH + Duration::from_secs(1_750_000_000 + i as u64))
             .unwrap();
@@ -353,11 +355,16 @@ fn original_nonempty_load_modal_delete_theme_and_sync_backup_owner_chains() {
     std::fs::write(&broken, b"invalid JSON").unwrap();
     let valid_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1_740_000_000);
     let bad_time = valid_time + Duration::from_secs(10);
-    std::fs::File::open(&valid)
+    // Windows requires write access to change timestamps (File::open => error 5).
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(&valid)
         .unwrap()
         .set_modified(valid_time)
         .unwrap();
-    std::fs::File::open(&broken)
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(&broken)
         .unwrap()
         .set_modified(bad_time)
         .unwrap();

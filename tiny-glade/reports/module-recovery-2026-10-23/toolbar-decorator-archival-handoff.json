@@ -1,0 +1,73 @@
+{
+  "scope": "TB-R7 raise必要装饰归档/真实历史前置；保留B既有owner",
+  "status": "source recovered, default/native-physics CPU integration passed; original resolved PartialEq 10000 cases passed",
+  "sources": {
+    "crates/country-core/src/resources/walls/decorator_archivist.rs": "2211b44ee5acb2d45a3e4f810518649137e1ffb62fc6cc616ef507962c094ab3",
+    "crates/country-core/src/systems/wall/adjust_wall_height/ui_adjust_wall_height_mode.rs": "ab2024a1140ce10710e4ee2bd3246f0421c0d605a7a7f737f71ba2209dac7779",
+    "crates/country-core/src/systems/history.rs": "c7a077f2fedc06696161865f0456dc02d762dc46644c09b84f137b500ebab0ba",
+    "crates/country-core/src/systems/history/recording.rs": "3840b5c3f89999474419cf9e6639a484a1697f241a0bae5046d84e9b6d115f38"
+  },
+  "original_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "changes": [
+    "新增带真实DecoratorArchivalResources的地址切片归档入口；缺桶为空首次快照，同地址跳过；first/second独立保留活collider位姿和从活user_data精确generation查得的网格Arc",
+    "LiveColliderPayload首元纠正为既有IsoTransform；原只复制28B Isometry，不克隆额外shape Arc",
+    "ui_adjust_wall_height_mode使用已有archival资源和原adjust_wall_height来源；ui_raise由demo owner接change_elevation",
+    "删除无参extract_diff假实现；传权威当前存储与原skip_preview_validation；按每地址生成before/after、剔除相等项、空diff跳过、释放碰撞并清culling",
+    "history recording与三条ReplayDiffExtractor/ECS回放路径统一真实storage参数，record false/replay true",
+    "私有原判等完整恢复目的变体有效字段及IEEE float，不借全局派生PartialEq"
+  ],
+  "native_partial_eq": {
+    "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "entry": "0x141523a60",
+    "equal_exit": "0x141523bd6",
+    "unequal_exit": "0x141523c0e",
+    "count": 10000,
+    "seed": 41671,
+    "bridges": [],
+    "excluded": "HashMap lookup/erase and allocation; resolved valid destination tags 0..4 and matching DecoratorId input",
+    "source_sha256": "2211b44ee5acb2d45a3e4f810518649137e1ffb62fc6cc616ef507962c094ab3",
+    "candidate_sha256": "5bbfc33bcdb3c6beb2781d20109adfd9375871e432127b4f13cd746ebe7736bf",
+    "inputs_sha256": "dc4c15544e4dd28381b295948b6b9f2df7114cb83b3cd77e6e0ec024a9e3df12"
+  },
+  "limits": [
+    "未做真实OS输入、GPU、SteamSDK验证",
+    "其它墙编辑仍有无资源兼容archive_storage_decorators调用，非本轮raise链范围，不能因此宣称全部编辑归档均完成",
+    "DecoratorStorageAddrHistoryState兼容removed字段保留，但原提取实际只从items map生成before/after，removed追踪集合不进入历史差分",
+    "原decorator_colliders@140005c60 / decorator_interactions@1403c03c0两访问器返回+0x60/+0x90，当前归档碰撞payload暂无碰撞查询读侧；已通知中央和Raise owner核对其约束依赖，不将保存载荷冒充恢复全部碰撞约束"
+  ],
+  "lessons": [
+    "PDB void占位不能推断无参，原extract_diff实际R8=当前storage/R9B=skippreview",
+    "native0xc0/0x150是Terrain/Stair地址桶，不是全局before/after",
+    "相等过滤必须读enum有效载荷并遵守NaN/±0，原指令resolved判等区可无HashMap桥接验证",
+    "资源快照应从活collider.user_data取网格，不读装饰表可能陈旧回执",
+    "rustfmt父模块应skip_children=true避免递归格式改动冻结消费者"
+  ],
+  "standalone_candidate_build": {
+    "command": "rustc --edition 2024 -O /tmp/newdaily-archive-eq-candidate.rs -o /tmp/newdaily-archive-eq-candidate",
+    "compiler": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+    "candidate_source_sha256": "738c998bbae69533345c4d7a95a132700c84d4ba202474bf3a037360e279d56f",
+    "manifest_sha256": "69f1270318de93057ce95c0748805ea43cfcbd8a23c4e3ee561d4de89ae007c1",
+    "lock_sha256": "fa00a6d4615d9e970bf10fde1483fe8bf1cf6acd46b5a1b93c8881c71eb4de0b",
+    "scope": "正式source私有判等helper提取为standalone候选；不等于完整country-core集成编译"
+  },
+  "cpu_validation": {
+    "default": {
+      "command": "cargo test -p country-core --lib resources::walls::decorator_archivist::tests --offline",
+      "binary": "target/debug/deps/country_core-d26da56c989ea968",
+      "archive": 10,
+      "history_recording": 5,
+      "replay_pop_bucket": 2,
+      "ui_adjust_wall_height_mode": 16
+    },
+    "native-physics": {
+      "command": "cargo test -p country-core --lib resources::walls::decorator_archivist::tests --features native-physics --offline",
+      "binary": "target/debug/deps/country_core-06061b047c88177a",
+      "archive": 12,
+      "history_recording": 5,
+      "replay_pop_bucket": 2,
+      "ui_adjust_wall_height_mode": 16
+    },
+    "test_features": "default has no native collision; native suite builds real rapier colliders and mesh owner, without GPU/OS input",
+    "preserved_first_failure": "toolbar-decorator-initial-fixture-failure.log: fixture called restore_snapshot on nonempty storage, fixed fixture to use authoritative apply_decorator_place; no production algorithm changed to mask it"
+  }
+}

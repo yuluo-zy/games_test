@@ -398,6 +398,23 @@ fn diagnose_completed_retirement(device: &rhapsody::device::Device, stage: &str)
     Ok(())
 }
 
+/// `wait_frame` only accepts the session's oldest pending frame. Frames that
+/// `collect_completed_frames` already retired are stale at the front of `in_flight`
+/// (whether a frame has finished by the time pacing runs depends on GPU speed), and
+/// the pending frames are always the newest `pending` receipts.
+fn wait_oldest_pending(
+    bridge: &mut CoreRenderBridge,
+    in_flight: &mut std::collections::VecDeque<u64>,
+) -> Result<()> {
+    let pending = bridge.with_session(|session| session.pending_frame_count());
+    while in_flight.len() > pending {
+        in_flight.pop_front();
+    }
+    let oldest = in_flight.pop_front().context("pending frame without receipt")?;
+    bridge.with_session(|session| session.wait_frame(oldest, 120_000_000_000))?;
+    Ok(())
+}
+
 fn boot_shipped_session() -> Result<BootedSession> {
     struct Diagnostics;
     impl log::Log for Diagnostics {
@@ -844,8 +861,7 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
         while bridge.with_session(|session| session.pending_frame_count())
             >= device.frames_in_flight() as usize
         {
-            let oldest = in_flight.pop_front().context("pending frame without receipt")?;
-            bridge.with_session(|session| session.wait_frame(oldest, 120_000_000_000))?;
+            wait_oldest_pending(&mut bridge, &mut in_flight)?;
         }
         let world = driver.app_mut().world_mut();
         let frame_counter = world
@@ -1182,4 +1198,242 @@ fn lower_gradient_energy(rgba: &[u8], w: u32, h: u32) -> f32 {
         }
     }
     (sum / count.max(1) as f64) as f32
+}
+
+
+/// Photomode autofocus on the production App and device. A pin request (camera focus
+/// tag 0) makes the production `photomode_focus` system set `PhotomodeState.index` to the
+/// camera index; the autofocus pass receives it as `focus_lock_request`, the packaged
+/// `/dof/autofocus.cs` shader unprojects the depth under the focus point into
+/// `DofFocusReadbackSsbo`, the production readback publisher returns it to the game
+/// World, and `photomode_focus` then pins the camera (tag 1) at exactly the world point of
+/// the readback it consumed. Outside photomode the shader receives its "no request" value
+/// `0xffff_ffff`.
+#[test]
+fn photomode_autofocus_request_reaches_gpu_and_returns_through_the_production_readback() -> Result<()> {
+    use country_core::{
+        render::gpu_readback::GpuReadbacks,
+        resources::gui::PhotomodeScreen,
+        systems::{
+            camera_rig::MainCamera, mode_manager::AppMode,
+            render_loop::compute_passes::dof_autofocus::DofFocusReadbackSsbo,
+        },
+    };
+    use tiny_glade::game_loop::GameFrameDriver;
+    const NO_REQUEST: u32 = 0xffff_ffff;
+    const FOCUS_OFFSETS: [usize; 6] = [0x170, 0x228, 0x2a8, 0x348, 0x400, 0x488];
+    let BootedSession { mut driver, context, mut bridge, shaders: _shaders, device, _boot } =
+        boot_shipped_session()?;
+    let world = driver.app_mut().world_mut();
+    tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)
+        .context("worker warm-up frame")?;
+    {
+        let completed = world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>();
+        bridge.accept_gameplay_warmup(completed)?;
+    }
+    let mut in_flight = std::collections::VecDeque::<u64>::new();
+    // Runs `frames` full frames. `before` runs ahead of the App update, `after` right behind it
+    // (its `true` stops early); the render of that frame still happens.
+    let mut run_frames = |driver: &mut GameFrameDriver,
+                          photomode: bool,
+                          frames: usize,
+                          before: &mut dyn FnMut(&mut GameFrameDriver),
+                          after: &mut dyn FnMut(&mut GameFrameDriver) -> bool|
+     -> Result<()> {
+        for _ in 0..frames {
+            if photomode {
+                let world = driver.app_mut().world_mut();
+                *world.resource_mut::<AppMode>() = AppMode::Photomode;
+                *world.resource_mut::<PhotomodeScreen>() = PhotomodeScreen { was_enabled: true, enabled: true };
+            }
+            before(driver);
+            context.begin_frame(egui::RawInput::default());
+            driver.app_mut().update();
+            let _ = context.end_frame();
+            let stop = after(driver);
+            while bridge.with_session(|session| session.pending_frame_count())
+                >= device.frames_in_flight() as usize
+            {
+                wait_oldest_pending(&mut bridge, &mut in_flight)?;
+            }
+            let world = driver.app_mut().world_mut();
+            if photomode {
+                *world.resource_mut::<AppMode>() = AppMode::Photomode;
+            }
+            let frame = tiny_glade::production_renderer::prepare_headless_gameplay_frame(&mut bridge, world)
+                .context("autofocus frame")?;
+            bridge.prepare_test_execution()?;
+            let frame = frame.execute(&mut bridge, world)?;
+            world.resource_mut::<country_core::render::RenderTemporalState>().frame_render_returned();
+            in_flight.push_back(frame.receipt.frame);
+            drop(frame);
+            bridge.collect_completed_frames()?;
+            if stop {
+                break;
+            }
+        }
+        // Wait until the session has retired every frame, then the non-blocking publisher
+        // harvests the final copies.
+        while bridge.with_session(|session| session.pending_frame_count()) > 0 {
+            wait_oldest_pending(&mut bridge, &mut in_flight)?;
+            bridge.collect_completed_frames()?;
+        }
+        in_flight.clear();
+        bridge.collect_completed_frames()?;
+        Ok(())
+    };
+    let sample = |driver: &mut GameFrameDriver| -> Result<(DofFocusReadbackSsbo, u64)> {
+        let readbacks = driver.app_mut().world().resource::<GpuReadbacks>();
+        let view = readbacks
+            .get::<DofFocusReadbackSsbo>()
+            .context("production readback publisher never delivered DofFocusReadbackSsbo")?;
+        Ok((*view.data.first().context("empty autofocus readback")?, view.revision))
+    };
+    let focus_state = |driver: &mut GameFrameDriver| {
+        let camera = driver.app_mut().world().resource::<MainCamera>();
+        let focus = FOCUS_OFFSETS[usize::from(camera.mode_byte())];
+        (
+            u32::from_le_bytes(camera.bytes()[focus..focus + 4].try_into().unwrap()),
+            [camera.read_f32(focus + 4), camera.read_f32(focus + 8), camera.read_f32(focus + 12)],
+        )
+    };
+    let (mut nothing_before, mut nothing_after) = (|_: &mut GameFrameDriver| {}, |_: &mut GameFrameDriver| false);
+
+    // Phase A: ordinary gameplay. The pass still runs every frame and answers "no request".
+    run_frames(&mut driver, false, 10, &mut nothing_before, &mut nothing_after)?;
+    let (idle, idle_revision) = sample(&mut driver)?;
+    eprintln!("AUTOFOCUS gameplay: {idle:?} revision {idle_revision}");
+    assert_eq!(idle.lock_reponse, NO_REQUEST);
+    assert!(idle_revision >= 5, "readback was not republished by the running pass");
+
+    // Phase B: photomode. The production PhotoModeCmd selects a photo camera (camera 0 is the
+    // ordinary game camera, which the original cannot tell apart from the zeroed readback);
+    // give the camera transition time to settle so the world point under the focus point is
+    // stable from frame to frame.
+    driver.app_mut().world_mut().send_event(country_core::resources::photo_mode::PhotoModeCmd(0));
+    run_frames(&mut driver, true, 30, &mut nothing_before, &mut nothing_after)?;
+    let camera_mode = {
+        let world = driver.app_mut().world_mut();
+        let mut camera = world.resource_mut::<MainCamera>();
+        let mode = usize::from(camera.mode_byte());
+        let focus = FOCUS_OFFSETS[mode];
+        eprintln!(
+            "AUTOFOCUS camera mode {mode}: focus tag {}, point ({}, {}), box height {}",
+            u32::from_le_bytes(camera.bytes()[focus..focus + 4].try_into().unwrap()),
+            camera.read_f32(focus + 0x10), camera.read_f32(focus + 0x14), camera.read_f32(focus + 0x18),
+        );
+        // A pin request at the screen centre.
+        camera.write_f32(focus, f32::from_bits(0));
+        camera.write_f32(focus + 0x10, 0.0);
+        camera.write_f32(focus + 0x14, 0.0);
+        mode as u32
+    };
+    assert_ne!(camera_mode, 0, "PhotoModeCmd did not leave the ordinary game camera");
+    // Step frame by frame: the response `photomode_focus` consumes is the readback published
+    // before its update, so that is the sample the pinned point has to equal.
+    let mut consumed: Option<DofFocusReadbackSsbo> = None;
+    let mut pinned = None;
+    {
+        let consumed = std::cell::RefCell::new(&mut consumed);
+        let pinned = std::cell::RefCell::new(&mut pinned);
+        let latest = std::cell::Cell::new(None);
+        run_frames(
+            &mut driver,
+            true,
+            40,
+            &mut |driver| latest.set(sample(driver).ok().map(|(s, _)| s)),
+            &mut |driver| {
+                let (tag, position) = focus_state(driver);
+                if tag == 1 {
+                    **consumed.borrow_mut() = latest.get();
+                    **pinned.borrow_mut() = Some(position);
+                    true
+                } else {
+                    false
+                }
+            },
+        )?;
+    }
+    let pinned = pinned.context("photomode_focus never pinned the camera: the GPU lock request/response did not complete")?;
+    let consumed = consumed.context("no readback preceded the pin")?;
+    eprintln!("AUTOFOCUS photomode: pinned {pinned:?} from consumed response {consumed:?}");
+    // `lock_reponse` is the camera index the GPU answered; photomode_focus only pins on it.
+    assert_eq!(consumed.lock_reponse, camera_mode, "the GPU answered a different camera");
+    assert!(pinned.iter().all(|v| v.is_finite() && v.abs() < 10_000.0), "lock point is not a world position");
+    assert_ne!(pinned, idle.lock_pos_ws, "the lock never replaced the initial shader state");
+    assert_eq!(
+        pinned.map(f32::to_bits), consumed.lock_pos_ws.map(f32::to_bits),
+        "the pinned focus must be exactly the GPU-unprojected lock point of the consumed readback",
+    );
+    // Independent CPU check of the GPU unprojection: the lock point was requested at the
+    // screen centre, so projecting it back with the camera matrices must land there.
+    let ndc = {
+        use glam::Vec4;
+        let camera = driver.app_mut().world().resource::<MainCamera>();
+        let mul = |m: glam::Mat4, p: Vec4| m.y_axis * p.y + m.x_axis * p.x + m.z_axis * p.z + m.w_axis;
+        let view = mul(camera.read_matrix(0x80), Vec4::new(pinned[0], pinned[1], pinned[2], 1.0));
+        let clip = mul(camera.read_matrix(0), view);
+        (clip / clip.w).truncate().truncate()
+    };
+    eprintln!("AUTOFOCUS lock point reprojects to NDC {ndc:?}");
+    assert!(ndc.abs().max_element() < 5e-3, "GPU depth unprojection disagrees with the camera: {ndc:?}");
+    Ok(())
+}
+
+
+/// T6, menu-save leg: the escape menu's `SaveGameCmd` event (its producer is covered by
+/// `original_escape_menu`) goes through the production `save_game_system` on the real shipped
+/// session — snapshot capture, section assembly, the save worker's synchronous flush — and
+/// ends as `SavingGameComplete` plus a readable `history.json` in the session folder. The
+/// temporary account of `boot_shipped_session` keeps the player's saves out of it.
+#[test]
+fn menu_save_request_reaches_disk_through_the_production_save_system() -> Result<()> {
+    use country_core::systems::save::save_game::{SaveGameCmd, SavingGameComplete};
+    let BootedSession { mut driver, context, bridge: _bridge, shaders: _shaders, device: _device, _boot } =
+        boot_shipped_session()?;
+    let mut update = |driver: &mut tiny_glade::game_loop::GameFrameDriver| {
+        context.begin_frame(egui::RawInput::default());
+        driver.app_mut().update();
+        let _ = context.end_frame();
+    };
+    // Let the shipped session finish loading and the replay buffer drain: the save system only
+    // captures a snapshot while the world is stable.
+    for _ in 0..30 {
+        update(&mut driver);
+    }
+    let session = driver.app_mut().world().resource::<ActiveSession>().id;
+    let folder = session.save_folder_path();
+    let before = std::fs::metadata(folder.join("history.json")).ok().map(|m| m.modified().unwrap());
+    // The menu entry: the Escape menu's Save/Exit writes this event.
+    driver.app_mut().world_mut().send_event(SaveGameCmd);
+    let mut completed = None;
+    for frame in 0..600 {
+        update(&mut driver);
+        let done = driver
+            .app_mut()
+            .world_mut()
+            .resource_mut::<bevy_ecs::event::Events<SavingGameComplete>>()
+            .drain()
+            .last();
+        if let Some(done) = done {
+            completed = Some((frame, done.path));
+            break;
+        }
+    }
+    let (frame, path) = completed.context("SaveGameCmd never produced SavingGameComplete")?;
+    eprintln!("SAVE completed after {frame} frames: {path:?}");
+    assert_eq!(path, folder, "completion must name the active session folder");
+    let history = folder.join("history.json");
+    let text = std::fs::read_to_string(&history).context("history.json missing after the menu save")?;
+    let value: serde_json::Value = serde_json::from_str(&text).context("history.json is not valid JSON")?;
+    assert!(value.is_array() || value.is_object(), "unexpected history.json shape");
+    let modified = std::fs::metadata(&history)?.modified()?;
+    assert!(before.is_none_or(|b| modified >= b), "history.json was not written by this save");
+    let mut names = std::fs::read_dir(&folder)?
+        .map(|e| e.map(|e| e.file_name().to_string_lossy().into_owned()))
+        .collect::<std::io::Result<Vec<_>>>()?;
+    names.sort();
+    eprintln!("SAVE folder contents: {names:?}");
+    assert!(names.len() > 1, "session meta/snapshot files were not written next to history.json: {names:?}");
+    Ok(())
 }

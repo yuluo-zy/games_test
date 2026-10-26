@@ -112,7 +112,7 @@ fn install_open_adapter_inputs(app: &mut App) {
     app.init_resource::<system_critters::sheep::sheep_input_record_replay::SheepInputStream>();
     // OPEN: onboarding seam events (unrecovered original trigger sources) and the
     // ToolbarUiIsInFocus event (toolbar-owned in the original, per the onboarding report).
-    app.add_event::<system_onboarding::hint_deselect_tool::DeselectReset>();
+    app.add_event::<country_core::systems::ui_edit_focus::ToolSelectionCancelled>();
     app.add_event::<system_onboarding::reset_hints::ResetHintsCommand>();
     app.add_event::<system_onboarding::hint_orchestrator::ToolbarUiIsInFocus>();
     // Terrain-tool adapter events with no recovered original registrar.

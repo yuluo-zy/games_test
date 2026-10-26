@@ -541,12 +541,21 @@ mod photo_focus_tests {
     };
     use glam::{Mat4, Vec2};
 
-    /// Original release UI asset (`B版本内容/assets/ui/<relative>`), resolved from
-    /// the manifest dir. Not part of the repository.
+    /// Installed release root. `TG_INSTALL_ROOT` overrides; otherwise the
+    /// workspace copy `ljxsj_92385/Tiny Glade` (git-ignored, release B).
+    pub(super) fn original_install_root() -> std::path::PathBuf {
+        std::env::var_os("TG_INSTALL_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../../../ljxsj_92385/Tiny Glade")
+            })
+    }
+
+    /// Original release UI asset (`<install root>/assets/ui/<relative>`).
+    /// Not part of the repository.
     fn original_ui_asset(relative: &str) -> std::path::PathBuf {
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../../../B版本内容/assets/ui")
-            .join(relative)
+        original_install_root().join("assets/ui").join(relative)
     }
 
     fn camera(tag: u32) -> MainCamera {
@@ -1452,8 +1461,8 @@ mod slider_restoration_tests {
             } else {
                 "gfn/screenshot_msg"
             };
-            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../../../B版本内容/assets/ui")
+            let path = super::photo_focus_tests::original_install_root()
+                .join("assets/ui")
                 .join(format!("{template}.ron"));
             let config = crate::mei::config::read_node_config_from_file(&path).unwrap();
             mei.configs

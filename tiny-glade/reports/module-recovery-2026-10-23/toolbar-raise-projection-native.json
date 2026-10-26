@@ -1,0 +1,30 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "functions": {
+    "0x140ac8420": 44,
+    "0x140ac8450": 70,
+    "0x140ac84a0": 722
+  },
+  "whole_functions": true,
+  "callees_executed": [
+    "0x140c906d0",
+    "0x140c904d0"
+  ],
+  "bridges": [],
+  "panic_observation": "只在原clamp panic入口0x140d8b480观察并终止，不执行panic runtime；合法范围全函数返回。",
+  "fixtures": {
+    "window": {
+      "cases": 8,
+      "sha256": "5307eceb750ba444895fbd5e4848a4f3a7c4e483a95dba83148d69040891e36b"
+    },
+    "transform": {
+      "cases": 56,
+      "sha256": "464b3e54c747b476687f7d549c72e0f73df662e56b0e367e67cebf7b4855e573"
+    },
+    "ray": {
+      "cases": 538,
+      "sha256": "589e6f701e2bb49e3b5d70211fa88837b60e7498874dcd219af77698a7590e81"
+    }
+  },
+  "scope": "有限浮点输入，包含零窗口/负w/零w/退化/非仿射矩阵/NaN/Inf/range panic。ARM与x86的NaN符号/载荷按NaN分类比较；所有非NaN结果要求逐bit。"
+}

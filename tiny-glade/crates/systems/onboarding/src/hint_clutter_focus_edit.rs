@@ -35,34 +35,39 @@ pub struct FocusedClutterHintConditions {
 const STEAM_FOCUS_ACTION: u8 = 1;
 
 /// make_focus_or_camera_binding_hint（O 0x141c3de00）：
-/// `Steam(packed_set_plus_one(1)) = Steam(0x0101)` 为基底；
-/// `profile+0x1c4 == 1/2`（u16）时 **只调用一次** `alternate<HintGraphicParams>`，
-/// 单个 Graphic 载荷 = 图标数组 `[hint/mouse, hint/rmb|hint/mmb]` + `0.7f` + `100.0f`
-/// （0x141c3de89/0x141c3df38；`0x3f333333`/`0x42c80000`）；
-/// 其它 → `alternate<MouseButton>(profile+0x1c6)`。
-/// **重建（2026-10-17 fresh 反汇编）**；分歧点：`profile+0x1c6` 鼠标键字段
-/// country-core `GameProfile` 未落库（登记 U，暂以 `MouseButton::Left` 占位）。
+/// `Steam(packed_set_plus_one(1)) = Steam(0x0101)` 为基底；再读 FocusEdit 鼠标绑定
+/// （`mouse[2]`，原 `profile+0x1c4` tag / `+0x1c6` 载荷：`assign_mouse_button`
+/// 0x14089b280 写 `profile+0x1bc+4*action`，camera_rotate/pan 读 `+0x1bc/+0x1c0`，
+/// 故 `+0x1c4` 是 `MouseBinding::FocusEdit`，说明键 `KeyBindings.FocusOrDeselect`）：
+/// tag 1（Right）/ 2（Middle）时 **只调用一次** `alternate<HintGraphicParams>`，
+/// 单个 Graphic 载荷 = **两帧** `[hint/mouse, hint/rmb|hint/mmb]` + `0.7f` + `100.0f`
+/// （0x142f0ee08/0x142f0ee12/0x142f0ee1a 字符串；`0x3f333333`/`0x42c80000`）；
+/// 其它 → `alternate<MouseButton>(tag, +0x1c6 载荷)`，即该绑定本身（相机提示共用的
+/// 约定：未绑定不替换成默认左键）。
 pub fn make_focus_or_camera_binding_hint(
     profile: &country_core::game_profile::GameProfile,
 ) -> crate::BindingHintDisplay {
     let base = crate::BindingHintDisplay::Steam(crate::hint_orchestrator::steam_query(
         country_core::resources::steam::packed_set_plus_one(STEAM_FOCUS_ACTION),
     ));
-    match profile.focus_glyph_mode {
-        1 | 2 => {
-            let second = if profile.focus_glyph_mode == 1 {
-                "hint/rmb"
-            } else {
-                "hint/mmb"
-            };
-            base.alternate(crate::hint_orchestrator::HintGraphicParams::animated(
-                vec!["hint/mouse".to_string(), second.to_string()],
+    let binding = profile.key_bindings.mouse[country_core::game_key_bindings::MouseBinding::FocusEdit as usize];
+    match binding {
+        Some(crate::MouseButton::Right) => base.alternate(
+            crate::hint_orchestrator::HintGraphicParams::animated(
+                vec!["hint/mouse".to_string(), "hint/rmb".to_string()],
                 0.7,
                 100.,
-            ))
-        }
-        // U：原生 `MOVZX R9D,word [profile+0x1c6]`；core GameProfile 无该字段。
-        _ => base.alternate(crate::MouseButton::Left),
+            ),
+        ),
+        Some(crate::MouseButton::Middle) => base.alternate(
+            crate::hint_orchestrator::HintGraphicParams::animated(
+                vec!["hint/mouse".to_string(), "hint/mmb".to_string()],
+                0.7,
+                100.,
+            ),
+        ),
+        Some(button) => base.alternate(button),
+        None => base.alternate(crate::BindingHintDisplay::Empty),
     }
 }
 
@@ -183,47 +188,82 @@ pub fn hint_clutter_focused_edit_hint(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use country_core::game_key_bindings::MouseBinding;
 
-    /// FIX-6/FIX-8 回归：Steam 载荷 = 0x0101；glyph_mode 1 时 **单个** Graphic
-    /// 元素 = 双图标 + 0.7/100.0（不是两个 Alternate 元素）。
-    #[test]
-    fn make_focus_steam_query_and_double_icon_payload() {
+    fn profile_with(button: Option<crate::MouseButton>) -> country_core::game_profile::GameProfile {
         let mut profile = country_core::game_profile::GameProfile::default();
-        profile.focus_glyph_mode = 1;
-        match make_focus_or_camera_binding_hint(&profile) {
-            crate::BindingHintDisplay::Alternate(items) => {
-                assert_eq!(items.len(), 2, "Steam + 单个 Graphic");
-                match &items[0] {
-                    crate::BindingHintDisplay::Steam(q) => assert_eq!(q.0, 0x0101),
-                    other => panic!("{other:?}"),
-                }
-                match &items[1] {
-                    crate::BindingHintDisplay::Graphic(p) => {
-                        assert_eq!(
-                            p.images,
-                            crate::hint_orchestrator::HintGraphicImages::Animation {
-                                frames: vec!["hint/mouse".to_string(), "hint/rmb".to_string()],
-                                seconds_per_frame: 0.7,
-                            }
-                        );
-                        assert_eq!(p.height, 100.);
-                    }
-                    other => panic!("{other:?}"),
-                }
-            }
-            other => panic!("{other:?}"),
-        }
+        profile.key_bindings.mouse[MouseBinding::FocusEdit as usize] = button;
+        profile
+    }
 
-        // glyph_mode 2 → 第二图标 hint/mmb。
-        profile.focus_glyph_mode = 2;
-        match make_focus_or_camera_binding_hint(&profile) {
-            crate::BindingHintDisplay::Alternate(items) => match &items[1] {
-                crate::BindingHintDisplay::Graphic(p) => {
-                    assert_eq!(p.image_at_time(0.7), "hint/mmb");
-                }
-                other => panic!("{other:?}"),
-            },
+    fn graphic_of(display: crate::BindingHintDisplay) -> crate::hint_orchestrator::HintGraphicParams {
+        let crate::BindingHintDisplay::Alternate(items) = display else { panic!("Alternate") };
+        assert_eq!(items.len(), 2, "Steam + 单个 Graphic");
+        match &items[0] {
+            crate::BindingHintDisplay::Steam(q) => assert_eq!(q.0, 0x0101),
             other => panic!("{other:?}"),
         }
+        match items.into_iter().nth(1).unwrap() {
+            crate::BindingHintDisplay::Graphic(p) => p,
+            other => panic!("{other:?}"),
+        }
+    }
+
+    /// 原 0x141c3de00：FocusEdit 绑定为 Right/Middle 时是 **两帧**（不是相机提示的三帧）动画，
+    /// 0.7 秒/帧、高 100；其余绑定按 alternate<MouseButton> 原样显示。
+    #[test]
+    fn focus_hint_reads_the_focus_edit_mouse_binding_with_two_frame_animation() {
+        for (button, second) in [
+            (crate::MouseButton::Right, "hint/rmb"),
+            (crate::MouseButton::Middle, "hint/mmb"),
+        ] {
+            let graphic = graphic_of(make_focus_or_camera_binding_hint(&profile_with(Some(button))));
+            assert_eq!(
+                graphic.images,
+                crate::hint_orchestrator::HintGraphicImages::Animation {
+                    frames: vec!["hint/mouse".to_string(), second.to_string()],
+                    seconds_per_frame: 0.7,
+                }
+            );
+            assert_eq!(graphic.height, 100.);
+            assert_eq!(graphic.image_at_time(0.7), second);
+        }
+    }
+
+    #[test]
+    fn focus_hint_shows_other_bindings_as_is_and_keeps_unbound_empty() {
+        for button in [
+            crate::MouseButton::Left,
+            crate::MouseButton::Back,
+            crate::MouseButton::Forward,
+            crate::MouseButton::Other(7),
+        ] {
+            let crate::BindingHintDisplay::Alternate(items) =
+                make_focus_or_camera_binding_hint(&profile_with(Some(button)))
+            else {
+                panic!("Alternate")
+            };
+            assert_eq!(items[1], crate::BindingHintDisplay::Mouse(button));
+        }
+        let crate::BindingHintDisplay::Alternate(items) =
+            make_focus_or_camera_binding_hint(&profile_with(None))
+        else {
+            panic!("Alternate")
+        };
+        assert_eq!(items[1], crate::BindingHintDisplay::Empty);
+    }
+
+    /// 回归：旧 `focus_glyph_mode` 误当作绑定来源，玩家改键后提示仍显示默认字形。
+    /// 另外两个鼠标绑定（Rotate/Pan）不能影响聚焦提示。
+    #[test]
+    fn focus_hint_ignores_the_rotate_and_pan_bindings() {
+        let mut profile = profile_with(Some(crate::MouseButton::Left));
+        profile.key_bindings.mouse[MouseBinding::Rotate as usize] = Some(crate::MouseButton::Right);
+        profile.key_bindings.mouse[MouseBinding::Pan as usize] = Some(crate::MouseButton::Middle);
+        let crate::BindingHintDisplay::Alternate(items) = make_focus_or_camera_binding_hint(&profile)
+        else {
+            panic!("Alternate")
+        };
+        assert_eq!(items[1], crate::BindingHintDisplay::Mouse(crate::MouseButton::Left));
     }
 }

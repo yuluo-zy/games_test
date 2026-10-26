@@ -1,6 +1,150 @@
 # 业务流恢复台账
 
-当前模块：**1 公共交互／toolbar，用户要求停止，阶段性提交，未验收**。用户最新限定只完整完成本模块，验收后停止，不进入地形或后序模块。本文件合并维护状态与业务流合同，优先增量修改现有文件，不为模板拆出多套文档。旧报告、候选代码及临时日志只作为指定版本的历史证据，不是平行进度表。
+当前模块：**1 公共交互／toolbar，已恢复实施，未验收**。2026-10-24 用户确认按模块推进，并要求每轮记录过程与经验。先收口当前模块，后序模块只列实施范围和进入条件，不提前展开实现。本文件合并维护状态与业务流合同，优先增量修改现有文件，不为模板拆出多套文档。旧报告、候选代码及临时日志只作为指定版本的历史证据，不是平行进度表。
+
+### 2026-10-26 Windows 新渲染框架基线（Task 1，M01 计划起点）
+
+详见 [M01-BASELINE-2026-10-26.md](M01-BASELINE-2026-10-26.md)，日志在 `baseline-2026-10-26/`。**此前在 macOS/Linux 旧渲染接口上取得的全部通过记录（含下文各轮）不继承到本基线**，须在新框架重验后才能引用。本基线只证明：Windows 上 toolbar/onboarding/core-ui/tiny-glade 库与 toolbar 链测试、Replay GPU 读回在真实 Intel UHD 630 通过；M01 仅余 1 项旧期望失败（welcome profile，归 Task 3）。真实窗口呈现、OS 输入、目标硬件性能均未验收。本机缺 `swapchainMaintenance1`，窗口呈现需单独处理。
+
+### 2026-10-24 用户范围决定：Steam SDK不修复
+
+用户明确要求记住：真实Steam SDK平台依赖缺口（TB-R8）不需要修复，不作为本轮toolbar完成阻断；保留当前注入接口和明确host入口，不制造SDK成功。其余TB-R1..R7继续按原版证据修复，完成后重新review。真实OS输入验收仍按此前要求暂缓。此前Credits、许可证和反馈删除范围继续生效。
+
+### 2026-10-24 review后修复轮（进行中，未验收）
+
+本轮独立复审同时修复生产者和消费者，不以页面建树或局部测试通过宣称toolbar完成。已按用户此前并行要求控制在总计8个agent以内，渲染任务继续保有render_host/production_renderer/rhapsody主体；设置仅增既有interop类型导出和手动缩放reset接口，并向owner协调真实surface设备快照。未发送OS输入。
+
+- **TB-R4**：完整原1416feeb0无桥执行9600例，恢复首次Held计时、0.2阈值后的0.1倒计时、慢帧`max(timer+0.1,0.05)-delta`及原始analog复制。当前Rust3项定点测试通过，原差分fixture为`toolbar-input-delta.ron`；这不等于所有浮点输入或OS验收。
+- **TB-R1**：已补视频完整helper（1371例原指令＋3项原字体CPU控件测试）、键位组/采集确认/重置（原非对称去重、NativeKeyCode/MouseOther完整身份持续复验）、四行15语言和总路由。设置顶部已接内部GUI schedule、WriteSettingsFileCmd和真实Apply成功后的完整LastApplied快照；CPU整体路由、磁盘和真实设备快照尚待最终验证。独立review纠正背景FullWindow/alpha、文/A文案、语言原template、空hint容器、Tab即时清零及跨菜单保留教学确认状态。
+- **TB-R3**：原错误页、备份信息及15秒恢复提示已接真实异步错误状态。深入review又补回零脏块OS同步失败重试，以及Close/Open旧文件失败后保留ShadowFile并每秒重试，避免内存丢失和错误提前清空。最终worker16项、兼容1项、原模板/真实worker→Bevy告警→恢复3项均通过，并已独立review（`toolbar-save-error-review.md/json`）；不将CPU局部链升级为OS/整模块验收。
+- **TB-R2/R6**：已恢复原96B请求的安全typed载荷、六种选择、每日四态/真实订阅与取消、DailyWelcome及真实startup创建/历史快照消费。285项限定原指令样本和core4/host4/NewSession3/Welcome1项CPU测试通过并review（`toolbar-new-daily-repair-handoff.json`）；没有OS或真实外网响应验收。
+- **TB-R5**：查询0x1401、实际ui_confirm键位及摄影尾部分支已补。原静态写者实际在尚未恢复完整的rollercoaster_update，不是main_camera；目前恢复候选目标、轨道和车辆/动力学，禁止只注册提示却不能启动乘坐。
+- **TB-R7**：两原提示消费者和circle/rectangle通知分支已补，原指令投影与模板测试在执行。真实host尚缺add_wall_shape_ux及抬升/聚焦高度等完整编辑生产链，继续恢复必要前置；未把旧CPU schedule当实际游戏注册。
+
+新增依赖复核：实际onboarding提示绘制仍为空，当前正恢复真实模板/按键/动画/位置/生命周期；原TutorialCompletionState为19字段嵌套对象，旧bool及skip_serializing使完成标志重启丢失，正在按原schema修复。Demo必要编辑链已恢复Raise/Focus和真实装饰物归档；形状Preview旧height字段、固定dt及独立CalcShapeHeight资源均为误恢复，正在统一到ShapePlacement和TimberframeConstructionParamsCache真实authority。设置CPU整页首轮已发现测试缺MEI post布局阶段导致注入delta滞留，保留失败并修正测试边界，不修改生产算法迎合夹具。原add_wall_shape_ux的26个leaf不能由资源初始化或独立World测试冒充全部接通。
+
+本轮经验持续沉淀：①Ghidra`size`可能是非连续body字节合计，不能当作连续地址范围；PDB物理范围又可能包含EH，须逐CFG/funclet判断；②保存失败验收必须覆盖sync清脏后OS失败、CloseFile与新旧文件同时失败的内存所有权和重试；③键位采集可接受的typed身份必须穿过OS adapter、档案与翻译器，不能UI确认后下一帧panic；④设置Apply必须追到实际成功后的snapshot回写；⑤空说明容器、原根类型/颜色alpha、匿名节点计数和同帧delta消费也属于可观察原业务；⑥原完整生产系统缺失时禁止用孤立事件注入或仅展示提示掩盖。
+
+### 2026-10-24 深入 review：当前源码与调用链复核
+
+**结论：toolbar 仍有明确源码／业务／接线缺口，不只是尚未做真实输入验收。** 本轮为 review，不改业务源码；独立检查生产调用者和注册，再定点复用原证／新增原机器码反证，不从旧测试数、PDB条目或完成率推算。排除用户删除的Credits、许可证和反馈入口。[审查证据、行号与指纹](toolbar-deep-review.json)记录全部发现；这是有界业务链审查，不宣称每条B函数都已全域判等。
+
+| 优先级 | 当前实质缺口 | 影响与修复边界 |
+| --- | --- | --- |
+| P1 · TB-R1 | [设置可进入状态，但整页没有生产消费者](../../crates/tiny-glade/src/gui/settings.rs#L78) | 写入Settings(Audio)后无设置树/返回/保存流程；不是仅视频页未完成。 |
+| P1 · TB-R2 | [两处新建入口均进入没有页面的NewSession](../../crates/tiny-glade/src/gui/gui_escape_menu.rs#L172) | 状态进入NewSession但不会构造选择页面或生成完整新建请求。 |
+| P1 · TB-R3 | [自动保存I/O错误没有游戏内告警消费者](../../crates/country-core/src/systems/save/save_game.rs#L392) | 最新错误已进入SaveThreadHandle.error_state，但没有全局保存错误UI；不能用损坏存档读取告警代替。 |
+| P2 · TB-R4 | [已实现的导航连发算法与原版不同](../../crates/country-core/src/systems/backend/input/calculate_input_delta.rs#L40) | 首次重复提前0.1秒；慢帧后重复节奏不同，影响MEI方向、Tab和Tweaker输入。 |
+| P2 · TB-R5 | [摄影过山车提示缺写者且现存载荷错误](../../crates/systems/onboarding/src/lib.rs#L147) | 摄影/main_camera未产生DisplayRollercoasterPrompt；即使注入事件，Steam查询和键盘备选仍错误。 |
+| P2 · TB-R6 | [每日/每周主题链仍有空系统和缺页](../../crates/tiny-glade/src/theme_fetcher_plugin.rs#L118) | update_daily_theme_system为空；手动传路径的helper没有生产资源发布链，DailyWelcome消费者不存在。 |
+| P2 · TB-R7 | [Demo两条空间/高度提示业务未恢复](../../crates/tiny-glade/src/toolbar_plugin.rs#L113) | 当前有demo锁按钮及摄影分流，但缺完整glade尺寸提示与最大高度提示系统/注册。 |
+| P2 · TB-R8 | [Steam平台支撑仍只有注入接口](../../crates/tiny-glade/src/main.rs#L87) | 默认SDK工厂返回None，正常入口失败；host入口明确离线，ActionHint真实平台来源及绑定面板无法验收。 |
+
+本轮新增的两条独立原证反例：
+
+- 导航长按 `digital_delta`：完整执行原 `1416feeb0`（5502字节），无依赖桥。合法槽20、previous/current都true、Held计时0.19、delta0.02时，原输出Repeating/0.1且本帧不触发，当前实际Rust函数输出Repeating/0且立即触发。Repeating计时-0.18、delta0.02时，原输出约0.03（bits3cf5c290），当前0.08（bits3da3d70a）。同样差异适用于使用同一算法的导航／Tab槽；本轮只执行两例，不冒称所有输入域。探针调用当前country_core rlib的真实函数，没有复制Rust算法；[原例](toolbar-deep-review-input-cases.json)、[原探针](review_toolbar_input_native.py)、[Rust探针](toolbar-review-current-input.rs)。需要恢复原Held→Repeating的0.1倒计时和 `max(timer+0.1,0.05)-delta`，不是只修改测试。
+- 摄影过山车提示：原14227bbe9写cl=0x14，经packed_set_plus_one得到0x1401，当前为0x0101；原从第三资源+0x15c/+0x164读取实际键盘备选，当前固定None。摄影侧还缺真实PROMPT静态写者及其事件分支，所以只补事件发射也不能完成提示。详见[原函数](toolbar-deep-review-native.json)和[原头部指令](toolbar-review-prompt-head.asm)。
+
+本轮排除了这些误报：
+
+- 保存错误不是“完全没有接收”：save_game_system第392行已每帧drain_pending；缺的是异步错误权威状态到用户告警和恢复提示，AutoSaveState当前Option仅记录发送失败。
+- ApplyVideoSettings已有PostUpdate gather和窗口／vsync消费者，缺设置页面生产端与完整应用闭环，不能把后端也报未实现。
+- LUT与损坏存档告警实际在gameplay_startup的set36注册；文字、错误日志和部分debug已迁入mei_host／core，不能因旧同名函数todo否定迁移实现。
+- ImageQualityPreset的Ghidra跳表出现坏指令与多余分支；直接解码原PE的5项跳表，确认0..4与当前Performance/Balanced/Quality/UltraQuality/Custom一致。本轮没有发现第5个Custom变体，不能按视频反编译中的5哨兵补造enum。
+- 撤销／重做已有实际墙体权威状态、保存和新进程恢复的局部测试，不能说“历史全空”；该测试不能升级为所有核心业务、GPU画面及真实窗口验收。
+
+验证：重新构建并运行original_escape_menu，4项通过。但其中设置测试只断言NextEscMenuState=Settings(Audio)，未推进实际设置页／配置应用，因此测试通过与TB-R1同时成立。原输入函数两例与实际Rust输出均执行成功，但语义两例不同，保留为review反证，未修改业务或测试断言使其通过。没有发送OS输入，没有跑整模块GPU长稳或性能测量。
+
+接下来的修复次序：先修通用输入连发差异 → 收口设置整个可达页面（含视频／键位／语言／保存／应用）→ 补新建载荷和每日依赖 → 接保存错误告警 → 摄影提示及Demo分支 → 全模块编辑／历史／保存／新进程恢复／卸载与性能验收。Steam真实SDK作为平台依赖单列，当前host模式不冒充平台恢复。Credits／许可证不再恢复。
+
+本轮经验：①“有Next状态”与“目标页实际建树”必须分开验收；②测试名称包含settings不代表测试过设置消费者；③旧缺口必须重查最新消费者，避免反复报告已经修好的队列；④长按首次进入连发的timer值和过期补偿都是业务算法，不能概括成统一延时；⑤跳表坏反编译先用原PE相对表和指令验证；⑥生产提示链同时核对writer、动作查询码和权威键位载荷，不能用None隐藏未恢复内容。
+
+### 2026-10-24 用户删减范围：Credits与许可证
+
+用户先要求删除许可证模块，随后明确删除整个Credits制作人员页面。已删除原owner menu/credits.rs（包括滚动控件及专属测试）、模块导出、Escape菜单入口和EscMenuState::Credits；移除toolbar及workspace中已无消费者的tiny_http依赖（Cargo.lock已无该包）。LUT和墙轮廓的旧菜单策略测试仅去除已删除变体，保留其余门控验证。后续不再恢复页面／按钮／服务／端口，也不列为验收阻断；原证、脚本及已执行日志仅保留历史分析，**不计本轮交付成果**。与此前反馈报告入口一起，在逐函数账标为用户删除范围。
+
+### 2026-10-24 toolbar 全量收口推进（当前工作轮，持续更新）
+
+**M01仍在实施，未验收；不进入下一业务模块。** 用户要求全部完成，真实OS输入验收仍按此前指示暂停。并行渲染任务保有rhapsody/render_host/render/ssbo，当前仅为删除Credits变体调整render_loop/lut_gallery.rs一个旧测试样本，已通知owner；未修改生产渲染逻辑。
+
+- ImageContent的file:分支已接真实PNG解码、纹理上传、bindless索引、成功缓存、失败重试及原cloth_ferris后备纹理。纹理物理owner经Arc传入MeiHost渲染快照，覆盖排队但未开始执行的帧，不能只依赖已提交GPU命令的引用。加入快照owner后的最终源码真实MoltenVK测试已通过：PNG上传、descriptor、image→buffer逐像素核对、排队帧Arc保留和最后owner释放。此单项不代表整模块GPU稳定性或性能验收。
+- ActionHint已恢复真实Steam动作源查询、两秒轮换、file:图片和无glyph空节点；MenuButton/Pill提示子树及原18槽提示门控恢复。TabSwitcher恢复输入阶段、24/25动作与每帧delta清理。
+- Steam +0x160实际是动作→来源映射，旧SIMD按键快照解释错误。完整8158行原体分页恢复31条main/menu来源合同，修正controller参数、菜单analog第9槽、按住状态、输入模式冷却、右键点击/拖拽阈值。实际Bevy调度接mock SDK的3项新增测试及2项Pill测试通过；并非原Steam SDK或真实硬件验收。core自身cfg(test)一度被并行渲染mock缺try_read阻断，已通知owner，未篡改其测试；用toolbar既有集成入口验证生产core。
+- Tweaker新增原B所属widgets/tweaker.rs，恢复Float/Bool/Enum/List、提示、左右按钮与输入阶段。216个原机器码浮点样本通过，有限值逐bit核对，NaN仅按预先声明的类别核对；原roundf调用桥接宿主libSystem，panic仅停在原入口，不宣称Windows CRT全域等价。3项leaf测试通过；实际控件树、格式化与右箭头副作用顺序已通过原字体表CPU测试；设置顶部/视频/键位页面及整页注册继续推进。
+- 损坏存档告警恢复原模板、事件打开、模态阻挡、确认关闭及生产set36注册；原模板/字体CPU消费者测试已通过，初次缺字体失败保留。不以手动置按钮激活位的CPU消费者测试冒充OS输入。
+- 设置新增原11键解锁126例、视频应用掩码420例原指令测试通过；修正FullscreenConfig为Best/ClosestMatch完整VideoMode（含刷新率/色深）并接现有窗口选择器。音频、游戏/教学、UI/光标、开发者及相机控制行已实现；4项设置CPU测试已通过，包含原模板/字体、实际reset_hints消费者、SaveGameProfileCmd请求与光标命令；尚缺完整设置路由和实际磁盘落盘闭环。PDB类型化系统接口又证实TutorialOp是关闭/重置命令，18个完成编号另属TutorialHintComplete；统一两者事件身份，并将reset/completion/backoff发回原SaveGameProfileCmd，旧WriteSettingsFileCmd物理别名误判已纠正。
+- Rect原内联范围证实先四边各自points_or_zero后f32相加，移除臆造的LengthPercentage混合加法，避免百分比边抹掉另一侧绝对贡献。
+- 尚需完成：NewSession选择与Reload，DailyWelcome和保存错误页面，Settings/controls消费者、Demo提示、摄影PROMPT写入、MEI剩余API与真实历史/保存/重入链验收。具体函数审计将随验证更新，旧审计为修复前快照，不能当当前完成率。
+
+本轮经验：Ghidra单函数默认120000字符会截断，必须验证完整性并分页；优化器公共尾合并使汇编相邻常量不等于业务配对；RVA→VA使用数值相加；默认宽度函数与提示构造不能按临近名字混认；文件图片应将物理资源owner传到待执行帧快照，World卸载不能提前释放。PDB类型化EventWriter用于识别教学/档案事件，不能用ICF共用Vec::grow_one名字判类型；确认按钮子树必须在下一帧出现；原Rect是f32相加，不存在所臆造的混合LengthPercentage运算。原证、夹具、脚本、最终源码指纹和完整验证日志均收录于本目录及source-epoch.json本轮条目。
+
+### 2026-10-24 删除范围后的验证记录
+
+- `cargo check -p tiny-glade --tests --offline`通过，包含主程序与测试目标；不代表运行窗口。
+- toolbar常规回归：103项库测试、5项集成测试通过，2项库/1项原字体集成测试需单独带原资产运行。带原字体库测试105项通过；带原字体集成最终6项通过、0项忽略；不用常规ignore替代。
+- `system-onboarding`35项回归通过，验证本轮教学事件身份与档案保存请求依赖修正；设置4项CPU及文件图片1项真实GPU结果按各自边界记账。
+- 原字体集成首次在prepare后要求图元，违背当前tg-text约定（render才生成）；随后暴露旧cancel点击音期望错误。只读重新获取完整原6842e0（942行、37574字符），确认536行content.pre_update先执行，601行保存声音旧状态，872行才比较点击上升沿；cancel的bit20先前已写入，不在此产生声音。测试保留真实draw和声音核验，按独立原证修正时序，不修改生产声音算法。两次失败日志保留。
+- 本轮没有发送OS输入。M01未验收：Settings顶层/视频/键位、新建/每日/保存错误、摄影提示、Demo和完整历史/保存/Reload仍有实际缺口；Credits与许可证不再列入。
+
+### 历史轮：2026-10-24 按逐函数审计续修（已被上方当前状态覆盖）
+
+**M01 继续恢复中，未验收。** 本轮沿用原 B `mei/widgets.rs` 与 `menu/credits.rs` 的业务归属，在既有文件补实现；没有修改并行渲染任务的源码，没有启动游戏或发送 OS 输入。
+
+- **Pill 输入字段交接已修复**：`pill_hotkey` 同步当前重构 API 的 hotkey/action 两个投影；原 `6816e2` 写与 `681938` 读同一 +44 字节。保留既有直接 action 消费者；0x12 仅跳过原 tooltip 建树，仍可绑定 ui_cancel，0x28 才是无输入哨兵。新增全部40槽位、哨兵、重新绑定、非匹配动作、Idle/JustPressed/Held/Repeating/JustReleased，以及真实 `mei_pre_update` 节点激活测试。**ActionHint 提示子树仍缺，不能把 setter 输入修好标成整个 hotkey 原函数完成。**
+- **Credits 滚动算法补回**：新鲜 shared 只读 Ghidra 原体与发行 RNE 指令确认拖拽起点/保持、前一光标投影、delta最小1e-5、松手积分、目标速度趋近与上下界两次柔性回弹；替换旧硬clamp。构造常量明确初始 scroll=-400、velocity=0、previous_cursor_y=0、target_velocity=90、min=-400、max=f32::MAX；速度趋近speed1、回弹speed2。不是旧注释所说的归零减速。
+- **纠正滚动上限合同**：原 `ScrollView::max_scroll_pos` 是写上限的 setter（141dfa431），span-450 由页面布局计算；不是滚动控件内部每帧推导。保留当前查询 API，增加现有 View/content 的 `set_max_scroll_pos` 适配入口。旧 content_min/max 保留为兼容字段，不冒充原状态中的边界。
+- **补可选背景实际绘制**：独立布尔判别保留原 Option<u32> 语义，颜色0也是合法Some；调用真实 RawShapeStream→TextRenderer 矩形路径，未设置背景时无图元。未使用简化子内容绘制替代 MEI 的遍历。
+- [原指令](credits-scroll-original.asm)、[只读函数结果](toolbar-controls-followup-native.json)、[可复跑探针](native_scroll.py)、[边界元数据](toolbar-scroll-native.json) 与 `tests/fixtures/native/toolbar-scroll.ron` 保存原证。**100例**执行原滚动函数及其真实lerp指令，Rust六个状态字段均按f32 bits一致；唯一依赖桥是原 expf 调用接宿主 libSystem.expf，不宣称原Windows CRT全域等价。覆盖drag开始/保持/结束、零及极小delta、两侧越界及上下界反置时两个回弹的顺序。
+- 最终 `cargo test -p toolbar --lib --test original_menu_widget --offline`：**103项库测试、2项Pill集成测试通过，1项需要原字体资产的旧测试仍ignore**。最终主程序 `cargo check -p tiny-glade --offline` 结果与日志见source-epoch。没有新增OS、Credits页面、存档或GPU验收，也未测量性能，不能由这些CPU结果推出上述链条通过。
+- 继续缺口：Credits页面建树/生产注册/边界统计/构造器布局属性仍未闭合；ActionHint需原动作源映射、图标轮换/路径缓存与文件图片纹理消费者，不能凭名称编造按键标签。Image file分支、Tab/Tweaker、NewSession/Settings/告警页面、摄影PROMPT分支仍按逐函数审计保留。本轮不进入下一业务模块。
+
+本轮经验：①函数体之外必须读取构造常量，不能猜初始值和惯性目标；②PDB getter/setter同名不代表同一调用方向，需查实际写指令；③0x12提示门控与0x28输入门控是不同合同；④保留原两个独立越界判断，不合并为clamp；⑤缺失原消费者时，恢复控件不能计作页面完成；⑥夹具编码失败与运算差分失败分开记录。本轮初次Pill测试误将声音作为已证明合同，实际只确认激活位，移除无原证支持的声音期望，声音验收保持未新增；初次RON数组使用列表而不是固定数组元组，修正编码后执行100例一致，未修改算法或放宽比较。两次失败日志均保留。
+
+### 2026-10-24 按 B 目录逐函数独立审计（修复前历史）
+
+**B 版 toolbar 尚未完整恢复，而且不只是缺少真实输入验收。** 用户已选择“暂不进行真实输入验收”；本轮只做原证/源码审核和独立CPU字段探针，没有启动游戏或操作窗口、没有修改业务/渲染源码。
+
+- [逐目录/逐函数审计](B-FUNCTION-AUDIT.md) 按 B 的38个源文件保留914条PDB函数记录，其中840条toolbar命名空间记录，另74条外部/归属重叠；这些含闭包、单态、derive和重复，**不是独立函数数或完成率**。[逐条JSON](toolbar-b-function-audit.json) 保存原名/RVA/原元数据行、业务功能、当前承载/候选行、判定及原证边界。全量入账不等于每条机器码全域判等，未决均未升级为完成。
+- 新鲜原体复核确认 ImageContent 文件缓存/读图/纹理创建分支缺失，当前file:直接assert；Credits ScrollContent缺拖拽和柔性回弹，当前硬clamp且无draw；TabSwitcher/ActionHint/Tweaker具体族缺失。原非空输入/绘制函数不能用NodeContent默认false/空draw代替。
+- 独立Pill字段交接探针已复现：`pill_hotkey(19)` 后 `hotkey=19` 而 `pre_update_action=40`，断言退出101；原RNE6816e2/681938明确写/读同一+44字节。只证明该API交接错误，不声称执行了原二进制或真实按键；现有直接写action的调用者是另一条可用路径。
+- NewSession/Credits/Settings有状态生产入口，但对应页面消费者缺失或仍todo；每日欢迎、全局保存错误/损坏告警页面与两个demo提示也未恢复。底层会话和保存事件存在不等于这些UI完成。
+- 已排除误报：字体/文本流迁入mei_host；LUT页面实际在gameplay_startup的set36注册；decorate_hovered、Taffy样式helper和许可证HTTP服务已在现有owner实现。反馈报告按用户明确删除范围单列，其残留TextEdit不计游戏恢复阻塞。
+- 当前结论为“已恢复一批真实业务，存在明确缺口/简化/接线错误，原B toolbar不完整”；不能以101项库测试或生产世界图通过替代原函数全表和调用链验收。后续按审计中的具体业务闭环逐项修复，不按缺文件机械复制旧架构。
+
+本轮经验：①先从原目录建立完整符号账，再做业务/依赖/闭包分类；②缺原文件先追迁入后的实际owner；③同一原字段拆成多个Rust字段时必须查所有setter/consumer一致性；④默认空trait方法既可能是原版真空叶子，也可能掩盖缺失override，必须核对具体类型和原函数体；⑤用户主动删除的功能与未恢复业务分别统计。独立探针前期显式链接country_core的E0463均保留，未执行的尝试不当业务失败；最终只链接实际toolbar产物的字段探针构建成功后才复现错误。
+
+### 2026-10-24 工具修复后 M01 续修（历史轮次）
+
+- **模块仍未验收**。本轮没有进入地形或后续模块，也未修改 rhapsody、渲染宿主、线程或世界几何结构。已向并行渲染任务同步边界；其资源帧槽收尾后，仅定点修复现有 `dof_autofocus.rs` 的坐标映射。
+- 修复后首次通过 SDK/shared 重新读取 B `14234b010`、`1406884c0`，原始结果见 `reverse-engineering/tiny-glade/evidence/toolchain/toolbar-focus-resume-20261024.json`。摄影标记建树只置根节点 ignore_input，原 post_update 才传播给后代；旧测试遗漏布局阶段。保留原断言，补实际布局及标记位置/尺寸/后代屏蔽检查后 toolbar 库 **100/100 通过**。没有修改生产布局来满足错误的测试顺序。
+- 已修 autofocus X/Y：mode3 使用 `f04/f08`，其余相机分支使用 `f10/f14`；保留当前重构 API、原运算顺序和真实 SSBO/深度消费者。原发行 RNE `140a17ad7..140a17b5c` 实际执行 **180 组**，Rust UV 按 f32 bits 精确一致；7 项 pass 测试通过。夹具在 `tests/fixtures/native/toolbar-autofocus.json`，复跑脚本 [native_autofocus.py](native_autofocus.py)，原指令 [autofocus-uniform-original.asm](autofocus-uniform-original.asm)。该段不包含 mode2 鼠标资源查找、ECS lock gate、shader 或实际点击验收。
+- 顺查原函数尾部，补回步行摄影关闭吸附时的 `camera ghost` safe frame 与原 `other/camera_ghost` 模板。依据完整参数 tuple，`rbp+1c8` 来自 Modifiers；`1408c5680` 读取首字节，不能采用反编译器的同址 `StructureType::is_fence` 名称。已沿用现有 Modifiers 权威资源和 `photomode_focus` 的 screen.enabled 门控；不额外受焦点标记显示/菜单门控影响。原参数与尾部指令保存在 [photomode-parameter-original.asm](photomode-parameter-original.asm)、[photomode-walk-overlay-original.asm](photomode-walk-overlay-original.asm)。新增 6 相机×4 修饰字节组合及真实安装模板验证后，toolbar 库 **101/101 通过**。
+- 原尾部相邻 `PROMPT_ROLLERCOASTER` → DisplayRollercoasterPrompt 分支尚未闭合：事件/提示消费者存在，当前摄影实现及 main_camera 尚无该原静态状态的真实生产链；不得填默认 false 或凭名称移接其它状态。下一轮须追原写者、摄影发事件分支及现有提示消费者，作为 M01 未决项保留。
+- 本机真实 Apple GPU 的现有生产 App→非空世界图→physical export 回归已通过 1 项，实际 502 个砖实例、172 个 draw-list 条目、480×270 输出；此为 autofocus 修改后的回归，新增 ghost 系统参数后的同项复验也通过（29.66s），最新窗口验收 target 编译通过；具体源码/运行边界记录在 source-epoch 中。不能将默认相机世界图通过称为摄影点击/对焦读回全过程验收。
+- 为真实 OS 验收在**已有** `toolbar_window_chain.rs` 增加外部输入协议，保留 X11 驱动。`TG_TOOLBAR_EXTERNAL_INPUT_DIR` 必须为新的绝对目录；程序原子发布 request.json（递增 sequence、精确 PID/标题、物理客户区坐标与 scale），真实 OS 驱动操作后原子写 response.json `{ "sequence": N, "ok": true }`。响应只同步驱动；后续仍检查 winit 真实释放事件、权威 AppMode/历史、实际保存、Reload 和 native present，不能用响应代替操作。
+- 首次 Mac 窗口已进入世界和 Welcome，却停在 phase0：按钮确实由原 hide_ui 收起，尺寸全部为0；旧脚本等待可见按钮后才允许 Enter。现补隐藏按钮真实布局中心的点击路径，不改游戏可见性；它只验证隐藏期间无误操作，不能宣称“可见按钮被遮挡”。修后实跑已在第93帧发布第一条真实点击请求，phase0 等待已解除；未收到实际输入，最终 **phase1 超时、mouse=0、enter=0**，不计交互通过。
+- 当前 Computer Use 返回“Computer Use was not approved to use Tiny Glade Toolbar Validation”，Python 的 AX/事件发送预检也为 false。本轮未通过其它自动化方式绕过限制，已向用户请求仅操作独立测试游戏窗口的授权。所有窗口进程已退出，真实输入、保存/Reload 的完整窗口链仍待验；既有局部历史恢复结果保留原范围。
+- 所有通过、首轮失败、窗口超时、命令、源码/夹具指纹及验证范围统一落在 [source-epoch.json](source-epoch.json) 的 `toolbar_focus_followup_2026_10_24`；不把共享工作区的运行后指纹冒充整工程冻结构建身份。
+
+本轮经验：①先找当前阶段和最终消费者，再判断中间状态是否错误；②折叠符号需用参数来源和字节读取确认语义；③真实 RON 必须走生产 Options/IMPLICIT_SOME 入口，裸 ron::from_str 的失败不是业务算法失败；④Unicorn 沙箱 JIT 终止（exit132）与原算法差分失败分开，授权环境重跑后才取得原指令结果；⑤OS 测试必须观察生产 UI 的真实可见性，不能修改游戏状态来解除脚本等待；⑥测试协议成功、原生呈现、业务交互通过是三个独立边界。
+
+### 2026-10-24 恢复实施与并行边界
+
+- 本轮先执行 `cargo check -p tiny-glade --tests --offline`，退出 0，用时 2m56s；日志 `/tmp/toolbar-resume-check.log`。这是修改 TOD 接线之前的工作区检查，不代表后续代码或窗口验收。
+- 写入范围限定已有 `toolbar_plugin.rs`、`gui/gui_tod.rs` 与 `run_game.rs` 的 GUI 注册小块；rhapsody、render_loop、world_geometry、render_host、production_renderer 与渲染报告由另一渲染重构任务推进，本轮不修改。共享 Cargo 锁正常等待，不终止其他任务、不清理其产物。
+- 已补 TodButtonState 会话初始化、set39 内部 GUI 调度注册，以及退出时 TOD 按钮动画/拖动/屏幕边沿清理；新增旧会话拖动→退出→隐藏帧→重新打开的回归。编译和执行结果须后续填入，不先记通过。
+- 对焦原指令复核确认 X/Y 反置：原 B RNE `140a17af5..140a17b55` 中 mode3 选择 rcx=4、rax=8，先取 rcx 并除 aspect，再与 rax 打包；其他相机模式为 rcx=0x10、rax=0x14。当前 `dof_autofocus::autofocus_uniforms` 传入顺序相反；world_geometry 按实际偏移读取正确。此项留为渲染接口交接，禁止通过改 CPU 相机字段迁就错误。尚未修改共享渲染文件。
+- 原 B RNE 实际 SHA256 为 `f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03`，patched EXE 为 `cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323`，本轮重新计算。GUI set39 原指令 `1405a050f` 写 r8b=0x27，`1405a0512` 调用 `140611040`；当前仍沿用原 gui/gui_tod.rs 归属。
+- 当前 toolbar 真实窗口测试只支持 Linux X11/XTest，本机为 macOS；不能将它在当前机器上的不可运行判为输入通过。下一步需在已有窗口入口补足本机输入验证，配合渲染任务的稳定版本执行，避免同时启动竞争 GPU 的长跑。
+- 本轮 TOD 修改后 `cargo test -p tiny-glade --lib gui::gui_tod::tests --locked --offline -- --test-threads=1` 退出 0，4 项通过，包含原指令 153 组映射、50 组控件输入、实际模板建树及新增退出重入回归；已构建同一测试二进制的 `toolbar_plugin::registration_tests` 1 项通过。`cargo test -p toolbar --lib --locked --offline -- --test-threads=1` 退出 101，99 项通过、1 项摄影 focus 模板节点标志断言失败，位置 `photomode.rs:778`；保留失败，未改预期绕过。
+- 用户随后要求优先修完逆向工具，本轮暂停进一步业务修改。Ghidra 原失败查询经授权重启后已原样复跑通过，其他五个工具入口也完成限定范围复验；工具修复与经验见 [现场记录](../../../reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/tool-repair-2026-10-24.json) 及 [工具说明](../../../reverse-engineering/tiny-glade/AI_REVERSE_TOOLS.md)。模块继续保持未验收，下一轮先定位上述摄影 focus 失败，再推进实际输入与窗口合同。
+
+### 本轮逆向经验（后续轮次先复用）
+
+- 同一二进制里的两个 float 被 `unpcklps` 打包时，应追踪寄存器选择、aspect 除法与 shuffle 的最终分量，不能根据旧字段注释猜 X/Y；该问题已在原指令上确认，未借候选单测证明候选自己。
+- 原 GUI 算法已有单测不意味着生产启用：必须同时查实际内部 Schedule、资源初始化、退出清理和 MEI set44 消费。
+- MCP 成功连接/身份元数据不等于反编译成功。本轮 shared Ghidra 元数据成功，但定点 `get_functions` 返回 `java.io.IOException: Corrupted BufferMgr state`，报告 `/tmp/toolbar-tod-registration-result.json`，退出 1；不重启或修改另一任务可能正在使用的 shared 数据库。当前以身份绑定 RNE 的 LLVM 指令补充静态核对，不能把失败调用计作有效原证。
+- 后端启动锁在沙箱外，首次调用因 `startup.lock` 权限失败；用授权的工具运行环境重试后才实际连通。权限失败、数据库失败和业务证据不足分别记录，避免混成同一原因。
 
 ## 规则与完成门槛
 
@@ -58,6 +202,51 @@
 | 12 | 整游戏联合验收 | 前11阶段各自验收；混合编辑、历史、保存退出、新进程、窗口连续帧及资源 | 未进入 |
 
 关键依赖：墙→屋顶→楼梯→decorator→clutter／ivy。后序模块不提前展开整套实现；只解决阻断当前流的接口。
+
+## 按模块实施计划（2026-10-24）
+
+依赖审查见 [当前源码审查](../2026-10-24-dependency-audit.md)。该文档记录审查快照，本文件仍是实施状态与验收的唯一台账。以下是工作计划，不是完成声明。
+
+### 模块边界与执行方式
+
+- 以完整业务模块交付，不按文件、crate 数量或“先写 CPU、以后接 GPU”交付。一个模块可以跨 country-core、systems crate、宿主和 shader；修改仍放在既有归属位置。
+- 每次只推进一个主业务模块。启动、渲染、历史、音频作为该模块的配套依赖，仅修复阻断当前业务的接口；共享模块不整包重写。
+- 每个模块内部执行：核对原证与现实现→补完整算法和分支→接真实生产者/消费者→验证历史与持久化→验证卸载/重入→真实 GPU 与性能→记录验收结论。
+- 未知原语义先取证；不以空资源、默认值、近似算法或绕过入口来解除阻塞。原版本身的 panic、空分支按原证区分，不机械消除 TODO。
+- 每模块验收都覆盖真实输入、权威状态、实体/碰撞/画面、撤销重做、保存重启、删除卸载和性能；不适用项逐项注明原因。原码差分和产品有意修复分别记录。
+
+### 实施次序与具体交付
+
+| 顺序 | 业务模块 | 实现范围 | 进入条件与关键交付 |
+| --- | --- | --- | --- |
+| M01 | 公共交互 / toolbar | 建树布局、鼠标命中与取消、键盘导航、工具切换、菜单抢占、Replay 提示、历史按钮、摄影/TOD 控件与会话清理 | 当前模块。先消除最新整合源码的不确定性，完成下方收口步骤；不把进入窗口当整个模块通过。 |
+| M02 | 地形编辑 | 真实地形/鼠标 readback、hover/focus/widget、绘制和编辑、采样碰撞、撤销重做、上传与删除 | M01 通过；替换目前没有真实 writer 的输入适配，证明编辑实际改变同一地形权威和画面。 |
+| M03 | 路径 / 铺石 | 四栅格绘制/擦除、笔刷与预览、分层规则、历史、staging/GPU、边界和卸载 | M02 通过；安装完整事件和系统，逐种路径验收，不能只恢复已有存档的显示。 |
+| M04 | 花园 | 绘制/擦除、花园栅格、植被、碰撞/装饰联动、历史与生命周期 | M02、M03 共享输入和栅格合同稳定；接回 draw/record 的生产调用并验证植被增删。 |
+| M05 | 水与林地边界 | 水绘制/擦除、植被/波纹/声音、统一 pinned-clutter 事件、边界显示与越界反馈 | 地形与共享栅格稳定；不保留只为参数校验而存在的事件替身，验证岸线及相邻业务联动。 |
+| M06 | 墙体 / 规则建筑 | 自由墙及规则形状、吸附、合并拆分、高度、洞口、门/栅栏、支撑柱/支架、楼板、抹灰与半木 | 前序交互/地形/路径通过；按原证补构造 TODO 和未安装的形状生产者，墙权威→几何→碰撞→渲染全链交付。 |
+| M07 | 屋顶 | 类型、屋脊/尖顶/檐口、瓦片、墙联动、碰撞、历史、删除与失效通知 | M06 通过；核对尚未定位的注册点，真实编辑后墙与屋顶共同更新。 |
+| M08 | 楼梯 / 平台 / 扶手 | 放置编辑、附着缓存、平台和手工楼梯、主网格、支柱/支架/magic support、碰撞、历史和卸载 | M06、M07 通过；补完整构造算法，为后续装饰生成提供真实 cache，不能以已有 draw pass 代替上游实现。 |
+| M09 | decorator | 放置移动旋转、命中与 validator、锚定联动、归档恢复、set25 全生成、碰撞和完整卸载 | M08 通过；从仅 startup resources 推进到完整生产注册，并完成原卸载业务。 |
+| M10 | 颜色 / 自定义 | 墙、屋顶、门、半木、装饰物、灯光与楼梯选项；菜单取消回滚、历史和 GPU | 对应对象模块通过；逐对象验证显示与实际权威一致，不能只证明颜色事件发出。 |
+| M11 | clutter | 候选、建筑/树/水边装点、stitches/merlons、编辑、碰撞、历史与资源生命周期 | M09、M10 通过；逐项替换缺真实 producer 的适配状态，验证更新与删除没有残留。 |
+| M12 | ivy | 生长、避洞、修剪、叶片、动画、上传、声音和建筑变化联动 | 墙洞和装饰生命周期稳定；接完整持续更新，核对原事件替代与生成/修剪顺序。 |
+| M13 | 树工具 | 放置、移动、弯曲、删除、隐藏恢复、地形/建筑/水联动和历史 | 地形及建筑碰撞合同稳定；同一 TreeStorage 权威贯穿编辑、渲染、保存和卸载。 |
+| M14 | 森林 | 预放树转换、prefab 管理、批量更新、动画、隐藏与释放 | M13 通过；与树工具共同验证地形变化和重载，防止重复实例或旧订阅残留。 |
+| M15 | 小动物 | 羊、鸭、鱼、鸟、蝴蝶、萤火虫逐族恢复；行为、轨迹、交互、鸟点认领释放、动画和音频 | 水/路径/建筑/装饰/森林通过；优先消除 fish flock/四路径采样和 boids 方向表近似，逐族通过后再混合运行。 |
+| M16 | 菜单 / 设置 / 主题 / 引导 | 完整页面命令、语言和设置、每日主题到 ECS、引导触发/完成；摄影/TOD/截图剩余业务与真实声音效果 | 消费的业务已通过；页面不能进入空实现，提示必须来自真实操作，截图需实际写盘且退出释放。 |
+| M17 | 整游戏联合验收 | 混合编辑、历史顺序、存档兼容、新进程恢复、反复切场景、窗口生命周期和 Release 长稳 | M01–M16 分别验收后进入；这里只验证共同运行，不承担补前序缺项。 |
+
+M13/M14 在其真实依赖通过后具备独立推进条件；默认执行仍遵循上表，不自动发起并行任务。M16 的菜单抢占/保存入口等前置部分应在所属模块同步验证，不能等到 M16 才提供验收入口。
+
+### M01 当前模块收口步骤
+
+1. **恢复可验证基线**：核对当前源码、资产路径和已保留日志；编译现有目标，修最新整合引入的构建问题。先运行现有局部输入/菜单/历史测试，不沿用旧二进制结果。
+2. **补摄影与 TOD 的具体缺口**：按原证复核 autofocus 的 CPU→uniform 坐标映射；完成 gui_tod 在原 set39 的注册、TodButtonState 初始化与退出清理；核对摄影 focus union、命令消费者和退出状态。先核实再修改，不让一端迁就另一端错误。
+3. **闭合普通工具栏输入**：实际 Game 进入后验证可见布局与命中一致，覆盖缩放/隐藏、按住移出取消、释放重按、键盘导航、Welcome/菜单抢占及 Replay 禁用提示。工具切换验状态，不冒称后序工具算法已完成。
+4. **闭合历史与会话生命周期**：使用真实历史按钮和菜单保存/加载入口，验证新进程恢复与完整 Reload；跨会话保留按键时不得误触，释放旧焦点、捕获、事件、临时 screen 和资源。
+5. **验证实际画面与性能**：在本机真实 GPU 上运行当前源码构建的窗口入口，观察连续 present、摄影控件反馈与退出；固定 Release/分辨率/画质记录 FPS、1% low、p95/p99 和资源趋势。软件 Vulkan 结果单列。
+6. **验收并冻结模块**：将本次精确命令、源码身份、环境、日志、未通过项写回 T1–T7；全部必要项通过才标模块验收。阻塞时在 M01 内修复，不提前分散到地形或其他业务模块。
 
 ## 跨模块接口及管理
 
@@ -363,7 +552,7 @@ flowchart LR
 - [toolbar_module_chain.rs](../../crates/tiny-glade/tests/toolbar_module_chain.rs)
 - [提示工厂及后序接口合同](SIGNIFIER-CONTRACT.md)
 - [输入原证目录](../business-module-recovery-2026-10-21/toolbar-input-evidence)
-- [构造与调度原证目录](../../../reverse-engineering/tiny-glade/progress-20261020/phase2-toolbar-layout)
+- 构造与调度原证目录（旧 `progress-20261020` 已清理，未随本次保留）
 - [声音差分执行记录](audio-validation.json)
 - [toolbar_button.rs](../../crates/systems/toolbar/src/toolbar_button.rs)
 - [mode_manager.rs](../../crates/country-core/src/systems/mode_manager.rs)

@@ -118,3 +118,65 @@ fn held_mouse_reload_releases_old_owner_and_requires_a_fresh_physical_press() {
         [h.entity]
     );
 }
+
+/// T7, repeated leg: Game -> unload -> Game through the real named `OnExit` schedule, six
+/// times in one App. The toolbar footprint — live entities, registered pick volumes, MEI
+/// nodes — has to come back to the same size every cycle (no leaked entity, node or capture),
+/// and each cycle must still switch tools from a fresh physical press.
+#[test]
+fn repeated_reload_cycles_keep_the_toolbar_footprint_flat() {
+    let mut h = Harness::new();
+    let mut exit = Schedule::new(OnExit(AppLoadingState::Game));
+    exit.add_systems(
+        (
+            tiny_glade::toolbar_plugin::clear_toolbar_session,
+            country_core::startup::clearing::despawn_glade_entities,
+        )
+            .chain(),
+    );
+    h.world.add_schedule(exit);
+    let outside = Vec2::ZERO;
+    let mut footprints = Vec::new();
+    for cycle in 0..6 {
+        for _ in 0..24 {
+            h.frame(false, outside);
+        }
+        // A complete press and release on the Water button changes the tool (each cycle starts
+        // from Path, see the end of the loop).
+        h.frame(false, h.position());
+        h.frame(true, h.position());
+        h.frame(true, h.position());
+        h.frame(false, h.position());
+        assert_eq!(*h.world.resource::<AppMode>(), AppMode::Water, "cycle {cycle}: fresh press");
+        footprints.push((
+            h.world.iter_entities().count(),
+            h.world.resource::<UiState>().registry_snapshot().len(),
+            h.world.resource::<toolbar::MeiContext>().nodes.len(),
+        ));
+        h.world.run_schedule(OnExit(AppLoadingState::Game));
+        h.world.flush();
+        let ui = h.world.resource::<UiState>();
+        assert!(ui.registry_snapshot().is_empty(), "cycle {cycle}: pick volumes survived unload");
+        assert!(ui.active_params().is_none(), "cycle {cycle}: capture survived unload");
+        assert!(h.world.resource::<toolbar::MeiContext>().nodes.is_empty(), "cycle {cycle}: MEI nodes survived");
+        let mut startup = Schedule::default();
+        startup.add_systems(toolbar::toolbar_startup::toolbar_setup);
+        startup.run(&mut h.world);
+        h.world.flush();
+        h.entity = h
+            .world
+            .query::<(Entity, &SwitchToolbarCategoryButton)>()
+            .iter(&h.world)
+            .find(|(_, button)| button.category == ToolbarCategory::Water)
+            .unwrap()
+            .0;
+        let node = h.world.get::<TaffyNode>(h.entity).unwrap().node;
+        h.widget = WidgetId::from_name(&format!("toolbar_button_{node:?}"));
+        *h.world.resource_mut::<AppMode>() = AppMode::Path;
+    }
+    eprintln!("RELOAD footprints (entities, pick volumes, MEI nodes): {footprints:?}");
+    assert!(
+        footprints.windows(2).all(|pair| pair[0] == pair[1]),
+        "toolbar footprint drifts across reloads: {footprints:?}"
+    );
+}

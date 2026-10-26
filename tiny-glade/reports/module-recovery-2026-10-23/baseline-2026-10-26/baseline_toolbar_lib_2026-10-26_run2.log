@@ -1,0 +1,762 @@
+warning: value assigned to `state` is never read
+   --> third_party\obvhs-a3f3b3bf\src\cwbvh\traverse_macro.rs:114:21
+    |
+114 |                       $state.current_group.y = 0;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+   ::: third_party\obvhs-a3f3b3bf\src\cwbvh\mod.rs:214:9
+    |
+214 | /         crate::traverse!(
+215 | |             self,
+216 | |             node,
+217 | |             state,
+...   |
+227 | |         );
+    | |_________- in this macro invocation
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+    = note: this warning originates in the macro `crate::traverse` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: value assigned to `current_group` is never read
+   --> third_party\obvhs-a3f3b3bf\src\cwbvh\mod.rs:455:21
+    |
+455 |                     current_group.y = 0;
+    |                     ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unnecessary transmute
+   --> third_party\obvhs-a3f3b3bf\src\cwbvh\node.rs:216:30
+    |
+216 |         let meta8 = unsafe { transmute::<[u8; 8], u64>(self.child_meta) };
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: there's also `from_le_bytes` and `from_be_bytes` if you expect a particular byte order
+    = note: `#[warn(unnecessary_transmutes)]` on by default
+help: replace this with
+    |
+216 -         let meta8 = unsafe { transmute::<[u8; 8], u64>(self.child_meta) };
+216 +         let meta8 = unsafe { u64::from_ne_bytes(self.child_meta) };
+    |
+
+warning: `obvhs` (lib) generated 3 warnings (run `cargo fix --lib -p obvhs` to apply 1 suggestion)
+warning: unused import: `crate::render::extract::WorldComponentWrite as _`
+   --> crates\country-core\src\components\drawable.rs:518:5
+    |
+518 | use crate::render::extract::WorldComponentWrite as _;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::render::pass_builder::bind_resources`
+  --> crates\country-core\src\render\pass_builder\compute_pass_builder.rs:40:5
+   |
+40 | use crate::render::pass_builder::bind_resources;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::color_id::ColorId`
+  --> crates\country-core\src\resources\history\color_edit.rs:43:5
+   |
+43 | use crate::resources::color_id::ColorId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `de::Error`
+  --> crates\country-core\src\resources\history\serialized.rs:13:63
+   |
+13 | use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
+   |                                                               ^^^^^^^^^
+
+warning: unused import: `crate::resources::session::ActiveSession`
+ --> crates\country-core\src\startup\clearing.rs:4:5
+  |
+4 | use crate::resources::session::ActiveSession;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `SubworldColliderHandle`
+  --> crates\country-core\src\systems\collision\visualize_colliders.rs:44:54
+   |
+44 | use crate::systems::collision::world::{RaycastWorld, SubworldColliderHandle};
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `DebugColor`
+  --> crates\country-core\src\systems\collision\visualize_colliders.rs:45:31
+   |
+45 | use crate::utils::debug_viz::{DebugColor, DebugLine, DebugSphere};
+   |                               ^^^^^^^^^^
+
+warning: unused import: `glam::Vec3`
+  --> crates\country-core\src\systems\collision\visualize_colliders.rs:46:5
+   |
+46 | use glam::Vec3;
+   |     ^^^^^^^^^^
+
+warning: unused import: `ssbo_carrier`
+   --> crates\country-core\src\systems\render_loop\compute_passes\pass_kit.rs:404:16
+    |
+404 | pub(crate) use ssbo_carrier;
+    |                ^^^^^^^^^^^^
+
+warning: unused imports: `Quat` and `Vec3`
+ --> crates\country-core\src\systems\render_loop\draw_passes\draw_callbacks_a_views.rs:7:12
+  |
+7 | use glam::{Quat, Vec3};
+  |            ^^^^  ^^^^
+
+warning: unused import: `Quat`
+  --> crates\country-core\src\systems\render_loop\draw_passes\draw_callbacks_b.rs:43:12
+   |
+43 | use glam::{Quat, Vec3};
+   |            ^^^^
+
+warning: unused import: `all_nonzero`
+  --> crates\country-core\src\systems\render_loop\draw_passes\draw_callbacks_b.rs:84:24
+   |
+84 |     WaterPlanesInputs, all_nonzero, water_planes_draw,
+   |                        ^^^^^^^^^^^
+
+warning: unused import: `crate::systems::mode_manager::ClutterMeshTy`
+  --> crates\country-core\src\systems\ui_clutter\rmb_autoclutter.rs:31:5
+   |
+31 | use crate::systems::mode_manager::ClutterMeshTy;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Deserialize`
+  --> crates\country-core\src\resources\history\decorator_edit.rs:21:13
+   |
+21 | use serde::{Deserialize, Deserializer, Serializer};
+   |             ^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> crates\country-core\src\resources\history\color_edit.rs:370:39
+    |
+370 |         let serde_json::Value::Object(mut outer) = value else {
+    |                                       ----^^^^^
+    |                                       |
+    |                                       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `aux`
+   --> crates\country-core\src\resources\history\replay_cmd_buffer.rs:217:9
+    |
+217 |         aux: ReplayBucketAux,
+    |         ^^^ help: if this is intentional, prefix it with an underscore: `_aux`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates\country-core\src\systems\history.rs:575:19
+    |
+575 |         let (Some(mut storage), Some(mut id_gen)) = (storage.as_deref_mut(), id_gen) else {
+    |                   ----^^^^^^^
+    |                   |
+    |                   help: remove this `mut`
+
+warning: field `0` is never read
+  --> crates\country-core\src\asset_libraries\color_library.rs:62:12
+   |
+62 | pub struct ColorLibrarySsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `check` is never used
+  --> crates\country-core\src\asset_libraries\color_library.rs:59:1
+   |
+59 | /// 37 个 RGBA 槽，布局与 GPU 调色板保持一致。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates\country-core\src\geometry\instanced_wall.rs:238:12
+    |
+238 | pub struct BrickTransformSsbo {
+    |            ^^^^^^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates\country-core\src\geometry\instanced_wall.rs:235:1
+    |
+235 | /// CPU 生产者和 GPU 缓冲共用的砖实例格式。字段按 shader 合同固定，不能随意重排。
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+   --> crates\country-core\src\geometry\instanced_wall.rs:326:9
+    |
+326 |         #[repr(transparent)]
+    |         ^
+...
+360 | brick_render_ssbo!(BrickDrawListSsbo, 0xe00000, false);
+    | ------------------------------------------------------ in this macro invocation
+    |
+    = note: this warning originates in the macro `brick_render_ssbo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `check` is never used
+   --> crates\country-core\src\geometry\instanced_wall.rs:326:9
+    |
+326 |         #[repr(transparent)]
+    |         ^
+...
+363 | brick_render_ssbo!(BrickPrevVisibilityBitmaskSsbo, 0x10000, true);
+    | ----------------------------------------------------------------- in this macro invocation
+    |
+    = note: this warning originates in the macro `brick_render_ssbo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `check` is never used
+   --> crates\country-core\src\geometry\instanced_wall.rs:326:9
+    |
+326 |         #[repr(transparent)]
+    |         ^
+...
+364 | brick_render_ssbo!(BrickNextVisibilityBitmaskSsbo, 0x10000, true);
+    | ----------------------------------------------------------------- in this macro invocation
+    |
+    = note: this warning originates in the macro `brick_render_ssbo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `check` is never used
+ --> crates\country-core\src\render\normals_debug.rs:7:1
+  |
+7 | #[repr(transparent)]
+  | ^
+
+warning: function `check` is never used
+ --> crates\country-core\src\resources\compute_mouse_depth_value.rs:9:1
+  |
+9 | #[repr(transparent)]
+  | ^
+
+warning: field `0` is never read
+  --> crates\country-core\src\resources\roof_tile_ssbo.rs:95:12
+   |
+95 | pub struct RoofSpireSsbo {
+   |            ^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\resources\roof_tile_ssbo.rs:91:1
+   |
+91 | /// Native typed ctor141616860:1000 records×32B, independent InstanceBuffer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+  --> crates\country-core\src\resources\walls\dormers.rs:11:1
+   |
+11 | /// B typed constructor 0x14161a760: 48-byte rows, capacity11250.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+  --> crates\country-core\src\resources\walls\dormers.rs:16:1
+   |
+16 | /// B typed constructor 0x1416159e0: one u32 per cell, capacity225.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\resources\placement_data.rs:10:12
+   |
+10 | pub struct PlacementDataSsbo {
+   |            ^^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+ --> crates\country-core\src\resources\placement_data.rs:8:1
+  |
+8 | #[repr(C)]
+  | ^
+
+warning: function `check` is never used
+  --> crates\country-core\src\resources\render_ssbo.rs:25:1
+   |
+25 | /// 灯笼（O：`resources::render::lantern::LanternSsbo`，着色器侧 `LanternPacked { float3 position; uint intensity__color_id; }`，
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\resources\render_ssbo.rs:36:12
+   |
+36 | pub struct LanternSsbo {
+   |            ^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: field `0` is never read
+   --> crates\country-core\src\resources\rt.rs:367:12
+    |
+367 | pub struct RtTrianglesSsbo {
+    |            ^^^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates\country-core\src\resources\rt.rs:363:1
+    |
+363 | /// `RtTriangleSsbo`（O：0x18 B/元素；`upload_rt_world` 的 `RtTrianglesSsbo` 上传面，
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates\country-core\src\resources\rt.rs:406:12
+    |
+406 | pub struct RtTriangleMetaSsbo {
+    |            ^^^^^^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates\country-core\src\resources\rt.rs:403:1
+    |
+403 | /// Per-triangle packed color/metadata, reordered by original primitive index.
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates\country-core\src\resources\rt.rs:428:12
+    |
+428 | pub struct RtBvhSsbo {
+    |            ^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates\country-core\src\resources\rt.rs:425:1
+    |
+425 | /// `RtBvhSsbo`（O：0x50 B/元素 = [`RtBvhRecord`]；类型名断言长度 0x26）。
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\resources\water.rs:30:12
+   |
+30 | pub struct RippleSourceSsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\resources\water.rs:20:1
+   |
+20 | /// 波纹源 SSBO（O：`resources::water::RippleSourceSsbo`）。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\audio\terrain_stairs_audio.rs:35:1
+   |
+35 | /// Original B14161ddb0 mapped counter: one u32, explicit zero upload for None.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `rotate_rig_yaw_pitch` is never used
+   --> crates\country-core\src\systems\camera_rig\free_camera.rs:111:15
+    |
+111 | pub(crate) fn rotate_rig_yaw_pitch(rig: &mut CameraRig, yaw: f32, pitch: f32) {
+    |               ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `rig_position` is never used
+   --> crates\country-core\src\systems\camera_rig\free_camera.rs:116:15
+    |
+116 | pub(crate) fn rig_position(rig: &CameraRig) -> Vec3 {
+    |               ^^^^^^^^^^^^
+
+warning: function `rig_rotation` is never used
+   --> crates\country-core\src\systems\camera_rig\free_camera.rs:120:15
+    |
+120 | pub(crate) fn rig_rotation(rig: &CameraRig) -> Quat {
+    |               ^^^^^^^^^^^^
+
+warning: function `set_rig_position` is never used
+   --> crates\country-core\src\systems\camera_rig\free_camera.rs:124:15
+    |
+124 | pub(crate) fn set_rig_position(rig: &mut CameraRig, p: Vec3) {
+    |               ^^^^^^^^^^^^^^^^
+
+warning: function `translate_rig_screen_space` is never used
+   --> crates\country-core\src\systems\camera_rig\free_camera.rs:131:15
+    |
+131 | pub(crate) fn translate_rig_screen_space(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: methods `begin_selected_rotation`, `finish_selected_rotation`, `rotate_selected`, `butterfly_selected_index`, `advance_butterfly`, and `follow_butterfly` are never used
+    --> crates\country-core\src\systems\camera_rig\main_camera.rs:1291:19
+     |
+1287 | impl MainCamera {
+     | --------------- methods in this implementation
+...
+1291 |     pub(crate) fn begin_selected_rotation(&mut self, anchor: Vec3, direction: Vec3, eye: Vec3) {
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^
+...
+1297 |     pub(crate) fn finish_selected_rotation(&mut self) {
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1304 |     pub(crate) fn rotate_selected(&mut self, yaw: f32, pitch: f32) {
+     |                   ^^^^^^^^^^^^^^^
+...
+1417 |     pub(crate) fn butterfly_selected_index(&self) -> usize {
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1420 |     pub(crate) fn advance_butterfly(&mut self, zoom: f32) {
+     |                   ^^^^^^^^^^^^^^^^^
+...
+1427 |     pub(crate) fn follow_butterfly(
+     |                   ^^^^^^^^^^^^^^^^
+
+warning: method `zoom_selected` is never used
+    --> crates\country-core\src\systems\camera_rig\main_camera.rs:1449:19
+     |
+1448 | impl MainCamera {
+     | --------------- method in this implementation
+1449 |     pub(crate) fn zoom_selected(&mut self, amount: f32, anchor: Vec3) {
+     |                   ^^^^^^^^^^^^^
+
+warning: function `kind_filtered` is never used
+  --> crates\country-core\src\systems\collision\visualize_colliders.rs:60:4
+   |
+60 | fn kind_filtered(kind: u8, gui_byte: u8) -> bool {
+   |    ^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\ivy\ivy_send_to_gpu_leaf.rs:33:12
+   |
+33 | pub struct IvyLeafSsbo {
+   |            ^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\ivy\ivy_send_to_gpu_leaf.rs:28:1
+   |
+28 | /// GPU leaf element, 48 B (O: `count * 0x30`; shader `instanced_ivy_leaf`).
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\ivy\ivy_send_to_gpu_leaf.rs:65:12
+   |
+65 | pub struct IvyFlowerSsbo {
+   |            ^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\ivy\ivy_send_to_gpu_leaf.rs:60:1
+   |
+60 | /// GPU flower element (same 48 B layout, separate buffer). The flower
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\ivy\ivy_send_to_gpu_segments.rs:25:12
+   |
+25 | pub struct IvySegmentSsbo {
+   |            ^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\ivy\ivy_send_to_gpu_segments.rs:20:1
+   |
+20 | /// GPU segment element, 48 B (O: `count * 0x30`; shader `instanced_ivy_branch`).
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\compute_passes\dof_autofocus.rs:50:12
+   |
+50 | pub struct DofAutofocusSsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\dof_autofocus.rs:39:1
+   |
+39 | /// 每相机自动对焦参数（O：`resources` 里 `DofAutofocusSsbo`，着色器侧 `DofFocus`，`inc/coc.hlsl:12`，64 B）。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\compute_passes\grass.rs:76:12
+   |
+76 | pub struct GrassBladeDataSsbo {
+   |            ^^^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\grass.rs:71:1
+   |
+71 | /// B ctor@141611980: 32-byte GPU-produced record, 0x90000 elements.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\compute_passes\leaf_particles.rs:30:12
+   |
+30 | pub struct LeafParticleSsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\leaf_particles.rs:26:1
+   |
+26 | /// B ctor@141614110:32-byte record. The raw words retain exact default
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\compute_passes\leaf_particles.rs:89:12
+   |
+89 | pub struct ParticleEmitterSsbo {
+   |            ^^^^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\leaf_particles.rs:86:1
+   |
+86 | /// B ctor@141610600: 16-byte record,1100 slots, no None upload.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\rasterize_buildings.rs:72:1
+   |
+72 | /// GPU 端建筑元素（O：32 B；字段 U，以 u32 位模式保存）。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\compute_passes\rasterize_buildings.rs:75:12
+   |
+75 | pub struct GroundedBuildingsSsbo(pub [u32; 8]);
+   |            ^^^^^^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\read_bush_positions_for_cpu.rs:32:1
+   |
+32 | /// 原 `[u32; 2]` 行。第 0 行是头，其余行按原始 f32 bits 解释为 XZ。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\compute_passes\spawn_boats.rs:28:12
+   |
+28 | pub struct BoatSsbo(pub [u32; 16]);
+   |            ^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\spawn_boats.rs:23:1
+   |
+23 | /// Original constructor elements are64B even though the compute shader
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\draw_passes\custom_cursor_pass.rs:24:12
+   |
+24 | pub struct CustomCursorSsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\draw_passes\custom_cursor_pass.rs:20:1
+   |
+20 | /// B original shader CustomCursor: pos@0, enabled@8, size_px@12. The
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `clutter_mesh_type_from_name` is never used
+  --> crates\country-core\src\systems\ui_clutter\ui_autoclutter.rs:34:15
+   |
+34 | pub(super) fn clutter_mesh_type_from_name(name: &str) -> crate::systems::mode_manager::ClutterMeshTy {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `A` is never used
+   --> crates\country-core\src\systems\time_of_day.rs:169:15
+    |
+169 |     pub const A: f32 = -0.762_442_5; // 0xbf432f6f
+    |               ^
+
+warning: constant `FLAT_ROOF_HEIGHT_01` is never used
+  --> crates\country-core\src\systems\wall\adjust_wall_height\signifier_animation.rs:49:7
+   |
+49 | const FLAT_ROOF_HEIGHT_01: f32 = f32::from_bits(0x3dcc_cccd);
+   |       ^^^^^^^^^^^^^^^^^^^
+
+warning: structure field `Wall` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2204:9
+     |
+2204 |         Wall: u64,
+     |         ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+     |
+     = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: structure field `Stair` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2210:9
+     |
+2210 |         Stair: u64,
+     |         ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: structure field `Clutter` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2363:15
+     |
+2363 |     Clutter { Clutter: DecoratorClutterJson },
+     |               ^^^^^^^ help: convert the identifier to snake case (notice the capitalization): `clutter`
+
+warning: structure field `Wall` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2375:12
+     |
+2375 |     Wall { Wall: DecoratorWallDstJson },
+     |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+
+warning: structure field `Roof` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2376:12
+     |
+2376 |     Roof { Roof: DecoratorRoofDstJson },
+     |            ^^^^ help: convert the identifier to snake case: `roof`
+
+warning: structure field `Terrain` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2377:15
+     |
+2377 |     Terrain { Terrain: DecoratorTerrainDstJson },
+     |               ^^^^^^^ help: convert the identifier to snake case: `terrain`
+
+warning: structure field `Stair` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2378:13
+     |
+2378 |     Stair { Stair: DecoratorStairDstJson },
+     |             ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: `country-core` (lib) generated 182 warnings (100 duplicates) (run `cargo fix --lib -p country-core` to apply 16 suggestions)
+   Compiling toolbar v0.1.0 (D:\game\tiny-glade\crates\systems\toolbar)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 6.10s
+     Running unittests src\lib.rs (target\debug\deps\toolbar-7eee9f1b57281d76.exe)
+
+running 118 tests
+test demo_stuff::demo_show_full_glade_size::tests::actual_system_emits_factories_and_both_labels_and_menu_gates ... ignored, 需TG_INSTALL_ROOT原模板/字体，不发送OS输入
+test demo_stuff::demo_show_full_glade_size::tests::closest_top_center_preserves_window_edges_ties_and_no_candidate ... ok
+test demo_stuff::demo_show_full_glade_size::tests::original_projection_instruction_fixture ... ok
+test demo_stuff::demo_show_max_elevation::tests::real_shape_producer_to_last_event_ruler_and_menu_consumption ... ignored, 需TG_INSTALL_ROOT原模板/字体，不发送OS输入
+test demo_stuff::demo_show_max_elevation::tests::ruler_keeps_terrain_start_and_absolute_limit ... ok
+test event_lifecycle_tests::app_event_registration_expires_old_clicks_and_ui_sounds ... ok
+test mei::config::native_template_tests::localize_ui_text_substitutes_every_t_marker ... ok
+test mei::config::native_template_tests::shipped_tuple_template_builds_real_frames_and_labels ... ok
+test mei::core::tests::build_parent_links_maps_child_to_parent ... ok
+test mei::core::tests::child_with_content_initializes_typed_owner_once ... ok
+test mei::core::tests::find_node_path_reverses_parent_chain ... ok
+test mei::core::tests::frame_begin_clears_parent_table ... ok
+test mei::core::tests::frame_events_drive_root_anchor_and_child_minimum_layout ... ok
+test mei::core::tests::fullscreen_variants_share_root_creation ... ok
+test mei::core::tests::roots_enqueue_once_per_frame_and_recycle_content_and_geometry ... ok
+test mei::core::tests::scroll_input_event_tag_and_payload ... ok
+test mei::layout::native_layout_tests::expand_uses_remaining_space_and_axes_transpose ... ok
+test mei::layout::native_layout_tests::minimum_ignores_percentages_and_retains_padding_and_content ... ok
+test mei::layout::native_layout_tests::points_accessors_resolve_or_zero ... ok
+test mei::layout::native_layout_tests::style_builders_write_native_tags_and_size ... ok
+test mei::systems::tests::pack_srgba_white_and_alpha ... ok
+test mei::systems::tests::update_nav_clears_missing_focus ... ok
+test mei::systems::tests::update_nav_moves_to_next_sibling_right ... ok
+test mei::systems::tests::update_nav_moves_to_previous_sibling_left ... ok
+test mei::systems::tests::update_nav_requires_exactly_one_direction ... ok
+test mei::widgets::file_image_tests::original_action_hint_cycles_every_two_seconds_and_removes_empty_glyph ... ok
+test mei::widgets::file_image_tests::original_file_decode_cache_retry_fallback_and_release ... ok
+test mei::widgets::file_image_tests::original_hotkey_tooltip_uses_action_keyed_relative_root_and_native_hint_identity ... ok
+test mei::widgets::file_image_tests::original_tab_switcher_routes_actions_once_and_retains_owner ... ok
+test mei::widgets::tweaker::tests::enum_bool_hint_and_input_phase_preserve_original_boundaries ... ok
+test mei::widgets::tweaker::tests::float_matches_original_instructions_and_panic_write_order ... ok
+test mei::widgets::tweaker::tests::list_closed_form_preserves_repeated_native_updates_and_invalid_index_edges ... ok
+test mei::widgets::tweaker::tests::original_control_tree_retains_delta_and_click_order_without_navigation_arrows ... ignored, 需TG_INSTALL_ROOT原字体表
+test menu::corrupted_save_file::tests::original_warning_event_modal_confirm_and_reopen ... ignored, 需TG_INSTALL_ROOT指向原版模板资产
+test menu::daily_welcome::tests::original_event_fade_confirm_menu_preemption_and_reopen ... ignored, 需TG_INSTALL_ROOT原模板和字体；不发送OS输入
+test menu::load::scroll_helper_tests::hovered_item_pos_returns_the_published_index ... ok
+test menu::load::scroll_helper_tests::nav_speed_uses_native_reciprocal_clamp ... ok
+test menu::load::scroll_helper_tests::run_count_rounds_up_and_never_returns_zero ... ok
+test menu::load::scroll_helper_tests::scroll_bounds_center_short_content ... ok
+test menu::new_session::tests::every_choice_owns_all_request_data_and_unavailable_daily_cannot_start ... ok
+test menu::new_session::tests::original_background_unload_and_demo_save_limit_cancel_confirm ... ignored, 需TG_INSTALL_ROOT原模板和字体；不发送OS输入
+test menu::new_session::tests::original_template_click_publishes_owned_daily_request_reload_profile_and_welcome ... ignored, 需TG_INSTALL_ROOT原模板和字体；不发送OS输入
+test menu::report_bug::tests::removes_existing_file_and_ignores_missing_path ... ok
+test menu::report_bug::tests::text_edit_input_gate_and_shared_memory_are_real ... ok
+test menu::save_error::tests::actual_ecs_adapter_drains_latest_snapshot_renders_backups_and_recovers ... ignored, 需TG_INSTALL_ROOT原模板和字体表；独立进程内临时账号，不发送OS输入
+test menu::save_error::tests::healthy_frames_do_not_resolve_or_read_backup_paths ... ok
+test menu::save_error::tests::real_templates_follow_async_error_recovery_menu_gate_and_deadline ... ignored, 需TG_INSTALL_ROOT原模板和字体表；不发送OS输入
+test menu::splash::tests::splash_produces_original_assets_and_retains_exact_layout ... ok
+test menu::welcome::tests::welcome_deck_preserves_both_pages_and_only_last_confirmation_saves ... ok
+test menu::welcome::tests::welcome_demo_uses_its_real_distinct_template ... ok
+test menu::welcome::tests::welcome_desktop_real_template_confirm_consumer_and_profile_contract ... FAILED
+test menu::welcome::tests::welcome_fade_preserves_native_limits_midpoint_and_nan ... ok
+test menu::welcome::tests::welcome_skip_and_existing_dismissal_do_not_save_or_draw ... ok
+test menu::welcome::tests::welcome_waits_for_closed_menu_and_reveal_precedes_cancel ... ok
+test photomode::lut_gallery::tests::real_gallery_ui_uses_shared_metrics_and_writes_both_editable_configs ... ok
+test photomode::photo_focus_tests::all_camera_focus_unions_manual_cursor_and_marker_use_original_templates ... ok
+test photomode::photo_focus_tests::photo_zoom_preserves_original_camera_gates_clamp_and_nan ... ok
+test photomode::photo_focus_tests::real_focus_canvas_picker_press_hold_release_and_gpu_lock_response ... ok
+test photomode::photo_focus_tests::walk_ghost_uses_real_modifier_byte_and_original_installed_template ... ok
+test photomode::rollercoaster_tail_tests::original_tail_preserves_all_cameras_modifier_priority_and_event_gate ... ok
+test photomode::setup_photomode_toolbar::setup_tests::complete_edition_trees_and_executed_callbacks_match_original_capture ... ok
+test photomode::setup_photomode_toolbar::setup_tests::real_photo_setup_preserves_every_root_callback_size_parent_and_nav_ring ... ok
+test photomode::slider_restoration_tests::camera_slider_keeps_each_original_body_and_focus_transition ... ok
+test photomode::slider_restoration_tests::click_on_reset_component_needs_no_slider_component ... ok
+test photomode::slider_restoration_tests::real_back_button_resets_original_camera_owners_without_clearing_photo_state ... ok
+test photomode::slider_restoration_tests::real_folder_dispatch_uses_platform_message_or_os_command ... ok
+test photomode::slider_restoration_tests::real_lut_button_requests_capture_pending_menu_without_skipping_wait ... ok
+test photomode::slider_restoration_tests::real_photo_dispatch_uses_camera_commands_including_screenshot_four ... ok
+test photomode::slider_restoration_tests::real_pin_dispatch_cycles_active_focus_payload_for_all_camera_bodies ... ok
+test photomode::slider_restoration_tests::real_toggle_buttons_update_all_original_selection_consumers ... ok
+test photomode::slider_restoration_tests::reset_uses_immutable_configuration_instead_of_zeroing_contrast ... ok
+test photomode::slider_restoration_tests::screenshot_notice_uses_installed_template_and_real_confirm_input ... ok
+test photomode::timelapse::tests::last_finished_payload_controls_screen_restore_and_is_consumed_once ... ok
+test resouces_and_components::taffy_layout::tests::anchors_use_original_side_tags_gap_scale_and_reference_origin ... ok
+test resouces_and_components::taffy_layout::tests::builder_registers_roots_children_and_anchors ... ok
+test resouces_and_components::tests::link_up_nav_writes_expected_slots ... ok
+test resouces_and_components::tests::param_to_value_log_mapping ... ok
+test resouces_and_components::tests::shared_ui_component_sizes_match_fresh_descriptors ... ok
+test resouces_and_components::tests::ui_interaction_state_layout_and_accessors ... ok
+test resouces_and_components::tests::value_to_param_inverts_and_clamps ... ok
+test resouces_and_components::toolbar_layout::layout_owner_tests::all_item_branches_create_real_components_dimensions_and_parent_identity ... ok
+test resouces_and_components::toolbar_layout::layout_owner_tests::contextual_menu_empty_branch_skips_lookup_and_nonempty_uses_registered_parent ... ok
+test resouces_and_components::toolbar_layout::layout_owner_tests::nested_row_column_preserve_focus_parent_and_do_not_spawn_container_entities ... ok
+test resouces_and_components::toolbar_layout::layout_owner_tests::original_category_size_override_and_panic_drop_lifetimes ... ok
+test resouces_and_components::undo_redo_layout::tests::setup_builds_the_original_tree_and_history_button_payloads ... ok
+test taffy_update::tests::finalize_formula_matches_native_order_and_text_max ... ok
+test taffy_update::tests::taffy_node_tail_carries_base_size_and_one_frame_multiplier ... ok
+test toolbar_button::native_switch_app_mode_tests::click_writes_target_mode_and_mode_change_selects_matching_button ... ok
+test toolbar_startup::startup_tests::actual_game_reload_rebuilds_all_toolbar_owners_without_stale_entities ... ok
+test toolbar_startup::startup_tests::both_complete_category_trees_match_original_machine_capture ... ok
+test toolbar_startup::startup_tests::real_setup_builds_eleven_categories_full_menus_parent_links_and_cyclic_nav ... ok
+test toolbar_systems::input::tests::invalid_unconditional_toolbar_node_retains_original_unwrap_failure - should panic ... ok
+test toolbar_systems::input::tests::normal_photo_and_existing_contextual_roots_register_real_layout_backgrounds ... ok
+test toolbar_systems::input::tests::show_2d_ui_false_gates_before_even_invalid_layout_access ... ok
+test toolbar_systems::tests::activation_rect_places_all_four_alignments ... ok
+test toolbar_systems::tests::alignment_case_zero_applies_sequence_to_node_a_and_b ... ok
+test toolbar_systems::tests::alignment_closures_write_expected_style_fields ... ok
+test toolbar_systems::tests::progress_integration_and_sound_edges_match_native ... ok
+test toolbar_systems::tests::side_mask_matches_native_rotation ... ok
+test ui_interaction::focus::tests::breadth_first_ancestor_propagation_matches_32_complete_original_graphs ... ok
+test ui_interaction::focus::tests::full_visibility_system_matches_all_2048_original_byte_camera_branches ... ok
+test ui_interaction::focus::tests::missing_parent_state_preserves_original_visibility_unwrap_failure - should panic ... ok
+test ui_interaction::focus::tests::persistent_focus_entries_and_zst_hint_events_match_all_original_frames ... ok
+test ui_interaction::focus::tests::session_exit_releases_focus_membership_before_new_entity_generations_enter ... ok
+test ui_interaction::hide::tests::hide_ui_all_native_menu_and_photomode_gates ... ok
+test ui_interaction::hide::tests::hide_ui_invalidates_only_toolbar_focus_and_keeps_payloads ... ok
+test ui_interaction::hide::tests::hide_ui_reentry_recomputes_visibility_without_reusing_entity_focus ... ok
+test ui_interaction::native_debug_hide_tests::select_animation_pulses_scale_then_removes_component ... ok
+test ui_interaction::native_debug_hide_tests::sinc_preserves_original_zero_singularity ... ok
+test ui_interaction::native_debug_hide_tests::toolbar_producer_and_core_consumer_share_interactable_identity ... ok
+test ui_interaction::navigation::native_fixtures::production_navigation_matches_recorded_nonempty_native_trees ... ok
+test ui_interaction::navigation::tests::anchored_menu_entry_and_return_search_real_taffy_subtrees ... ok
+test ui_interaction::navigation::tests::explicit_links_confirm_and_staged_restore_keep_entity_identity ... ok
+test ui_interaction::navigation::tests::opposite_directions_cancel_and_missing_entity_invalidates_focus ... ok
+test ui_interaction::navigation::tests::real_cyclic_link_producer_matches_horizontal_and_vertical_inputs ... ok
+test ui_interaction::navigation::tests::sibling_priority_and_hidden_subtree_candidates_match_native ... ok
+test ui_interaction::ordering::tests::original_query_filter_and_every_state_byte_determine_the_draw_sort_key ... ok
+test ui_interaction::widget_geometry_tests::toolbar_registration_keeps_screen_center_depth_and_occlusion_policy ... ok
+
+failures:
+
+---- menu::welcome::tests::welcome_desktop_real_template_confirm_consumer_and_profile_contract stdout ----
+
+thread 'menu::welcome::tests::welcome_desktop_real_template_confirm_consumer_and_profile_contract' (1340) panicked at crates\systems\toolbar\src\menu\welcome\tests.rs:132:5:
+assertion `left == right` failed
+  left: "(tutorial:(deselect_complete:false,focused_edit_complete:false,camera_pan_complete:false,camera_rotate_complete:false,camera_zoom_complete:false,terrain_complete:false,terrain_steepness_complete:false,terrain_focus_mode:false,snapping_complete:false,unlink_windows:false,undo_complete:false,roof_shape_complete:false,focus_clutter_complete:false,stair_create_start_complete:false,stair_create_finish_complete:false,stair_focus_complete:false,stair_continue_complete:false,stair_detach_complete:false,welcome_message_read:true),tutorial_cooldowns:(deselect_hint:(elapsed:0.0,current_cooldown:0.0),focused_edit_hint:(elapsed:0.0,current_cooldown:0.0),active_time:0.0),game_installation_id:\"f6356df0-2dcd-4c0b-a1a0-080b5e5fc646\",key_bindings:(move_forward:Some(KeyW),move_back:Some(KeyS),move_left:Some(KeyA),move_right:Some(KeyD),move_up:Some(KeyE),move_down:Some(KeyQ),rotate_left:None,rotate_right:None,zoom_in:None,zoom_out:None,building:Some(Digit1),path:Some(Digit2),decorators:Some(Digit3),customize:Some(Digit4),eraser:Some(Digit5),terrain:Some(Digit6),garden:Some(Digit7),tree:Some(Digit8),water:Some(Digit9),photomode:Some(KeyP),time_of_day:Some(KeyT),undo:Some(KeyZ),redo:Some(KeyX),focus_edit:None,disable_snapping:Some(ControlLeft),screenshot:Some(F12),feedback:Some(F6),hide_ui_photomode:Some(KeyH),ui_cancel:Some(Delete),ui_confirm:Some(Enter),ui_left:Some(ArrowLeft),ui_right:Some(ArrowRight),ui_down:Some(ArrowDown),ui_up:Some(ArrowUp),ui_tab_prev:Some(PageUp),ui_tab_next:Some(PageDown),mouse_rotate:Some(Right),mouse_pan:Some(Middle),mouse_focus_edit:Some(Right),experimental_camera:None),new_glade_count:0)"
+ right: "(tutorial:(deselect_complete:false,focused_edit_complete:false,camera_pan_complete:false,camera_rotate_complete:false,camera_zoom_complete:false,terrain_complete:false,terrain_steepness_complete:false,terrain_focus_mode:false,snapping_complete:false,unlink_windows:false,undo_complete:false,roof_shape_complete:false,focus_clutter_complete:false,stair_create_start_complete:false,stair_create_finish_complete:false,stair_focus_complete:false,stair_continue_complete:false,stair_detach_complete:false,welcome_message_read:false),tutorial_cooldowns:(deselect_hint:(elapsed:0.0,current_cooldown:0.0),focused_edit_hint:(elapsed:0.0,current_cooldown:0.0),active_time:0.0),game_installation_id:\"f6356df0-2dcd-4c0b-a1a0-080b5e5fc646\",key_bindings:(move_forward:Some(KeyW),move_back:Some(KeyS),move_left:Some(KeyA),move_right:Some(KeyD),move_up:Some(KeyE),move_down:Some(KeyQ),rotate_left:None,rotate_right:None,zoom_in:None,zoom_out:None,building:Some(Digit1),path:Some(Digit2),decorators:Some(Digit3),customize:Some(Digit4),eraser:Some(Digit5),terrain:Some(Digit6),garden:Some(Digit7),tree:Some(Digit8),water:Some(Digit9),photomode:Some(KeyP),time_of_day:Some(KeyT),undo:Some(KeyZ),redo:Some(KeyX),focus_edit:None,disable_snapping:Some(ControlLeft),screenshot:Some(F12),feedback:Some(F6),hide_ui_photomode:Some(KeyH),ui_cancel:Some(Delete),ui_confirm:Some(Enter),ui_left:Some(ArrowLeft),ui_right:Some(ArrowRight),ui_down:Some(ArrowDown),ui_up:Some(ArrowUp),ui_tab_prev:Some(PageUp),ui_tab_next:Some(PageDown),mouse_rotate:Some(Right),mouse_pan:Some(Middle),mouse_focus_edit:Some(Right),experimental_camera:None),new_glade_count:0)"
+
+
+failures:
+    menu::welcome::tests::welcome_desktop_real_template_confirm_consumer_and_profile_contract
+
+test result: FAILED. 108 passed; 1 failed; 9 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+error: test failed, to rerun pass `-p toolbar --lib`

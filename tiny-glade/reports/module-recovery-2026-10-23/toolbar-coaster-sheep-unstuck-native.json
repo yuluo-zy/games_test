@@ -1,0 +1,17 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "cases": 6982,
+  "entry": "0x142324bf1",
+  "exit": "0x142324995",
+  "fixture_sha256": "19c87bc6303d14ad4464ab07afe6cd8e75fb2934bd1dfd892f7911fad203f0d4",
+  "columns": [
+    "input(loc,cache,ground_flag,ground_h,move_tag,timeout,y,sphere_hit,sphere_y,rock,water,winter,h,dt) float columns as u32 bits",
+    "output(loc,cache,ground_flag,ground_h,timeout,rock_calls,water_calls,terrain_calls)"
+  ],
+  "bridges": [
+    "legacy_spherecast returns supplied hit and hit.position.y; original ray origin+direction+radius asserted",
+    "rock/water/terrain samples supplied; original lazy call order/count retained",
+    "original winter helper140ae8320 executes on supplied theme byte; no save-state approximation"
+  ],
+  "scope": "完整每羊判断、8B状态payload、ground记录清除/保存、Idle计时器；会话事件/Local预热门另以实际ECS测试，不假称此夹具覆盖"
+}

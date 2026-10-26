@@ -293,11 +293,19 @@ mod tests {
     }
     #[test]
     fn preview_entire_point_list_and_anchor_match_original_2670_bytes() {
-        let rows: Vec<serde_json::Value> = serde_json::from_str(include_str!(concat!(
+        // Platform-libm fixtures: the original's sin/cos/atan2 imports were bridged to the host
+        // libm when the fixtures were made (Darwin vs Windows UCRT differ in the last bits).
+        #[cfg(windows)]
+        const FIXTURE: &str = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/fixtures/native/toolbar-placement-signifier-preview.windows-ucrt.json"
+        ));
+        #[cfg(not(windows))]
+        const FIXTURE: &str = include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../tests/fixtures/native/toolbar-placement-signifier-preview.json"
-        )))
-        .unwrap();
+        ));
+        let rows: Vec<serde_json::Value> = serde_json::from_str(FIXTURE).unwrap();
         let terrain = terrain();
         for (index, row) in rows.into_iter().enumerate() {
             let input = &row["input"];
@@ -441,11 +449,17 @@ mod tests {
             utils::components::transform::Transform,
         };
         use bevy_ecs::{system::RunSystemOnce, world::CommandQueue};
-        let rows: Vec<serde_json::Value> = serde_json::from_str(include_str!(concat!(
+        #[cfg(windows)]
+        const FIXTURE: &str = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/fixtures/native/toolbar-placement-signifier-factories.windows-ucrt.json"
+        ));
+        #[cfg(not(windows))]
+        const FIXTURE: &str = include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../tests/fixtures/native/toolbar-placement-signifier-factories.json"
-        )))
-        .unwrap();
+        ));
+        let rows: Vec<serde_json::Value> = serde_json::from_str(FIXTURE).unwrap();
         for (index, row) in rows.into_iter().enumerate() {
             let input = &row["input"];
             let mut world = World::new();

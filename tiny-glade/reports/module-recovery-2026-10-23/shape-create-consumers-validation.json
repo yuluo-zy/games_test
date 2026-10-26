@@ -1,0 +1,48 @@
+{
+  "scope": "TB-R7 两创建消费者；仅CPU、原参数指令与资源所有权，未做GPU/OS验收",
+  "source_sha256": {
+    "crates/country-core/src/systems/wall/shapes/circle/create_circle.rs": "1b40c3efa109f74967bcdd8468886406acfb6b73a9e632b10e19d69379b5832b",
+    "crates/country-core/src/systems/wall/shapes/rectangle/create_rectangle.rs": "eff91bec03aa31a6def80f9cda7a9ecc30ed2cb57412a722f7b6940fd2f37921",
+    "crates/country-core/src/resources/walls/color_selection.rs": "c7c25d3391ab38edf6e04c89e0ea1e7f86e2e807829e27ade322dc6f44633f4f"
+  },
+  "tests": {
+    "circle": {
+      "count": 4,
+      "log_sha256": "bd997dc13b40aa62d88b0872c65269fc7537cfd67b5924eb02fac48e4486d199",
+      "result_excerpt": "running 4 tests\ntest systems::wall::shapes::circle::create_circle::tests::circle_roof_height_01_is_bounded_between_third_and_five_sixths ... ok\ntest systems::wall::shapes::circle::create_circle::tests::circle_roof_parameters_match_original_instructions ... ok\n\nthread 'systems::wall::shapes::circle::create_circle::tests::invalid_circle_preserves_original_tree_event_before_curve_failure' (30620184) panicked at crates/utils/src/geometry/circle.rs:191:38:\ncalled `Result::unwrap()` on an `Err` value: InvalidSampleCount\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nEncountered a panic in system `country_core::systems::wall::shapes::circle::create_circle::create_circle`!\ntest systems::wall::shapes::circle::create_circle::tests::invalid_circle_preserves_original_tree_event_before_curve_failure ... ok\ntest systems::wall::shapes::circle::create_circle::tests::creating_a_circle_writes_wall_and_roof_and_history ... ok\n\ntest result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 2879 filtered out; finished in 0.01s\n\n"
+    },
+    "rectangle": {
+      "count": 5,
+      "log_sha256": "ecb2b03b740ee411bff562ddcabb693746c8f18aa81b04912cadf1c1fa4fc2e7",
+      "result_excerpt": "running 5 tests\ntest systems::wall::shapes::rectangle::create_rectangle::tests::square_rectangle_has_no_ridge_and_elongated_has_one ... ok\ntest systems::wall::shapes::rectangle::create_rectangle::tests::rectangle_roof_height_01_is_bounded_between_quarter_and_half ... ok\nrectangle原夹具：canonical NaN符号平台边界8例，其余逐位一致\ntest systems::wall::shapes::rectangle::create_rectangle::tests::rectangle_roof_parameters_match_original_instructions ... ok\ntest systems::wall::shapes::rectangle::create_rectangle::tests::creating_a_rectangle_writes_wall_and_roof_and_history ... ok\ntest systems::wall::shapes::rectangle::create_rectangle::tests::real_canvas_creation_inherits_records_publishes_and_releases_previews ... ok\n\ntest result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 2878 filtered out; finished in 0.14s\n\n"
+    },
+    "color-selection": {
+      "count": 9,
+      "log_sha256": "008c3ea8eec2652cf9e13a2309205e1262e764adfe5493d3a3b52a96e10fc294",
+      "result_excerpt": "running 9 tests\n\nthread 'resources::walls::color_selection::tests::invalid_previous_wall_panics' (30625712) panicked at crates/country-core/src/resources/walls/color_selection.rs:313:9:\nassertion failed: w.simplified_curve_2d.is_valid()\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\nthread 'resources::walls::color_selection::tests::colour_table_bounds_panic' (30625710) panicked at crates/country-core/src/resources/walls/color_selection.rs:321:30:\nindex out of bounds: the len is 2 but the index is 2\ntest resources::walls::color_selection::tests::missing_previous_host_uses_defaults ... ok\n\nthread 'resources::walls::color_selection::tests::nan_previous_wall_length_panics' (30625715) panicked at crates/country-core/src/resources/walls/color_selection.rs:313:9:\nassertion failed: w.simplified_curve_2d.is_valid()\ntest resources::walls::color_selection::tests::no_previous_building_uses_all_four_defaults ... ok\ntest resources::walls::color_selection::tests::map_a_hit_inherits_colours_and_style_when_map_b_misses ... ok\ntest resources::walls::color_selection::tests::generation_zero_and_deep_misses_fall_back_to_style_inheritance ... ok\ntest resources::walls::color_selection::tests::roof_component_overrides_roof_colour_and_appearance ... ok\ntest resources::walls::color_selection::tests::shape_tag_above_one_skips_colour_tables ... ok\ntest resources::walls::color_selection::tests::colour_table_bounds_panic - should panic ... ok\ntest resources::walls::color_selection::tests::invalid_previous_wall_panics - should panic ... ok\ntest resources::walls::color_selection::tests::nan_previous_wall_length_panics - should panic ... ok\n\ntest result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 2874 filtered out; finished in 0.01s\n\n"
+    }
+  },
+  "fixture_math_cases": 506,
+  "canonical_nan_sign_only_cases": 8,
+  "integration_scenarios": 14,
+  "independent_review": {
+    "completed": true,
+    "items": [
+      "事件payload高度海拔rotation完整传递",
+      "树事件先于几何失败",
+      "圆/矩形enclosure与配色先后各自保留",
+      "真实Roof实体代数/组件缺失和有序pitch分支",
+      "真实History wall/roof/gate顺序与错误反馈",
+      "真实PublicWalls创建删除发布",
+      "真实UI canvas及preview factory/TransientMesh卸载",
+      "圆常量原bits与矩形独立12.75/5.25、运算分组",
+      "没有新增代码目录或修改rhapsody/render"
+    ],
+    "limitations": [
+      "cosf桥接Darwin，不声明Windows UCRT实机逐位证明",
+      "14场景中的TestDevice只验证CPU资源所有权",
+      "下游屋顶/羊/树完整消费和正式宿主链由中央联合验收",
+      "History当前显式错误事件保留；未宣称原void异常机制相同"
+    ]
+  }
+}

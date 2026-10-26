@@ -572,7 +572,7 @@ mod tests {
     fn panel() -> (World, Schedule) {
         let mut mei = toolbar::MeiContext::default();
         let asset_root = std::env::var_os("TG_INSTALL_ROOT").map(std::path::PathBuf::from)
-            .unwrap_or_else(|| std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../B版本内容"))
+            .unwrap_or_else(|| std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../ljxsj_92385/Tiny Glade"))
             .join("assets/ui");
         for name in ["menu/time_of_day_2", "menu/tod_time_passage_hint"] {
             let config = toolbar::mei::config::read_node_config_from_file(

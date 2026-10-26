@@ -1,0 +1,36 @@
+{
+  "scope": "TB-R6 主题资源与当前tg-theme桥接；不含NewSession消费者/生产注册验收",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "functions": {
+    "get_name": "0x14083c240 完整511B，256例全函数oracle",
+    "is_weekly": "0x14083c440 全原函数及原duration_since(0x140d63bd0) 29例边界oracle；阈值432000秒",
+    "update_daily_theme": "0x1403d1750 原机器码langs.json Vec<String> + SessionMeta meta.json + history.json is_file +可选credits.json",
+    "credits_deserialize": "0x140058e20 -> 0x140067b80，author/inspiration/theme_idea三个Option<String>",
+    "registration": "0x1403d0f70 standard_app_root/cas-cache，Update接收器、初始空等待状态、后台theme fetcher"
+  },
+  "corrections": [
+    "旧title/description/daily_theme.json/thumbnail.png完全没有原依据，已删除",
+    "下载中、无活动、错误、成功必须4态，不能Idle/Pending合并",
+    "原信息字段名称未记录；当前languages/history_path/meta/credits等为语义命名，未复制niche/Windows布局",
+    "CurrentDaily新通知替换旧值；无通知不标记资源变更；下载与缓存复用既有tg-theme，不重建原SDK",
+    "旧 ImageBuffer 推断来自 ICF drop/vtable 别名，并无真实图片读取；按原始调用实参确认职责",
+    "原 UI 在外层错误 niche 后先偏移8字节再判内部3态，首qword不是完整状态",
+    "Ghidra void占位签名使get_name退化return伪码；本轮使用完整LLVM指令+原函数执行恢复",
+    "weekly额外原始位边界夹具首轮失败源于把Windows有符号100ns时间解释成u64正Unix时间；0x140d63bd0 sub/setl/cmovl原指令确认后，只修测试ABI适配。保留toolbar-daily-weekly-first-adapter-failure.log，不修改业务duration_since算法。"
+  ],
+  "source_sha256": {
+    "crates/country-core/src/resources/daily.rs": "6827678e58f1940e57064f0bca034bf268952c02effafc32ceebe9af130ef76a",
+    "crates/tiny-glade/src/theme_fetcher_plugin.rs": "101f18e280440967088f96fe2090c52c4e4ce4c8364f53eecea449c43896bb09",
+    "crates/tiny-glade/Cargo.toml": "b9a95bc04160af3b701e53259ebc21edcf06a1578ce49603313a894ad663bd75",
+    "crates/country-core/src/resources/mod.rs": "e1fa717e754e88dafd32aa7162eb4500072822ad418af3b17fce1f52d2bd0a58"
+  },
+  "verification": {
+    "native_name_cases": 256,
+    "host_tests": "cargo test -p tiny-glade --lib theme_fetcher_plugin::tests --offline: 4 passed, 0 ignored; real package schema/complete metadata/optional credits + four states/stale replacement + no-change tick + actual worker→ECS→resource removal→worker transport drop cancellation.",
+    "os_input": "explicitly deferred",
+    "steam_sdk": "user excluded",
+    "native_weekly_cases": 29,
+    "resource_tests": "cargo test -p country-core --lib resources::daily::tests --offline: 4 passed, 0 ignored; 256 name and 29 signed-time weekly fixture rows matched original.",
+    "production_integration": "resources and plugin ready; actual build(app) registration and new_session/daily_welcome consumers owned by parent new_daily, not claimed by this handoff"
+  }
+}

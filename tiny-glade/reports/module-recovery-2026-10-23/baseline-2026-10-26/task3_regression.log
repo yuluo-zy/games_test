@@ -1,0 +1,2699 @@
+warning: variant `UpdateLockWait` is never constructed
+   --> crates\rhapsody\src\rg\profiling.rs:493:5
+    |
+487 | pub(crate) enum RecordPhase {
+    |                 ----------- variant in this enum
+...
+493 |     UpdateLockWait,
+    |     ^^^^^^^^^^^^^^
+    |
+    = note: `RecordPhase` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: variant `CoverageSemantics` is never constructed
+   --> crates\rhapsody\src\rg\profiling.rs:539:5
+    |
+524 | pub(crate) enum RecordCount {
+    |                 ----------- variant in this enum
+...
+539 |     CoverageSemantics,
+    |     ^^^^^^^^^^^^^^^^^
+    |
+    = note: `RecordCount` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: method `prepare_with` is never used
+    --> crates\rhapsody\src\raw\swapchain.rs:1545:8
+     |
+1494 | impl PresentProgress {
+     | -------------------- method in this implementation
+...
+1545 |     fn prepare_with(
+     |        ^^^^^^^^^^^^
+
+warning: `rhapsody` (lib) generated 3 warnings
+warning: value assigned to `state` is never read
+   --> third_party\obvhs-a3f3b3bf\src\cwbvh\traverse_macro.rs:114:21
+    |
+114 |                       $state.current_group.y = 0;
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+   ::: third_party\obvhs-a3f3b3bf\src\cwbvh\mod.rs:214:9
+    |
+214 | /         crate::traverse!(
+215 | |             self,
+216 | |             node,
+217 | |             state,
+...   |
+227 | |         );
+    | |_________- in this macro invocation
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+    = note: this warning originates in the macro `crate::traverse` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: value assigned to `current_group` is never read
+   --> third_party\obvhs-a3f3b3bf\src\cwbvh\mod.rs:455:21
+    |
+455 |                     current_group.y = 0;
+    |                     ^^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unnecessary transmute
+   --> third_party\obvhs-a3f3b3bf\src\cwbvh\node.rs:216:30
+    |
+216 |         let meta8 = unsafe { transmute::<[u8; 8], u64>(self.child_meta) };
+    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: there's also `from_le_bytes` and `from_be_bytes` if you expect a particular byte order
+    = note: `#[warn(unnecessary_transmutes)]` on by default
+help: replace this with
+    |
+216 -         let meta8 = unsafe { transmute::<[u8; 8], u64>(self.child_meta) };
+216 +         let meta8 = unsafe { u64::from_ne_bytes(self.child_meta) };
+    |
+
+warning: `obvhs` (lib) generated 3 warnings (run `cargo fix --lib -p obvhs` to apply 1 suggestion)
+   Compiling country-core v0.1.0 (D:\game\tiny-glade\crates\country-core)
+warning: unexpected `cfg` condition name: `windows_platform`
+  --> third_party\winit-d03de0a0\src\lib.rs:40:9
+   |
+40 |         windows_platform,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: expected names are: `docsrs`, `feature`, and `test` and 32 more
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(windows_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(windows_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name: `macos_platform`
+  --> third_party\winit-d03de0a0\src\lib.rs:41:9
+   |
+41 |         macos_platform,
+   |         ^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(macos_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(macos_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `android_platform`
+  --> third_party\winit-d03de0a0\src\lib.rs:42:9
+   |
+42 |         android_platform,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(android_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(android_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+  --> third_party\winit-d03de0a0\src\lib.rs:43:9
+   |
+43 |         x11_platform,
+   |         ^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+  --> third_party\winit-d03de0a0\src\lib.rs:44:9
+   |
+44 |         wayland_platform
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `windows_platform`
+  --> third_party\winit-d03de0a0\src\lib.rs:50:9
+   |
+50 |         windows_platform,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(windows_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(windows_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `macos_platform`
+  --> third_party\winit-d03de0a0\src\lib.rs:51:9
+   |
+51 |         macos_platform,
+   |         ^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(macos_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(macos_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `android_platform`
+  --> third_party\winit-d03de0a0\src\lib.rs:52:9
+   |
+52 |         android_platform,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(android_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(android_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+  --> third_party\winit-d03de0a0\src\lib.rs:53:9
+   |
+53 |         x11_platform,
+   |         ^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+  --> third_party\winit-d03de0a0\src\lib.rs:54:9
+   |
+54 |         wayland_platform
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `cargo-clippy`
+   --> third_party\winit-d03de0a0\src\lib.rs:155:13
+    |
+155 | #![cfg_attr(feature = "cargo-clippy", deny(warnings))]
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `ahash`, `android-game-activity`, `android-native-activity`, `bytemuck`, `default`, `memmap2`, `mint`, `percent-encoding`, `rwh_04`, `rwh_05`, `rwh_06`, `sctk`, `sctk-adwaita`, `serde`, `wayland`, `wayland-backend`, `wayland-client`, `wayland-csd-adwaita`, `wayland-csd-adwaita-crossfont`, `wayland-csd-adwaita-notitle`, `wayland-dlopen`, `wayland-protocols`, `wayland-protocols-plasma`, `x11`, `x11-dl`, and `x11rb`
+    = help: consider adding `cargo-clippy` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wasm_platform`
+  --> third_party\winit-d03de0a0\src\event.rs:37:11
+   |
+37 | #[cfg(not(wasm_platform))]
+   |           ^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wasm_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wasm_platform`
+  --> third_party\winit-d03de0a0\src\event.rs:41:7
+   |
+41 | #[cfg(wasm_platform)]
+   |       ^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wasm_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+   --> third_party\winit-d03de0a0\src\event.rs:310:17
+    |
+310 |         not(any(x11_platform, wayland_platfrom)),
+    |                 ^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platfrom`
+   --> third_party\winit-d03de0a0\src\event.rs:310:31
+    |
+310 |         not(any(x11_platform, wayland_platfrom)),
+    |                               ^^^^^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platfrom)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platfrom)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `windows_platform`
+   --> third_party\winit-d03de0a0\src\event.rs:711:17
+    |
+711 |         not(any(windows_platform, macos_platform, x11_platform, wayland_platform)),
+    |                 ^^^^^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(windows_platform)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(windows_platform)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `macos_platform`
+   --> third_party\winit-d03de0a0\src\event.rs:711:35
+    |
+711 |         not(any(windows_platform, macos_platform, x11_platform, wayland_platform)),
+    |                                   ^^^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(macos_platform)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(macos_platform)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+   --> third_party\winit-d03de0a0\src\event.rs:711:51
+    |
+711 |         not(any(windows_platform, macos_platform, x11_platform, wayland_platform)),
+    |                                                   ^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+   --> third_party\winit-d03de0a0\src\event.rs:711:65
+    |
+711 |         not(any(windows_platform, macos_platform, x11_platform, wayland_platform)),
+    |                                                                 ^^^^^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `orbital_platform`
+    --> third_party\winit-d03de0a0\src\event.rs:1118:15
+     |
+1118 |     #[cfg(not(orbital_platform))]
+     |               ^^^^^^^^^^^^^^^^
+     |
+     = help: consider using a Cargo feature instead
+     = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+              [lints.rust]
+              unexpected_cfgs = { level = "warn", check-cfg = ['cfg(orbital_platform)'] }
+     = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(orbital_platform)");` to the top of the `build.rs`
+     = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+  --> third_party\winit-d03de0a0\src\event_loop.rs:12:11
+   |
+12 | #[cfg(any(x11_platform, wayland_platform))]
+   |           ^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+  --> third_party\winit-d03de0a0\src\event_loop.rs:12:25
+   |
+12 | #[cfg(any(x11_platform, wayland_platform))]
+   |                         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wasm_platform`
+  --> third_party\winit-d03de0a0\src\event_loop.rs:17:11
+   |
+17 | #[cfg(not(wasm_platform))]
+   |           ^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wasm_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wasm_platform`
+  --> third_party\winit-d03de0a0\src\event_loop.rs:19:7
+   |
+19 | #[cfg(wasm_platform)]
+   |       ^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wasm_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+   --> third_party\winit-d03de0a0\src\event_loop.rs:275:11
+    |
+275 | #[cfg(any(x11_platform, wayland_platform))]
+    |           ^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+   --> third_party\winit-d03de0a0\src\event_loop.rs:275:25
+    |
+275 | #[cfg(any(x11_platform, wayland_platform))]
+    |                         ^^^^^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+   --> third_party\winit-d03de0a0\src\event_loop.rs:289:11
+    |
+289 | #[cfg(any(x11_platform, wayland_platform))]
+    |           ^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+   --> third_party\winit-d03de0a0\src\event_loop.rs:289:25
+    |
+289 | #[cfg(any(x11_platform, wayland_platform))]
+    |                         ^^^^^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `android`
+   --> third_party\winit-d03de0a0\src\event_loop.rs:112:9
+    |
+112 |         android,
+    |         ^^^^^^^ help: found config with similar value: `target_os = "android"`
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(android)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(android)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `android`
+   --> third_party\winit-d03de0a0\src\event_loop.rs:116:13
+    |
+116 |         not(android),
+    |             ^^^^^^^ help: found config with similar value: `target_os = "android"`
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(android)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(android)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wasm_platform`
+   --> third_party\winit-d03de0a0\src\event_loop.rs:133:11
+    |
+133 |     #[cfg(wasm_platform)]
+    |           ^^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_platform)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wasm_platform)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wasm_platform`
+   --> third_party\winit-d03de0a0\src\event_loop.rs:229:9
+    |
+229 |         wasm_platform,
+    |         ^^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_platform)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wasm_platform)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wasm_platform`
+   --> third_party\winit-d03de0a0\src\event_loop.rs:232:20
+    |
+232 |     #[cfg_attr(not(wasm_platform), doc = "`EventLoopExtWebSys::spawn()`")]
+    |                    ^^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_platform)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wasm_platform)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wasm_platform`
+   --> third_party\winit-d03de0a0\src\event_loop.rs:244:19
+    |
+244 |     #[cfg(not(all(wasm_platform, target_feature = "exception-handling")))]
+    |                   ^^^^^^^^^^^^^
+    |
+    = help: consider using a Cargo feature instead
+    = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+             [lints.rust]
+             unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_platform)'] }
+    = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wasm_platform)");` to the top of the `build.rs`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `windows_platform`
+ --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:4:7
+  |
+4 | #[cfg(windows_platform)]
+  |       ^^^^^^^^^^^^^^^^
+  |
+  = help: consider using a Cargo feature instead
+  = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+           [lints.rust]
+           unexpected_cfgs = { level = "warn", check-cfg = ['cfg(windows_platform)'] }
+  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(windows_platform)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `windows_platform`
+ --> third_party\winit-d03de0a0\src\platform_impl\windows\mod.rs:1:8
+  |
+1 | #![cfg(windows_platform)]
+  |        ^^^^^^^^^^^^^^^^
+  |
+  = help: consider using a Cargo feature instead
+  = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+           [lints.rust]
+           unexpected_cfgs = { level = "warn", check-cfg = ['cfg(windows_platform)'] }
+  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(windows_platform)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+ --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:7:11
+  |
+7 | #[cfg(any(x11_platform, wayland_platform))]
+  |           ^^^^^^^^^^^^
+  |
+  = help: consider using a Cargo feature instead
+  = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+           [lints.rust]
+           unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+ --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:7:25
+  |
+7 | #[cfg(any(x11_platform, wayland_platform))]
+  |                         ^^^^^^^^^^^^^^^^
+  |
+  = help: consider using a Cargo feature instead
+  = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+           [lints.rust]
+           unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `macos_platform`
+  --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:10:7
+   |
+10 | #[cfg(macos_platform)]
+   |       ^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(macos_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(macos_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `android_platform`
+  --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:13:7
+   |
+13 | #[cfg(android_platform)]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(android_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(android_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `ios_platform`
+  --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:16:7
+   |
+16 | #[cfg(ios_platform)]
+   |       ^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(ios_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(ios_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wasm_platform`
+  --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:19:7
+   |
+19 | #[cfg(wasm_platform)]
+   |       ^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wasm_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `orbital_platform`
+  --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:22:7
+   |
+22 | #[cfg(orbital_platform)]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(orbital_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(orbital_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `ios_platform`
+  --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:58:9
+   |
+58 |     not(ios_platform),
+   |         ^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(ios_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(ios_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `windows_platform`
+  --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:59:9
+   |
+59 |     not(windows_platform),
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(windows_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(windows_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `macos_platform`
+  --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:60:9
+   |
+60 |     not(macos_platform),
+   |         ^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(macos_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(macos_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `android_platform`
+  --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:61:9
+   |
+61 |     not(android_platform),
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(android_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(android_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+  --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:62:9
+   |
+62 |     not(x11_platform),
+   |         ^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+  --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:63:9
+   |
+63 |     not(wayland_platform),
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wasm_platform`
+  --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:64:9
+   |
+64 |     not(wasm_platform),
+   |         ^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wasm_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `orbital_platform`
+  --> third_party\winit-d03de0a0\src\platform_impl\mod.rs:65:9
+   |
+65 |     not(orbital_platform),
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(orbital_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(orbital_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `windows_platform`
+ --> third_party\winit-d03de0a0\src\platform_impl\windows\window.rs:1:8
+  |
+1 | #![cfg(windows_platform)]
+  |        ^^^^^^^^^^^^^^^^
+  |
+  = help: consider using a Cargo feature instead
+  = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+           [lints.rust]
+           unexpected_cfgs = { level = "warn", check-cfg = ['cfg(windows_platform)'] }
+  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(windows_platform)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `android_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:19:7
+   |
+19 | #[cfg(android_platform)]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(android_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(android_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `ios_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:21:7
+   |
+21 | #[cfg(ios_platform)]
+   |       ^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(ios_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(ios_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `macos_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:23:7
+   |
+23 | #[cfg(macos_platform)]
+   |       ^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(macos_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(macos_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `orbital_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:25:7
+   |
+25 | #[cfg(orbital_platform)]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(orbital_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(orbital_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:27:11
+   |
+27 | #[cfg(any(x11_platform, wayland_platform))]
+   |           ^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:27:25
+   |
+27 | #[cfg(any(x11_platform, wayland_platform))]
+   |                         ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:29:7
+   |
+29 | #[cfg(wayland_platform)]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wasm_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:31:7
+   |
+31 | #[cfg(wasm_platform)]
+   |       ^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wasm_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `windows_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:33:7
+   |
+33 | #[cfg(windows_platform)]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(windows_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(windows_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:35:7
+   |
+35 | #[cfg(x11_platform)]
+   |       ^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `windows_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:39:5
+   |
+39 |     windows_platform,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(windows_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(windows_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `macos_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:40:5
+   |
+40 |     macos_platform,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(macos_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(macos_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `android_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:41:5
+   |
+41 |     android_platform,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(android_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(android_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:42:5
+   |
+42 |     x11_platform,
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:43:5
+   |
+43 |     wayland_platform
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `windows_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:48:5
+   |
+48 |     windows_platform,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(windows_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(windows_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `macos_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:49:5
+   |
+49 |     macos_platform,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(macos_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(macos_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `android_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:50:5
+   |
+50 |     android_platform,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(android_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(android_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:51:5
+   |
+51 |     x11_platform,
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:52:5
+   |
+52 |     wayland_platform
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `windows_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:57:5
+   |
+57 |     windows_platform,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(windows_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(windows_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `macos_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:58:5
+   |
+58 |     macos_platform,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(macos_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(macos_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:59:5
+   |
+59 |     x11_platform,
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:60:5
+   |
+60 |     wayland_platform,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `orbital_platform`
+  --> third_party\winit-d03de0a0\src\platform\mod.rs:61:5
+   |
+61 |     orbital_platform,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(orbital_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(orbital_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `windows_platform`
+ --> third_party\winit-d03de0a0\src\platform\modifier_supplement.rs:1:12
+  |
+1 | #![cfg(any(windows_platform, macos_platform, x11_platform, wayland_platform))]
+  |            ^^^^^^^^^^^^^^^^
+  |
+  = help: consider using a Cargo feature instead
+  = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+           [lints.rust]
+           unexpected_cfgs = { level = "warn", check-cfg = ['cfg(windows_platform)'] }
+  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(windows_platform)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `macos_platform`
+ --> third_party\winit-d03de0a0\src\platform\modifier_supplement.rs:1:30
+  |
+1 | #![cfg(any(windows_platform, macos_platform, x11_platform, wayland_platform))]
+  |                              ^^^^^^^^^^^^^^
+  |
+  = help: consider using a Cargo feature instead
+  = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+           [lints.rust]
+           unexpected_cfgs = { level = "warn", check-cfg = ['cfg(macos_platform)'] }
+  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(macos_platform)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+ --> third_party\winit-d03de0a0\src\platform\modifier_supplement.rs:1:46
+  |
+1 | #![cfg(any(windows_platform, macos_platform, x11_platform, wayland_platform))]
+  |                                              ^^^^^^^^^^^^
+  |
+  = help: consider using a Cargo feature instead
+  = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+           [lints.rust]
+           unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+ --> third_party\winit-d03de0a0\src\platform\modifier_supplement.rs:1:60
+  |
+1 | #![cfg(any(windows_platform, macos_platform, x11_platform, wayland_platform))]
+  |                                                            ^^^^^^^^^^^^^^^^
+  |
+  = help: consider using a Cargo feature instead
+  = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+           [lints.rust]
+           unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `windows_platform`
+ --> third_party\winit-d03de0a0\src\platform\scancode.rs:1:12
+  |
+1 | #![cfg(any(windows_platform, macos_platform, x11_platform, wayland_platform))]
+  |            ^^^^^^^^^^^^^^^^
+  |
+  = help: consider using a Cargo feature instead
+  = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+           [lints.rust]
+           unexpected_cfgs = { level = "warn", check-cfg = ['cfg(windows_platform)'] }
+  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(windows_platform)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `macos_platform`
+ --> third_party\winit-d03de0a0\src\platform\scancode.rs:1:30
+  |
+1 | #![cfg(any(windows_platform, macos_platform, x11_platform, wayland_platform))]
+  |                              ^^^^^^^^^^^^^^
+  |
+  = help: consider using a Cargo feature instead
+  = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+           [lints.rust]
+           unexpected_cfgs = { level = "warn", check-cfg = ['cfg(macos_platform)'] }
+  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(macos_platform)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `x11_platform`
+ --> third_party\winit-d03de0a0\src\platform\scancode.rs:1:46
+  |
+1 | #![cfg(any(windows_platform, macos_platform, x11_platform, wayland_platform))]
+  |                                              ^^^^^^^^^^^^
+  |
+  = help: consider using a Cargo feature instead
+  = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+           [lints.rust]
+           unexpected_cfgs = { level = "warn", check-cfg = ['cfg(x11_platform)'] }
+  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(x11_platform)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wayland_platform`
+ --> third_party\winit-d03de0a0\src\platform\scancode.rs:1:60
+  |
+1 | #![cfg(any(windows_platform, macos_platform, x11_platform, wayland_platform))]
+  |                                                            ^^^^^^^^^^^^^^^^
+  |
+  = help: consider using a Cargo feature instead
+  = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+           [lints.rust]
+           unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wayland_platform)'] }
+  = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wayland_platform)");` to the top of the `build.rs`
+  = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `wasm_platform`
+  --> third_party\winit-d03de0a0\src\platform\run_on_demand.rs:61:13
+   |
+61 |         not(wasm_platform),
+   |             ^^^^^^^^^^^^^
+   |
+   = help: consider using a Cargo feature instead
+   = help: or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:
+            [lints.rust]
+            unexpected_cfgs = { level = "warn", check-cfg = ['cfg(wasm_platform)'] }
+   = help: or consider adding `println!("cargo::rustc-check-cfg=cfg(wasm_platform)");` to the top of the `build.rs`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+
+warning: variable `dwStyle` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:239:5
+    |
+239 |     dwStyle: u32,
+    |     ^^^^^^^ help: convert the identifier to snake case: `dw_style`
+    |
+    = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: variable `bMenu` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:240:5
+    |
+240 |     bMenu: BOOL,
+    |     ^^^^^ help: convert the identifier to snake case: `b_menu`
+
+warning: variable `dwExStyle` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:241:5
+    |
+241 |     dwExStyle: u32,
+    |     ^^^^^^^^^ help: convert the identifier to snake case: `dw_ex_style`
+
+warning: variable `pointerId` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:246:5
+    |
+246 |     pointerId: u32,
+    |     ^^^^^^^^^ help: convert the identifier to snake case: `pointer_id`
+
+warning: variable `entriesCount` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:247:5
+    |
+247 |     entriesCount: *mut u32,
+    |     ^^^^^^^^^^^^ help: convert the identifier to snake case: `entries_count`
+
+warning: variable `pointerCount` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:248:5
+    |
+248 |     pointerCount: *mut u32,
+    |     ^^^^^^^^^^^^ help: convert the identifier to snake case: `pointer_count`
+
+warning: variable `pointerInfo` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:249:5
+    |
+249 |     pointerInfo: *mut POINTER_INFO,
+    |     ^^^^^^^^^^^ help: convert the identifier to snake case: `pointer_info`
+
+warning: variable `pointerId` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:252:63
+    |
+252 | pub type SkipPointerFrameMessages = unsafe extern "system" fn(pointerId: u32) -> BOOL;
+    |                                                               ^^^^^^^^^ help: convert the identifier to snake case: `pointer_id`
+
+warning: variable `pointerDeviceRect` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:255:5
+    |
+255 |     pointerDeviceRect: *mut RECT,
+    |     ^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `pointer_device_rect`
+
+warning: variable `displayRect` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:256:5
+    |
+256 |     displayRect: *mut RECT,
+    |     ^^^^^^^^^^^ help: convert the identifier to snake case: `display_rect`
+
+warning: variable `pointerId` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:260:31
+    |
+260 |     unsafe extern "system" fn(pointerId: u32, touchInfo: *mut POINTER_TOUCH_INFO) -> BOOL;
+    |                               ^^^^^^^^^ help: convert the identifier to snake case: `pointer_id`
+
+warning: variable `touchInfo` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:260:47
+    |
+260 |     unsafe extern "system" fn(pointerId: u32, touchInfo: *mut POINTER_TOUCH_INFO) -> BOOL;
+    |                                               ^^^^^^^^^ help: convert the identifier to snake case: `touch_info`
+
+warning: variable `pointId` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:263:31
+    |
+263 |     unsafe extern "system" fn(pointId: u32, penInfo: *mut POINTER_PEN_INFO) -> BOOL;
+    |                               ^^^^^^^ help: convert the identifier to snake case: `point_id`
+
+warning: variable `penInfo` should have a snake case name
+   --> third_party\winit-d03de0a0\src\platform_impl\windows\util.rs:263:45
+    |
+263 |     unsafe extern "system" fn(pointId: u32, penInfo: *mut POINTER_PEN_INFO) -> BOOL;
+    |                                             ^^^^^^^ help: convert the identifier to snake case: `pen_info`
+
+warning: unused return value of `Box::<T>::into_raw` that must be used
+    --> third_party\winit-d03de0a0\src\platform_impl\windows\event_loop.rs:2376:9
+     |
+2376 |         Box::into_raw(userdata);
+     |         ^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = note: losing the pointer will leak memory
+     = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+help: use `let _ = ...` to ignore the resulting value
+     |
+2376 |         let _ = Box::into_raw(userdata);
+     |         +++++++
+
+warning: `winit` (lib) generated 101 warnings
+warning: unused import: `crate::render::pass_builder::bind_resources`
+  --> crates\country-core\src\render\pass_builder\compute_pass_builder.rs:40:5
+   |
+40 | use crate::render::pass_builder::bind_resources;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::resources::color_id::ColorId`
+  --> crates\country-core\src\resources\history\color_edit.rs:43:5
+   |
+43 | use crate::resources::color_id::ColorId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `de::Error`
+  --> crates\country-core\src\resources\history\serialized.rs:13:63
+   |
+13 | use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
+   |                                                               ^^^^^^^^^
+
+warning: unused import: `bevy_ecs::prelude::*`
+  --> crates\country-core\src\resources\stairs\invalidate.rs:49:9
+   |
+49 |     use bevy_ecs::prelude::*;
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::session::ActiveSession`
+ --> crates\country-core\src\startup\clearing.rs:4:5
+  |
+4 | use crate::resources::session::ActiveSession;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ssbo_carrier`
+   --> crates\country-core\src\systems\render_loop\compute_passes\pass_kit.rs:404:16
+    |
+404 | pub(crate) use ssbo_carrier;
+    |                ^^^^^^^^^^^^
+
+warning: unused import: `Quat`
+ --> crates\country-core\src\systems\render_loop\draw_passes\draw_callbacks_a_views.rs:7:12
+  |
+7 | use glam::{Quat, Vec3};
+  |            ^^^^
+
+warning: unused import: `all_nonzero`
+  --> crates\country-core\src\systems\render_loop\draw_passes\draw_callbacks_b.rs:84:24
+   |
+84 |     WaterPlanesInputs, all_nonzero, water_planes_draw,
+   |                        ^^^^^^^^^^^
+
+warning: unused import: `prelude::*`
+   --> crates\country-core\src\systems\history\recording.rs:294:9
+    |
+294 |         prelude::*,
+    |         ^^^^^^^^^^
+
+warning: unused import: `DecoratorHistoryEdit`
+  --> crates\country-core\src\systems\history\replay_decorator.rs:78:53
+   |
+78 |     use crate::resources::history::decorator_edit::{DecoratorHistoryEdit, DecoratorV5Edit};
+   |                                                     ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::roofs::Roof`
+ --> crates\country-core\src\systems\history\tests.rs:5:5
+  |
+5 | use crate::resources::roofs::Roof;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::roofs::commands::*`
+ --> crates\country-core\src\systems\history\tests.rs:6:5
+  |
+6 | use crate::resources::roofs::commands::*;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::roofs::customization::FlatRoofRimRequest`
+ --> crates\country-core\src\systems\history\tests.rs:7:5
+  |
+7 | use crate::resources::roofs::customization::FlatRoofRimRequest;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::time::GameTime`
+ --> crates\country-core\src\systems\history\tests.rs:8:5
+  |
+8 | use crate::resources::time::GameTime;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::WallId`
+ --> crates\country-core\src\systems\history\tests.rs:9:5
+  |
+9 | use crate::resources::walls::WallId;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::public_walls::PublicWalls`
+  --> crates\country-core\src\systems\history\tests.rs:10:5
+   |
+10 | use crate::resources::walls::public_walls::PublicWalls;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::publication_fields::WallId as ObservedWallId`
+  --> crates\country-core\src\systems\history\tests.rs:11:5
+   |
+11 | use crate::resources::walls::publication_fields::WallId as ObservedWallId;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::*`
+ --> crates\country-core\src\systems\ui\ui_update_chain_tests.rs:7:9
+  |
+7 |     use super::*;
+  |         ^^^^^^^^
+
+warning: unused import: `crate::systems::mode_manager::ClutterMeshTy`
+  --> crates\country-core\src\systems\ui_clutter\rmb_autoclutter.rs:31:5
+   |
+31 | use crate::systems::mode_manager::ClutterMeshTy;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `EvRightClickedAutoClutter`
+   --> crates\country-core\src\systems\ui_clutter\tests.rs:179:9
+    |
+179 |         EvRightClickedAutoClutter, RmbAutoClutterDirect, RmbAutoClutterHit,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ClutterMeshTy`
+   --> crates\country-core\src\systems\ui_clutter\tests.rs:242:49
+    |
+242 |     use crate::systems::mode_manager::{AppMode, ClutterMeshTy, EraserLayer};
+    |                                                 ^^^^^^^^^^^^^
+
+warning: unused import: `Decorators`
+   --> crates\country-core\src\systems\ui_edit_focus.rs:328:72
+    |
+328 |     use crate::resources::walls::decorator_storage::{DecoratorStorage, Decorators};
+    |                                                                        ^^^^^^^^^^
+
+warning: unused import: `crate::resources::walls::decorator::DecoratorId`
+    --> crates\country-core\src\systems\save\snapshot.rs:2649:9
+     |
+2649 |     use crate::resources::walls::decorator::DecoratorId;
+     |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `WallId`
+  --> crates\country-core\src\systems\wall\snapping\snapping_init.rs:91:17
+   |
+91 |         walls::{WallId, WallState},
+   |                 ^^^^^^
+
+warning: unused import: `crate::render::extract::WorldComponentWrite as _`
+   --> crates\country-core\src\components\drawable.rs:518:5
+    |
+518 | use crate::render::extract::WorldComponentWrite as _;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `crate::render::pass_builder::bind_resources`
+  --> crates\country-core\src\render\pass_builder\compute_pass_builder.rs:40:5
+   |
+40 | use crate::render::pass_builder::bind_resources;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Quat` and `Vec3`
+ --> crates\country-core\src\systems\render_loop\draw_passes\draw_callbacks_a_views.rs:7:12
+  |
+7 | use glam::{Quat, Vec3};
+  |            ^^^^  ^^^^
+
+warning: unused import: `Quat`
+  --> crates\country-core\src\systems\render_loop\draw_passes\draw_callbacks_b.rs:43:12
+   |
+43 | use glam::{Quat, Vec3};
+   |            ^^^^
+
+warning: unused import: `Deserialize`
+  --> crates\country-core\src\resources\history\decorator_edit.rs:21:13
+   |
+21 | use serde::{Deserialize, Deserializer, Serializer};
+   |             ^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> crates\country-core\src\resources\history\color_edit.rs:370:39
+    |
+370 |         let serde_json::Value::Object(mut outer) = value else {
+    |                                       ----^^^^^
+    |                                       |
+    |                                       help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `aux`
+   --> crates\country-core\src\resources\history\replay_cmd_buffer.rs:217:9
+    |
+217 |         aux: ReplayBucketAux,
+    |         ^^^ help: if this is intentional, prefix it with an underscore: `_aux`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates\country-core\src\systems\history.rs:458:19
+    |
+458 |         let (Some(mut storage), Some(mut id_gen)) = (storage.as_deref_mut(), id_gen) else {
+    |                   ----^^^^^^^
+    |                   |
+    |                   help: remove this `mut`
+
+warning: field `0` is never read
+  --> crates\country-core\src\asset_libraries\color_library.rs:62:12
+   |
+62 | pub struct ColorLibrarySsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `check` is never used
+  --> crates\country-core\src\asset_libraries\color_library.rs:59:1
+   |
+59 | /// 37 个 RGBA 槽，布局与 GPU 调色板保持一致。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates\country-core\src\geometry\instanced_wall.rs:238:12
+    |
+238 | pub struct BrickTransformSsbo {
+    |            ^^^^^^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates\country-core\src\geometry\instanced_wall.rs:235:1
+    |
+235 | /// CPU 生产者和 GPU 缓冲共用的砖实例格式。字段按 shader 合同固定，不能随意重排。
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+   --> crates\country-core\src\geometry\instanced_wall.rs:326:9
+    |
+326 |         #[repr(transparent)]
+    |         ^
+...
+360 | brick_render_ssbo!(BrickDrawListSsbo, 0xe00000, false);
+    | ------------------------------------------------------ in this macro invocation
+    |
+    = note: this warning originates in the macro `brick_render_ssbo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `check` is never used
+   --> crates\country-core\src\geometry\instanced_wall.rs:326:9
+    |
+326 |         #[repr(transparent)]
+    |         ^
+...
+363 | brick_render_ssbo!(BrickPrevVisibilityBitmaskSsbo, 0x10000, true);
+    | ----------------------------------------------------------------- in this macro invocation
+    |
+    = note: this warning originates in the macro `brick_render_ssbo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `check` is never used
+   --> crates\country-core\src\geometry\instanced_wall.rs:326:9
+    |
+326 |         #[repr(transparent)]
+    |         ^
+...
+364 | brick_render_ssbo!(BrickNextVisibilityBitmaskSsbo, 0x10000, true);
+    | ----------------------------------------------------------------- in this macro invocation
+    |
+    = note: this warning originates in the macro `brick_render_ssbo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: function `check` is never used
+ --> crates\country-core\src\render\normals_debug.rs:7:1
+  |
+7 | #[repr(transparent)]
+  | ^
+
+warning: struct `TestReadbackAccess` is never constructed
+   --> crates\country-core\src\render\test_device.rs:139:19
+    |
+139 | pub(crate) struct TestReadbackAccess {
+    |                   ^^^^^^^^^^^^^^^^^^
+
+warning: methods `set_ready` and `reads` are never used
+   --> crates\country-core\src\render\test_device.rs:144:19
+    |
+143 | impl TestReadbackAccess {
+    | ----------------------- methods in this implementation
+144 |     pub(crate) fn set_ready(&self, ready: bool) {
+    |                   ^^^^^^^^^
+...
+147 |     pub(crate) fn reads(&self) -> usize {
+    |                   ^^^^^
+
+warning: function `check` is never used
+ --> crates\country-core\src\resources\compute_mouse_depth_value.rs:9:1
+  |
+9 | #[repr(transparent)]
+  | ^
+
+warning: field `0` is never read
+  --> crates\country-core\src\resources\roof_tile_ssbo.rs:95:12
+   |
+95 | pub struct RoofSpireSsbo {
+   |            ^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\resources\roof_tile_ssbo.rs:91:1
+   |
+91 | /// Native typed ctor141616860:1000 records×32B, independent InstanceBuffer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+  --> crates\country-core\src\resources\walls\dormers.rs:11:1
+   |
+11 | /// B typed constructor 0x14161a760: 48-byte rows, capacity11250.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+  --> crates\country-core\src\resources\walls\dormers.rs:16:1
+   |
+16 | /// B typed constructor 0x1416159e0: one u32 per cell, capacity225.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\resources\placement_data.rs:10:12
+   |
+10 | pub struct PlacementDataSsbo {
+   |            ^^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+ --> crates\country-core\src\resources\placement_data.rs:8:1
+  |
+8 | #[repr(C)]
+  | ^
+
+warning: function `check` is never used
+  --> crates\country-core\src\resources\render_ssbo.rs:25:1
+   |
+25 | /// 灯笼（O：`resources::render::lantern::LanternSsbo`，着色器侧 `LanternPacked { float3 position; uint intensity__color_id; }`，
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\resources\render_ssbo.rs:36:12
+   |
+36 | pub struct LanternSsbo {
+   |            ^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: field `0` is never read
+   --> crates\country-core\src\resources\rt.rs:367:12
+    |
+367 | pub struct RtTrianglesSsbo {
+    |            ^^^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates\country-core\src\resources\rt.rs:363:1
+    |
+363 | /// `RtTriangleSsbo`（O：0x18 B/元素；`upload_rt_world` 的 `RtTrianglesSsbo` 上传面，
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates\country-core\src\resources\rt.rs:406:12
+    |
+406 | pub struct RtTriangleMetaSsbo {
+    |            ^^^^^^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates\country-core\src\resources\rt.rs:403:1
+    |
+403 | /// Per-triangle packed color/metadata, reordered by original primitive index.
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates\country-core\src\resources\rt.rs:428:12
+    |
+428 | pub struct RtBvhSsbo {
+    |            ^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates\country-core\src\resources\rt.rs:425:1
+    |
+425 | /// `RtBvhSsbo`（O：0x50 B/元素 = [`RtBvhRecord`]；类型名断言长度 0x26）。
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\resources\water.rs:30:12
+   |
+30 | pub struct RippleSourceSsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\resources\water.rs:20:1
+   |
+20 | /// 波纹源 SSBO（O：`resources::water::RippleSourceSsbo`）。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\audio\terrain_stairs_audio.rs:35:1
+   |
+35 | /// Original B14161ddb0 mapped counter: one u32, explicit zero upload for None.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\ivy\ivy_send_to_gpu_leaf.rs:33:12
+   |
+33 | pub struct IvyLeafSsbo {
+   |            ^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\ivy\ivy_send_to_gpu_leaf.rs:28:1
+   |
+28 | /// GPU leaf element, 48 B (O: `count * 0x30`; shader `instanced_ivy_leaf`).
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\ivy\ivy_send_to_gpu_leaf.rs:65:12
+   |
+65 | pub struct IvyFlowerSsbo {
+   |            ^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\ivy\ivy_send_to_gpu_leaf.rs:60:1
+   |
+60 | /// GPU flower element (same 48 B layout, separate buffer). The flower
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\ivy\ivy_send_to_gpu_segments.rs:25:12
+   |
+25 | pub struct IvySegmentSsbo {
+   |            ^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\ivy\ivy_send_to_gpu_segments.rs:20:1
+   |
+20 | /// GPU segment element, 48 B (O: `count * 0x30`; shader `instanced_ivy_branch`).
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\compute_passes\dof_autofocus.rs:50:12
+   |
+50 | pub struct DofAutofocusSsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\dof_autofocus.rs:39:1
+   |
+39 | /// 每相机自动对焦参数（O：`resources` 里 `DofAutofocusSsbo`，着色器侧 `DofFocus`，`inc/coc.hlsl:12`，64 B）。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\compute_passes\grass.rs:76:12
+   |
+76 | pub struct GrassBladeDataSsbo {
+   |            ^^^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\grass.rs:71:1
+   |
+71 | /// B ctor@141611980: 32-byte GPU-produced record, 0x90000 elements.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\compute_passes\leaf_particles.rs:30:12
+   |
+30 | pub struct LeafParticleSsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\leaf_particles.rs:26:1
+   |
+26 | /// B ctor@141614110:32-byte record. The raw words retain exact default
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\compute_passes\leaf_particles.rs:89:12
+   |
+89 | pub struct ParticleEmitterSsbo {
+   |            ^^^^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\leaf_particles.rs:86:1
+   |
+86 | /// B ctor@141610600: 16-byte record,1100 slots, no None upload.
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\rasterize_buildings.rs:72:1
+   |
+72 | /// GPU 端建筑元素（O：32 B；字段 U，以 u32 位模式保存）。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\compute_passes\rasterize_buildings.rs:75:12
+   |
+75 | pub struct GroundedBuildingsSsbo(pub [u32; 8]);
+   |            ^^^^^^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\read_bush_positions_for_cpu.rs:32:1
+   |
+32 | /// 原 `[u32; 2]` 行。第 0 行是头，其余行按原始 f32 bits 解释为 XZ。
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\compute_passes\spawn_boats.rs:28:12
+   |
+28 | pub struct BoatSsbo(pub [u32; 16]);
+   |            ^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\compute_passes\spawn_boats.rs:23:1
+   |
+23 | /// Original constructor elements are64B even though the compute shader
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+  --> crates\country-core\src\systems\render_loop\draw_passes\custom_cursor_pass.rs:24:12
+   |
+24 | pub struct CustomCursorSsbo {
+   |            ^^^^^^^^^^^^^^^^ field in this struct
+   |
+   = help: consider removing this field
+
+warning: function `check` is never used
+  --> crates\country-core\src\systems\render_loop\draw_passes\custom_cursor_pass.rs:20:1
+   |
+20 | /// B original shader CustomCursor: pos@0, enabled@8, size_px@12. The
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `clutter_mesh_type_from_name` is never used
+  --> crates\country-core\src\systems\ui_clutter\ui_autoclutter.rs:34:15
+   |
+34 | pub(super) fn clutter_mesh_type_from_name(name: &str) -> crate::systems::mode_manager::ClutterMeshTy {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: constant `A` is never used
+   --> crates\country-core\src\systems\time_of_day.rs:169:15
+    |
+169 |     pub const A: f32 = -0.762_442_5; // 0xbf432f6f
+    |               ^
+
+warning: constant `FLAT_ROOF_HEIGHT_01` is never used
+  --> crates\country-core\src\systems\wall\adjust_wall_height\signifier_animation.rs:49:7
+   |
+49 | const FLAT_ROOF_HEIGHT_01: f32 = f32::from_bits(0x3dcc_cccd);
+   |       ^^^^^^^^^^^^^^^^^^^
+
+warning: structure field `Wall` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2204:9
+     |
+2204 |         Wall: u64,
+     |         ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+     |
+     = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: structure field `Stair` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2210:9
+     |
+2210 |         Stair: u64,
+     |         ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: structure field `Clutter` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2363:15
+     |
+2363 |     Clutter { Clutter: DecoratorClutterJson },
+     |               ^^^^^^^ help: convert the identifier to snake case (notice the capitalization): `clutter`
+
+warning: structure field `Wall` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2375:12
+     |
+2375 |     Wall { Wall: DecoratorWallDstJson },
+     |            ^^^^ help: convert the identifier to snake case (notice the capitalization): `wall`
+
+warning: structure field `Roof` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2376:12
+     |
+2376 |     Roof { Roof: DecoratorRoofDstJson },
+     |            ^^^^ help: convert the identifier to snake case: `roof`
+
+warning: structure field `Terrain` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2377:15
+     |
+2377 |     Terrain { Terrain: DecoratorTerrainDstJson },
+     |               ^^^^^^^ help: convert the identifier to snake case: `terrain`
+
+warning: structure field `Stair` should have a snake case name
+    --> crates\country-core\src\systems\save\snapshot.rs:2378:13
+     |
+2378 |     Stair { Stair: DecoratorStairDstJson },
+     |             ^^^^^ help: convert the identifier to snake case (notice the capitalization): `stair`
+
+warning: variable does not need to be mutable
+   --> crates\country-core\src\systems\audio\firstperson_steps.rs:334:17
+    |
+334 |             let mut library = AssetSsboLibrary::new();
+    |                 ----^^^^^^^
+    |                 |
+    |                 help: remove this `mut`
+
+   Compiling toolbar v0.1.0 (D:\game\tiny-glade\crates\systems\toolbar)
+   Compiling system-tree v0.1.0 (D:\game\tiny-glade\crates\systems\tree-tool)
+   Compiling timberframe v0.1.0 (D:\game\tiny-glade\crates\systems\timberframe)
+   Compiling system-water v0.1.0 (D:\game\tiny-glade\crates\systems\water)
+   Compiling system-color v0.1.0 (D:\game\tiny-glade\crates\systems\color)
+   Compiling system-critters v0.1.0 (D:\game\tiny-glade\crates\systems\critters)
+warning: variable does not need to be mutable
+   --> crates\country-core\src\systems\render_loop\compute_passes\leaf_particles.rs:358:13
+    |
+358 |         let mut library = AssetSsboLibrary::new();
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates\country-core\src\systems\render_loop\compute_passes\mouse_read_terrain_stroke_index.rs:230:13
+    |
+230 |         let mut library = AssetSsboLibrary::new();
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates\country-core\src\systems\render_loop\compute_passes\read_bush_positions_for_cpu.rs:132:13
+    |
+132 |         let mut library = AssetSsboLibrary::default();
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates\country-core\src\systems\terrain\terrain_hover_idx.rs:161:13
+    |
+161 |         let mut library = AssetSsboLibrary::new();
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates\country-core\src\systems\terrain\tests.rs:30:9
+   |
+30 |     let mut library = AssetSsboLibrary::new();
+   |         ----^^^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates\country-core\src\systems\wall\adjust_wall_height\signifier_animation.rs:202:13
+    |
+202 |         let mut meshes = AssetMeshLibrary::new();
+    |             ----^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused import: `country_core::render::ssbo::StorageElement`
+  --> crates\systems\critters\src\butterfly.rs:33:5
+   |
+33 | use country_core::render::ssbo::StorageElement;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `Quat`
+  --> crates\systems\critters\src\components.rs:29:12
+   |
+29 | use glam::{Quat, Vec3};
+   |            ^^^^
+
+warning: unused import: `country_core::resources::world_raster::WorldRaster`
+  --> crates\systems\critters\src\duck.rs:19:5
+   |
+19 | use country_core::resources::world_raster::WorldRaster;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `country_core::render::ssbo::StorageElement`
+  --> crates\systems\critters\src\firefly.rs:16:5
+   |
+16 | use country_core::render::ssbo::StorageElement;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `country_core::resources::world_raster::WorldRaster`
+  --> crates\systems\critters\src\fish.rs:24:5
+   |
+24 | use country_core::resources::world_raster::WorldRaster;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `country_core::resources::world_raster::WorldRaster`
+  --> crates\systems\critters\src\sheep\sheep_behavior.rs:22:5
+   |
+22 | use country_core::resources::world_raster::WorldRaster;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `world_raster::WorldRaster`
+  --> crates\systems\critters\src\sheep\sheep_terrain.rs:13:69
+   |
+13 |     resources::{terrain_height::TerrainHeightsData, time::GameTime, world_raster::WorldRaster},
+   |                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `world_raster::WorldRaster`
+  --> crates\systems\critters\src\sheep\sheep_unstuck.rs:15:9
+   |
+15 |         world_raster::WorldRaster,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `glam::Vec3`
+  --> crates\systems\critters\src\sheep\sheep_walk_animation.rs:31:5
+   |
+31 | use glam::Vec3;
+   |     ^^^^^^^^^^
+
+warning: unused import: `country_core::resources::world_raster::WorldRaster`
+  --> crates\systems\critters\src\spawn_ducks.rs:27:5
+   |
+27 | use country_core::resources::world_raster::WorldRaster;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: field `0` is never read
+   --> crates\country-core\src\asset_libraries\ssbo_library.rs:575:12
+    |
+575 |     struct Alpha(u32);
+    |            ^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates\country-core\src\asset_libraries\ssbo_library.rs:573:5
+    |
+573 |     #[repr(transparent)]
+    |     ^
+
+warning: field `0` is never read
+   --> crates\country-core\src\asset_libraries\ssbo_library.rs:591:12
+    |
+591 |     struct Beta(u32);
+    |            ^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates\country-core\src\asset_libraries\ssbo_library.rs:589:5
+    |
+589 |     #[repr(transparent)]
+    |     ^
+
+warning: field `0` is never read
+   --> crates\country-core\src\asset_libraries\ssbo_library.rs:609:12
+    |
+609 |     struct AlphaImpostor(u32);
+    |            ^^^^^^^^^^^^^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates\country-core\src\asset_libraries\ssbo_library.rs:606:5
+    |
+606 |     /// 与 `Alpha` 同短名、不同类型：触发 “same `NAME`” 分支。
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: method `buffer_host` is never used
+  --> crates\country-core\src\rhapsody_contract.rs:35:19
+   |
+20 | impl GraphicsDevice {
+   | ------------------- method in this implementation
+...
+35 |     pub(crate) fn buffer_host(
+   |                   ^^^^^^^^^^^
+
+warning: field `name` is never read
+  --> crates\country-core\src\systems\audio\music\load_glade_audio.rs:37:9
+   |
+36 |     struct Event {
+   |            ----- field in this struct
+37 |         name: String,
+   |         ^^^^
+   |
+   = note: `Event` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: field `0` is never read
+   --> crates\country-core\src\systems\render_loop\compute_passes\bin_lights.rs:209:12
+    |
+209 |     struct L(u32);
+    |            ^ field in this struct
+    |
+    = help: consider removing this field
+
+warning: function `check` is never used
+   --> crates\country-core\src\systems\render_loop\compute_passes\bin_lights.rs:206:5
+    |
+206 |     /// 灯笼缓冲替身：`InstanceBuffer<T>` 存储（实例数 = 注册时的数据长度）。
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+  --> crates\systems\critters\src\fish.rs:40:5
+   |
+40 |     mut rng: ResMut<FishRng>,
+   |     ----^^^
+   |     |
+   |     help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> crates\systems\critters\src\fish.rs:90:18
+   |
+90 |     for (entity, mut fish_c, mut fish_b) in &mut query {
+   |                  ----^^^^^^
+   |                  |
+   |                  help: remove this `mut`
+
+warning: value assigned to `advanced` is never read
+  --> crates\systems\critters\src\sheep\sheep_pet_animation.rs:62:24
+   |
+62 |     let mut advanced = false;
+   |                        ^^^^^ this value is reassigned later and never used
+...
+73 |             advanced = true;
+   |             --------------- `advanced` is overwritten here before the previous value is read
+   |
+   = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> crates\systems\critters\src\startup_sheep.rs:94:9
+   |
+94 |     let mut rng = fastrand::Rng::with_seed(0x16e5c);
+   |         ----^^^
+   |         |
+   |         help: remove this `mut`
+
+   Compiling system-clutter v0.1.0 (D:\game\tiny-glade\crates\systems\clutter)
+   Compiling system-decorator v0.1.0 (D:\game\tiny-glade\crates\systems\decorator)
+warning: constant `TAIL_BASE` is never used
+  --> crates\systems\toolbar\src\taffy_update.rs:38:7
+   |
+38 | const TAIL_BASE: std::ops::Range<usize> = 0..8;
+   |       ^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `TAIL_MULT` is never used
+  --> crates\systems\toolbar\src\taffy_update.rs:39:7
+   |
+39 | const TAIL_MULT: std::ops::Range<usize> = 8..12;
+   |       ^^^^^^^^^
+
+warning: unused import: `country_core::resources::world_raster::WorldRaster`
+  --> crates\systems\clutter\src\autoclutter\add_lantern_water_setdresssing.rs:33:5
+   |
+33 | use country_core::resources::world_raster::WorldRaster;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `country_core::resources::world_raster::WorldRaster`
+  --> crates\systems\clutter\src\autoclutter\add_tree_vegetation_setdressing.rs:31:5
+   |
+31 | use country_core::resources::world_raster::WorldRaster;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `country_core::render::extract::WorldComponentWrite as _`
+   --> crates\systems\clutter\src\autoclutter\manage_autoclutter_entities.rs:264:5
+    |
+264 | use country_core::render::extract::WorldComponentWrite as _;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `DecoratorBlueprint`
+  --> crates\systems\decorator\src\decorator_visual\chimney_roof.rs:30:24
+   |
+30 | use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
+   |                        ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `DecoratorBlueprint`
+  --> crates\systems\decorator\src\decorator_visual\gothic_dormer.rs:26:24
+   |
+26 | use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
+   |                        ^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Quat` and `Vec3`
+  --> crates\systems\decorator\src\decorator_visual\lantern.rs:35:12
+   |
+35 | use glam::{Quat, Vec3};
+   |            ^^^^  ^^^^
+
+warning: unused import: `DecoratorBlueprint`
+  --> crates\systems\decorator\src\decorator_visual\lantern.rs:37:24
+   |
+37 | use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
+   |                        ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `country_core::render::extract::WorldComponentWrite as _`
+   --> crates\systems\decorator\src\ui_systems\decorator_interaction_intent.rs:543:5
+    |
+543 | use country_core::render::extract::WorldComponentWrite as _;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `WidgetId`
+  --> crates\systems\decorator\src\ui_systems\ui_decorator_affordance_dispatch.rs:19:63
+   |
+19 | use country_core::systems::ui::resources::ui_state::{UiState, WidgetId};
+   |                                                               ^^^^^^^^
+
+warning: unused import: `DecoratorInfo`
+ --> crates\systems\decorator\src\ui_systems\ui_rotate_lantern.rs:9:50
+  |
+9 |             decorator::{DecoratorDst,DecoratorId,DecoratorInfo,DecoratorRotationXZ,DecoratorType,DeferredDecoratorOpEvents},
+  |                                                  ^^^^^^^^^^^^^
+
+warning: unused variable: `dirty`
+  --> crates\systems\clutter\src\autoclutter\add_birdnests.rs:47:5
+   |
+47 |     dirty: ResMut<DirtyTilesResource>,
+   |     ^^^^^ help: if this is intentional, prefix it with an underscore: `_dirty`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> crates\systems\clutter\src\autoclutter\add_lantern_water_setdresssing.rs:68:5
+   |
+68 |     mut started: ResMut<IsStarted>,
+   |     ----^^^^^^^
+   |     |
+   |     help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> crates\systems\clutter\src\autoclutter\add_lantern_water_setdresssing.rs:74:13
+   |
+74 |         let mut rng = utils::rng::rng_from_seed_u64(utils::rng::init_rng_u64(*id));
+   |             ----^^^
+   |             |
+   |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates\systems\clutter\src\autoclutter\add_tree_vegetation_setdressing.rs:83:5
+   |
+83 |     mut rng: ResMut<TreeRng>,
+   |     ----^^^
+   |     |
+   |     help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates\systems\clutter\src\autoclutter\add_tree_vegetation_setdressing.rs:100:13
+    |
+100 |         let mut tree_rng: Rng = utils::rng::rng_from_seed_u64(utils::rng::init_rng_u64(entry.id));
+    |             ----^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `r`
+  --> crates\systems\clutter\src\autoclutter\add_tree_vegetation_setdressing.rs:89:9
+   |
+89 |     let r = &mut rng.0.lock().unwrap();
+   |         ^ help: if this is intentional, prefix it with an underscore: `_r`
+
+warning: variable does not need to be mutable
+  --> crates\systems\clutter\src\autoclutter\manage_autoclutter_entities.rs:98:9
+   |
+98 |     let mut rng = fastrand::Rng::with_seed(utils::rng::init_rng(time.frame_count));
+   |         ----^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates\systems\clutter\src\autoclutter\populate_autoclutter_regions.rs:75:5
+   |
+75 |     mut sub: ResMut<AutoClutterDirtySubscriptions>,
+   |     ----^^^
+   |     |
+   |     help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates\systems\clutter\src\autoclutter\populate_autoclutter_regions.rs:101:5
+    |
+101 |     mut sub: ResMut<AutoClutterDirtySubscriptions>,
+    |     ----^^^
+    |     |
+    |     help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates\systems\clutter\src\autoclutter\populate_autoclutter_regions.rs:103:5
+    |
+103 |     mut session: ResMut<SessionMeta>,
+    |     ----^^^^^^^
+    |     |
+    |     help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates\systems\clutter\src\autoclutter\populate_autoclutter_regions.rs:106:5
+    |
+106 |     mut mesh_groups: ResMut<MeshGroupWeights>,
+    |     ----^^^^^^^^^^^
+    |     |
+    |     help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates\systems\clutter\src\autoclutter\populate_autoclutter_regions.rs:253:9
+    |
+253 |     let mut rng = utils::rng::rng_from_seed_u64(utils::rng::init_rng_u64(key.0));
+    |         ----^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates\systems\clutter\src\autoclutter\populate_autoclutter_regions.rs:273:9
+    |
+273 |     let mut rng = utils::rng::rng_from_seed_u64(utils::rng::init_rng_u64(key.0));
+    |         ----^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> crates\systems\clutter\src\autoclutter\populate_autoclutter_regions.rs:458:17
+    |
+458 |             let mut rng = utils::rng::rng_from_seed_u64(utils::rng::init_rng_u64(key.0));
+    |                 ----^^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates\systems\clutter\src\inter_roof_merlons\construct_inter_roof_merlons.rs:79:5
+   |
+79 |     mut rng: ResMut<MerlonRng>,
+   |     ----^^^
+   |     |
+   |     help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates\systems\clutter\src\inter_roof_merlons\construct_inter_roof_merlons.rs:81:5
+   |
+81 |     mut geometry: ResMut<MerlonHostGeometryList>,
+   |     ----^^^^^^^^
+   |     |
+   |     help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates\systems\clutter\src\inter_roof_merlons\construct_inter_roof_merlons.rs:82:5
+   |
+82 |     mut roof_query: Query<&Roof>,
+   |     ----^^^^^^^^^^
+   |     |
+   |     help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates\systems\clutter\src\inter_roof_merlons\detect_inter_roof_merlons.rs:61:5
+   |
+61 |     mut changes: ResMut<WallAndRoofChanges>,
+   |     ----^^^^^^^
+   |     |
+   |     help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates\systems\clutter\src\inter_roof_merlons\detect_inter_roof_merlons.rs:66:5
+   |
+66 |     mut roof_query: Query<&Roof>,
+   |     ----^^^^^^^^^^
+   |     |
+   |     help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates\systems\clutter\src\inter_shape_stitches\detect_intra_shape_corners.rs:62:5
+   |
+62 |     mut changes: ResMut<WallAndRoofChanges>,
+   |     ----^^^^^^^
+   |     |
+   |     help: remove this `mut`
+
+warning: variable does not need to be mutable
+  --> crates\systems\clutter\src\inter_shape_stitches\detect_intra_shape_corners.rs:68:5
+   |
+68 |     mut roof_query: Query<&Roof>,
+   |     ----^^^^^^^^^^
+   |     |
+   |     help: remove this `mut`
+
+warning: unused variable: `wall_a`
+   --> crates\systems\clutter\src\inter_shape_stitches\detect_intra_shape_corners.rs:125:5
+    |
+125 |     wall_a: WallId,
+    |     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_wall_a`
+
+warning: variable does not need to be mutable
+  --> crates\systems\clutter\src\inter_shape_stitches\stitch_bricks.rs:86:5
+   |
+86 |     mut rng: ResMut<StitchRng>,
+   |     ----^^^
+   |     |
+   |     help: remove this `mut`
+
+warning: fields `tag`, `shared`, and `key` are never read
+  --> crates\systems\clutter\src\autoclutter\process_autoclutter_candidates.rs:38:5
+   |
+36 | struct AcceptedRecord {
+   |        -------------- fields in this struct
+37 |     rect: utils::geometry::rectangle::Rectangle3d,
+38 |     tag: u64,
+   |     ^^^
+39 |     shared: u64,
+   |     ^^^^^^
+40 |     key: u64,
+   |     ^^^
+   |
+   = note: `AcceptedRecord` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: use of deprecated type alias `country_core::resources::walls::decorator_subtype::DerivedDecoratorInfo`: legacy bbox record; canonical ID lookup is DerivedDecoratorInfoView
+  --> crates\systems\decorator\src\collision_detection.rs:35:44
+   |
+35 |     DecoratorLibKey, DecoratorMeshLibrary, DerivedDecoratorInfo, DerivedDecoratorSubtypes,
+   |                                            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated type alias `country_core::resources::walls::decorator_subtype::DerivedDecoratorInfo`: legacy bbox record; canonical ID lookup is DerivedDecoratorInfoView
+   --> crates\systems\decorator\src\collision_detection.rs:188:16
+    |
+188 |     derived_b: DerivedDecoratorInfo,
+    |                ^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated type alias `country_core::resources::walls::decorator_subtype::DerivedDecoratorInfo`: legacy bbox record; canonical ID lookup is DerivedDecoratorInfoView
+  --> crates\systems\decorator\src\ui_systems\decorator_interaction_intent.rs:21:44
+   |
+21 |     DecoratorLibKey, DecoratorMeshLibrary, DerivedDecoratorInfo,
+   |                                            ^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated type alias `country_core::resources::walls::decorator_subtype::DerivedDecoratorInfo`: legacy bbox record; canonical ID lookup is DerivedDecoratorInfoView
+  --> crates\systems\decorator\src\ui_systems\decorator_interaction_intent.rs:64:15
+   |
+64 |     subtype: &DerivedDecoratorInfo,
+   |               ^^^^^^^^^^^^^^^^^^^^
+
+note: did not finalize incremental compilation session directory `\\?\D:\game\tiny-glade\target\debug\incremental\system_color-28tre2hbvuq7j\s-hnk8nqvw5j-145ur3l-working`: 拒绝访问。 (os error 5)
+  |
+  = help: the next build will not be able to reuse work from this compilation
+
+   Compiling system-glade-border v0.1.0 (D:\game\tiny-glade\crates\systems\glade-border)
+warning: variable does not need to be mutable
+   --> crates\systems\decorator\src\decorator_visual\cottage_wall_window.rs:207:17
+    |
+207 |             let mut rng = fastrand::Rng::with_seed(utils::rng::init_rng(info.decorator_id));
+    |                 ----^^^
+    |                 |
+    |                 help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> crates\systems\decorator\src\decorator_visual\cottage_wall_window.rs:227:17
+    |
+227 |             let mut rng = fastrand::Rng::with_seed(utils::rng::init_rng(info.decorator_id));
+    |                 ----^^^
+    |                 |
+    |                 help: remove this `mut`
+
+warning: constant `LOG_TARGET` is never used
+   --> crates\systems\decorator\src\backup.rs:222:7
+    |
+222 | const LOG_TARGET: &str = "system_decorator::backup";
+    |       ^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: constant `LOG_TARGET` is never used
+   --> crates\systems\decorator\src\restore_archived_decorators.rs:170:7
+    |
+170 | const LOG_TARGET: &str = "system_decorator::restore_archived_decorators";
+    |       ^^^^^^^^^^
+
+   Compiling system-wall-constructor v0.1.0 (D:\game\tiny-glade\crates\systems\wall-constructor)
+   Compiling forest v0.1.0 (D:\game\tiny-glade\crates\systems\forest)
+warning: variable does not need to be mutable
+   --> crates\systems\forest\src\manage_tree_prefabs.rs:113:9
+    |
+113 |     let mut rng=fastrand::Rng::with_seed(utils::rng::init_rng(frame));
+    |         ----^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> crates\systems\wall-constructor\src\construct_lintels\mod.rs:41:5
+   |
+41 |     mut masks: ResMut<WallPathSegmentationMasksMinusStairs>,
+   |     ----^^^^^
+   |     |
+   |     help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `clear_wall_instance_owners` is never used
+  --> crates\systems\wall-constructor\src\construct_elevation_supports\mod.rs:64:15
+   |
+64 | pub(crate) fn clear_wall_instance_owners(
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `system-clutter` (lib) generated 27 warnings (run `cargo fix --lib -p system-clutter` to apply 26 suggestions)
+   Compiling system-onboarding v0.1.0 (D:\game\tiny-glade\crates\systems\onboarding)
+warning: `system-critters` (lib) generated 14 warnings (run `cargo fix --lib -p system-critters` to apply 13 suggestions)
+   Compiling system-roof v0.1.0 (D:\game\tiny-glade\crates\systems\roof)
+warning: `forest` (lib) generated 1 warning (run `cargo fix --lib -p forest` to apply 1 suggestion)
+warning: unused import: `HintType`
+  --> crates\systems\onboarding\src\hint_display_system.rs:22:65
+   |
+22 | use crate::{BindingHintDisplay, HintPlacement, HintProgressBar, HintType};
+   |                                                                 ^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `public_walls::PublicWalls`
+  --> crates\systems\roof\src\delete_roof.rs:13:21
+   |
+13 |     walls::{WallId, public_walls::PublicWalls},
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `WallId`
+  --> crates\systems\roof\src\update_roof_spatial.rs:13:13
+   |
+13 |     walls::{WallId, public_walls::{OnWallChanged, PublicWalls}},
+   |             ^^^^^^
+
+note: did not finalize incremental compilation session directory `\\?\D:\game\tiny-glade\target\debug\incremental\toolbar-01cm0ylfngre9\s-hnk8nqve8b-0zc8y2e-working`: 拒绝访问。 (os error 5)
+  |
+  = help: the next build will not be able to reuse work from this compilation
+
+warning: `toolbar` (lib) generated 2 warnings
+warning: `system-wall-constructor` (lib) generated 2 warnings (run `cargo fix --lib -p system-wall-constructor` to apply 1 suggestion)
+   Compiling tiny-glade v0.1.0 (D:\game\tiny-glade\crates\tiny-glade)
+warning: `system-decorator` (lib) generated 15 warnings (run `cargo fix --lib -p system-decorator` to apply 9 suggestions)
+warning: `system-onboarding` (lib) generated 1 warning (run `cargo fix --lib -p system-onboarding` to apply 1 suggestion)
+warning: `system-roof` (lib) generated 2 warnings (run `cargo fix --lib -p system-roof` to apply 2 suggestions)
+warning: found module declaration for main.rs
+  --> crates\tiny-glade\src\lib.rs:49:1
+   |
+49 | pub mod main;
+   | ^^^^^^^^^^^^^
+   |
+   = note: a binary crate cannot be used as library
+   = note: `#[warn(special_module_name)]` on by default
+
+warning: unused import: `pipeline::RasterPipelineOpts`
+  --> crates\tiny-glade\src\raster_host.rs:59:5
+   |
+59 |     pipeline::RasterPipelineOpts, resource::DynamicConstants, resource::DynamicConstantsChunk,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `vao_library::AssetVAOLibrary`
+   --> crates\tiny-glade\src\raster_host.rs:500:68
+    |
+500 |         use country_core::asset_libraries::{Handle as AssetHandle, vao_library::AssetVAOLibrary};
+    |                                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Ref`
+  --> crates\tiny-glade\src\render_thread.rs:19:39
+   |
+19 |     change_detection::{DetectChanges, Ref},
+   |                                       ^^^
+
+warning: unused import: `country_core::render::extract::WorldComponentWrite as _`
+   --> crates\tiny-glade\src\render_extract.rs:397:5
+    |
+397 | use country_core::render::extract::WorldComponentWrite as _;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `bindless::BindlessResource`
+  --> crates\tiny-glade\src\frame_setup.rs:25:35
+   |
+25 |     bindless::BindlessParameters, bindless::BindlessResource, bindless::BindlessShaderAbi,
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `adjust_wall_height`, `collect_wall_publication_dirty`, `publish_public_wall_state`, `spatial_hash_update`, and `synchronize_wall_publication_terrain`
+   --> crates\tiny-glade\src\run_game.rs:898:21
+    |
+898 |                     adjust_wall_height,
+    |                     ^^^^^^^^^^^^^^^^^^
+...
+902 |                         WallPublicationTerrain, collect_wall_publication_dirty, once_startup_walls,
+    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+903 |                         publish_public_wall_state, synchronize_wall_publication_terrain,
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+904 |                     },
+905 |                     wall_spatial_hash::{WallSpatialHash, spatial_hash_update},
+    |                                                          ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `menu_background`
+  --> crates\tiny-glade\src\world_postprocess.rs:51:13
+   |
+51 |             menu_background, painterly,
+   |             ^^^^^^^^^^^^^^^
+
+warning: `country-core` (lib) generated 173 warnings (106 duplicates) (run `cargo fix --lib -p country-core` to apply 7 suggestions)
+warning: unused import: `gui::EscMenuState`
+   --> crates\tiny-glade\src\temporal_frame.rs:229:64
+    |
+229 |             resources::{mouse_capture::CursorCapturedPosition, gui::EscMenuState},
+    |                                                                ^^^^^^^^^^^^^^^^^
+
+warning: value assigned to `phase` is never read
+    --> crates\tiny-glade\src\run_game.rs:1462:21
+     |
+1462 |                     phase = "gameplay SubApp::update";
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this value is reassigned later and never used
+...
+1471 |                     phase = "verify actual gameplay clutter Startup";
+     |                     ------------------------------------------------ `phase` is overwritten here before the previous value is read
+     |
+     = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `source` is never read
+   --> crates\tiny-glade\src\temporal_frame.rs:115:9
+    |
+114 | pub(crate) struct LatchedCameraInput {
+    |                   ------------------ field in this struct
+115 |     pub source: WorldId,
+    |         ^^^^^^
+    |
+    = note: `LatchedCameraInput` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `run_feedback_report_bg` is never used
+    --> crates\tiny-glade\src\world_postprocess.rs:1020:4
+     |
+1020 | fn run_feedback_report_bg(
+     |    ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> crates\tiny-glade\src\gpu_readback.rs:364:13
+    |
+364 |         let mut storage = <TerrainRockMaskSsbo as SsboType>::new_storage_buffer(&host, None);
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> crates\tiny-glade\src\run_game.rs:2622:13
+     |
+2622 |         let mut library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);
+     |             ----^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+error: linking with `link.exe` failed: exit code: 1102
+  |
+  = note: "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.38.33130\\bin\\HostX64\\x64\\link.exe" "/NOLOGO" "D:\\game\\tiny-glade\\target\\debug\\deps\\rustcxqE5vB\\symbols.o" "<257 object files omitted>" "<sysroot>\\lib\\rustlib\\x86_64-pc-windows-msvc\\lib/{libtest-*,libgetopts-*,librustc_std_workspace_std-*}.rlib" "D:\\game\\tiny-glade\\target\\debug\\deps/{libtoolbar-bcc4cf64b94f66cc,libopen-d13de877c12f5d2e,liblang_lib-778045898094baba,libyaml_rust2-571725157f2a62ad,libencoding_rs-c7c12f7ad813a7d2,libarraydeque-ece421ee206604da,libhashlink-5de049c9cd29de87,libtaffy-881673819a72d798,libgrid-1adfdb9e80e82075,libcountry_core-4085ad83a5a89c45,libmotomoto-b9021ec09ae88a5e,libtg_text-bcabf6df094c3cc0,libetagere-84ebcc096ae1018e,libsvg_fmt-a6358ec350a35c28,libeuclid-1408676470268480,libcosmic_text-a446cb194dffbfcd,librustc_hash-13add36ba4757147,libunicode_linebreak-5b309925f137ce93,libsys_locale-48bc9a1933efcbde,liblibm-84ace32ed1470d73,libswash-8446dc2448a507ca,libyazi-8d8a2ae370c05828,libread_fonts-fe6a2e581a97b746,libfont_types-8d88a2e3fdc8490b,libself_cell-90e18037c30fc5a2,librustybuzz-192bbffe8e49a8db,libunicode_bidi_mirroring-c0ccc1cbb56dbc61,libunicode_properties-56ec191cfc04b612,libunicode_ccc-e1de778d4e96b00b,libunicode_script-ec13af472c2422ed,libunicode_segmentation-2e9de711dacf1e49,libunicode_bidi-75b7e25d58956d62,libfontdb-bd45c966bb999cd6,libmemmap2-f8a70e412566ace2,libtinyvec-39b81e166ba804e9,libtinyvec_macros-9e5e6a9e2e92f72f,libttf_parser-485a746333282c10,librangemap-ad81cf000a44dbad,librfd-523c9006e1d9f422,libraw_window_handle-673100d0a7a7a980,libwindows-5b8a0ea1802ddb45,liblcms2-9cd361861e04ade1,libforeign_types-f7741b6d168dbca7,libforeign_types_shared-a40ac2c02867167e,liblcms2_sys-0b376a0fa0474adf,libegui-5db25d61fde4c872,libepaint-70d44b35adf148d9,libecolor-52c5abd2aa3c6b25,libab_glyph-30a67fbdb3e0e896,libowned_ttf_parser-ae285afee9e46ed3,libttf_parser-64cd5f4cac611814,libab_glyph_rasterizer-f431b2ce691236d4,libemath-3eaf66afee092fef,libimage-90a6f1d3434348d1,libpng-e62ea562907b1c76,libzune_jpeg-738d94bad9165d11,libzune_core-7b9cc6c502fe6e10,libtiff-2123caf3ed73231b,libflate2-8c7966b83a79d4c8,libminiz_oxide-008a8d2f81278559,libadler-17926be10def1688,libcrc32fast-e368e86ce96db253,libweezl-1b8515386b400f48,libjpeg_decoder-c36e2f22665aa0e5,libbevy_time-c47858921bd4efcb,libtempfile-66ed87c121f97a0e,libpaths-2ff79fcbb9b75673,libknown_folders-21282f03ab4a3485,libwindows_sys-beac21127a5ec6d7,libwindows_targets-815c1e858556eed7,libnohash_hasher-591e21612684cfab,libenum_iterator-e4f4cde46d07c9db,liblog_once-47c28aad845295f7,librapier3d-b725d0a1fa8564c9,libbit_vec-eeef15e8fa8648cc,libcrossbeam-7adb62fd3eb9e6f5,libcrossbeam_channel-071a317d3202a04f,libcrossbeam_deque-1cfc41f61166bcef,libcrossbeam_queue-2d904d5d67af4ccd,libcrossbeam_epoch-588b7474b3165b64,libmemoffset-34f446d521cf38aa,libparry3d-b058c72bbb9fc383,librustc_hash-974353429e790318,librstar-dd22680fcc3c1597,libheapless-25973ca4c7ac38d7,libhash32-2350927a237d09c5,libordered_float-05bc8cc81ece909c,libspade-b6425223b61a2e6e,librobust-1ab29df366d720bd,libdowncast_rs-bcac4b37f8e4344c,libnalgebra-c886dc2af145f452,libmatrixmultiply-5aba366e4e6844c3,librawpointer-fa49fd1ebaef679d,libnum_rational-2def547d50f890a6,libnum_integer-2f6501ef66c0114f,libtypenum-a459f8eb154cbae0,libsimba-ecc6c9faec971703,libwide-4d71d68ddfcd988a,libsafe_arch-fe4ad7b3c34b1aba,libnum_complex-592ec97b76b55471,libapprox-94beffdf3fa2b0f9,libdolly-d86416a541822544,libzeno-dea38640e01bbf8c,libtabloid-6c62bfb413baeab9,libobvhs-d6bed973799d350f,librdst-333302bd34bf89f0,libarbitrary_chunks-cab951d7a0549c95,libpartition-a61a10c6e7bea620,libperchance-b58ff6091a67b9b4,libmacaw-472029207275fe03,libglam-2356c5c25db79616,libordered_float-2e9c9a36a389e3ea,libbracket_noise-659bb7cb1b93674d,libbracket_random-d93c0a46ea5f9bf4,libregex-9d8b79f530b2d1f7,libaho_corasick-0bbb3f3c810db3d8,libmemchr-42f4b8a0170b5674,libregex_syntax-a9df065ae85d6733,librand_xorshift-b9ba1e96e182a527,librand-b8562963454fa57b,librand_chacha-7a9a12e51f08a24f,libppv_lite86-d5bad25c7b7bfef0,librand_core-d4e286c17914512e,libbitvec-4bbd48cbeed47d5a,libwyz-ba1a4cec07d0d9cf,libtap-b0b0fb62ca64f6ad,libradium-2e9346e0b7173f97,libfunty-c47a9729792af355,libpetgraph-57304ed8574a992c,libtg_history-8e78a5b26f230277,libtg_terrain-591a90eef802d8bf,liblibfmod-0efa8290d381a72f,libhashbrown-c7b0cc128adb3e20,libhexasphere-2434ef4a524cd809,libconstgebra-52a010381bdf4be1,libconst_soft_float-261ddf9bb5dac60d,libglam-63ab514fbfe28437,libmint-baedc6d67e1b39bb,libbevy_input-d99372543b6d85ce,libbevy_math-0afeaf66d484aa95,libuuid-857cb2b3544baae4,libgetrandom-0c4aa59059b8b4cd,libbevy_state-34b0a3b1747926f4,libbevy_app-f6d71b0fecf8574f,libctrlc-b31a7a3a5f1d28ed,libwindows_sys-55ff71219c6ba3b6,libhotwatch-ccb7a1275f7912c0,libnotify-3a5f82ab3c886bd0,libwalkdir-890fafcfd93cc55c,libsame_file-202bdf2c4efc2ef0,libwinapi_util-238f56e4abc185a7,libwinapi-851ef2d5337eae97,liblibc-0dffb900d11f3c75,libfiletime-52dd9ba24c455473,libutils-4e383521ba4bd342,libfastrand-f8593f35dc6fa765,libxxhash_rust-5c2bc51e1891b9ac,libtime-6982043fc751530c,libtime_core-057eb2d4f2a065ae,libnum_conv-a42dd323f28530ed,libderanged-468fa2292ba0422c,libpowerfmt-14fd70f79668363b,libhalf-39075652ad2dbffb,liblerp-6454160884146032,libtake_until-a0a663e222a50f0a,libitertools-ccd37d90bb10107c,libeither-90317468e30c507f,librhapsody-d931025e2deba462,libgpu_allocator-d49821b455c520b8,libpresser-b8394b902c450ed9,libarc_swap-ee015f050b4b4431,libslotmap-684a6b2f376493c6,libserde_json-6275067a3c72120f,libryu-a9e584240ac6e106,libitoa-3b1a9838fa2422a3,libustr-b07297f6608573ae,libahash-e9a2578f48b515f7,libzerocopy-1dbb2376f8cbca92,liblazy_static-1fdb344f51ab6a5c,libshader_compiler-e9675b45ec639fd7,libshader_prepper-ef26c6aac5de3947,libthiserror-e52d0d42d156eaef,libshader_pipeline-3d94a289d102d5da,libconst_fnv1a_hash-f86d7abee125b3c4,libspirq-181c40448b05f69d,libfnv-4bac38fc66a37b82,libspeedy-28e09214dfa68f13,libmemoffset-ea0b7117d06d4763,librspirv-93275d274ab14d54,libfxhash-f6e87922c40881a1,libbyteorder-cd051633c5d7aba3,libspirv-e629d198218ab3bd,libnum_traits-b7cea085ef72b08f,libbitflags-0800da0df8dd2e80,libparking_lot-732a66bf2e0a9477,libparking_lot_core-f637d44c88b58079,libwindows_sys-1db0edca9077b2af,liblock_api-958441a468927de0,libscopeguard-419af191ba8888bd,libash-746d6d8e5ecbd9e5,liblibloading-76d5147c5456594c,libwindows_targets-e2e68ceefe9a150f,libasset-0b7202e608b04ec9,libron-471e90448e573a11,libbase64-bd1a67e2a855624c,libunicode_ident-13291eb9643b214e,librkyv-729adfd6731d122d,librend-5c1702c3d51754c3,libhashbrown-c0d4085afe3d9878,libahash-f93d9f6ab0e846c6,libgetrandom-41465d263ab784f5,libseahash-ebfec170b6cdc780,libbytecheck-521a911e77fd9b32,libptr_meta-7918e96bd2b61294,librelative_path-f7a74c35f8853443,libanyhow-80b790c94b96b226,libbevy_ecs-c98956f111fda72f,libbitflags-11081310cd747957,libnonmax-071cae6002d348d0,libbevy_tasks-88ac90a6aafe7251,libasync_channel-97b92960c60fd7e4,libevent_listener_strategy-c20ba51a817b5952,libevent_listener-cdee9a8260fae414,libasync_executor-2e02d6f68e8571e4,libfastrand-3dd6f7b252a0484a,libslab-78cb42e46d359661,libconcurrent_queue-2641a83242ebda81,libcrossbeam_utils-8ad6b783e2522564,libfutures_lite-0611c817127600c0,libfutures_io-fceb5124be777550,libfutures_core-58b44e046a2c8876,libparking-f6de420f57dbebef,libpin_project_lite-10a1fb5da89aa4a9,libasync_task-ace17fee1102dcce,libarrayvec-330db836c117ab3d,libfixedbitset-c907cb67a3fc4432,liblog-e785196f3f6a6324,libindexmap-0c982a9a0490384c,libbumpalo-8eae6ad8974c0b83,libdisqualified-9a3ce5aa14a7ffaa,libbevy_reflect-87b36a4cef66d467,libsmol_str-ea011958061a3c8f,liberased_serde-ebbdf3c618e9819e,libsmallvec-b1dfddc6bfed6b6d,libglam-c7ed0a2622407e46,libbytemuck-edeb0c215138804f,libdowncast_rs-fe7c4f35b955e9a7,libderive_more-dab2a0490ed9b0bb,libthiserror-f4bfe543e22a765f,libbevy_utils-daaf50665ae0ad29,libthread_local-3349f2023555cf35,libonce_cell-697f619a171c47c3,libbevy_ptr-a1c02d8854e67335,libbevy_platform-15700840b8e83924,libcfg_if-2de5381441fdec16,libhashbrown-dfc8620ba896fab9,libequivalent-fabbfea310868a71,libserde-4f527392dcf4c8f7,liballocator_api2-2154384a35976292,libfoldhash-bb0ea5ed13bb22e5}.rlib" "<sysroot>\\lib\\rustlib\\x86_64-pc-windows-msvc\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_link-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib" "kernel32.lib" "kernel32.lib" "C:\\Users\\liyu\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.36.1\\lib\\windows.lib" "C:\\Users\\liyu\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.48.0\\lib\\windows.0.48.0.lib" "D:\\game\\tiny-glade\\target\\debug\\build\\country-core-32deaa03846422c2\\out\\fmod_vc.lib" "D:\\game\\tiny-glade\\target\\debug\\build\\country-core-32deaa03846422c2\\out\\fmodstudio_vc.lib" "C:\\Users\\liyu\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.52.6\\lib\\windows.0.52.0.lib" "C:\\Users\\liyu\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.52.6\\lib\\windows.0.52.0.lib" "advapi32.lib" "cfgmgr32.lib" "credui.lib" "gdi32.lib" "kernel32.lib" "msimg32.lib" "opengl32.lib" "secur32.lib" "synchronization.lib" "user32.lib" "winmm.lib" "winspool.lib" "legacy_stdio_definitions.lib" "kernel32.lib" "C:\\Users\\liyu\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.36.1\\lib\\windows.lib" "C:\\Users\\liyu\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.52.6\\lib\\windows.0.52.0.lib" "bcrypt.lib" "kernel32.lib" "kernel32.lib" "kernel32.lib" "ntdll.lib" "userenv.lib" "ws2_32.lib" "dbghelp.lib" "/defaultlib:msvcrt" "/NXCOMPAT" "/LIBPATH:D:\\game\\tiny-glade\\target\\debug\\build\\country-core-32deaa03846422c2\\out" "/LIBPATH:D:\\game\\tiny-glade\\target\\debug\\build\\lcms2-sys-96ef7d9dcf495661\\out" "/LIBPATH:C:\\Users\\liyu\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.52.6\\lib" "/LIBPATH:C:\\Users\\liyu\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.36.1\\lib" "/LIBPATH:C:\\Users\\liyu\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.48.0\\lib" "/LIBPATH:C:\\Users\\liyu\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\windows_x86_64_msvc-0.37.0\\lib" "/OUT:D:\\game\\tiny-glade\\target\\debug\\deps\\system_onboarding-256c4e9ff52a6a88.exe" "/OPT:REF,NOICF" "/DEBUG" "/PDBALTPATH:%_PDB%" "/NATVIS:<sysroot>\\lib\\rustlib\\etc\\intrinsic.natvis" "/NATVIS:<sysroot>\\lib\\rustlib\\etc\\liballoc.natvis" "/NATVIS:<sysroot>\\lib\\rustlib\\etc\\libcore.natvis" "/NATVIS:<sysroot>\\lib\\rustlib\\etc\\libstd.natvis"
+  = note: some arguments are omitted. use `--verbose` to show all linker arguments
+  = note: LINK : fatal error LNK1102: 内存不足
+          
+
+warning: `system-onboarding` (lib test) generated 1 warning (1 duplicate)
+error: could not compile `system-onboarding` (lib test) due to 1 previous error; 1 warning emitted
+warning: build failed, waiting for other jobs to finish...
+warning: field `0` is never read
+    --> crates\tiny-glade\src\game_loop.rs:1644:16
+     |
+1644 |         struct Payload([u32; 8]);
+     |                ^^^^^^^ field in this struct
+     |
+     = help: consider removing this field
+     = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `check` is never used
+    --> crates\tiny-glade\src\game_loop.rs:1643:9
+     |
+1643 |         #[repr(C)]
+     |         ^
+
+warning: `country-core` (lib test) generated 203 warnings (162 duplicates) (run `cargo fix --lib -p country-core --tests` to apply 31 suggestions)
+warning: `tiny-glade` (lib) generated 11 warnings (run `cargo fix --lib -p tiny-glade` to apply 7 suggestions)
+warning: `tiny-glade` (lib test) generated 14 warnings (9 duplicates) (run `cargo fix --lib -p tiny-glade --tests` to apply 3 suggestions)

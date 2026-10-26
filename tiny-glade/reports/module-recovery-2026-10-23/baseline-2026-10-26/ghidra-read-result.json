@@ -1,0 +1,91 @@
+{
+  "backend": "ghidra",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "shared",
+  "pid": 12420,
+  "project": "D:\\game\\tools\\reverse-runtime\\shared\\project\\TinyGlade.gpr",
+  "backend_reused": false,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "get_metadata",
+      "requested_args": {
+        "program": "tiny-glade.exe"
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\tiny-glade\\work\\m01-scratch\\ghidra-read-result.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\tiny-glade\\\\\\\\work\\\\\\\\m01-scratch\\\\\\\\ghidra-read-result.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 274, \\\"sha256\\\": \\\"e1ab8352899238e72c78224897f74f16f15ade786ac6c094b3acfacee0640f52\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":12}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.031,
+      "stdout": "{\"name\": \"tiny-glade.exe\", \"sha256\": \"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\", \"path\": \"/tiny-glade.exe\", \"functions\": 116270, \"language\": \"x86:LE:64:default\", \"adapter\": \"Windows ReVa transport / Ghidra engine\", \"preexisting_Mac_overlays\": false}\n",
+      "passed": true
+    },
+    {
+      "tool": "find_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "pattern": "rollercoaster_update",
+        "limit": 4
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\tiny-glade\\work\\m01-scratch\\ghidra-read-result.artifacts\\001.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\tiny-glade\\\\\\\\work\\\\\\\\m01-scratch\\\\\\\\ghidra-read-result.artifacts\\\\\\\\001.stdout.txt\\\", \\\"bytes\\\": 3326, \\\"sha256\\\": \\\"166594942992afb04ec791e11c30ee341dbd8466c0177ab899d992fb01951cfa\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":1467}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 1.469,
+      "stdout": "{\"total_matches\": 2, \"functions\": [{\"address\": \"0x1405e5d70\", \"name\": \"core::ptr::drop_in_place$LT$bevy_ecs..system..schedule_system..InfallibleSystemWrapper$LT$bevy_ecs..system..function_system..FunctionSystem$LT$fn$LP$bevy_ecs..system..system_param..Local$LT$core..option..Option$LT$tiny_glade..rollercoaster..RollercoasterState$GT$$GT$$C$bevy_ecs..change_detection..ResMut$LT$country_core..systems..camera_rig..MainCamera$GT$$C$bevy_ecs..change_detection..ResMut$LT$country_core..systems..audio..trigger_audio..TriggerAudioState$GT$$C$bevy_ecs..change_detection..Res$LT$country_core..resources..audio_resources..AudioCore$GT$$C$bevy_ecs..change_detection..Res$LT$country_core..input..action_set..ActionSetStates$GT$$C$bevy_ecs..change_detection..Res$LT$country_core..systems..render_loop..vermeer..VermeerState$GT$$C$$LP$country_core..systems..collision..world..Raycasting$C$bevy_ecs..change_detection..Res$LT$country_core..resources..time..GameTime$GT$$C$bevy_ecs..change_detection..Res$LT$country_core..resources..stairs..stairs_state..StairsState$GT$$C$bevy_ecs..change_detection..Res$LT$country_core..resources..stairs..stairs_assembly_params..PlayermadeStairsAssemblyRequests$GT$$C$bevy_ecs..change_detection..Res$LT$country_core..resources..walls..decorator_storage..DecoratorStorage$GT$$C$bevy_ecs..change_detection..Res$LT$system_decorator..decorator_visual_state..DecoratorVisualState$GT$$C$bevy_ecs..change_detection..Res$LT$country_core..resources..clutter_meshes..ClutterMeshes$GT$$C$bevy_ecs..change_detection..Res$LT$country_core..systems..mode_manager..AppMode$GT$$C$bevy_ecs..change_detection..Res$LT$country_core..systems..mod_key..Modifiers$GT$$RP$$C$bevy_ecs..system..query..Query$LT$$RF$mut$u20$utils..components..transform..Transform$C$$LP$bevy_ecs..query..filter..With$LT$country_core..components..drawable..NaniActiveInstance$GT$$C$bevy_ecs..query..filter..Without$LT$country_core..resources..critters..sheep..Sheep$GT$$RP$$GT$$C$bevy_ecs..system..query..Query$LT$$LP$bevy_ecs..entity..Entity$C$$RF$mut$u20$utils..components..transform..Transform$C$$RF$country_core..resources..critters..sheep..Sheep$RP$$GT$$C$bevy_ecs..system..query..Query$LT$$RF$country_core..resources..critters..sheep..SheepAudio$GT$$C$bevy_ecs..system..query..Query$LT$$LP$$RF$country_core..resources..critters..sheep..UmbrellaHolder$C$$RF$country_core..resources..critters..sheep..FloatieHolder$RP$$GT$$C$bevy_ecs..system..query..Query$LT$bevy_ecs..entity..Entity$C$$LP$bevy_ecs..query..filter..With$LT$country_core..resources..critters..sheep..SheepAccessory$GT$$C$bevy_ecs..query..filter..With$LT$bevy_ecs..entity_disabling..Disabled$GT$$RP$$GT$$C$bevy_ecs..system..commands..Commands$C$bevy_ecs..event..writer..EventWriter$LT$system_critters..sheep..sheep_pet_animation..PlaySheepPetAnimation$GT$$C$bevy_ecs..event..writer..EventWriter$LT$country_core..systems..audio..sheep_audio..PlaySheepReactSound$GT$$C$bevy_ecs..change_detection..Res$LT$country_core..systems..ui..signifiers..signifier_create..UiSignifierStream$GT$$RP$$C$tiny_glade..rollercoaster..rollercoaster_update$GT$$GT$$GT$::h578a5ddb183b7abb\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}, {\"address\": \"0x1403b7f20\", \"name\": \"tiny_glade::rollercoaster::rollercoaster_update::ha9b386ab56d68d07\", \"basis\": \"original LLVM PDB public symbol; not ABI\"}]}\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 6.141,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":238}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "d4c771ef9c85ee73591aaa69f1a0e07d",
+    "success": true,
+    "was_changed": false,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

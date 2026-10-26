@@ -123,34 +123,75 @@ mod tests {
         ))
         .unwrap();
         assert_eq!(rows.len(), 29);
-        // Windows 原 duration_since 用有符号时间值比较；raw 高位不能当作
-        // macOS 正向 Unix 时间。epoch 平移不影响这里只比较的时间间隔。
-        let time = |bits: u64| {
+        // 原 B（Rust 1.86，Windows）的 SystemTime 以有符号 100 ns FILETIME 比较，夹具里的
+        // raw 高位（>= 2^63）就是负的有符号值；macOS 夹具生成时把它们当作相对 1970 的
+        // 正负偏移，只比较时间间隔。
+        let time = |bits: u64| -> Option<SystemTime> {
             let ticks = bits as i64;
-            let absolute = ticks.unsigned_abs();
-            let duration = Duration::new(
-                absolute / 10_000_000,
-                ((absolute % 10_000_000) * 100) as u32,
-            );
-            if ticks < 0 {
-                UNIX_EPOCH - duration
-            } else {
-                UNIX_EPOCH + duration
+            #[cfg(windows)]
+            {
+                // 构造 FILETIME 值恰为 `ticks` 的 SystemTime（UNIX_EPOCH = 116444736000000000
+                // ticks）。当前工具链的 Windows SystemTime 拒绝 1601 年之前（负 FILETIME）的
+                // 值，这些行只能在不限定范围的平台上验证，此处返回 None 并在下面计数。
+                const UNIX_EPOCH_TICKS: i128 = 116_444_736_000_000_000;
+                const STEP: i128 = 1 << 62;
+                let to_duration = |ticks: u64| {
+                    Duration::new(ticks / 10_000_000, ((ticks % 10_000_000) * 100) as u32)
+                };
+                let mut remaining = i128::from(ticks) - UNIX_EPOCH_TICKS;
+                let mut time = UNIX_EPOCH;
+                while remaining != 0 {
+                    let step = remaining.clamp(-STEP, STEP);
+                    let duration = to_duration(step.unsigned_abs() as u64);
+                    time = if step < 0 {
+                        time.checked_sub(duration)?
+                    } else {
+                        time.checked_add(duration)?
+                    };
+                    remaining -= step;
+                }
+                Some(time)
+            }
+            #[cfg(not(windows))]
+            {
+                let absolute = ticks.unsigned_abs();
+                let duration = Duration::new(
+                    absolute / 10_000_000,
+                    ((absolute % 10_000_000) * 100) as u32,
+                );
+                if ticks < 0 {
+                    UNIX_EPOCH.checked_sub(duration)
+                } else {
+                    UNIX_EPOCH.checked_add(duration)
+                }
             }
         };
+        let mut unrepresentable = 0;
         for (start, end, expected) in rows {
+            let (Some(start_time), Some(end_time)) = (time(start), time(end)) else {
+                // Only rows containing a negative raw FILETIME may be unrepresentable.
+                assert!(
+                    (start as i64) < 0 || (end as i64) < 0,
+                    "representable row rejected: start={start} end={end}"
+                );
+                unrepresentable += 1;
+                continue;
+            };
             let info = DailyThemeInfo {
                 languages: vec![],
                 history_path: PathBuf::new(),
                 meta: SessionMeta::default(),
                 credits: None,
-                start_time: time(start),
-                end_time: time(end),
+                start_time,
+                end_time,
             };
             assert_eq!(info.is_weekly(), expected, "start={start} end={end}");
         }
-    }
-    #[test]
+        #[cfg(windows)]
+        assert!(unrepresentable <= 12, "only the 12 negative-FILETIME rows may be skipped");
+        #[cfg(not(windows))]
+        assert_eq!(unrepresentable, 0);
+    }    #[test]
     fn weekly_boundary_and_credits_schema_match_native() {
         let mut info = DailyThemeInfo {
             languages: vec![],

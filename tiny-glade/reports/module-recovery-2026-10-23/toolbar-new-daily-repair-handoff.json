@@ -1,0 +1,67 @@
+{
+  "task": "TB-R2 NewSession + TB-R6 Daily consumers",
+  "date": "2026-10-24",
+  "worker": "shared/read-only",
+  "scope_exclusion": [
+    "真实SteamSDK",
+    "真实OS输入验收",
+    "渲染引擎所有权修改",
+    "已移除Credits整页/许可证/反馈入口"
+  ],
+  "binary": {
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "patched_exe_sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+  },
+  "corrections": [
+    "NextSession::create仅复制96B+32B。把其前24B强行解读kind/id是旧错误；新建分支是路径String与完整SessionMeta数据枚举，必须恢复安全拥有值，不能整数数组塞指针。",
+    "原startup_session判别与下游LoadGameSource是两套不同枚举。安全Create标记4不声称原ABI固定tag4。",
+    "新建菜单原时间/背景/布局细节由原指令核对：按钮60/宽400/Center；标题90/800/uppercase；旧背景alpha=(1-4t)*255，第二背景local_z=1，expand=1。",
+    "DailyWelcome关闭分支只接收Show事件并立即return；下一帧才检查当前菜单。否则新建写NextEscMenuState后旧NewSession当前菜单会同帧取消欢迎。",
+    "纯CPU探针不运行GPU帧尾，必须显式清原一次性激活位0x30才能验证重开，首轮失败保留，未改业务期望掩盖。",
+    "Ghidra物理size不能用作整函数CFG末尾；原NewSession冷分支在首个范围外被真实跳转命中，额外保留bounded cold assembly。",
+    "旧背景必须从实际MEI回收的ImageContent读出：将图片路径额外保存在Local会跨菜单卸载残留，导致重开画面与原版不符；已删除额外路径状态，生命周期CPU回归通过。",
+    "集成期间ui_raise_shape::PublicWalls导入曾阻塞country-core；失败日志保留，owner修复后重新构建并通过，不把构建阻塞记作本业务完成。"
+  ],
+  "implementation": [
+    "原B目录new_session.rs完整6选择、demo3存档确认、未下载/无当前主题/下载错误/Ready、xmas分支、完整localized theme与倒计时、hover音频和双背景。",
+    "NextSession::new_game安全拥有history_path和SessionMeta；完整glade/image/mutators通过真实startup_session消费。普通主题选择标准起始目录，每日主题使用实际history.json和同级snapshots。准备失败保留请求与on_load，不发布半成品。",
+    "DailyWelcome持久Resource+Event，SteamDeck沿用注入接口跳过，事件延迟一帧开启、0.7秒等待+0.3秒smoothstep淡入、确认/菜单抢占关闭、真实3个可选归属字段。",
+    "Daily权威schema、worker及285例原指令差分由toolbar-daily-repair-handoff.json交接。"
+  ],
+  "tests": [
+    {
+      "command": "cargo test -p toolbar --lib menu::new_session --offline --no-run",
+      "log": "toolbar-new-daily-build.log",
+      "result": "pass"
+    },
+    {
+      "command": "env TG_INSTALL_ROOT=<B> <toolbar-lib-test-bin> menu::new_session --include-ignored",
+      "cwd": "B版本内容",
+      "log": "toolbar-new-session-cpu-tests.log",
+      "result": "3 passed",
+      "boundary": "六选择完整拥有值及3种不可用Daily拒绝；实际回收背景卸载/重开；demo普通主题门控、3存档上限取消/确认；原模板合成激活->SaveProfile/ShowDaily/Reload->同World真实startup_session消费->临时账号真实meta落盘/LoadGameManager来源。未发送OS输入，未宣称完整world snapshot应用。"
+    },
+    {
+      "command": "env TG_INSTALL_ROOT=<B> <toolbar-lib-test-bin> menu::daily_welcome --include-ignored",
+      "cwd": "B版本内容",
+      "log": "toolbar-daily-welcome-cpu-tests.log",
+      "result": "1 passed",
+      "boundary": "原模板/字体，NewSession当前菜单事件开启、次帧淡入、标题和3归属labels、确认、重开、菜单抢占。"
+    }
+  ],
+  "registration_owner": "已只读检查中央Game/set36两页及daily_welcome.after(new_session::ui<GameplayMusicEvent>)、run_game资源/event初始化、GameLoop主题worker build。最终host整合构建仍由中央执行。",
+  "remaining_boundary": [
+    "真实鼠标/键盘验收按用户暂停；没有开游戏窗口或操作OS输入。",
+    "CPU UI树/临时账号消费者验证不等于最终GPU画面、长稳或整游戏验收。",
+    "原fork整套调度精确顺序未恢复；显式after是当前架构的接线保证。"
+  ],
+  "sources": {
+    "tiny-glade/crates/systems/toolbar/src/menu/new_session.rs": "fc2c276f041da83f5213eb0ffb18da94c0da75018b009846c9b26530533e9897",
+    "tiny-glade/crates/systems/toolbar/src/menu/daily_welcome.rs": "93c360f4536d2a8704e493122e1b588f86637965cf6cb45552e2089790bacb40",
+    "tiny-glade/crates/country-core/src/resources/session.rs": "1247a136e69ff7e901aaa4a987003db0ed424507c0e2036896bcd1cef9cd2bed",
+    "tiny-glade/crates/country-core/src/startup/startup_session.rs": "4c512ae67b18c838cfb12a6b6adb168e84ac5e285590152f55ac41a5f0f2ac39"
+  },
+  "daily_handoff": "toolbar-daily-repair-handoff.json",
+  "verification_status": "本链生产实现/注册已接、4项消费者CPU验收通过、285项Daily原指令差分见子交接；OS/GPU最终联合验收保持未执行。"
+}

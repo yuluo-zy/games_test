@@ -485,15 +485,10 @@ pub struct GameProfile {
     /// @+0x1d8 (`usize`; B 64-bit). Original serialize @140a658a0
     /// calls serialize_field<usize>; startup @14166f893 reads a qword.
     pub new_glade_count: usize,
-    /// @+0x1bc：相机 rotate 提示字形模式（u16，O：`camera_rotate_hint` 0x14227d2f0
-    /// 读 `*(short*)(profile+0x1bc)` 比 1/2）。
-    pub camera_rotate_glyph_mode: u16,
-    /// @+0x1c0：相机 pan 提示字形模式（u16，O：`camera_pan_hint` 0x14227d000 读
-    /// `*(short*)(profile+0x1c0)` 比 1/2）。
-    pub camera_pan_glyph_mode: u16,
-    /// @+0x1c4：聚焦/相机绑定提示字形模式（u16，O：`make_focus_or_camera_binding_hint`
-    /// 0x141c3de00 读 `*(short*)(profile+0x1c4)` 比 1/2）。
-    pub focus_glyph_mode: u16,
+    // 注意：原 `profile+0x1bc/0x1c0/0x1c4` 是 `key_bindings.mouse[Rotate/Pan/FocusEdit]`
+    // （`Option<MouseButton>`：u16 tag + u16 载荷，`assign_mouse_button` 0x14089b280 写
+    // `+0x1bc+4*action`）。曾为它们另设 `*_glyph_mode` 字段，与鼠标绑定脱钩，玩家改键后提示
+    // 不跟着变；已删除，提示统一读 `key_bindings.mouse`。旧档案里的同名字段读取时被忽略。
     // ---- 完成标志区 @+0x1f5..0x206（18 个 hint 完成标志 + 1 个复位字节，O）----
     // 偏移与写面：`tutorial_completion` 0x14227c230 18 路 switch（case 1..17 →
     // 0x1f5..0x205）+ `reset_hints` 0x141c1c8d0（0x1f4..0x206 全置 1 / 全清 0）。
@@ -715,12 +710,6 @@ impl<'de> Deserialize<'de> for GameProfile {
             game_installation_id: Uuid,
             key_bindings: GameKeyBindings,
             new_glade_count: usize,
-            #[serde(default)]
-            camera_rotate_glyph_mode: u16,
-            #[serde(default)]
-            camera_pan_glyph_mode: u16,
-            #[serde(default)]
-            focus_glyph_mode: u16,
         }
         let v = Input::deserialize(deserializer)?;
         // 已知输入逐字段构造；不额外调用Default生成并丢弃一个随机Uuid。
@@ -729,9 +718,6 @@ impl<'de> Deserialize<'de> for GameProfile {
             player_id: v.game_installation_id,
             key_bindings: v.key_bindings,
             new_glade_count: v.new_glade_count,
-            camera_rotate_glyph_mode: v.camera_rotate_glyph_mode,
-            camera_pan_glyph_mode: v.camera_pan_glyph_mode,
-            focus_glyph_mode: v.focus_glyph_mode,
             tutorial: false,
             focused_edit_completed: false,
             camera_pan_completed: false,
@@ -779,9 +765,6 @@ impl Default for GameProfile {
             player_id: Uuid::new_v4(),
             key_bindings: GameKeyBindings::default(),
             new_glade_count: 0,
-            camera_rotate_glyph_mode: 0,
-            camera_pan_glyph_mode: 0,
-            focus_glyph_mode: 0,
             focused_edit_completed: false,
             camera_pan_completed: false,
             camera_rotate_completed: false,

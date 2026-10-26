@@ -1,0 +1,256 @@
+{
+  "reviewed_utc": "2026-10-24T07:39:37.123312+00:00",
+  "method": "独立核对当前生产源码、实际注册和调用者，按B原路径查证；复用匹配原证并新增只读原函数/指令与两个完整原输入函数执行。未使用旧统计推算完成率。",
+  "scope_limit": "这是模块业务链深入审查及有界原码反证，不宣称全部原B函数已逐指令全域审完。只新增文档/证据和独立探针，不修改业务源码、不进行OS输入或GPU性能测试。",
+  "findings": [
+    {
+      "id": "TB-R1",
+      "priority": "P1",
+      "title": "设置可进入状态，但整页没有生产消费者",
+      "file": "crates/tiny-glade/src/gui/settings.rs",
+      "line": 78,
+      "trigger": "主菜单设置按钮",
+      "effect": "写入Settings(Audio)后无设置树/返回/保存流程；不是仅视频页未完成。",
+      "evidence": [
+        "gui_escape_menu.rs:187 写Next",
+        "run_game.rs:678..698实际GUI schedule未注册settings或Konami",
+        "settings.rs:431..435已恢复子页仅由cfg(test)调用",
+        "gui_controls.rs:16与language_menu.rs:9仍todo"
+      ],
+      "original": [
+        "0x140245570",
+        "0x140245790",
+        "0x140247870",
+        "0x1400854a0",
+        "0x140150bb0"
+      ],
+      "fix": "沿原设置顶层路由补齐视频/键位/语言及Apply/WriteSettingsFile/SaveProfile消费者，不能仅注册todo；音量等叶子通过不能代替整页。"
+    },
+    {
+      "id": "TB-R2",
+      "priority": "P1",
+      "title": "两处新建入口均进入没有页面的NewSession",
+      "file": "crates/tiny-glade/src/gui/gui_escape_menu.rs",
+      "line": 172,
+      "trigger": "主菜单新建，或Load列表的第0张新建卡片",
+      "effect": "状态进入NewSession但不会构造选择页面或生成完整新建请求。",
+      "evidence": [
+        "toolbar/menu/load_ui.rs:138第二入口",
+        "menu/mod.rs无new_session",
+        "startup_session.rs:126..172仅加载旧存档或失败时选择starting_build",
+        "session.rs:370..373模板/尾部仍是opaque字数组，startup消费者没有读取"
+      ],
+      "original": [
+        "0x141eb9690"
+      ],
+      "fix": "恢复原新建/周主题选择、请求载荷的安全语义类型及其启动消费者，再验证Reload；已有无存档首启动回退不等于用户新建业务。"
+    },
+    {
+      "id": "TB-R3",
+      "priority": "P1",
+      "title": "自动保存I/O错误没有游戏内告警消费者",
+      "file": "crates/country-core/src/systems/save/save_game.rs",
+      "line": 392,
+      "trigger": "后台写盘失败（命令通道仍连接）",
+      "effect": "最新错误已进入SaveThreadHandle.error_state，但没有全局保存错误UI；不能用损坏存档读取告警代替。",
+      "evidence": [
+        "save_thread.rs:142已接收错误列表",
+        "save_game.rs:708访问器只暴露send_command记录的Option错误",
+        "save_game.rs:737/742只记录发送端失败",
+        "toolbar及GUI无save_error页面/注册；shutdown时才检查errors并返回错误"
+      ],
+      "original": [
+        "0x141ec0ce0"
+      ],
+      "fix": "从真实异步错误owner恢复持续错误页和恢复后约15秒提示、原菜单门控/透明度/路径内容。不要再重复修复已存在的drain_pending，也不要把发送端错误当磁盘错误全集。"
+    },
+    {
+      "id": "TB-R4",
+      "priority": "P2",
+      "title": "已实现的导航连发算法与原版不同",
+      "file": "crates/country-core/src/systems/backend/input/calculate_input_delta.rs",
+      "line": 40,
+      "trigger": "动作20..25长按达到0.2秒或连发遇到慢帧",
+      "effect": "首次重复提前0.1秒；慢帧后重复节奏不同，影响MEI方向、Tab和Tweaker输入。",
+      "evidence": [
+        "完整原1416feeb0、5502字节执行，无依赖桥",
+        "Held(0.19)+dt0.02：native Repeating(0.1,不触发)，Rust Repeating(0,立即触发)",
+        "Repeating(-0.18)+dt0.02：native timer bits3cf5c290≈0.03，Rust3da3d70a≈0.08"
+      ],
+      "original": [
+        "0x1416feeb0"
+      ],
+      "fix": "保留原Held→Repeating的0.1倒计时，以及timer<=0时max(timer+0.1,0.05)-dt。当前有限合法样例已足够反证等价；NaN/其他槽仍需分支取证，不能仅改测试期望。"
+    },
+    {
+      "id": "TB-R5",
+      "priority": "P2",
+      "title": "摄影过山车提示缺写者且现存载荷错误",
+      "file": "crates/systems/onboarding/src/lib.rs",
+      "line": 147,
+      "trigger": "进入原过山车可乘坐提示条件",
+      "effect": "摄影/main_camera未产生DisplayRollercoasterPrompt；即使注入事件，Steam查询和键盘备选仍错误。",
+      "evidence": [
+        "photomode_focus尾部只有marker和walk_ghost，无PROMPT分支",
+        "原14227bbe9写cl=0x14，再调用packed_set_plus_one，得到0x1401",
+        "原14227bbfb..bc0e从第3资源+0x15c/+0x164复制实际键盘备选",
+        "当前query0x101并alternate(None::<KeyCode>)"
+      ],
+      "original": [
+        "0x14227bb70",
+        "0x14234b010"
+      ],
+      "fix": "追原PROMPT静态写者与重置生命周期，接真实提示事件；修正动作查询并读取原对应权威键位，不能仅将提示永远关闭。"
+    },
+    {
+      "id": "TB-R6",
+      "priority": "P2",
+      "title": "每日/每周主题链仍有空系统和缺页",
+      "file": "crates/tiny-glade/src/theme_fetcher_plugin.rs",
+      "line": 118,
+      "trigger": "每日/每周主题激活及首次欢迎/新建",
+      "effect": "update_daily_theme_system为空；手动传路径的helper没有生产资源发布链，DailyWelcome消费者不存在。",
+      "evidence": [
+        "theme_fetcher_plugin::build未在宿主调用",
+        "DailyThemeInfo只有本文件本地简化类型；core资源域无原daily owner",
+        "原NewSession和DailyWelcome都调用DailyThemeInfo::is_weekly；当前缺该合同"
+      ],
+      "original": [
+        "0x141ebedd0",
+        "0x141eb9690"
+      ],
+      "fix": "复用现有tg-theme，恢复原事件信息/schema、资源发布、页面和主题选择到会话。DailyThemeCredits是主题署名数据，不等于已删除的Credits制作人员页，不应误删。"
+    },
+    {
+      "id": "TB-R7",
+      "priority": "P2",
+      "title": "Demo两条空间/高度提示业务未恢复",
+      "file": "crates/tiny-glade/src/toolbar_plugin.rs",
+      "line": 113,
+      "trigger": "Demo模式下区域边界和最大高度提示条件",
+      "effect": "当前有demo锁按钮及摄影分流，但缺完整glade尺寸提示与最大高度提示系统/注册。",
+      "evidence": [
+        "原B toolbar/demo_stuff 两个文件及原函数仍可定位",
+        "当前toolbar lib和宿主无对应producer/consumer；不因目录缺失直接判缺，而是核查注册及功能迁移后仍无实现",
+        "新鲜反编译显示真实空间动画/模板构造，不是可省略的空叶子"
+      ],
+      "original": [
+        "0x141eac540",
+        "0x14234a410"
+      ],
+      "fix": "沿原demo条件、空间/时间输入、动画和模板消费恢复，不把已有UiLocked按钮当边界/高度提示。"
+    },
+    {
+      "id": "TB-R8",
+      "priority": "P2",
+      "title": "Steam平台支撑仍只有注入接口",
+      "file": "crates/tiny-glade/src/main.rs",
+      "line": 87,
+      "trigger": "正常tiny-glade入口或需要真实控制器来源/绑定面板",
+      "effect": "默认SDK工厂返回None，正常入口失败；host入口明确离线，ActionHint真实平台来源及绑定面板无法验收。",
+      "evidence": [
+        "生产源码无SteamSdk实现，现有3实现均为cfg(test)/tests",
+        "main_with_steam可以接受外部注入，说明应补平台适配而不是重写toolbar算法"
+      ],
+      "original": [],
+      "fix": "补真实平台SDK适配/入口，验证真实origin glyph和binding panel。它属于toolbar外部依赖缺口，不归类为MEI空实现。"
+    }
+  ],
+  "sources": {
+    "crates/tiny-glade/src/gui/settings.rs": "93b6074eabbaec101b44b4a1a09a9962ca71a275e6b423f87a81778034908629",
+    "crates/tiny-glade/src/gui/gui_controls.rs": "a77ccef6395c1cc306e877fa891d1c66ff096f86d7fbcda72f86eb6074dac190",
+    "crates/tiny-glade/src/gui/language_menu.rs": "40d87c970236ba70f15a1bb5a2d6455ea369981ede976e5aef2d3e42ecba8ae6",
+    "crates/tiny-glade/src/gui/gui_escape_menu.rs": "657dcdd8cd3e55fd2baa2df760ecfaedb9352936bc8f4f420b87aad1ac48d6e7",
+    "crates/tiny-glade/src/run_game.rs": "864fca1a1facc443c9e81cc5eadabbd3bd36ab2f55cb647a9917a7072d49fcd5",
+    "crates/tiny-glade/src/toolbar_plugin.rs": "cfd81b8a7aca0225da407f29d8198a8b5085c999079bda6ea85317a01f2471d5",
+    "crates/tiny-glade/src/gameplay_startup.rs": "87b56de1186025716b5aa9e317b3b9dbdfb0b30264461f01b5e620e02d2b5208",
+    "crates/tiny-glade/src/game_loop.rs": "2b363c042b022814c5ab05968a4c6971f3ebf8ee38b09c2f257b81c5c616b0d5",
+    "crates/tiny-glade/src/event_loop.rs": "00851de658e362b889c2356003d821334da2a68944738b0cb41d3c6f5fc4bd40",
+    "crates/tiny-glade/src/main.rs": "aa45536d2e9ce10b69004636959a4c9e2934b0460878e41c3525ed3bc5828bf1",
+    "crates/tiny-glade/src/theme_fetcher_plugin.rs": "2f09a4b4b856d11bb312589dfccee8c0009923475f13d56e7e14169ec542d613",
+    "crates/systems/toolbar/src/menu/mod.rs": "fa24759f558193c07a02e7c09e4ee2db29b8cec35f1bd13a47996e43436dfd50",
+    "crates/systems/toolbar/src/menu/load_ui.rs": "8cef3a876a4e5cf39adadaeeeb4f8c1319eaa3c8450b14b2120d098ffa6a7d75",
+    "crates/systems/toolbar/src/menu/corrupted_save_file.rs": "95c6685cd1d3647f6e19c764fba32618db8f1bc8c48f019952a65cdc908b1d49",
+    "crates/systems/toolbar/src/mei/systems.rs": "62d9885c09a380024af21c0a17ebf4bd3ae3c0fe9d4e9e0599e1dde6476b4243",
+    "crates/systems/toolbar/src/mei/widgets.rs": "6c9cd94ab570fcb4a1a969028b217fa90199c8c8c5a0a661286b1f60825c5879",
+    "crates/systems/toolbar/src/mei/widgets/tweaker.rs": "378afecede12e52842b7086b9e9c971882d188a50ffce03bbee2569fb1a61958",
+    "crates/systems/toolbar/src/photomode.rs": "efc7e6d1403707d3ad8f46f1e6525831e642eb2eb57817f6578bd2e75a4eddc8",
+    "crates/systems/toolbar/src/photomode/lut_gallery.rs": "41a8a42b2ba59a0dbb3986555083feb7c5468339c5586b4e7952dca8332e5976",
+    "crates/country-core/src/resources/session.rs": "a10c041606c65b27d0294a1509e4e849e292e22978b0902fc66ba0b3a90586ff",
+    "crates/country-core/src/startup/startup_session.rs": "869e1dbbdaabea832bc8c3b6a930358ff8134b36ab229598a027efc1576b824b",
+    "crates/country-core/src/systems/save/save_game.rs": "75b18cc9e3ac6c5e5b6af70f144b9f17c247099f22be0e22cc23892e6b87833b",
+    "crates/country-core/src/systems/save/save_thread.rs": "6ebe55fabcb8c278c6544243d7ca02ea772e8674ef0f372b40c1d1090b7a4a4c",
+    "crates/country-core/src/systems/backend/input/calculate_input_delta.rs": "8ed8ffee83902efa27971d0550256cdf8a66c9f153153acbe7ac1bdd7fd50925",
+    "crates/country-core/src/input/action_set.rs": "76a081520b2025b73cf688259c776400bb4ed0a64c4662a1e47c5fc1e2adc5a7",
+    "crates/country-core/src/render/render_config.rs": "f4722a8d66b9caee246ff35a736373af11b1fc1fc57bc57c0631230d3fa79472",
+    "crates/country-core/src/systems/backend/gui.rs": "597a0a78c8e094dcabf92582247a4ff6f307118c572a0225d4d9083d1c83e2eb",
+    "crates/systems/onboarding/src/lib.rs": "5581ecfa35ca9d26ae9585d2d14e31729accf0b2f2f5ed1428476c30ca03102f",
+    "crates/tiny-glade/tests/original_escape_menu.rs": "62c3f90fa36135e4f0495308b180397a2a763d8bfdcd7a7579a1afd0e5b98c3e",
+    "crates/tiny-glade/tests/toolbar_module_chain.rs": "1997ca050d34e040483b5d828ba4236bbff7ee7b6657a75130284a09193f666e",
+    "crates/tiny-glade/tests/toolbar_module_chain/history.rs": "11f235ab94d3bd400bebc55d1f8e9cd3f7c80d3eb988a12b629da46217fcc937"
+  },
+  "logs": {
+    "toolbar-review-escape-build.log": "8349ca9afa50871ed7a28e50790c0e90aba327ec63d6fe19050fc1b899cea378",
+    "toolbar-review-escape-run.log": "2edad1eec226c94852360c38bfd51034b8bcf8dee3b87c1810ac37d578932de1",
+    "toolbar-review-input-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "toolbar-review-input-rust-run.log": "a9e4827fdd48df18bea5fcbb8817831d9acccc9be40a93c38409f29068a80a71",
+    "toolbar-review-input-native-run.log": "6a18e3e81b5f4fe02e0d92495ffee162a4d84fa7e3bc6236ee8360a4c42a0b1e",
+    "toolbar-deep-review-native-query.log": "ff679ef63483e1bde34e5d2a66bc8ebc862e207560007057544cf83196fba313",
+    "toolbar-deep-review-input-query.log": "e878d2fae0816f798b9f7e0bfbac78edd3e40a351b56dd271e0747362a4b7b74"
+  },
+  "evidence": {
+    "toolbar-deep-review-native.json": "83bc9b333d8455192f9e49772b56057a6b3e1615ada9be004bec0f3fb286e6e6",
+    "toolbar-deep-review-input-native.json": "cde931e10f3854370560662f584730f0e37ee2d22443c08ec6fad93df0158639",
+    "toolbar-deep-review-input-cases.json": "b02c98a65d72eb90f39de6d512119c6b34719df41c807b7f1804c8ef13895748",
+    "toolbar-deep-review-static-checks.json": "81e2e5eb8f8228791e8627d1cbadde71069aa102d846ab79727c1a6879dd43f6",
+    "review_toolbar_input_native.py": "7de800501831cfd9af587f100b9d32c7598fb2c39917b1eb39cfbf079682bd93",
+    "toolbar-review-current-input.rs": "7817bd95e6d7ea6475ff96c835b9a138eee6c70dcac27fdb5cd8611ed77cdfcd",
+    "toolbar-review-input-head.asm": "0fa3fd2cb7b1001120d085efb9c378fc576f7f5b3d3684c88f2e21e4edaf0649",
+    "toolbar-review-prompt-head.asm": "bfa6a56e51c4e897b014cbc0136af959c3f878a9b0350920428f820a6eb114eb",
+    "toolbar-review-quality.asm": "5015d294cbaa9919ba69bbd0b9149f31a7ee0ead7dc88451521d43881571222e",
+    "toolbar-pages-native.json": "892d8601134a8c8146a48c611f37f7b2c2756738b73104e0ce6221cb01e30c17"
+  },
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "rlib_probe": {
+    "path": "target/debug/deps/libcountry_core-0ecaa38c668f78b1.rlib",
+    "sha256": "b3aff1a7489686cf050e1a725b989237327bb8f94591b493f440c67823b0ed0b",
+    "executable_sha256": "1dd5660338b514bd60609f8984e9df02e2eb7e5923ae7d5f95e5bbef4a4d25b5",
+    "compiler_result": 0,
+    "run_result": 0,
+    "meaning": "原样调用当前构建country_core::...::digital_delta，没有复制算法。"
+  },
+  "verification": [
+    {
+      "command": "cargo test -p tiny-glade --test original_escape_menu --offline --no-run",
+      "exit": 0
+    },
+    {
+      "command": "TG_INSTALL_ROOT=/Users/yuluo/Desktop/game/B版本内容 target/debug/deps/original_escape_menu-266b676dbf3abb0c",
+      "exit": 0,
+      "passed": 4,
+      "limit": "测试设置只检查Next状态，不能代表真实设置页消费者。"
+    },
+    {
+      "command": "tools/venv/bin/python tiny-glade/reports/business/2026-10-23-module-recovery/review_toolbar_input_native.py",
+      "exit": 0,
+      "cases": 2,
+      "bridges": [],
+      "mismatches_with_rust": 2
+    }
+  ],
+  "not_missing": [
+    "保存系统每帧已drain_pending，旧没人读取判断过时",
+    "Video Apply事件已有PostUpdate gather与真实窗口/vsync消费者，缺UI生产端",
+    "LUT/损坏存档页面已在gameplay_startup set36注册",
+    "文字/日志/部分debug迁入mei_host/core，不因旧同名todo判为全缺",
+    "ImageQualityPreset 0..4原跳表与当前一致，反编译多余坏分支不构成新增变体证据",
+    "历史已有墙体权威状态→实际按键消费者→存盘→新进程恢复的局部测试，不能判历史全空；也不能扩成所有业务和GPU画面验收"
+  ],
+  "remaining_acceptance": [
+    "真实OS鼠标键盘/手柄与菜单抢占（按用户要求暂缓）",
+    "完整设置/新建/每日/错误页面及其历史保存重启恢复",
+    "摄影实际点击到GPU焦点读回与画面",
+    "包含菜单切换/Reload/资源释放的整模块GPU长稳和真实性能测量"
+  ],
+  "module_accepted": false
+}

@@ -1,0 +1,260 @@
+{
+  "recorded_utc": "2026-10-24T03:02:42.866983+00:00",
+  "status": "tool-side fixes complete; 5 MCP backends / 6 task examples and same-client reconnect passed; old loaded app clients not reloaded, verified SDK remains available",
+  "game_target_execution": false,
+  "game_acceptance": false,
+  "restart": {
+    "old_pid": 1256,
+    "new_pid": 11074,
+    "user_explicitly_authorized": true,
+    "shared_project_rebuilt": false,
+    "saved_project_readable_in_independent_clone": true,
+    "other_workers_stopped": false,
+    "root_cause_limit": "Live backend buffer state was broken. Saved database is readable after reopen; initiating cause not established."
+  },
+  "fixes": [
+    "Default operator result path migrated from games_test",
+    "Ghidra --check verifies symbol index and exact known B instruction bytes",
+    "ReVa proxy consumes all catalog pages and rejects repeated cursors",
+    "ReVa P-code example restores evidenced ABI in dedicated worker and asserts FLOAT_DIV",
+    "Current README/manifest links migrated; historical archive unchanged",
+    "Ghidra bridge reconnect follows verified same-worker state instead of immutable initial PID",
+    "ReVa uses request-scoped HTTP sessions under persistent stdio, with explicit errors and no write replay"
+  ],
+  "runs": [
+    {
+      "name": "ghidra-clone",
+      "report": "repair-2026-10-24-ghidra-clone.json",
+      "sha256": "8a3b3d6d5b60d075b187130af0acbc10632cd1627c0986eace85171b39899f0d",
+      "exit_code": 0,
+      "mcp_calls": 4,
+      "boundary": "scoped tool smoke; not whole API or game behavior acceptance"
+    },
+    {
+      "name": "ghidra-shared",
+      "report": "repair-2026-10-24-ghidra-shared.json",
+      "sha256": "9206ec7e6c9b19a55e9917f7f74207a2c68a6abf81953f30f70696daaa3f6e69",
+      "exit_code": 0,
+      "mcp_calls": 4,
+      "boundary": "scoped tool smoke; not whole API or game behavior acceptance"
+    },
+    {
+      "name": "reva-read",
+      "report": "repair-2026-10-24-reva-read.json",
+      "sha256": "708721ca12482f98227fe3b3ae277ebdf5008aa3c71a81ff9b4ff7a0313c0aa3",
+      "exit_code": 0,
+      "mcp_calls": 2,
+      "boundary": "scoped tool smoke; not whole API or game behavior acceptance"
+    },
+    {
+      "name": "reva-pcode",
+      "report": "repair-2026-10-24-reva-pcode.json",
+      "sha256": "d55bb5c83335c488150007abd03e586c12896af87a5a578dbae2c78926a46cd2",
+      "exit_code": 0,
+      "mcp_calls": 1,
+      "boundary": "script execution only; void signature produces RETURN"
+    },
+    {
+      "name": "reva-pcode-typed",
+      "report": "repair-2026-10-24-reva-pcode-typed.json",
+      "sha256": "0bac10a5fc42f253190d8014aae02d5331a309d2363a78a7f808cb0fba0eada6",
+      "exit_code": 0,
+      "mcp_calls": 2,
+      "boundary": "scoped tool smoke; not whole API or game behavior acceptance"
+    },
+    {
+      "name": "reva-pcode-reopen",
+      "report": "repair-2026-10-24-reva-pcode-reopen.json",
+      "sha256": "f18ee57c009a6bb4c9ce77d8a99708efdd9e0a1eb37077775ffbbcaff31b7f00",
+      "exit_code": 0,
+      "mcp_calls": 1,
+      "boundary": "scoped tool smoke; not whole API or game behavior acceptance"
+    },
+    {
+      "name": "re-mcp",
+      "report": "repair-2026-10-24-re-mcp.json",
+      "sha256": "718ff0be4bd03e508b9045c2c9ec47d2f2b6b38ba97e57d3515da2358973245e",
+      "exit_code": 0,
+      "mcp_calls": 4,
+      "boundary": "scoped tool smoke; not whole API or game behavior acceptance"
+    },
+    {
+      "name": "rea",
+      "report": "repair-2026-10-24-rea.json",
+      "sha256": "f6ce6771b37ad0dc266cd4caea2cbabe718ca2a84dd1bbb416620394d72167be",
+      "exit_code": 0,
+      "mcp_calls": 3,
+      "boundary": "scoped tool smoke; not whole API or game behavior acceptance"
+    },
+    {
+      "name": "radare",
+      "report": "repair-2026-10-24-radare.json",
+      "sha256": "112a22234b9a06cb0a385c73355bd88e99c800abff65d38b23bafcff3e82298e",
+      "exit_code": 0,
+      "mcp_calls": 6,
+      "boundary": "scoped tool smoke; not whole API or game behavior acceptance"
+    },
+    {
+      "name": "original-failure",
+      "report": "repair-2026-10-24-original-failure.json",
+      "sha256": "1874f612e9c222113fb22c67202ce4f919e7e2f8ddda7b52682be3dde19d3e0b",
+      "exit_code": 1
+    },
+    {
+      "name": "shared-health",
+      "report": "repair-2026-10-24-shared-health.log",
+      "sha256": "8383df2e6b8355ed6aba2b098ce4ca4897e20332ba7ec0493546c43eabcfa4b3",
+      "exit_code": 0
+    },
+    {
+      "name": "health-tests",
+      "report": "repair-2026-10-24-health-tests.json",
+      "sha256": "9a993e805991f255b448e01fcef853b4108e72fa56c622ff5fe4fb0461c94a73",
+      "exit_code": 0
+    },
+    {
+      "name": "original-failing-job-replayed",
+      "report": "repair-2026-10-24-original-failing-job-replayed.json",
+      "exit_code": 0,
+      "mcp_calls": 2,
+      "sha256": "77114594acc909def998fdfab2a4c3e869226d15932710dec06e015a6675f66c"
+    },
+    {
+      "name": "reva-per-call",
+      "report": "repair-2026-10-24-reva-per-call.json",
+      "exit_code": 0,
+      "sha256": "708721ca12482f98227fe3b3ae277ebdf5008aa3c71a81ff9b4ff7a0313c0aa3",
+      "scope": "Fresh HTTP session for each of two calls under one stdio client"
+    },
+    {
+      "name": "live-client-reconnect-first-failure",
+      "report": "repair-2026-10-24-live-client-reconnect-first-failure.log",
+      "exit_code": 1,
+      "sha256": "8a28c756bec823f6f3d8683ff1b487cb872473d63ca796c00b4a14cb10142644",
+      "scope": "First reconnect harness wrongly treated exited zombie process as live"
+    },
+    {
+      "name": "live-client-reconnect",
+      "report": "repair-2026-10-24-live-client-reconnect.json",
+      "sha256": "2d0ea5d0d5bf9679983e3eb5a033925fb691d584481bfeb7b64d8866dee26ab5",
+      "exit_code": 0
+    },
+    {
+      "name": "live-client-reconnect-v2-log",
+      "report": "repair-2026-10-24-live-client-reconnect-v2-log.log",
+      "sha256": "f1e02b3804cf133362eb02cae34cc78769b2ef6c7ad8804f3ebf4c22d94d226e",
+      "exit_code": 0
+    },
+    {
+      "name": "live-client-reconnect-script",
+      "report": "repair-2026-10-24-live-client-reconnect-script.py",
+      "sha256": "6cae90726ffdf84aeeece3efc0f477becb28612b1020a798593d9e22dcddc469",
+      "exit_code": null
+    },
+    {
+      "name": "routing-guards",
+      "report": "repair-2026-10-24-routing-guards.json",
+      "sha256": "b9ea65016158dc4f44603ab8987f1c021e104e59801b3d9770ee4c3058437e3a",
+      "exit_code": 0
+    },
+    {
+      "name": "routing-guard-script",
+      "report": "repair-2026-10-24-routing-guard-script.py",
+      "sha256": "1846023bdc0eb8f8eb6bf65376e5a10975f5ff5ce217a51b8cfe3e4137990490",
+      "exit_code": null
+    },
+    {
+      "name": "old-loaded-app-clients",
+      "report": "repair-2026-10-24-stale-app-clients.json",
+      "exit_code": null,
+      "sha256": "61a20fc47d67508f2c317815d5e44f150de2072ad5ac150196fbd402098356c3",
+      "scope": "Direct native tool errors retained; these old clients were not reloaded"
+    }
+  ],
+  "health_failure_injection_cases": 3,
+  "source_sha256": {
+    "/Users/yuluo/.codex/mcp-tools/reverse-operator.py": "bec32ae6a641b8055451fdee2674f6a6ee6c314c8d0728fd3b11ef551e91a602",
+    "/Users/yuluo/.codex/mcp-tools/ghidra/launch.py": "9dd44a5b4509d4f8ef4b390708d3e4888b937bad0085188e0e94f91a470a92a5",
+    "/Users/yuluo/.codex/mcp-tools/reva/proxy.py": "2a6e4410d8e8e3be5e3f61e2e573dae550a8c7de60f39657c11729062dfb323d",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-camera-rig-euler-case2.json": "9dd4b6397b65ea555f55fa61447b3488e6695bf87b218c0dc750d5e196d00304",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/r8-g4-batch1.json": "2d29c072ce83a066972d58c8f6994c9ea56013a3af285396c42c019eeffff15b",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-camera-rig-fresh2.json": "7ff7cb2d7835ebd67cba381f4d5f8d5b8833106bbfe02a103989e52a39cc0569",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/windows-ghidra-read.json": "76a697ded5b18140811ca822d2f688503f9fb42744815fe158caef5f79aa761b",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/water-extra5.json": "b9df453ffe5e5402ea0cde50c4da1a9c258f223a4eaf24cc5574f7fc4a5b8a81",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/foundation-remaining.json": "0cbcc594605cb39976b7b38acbc3dac8cb5e5ac0d0b53bdc821749df78461f94",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-camera-rig-mc.json": "9411ee05d5aecb8b7890358945acdaa58c401a05125a57cb67353d256947cbbb",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/foundation-tabloid-extra.json": "1e3e3112f88cab69c23527f8d0fbe7164b212e38a26a76ab7beb3b65b150c0d1",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-eco-forest-handplaced.json": "db6827e3b3c1ef60efd22788cc770571f3b6582eaf3c474bb4817b6611bd3f5a",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-camera-rig-r2b.json": "8992b83b8f3a9f83804d75701d12a003ebe5b2a429610e2985caf89e606f89c7",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/foundation-plt-read.json": "19271ede3b9a5b577e14d83933817b5a901144a8d57397e957f5463aee3cbaf4",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/water-extra4.json": "32780d968d7a298f18c6cc0f556eeb3bdcac1c6820bfb5ff5826ba6a053b9050",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-camera-rig-fresh3.json": "71f8705a1c0be441226543ad0aa32544c307a943c5e9a61a2d7a67af0a6ae7a3",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/windows-reva-read.json": "fd7c0b8541b2b78985511e29a4f6fc8f5268949f9291a037a734e2f20927ba7b",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-camera-rig-callers.json": "ce24b01e249202656511eb92f89941df68ac9afd9478639691fb05f7c037242c",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/reva-pcode.json": "2d6c7971dc2700b9c4ee4e3375d02382dfe0336d461dfddbed3a5d5452eb4531",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/water-extra3b.json": "65776038640abe97517f8b4370bf81ddab36e0ec711af7398fdc42bc42bf5383",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/reva-read.json": "14d91b5c467eb1eafd6387deb3e475bc4781fcbe51379567aaaafc2ac7ae965a",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/water-extra3.json": "fa81432c9856a8f77cec4eb06d314170c3367eb401c1db96e4843707448d8eb3",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/main-chain-vao-render-20261018.json": "9b6071defe3517184fe910105529aee3e166483caaaa415241b252c280a7af2e",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/foundation-remaining2.json": "49b96d77c71b5685b7cb6450eae0020e4f7a8356adc9da93072b732aa42d5bdb",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/water-extra2.json": "b495716b6683210e05386d5d1baaac1b31d45b9944697ed7a86b69262230ee84",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-camera-rig-r2.json": "e9469a7676e73627ccc17f25b1c54ab7a5c235692b0f8e1985f88a1157c2da8d",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/radare-bytes.json": "348ce621c00a1eb1159aeb68f7bd458503695ff92a84854b8e29642798c0cbdf",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/cfg-seed-input-delta.json": "3f6fd1d823959793933bcb3f2149973e48ca5304bb90df3df308397e00fe0f8b",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-camera-rig-euler-jt.json": "5adb5457dc55c9acbc889e5a7798c24778f2590bb069b0b0f03086060f2a4d52",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/impl-host-wiring-decomp.json": "b55e5e3e18c6b97a769751f0f267d2072de802c99fabee5ebc27f1abcd54f806",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/re-mcp-read.json": "9fc5010766f3f5f1c047976981d953a918f6862cdbc9c4c27fa383c295ee14fd",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/main-chain-render-present-20261018.json": "7bb7ed192e7ee44ddd62b2c7134611f7aafa71031e987ecab12b284267a4a593",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/water-extra-r2b.json": "188a71c280baa09ac10e87af94eb1540ae83936886d5f603f988715365aee604",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/main-chain-render-20261018.json": "abcd5fbf4f35689505c5127de2c93368a893dd533fbd8fc9085d49ae14cc1a2d",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-camera-rig-decomp.json": "ca36175e3cb96fff81d9d195b83e98599b3044e29f4c9f8585f2a33c37d53f77",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/ivy-pruner-gpu-decomp.json": "0a53cbac456cd58ebcd3dc65ea67dd45c289b9eefc3c32989943fb9f461218a0",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/ivy-grower-decomp.json": "f07b85f157a0f2437c527da489e8ca500215c1e385ce42eb420fbed29c04c9b2",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/water-extra-radare.json": "c67aabb75330f056da1069b9e1151d55786478b81d3c6af89eb42042e9689a50",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/rea-identity.json": "f692f61cfcd66c1e51b96b5344fa67e151f22e3e255d0afb4a72bdc8f89aa3cd",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-eco-forest-consts.json": "9dd5b28ed23ff596672d79beb0ac59c96aad4a64d0c7bf7852a6234b23a53916",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/ghidra-decorator-followup.json": "34ac01acf763ca58eca59f138790397f9e527350b75fd2e3e0128388d2b102c7",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/water-extra.json": "e8aa12af7279190754c39d44a200648d0e50bd70224a405cdae1da1d25fdc3c3",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/impl-host-wiring-groups.json": "0352cdb6c868766270d11701251766a5de44da705d484f097542aa98352c0dcf",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-camera-rig-euler.json": "181e27a388b0557585e120bbd2c0a23f37a2a334797a22be7edea08d9a558133",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/ghidra-read.json": "63fbbdd4920449b6e7c26a2bc9ee66038b5cb827d1744fae85e516debaa86f74",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/foundation-plt-strings.json": "310afff7982eabbcdf819104eda0be44ae82ebff4eb46e05cb7129c5914e9141",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-eco-forest-decomp.json": "03ee56d91a2f157521603efce528eba8bd8aa8c20efaf73e5704a08586f9efb7",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/foundation-colliderdiff.json": "6bc324d7efe2810b05234a00c8baa6bb3d6f85e7fdbe793ba10d7a3103a2d1a9",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-camera-rig-fresh1.json": "f06f281bc0e50b749b0e952a78cfda5f86ee4fb266a3659621b9b7a340e15dac",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/foundation-producers.json": "d819f02ed652b05d2412470a458285810a123e007fad7862b9957b5d215d3424",
+    "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/restorer-interaction-input-consts.json": "9f268125fb6c9074009e9c1c94584674d000cf8d104f043146397f4700755f75",
+    "/Users/yuluo/.codex/mcp-tools/ghidra/bridge_entry.py": "271871c43cb87a9baa757b5f3492938c00ece284f20c4ac26d05f0b62d7564c5"
+  },
+  "patch": "tool-repair-2026-10-24.patch",
+  "limits": [
+    "REA smoke covers identity/open/close, not every provider operation",
+    "Re-MCP smoke covers independent staged cache, decompilation and close; not new save mutation",
+    "No unsupported PDB TPI repair is claimed for radare2; use LLVM",
+    "Startup sandbox runtime/socket access still requires approved execution environment; no global permission changes",
+    "No business algorithm or game GPU acceptance follows from tool smoke",
+    "Existing application clients loaded old Python code and have not been refreshed; direct-call failures remain explicitly archived. New-client SDK proof does not retroactively validate them."
+  ],
+  "original_failed_query_replayed_successfully": true,
+  "app_client_state": {
+    "old_clients": "Ghidra stale PID route and ReVa empty error observed",
+    "user_reload_requested": true,
+    "ui_automation": "Codex app access explicitly disallowed; no alternate UI automation attempted",
+    "user_reload_reply": "No refresh entry found",
+    "required_user_action": null,
+    "continuation_route": "Use the verified SDK/operator entry without restarting the app or disrupting renderer work",
+    "old_loaded_direct_clients_accepted": false
+  },
+  "same_stdio_client_reconnect": {
+    "ghidra": true,
+    "reva": true,
+    "only_own_workers_restarted": true
+  },
+  "routing_guard_cases": 5,
+  "patch_sha256": "1ef10ea41071e54b403dd0d7a59bd6a32d1cfea7cfebfb8d8638556280958c41",
+  "documentation_sha256": {
+    "tools/README.md": "e7b002dd54f50515ab797ff14bd1ee1de43df546a891fa39a2766313f73ec684",
+    "reverse-engineering/tiny-glade/docs/current/AI_REVERSE_TOOLS.md": "577bf7fa14efe6152441c7a3f59a2fd1132abea27c0c41e3c423bbba1efe54ed",
+    "reverse-engineering/tiny-glade/tool-usage/manifest.json": "8eabdf8168eecd01c1ba16536f11a2c2439bc2185b1406b2ca9a9a26690ead38"
+  }
+}

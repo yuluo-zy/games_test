@@ -196,10 +196,16 @@ mod tests {
             );
             return;
         }
-        let cases: Vec<NativeCase> = serde_json::from_str(include_str!(
-            "../../../../../../tests/fixtures/native/toolbar-calc-shape-height.json"
-        ))
-        .unwrap();
+        // The original's CRT math imports were bridged to the host libm when the fixture was made;
+        // Darwin and Windows UCRT differ in the last bit, so Windows has its own regeneration.
+        #[cfg(windows)]
+        const FIXTURE: &str = include_str!(
+            "../../../../../../tests/fixtures/native/toolbar-calc-shape-height.windows-ucrt.json"
+        );
+        #[cfg(not(windows))]
+        const FIXTURE: &str =
+            include_str!("../../../../../../tests/fixtures/native/toolbar-calc-shape-height.json");
+        let cases: Vec<NativeCase> = serde_json::from_str(FIXTURE).unwrap();
         assert_eq!(cases.len(), 96);
         for (index, case) in cases.into_iter().enumerate() {
             ::utils::float_grid::CENTERED_PATH

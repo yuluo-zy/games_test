@@ -236,8 +236,9 @@ impl MenuHarness {
     }
 }
 
-#[test]
-fn real_welcome_layout_blocks_toolbar_until_its_own_confirm_handler_dismisses_it() {
+/// The production Welcome-page MEI frame: real device/bridge, original paper texture,
+/// fonts and templates, `welcome::ui` + `mei_post_update` behind the real input consumer.
+fn production_welcome_harness() -> (MenuHarness, tiny_glade::render_bridge::CoreRenderBridge) {
     use country_core::{
         asset_libraries::{
             shader_library::AssetShaderLibrary, texture_library::AssetTextureLibrary,
@@ -310,6 +311,22 @@ fn real_welcome_layout_blocks_toolbar_until_its_own_confirm_handler_dismisses_it
             .after(InputSystemSet::Consume),
     );
 
+    (h, bridge)
+}
+
+#[test]
+fn real_welcome_layout_blocks_toolbar_until_its_own_confirm_handler_dismisses_it() {
+    use country_core::{
+        asset_libraries::{
+            shader_library::AssetShaderLibrary, texture_library::AssetTextureLibrary,
+        },
+        game_profile::SaveGameProfileCmd,
+        render::load_texture::{AlignedFile, boundary::TextureDevice, parse_compiled_image},
+        resources::{onboarding::WelcomeScreenState, time::GameTime},
+        systems::render_loop::vermeer::VermeerState,
+    };
+    use std::{path::PathBuf, sync::Arc};
+    let (mut h, _bridge) = production_welcome_harness();
     let outside = Vec2::ZERO;
     for _ in 0..24 {
         h.frame(false, outside);
@@ -357,4 +374,166 @@ fn real_welcome_layout_blocks_toolbar_until_its_own_confirm_handler_dismisses_it
     h.frame(true, toolbar_position);
     h.frame(false, toolbar_position);
     assert_eq!(*h.world.resource::<AppMode>(), AppMode::Water);
+}
+
+// ---- M01 CPU frame cost (run explicitly: `--release --ignored --nocapture --test-threads=1`) ----
+mod frame_cost {
+    use std::alloc::{GlobalAlloc, Layout, System};
+    use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
+
+    /// Counts allocator calls so the per-frame allocation rate of the MEI path is measurable.
+    pub struct Counting;
+    pub static ALLOCATIONS: AtomicU64 = AtomicU64::new(0);
+    pub static BYTES: AtomicU64 = AtomicU64::new(0);
+    /// When set, every `SAMPLE_EVERY`-th allocation records the innermost project frame of
+    /// its backtrace (debug builds only: needs symbols).
+    pub static SAMPLING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    pub static SITES: std::sync::Mutex<Vec<(String, u64)>> = std::sync::Mutex::new(Vec::new());
+    const SAMPLE_EVERY: u64 = 16;
+    thread_local! { static IN_HOOK: std::cell::Cell<bool> = const { std::cell::Cell::new(false) }; }
+
+    fn note(size: usize) {
+        if IN_HOOK.with(|h| h.get()) {
+            return;
+        }
+        let n = ALLOCATIONS.fetch_add(1, Relaxed);
+        BYTES.fetch_add(size as u64, Relaxed);
+        if SAMPLING.load(Relaxed) && n % SAMPLE_EVERY == 0 {
+            IN_HOOK.with(|h| h.set(true));
+            let text = std::backtrace::Backtrace::force_capture().to_string();
+            let site = text
+                .lines()
+                .map(str::trim)
+                .find(|l| {
+                    ["toolbar::", "country_core::", "tiny_glade::", "taffy", "tg_text", "bevy_ecs", "system_"]
+                        .iter()
+                        .any(|p| l.contains(p))
+                        && !l.contains("frame_cost")
+                        && !l.contains("toolbar_menu_chain::measure")
+                })
+                .unwrap_or("(no project frame)")
+                .to_owned();
+            let site = site.split_once(": ").map_or(site.as_str(), |(_, rest)| rest);
+            let site = site.rsplit_once("::h").map_or(site, |(head, _)| head).to_owned();
+            let mut sites = SITES.lock().unwrap();
+            match sites.iter_mut().find(|(s, _)| *s == site) {
+                Some((_, count)) => *count += 1,
+                None => sites.push((site, 1)),
+            }
+            drop(sites);
+            IN_HOOK.with(|h| h.set(false));
+        }
+    }
+    // SAFETY: every method forwards to the system allocator unchanged.
+    unsafe impl GlobalAlloc for Counting {
+        unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+            note(layout.size());
+            unsafe { System.alloc(layout) }
+        }
+        unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+            unsafe { System.dealloc(ptr, layout) }
+        }
+        unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+            note(new_size);
+            unsafe { System.realloc(ptr, layout, new_size) }
+        }
+    }
+}
+#[global_allocator]
+static COUNTING: frame_cost::Counting = frame_cost::Counting;
+
+fn measure(h: &mut MenuHarness, position: Vec2, frames: usize) -> (Vec<f64>, f64, f64) {
+    use std::sync::atomic::Ordering::Relaxed;
+    let mut micros = Vec::with_capacity(frames);
+    let (a0, b0) = (frame_cost::ALLOCATIONS.load(Relaxed), frame_cost::BYTES.load(Relaxed));
+    for _ in 0..frames {
+        let start = std::time::Instant::now();
+        h.frame(false, position);
+        micros.push(start.elapsed().as_secs_f64() * 1e6);
+    }
+    let (a1, b1) = (frame_cost::ALLOCATIONS.load(Relaxed), frame_cost::BYTES.load(Relaxed));
+    micros.sort_by(f64::total_cmp);
+    (micros, (a1 - a0) as f64 / frames as f64, (b1 - b0) as f64 / frames as f64)
+}
+
+/// Wall-clock and allocation cost of one full production MEI frame (input consume, widget
+/// picker, Welcome `ui`, Taffy layout, drawable update, text primitives): the toolbar alone,
+/// then with the Welcome page up. Numbers are printed and, with `TG_PERF_OUT`, written as JSON.
+#[test]
+#[ignore = "measurement, not an assertion of a budget; use --release"]
+fn toolbar_menu_frame_cpu_time_and_allocations() {
+    use country_core::resources::onboarding::WelcomeScreenState;
+    let (mut h, _bridge) = production_welcome_harness();
+    let outside = Vec2::ZERO;
+    for _ in 0..24 {
+        h.frame(false, outside);
+    }
+    let position = h.position();
+    let pct = |v: &[f64], q: f64| v[((v.len() - 1) as f64 * q) as usize];
+    let mut rows = Vec::new();
+    for (name, welcome) in [("toolbar only", false), ("welcome page + toolbar", true)] {
+        if welcome {
+            *h.world.resource_mut::<WelcomeScreenState>() = WelcomeScreenState::Pending;
+            for _ in 0..4 {
+                h.frame(false, position);
+            }
+            assert!(matches!(*h.world.resource::<WelcomeScreenState>(), WelcomeScreenState::Showing { .. }));
+        }
+        let _ = measure(&mut h, position, 60); // warm-up: layout caches, glyph atlas
+        let (micros, allocations, bytes) = measure(&mut h, position, 600);
+        let nodes = h.world.resource::<toolbar::MeiContext>().nodes.len();
+        eprintln!(
+            "PERF {name}: {} frames, p50 {:.0} us, p95 {:.0} us, p99 {:.0} us, max {:.0} us; {allocations:.0} allocs/frame, {bytes:.0} bytes/frame; MEI nodes {nodes}",
+            micros.len(), pct(&micros, 0.5), pct(&micros, 0.95), pct(&micros, 0.99), micros[micros.len() - 1]
+        );
+        rows.push(serde_json::json!({
+            "scenario": name, "frames": micros.len(), "mei_nodes": nodes,
+            "p50_us": pct(&micros, 0.5), "p95_us": pct(&micros, 0.95), "p99_us": pct(&micros, 0.99),
+            "max_us": micros[micros.len() - 1], "allocations_per_frame": allocations, "bytes_per_frame": bytes,
+            "profile": if cfg!(debug_assertions) { "debug" } else { "release" },
+        }));
+    }
+    if let Some(path) = std::env::var_os("TG_PERF_OUT") {
+        std::fs::write(path, serde_json::to_string_pretty(&rows).unwrap()).unwrap();
+    }
+}
+/// Where the per-frame allocations come from: samples every 16th allocation of the steady-state
+/// frames and prints the innermost project frame, most frequent first. Debug build only.
+#[test]
+#[ignore = "profiling aid; debug profile (needs symbols)"]
+fn toolbar_menu_frame_allocation_sites() {
+    use std::sync::atomic::Ordering::Relaxed;
+    use country_core::resources::onboarding::WelcomeScreenState;
+    let (mut h, _bridge) = production_welcome_harness();
+    for _ in 0..24 {
+        h.frame(false, Vec2::ZERO);
+    }
+    let position = h.position();
+    for (name, welcome) in [("toolbar only", false), ("welcome page + toolbar", true)] {
+        if welcome {
+            *h.world.resource_mut::<WelcomeScreenState>() = WelcomeScreenState::Pending;
+            for _ in 0..4 {
+                h.frame(false, position);
+            }
+        }
+        for _ in 0..60 {
+            h.frame(false, position);
+        }
+        frame_cost::SITES.lock().unwrap().clear();
+        frame_cost::SAMPLING.store(true, Relaxed);
+        let frames = 200;
+        let a0 = frame_cost::ALLOCATIONS.load(Relaxed);
+        for _ in 0..frames {
+            h.frame(false, position);
+        }
+        let a1 = frame_cost::ALLOCATIONS.load(Relaxed);
+        frame_cost::SAMPLING.store(false, Relaxed);
+        let mut sites = frame_cost::SITES.lock().unwrap().clone();
+        sites.sort_by_key(|(_, n)| std::cmp::Reverse(*n));
+        let total: u64 = sites.iter().map(|(_, n)| *n).sum();
+        eprintln!("ALLOCSITES {name}: {:.0} allocs/frame, {total} samples", (a1 - a0) as f64 / frames as f64);
+        for (site, n) in sites.iter().take(14) {
+            eprintln!("ALLOCSITES   {:5.1}%  {}", *n as f64 * 100.0 / total.max(1) as f64, site);
+        }
+    }
 }

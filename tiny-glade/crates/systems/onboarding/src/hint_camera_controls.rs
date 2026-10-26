@@ -394,9 +394,6 @@ mod constructor_tests {
             };
             profile.key_bindings.mouse[0] = Some(button);
             profile.key_bindings.mouse[1] = Some(button);
-            // 旧误命名字段不再拥有鼠标绑定；故意相反以防再次从这里猜测业务。
-            profile.camera_pan_glyph_mode = 3 - mode;
-            profile.camera_rotate_glyph_mode = 3 - mode;
             for (tree, graphic_index) in [
                 (camera_pan_hint(&profile), 2),
                 (camera_rotate_hint(&profile), 1),

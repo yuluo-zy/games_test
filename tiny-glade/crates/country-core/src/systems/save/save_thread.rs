@@ -1430,4 +1430,70 @@ mod autosave_error_contract_tests {
         drop(commands);
         worker.join().unwrap();
     }
+
+    /// Windows only: another process (antivirus, backup tool, a second game instance) holding
+    /// the save file open without sharing makes the write fail with a sharing violation. The
+    /// worker must report that as an I/O error, keep the bytes, and retry on its own once the
+    /// lock is released.
+    #[cfg(windows)]
+    #[test]
+    fn real_worker_reports_an_exclusively_locked_history_file_and_retries_after_release() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let directory = tempfile::tempdir().unwrap();
+        let target = directory.path().join("history.json");
+        std::fs::write(&target, b"{}").unwrap();
+        // share_mode(0): no other handle may open the file at all (ERROR_SHARING_VIOLATION).
+        let lock = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .share_mode(0)
+            .open(&target)
+            .unwrap();
+        let values = [
+            serde_json::json!(27),
+            serde_json::json!(17u64),
+            serde_json::json!(0),
+            serde_json::json!({}),
+            serde_json::json!({}),
+            serde_json::json!([]),
+            serde_json::json!({}),
+            serde_json::json!(-1),
+            serde_json::json!(-1),
+            serde_json::json!([]),
+        ];
+        let current = CurrentSaveFile::create(
+            directory.path(),
+            GameSaveSections {
+                values: values.map(|value| SerializedJson::new(&value).unwrap()),
+            },
+            &[],
+        );
+        assert!(
+            current.shadow_file.last_error().is_some(),
+            "a locked save file must surface as an error, not as a silent success"
+        );
+        let (commands, command_receiver) = crossbeam_channel::unbounded();
+        let (errors, receiver) = crossbeam_channel::unbounded();
+        let worker = std::thread::spawn(move || {
+            save_thread_with_current(
+                command_receiver,
+                errors,
+                Arc::new(UnsavedFileList::default()),
+                Some(current),
+            )
+        });
+        let failure = receiver.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert_eq!(failure.len(), 1);
+        assert_eq!(failure[0].0, target);
+        assert!(matches!(failure[0].1, AutoSaveError::Io(_)));
+        // Still locked: the previous contents are untouched.
+        drop(lock);
+        let recovery = receiver.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert!(recovery.is_empty(), "the worker's own retry succeeded after the lock was released");
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&target).unwrap()).unwrap();
+        assert!(saved.is_object());
+        drop(commands);
+        worker.join().unwrap();
+    }
 }
