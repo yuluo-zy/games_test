@@ -447,6 +447,7 @@ pub struct RasterShared {
     programs: Arc<AssetShaderLibrary>,
     reflections: Mutex<crate::draw_template_cache::ReflectionCache>,
     constant_pool: Arc<crate::draw_constant_pool::ConstantPool>,
+    commit_scratch: country_core::render::pass_builder::draw_commit_scratch::DrawCommitScratchPool,
     #[cfg(test)]
     fail_constant_write: std::sync::atomic::AtomicUsize,
     zero_vertex: ZeroVertexBuffer,
@@ -647,6 +648,21 @@ impl RasterShared {
     /// scoped VAO wrapper reuse. Does not change the original 13 counter fields.
     pub fn draw_management_modes(&self) -> [bool; 3] {
         [self.management_mode(0), self.management_mode(1), self.management_mode(2)]
+    }
+
+    #[cfg(feature = "cpu-probe")]
+    pub fn draw_scratch_bill(&self) -> serde_json::Value {
+        let bill = self.commit_scratch.stats();
+        serde_json::json!({
+            "checked_out": bill.checked_out, "cached": bill.cached,
+            "live_bytes": bill.live_bytes, "cached_bytes": bill.cached_bytes,
+            "metadata_bytes": bill.metadata_bytes, "high_water_bytes": bill.high_water_bytes,
+            "checkouts_high_water": bill.checkouts_high_water, "creations": bill.creations,
+            "capacity_growths": bill.capacity_growths, "pool_capacity_stalls": bill.pool_capacity_stalls,
+            "checkouts": bill.checkouts,
+            "pool_capacity_stalls_scope": "pool_slots_or_local_capacity_only",
+            "global_host_budget_refusals_included": false,
+        })
     }
 
     pub fn constant_batch_enabled(&self) -> bool { self.constant_pool.batch_enabled() }
@@ -952,6 +968,11 @@ impl RasterShared {
         shaders: Arc<ShaderHost>,
         library: Arc<AssetShaderLibrary>,
     ) -> Result<Arc<Self>, rhapsody::Error> {
+        let commit_scratch = country_core::render::pass_builder::draw_commit_scratch::DrawCommitScratchPool::new(
+            device.allocator_stats().clone(), 8, 8 << 20, 1 << 20,
+        )?;
+        #[cfg(feature = "cpu-probe")]
+        commit_scratch.set_billing(crate::render_cpu_probe::management_enabled());
         let constant_pool = crate::draw_constant_pool::ConstantPool::new(device.allocator_stats().clone())?;
         let evictable: Arc<dyn rhapsody::device::Evictable> = constant_pool.clone();
         device.register_evictable(Arc::downgrade(&evictable), rhapsody::device::EvictionPriority::Transient);
@@ -966,6 +987,7 @@ impl RasterShared {
             programs: library,
             reflections: Mutex::new(Default::default()),
             constant_pool,
+            commit_scratch,
             #[cfg(test)]
             fail_constant_write: Default::default(),
             zero_vertex: ZeroVertexBuffer::default(),
@@ -1324,6 +1346,10 @@ impl PassHost for RasterPassHost {
         }
         *self.scope_reflections.borrow_mut() = crate::draw_template_cache::ReflectionScope::try_new(
             self.shared.device.allocator_stats()).ok().map(Arc::new);
+    }
+
+    fn checkout_draw_scratch(&self) -> rhapsody::Result<country_core::render::pass_builder::draw_commit_scratch::DrawCommitScratchLease> {
+        self.shared.commit_scratch.checkout()
     }
 
     fn record_collect_error(&mut self, error: rhapsody::Error) {

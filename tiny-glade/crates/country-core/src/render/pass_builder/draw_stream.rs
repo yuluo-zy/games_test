@@ -479,6 +479,9 @@ pub trait PassHost {
     /// Admission failure travels with the existing task result, outside logs.
     fn take_collect_error(&mut self) -> Option<rhapsody::Error> { None }
     /// The real owner enters its existing frame rejection/retry channel.
+    fn checkout_draw_scratch(&self) -> rhapsody::Result<super::draw_commit_scratch::DrawCommitScratchLease> {
+        Err(rhapsody::Error::unsupported("PassHost must provide device-owned Commit scratch"))
+    }
     fn record_collect_error(&mut self, error: rhapsody::Error) {
         panic!("Collect admission failed: {error}")
     }
@@ -706,19 +709,34 @@ impl RasterPass {
         }
         #[cfg(test)]
         self.host.commit_collected_image_views(core::mem::take(&mut batch.image_views));
-        let mut resolved = HashMap::new();
-        for buffer in batch.deferred {
+        let mut scratch_lease = match self.host.checkout_draw_scratch() {
+            Ok(lease) => lease,
+            Err(error) => { self.host.record_collect_error(error); return; }
+        };
+        if let Err(error) = super::draw_commit_scratch::prepare(&mut scratch_lease,
+            batch.deferred.len(), batch.bindings.len(), batch.accesses.len(), !self.body.bindings.is_empty()) {
+            self.host.record_collect_error(error);
+            return;
+        }
+        scratch_lease.with_prepared(|scratch| {
+        let super::draw_commit_scratch::DrawCommitScratch {
+            resolved, slots, skip, new_bindings, access_indices,
+        } = scratch;
+        for (order, buffer) in batch.deferred.into_iter().enumerate() {
             let id = self.host.rg_buffer_resource_typed(buffer.hash, buffer.type_name)
                 .expect("no entry found for key");
             assert!(id < DEFERRED_BUFFER_BASE, "graph resource overlaps Collect ID domain");
-            resolved.insert(buffer.token, id);
+            resolved.push((buffer.token, order, id));
         }
+        resolved.sort_unstable_by_key(|&(token, order, _)| (token, order));
         let resolve = |id: &mut u32| {
             if *id >= DEFERRED_BUFFER_BASE {
-                *id = *resolved.get(id).expect("unresolved Collect resource");
+                let end = resolved.partition_point(|&(token, _, _)| token <= *id);
+                let &(token, _, physical) = resolved.get(end.wrapping_sub(1)).expect("unresolved Collect resource");
+                assert_eq!(token, *id, "unresolved Collect resource");
+                *id = physical;
             }
         };
-        let mut slots = vec![None; batch.bindings.len()];
         if self.body.bindings.is_empty() {
             // The first batch owns the binding domain. Adopt its containers;
             // no alias pruning or full access-index scratch is needed.
@@ -740,12 +758,10 @@ impl RasterPass {
             for (&key, &slot) in &batch.buffer_slots {
                 slots[slot as usize] = self.body.buffer_slots.get(key).copied();
             }
-            let mut skip = vec![false; batch.accesses.len()];
-            let mut new_bindings = Vec::new();
             for (index, mut binding) in batch.bindings.drain(..).enumerate() {
                 let access_index = batch.binding_accesses[index];
                 if slots[index].is_some() {
-                    skip[access_index] = true;
+                    skip[access_index] = 1;
                 } else {
                     resolve(&mut binding.resource_index);
                     let slot = u32::try_from(self.body.bindings.len()).expect("too many pass bindings");
@@ -754,15 +770,14 @@ impl RasterPass {
                     new_bindings.push(access_index);
                 }
             }
-            let mut access_indices = vec![0; batch.accesses.len()];
             for (index, mut access) in batch.accesses.into_iter().enumerate() {
-                if !skip[index] {
+                if skip[index] == 0 {
                     resolve(&mut access.resource);
                     access_indices[index] = self.body.accesses.len();
                     self.body.accesses.push(access);
                 }
             }
-            self.body.binding_accesses.extend(new_bindings.into_iter().map(|i| access_indices[i]));
+            self.body.binding_accesses.extend(new_bindings.iter().map(|&i| access_indices[i]));
             for (key, slot) in batch.texture_slots {
                 self.body.texture_slots.entry(key).or_insert(slots[slot as usize].unwrap());
             }
@@ -781,6 +796,7 @@ impl RasterPass {
         self.host.commit_collected_draws(&mut batch.draws);
         if self.body.draws.is_empty() { self.body.draws = batch.draws; }
         else { self.body.draws.extend(batch.draws); }
+        });
     }
 
     /// `new`（inline 42）→ `new_impl`（0x140867970）。
@@ -965,6 +981,7 @@ pub(crate) mod test_host {
         pub next_handle: u64,
         pub constants: Option<usize>,
         constants_budget: Arc<rhapsody::device::AllocatorStats>,
+        commit_scratch: super::super::draw_commit_scratch::DrawCommitScratchPool,
         /// `ssbo_instance_count`（`SsboId` → 实际实例数量）。
         pub buffer_words: HashMap<u64, u32>,
         /// `rg_resources`：记录型渲染图（`None` = 不接渲染图）。
@@ -974,6 +991,8 @@ pub(crate) mod test_host {
     impl MockHost {
         pub fn new() -> (MockHost, Rc<RefCell<Log>>) {
             let log = Rc::new(RefCell::new(Log::default()));
+            let constants_budget = Arc::new(rhapsody::device::AllocatorStats::default());
+            let commit_scratch = super::super::draw_commit_scratch::DrawCommitScratchPool::new(constants_budget.clone(), 8, 8 << 20, 1 << 20).unwrap();
             (
                 MockHost {
                     deferred: Vec::new(),
@@ -987,7 +1006,7 @@ pub(crate) mod test_host {
                     cache: HashMap::new(),
                     next_handle: 100,
                     constants: None,
-                    constants_budget: Arc::new(Default::default()),
+                    constants_budget, commit_scratch,
                     buffer_words: HashMap::new(),
                     rg: None,
                 },
@@ -1027,6 +1046,9 @@ pub(crate) mod test_host {
         }
         fn take_deferred_buffers(&mut self) -> Vec<DeferredBuffer> { core::mem::take(&mut self.deferred) }
         fn record_collect_error(&mut self, _: rhapsody::Error) { self.log.borrow_mut().collect_errors += 1; }
+        fn checkout_draw_scratch(&self) -> rhapsody::Result<super::super::draw_commit_scratch::DrawCommitScratchLease> {
+            self.commit_scratch.checkout()
+        }
         fn raster_shader(
             &self,
             shader: &Handle<RasterShaderProgram>,
