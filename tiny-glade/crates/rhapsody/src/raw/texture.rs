@@ -1,10 +1,6 @@
 //! Textures, texture descriptions and image views.
+use super::{allocator::MemoryBlock, device::Device, format::vk_format_valid_aspect_flags};
 use crate::{Error, Result};
-use super::{
-    allocator::MemoryBlock,
-    device::Device,
-    format::vk_format_valid_aspect_flags,
-};
 use ash::vk;
 use std::sync::Arc;
 
@@ -91,7 +87,11 @@ impl<'a> Iterator for LinearInitialDataIter<'a> {
 // Cube kinds add this native flag even when the caller leaves flags empty.
 // Creation and view compatibility must use the same effective flags.
 fn image_create_flags(desc: &TextureDesc) -> vk::ImageCreateFlags {
-    if desc.kind.is_cube() { desc.flags | vk::ImageCreateFlags::CUBE_COMPATIBLE } else { desc.flags }
+    if desc.kind.is_cube() {
+        desc.flags | vk::ImageCreateFlags::CUBE_COMPATIBLE
+    } else {
+        desc.flags
+    }
 }
 
 /// `ImageCreateInfo` for `desc`.
@@ -212,9 +212,17 @@ impl TextureDesc {
         }
         self.array_layers()?;
         if u32::from(self.mip_levels) > self.full_mip_chain_length()
-            || matches!(self.kind, TextureKind::D1 | TextureKind::D1Array) && (self.height != 1 || self.depth != 1)
-            || !matches!(self.kind, TextureKind::D1 | TextureKind::D1Array | TextureKind::D3) && self.depth != 1
-        { return Err(Error::invalid_usage("texture extent or mip chain differs from its kind")); }
+            || matches!(self.kind, TextureKind::D1 | TextureKind::D1Array)
+                && (self.height != 1 || self.depth != 1)
+            || !matches!(
+                self.kind,
+                TextureKind::D1 | TextureKind::D1Array | TextureKind::D3
+            ) && self.depth != 1
+        {
+            return Err(Error::invalid_usage(
+                "texture extent or mip chain differs from its kind",
+            ));
+        }
         if !matches!(self.sample_count, 1 | 2 | 4 | 8 | 16 | 32 | 64) {
             return Err(Error::invalid_usage("纹理采样数无效"));
         }
@@ -453,18 +461,41 @@ impl TextureViewDesc {
     pub fn validate(&self, texture: &TextureDesc) -> Result<()> {
         let layers = texture.array_layers()?;
         let valid_kind = match texture.kind {
-            TextureKind::D1 | TextureKind::D1Array => matches!(self.view_type, vk::ImageViewType::TYPE_1D | vk::ImageViewType::TYPE_1D_ARRAY),
-            TextureKind::D3 => self.view_type == vk::ImageViewType::TYPE_3D && self.layer_count == 1,
-            _ => matches!(self.view_type, vk::ImageViewType::TYPE_2D | vk::ImageViewType::TYPE_2D_ARRAY)
-                || image_create_flags(texture).contains(vk::ImageCreateFlags::CUBE_COMPATIBLE) && matches!(self.view_type, vk::ImageViewType::CUBE | vk::ImageViewType::CUBE_ARRAY),
+            TextureKind::D1 | TextureKind::D1Array => matches!(
+                self.view_type,
+                vk::ImageViewType::TYPE_1D | vk::ImageViewType::TYPE_1D_ARRAY
+            ),
+            TextureKind::D3 => {
+                self.view_type == vk::ImageViewType::TYPE_3D && self.layer_count == 1
+            }
+            _ => {
+                matches!(
+                    self.view_type,
+                    vk::ImageViewType::TYPE_2D | vk::ImageViewType::TYPE_2D_ARRAY
+                ) || image_create_flags(texture).contains(vk::ImageCreateFlags::CUBE_COMPATIBLE)
+                    && matches!(
+                        self.view_type,
+                        vk::ImageViewType::CUBE | vk::ImageViewType::CUBE_ARRAY
+                    )
+            }
         };
         let aspects = super::format::vk_format_all_aspects(texture.format);
-        if !valid_kind || self.aspect.is_empty() || !aspects.contains(self.aspect)
-            || self.format != texture.format && !texture.flags.contains(vk::ImageCreateFlags::MUTABLE_FORMAT)
-            || matches!(self.view_type, vk::ImageViewType::TYPE_1D | vk::ImageViewType::TYPE_2D) && self.layer_count != 1
+        if !valid_kind
+            || self.aspect.is_empty()
+            || !aspects.contains(self.aspect)
+            || self.format != texture.format
+                && !texture.flags.contains(vk::ImageCreateFlags::MUTABLE_FORMAT)
+            || matches!(
+                self.view_type,
+                vk::ImageViewType::TYPE_1D | vk::ImageViewType::TYPE_2D
+            ) && self.layer_count != 1
             || self.view_type == vk::ImageViewType::CUBE && self.layer_count != 6
             || self.view_type == vk::ImageViewType::CUBE_ARRAY && self.layer_count % 6 != 0
-        { return Err(Error::invalid_usage("image view is incompatible with its texture")); }
+        {
+            return Err(Error::invalid_usage(
+                "image view is incompatible with its texture",
+            ));
+        }
         if self.level_count == 0
             || self.layer_count == 0
             || self
@@ -489,6 +520,7 @@ impl TextureViewDesc {
     }
 }
 pub struct Texture {
+    retirement: Option<crate::device::RetireTicket>,
     pub(crate) sharing: crate::resource::ResourceSharing,
     allocation_use: Option<Arc<crate::resource::SyncCell>>,
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
@@ -560,6 +592,7 @@ impl Texture {
         .into_reserved_arc(storage.synchronization);
         Self {
             _memory: storage.object,
+            retirement: Some(storage.retirement),
             sharing,
             allocation_use,
             last_use,
@@ -595,6 +628,7 @@ impl Texture {
             handle,
             desc,
             storage: TextureStorage::Swapchain(owner),
+            retirement: None,
             _memory: memory,
         })
     }
@@ -649,6 +683,7 @@ impl Texture {
             super::allocator::shared_cpu_bytes::<Self>()?,
             crate::device::BudgetCategory::Live,
         )?;
+        let retirement = device.reserve_retirement()?;
         let info = get_image_create_info_with_data(desc, has_data)?
             .sharing_mode(if sharing.is_concurrent() {
                 vk::SharingMode::CONCURRENT
@@ -707,6 +742,7 @@ impl Texture {
             return crate::error::observe_vulkan(&device, Err(error));
         }
         Ok(Self {
+            retirement: Some(retirement),
             _memory: memory,
             sharing,
             allocation_use: None,
@@ -750,6 +786,7 @@ impl Texture {
             super::allocator::shared_cpu_bytes::<TextureView>()?,
             crate::device::BudgetCategory::Live,
         )?;
+        let retirement = self.device.reserve_retirement()?;
         let range = vk::ImageSubresourceRange::default()
             .aspect_mask(desc.aspect)
             .base_mip_level(desc.base_mip_level)
@@ -767,6 +804,7 @@ impl Texture {
             self.device.core.device.create_image_view(&info, None)
         })?;
         Ok(TextureView {
+            retirement: Some(retirement),
             _memory: memory,
             last_use: crate::resource::SyncCell::for_device(self.device.generation())
                 .into_reserved_arc(sync_storage),
@@ -787,14 +825,16 @@ impl Drop for Texture {
         if let TextureStorage::Allocated(allocation) = &mut self.storage {
             // SAFETY: this owned allocation is taken exactly once.
             let memory = unsafe { std::mem::ManuallyDrop::take(allocation) }.into_deferred();
-            self.device.retire(
+            self.device.retire_reserved(
                 self.last_use.snapshot(),
                 super::graveyard::Doomed::Image(self.handle, memory),
+                self.retirement.take().expect("owned image retirement node"),
             );
         }
     }
 }
 pub struct TextureView {
+    retirement: Option<crate::device::RetireTicket>,
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
     pub texture: Arc<Texture>,
     pub(crate) handle: vk::ImageView,
@@ -810,9 +850,10 @@ impl TextureView {
 }
 impl Drop for TextureView {
     fn drop(&mut self) {
-        self.texture.device.retire(
+        self.texture.device.retire_reserved(
             self.last_use.snapshot(),
             super::graveyard::Doomed::ImageView(self.handle),
+            self.retirement.take().expect("image view retirement node"),
         );
     }
 }
@@ -847,7 +888,10 @@ impl Iterator for MipChainIter {
 
 impl crate::resource::GpuUse for Texture {
     fn visit_uses(&self, visitor: &mut crate::resource::UseVisitor<'_>) -> crate::Result<()> {
-        crate::resource::tracked::visit_cells(visitor, std::iter::once(&self.last_use).chain(self.allocation_use.iter()))
+        crate::resource::tracked::visit_cells(
+            visitor,
+            std::iter::once(&self.last_use).chain(self.allocation_use.iter()),
+        )
     }
 }
 

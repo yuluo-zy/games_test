@@ -1,11 +1,9 @@
 //! Device memory blocks (dedicated or suballocated) and device/host memory
 //! accounting.
-use crate::{Error, Result};
-use super::{
-    device::Device,
-};
+use super::device::Device;
 use crate::device::BudgetCategory;
 use crate::sync::{CompletedValues, MAX_QUEUES, QueueId, SyncPoint};
+use crate::{Error, Result};
 use ash::vk;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -133,12 +131,25 @@ impl MemoryBlock {
         image: vk::Image,
     ) -> Result<Self> {
         let mut reclaim = AllocationReclaim::new(&device);
-        Self::allocate_for_resource_reclaim(device, requirements, required, preferred, flags, buffer, image, &mut reclaim)
+        Self::allocate_for_resource_reclaim(
+            device,
+            requirements,
+            required,
+            preferred,
+            flags,
+            buffer,
+            image,
+            &mut reclaim,
+        )
     }
     pub(crate) fn allocate_for_resource_reclaim(
-        device: Arc<Device>, requirements: vk::MemoryRequirements,
-        required: vk::MemoryPropertyFlags, preferred: vk::MemoryPropertyFlags,
-        flags: vk::MemoryAllocateFlags, buffer: vk::Buffer, image: vk::Image,
+        device: Arc<Device>,
+        requirements: vk::MemoryRequirements,
+        required: vk::MemoryPropertyFlags,
+        preferred: vk::MemoryPropertyFlags,
+        flags: vk::MemoryAllocateFlags,
+        buffer: vk::Buffer,
+        image: vk::Image,
         reclaim: &mut AllocationReclaim,
     ) -> Result<Self> {
         let memory_type = choose_memory_type(
@@ -369,10 +380,18 @@ pub(crate) struct AllocationReclaim {
 }
 impl AllocationReclaim {
     pub(crate) fn new(device: &Device) -> Self {
-        Self { completed: None, remaining: device.pressure_reclamation_budget() }
+        Self {
+            completed: None,
+            remaining: device.pressure_reclamation_budget(),
+        }
     }
 }
-pub(crate) fn relieve_pressure(device: &Device, memory_type: Option<u32>, bytes: u64, reclaim: &mut AllocationReclaim) {
+pub(crate) fn relieve_pressure(
+    device: &Device,
+    memory_type: Option<u32>,
+    bytes: u64,
+    reclaim: &mut AllocationReclaim,
+) {
     let stats = &device.memory.stats;
     let heap = memory_type
         .map(|index| device.core.memory_properties.memory_types[index as usize].heap_index);
@@ -687,10 +706,14 @@ struct StatisticsState {
     totals: AllocationTotals,
     peak: AllocationTotals,
     peak_report: Option<AllocatorReport>,
-    /// The peak was raised but its snapshot is not materialized yet. After a
-    /// peak only registrations (which raise it again) or releases can follow,
-    /// so materializing before the first release reproduces the exact state.
+    /// The last total-byte peak is represented by records and saved totals.
+    /// Release retains its metadata; registration either materializes that
+    /// evidence or supersedes it with a higher peak.
     peak_dirty: bool,
+    // Released records remain as owned peak evidence until a report or the
+    // next registration consumes it. Physical GPU memory is already freed.
+    peak_released: bool,
+    peak_snapshot_totals: AllocationTotals,
     /// Explicit per-heap limits set by the application.
     heap_budgets: [Option<u64>; MAX_HEAPS],
     /// Limits derived from `VK_EXT_memory_budget` (`None` = not reported).
@@ -717,13 +740,29 @@ impl StatisticsState {
     fn report(&self) -> AllocatorReport {
         AllocatorReport {
             totals: self.totals,
-            allocations: self.records.values().cloned().collect(),
+            allocations: self
+                .records
+                .iter()
+                .filter(|(id, _)| self.phases.contains_key(id))
+                .map(|(_, record)| record.clone())
+                .collect(),
         }
     }
     fn materialize_peak(&mut self) {
         if self.peak_dirty {
-            self.peak_report = Some(self.report());
+            self.peak_report = Some(AllocatorReport {
+                totals: self.peak_snapshot_totals,
+                allocations: self.records.values().cloned().collect(),
+            });
             self.peak_dirty = false;
+            self.prune_released_peak_records();
+        }
+    }
+    fn prune_released_peak_records(&mut self) {
+        if self.peak_released {
+            let phases = &self.phases;
+            self.records.retain(|id, _| phases.contains_key(id));
+            self.peak_released = false;
         }
     }
     fn heap_limit(&self, heap: usize) -> Option<u64> {
@@ -747,7 +786,7 @@ impl StatisticsState {
         };
         let previous = phase.last_use.get(queue);
         phase.last_use.insert(SyncPoint { queue, value });
-        if value <= observed {
+        if phase.category == BudgetCategory::Retiring || value <= observed {
             return;
         }
         if value > previous {
@@ -978,7 +1017,12 @@ impl AllocatorStats {
         self.with_state(|state| state.apply_use(point.queue, point.value, id));
     }
     pub(crate) fn mark_retiring(&self, id: u64) {
-        self.with_state(|state| transition_phase(state, id, BudgetCategory::Retiring));
+        // Drop owns this allocation exclusively. Do not flush unrelated staged
+        // uses (which can grow in-flight statistics) while marking it terminal.
+        let mut state = self.state.lock();
+        transition_phase(&mut state, id, BudgetCategory::Retiring);
+        self.action
+            .store(encode_action(state.action()), Ordering::Release);
     }
     pub(crate) fn mark_cached(&self, id: u64, completed: &CompletedValues) {
         self.with_state(|state| {
@@ -1237,6 +1281,15 @@ impl AllocatorStats {
             budget
                 .reserve(BudgetCategory::Live, size)
                 .map_err(|_| Error::OutOfDeviceMemory)?;
+            if state.peak_dirty && state.peak_released {
+                if total > state.peak.total_allocated_bytes {
+                    // The new peak supersedes the old one. Do not construct
+                    // an obsolete snapshot while allocations are increasing.
+                    state.prune_released_peak_records();
+                } else {
+                    state.materialize_peak();
+                }
+            }
             state.budget = budget;
             if spare.is_some() {
                 state.suballocator_spare[type_slot] = new_spare;
@@ -1270,6 +1323,7 @@ impl AllocatorStats {
             if total > state.peak.total_allocated_bytes {
                 state.peak.total_allocated_bytes = total;
                 state.peak_dirty = true;
+                state.peak_snapshot_totals = totals;
             }
             Ok(id)
         })
@@ -1282,38 +1336,45 @@ impl AllocatorStats {
         self.release_with_spare(id, Some(spare))
     }
     fn release_with_spare(&self, id: u64, spare: Option<u64>) -> Result<()> {
-        let native = self.with_state(|state| {
-            if !state.records.contains_key(&id) {
-                return Err(Error::invalid_usage(
-                    "unknown or already released memory id",
-                ));
-            }
-            // Releasing changes state: materialize a just-reached peak first.
-            state.materialize_peak();
+        // Exclusive physical ownership has ended. Neither flushing staged
+        // uses nor cloning the entire peak report belongs in this Drop path.
+        let native = {
+            let mut state = self.state.lock();
             let record = state
                 .records
-                .remove(&id)
+                .get(&id)
+                .filter(|_| state.phases.contains_key(&id))
                 .ok_or_else(|| Error::invalid_usage("unknown or already released memory id"))?;
-            let mut native = false;
-            if let Some(phase) = state.phases.remove(&id) {
-                state.budget.release(phase.category, record.size);
-                native = phase.native;
+            let (size, memory_type, heap, properties) = (
+                record.size,
+                record.memory_type,
+                record.heap,
+                record.properties,
+            );
+            let phase = state.phases.remove(&id).expect("live allocation phase");
+            state.budget.release(phase.category, size);
+            if state.peak_dirty {
+                state.peak_released = true;
+            } else {
+                state.records.remove(&id);
             }
             if let Some(spare) = spare {
-                replace_spare(state, record.memory_type, record.heap, spare);
+                replace_spare(&mut state, memory_type, heap, spare);
             }
-            if let Some(used) = state.heap_used.get_mut(record.heap as usize) {
-                *used = used.saturating_sub(record.size);
+            if let Some(used) = state.heap_used.get_mut(heap as usize) {
+                *used = used.saturating_sub(size);
             }
             state.refresh_heap_pressure();
-            state.totals.total_allocated_bytes -= record.size;
-            if record.properties & vk::MemoryPropertyFlags::DEVICE_LOCAL.as_raw() != 0 {
-                state.totals.device_local_bytes -= record.size;
+            state.totals.total_allocated_bytes -= size;
+            if properties & vk::MemoryPropertyFlags::DEVICE_LOCAL.as_raw() != 0 {
+                state.totals.device_local_bytes -= size;
             } else {
-                state.totals.system_bytes -= record.size;
+                state.totals.system_bytes -= size;
             }
-            Ok(native)
-        })?;
+            self.action
+                .store(encode_action(state.action()), Ordering::Release);
+            phase.native
+        };
         if native {
             self.release_native_object();
         }

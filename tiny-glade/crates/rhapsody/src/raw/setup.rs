@@ -7,19 +7,19 @@
 //! as precise state-derived barriers and tracked state before the body runs,
 //! and later graph/raw users order after them through that state. Every call
 //! returns the submission's [`SyncPoint`]; waiting is an explicit opt-in.
-use crate::{Error, Result};
 use super::{
     buffer::Buffer,
     command_buffer::{CommandPoolAllocation, VulkanCommandBuffer, VulkanCommandPool},
-    graveyard::Doomed,
     device::Device,
     format::vk_format_info,
+    graveyard::Doomed,
     texture::Texture,
     texture_upload::{TextureUpdateRegion, copy_format_params, linear_regions, per_mip_regions},
 };
 use crate::resource::{OwnershipRange, range_state::AccessScope};
 use crate::sync::{SyncPoint, SyncSet};
 use crate::transfer::texture as upload;
+use crate::{Error, Result};
 use ash::vk;
 use parking_lot::Mutex;
 use std::collections::VecDeque;
@@ -144,7 +144,7 @@ pub(crate) struct SetupPool {
     allocation: Arc<CommandPoolAllocation>,
     family: u32,
     /// Submitted command buffers and the completion of each, oldest first.
-    in_flight: VecDeque<(SyncSet, vk::CommandBuffer)>,
+    in_flight: VecDeque<(SyncSet, vk::CommandBuffer, crate::device::RetireTicket)>,
 }
 /// Counters of the device's setup recording (statistics only).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -189,16 +189,20 @@ impl SetupPool {
         // Cached completion alone never advances when setup is the only GPU
         // producer. Poll outstanding work once before allocating another command.
         let mut completed = device.completed();
-        if self.in_flight.front().is_some_and(|(done, _)| !done.is_reached(&completed)) {
+        if self
+            .in_flight
+            .front()
+            .is_some_and(|(done, _, _)| !done.is_reached(&completed))
+        {
             completed = device.poll()?;
         }
         if self
             .in_flight
             .front()
-            .is_some_and(|(done, _)| done.is_reached(&completed))
+            .is_some_and(|(done, _, _)| done.is_reached(&completed))
         {
-            let (_, handle) = self.in_flight.pop_front().expect("checked front");
-            match pool.adopt(handle) {
+            let (_, handle, retirement) = self.in_flight.pop_front().expect("checked front");
+            match pool.adopt(handle, retirement) {
                 Ok(mut command) => {
                     // SAFETY: every submission of this buffer reached its
                     // timeline point (checked against `completed` above).
@@ -208,7 +212,7 @@ impl SetupPool {
                     }
                     // Dropping retires the buffer after its own points.
                 }
-                Err(_) => self.allocation.free(handle),
+                Err(_) => {} // adopt consumed native ownership on failure
             }
         }
         let command = pool.allocate()?;
@@ -216,24 +220,45 @@ impl SetupPool {
         Ok(command)
     }
     /// Park a submitted command for recycling after `done`.
-    fn park(&mut self, device: &Device, done: SyncSet, handle: vk::CommandBuffer) {
+    fn park(
+        &mut self,
+        device: &Device,
+        done: SyncSet,
+        handle: vk::CommandBuffer,
+        retirement: crate::device::RetireTicket,
+    ) {
         if self.in_flight.len() >= MAX_RECYCLED_COMMANDS
-            && let Some((oldest, old)) = self.in_flight.pop_front()
+            && let Some((oldest, old, ticket)) = self.in_flight.pop_front()
         {
-            device.retire(oldest, Doomed::CommandBuffer(old, self.allocation.clone()));
+            self.allocation.release_detached();
+            device.retire_reserved(
+                oldest,
+                Doomed::CommandBuffer(old, self.allocation.clone(), false),
+                ticket,
+            );
         }
         if self.in_flight.try_reserve(1).is_ok() {
-            self.in_flight.push_back((done, handle));
+            self.in_flight.push_back((done, handle, retirement));
         } else {
-            device.retire(done, Doomed::CommandBuffer(handle, self.allocation.clone()));
+            self.allocation.release_detached();
+            device.retire_reserved(
+                done,
+                Doomed::CommandBuffer(handle, self.allocation.clone(), false),
+                retirement,
+            );
         }
     }
     /// Give up this pool while the GPU may still use its buffers: each is
     /// freed after its own completion; the native pool is destroyed after the
     /// last of them.
     fn retire(self, device: &Device) {
-        for (done, handle) in self.in_flight {
-            device.retire(done, Doomed::CommandBuffer(handle, self.allocation.clone()));
+        for (done, handle, retirement) in self.in_flight {
+            self.allocation.release_detached();
+            device.retire_reserved(
+                done,
+                Doomed::CommandBuffer(handle, self.allocation.clone(), false),
+                retirement,
+            );
         }
     }
 }
@@ -304,8 +329,8 @@ impl SetupContext {
             command.end()?;
             let pending = command.submit()?;
             let point = pending.point;
-            let (handle, done) = pending.into_command().detach();
-            pool.park(&self.device, done, handle);
+            let (handle, done, retirement) = pending.into_command().detach();
+            pool.park(&self.device, done, handle, retirement);
             self.device.caches.setup.stats.lock().submissions += 1;
             Ok(SetupSubmission {
                 value,

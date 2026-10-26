@@ -1,10 +1,6 @@
 //! Buffer creation, memory binding and mapped host reads/writes.
+use super::{allocator::MemoryBlock, device::Device, graveyard::Doomed};
 use crate::{Error, Result};
-use super::{
-    allocator::MemoryBlock,
-    device::Device,
-    graveyard::Doomed,
-};
 use ash::vk;
 use std::sync::Arc;
 /// Buffer memory location (raw values 1..=4; 0 is invalid).
@@ -224,9 +220,8 @@ pub fn plan_buffer_update(
     Ok(BufferUpdatePlan { total, regions })
 }
 
-
-
 pub struct Buffer {
+    retirement: Option<crate::device::RetireTicket>,
     dynamic_constants_page: bool,
     pub(crate) sharing: crate::resource::ResourceSharing,
     allocation_use: Option<Arc<crate::resource::SyncCell>>,
@@ -324,6 +319,7 @@ impl Buffer {
         Self {
             dynamic_constants_page: false,
             _memory: storage.object,
+            retirement: Some(storage.retirement),
             sharing,
             allocation_use,
             last_use,
@@ -395,6 +391,7 @@ impl Buffer {
             super::allocator::shared_cpu_bytes::<Self>()?,
             crate::device::BudgetCategory::Live,
         )?;
+        let retirement = device.reserve_retirement()?;
         let info = vk::BufferCreateInfo::default()
             .size(desc.size)
             .usage(desc.usage)
@@ -543,6 +540,7 @@ impl Buffer {
         Ok(Self {
             dynamic_constants_page: false,
             _memory: memory,
+            retirement: Some(retirement),
             sharing,
             allocation_use: None,
             last_use: last_use.into_reserved_arc(sync_storage),
@@ -780,9 +778,8 @@ impl Buffer {
             let Some((started, budget_ns)) = wait_started else {
                 return Err(Error::Timeout);
             };
-            let remaining = budget_ns.saturating_sub(
-                started.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64,
-            );
+            let remaining = budget_ns
+                .saturating_sub(started.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64);
             self.device.wait(&pending, remaining)?;
             completed = self.device.completed();
         }
@@ -886,8 +883,8 @@ impl Buffer {
     pub fn fill_mapped_bytes_unsynchronized(&self, offset: u64, len: u64, value: u8) -> Result<()> {
         let start = usize::try_from(offset)
             .map_err(|_| Error::invalid_usage("映射偏移超过主机地址范围"))?;
-        let count = usize::try_from(len)
-            .map_err(|_| Error::invalid_usage("映射长度超过主机地址范围"))?;
+        let count =
+            usize::try_from(len).map_err(|_| Error::invalid_usage("映射长度超过主机地址范围"))?;
         self.host_access(offset, len, true, None, |base| unsafe {
             // SAFETY: host_access 已检查范围、映射、同步和所有权。
             std::ptr::write_bytes(base.add(start), value, count)
@@ -908,9 +905,7 @@ impl Buffer {
     /// The callback borrows the caller's existing mapping; no second mutable
     /// slice or full-buffer shadow is manufactured here. It must only change
     /// the specified range, and must not recursively submit/access this buffer.
-    pub fn with_host_write(
-        &self, offset: u64, bytes: u64, edit: impl FnOnce(),
-    ) -> Result<()> {
+    pub fn with_host_write(&self, offset: u64, bytes: u64, edit: impl FnOnce()) -> Result<()> {
         let mut panic = None;
         let result = self.host_access(offset, bytes, true, Some(HOST_ACCESS_TIMEOUT_NS), |_| {
             // Finish the flush and publish the host revision even if an edit
@@ -918,7 +913,9 @@ impl Buffer {
             // after the host-access transaction released all native locks.
             panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(edit)).err();
         });
-        if let Some(payload) = panic { std::panic::resume_unwind(payload); }
+        if let Some(payload) = panic {
+            std::panic::resume_unwind(payload);
+        }
         result
     }
 
@@ -984,8 +981,8 @@ impl Buffer {
         len: u64,
         fill: impl FnOnce(&mut [u8]),
     ) -> Result<()> {
-        let count = usize::try_from(len)
-            .map_err(|_| Error::invalid_usage("映射长度超过主机地址范围"))?;
+        let count =
+            usize::try_from(len).map_err(|_| Error::invalid_usage("映射长度超过主机地址范围"))?;
         let start = usize::try_from(offset)
             .map_err(|_| Error::invalid_usage("映射偏移超过主机地址范围"))?;
         self.host_access(offset, len, true, None, |base| {
@@ -1096,9 +1093,7 @@ impl Buffer {
     /// Inspect an existing persistent mapping only when all prior overlapping
     /// GPU writers have completed. Busy work returns false without running the
     /// callback. Non-coherent memory is invalidated before inspecting it.
-    pub fn try_with_host_read(
-        &self, offset: u64, bytes: u64, read: impl FnOnce(),
-    ) -> Result<bool> {
+    pub fn try_with_host_read(&self, offset: u64, bytes: u64, read: impl FnOnce()) -> Result<bool> {
         match self.host_access(offset, bytes, false, None, |_| read()) {
             Ok(()) => Ok(true),
             Err(Error::Timeout) => Ok(false),
@@ -1130,15 +1125,21 @@ impl Drop for Buffer {
         }
         // SAFETY: allocation 只在此处取出一次，之后不会再被访问。
         let memory = unsafe { std::mem::ManuallyDrop::take(&mut self.allocation) }.into_deferred();
-        self.device.retire(
+        self.device.retire_reserved(
             self.last_use.snapshot(),
             Doomed::Buffer(self.handle, memory),
+            self.retirement
+                .take()
+                .expect("owned buffer retirement node"),
         );
     }
 }
 
 impl crate::resource::GpuUse for Buffer {
     fn visit_uses(&self, visitor: &mut crate::resource::UseVisitor<'_>) -> crate::Result<()> {
-        crate::resource::tracked::visit_cells(visitor, std::iter::once(&self.last_use).chain(self.allocation_use.iter()))
+        crate::resource::tracked::visit_cells(
+            visitor,
+            std::iter::once(&self.last_use).chain(self.allocation_use.iter()),
+        )
     }
 }

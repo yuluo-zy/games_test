@@ -118,6 +118,7 @@ impl Unbound {
             return Err(crate::Error::DeviceLost);
         }
         let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
+        let retirement = device.reserve_retirement()?;
         let sharing = spec.sharing();
         sharing.validate_device(&device)?;
         let (handle, requirements, dedicated, compatibility, flags, memory) = match spec {
@@ -220,6 +221,7 @@ impl Unbound {
             device,
             handle: Some(handle),
             storage: Some(crate::resource::tracked::ResourceStorage {
+                retirement,
                 object: memory,
                 synchronization: sync_storage,
             }),

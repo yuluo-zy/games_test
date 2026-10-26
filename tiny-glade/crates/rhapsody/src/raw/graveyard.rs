@@ -34,6 +34,7 @@ pub enum Doomed {
     CommandBuffer(
         vk::CommandBuffer,
         std::sync::Arc<super::command_buffer::CommandPoolAllocation>,
+        bool, // already counted as waiting for native host recording
     ),
     /// Objects a submitted command retained. Holding them until the command's
     /// completion is what makes per-object completion tracking unnecessary for

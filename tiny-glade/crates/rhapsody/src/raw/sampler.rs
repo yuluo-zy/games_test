@@ -1,9 +1,10 @@
 //! 原 built-in sampler 的策略未恢复；此接口接受明确 Vulkan 描述符。
-use crate::Result;
 use super::device::Device;
+use crate::Result;
 use ash::vk;
 use std::sync::Arc;
 pub struct Sampler {
+    retirement: Option<crate::device::RetireTicket>,
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
     pub(crate) device: Arc<Device>,
     pub(crate) handle: vk::Sampler,
@@ -46,6 +47,7 @@ impl Sampler {
             return Err(crate::Error::DeviceLost);
         }
         let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
+        let retirement = device.reserve_retirement()?;
         let handle = crate::error::observe_vulkan(&device, unsafe {
             device.core.device.create_sampler(info, None)
         })?;
@@ -55,14 +57,16 @@ impl Sampler {
             device,
             handle,
             _shared_storage: None,
+            retirement: Some(retirement),
         })
     }
 }
 impl Drop for Sampler {
     fn drop(&mut self) {
-        self.device.retire(
+        self.device.retire_reserved(
             self.last_use.snapshot(),
             super::graveyard::Doomed::Sampler(self.handle),
+            self.retirement.take().expect("sampler retirement node"),
         );
     }
 }

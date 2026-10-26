@@ -4,4 +4,4 @@ Proactive eviction, the one allocation retry and suballocation-to-dedicated fall
 
 Strict Vulkan verification: budget_eviction 2/2, graph_cache_eviction 3/3, and one new quota test: nine queued owners with a 3-scan / 2-destroy policy, four eviction calls in one session destroy exactly two; subsequent independent maintenance drains the rest, with zero idle waits. Logs: .perf/pressure-gpu-tests.log and .perf/pressure-quota-tests.log.
 
-The separate pre-reserved retirement-node/ticket migration is still open. This change does not claim to remove the existing Drop-time HostOOM fallback wait. Window frame-time and sustained pressure acceptance remain unmeasured.
+The subsequent reserved-node ownership migration is implemented as a source candidate; see retirement-reservations-20261026.md for its guarantees, tests and the remaining legacy raw-handle compatibility fallback. Window frame-time and sustained pressure acceptance remain unmeasured.

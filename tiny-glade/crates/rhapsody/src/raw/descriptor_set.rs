@@ -23,6 +23,7 @@ use std::sync::{
 };
 
 pub struct VulkanDescriptorSetLayout {
+    retirement: Option<crate::device::RetireTicket>,
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
     pub(crate) device: Arc<Device>,
     pub(crate) handle: vk::DescriptorSetLayout,
@@ -209,6 +210,7 @@ impl VulkanDescriptorSetLayout {
             )));
         }
         let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
+        let retirement = device.reserve_retirement()?;
         let handle = crate::error::observe_vulkan(&device, unsafe {
             device.core.device.create_descriptor_set_layout(&info, None)
         })?;
@@ -218,6 +220,7 @@ impl VulkanDescriptorSetLayout {
             device,
             handle,
             plan: owned_plan,
+            retirement: Some(retirement),
             _samplers: retained,
             _memory: memory,
         }))
@@ -225,14 +228,16 @@ impl VulkanDescriptorSetLayout {
 }
 impl Drop for VulkanDescriptorSetLayout {
     fn drop(&mut self) {
-        self.device.retire(
+        self.device.retire_reserved(
             self.last_use.snapshot(),
             super::graveyard::Doomed::DescriptorSetLayout(self.handle),
+            self.retirement.take().expect("layout retirement node"),
         );
     }
 }
 
 pub struct VulkanDescriptorPool {
+    retirement: Option<crate::device::RetireTicket>,
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
     // Fields drop in declaration order. Release pool storage before the last
     // device owner; deferred copies are drained inside Device::drop.
@@ -370,6 +375,7 @@ impl VulkanDescriptorPool {
         let allocation_memory = super::allocator::reserve_shared_cpu_metadata::<
             DescriptorPoolAllocation,
         >(&device.memory.stats, 0)?;
+        let retirement = device.reserve_retirement()?;
         let handle = crate::error::observe_vulkan(&device, unsafe {
             device.core.device.create_descriptor_pool(&info, None)
         })?;
@@ -388,6 +394,7 @@ impl VulkanDescriptorPool {
             allocation,
             free_individual_sets,
             live_sets: AtomicUsize::new(0),
+            retirement: Some(retirement),
             _memory: memory,
         }))
     }
@@ -416,6 +423,11 @@ impl VulkanDescriptorPool {
         let resources =
             super::temp_list::TempList::new(max_resources, self.device.memory.stats.clone())?;
         let _guard = self.allocation.lock.lock();
+        let retirement = if self.free_individual_sets {
+            Some(self.device.reserve_retirement()?)
+        } else {
+            None
+        };
         let layouts = [layout.handle];
         let variable_count = layout
             .plan
@@ -442,6 +454,7 @@ impl VulkanDescriptorPool {
         })?[0];
         self.live_sets.fetch_add(1, Ordering::Relaxed);
         Ok(VulkanDescriptorSet {
+            retirement,
             last_use: crate::resource::SyncCell::for_device(self.device.generation())
                 .into_reserved_arc(sync_storage),
             handle,
@@ -513,15 +526,19 @@ impl VulkanDescriptorPool {
 }
 impl Drop for VulkanDescriptorPool {
     fn drop(&mut self) {
-        self.device.retire(
+        self.device.retire_reserved(
             self.last_use.snapshot(),
             super::graveyard::Doomed::DescriptorPool(self.allocation.clone()),
+            self.retirement
+                .take()
+                .expect("descriptor pool retirement node"),
         );
     }
 }
 
 /// 持有实际 pool/layout 与写入资源；命令登记的 last_use 决定安全退役。
 pub struct VulkanDescriptorSet {
+    retirement: Option<crate::device::RetireTicket>,
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
     pub(crate) handle: vk::DescriptorSet,
     pub layout: Arc<VulkanDescriptorSetLayout>,
@@ -613,9 +630,12 @@ impl Drop for VulkanDescriptorSet {
             // 瞬时 set 随整池 reset 回收，不能单独 free，更不能重用仍在录制的 set。
             return;
         }
-        self.pool.device.retire(
+        self.pool.device.retire_reserved(
             self.last_use.snapshot(),
             super::graveyard::Doomed::DescriptorSet(self.handle, self.pool.allocation.clone()),
+            self.retirement
+                .take()
+                .expect("descriptor set retirement node"),
         );
     }
 }
@@ -681,7 +701,9 @@ pub fn descriptor_set_layout(
         bindings: Vec::with_capacity(bindings.len()),
     };
     for (index, binding) in bindings.iter().enumerate() {
-        let count = if binding.tag == 5 { 1 } else if binding.runtime {
+        let count = if binding.tag == 5 {
+            1
+        } else if binding.runtime {
             runtime_descriptor_count(device_limit)
         } else {
             binding.count
@@ -730,9 +752,6 @@ pub fn descriptor_set_layout(
     }
     Ok(result)
 }
-
-
-
 
 /// Maximum descriptor sets represented by the public shader interface schema.
 pub const MAX_DESCRIPTOR_SETS: usize = 4;

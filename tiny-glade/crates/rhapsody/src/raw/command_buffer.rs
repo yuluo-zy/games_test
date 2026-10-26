@@ -138,36 +138,41 @@ pub struct CommandPoolAllocation {
     // Native commands still owned by a wrapper or detached cache. Retired
     // commands are protected by last_use and no longer need CPU exclusivity.
     live_owned_commands: AtomicUsize,
+    pending_retirement_frees: AtomicUsize,
     _memory: super::allocator::CpuMemoryReservation,
 }
 #[derive(Default)]
 struct PoolSync {
     recording: usize,
-    deferred_free: Vec<vk::CommandBuffer>,
 }
 impl CommandPoolAllocation {
-    pub(crate) fn free(&self, handle: vk::CommandBuffer) {
-        let mut sync = self.lock.lock();
+    /// Maintenance never allocates a second queue while a pool is recording.
+    /// The caller keeps the existing retirement node and retries next tick.
+    pub(crate) fn try_free(&self, handle: vk::CommandBuffer, waiting: &mut bool) -> bool {
+        let sync = self.lock.lock();
         if sync.recording != 0 {
-            if sync.deferred_free.try_reserve(1).is_ok() {
-                sync.deferred_free.push(handle);
+            if !*waiting {
+                self.pending_retirement_frees
+                    .fetch_add(1, Ordering::Relaxed);
+                *waiting = true;
             }
-            // On host allocation failure the handle is reclaimed with the pool.
-            return;
+            return false;
+        }
+        if *waiting {
+            self.pending_retirement_frees
+                .fetch_sub(1, Ordering::Relaxed);
+            *waiting = false;
         }
         unsafe {
             self.device.free_command_buffers(self.handle, &[handle]);
         }
+        true
+    }
+    pub(crate) fn release_detached(&self) {
+        self.live_owned_commands.fetch_sub(1, Ordering::Relaxed);
     }
     fn end_recording(&self, sync: &mut PoolSync) {
         sync.recording -= 1;
-        if sync.recording == 0 && !sync.deferred_free.is_empty() {
-            unsafe {
-                self.device
-                    .free_command_buffers(self.handle, &sync.deferred_free);
-            }
-            sync.deferred_free.clear();
-        }
     }
 }
 impl Drop for CommandPoolAllocation {
@@ -224,7 +229,8 @@ impl VulkanCommandPool {
             device.memory.stats.clone(),
         )?);
         let cpu_state_buckets = Mutex::new(super::temp_list::TempList::new(
-            usize::MAX, device.memory.stats.clone(),
+            usize::MAX,
+            device.memory.stats.clone(),
         )?);
         if family != device.queues.primary_family
             && !device.queues.additional.iter().any(|q| q.family == family)
@@ -236,7 +242,8 @@ impl VulkanCommandPool {
         let allocation = match existing {
             Some(allocation) => allocation,
             None => {
-                let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
+                let sync_storage =
+                    crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
                 let info = vk::CommandPoolCreateInfo::default()
                     .queue_family_index(family)
                     .flags(vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER);
@@ -253,6 +260,7 @@ impl VulkanCommandPool {
                     last_use: crate::resource::SyncCell::for_device(device.generation())
                         .into_reserved_arc(sync_storage),
                     live_owned_commands: AtomicUsize::new(0),
+                    pending_retirement_frees: AtomicUsize::new(0),
                     _memory: allocation_memory,
                 })
             }
@@ -274,17 +282,37 @@ impl VulkanCommandPool {
     }
     /// Wrap a native command buffer previously detached from this pool's
     /// allocation ([`VulkanCommandBuffer::detach`]). The buffer must have
-    /// been allocated from this pool and not freed.
+    /// been allocated from this pool and completed. Ownership transfers even
+    /// on failure: the reserved node frees or queues the native handle.
     pub(crate) fn adopt(
         self: &Arc<Self>,
         handle: vk::CommandBuffer,
+        retirement: crate::device::RetireTicket,
     ) -> crate::Result<VulkanCommandBuffer> {
-        self.wrap(handle)
+        let owners_retirement = match self.device.reserve_retirement() {
+            Ok(ticket) => ticket,
+            Err(error) => {
+                self.retire_unwrapped(handle, retirement);
+                return Err(error);
+            }
+        };
+        self.wrap(handle, retirement, owners_retirement)
+    }
+    fn retire_unwrapped(&self, handle: vk::CommandBuffer, retirement: crate::device::RetireTicket) {
+        self.allocation.release_detached();
+        self.device.retire_reserved(
+            crate::sync::SyncSet::EMPTY,
+            super::graveyard::Doomed::CommandBuffer(handle, self.allocation.clone(), false),
+            retirement,
+        );
     }
     pub fn allocate(self: &Arc<Self>) -> crate::Result<VulkanCommandBuffer> {
         if self.device.is_device_lost() {
             return Err(crate::Error::DeviceLost);
         }
+        // Both payloads can outlive this command independently at Drop.
+        let retirement = self.device.reserve_retirement()?;
+        let owners_retirement = self.device.reserve_retirement()?;
         let _guard = self.allocation.lock.lock();
         let info = vk::CommandBufferAllocateInfo::default()
             .command_pool(self.handle)
@@ -293,28 +321,45 @@ impl VulkanCommandPool {
         let handle = crate::error::observe_vulkan(&self.device, unsafe {
             self.device.core.device.allocate_command_buffers(&info)
         })?[0];
-        self.allocation.live_owned_commands.fetch_add(1, Ordering::Relaxed);
+        self.allocation
+            .live_owned_commands
+            .fetch_add(1, Ordering::Relaxed);
         drop(_guard);
-        match self.wrap(handle) {
-            Ok(command) => Ok(command),
-            Err(error) => {
-                self.allocation.live_owned_commands.fetch_sub(1, Ordering::Relaxed);
-                self.allocation.free(handle);
-                Err(error)
-            }
-        }
+        self.wrap(handle, retirement, owners_retirement)
     }
-    fn wrap(self: &Arc<Self>, handle: vk::CommandBuffer) -> crate::Result<VulkanCommandBuffer> {
-        if self.device.is_device_lost() {
-            return Err(crate::Error::DeviceLost);
-        }
-        let stats = &self.device.memory.stats;
-        let range_uses = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
-        let state_patches = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
-        let owners = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
-        let uses = crate::resource::tracked::SubmissionUseCells::new(self.max_resources, stats.clone(), &self.last_use)?;
+
+    fn wrap(
+        self: &Arc<Self>,
+        handle: vk::CommandBuffer,
+        retirement: crate::device::RetireTicket,
+        owners_retirement: crate::device::RetireTicket,
+    ) -> crate::Result<VulkanCommandBuffer> {
+        let prepared = (|| {
+            if self.device.is_device_lost() {
+                return Err(crate::Error::DeviceLost);
+            }
+            let stats = &self.device.memory.stats;
+            let range_uses = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
+            let state_patches = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
+            let owners = super::temp_list::TempList::new(self.max_resources, stats.clone())?;
+            let uses = crate::resource::tracked::SubmissionUseCells::new(
+                self.max_resources,
+                stats.clone(),
+                &self.last_use,
+            )?;
+            Ok((range_uses, state_patches, owners, uses))
+        })();
+        let (range_uses, state_patches, owners, uses) = match prepared {
+            Ok(prepared) => prepared,
+            Err(error) => {
+                self.retire_unwrapped(handle, retirement);
+                return Err(error);
+            }
+        };
         self.live_commands.fetch_add(1, Ordering::Relaxed);
         Ok(VulkanCommandBuffer {
+            retirement: Some(retirement),
+            owners_retirement: Some(owners_retirement),
             handle,
             pool: self.clone(),
             recording: false,
@@ -386,11 +431,13 @@ impl VulkanCommandPool {
     }
 
     pub fn cpu_scratch_capacity_bytes(&self) -> usize {
-        self.cpu_validation.lock().capacity_bytes() + self.cpu_state_patches.lock().capacity_bytes()
+        self.cpu_validation.lock().capacity_bytes()
+            + self.cpu_state_patches.lock().capacity_bytes()
             + self.cpu_state_buckets.lock().capacity_bytes()
     }
     pub fn cpu_scratch_growth_count(&self) -> u64 {
-        self.cpu_validation.lock().growth_count() + self.cpu_state_patches.lock().growth_count()
+        self.cpu_validation.lock().growth_count()
+            + self.cpu_state_patches.lock().growth_count()
             + self.cpu_state_buckets.lock().growth_count()
     }
     /// CPU-only validation storage can be trimmed while GPU commands are in
@@ -406,7 +453,14 @@ impl VulkanCommandPool {
     }
     /// Command buffers whose free waits for the pool's current recording to end.
     pub fn pending_free_count(&self) -> usize {
-        self.allocation.lock.lock().deferred_free.len()
+        let sync = self.allocation.lock.lock();
+        if sync.recording != 0 {
+            self.allocation
+                .pending_retirement_frees
+                .load(Ordering::Relaxed)
+        } else {
+            0
+        }
     }
     pub fn live_command_count(&self) -> usize {
         self.live_commands.load(Ordering::Relaxed)
@@ -432,6 +486,8 @@ impl CbGraphicsState {
 }
 
 pub struct VulkanCommandBuffer {
+    retirement: Option<crate::device::RetireTicket>,
+    owners_retirement: Option<crate::device::RetireTicket>,
     pub(crate) handle: vk::CommandBuffer,
     pub pool: Arc<VulkanCommandPool>,
     recording: bool,
@@ -453,7 +509,6 @@ impl VulkanCommandBuffer {
     pub fn raw_handle(&self) -> vk::CommandBuffer {
         self.handle
     }
-
 }
 #[derive(Clone, Copy)]
 enum RetainMode {
@@ -654,7 +709,8 @@ pub(crate) unsafe fn prepare_submission_states(
     // patches once per cell.
     let mut buckets = super::temp_list::TempList::checkout(&first.pool.cpu_state_buckets);
     let count = commands.iter().try_fold(0usize, |count, command| {
-        count.checked_add(command.state_patches.as_slice().len())
+        count
+            .checked_add(command.state_patches.as_slice().len())
             .and_then(|count| count.checked_add(command.range_uses.as_slice().len()))
             .ok_or(crate::Error::OutOfHostMemory)
     })?;
@@ -664,12 +720,22 @@ pub(crate) unsafe fn prepare_submission_states(
     buckets.with_reserved(count, |recorded| -> crate::Result<()> {
         for (command_index, command) in commands.iter().enumerate() {
             for (entry_index, entry) in command.state_patches.as_slice().iter().enumerate() {
-                if let Ok(slot) = prepared.cells.binary_search_by_key(&(Arc::as_ptr(&entry.cell) as usize), |cell| Arc::as_ptr(cell) as usize) {
+                if let Ok(slot) = prepared
+                    .cells
+                    .binary_search_by_key(&(Arc::as_ptr(&entry.cell) as usize), |cell| {
+                        Arc::as_ptr(cell) as usize
+                    })
+                {
                     recorded.push((slot, 0, command_index, entry_index));
                 }
             }
             for (entry_index, entry) in command.range_uses.as_slice().iter().enumerate() {
-                if let Ok(slot) = prepared.cells.binary_search_by_key(&(Arc::as_ptr(&entry.cell) as usize), |cell| Arc::as_ptr(cell) as usize) {
+                if let Ok(slot) = prepared
+                    .cells
+                    .binary_search_by_key(&(Arc::as_ptr(&entry.cell) as usize), |cell| {
+                        Arc::as_ptr(cell) as usize
+                    })
+                {
                     recorded.push((slot, 1, command_index, entry_index));
                 }
             }
@@ -683,11 +749,13 @@ pub(crate) unsafe fn prepare_submission_states(
             let own = &recorded[start..end];
             let count = own.len();
             let fallback = count == 0;
-            scratch.with_entries(|patches|->crate::Result<()> {
+            scratch.with_entries(|patches| -> crate::Result<()> {
                 patches.reserve(count.max(usize::from(fallback)))?;
                 for &(_, kind, command_index, entry_index) in own {
                     if kind == 0 {
-                        patches.add(commands[command_index].state_patches.as_slice()[entry_index].patch)?;
+                        patches.add(
+                            commands[command_index].state_patches.as_slice()[entry_index].patch,
+                        )?;
                     } else {
                         let entry = &commands[command_index].range_uses.as_slice()[entry_index];
                         let range = match entry.range {
@@ -696,11 +764,19 @@ pub(crate) unsafe fn prepare_submission_states(
                                 crate::resource::OwnershipRange::Buffer { offset, size }
                             }
                         };
-                        patches.add(StatePatch { range, expected_revision: u64::MAX, action: PatchAction::Unknown { queue, family } })?;
+                        patches.add(StatePatch {
+                            range,
+                            expected_revision: u64::MAX,
+                            action: PatchAction::Unknown { queue, family },
+                        })?;
                     }
                 }
                 if fallback {
-                    patches.add(StatePatch { range: domain, expected_revision: u64::MAX, action: PatchAction::Unknown { queue, family } })?;
+                    patches.add(StatePatch {
+                        range: domain,
+                        expected_revision: u64::MAX,
+                        action: PatchAction::Unknown { queue, family },
+                    })?;
                 }
                 prepared.prepare_cell(index, patches.as_slice(), family, stats)
             })?;
@@ -1265,7 +1341,9 @@ impl VulkanCommandBuffer {
     pub(crate) fn validate_submission(&self) -> crate::Result<()> {
         validate_submission_commands(&[self])
     }
-    pub(crate) fn submission_uses(&self) -> crate::Result<crate::resource::tracked::OrderedSubmissionUses<'_>> {
+    pub(crate) fn submission_uses(
+        &self,
+    ) -> crate::Result<crate::resource::tracked::OrderedSubmissionUses<'_>> {
         self.uses.ordered()
     }
     pub(crate) fn record_submission(&mut self, point: crate::sync::SyncPoint) {
@@ -1377,8 +1455,12 @@ impl VulkanCommandBuffer {
         if let Some(memory) = &mut nested_memory {
             memory.resize(prepared[0].heap_capacity_bytes() as u64)?;
         }
-        let uses = crate::resource::tracked::collect_submission_uses(&[self.submission_uses()?], &device.memory.stats)?;
-        let _reservations = crate::resource::tracked::lock_submission_uses(uses.ordered(), &device.memory.stats)?;
+        let uses = crate::resource::tracked::collect_submission_uses(
+            &[self.submission_uses()?],
+            &device.memory.stats,
+        )?;
+        let _reservations =
+            crate::resource::tracked::lock_submission_uses(uses.ordered(), &device.memory.stats)?;
         self.validate_submission()?;
         let native_states = unsafe {
             prepare_submission_states(
@@ -1411,9 +1493,21 @@ impl VulkanCommandBuffer {
     /// the pool's allocation. Returns the handle with the completion set of
     /// every submission of this command; re-wrap it with
     /// [`VulkanCommandPool::adopt`] after that set completed.
-    pub(crate) fn detach(mut self) -> (vk::CommandBuffer, crate::sync::SyncSet) {
+    pub(crate) fn detach(
+        mut self,
+    ) -> (
+        vk::CommandBuffer,
+        crate::sync::SyncSet,
+        crate::device::RetireTicket,
+    ) {
         self.detached = true;
-        (self.handle, self.last_use)
+        (
+            self.handle,
+            self.last_use,
+            self.retirement
+                .take()
+                .expect("detached command retirement node"),
+        )
     }
 }
 impl Drop for VulkanCommandBuffer {
@@ -1425,7 +1519,10 @@ impl Drop for VulkanCommandBuffer {
             }
             self.pool.live_commands.fetch_sub(1, Ordering::Relaxed);
             if !self.detached {
-                self.pool.allocation.live_owned_commands.fetch_sub(1, Ordering::Relaxed);
+                self.pool
+                    .allocation
+                    .live_owned_commands
+                    .fetch_sub(1, Ordering::Relaxed);
             }
         }
         // Retained objects live until the command's completion, not until this
@@ -1445,16 +1542,25 @@ impl Drop for VulkanCommandBuffer {
                 super::temp_list::TempList::new(1, self.pool.device.memory.stats.clone())
                     .expect("nonzero limit"),
             );
-            self.pool
-                .device
-                .retire(self.last_use, super::graveyard::Doomed::Owners(owners));
+            self.pool.device.retire_reserved(
+                self.last_use,
+                super::graveyard::Doomed::Owners(owners),
+                self.owners_retirement
+                    .take()
+                    .expect("command owners retirement node"),
+            );
         }
         if self.detached {
             return;
         }
-        self.pool.device.retire(
+        self.pool.device.retire_reserved(
             self.last_use,
-            super::graveyard::Doomed::CommandBuffer(self.handle, self.pool.allocation.clone()),
+            super::graveyard::Doomed::CommandBuffer(
+                self.handle,
+                self.pool.allocation.clone(),
+                false,
+            ),
+            self.retirement.take().expect("command retirement node"),
         );
     }
 }
@@ -1550,7 +1656,9 @@ mod native_state_submission_tests {
         let mut actual = Vec::new();
         for command in 0..16 {
             for kind in 0..2_u8 {
-                for entry in 0..37 { actual.push(((entry * 3 + command) % 5, kind, command, entry)); }
+                for entry in 0..37 {
+                    actual.push(((entry * 3 + command) % 5, kind, command, entry));
+                }
             }
         }
         let mut expected = actual.clone();
@@ -1763,23 +1871,111 @@ mod allocation_owner_tests {
         let device = match Device::new_headless(&crate::device::DeviceConfig::headless()) {
             Ok(device) => device,
             Err(error) => {
-                assert_ne!(std::env::var_os("RHAPSODY_REQUIRE_VULKAN").as_deref(), Some(std::ffi::OsStr::new("1")), "required GPU initialization failed: {error}");
+                assert_ne!(
+                    std::env::var_os("RHAPSODY_REQUIRE_VULKAN").as_deref(),
+                    Some(std::ffi::OsStr::new("1")),
+                    "required GPU initialization failed: {error}"
+                );
                 return;
             }
         };
         let first = VulkanCommandPool::new(device.clone()).unwrap();
         let command = first.allocate().unwrap();
-        let (handle, _) = command.detach();
+        let (handle, _, retirement) = command.detach();
         let second = VulkanCommandPool::attach(device, first.family, first.allocation()).unwrap();
         assert!(Arc::ptr_eq(&first.last_use, &second.last_use));
         assert_eq!(first.live_command_count(), 0);
-        assert_eq!(second.reset_completed(&mut []).unwrap_err().kind(), crate::ErrorKind::InvalidUsage);
-        let mut command = second.adopt(handle).unwrap();
+        assert_eq!(
+            second.reset_completed(&mut []).unwrap_err().kind(),
+            crate::ErrorKind::InvalidUsage
+        );
+        let mut command = second.adopt(handle, retirement).unwrap();
         command.begin().unwrap();
         second.reset_completed(&mut [&mut command]).unwrap();
         assert!(!command.is_recording());
-        assert_eq!(first.reset_completed(&mut []).unwrap_err().kind(), crate::ErrorKind::InvalidUsage);
+        assert_eq!(
+            first.reset_completed(&mut []).unwrap_err().kind(),
+            crate::ErrorKind::InvalidUsage
+        );
         drop(command);
         first.reset_completed(&mut []).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod retirement_failure_tests {
+    use super::*;
+    fn device() -> Option<Arc<Device>> {
+        match Device::new_headless(&crate::device::DeviceConfig::headless()) {
+            Ok(device) => Some(device),
+            Err(error) => {
+                assert!(
+                    !std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"),
+                    "{error}"
+                );
+                None
+            }
+        }
+    }
+    #[test]
+    fn failed_adopt_consumes_detached_ownership_and_releases_its_credit() {
+        let Some(device) = device() else { return };
+        let pool = VulkanCommandPool::new(device.clone()).unwrap();
+        let baseline = device.allocator_stats().cpu_memory_usage().total();
+        let command = pool.allocate().unwrap();
+        let (handle, _, retirement) = command.detach();
+        device
+            .allocator_stats()
+            .set_host_budget(device.allocator_stats().cpu_memory_usage().total())
+            .unwrap();
+        assert!(matches!(
+            pool.adopt(handle, retirement),
+            Err(crate::Error::OutOfHostMemory)
+        ));
+        assert_eq!(pool.live_command_count(), 0);
+        pool.reset_completed(&mut []).unwrap();
+        assert_eq!(
+            device.allocator_stats().cpu_memory_usage().total(),
+            baseline
+        );
+        device.allocator_stats().set_host_budget(0).unwrap();
+    }
+    #[test]
+    fn failed_native_wrap_uses_its_ticket_even_while_another_command_records() {
+        for busy in [false, true] {
+            let Some(device) = device() else { return };
+            let pool = VulkanCommandPool::new(device.clone()).unwrap();
+            let baseline = device.allocator_stats().cpu_memory_usage().total();
+            let mut recording = busy.then(|| pool.allocate().unwrap());
+            if let Some(command) = &mut recording {
+                command.begin().unwrap();
+            }
+            let used = device.allocator_stats().cpu_memory_usage().total();
+            let node_bytes = std::mem::size_of::<
+                crate::sync::retire::Node<super::super::graveyard::Doomed>,
+            >() as u64;
+            // Admit exactly the two retirement nodes, then fail the wrapper's
+            // first use-cell vector AFTER the actual native allocation.
+            device
+                .allocator_stats()
+                .set_host_budget(used + 2 * node_bytes)
+                .unwrap();
+            assert!(matches!(
+                pool.allocate(),
+                Err(crate::Error::OutOfHostMemory)
+            ));
+            assert_eq!(device.retirement_stats().pending, usize::from(busy));
+            device.allocator_stats().set_host_budget(0).unwrap();
+            if let Some(command) = &mut recording {
+                command.end().unwrap();
+            }
+            drop(recording);
+            device.try_collect_all_completed().unwrap();
+            pool.reset_completed(&mut []).unwrap();
+            assert_eq!(
+                device.allocator_stats().cpu_memory_usage().total(),
+                baseline
+            );
+        }
     }
 }

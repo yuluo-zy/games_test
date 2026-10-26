@@ -136,6 +136,7 @@ impl Drop for ShaderModule {
 }
 
 pub struct PipelineLayout {
+    retirement: Option<crate::device::RetireTicket>,
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
     pub(crate) device: Arc<Device>,
     pub(crate) handle: vk::PipelineLayout,
@@ -234,6 +235,7 @@ impl PipelineLayout {
             .set_layouts(raw.as_slice())
             .push_constant_ranges(&arrays.data.1);
         let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
+        let retirement = device.reserve_retirement()?;
         let handle = observe_vulkan(&device, unsafe {
             device.core.device.create_pipeline_layout(&info, None)
         })?;
@@ -243,6 +245,7 @@ impl PipelineLayout {
             device,
             handle,
             sets: arrays.data.0,
+            retirement: Some(retirement),
             push_constants: arrays.data.1,
             bindless_abi,
             _memory: arrays.memory,
@@ -251,9 +254,12 @@ impl PipelineLayout {
 }
 impl Drop for PipelineLayout {
     fn drop(&mut self) {
-        self.device.retire(
+        self.device.retire_reserved(
             self.last_use.snapshot(),
             super::graveyard::Doomed::PipelineLayout(self.handle),
+            self.retirement
+                .take()
+                .expect("pipeline layout retirement node"),
         );
     }
 }
@@ -582,6 +588,7 @@ struct PipelineArrays {
     target: Option<RasterTargetSignature>,
 }
 pub struct VulkanPipeline {
+    retirement: Option<crate::device::RetireTicket>,
     pub(crate) last_use: Arc<crate::resource::SyncCell>,
     pub(crate) device: Arc<Device>,
     pub(crate) handle: vk::Pipeline,
@@ -680,6 +687,7 @@ impl VulkanPipeline {
             .layout(desc.layout.handle);
         let sync_storage =
             crate::resource::SyncCell::reserve_arc_storage(&cache.device.memory.stats)?;
+        let retirement = cache.device.reserve_retirement()?;
         let _cache_use = cache.lock.read();
         let result = unsafe {
             cache
@@ -690,6 +698,7 @@ impl VulkanPipeline {
         };
         let handle = finish_pipeline(&cache.device, result)?;
         let pipeline = Arc::new(Self {
+            retirement: Some(retirement),
             last_use: crate::resource::SyncCell::for_device(cache.device.generation())
                 .into_reserved_arc(sync_storage),
             device: cache.device.clone(),
@@ -939,6 +948,7 @@ impl VulkanPipeline {
         }
         let sync_storage =
             crate::resource::SyncCell::reserve_arc_storage(&cache.device.memory.stats)?;
+        let retirement = cache.device.reserve_retirement()?;
         let _cache_use = cache.lock.read();
         let result = unsafe {
             cache
@@ -949,6 +959,7 @@ impl VulkanPipeline {
         };
         let handle = finish_pipeline(&cache.device, result)?;
         let pipeline = Arc::new(Self {
+            retirement: Some(retirement),
             last_use: crate::resource::SyncCell::for_device(cache.device.generation())
                 .into_reserved_arc(sync_storage),
             device: cache.device.clone(),
@@ -1046,9 +1057,10 @@ fn finish_pipeline(
 }
 impl Drop for VulkanPipeline {
     fn drop(&mut self) {
-        self.device.retire(
+        self.device.retire_reserved(
             self.last_use.snapshot(),
             super::graveyard::Doomed::Pipeline(self.handle),
+            self.retirement.take().expect("pipeline retirement node"),
         );
     }
 }
@@ -2181,6 +2193,7 @@ mod raster_opts_tests {
             _memory: reserve_shared_cpu_metadata::<ShaderModule>(&device.memory.stats, 16).unwrap(),
         });
         let layout = Arc::new(PipelineLayout {
+            retirement: Some(device.reserve_retirement().unwrap()),
             last_use: crate::resource::SyncCell::for_device_budgeted(
                 device.generation(),
                 &device.memory.stats,
@@ -2302,6 +2315,7 @@ mod raster_opts_tests {
             _memory: reserve_shared_cpu_metadata::<ShaderModule>(&device.memory.stats, 16).unwrap(),
         });
         let layout = Arc::new(PipelineLayout {
+            retirement: Some(device.reserve_retirement().unwrap()),
             last_use: crate::resource::SyncCell::for_device_budgeted(
                 device.generation(),
                 &device.memory.stats,

@@ -77,6 +77,7 @@ pub struct GpuTimingStats {
     pub retained_samples: usize,
 }
 struct Queries {
+    retirement: Option<crate::device::RetireTicket>,
     device: Arc<Device>,
     handle: vk::QueryPool,
     last_use: Arc<SyncCell>,
@@ -90,9 +91,10 @@ impl GpuUse for Queries {
 }
 impl Drop for Queries {
     fn drop(&mut self) {
-        self.device.retire(
+        self.device.retire_reserved(
             self.last_use.snapshot(),
             crate::raw::graveyard::Doomed::QueryPool(self.handle),
+            self.retirement.take().expect("query retirement node"),
         );
     }
 }
@@ -123,7 +125,8 @@ pub(crate) struct GpuTimingRing {
 }
 impl GpuTimingRing {
     pub(crate) fn matches_config(&self, config: GpuTimingConfig) -> bool {
-        self.pass_spans == config.pass_spans && self.slots.len() == config.pending_commands
+        self.pass_spans == config.pass_spans
+            && self.slots.len() == config.pending_commands
             && self.sample_limit == config.retained_samples
     }
     pub(crate) fn new(device: Arc<Device>, config: GpuTimingConfig) -> Result<Self> {
@@ -193,7 +196,9 @@ impl GpuTimingRing {
         samples
             .try_reserve_exact(config.retained_samples)
             .map_err(|_| Error::OutOfHostMemory)?;
-        slot_names.try_reserve_exact(config.pending_commands).map_err(|_| Error::OutOfHostMemory)?;
+        slot_names
+            .try_reserve_exact(config.pending_commands)
+            .map_err(|_| Error::OutOfHostMemory)?;
         slot_names.resize(config.pending_commands, None);
         slots.resize(config.pending_commands, None);
         free.extend(0..config.pending_commands);
@@ -209,6 +214,7 @@ impl GpuTimingRing {
             crate::device::BudgetCategory::Live,
         )?;
         let last_use = SyncCell::for_device_budgeted(device.generation(), &device.memory.stats)?;
+        let retirement = device.reserve_retirement()?;
         let info = vk::QueryPoolCreateInfo::default()
             .query_type(vk::QueryType::TIMESTAMP)
             .query_count(config.pending_commands as u32 * 2);
@@ -229,6 +235,7 @@ impl GpuTimingRing {
             pass_spans: config.pass_spans,
             _host_memory: host_memory,
             queries: Arc::new(Queries {
+                retirement: Some(retirement),
                 last_use,
                 device,
                 handle,

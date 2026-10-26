@@ -16,6 +16,7 @@ internal_mod!(
 );
 mod caches;
 mod lifetime;
+pub(crate) use lifetime::RetireTicket;
 mod logical;
 mod native;
 pub(crate) mod pending_acquire;

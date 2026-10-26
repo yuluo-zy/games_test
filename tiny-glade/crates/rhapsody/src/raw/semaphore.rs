@@ -3,6 +3,7 @@ use super::device::Device;
 use ash::vk;
 use std::sync::Arc;
 pub struct TimelineSemaphore {
+    retirement: Option<crate::device::RetireTicket>,
     pub(crate) handle: vk::Semaphore,
     pub(crate) device: Arc<Device>,
     queue: Option<crate::sync::QueueId>,
@@ -32,6 +33,7 @@ impl TimelineSemaphore {
         let memory =
             super::allocator::reserve_shared_cpu_metadata::<Self>(&device.memory.stats, 0)?;
         let sync_storage = crate::resource::SyncCell::reserve_arc_storage(&device.memory.stats)?;
+        let retirement = device.reserve_retirement()?;
         let handle = crate::error::observe_vulkan(&device, unsafe {
             device.core.device.create_semaphore(&info, None)
         })?;
@@ -41,6 +43,7 @@ impl TimelineSemaphore {
                 .into_reserved_arc(sync_storage),
             device,
             queue: None,
+            retirement: Some(retirement),
             _memory: memory,
         }))
     }
@@ -61,6 +64,7 @@ impl TimelineSemaphore {
                 .into_reserved_arc(sync_storage),
             device,
             queue: Some(queue),
+            retirement: None,
             _memory: memory,
         }))
     }
@@ -108,9 +112,10 @@ impl Drop for TimelineSemaphore {
         if self.queue.is_some() {
             return;
         }
-        self.device.retire(
+        self.device.retire_reserved(
             self.last_use.snapshot(),
             super::graveyard::Doomed::Semaphore(self.handle),
+            self.retirement.take().expect("semaphore retirement node"),
         );
     }
 }
