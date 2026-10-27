@@ -1,6 +1,7 @@
 # GPU pass 级性能测试方案（2026-10-27）
 
-状态：**方案，尚未在实体机执行**。本文不报告任何新的性能数字，也不宣布任何验收通过。
+状态：**Windows headless Runner 已接入并完成一次 many_draws 隔离+统计试跑**。
+完整三模式、两场景、三次重复矩阵和同机原作对照仍未执行，本文不宣布验收通过。
 
 ## 1. 为什么需要这份方案
 
@@ -28,9 +29,15 @@
 | `TG_GPU_ISOLATE=1` | 每个 pass 的第一个时间戳前插入 `ALL_COMMANDS` 执行屏障，span 只含该 pass 自己的工作 | 帧被串行化，各 span 之和大于生产帧 |
 | `TG_GPU_STATS=1` | 每个 pass 一个 pipeline-statistics 查询：输入顶点、输入图元、顶点着色器调用、裁剪调用与图元、片元调用、compute 调用 | 部分驱动上改变时序 |
 
-`TG_GPU_ISOLATE` 与 `TG_GPU_STATS` 都依赖 `TG_GPU_TIMING=1`，否则配置被拒绝。库层对应 `GpuTimingConfig::{pass_spans, isolate_passes, pass_statistics}`，样本字段 `GpuCommandTiming::statistics`。
+`TG_GPU_ISOLATE` 与 `TG_GPU_STATS` 都依赖 pass spans，否则配置被拒绝。库层对应 `GpuTimingConfig::{pass_spans, isolate_passes, pass_statistics}`，样本字段 `GpuCommandTiming::statistics`。
 
-输出：窗口日志中的 `gpu_spans …` 行，每个 pass 形如 `Name=1.234ms/frame(x1.0)[vert=…k frag=…M comp=…k]`，均为窗口内每帧均值，仅列出耗时前 20 的 pass。
+Windows headless controller 现在提供 `--pass-spans`、`--isolate`、`--stats`，
+分别设置 `TG_GPU_PASS_SPANS`、`TG_GPU_ISOLATE`、`TG_GPU_STATS`。夹具直接配置
+`GpuTimingConfig`，不依赖被 headless 夹具禁止的 `TG_GPU_TIMING`。
+
+输出：窗口日志中的 `gpu_spans …` 行；headless session 还保存每个原始 pass span
+及其可选 pipeline statistics，并校验 frame/receipt 关联、容量跳过、重复 pass index
+和统计缺失。
 
 限制：
 
@@ -118,12 +125,27 @@ TAA 抖动、草、树叶、水面与粒子每帧都在变，因此"相机不动
 - 新增测试 `rhapsody/tests/gpu_pass_diagnostics.rs` 通过：光栅 pass 画 2 次三角形得到输入顶点 6、图元 2；compute pass 派发 3 个 workgroup、本地大小 4×2×1 得到 24 次调用；隔离模式下结果相同。
 - 窗口汇总类 `GpuSpanWindow` 单独编译并通过 3 个测试。
 
-未验证：
+Windows 实体机增量验证：
 
-- `tiny-glade` 主包因依赖 `rfd` 在 Linux 需要 GTK，无法在 Linux 编译，`production_renderer.rs` 里开关的接线没有编译或运行过，首次在 Windows 构建时需要确认。
+- `9ac7eac74` 修复 headless GPU 诊断夹具未初始化
+  `isolate_passes/pass_statistics` 的编译错误，Release 编译检查通过。
+- `ec3ea62da` 将三模式接入 Windows headless controller；控制器 29 tests 通过。
+- 冻结 `ec3ea62da` Release EXE，SHA256
+  `e4fe726fe4949bab3c645197db15760307ac03bd440dd2877b9ecc291246f44d`。
+- `many_draws` 200 预热 / 120 clean 帧的 isolate+statistics 单轮
+  `valid=true`、exit 0、无 pending/capacity skip，保存 109 个命名 pass。
+  session SHA256
+  `da687b35962c6da63cb2f9758fd37284f60946a21b47fa3b3be0e40d87791510`。
+- 单轮隔离成本均值合计 394.270ms，仅用于 pass 排序。最贵为 G-buffer 219.821ms；
+  输入顶点 6,243.2k、输入图元 2,081.1k、片元调用 26.90M，即 29.19 次片元调用/720p 像素。
+- Depth of field 22.598ms（942.1k compute calls）、G-buffer OC/2 21.412ms、
+  三个 Shadows 合计 59.997ms、Deferred lighting 8.982ms。
+
+仍未验证：
+
 - lavapipe 顺序执行 pass，看不出隔离模式与普通模式的差异，只证明机制可用。
-- 实体机上的隔离效果、统计开销与统计口径均未测。
-- 第 1 节引用的实体机数据不在仓库中，无法复现。
+- static、三次重复离散度、统计开销和厂商口径对照尚未完成。
+- 同机原作对照尚未执行。
 
 ## 9. 复现与自检命令
 
@@ -135,8 +157,10 @@ cd tiny-glade
 cargo test -p rhapsody --all-features --test gpu_pass_diagnostics
 cargo test -p rhapsody --all-features --test gpu_pass_diagnostics -- --ignored --nocapture   # 打印报告
 
-# Windows 实体机（示例，具体运行器沿用现有 headless 工具）
-set TG_GPU_TIMING=1
-set TG_GPU_ISOLATE=1
-set TG_GPU_STATS=1
+# Windows 实体机：隔离 + 统计（headless controller）
+python -B tools/perf_gpu_diagnostic.py `
+  --build-json .perf/headless-builds/BUILD/build.json `
+  --output .perf/gpu-diagnostics/RUN `
+  --scene many_draws --warmup 200 --samples 120 `
+  --capacity 200000 --pass-spans --isolate --stats
 ```

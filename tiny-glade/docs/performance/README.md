@@ -2,7 +2,12 @@
 
 ## GPU pass-level test plan: 2026-10-27
 
-[GPU pass 级性能测试方案](gpu-pass-diagnostic-plan-20261027.md): serialised (isolated) per-pass GPU spans and per-pass pipeline statistics (`TG_GPU_ISOLATE=1`, `TG_GPU_STATS=1`, on top of `TG_GPU_TIMING=1`), the static / many_draws measurement matrix, interpretation rules, and the required same-machine comparison with the original game. The plan is not yet executed on a physical GPU; it reports no new numbers and marks no gate complete.
+[GPU pass 级性能测试方案](gpu-pass-diagnostic-plan-20261027.md): serialised
+(isolated) per-pass GPU spans and per-pass pipeline statistics are now wired
+through the Windows headless controller (`--pass-spans --isolate --stats`).
+One valid `many_draws` 200/120 isolate+statistics run has completed, but the
+static scene, three-run matrix and same-machine original-game comparison remain
+open. The run is diagnostic evidence, not a performance acceptance gate.
 
 ## Current WIP publication checkpoint: 2026-10-27
 
