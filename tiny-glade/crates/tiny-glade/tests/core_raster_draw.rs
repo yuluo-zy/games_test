@@ -524,11 +524,11 @@ impl Env {
         };
         let create_device=|| -> rhapsody::Result<Arc<GraphicsDevice>> {
             if debug_utils {
-                let mut builder=rhapsody::raw::instance::InstanceBuilder::default();
+                let mut builder=rhapsody::native::instance::InstanceBuilder::default();
                 if !builder.enable_validation()? {
                     return Err(rhapsody::Error::unsupported("native Collect requires the actual Khronos validation layer"));
                 }
-                GraphicsDevice::new(builder.build()?, None, &config)
+                GraphicsDevice::new(&builder.build()?, None, &config)
             } else {
                 GraphicsDevice::new_headless(&config)
             }
@@ -2262,7 +2262,7 @@ fn native_collect_layer_graph(
         flag:true,mode:ItemMode::Ui,variant:0,extra:None,
     });
     {
-        struct Restore<'a>(&'a rhapsody::raw::allocator::AllocatorStats,u64);
+        struct Restore<'a>(&'a rhapsody::accounting::AllocatorStats,u64);
         impl Drop for Restore<'_> { fn drop(&mut self) { self.0.set_host_budget(self.1).expect("restore test budget"); } }
         let stats=env.device.allocator_stats();
         let _restore=Restore(stats,stats.host_budget_limit());
@@ -2310,7 +2310,7 @@ fn unified_cross_pass_collect_cancel_while_gpu_pending_and_plan_refusal_recover_
     use std::sync::atomic::Ordering::Relaxed;
     // This test never silently passes when Vulkan is absent, regardless of env.
     let mut env=Env::new_with_debug_utils("unified-native-collect-recovery",true).expect("Vulkan initialization and DebugUtils are mandatory for native Collect recovery");
-    let validation=rhapsody::raw::instance::ValidationMessenger::new(env.device.instance())
+    let validation=rhapsody::native::instance::ValidationMessenger::new(env.device.instance())
         .expect("real native validation collector requires enabled VK_EXT_debug_utils");
     let mut world=bevy_ecs::world::World::new();
     world.insert_resource(NativeCollectAudit {owner:std::thread::current().id(),workers:Default::default()});
@@ -2353,8 +2353,8 @@ fn unified_cross_pass_collect_cancel_while_gpu_pending_and_plan_refusal_recover_
     env.shaders.prepare_test_pipelines(std::time::Duration::from_secs(10)).unwrap();
     struct Gate {
         device:Arc<GraphicsDevice>,
-        semaphore:Arc<rhapsody::raw::semaphore::TimelineSemaphore>,
-        pending:Option<rhapsody::raw::command_buffer::PendingCommand>,
+        semaphore:Arc<rhapsody::device::semaphore::TimelineSemaphore>,
+        pending:Option<rhapsody::command::command_buffer::PendingCommand>,
         released:bool,
     }
     impl Gate {
@@ -2380,8 +2380,8 @@ fn unified_cross_pass_collect_cancel_while_gpu_pending_and_plan_refusal_recover_
             }
         }
     } }
-    let semaphore=rhapsody::raw::semaphore::TimelineSemaphore::new(env.device.clone(),0).unwrap();
-    let pool=rhapsody::raw::command_buffer::VulkanCommandPool::new(env.device.clone()).unwrap();
+    let semaphore=rhapsody::device::semaphore::TimelineSemaphore::new(env.device.clone(),0).unwrap();
+    let pool=rhapsody::command::command_buffer::VulkanCommandPool::new(env.device.clone()).unwrap();
     let mut command=pool.allocate().unwrap();command.begin().unwrap();command.end().unwrap();
     let pending=command.submit_to(rhapsody::device::DeviceQueue {
         handle:env.device.primary_queue(),family:env.device.queue_family_index(),index:0,

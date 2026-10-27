@@ -13,26 +13,9 @@ mod draw_support;
 use ash::vk::{self, Handle};
 use draw_support::{Rig, SIZE, frame_clear_color, reference_coverage, rotated_triangle};
 use parking_lot::Mutex;
-use rhapsody::{
-    device::{Device as CoreDevice, DeviceConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        texture::TextureDesc,
-    },
-    rg::{
-        attachments::{Attachment, AttachmentCache},
-        executor::PassContext,
-        graph::{BuiltGraph, RenderGraph},
-        pass_api::{AshCommandBackend, RenderPassApi},
-        profiling::{GpuCommandTiming, GpuTimingConfig},
-        resource::ResourceHandle,
-        vulkan::{
-            AccessTable, GpuResource, ResourceSpec, SessionFrameReceipt, VulkanGraphBackend,
-            VulkanGraphSession,
-        },
-    },
-    sync::SyncPoint,
-};
+use rhapsody::{device::{Device as CoreDevice, DeviceConfig}, rg::{attachments::{Attachment, AttachmentCache}, executor::PassContext, graph::{BuiltGraph, RenderGraph}, pass_api::{AshCommandBackend, RenderPassApi}, profiling::{GpuCommandTiming, GpuTimingConfig}, resource::ResourceHandle, vulkan::{AccessTable, GpuResource, ResourceSpec, SessionFrameReceipt, VulkanGraphBackend, VulkanGraphSession}}, sync::SyncPoint};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::texture::TextureDesc;
 use std::{
     collections::{BTreeMap, VecDeque},
     path::PathBuf,
@@ -121,6 +104,7 @@ impl Bench {
                     pass_spans: true,
                     pending_commands: 4096,
                     retained_samples: 4096,
+                    ..Default::default()
                 }))
                 .ok()?;
         }
@@ -329,7 +313,7 @@ impl Bench {
     }
 }
 
-type Device = Arc<rhapsody::raw::device::Device>;
+type Device = Arc<rhapsody::device::Device>;
 
 fn add_clear(graph: &mut RenderGraph, device: &Device, target: ResourceHandle, frame: usize) {
     let raw = device.clone();
@@ -672,7 +656,7 @@ fn pixel_check_passes(check: &PixelCheck) -> bool {
         && check.centroid_error < 0.8
 }
 
-fn device_identity(device: &Arc<rhapsody::raw::device::Device>) -> (String, u32, u32) {
+fn device_identity(device: &Arc<rhapsody::device::Device>) -> (String, u32, u32) {
     let properties = unsafe {
         device
             .instance()

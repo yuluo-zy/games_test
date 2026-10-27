@@ -17,6 +17,18 @@
 | 每个缓冲区的释放加回收 | 18–27 µs | 1.1–1.5 µs |
 | 写 64 B（`write_bytes`） | 530–690 ns | 470–510 ns |
 
+### 渲染图 CPU 帧（`tests/p0_perf_baseline.rs`，lavapipe，release，6 pass，3000 帧 × 3 次，同一验收参考）
+
+| 阶段（均值） | 自适应分块之前 | 之后 |
+| --- | --- | --- |
+| record（录制） | 94.7 µs | 22.0 µs |
+| submit | 18.7 µs | 12.0 µs |
+| build（构图） | 13.5 µs | 9.9 µs |
+| CPU 帧合计 | 161 µs | 75 µs |
+| 每帧堆分配 | 42.1 次 | 36.0 次 |
+
+录制阶段的收益来自不再为轻量批次进入线程池；构图阶段的收益来自 `validate` 不再每帧建 `HashSet`，以及声明向量按上一帧规模一次性预留。该场景总耗时很小，不代表重帧：重帧仍然多块并行，行为不变。线程池调度开销可用 `tests/parallel_dispatch_perf.rs` 在目标机器上复测，其中的 27 µs / 4 µs 常量来自一台 16 核虚拟机，应按目标平台校准。
+
 来源：对应修复的提交说明与当时的测试探针（`tests/core_perf.rs`，手动运行，默认忽略）。
 
 ## 二、内存与分配
@@ -50,7 +62,7 @@
 | 计划缓存 | 图结构不变时直接复用已编译的计划，命中时不重新分析、不重新校验。缓存键包含队列调度、设备代际、策略、共享方式、访问声明等 | `src/rg/` |
 | 访问分析 O(n) | `analyze_passes` 只保留每个资源的访问前沿（最近的写者与其后的读者），不再保留完整历史；访问语义用直接表查找 | `src/rg/plan.rs` |
 | 计划校验器只在需要时运行 | 约 3300 行的独立校验器只在 debug 构建、`validation` 特性或运行时开关 `set_plan_validation` 打开时运行，release 默认不跑 | `src/rg/plan_check/` |
-| 自适应并行录制 | 没有上一帧统计或帧很轻时走串行；否则按上一帧各 pass 的耗时均衡分块，用 `bevy_tasks` 并行录制。每块使用独立命令池。设备默认策略为自适应 | `src/rg/parallel.rs` |
+| 自适应并行录制 | 进入线程池有固定成本（实测空任务约 27 µs，每多一块约 4 µs），所以按代价模型决定：没有上一帧统计、或预计总耗时抵不过调度成本时，整个批次作为**一块在调用线程内联录制**；否则按上一帧各 pass 的耗时均衡分块（至多 8 块），用 `bevy_tasks` 并行录制，每块使用独立命令池。单块不进线程池。PGO 统计按已驻留名字查找，分块缓冲跨帧复用 | `src/rg/parallel.rs`，`src/rg/executor.rs` |
 | 录制路径零额外分配 | 分块录制的暂存区由执行器持有并跨帧复用；导出资源检查改用位图；单块批次直接复用第一条命令，不再多开一条 | `src/rg/executor.rs` |
 | 获取信号量只挡必要的批次 | 在第一个使用交换链图像的 pass 前强制切批次边界，前面不用图像的批次不被获取信号量阻塞 | `RenderGraph::gate_first_use` |
 | 先提交主图再获取图像 | 主图不依赖交换链图像，先提交；CPU 等 vsync 时 GPU 不空闲。跳帧时主图照常执行 | `src/rg/frame_loop.rs` |
@@ -93,7 +105,7 @@
 | 项 | 方式 |
 | --- | --- |
 | 瞬态别名 | 默认开启；`VulkanGraphSession` 上的 `set_transient_aliasing(false)` 关闭 |
-| 并行录制策略 | `RecordingPolicy::Serial` / `Adaptive`（设备默认）；渲染图会话里可用 `EVERY_PASS` 强制并行（测试用） |
+| 并行录制策略 | `ParallelRecording::PARALLEL`（默认，自适应）；`ALWAYS_PARALLEL`（旧策略：每个批次都分发到线程池）；`EVERY_PASS`（每个 pass 一块，测试与基准用）。回调只在多块时运行于池线程；单块时运行在调用线程 |
 | 计划校验器 | debug 构建默认开；release 用 `validation` 特性或 `rg::set_plan_validation` |
 | 子分配器 | `suballocation` 特性（默认开）；运行时用环境变量 `RHAPSODY_ALLOCATION=dedicated` 或 `set_default_allocation_mode` 切到每资源专用分配 |
 | 主机内存预算 | `DeviceConfig::host_memory_budget_bytes`（默认 512 MiB） |

@@ -1,13 +1,7 @@
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::semaphore::TimelineSemaphore,
-    rg::{
-        profiling::GpuTimingConfig,
-        vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::{device::{Device, DeviceConfig}, rg::{profiling::GpuTimingConfig, vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession}}};
+use rhapsody::device::semaphore::TimelineSemaphore;
 use std::sync::Arc;
 struct Unblock(Arc<TimelineSemaphore>, bool);
 impl Unblock {
@@ -45,6 +39,7 @@ fn session() -> Option<VulkanGraphSession> {
             pass_spans: false,
             pending_commands: 1,
             retained_samples: 2,
+            ..Default::default()
         }))
         .unwrap();
     Some(VulkanGraphSession::new(backend))
@@ -81,6 +76,7 @@ fn query_slot_is_not_reset_until_actual_submission_completes_and_capacity_is_non
             pass_spans: false,
             pending_commands: 1,
             retained_samples: 2,
+            ..Default::default()
         }))
         .unwrap();
     assert_eq!(
@@ -175,6 +171,7 @@ fn per_pass_pairs_follow_actual_serial_and_worker_submissions_and_cancel_as_a_un
                 pass_spans: true,
                 pending_commands: 32,
                 retained_samples: 8,
+                ..Default::default()
             }))
             .unwrap();
         let mut failed = session.begin_frame().unwrap();
@@ -240,6 +237,7 @@ fn in_flight_pass_queries_keep_their_slots_until_the_actual_timeline_reaches_the
             pass_spans: true,
             pending_commands: 2,
             retained_samples: 4,
+            ..Default::default()
         }))
         .unwrap();
     let gate = TimelineSemaphore::new(session.backend.device().clone(), 0).unwrap();

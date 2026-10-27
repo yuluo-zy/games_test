@@ -69,7 +69,7 @@ pub fn stored_type(x: &s::Type) -> Result<w::Type, String> {
         _ => return Err("SPIR-Q type has no observed stored representation".into()),
     })
 }
-fn kind(x: DescriptorType) -> Result<BindingKind, String> {
+fn kind(x: &DescriptorType) -> Result<BindingKind, String> {
     Ok(match x {
         DescriptorType::StorageBuffer(_) => BindingKind::StorageBuffer,
         DescriptorType::UniformBuffer() => BindingKind::UniformBuffer,
@@ -80,8 +80,8 @@ fn kind(x: DescriptorType) -> Result<BindingKind, String> {
         _ => return Err("descriptor kind outside original stored schema".into()),
     })
 }
-fn canonical_name(name: String) -> String {
-    name.strip_prefix("__alias_").unwrap_or(&name).to_owned()
+fn canonical_name(name: &str) -> String {
+    name.strip_prefix("__alias_").unwrap_or(name).to_owned()
 }
 fn size(x: &s::Type) -> Result<u32, String> {
     x.nbyte()
@@ -144,13 +144,13 @@ pub fn generate_reflection(stages: &[CompiledShaderStage]) -> Result<ShaderRefle
                     ty,
                     nbind,
                 } => {
-                    let name = canonical_name(name.ok_or("unnamed original descriptor")?);
+                    let name = canonical_name(&name.ok_or("unnamed original descriptor")?);
                     let location = BindingLocation {
                         set: desc_bind.set(),
                         binding: desc_bind.bind(),
                     };
                     let binding = Binding {
-                        kind: kind(desc_ty)?,
+                        kind: kind(&desc_ty)?,
                         array: if nbind == 0 {
                             BindingArray::Runtime
                         } else {

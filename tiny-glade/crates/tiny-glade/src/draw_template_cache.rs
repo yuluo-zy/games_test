@@ -128,18 +128,18 @@ pub(crate) struct ReflectionScope {
     budget: usize,
     // Declared last: table/retained reflection owners are released before
     // returning conservative credit, including shared values pinned by us.
-    storage: rhapsody::device::CpuStorageReservation,
+    storage: rhapsody::accounting::CpuStorageReservation,
 }
 
 #[cfg(test)]
 impl Default for ReflectionScope {
     fn default() -> Self {
-        Self::with_budget(&Arc::new(rhapsody::device::AllocatorStats::default()), 32 << 20).unwrap()
+        Self::with_budget(&Arc::new(rhapsody::accounting::AllocatorStats::default()), 32 << 20).unwrap()
     }
 }
 
 impl ReflectionScope {
-    pub(crate) fn try_new(stats: &Arc<rhapsody::device::AllocatorStats>) -> rhapsody::Result<Self> {
+    pub(crate) fn try_new(stats: &Arc<rhapsody::accounting::AllocatorStats>) -> rhapsody::Result<Self> {
         Self::with_budget(stats, 32 << 20)
     }
 
@@ -149,7 +149,7 @@ impl ReflectionScope {
         layout.pad_to_align().size() as u64
     }
 
-    fn with_budget(stats: &Arc<rhapsody::device::AllocatorStats>, budget: usize) -> rhapsody::Result<Self> {
+    fn with_budget(stats: &Arc<rhapsody::accounting::AllocatorStats>, budget: usize) -> rhapsody::Result<Self> {
         Ok(Self { entries: HashMap::new(), value_bytes: 0, budget,
             storage: stats.reserve_cpu_storage(Self::metadata_bytes())? })
     }
@@ -234,7 +234,7 @@ mod scope_tests {
 
     #[test]
     fn scope_budget_includes_reserved_capacity_and_large_reflection_maps() {
-        let mut scope = ReflectionScope::with_budget(&Arc::new(rhapsody::device::AllocatorStats::default()), 4096).unwrap();
+        let mut scope = ReflectionScope::with_budget(&Arc::new(rhapsody::accounting::AllocatorStats::default()), 4096).unwrap();
         let mut large = ShaderReflection::default();
         large.uniform_offsets.reserve(4096);
         scope.insert((1, 0), Arc::new(large));
@@ -270,7 +270,7 @@ mod scope_tests {
 
     #[test]
     fn denied_cpu_budget_preserves_draw_fallback_and_scope_drop_returns_credit() {
-        let stats = Arc::new(rhapsody::device::AllocatorStats::default());
+        let stats = Arc::new(rhapsody::accounting::AllocatorStats::default());
         let mut scope = ReflectionScope::try_new(&stats).unwrap();
         assert_eq!(stats.cpu_memory_usage().live, scope.storage.bytes());
         stats.set_host_budget(scope.storage.bytes()).unwrap();
@@ -285,7 +285,7 @@ mod scope_tests {
 
     #[test]
     fn retaining_second_layout_requires_credit_even_when_the_map_does_not_grow() {
-        let stats = Arc::new(rhapsody::device::AllocatorStats::default());
+        let stats = Arc::new(rhapsody::accounting::AllocatorStats::default());
         let mut scope = ReflectionScope::try_new(&stats).unwrap();
         let first = Arc::new(ShaderReflection::default());
         scope.insert((1, 0), first.clone());
@@ -308,7 +308,7 @@ mod scope_tests {
 
     #[test]
     fn map_growth_reserves_the_old_and_new_table_peak_before_allocating() {
-        let stats = Arc::new(rhapsody::device::AllocatorStats::default());
+        let stats = Arc::new(rhapsody::accounting::AllocatorStats::default());
         let mut scope = ReflectionScope::try_new(&stats).unwrap();
         let value = Arc::new(ShaderReflection::default());
         scope.insert((1, 0), value.clone());

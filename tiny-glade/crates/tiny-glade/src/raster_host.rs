@@ -393,7 +393,7 @@ struct VaoScopeState {
 struct VaoSnapshotTable {
     entries: IdMap<Arc<VaoSnapshot>>,
     // Storage is freed before budget credit is returned.
-    _memory: rhapsody::device::CpuStorageReservation,
+    _memory: rhapsody::accounting::CpuStorageReservation,
 }
 
 impl VaoSnapshotTable {
@@ -1005,8 +1005,8 @@ impl RasterShared {
         #[cfg(feature = "cpu-probe")]
         commit_scratch.set_billing(crate::render_cpu_probe::management_enabled());
         let constant_pool = crate::draw_constant_pool::ConstantPool::new(device.allocator_stats().clone())?;
-        let evictable: Arc<dyn rhapsody::device::Evictable> = constant_pool.clone();
-        device.register_evictable(Arc::downgrade(&evictable), rhapsody::device::EvictionPriority::Transient);
+        let evictable: Arc<dyn rhapsody::accounting::Evictable> = constant_pool.clone();
+        device.register_evictable(Arc::downgrade(&evictable), rhapsody::accounting::EvictionPriority::Transient);
         Ok(Arc::new(Self {
             attachments: Mutex::new(AttachmentCache::new(device.clone())?),
             dynamic: Arc::new(Mutex::new(DynamicConstants::new(device.clone())?)),
@@ -1188,7 +1188,7 @@ const BINDING_SCOPE_MAX_BYTES: usize = 64 << 10;
 /// Values/backing drop before the physical capacity credit is returned.
 struct BindingResourceScratch<T> {
     values: Vec<(u32, T)>,
-    memory: rhapsody::device::CpuStorageReservation,
+    memory: rhapsody::accounting::CpuStorageReservation,
     shape: usize,
 }
 impl<T> BindingResourceScratch<T> {
@@ -1196,7 +1196,7 @@ impl<T> BindingResourceScratch<T> {
         shape <= BINDING_SCOPE_MAX_INPUTS && shape.checked_mul(std::mem::size_of::<(u32,T)>())
             .is_some_and(|bytes| bytes <= BINDING_SCOPE_MAX_BYTES)
     }
-    fn try_new(stats: &Arc<rhapsody::device::AllocatorStats>, shape: usize,
+    fn try_new(stats: &Arc<rhapsody::accounting::AllocatorStats>, shape: usize,
         #[cfg(feature = "cpu-probe")] probe: &BindingLocalProbe,
     ) -> rhapsody::Result<Option<Self>> {
         // Shape fallback is decided before budget admission or allocation.
@@ -1378,7 +1378,7 @@ struct PreparedDraw {
     index: Option<ResourceHandle>,
     index_count: Option<u32>,
     vertices: smallvec::SmallVec<[(u32, ResourceHandle, u64); 4]>,
-    external: rhapsody::resource::TempList<ExternalDrawBinding>,
+    external: rhapsody::collections::temp_list::TempList<ExternalDrawBinding>,
     /// Graph owner and range of the FrameConstants block behind set 1/b1 (see `import_frame_constants`).
     frame_constants: Option<(ResourceHandle, rhapsody::rg::AccessRange)>,
 }
@@ -1965,7 +1965,7 @@ impl PassHost for RasterPassHost {
                     index_count: None,
                     vertices: smallvec::SmallVec::new(),
                     frame_constants: None,
-                    external: rhapsody::resource::TempList::new(
+                    external: rhapsody::collections::temp_list::TempList::new(
                         external_limit,
                         shared.device.allocator_stats().clone(),
                     )?,
@@ -2353,7 +2353,7 @@ impl PassHost for RasterPassHost {
             .enumerate()
             .map(|(index, attachment)| {
                 attachment.load
-                    && rhapsody::command::is_write(attachment.access)
+                    && rhapsody::native::is_write(attachment.access)
                     && raster_has_previous_contents(
                         &graph,
                         attachment.resource,
@@ -2745,7 +2745,7 @@ impl PassHost for RasterPassHost {
                 };
                 let probe_bind = country_core::render::declare_probe::start();
                 // SAFETY: the original pass bindings and graph accesses describe these resources.
-                if let Err(error) = unsafe { parameters.bind_pass(&ctx, pipeline.clone()) } {
+                if let Err(error) = unsafe { parameters.bind_pass(&ctx, &pipeline.clone()) } {
                     ctx.report_error(error);
                     return false;
                 }
@@ -3217,8 +3217,8 @@ fn import_draw_bindings(
 fn reserve_parameter_chunks(
     shared: &RasterShared,
     draws: &[PreparedDraw],
-) -> rhapsody::Result<rhapsody::resource::TempList<DynamicConstantsChunk>> {
-    let mut chunks = rhapsody::resource::TempList::new(
+) -> rhapsody::Result<rhapsody::collections::temp_list::TempList<DynamicConstantsChunk>> {
+    let mut chunks = rhapsody::collections::temp_list::TempList::new(
         draws.len().max(1), shared.device.allocator_stats().clone(),
     )?;
     chunks.reserve(draws.len())?;
@@ -3533,7 +3533,7 @@ fn raster_has_previous_contents(
         || graph.declaration().passes.iter().any(|pass| {
             pass.accesses.iter().any(|access| {
                 access.resource_index == resource
-                    && rhapsody::command::is_write(access.access_code)
+                    && rhapsody::native::is_write(access.access_code)
                     && access.range.overlaps(range)
             })
         })
@@ -3873,7 +3873,7 @@ mod undefined_raster_content_tests {
                     let strict = first.max(second) == RasterReadContents::DefinedRequired;
                     let key = GraphDefinition::from_declaration(
                         &raw,
-                        &mut AccessTable::original(),
+                        &AccessTable::original(),
                         PlanContext::default(),
                     );
                     assert_eq!(key.is_err(), strict);
@@ -3904,7 +3904,7 @@ mod undefined_raster_content_tests {
                         assert!(
                             GraphDefinition::from_declaration(
                                 &later,
-                                &mut AccessTable::original(),
+                                &AccessTable::original(),
                                 PlanContext::default()
                             )
                             .is_err(),
@@ -4075,7 +4075,7 @@ mod raster_binding_range_tests {
             reader.render(|_| true);
             GraphDefinition::from_declaration(
                 &graph.build().declaration,
-                &mut AccessTable::original(),
+                &AccessTable::original(),
                 PlanContext::default(),
             )
         };
@@ -4229,7 +4229,7 @@ mod raster_attachment_range_tests {
         load.render(|_| true);
         let definition = GraphDefinition::from_declaration(
             &graph.build().declaration,
-            &mut AccessTable::original(),
+            &AccessTable::original(),
             PlanContext::default(),
         )
         .unwrap();
@@ -4254,7 +4254,7 @@ mod raster_attachment_range_tests {
         assert!(
             GraphDefinition::from_declaration(
                 &wrong.build().declaration,
-                &mut AccessTable::original(),
+                &AccessTable::original(),
                 PlanContext::default()
             )
             .is_err()
@@ -4478,7 +4478,7 @@ mod constant_batch_gpu_tests {
 #[cfg(test)]
 mod binding_scope_tests {
     use super::*;
-    fn stats() -> Arc<rhapsody::device::AllocatorStats> { Arc::new(Default::default()) }
+    fn stats() -> Arc<rhapsody::accounting::AllocatorStats> { Arc::new(Default::default()) }
     #[test]
     fn upsert_keeps_first_position_last_value_and_draw_scope_releases_owners() {
         let stats=stats();

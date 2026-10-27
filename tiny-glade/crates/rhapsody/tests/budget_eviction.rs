@@ -2,17 +2,9 @@
 //! (never leased or in-flight ones) before an allocation fails.
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        descriptor_set::{
-            DescriptorPoolRing, DescriptorPoolRingConfig, LayoutBinding, LayoutPlan,
-            VulkanDescriptorSetLayout,
-        },
-    },
-    transfer::{TransferConfig, TransferManager},
-};
+use rhapsody::{device::{Device, DeviceConfig}, transfer::{TransferConfig, TransferManager}};
+use rhapsody::command::descriptor_set::{DescriptorPoolRing, DescriptorPoolRingConfig, LayoutBinding, LayoutPlan, VulkanDescriptorSetLayout};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
 use std::sync::Arc;
 
 const MIB: u64 = 1 << 20;
@@ -50,7 +42,7 @@ fn pressure_evicts_idle_staging_but_keeps_leased_slots_then_allocation_succeeds(
     );
     source.write_bytes(0, &[7; 64]).unwrap();
     // A held readback ticket leases one slot: it must survive eviction.
-    let ticket = manager.read_buffer(source.clone(), 0, 64).unwrap();
+    let ticket = manager.read_buffer(&source, 0, 64).unwrap();
     ticket.wait(10_000_000_000).unwrap();
     device.wait_idle().unwrap();
     let staged = manager.stats().unwrap().committed_bytes;
@@ -123,9 +115,9 @@ fn pressure_destroys_idle_descriptor_pools_but_not_pools_with_live_sets() {
         .unwrap(),
     );
     ring.register_eviction();
-    let kept = ring.allocate(layout.clone()).unwrap();
+    let kept = ring.allocate(&layout).unwrap();
     let dropped: Vec<_> = (0..2)
-        .map(|_| ring.allocate(layout.clone()).unwrap())
+        .map(|_| ring.allocate(&layout).unwrap())
         .collect();
     assert_eq!(ring.stats().pools, 3);
     drop(dropped);
@@ -138,7 +130,7 @@ fn pressure_destroys_idle_descriptor_pools_but_not_pools_with_live_sets() {
     drop(kept);
     // The ring still grows on demand afterwards.
     let _again: Vec<_> = (0..2)
-        .map(|_| ring.allocate(layout.clone()).unwrap())
+        .map(|_| ring.allocate(&layout).unwrap())
         .collect();
     assert_eq!(ring.stats().pools, 2);
 }

@@ -4,10 +4,10 @@ use ash::vk;
 use rhapsody::ErrorKind;
 use rhapsody::sync::{QueueId, SyncSet, timeline::Timelines};
 
-fn gpu() -> Option<std::sync::Arc<rhapsody::raw::device::Device>> {
+fn gpu() -> Option<std::sync::Arc<rhapsody::device::Device>> {
     gpu_test_support::initialize(
         "timeline production headless device",
-        rhapsody::raw::init::create_headless_device(),
+        rhapsody::device::selection::create_headless_device(),
     )
 }
 

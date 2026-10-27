@@ -51,15 +51,15 @@ fn the_collector_records_messages_by_severity_without_any_layer() {
 
 #[test]
 fn the_builder_enables_the_validation_layer_only_when_it_exists() {
-    let mut builder = rhapsody::raw::instance::InstanceBuilder::default();
+    let mut builder = rhapsody::native::instance::InstanceBuilder::default();
     let Ok(enabled) = builder.enable_validation() else {
         return;
     };
-    let present = rhapsody::raw::instance::GraphicsInstanceLoader::new()
+    let present = rhapsody::native::instance::GraphicsInstanceLoader::new()
         .map(|l| {
             l.layers
                 .iter()
-                .any(|l| l.name == rhapsody::raw::instance::KHRONOS_VALIDATION_LAYER)
+                .any(|l| l.name == rhapsody::native::instance::KHRONOS_VALIDATION_LAYER)
         })
         .unwrap_or(false);
     assert_eq!(enabled, present);
@@ -67,7 +67,7 @@ fn the_builder_enables_the_validation_layer_only_when_it_exists() {
         builder
             .layers
             .iter()
-            .any(|l| l.to_str() == Ok(rhapsody::raw::instance::KHRONOS_VALIDATION_LAYER)),
+            .any(|l| l.to_str() == Ok(rhapsody::native::instance::KHRONOS_VALIDATION_LAYER)),
         present
     );
     assert!(

@@ -1,22 +1,16 @@
 //! A plan can stand in for the declaration code: `declaration_for_frame` must
 //! rebuild what a normal frame declared, so that compiling it again yields the
 //! very same definition (the retained-graph contract).
-use rhapsody::rg::{
-    graph::{
-        AccessDeclaration, BufferDesc, Descriptor, ExportDeclaration, GraphDeclaration,
-        OriginSource, PassDeclaration, ResourceDeclaration,
-    },
-    plan::{GraphDefinition, ImportBinding, PlanContext, compile_definition},
-    resource::AccessRange,
-    vulkan::AccessTable,
-};
+use rhapsody::rg::{graph::{Descriptor, GraphDeclaration, OriginSource, PassDeclaration, ResourceDeclaration}, plan::{GraphDefinition, ImportBinding, PlanContext, compile_definition}, resource::AccessRange, vulkan::AccessTable};
+use rhapsody::rg::resource_info::{AccessDeclaration, ExportDeclaration};
+use rhapsody::rg::resource_registry::BufferDesc;
 
 const READ: u8 = 0x26;
 const WRITE: u8 = 0x34;
 
 fn buffer(name: &str, source: OriginSource) -> ResourceDeclaration {
     ResourceDeclaration {
-        sharing: rhapsody::resource::ResourceSharing::Exclusive,
+        sharing: rhapsody::tracking::ResourceSharing::Exclusive,
         name: name.into(),
         descriptor: Descriptor::Buffer(BufferDesc {
             word_at_00: 64,
@@ -73,7 +67,7 @@ fn frame(token: u64) -> GraphDeclaration {
     }
 }
 fn definition(graph: &GraphDeclaration) -> GraphDefinition {
-    GraphDefinition::from_declaration(graph, &mut AccessTable::original(), PlanContext::default())
+    GraphDefinition::from_declaration(graph, &AccessTable::original(), PlanContext::default())
         .unwrap()
 }
 

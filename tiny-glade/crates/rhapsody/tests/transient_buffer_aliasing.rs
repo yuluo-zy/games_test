@@ -3,16 +3,8 @@
 //! cached backing must be reused across retired frames.
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::{
-    device::{AllocationStrategy, Device, DeviceConfig},
-    raw::buffer::{Buffer, BufferDesc},
-    rg::{
-        executor::{ExecutionBackend, PassContext},
-        graph::RenderGraph,
-        sync_plan::BarrierKind,
-        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::{device::{AllocationStrategy, Device, DeviceConfig}, rg::{executor::{ExecutionBackend, PassContext}, graph::RenderGraph, sync_plan::BarrierKind, vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession}}};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
 use std::sync::Arc;
 const READ: u8 = 0x25;
 const WRITE: u8 = 0x34;
@@ -171,7 +163,7 @@ fn aliased_buffers_get_a_backing_barrier_and_correct_contents() {
         let context = session.backend.plan_context();
         let definition = rhapsody::rg::plan::GraphDefinition::from_declaration(
             &built.declaration,
-            &mut session.backend.accesses,
+            &session.backend.accesses,
             context,
         )
         .unwrap();

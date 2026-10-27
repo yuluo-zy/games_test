@@ -1,17 +1,11 @@
 //! Bounded production constant pages: CPU leases and actual submitted GPU use.
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-        dynamic_constants::{
-            DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, DynamicConstants, DynamicConstantsConfig,
-        },
-        semaphore::TimelineSemaphore,
-    },
-};
+use rhapsody::device::{Device, DeviceConfig};
+use rhapsody::command::command_buffer::VulkanCommandPool;
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::dynamic_constants::{DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES, DynamicConstants, DynamicConstantsConfig};
+use rhapsody::device::semaphore::TimelineSemaphore;
 use std::sync::Arc;
 
 fn config() -> DynamicConstantsConfig {
@@ -178,7 +172,7 @@ fn dropped_cpu_owners_cannot_reset_a_page_until_actual_gpu_copy_completes() {
     command.end().unwrap();
     let pending = command
         .submit_to(
-            rhapsody::raw::device::DeviceQueue {
+            rhapsody::device::DeviceQueue {
                 handle: device.primary_queue(),
                 family: device.queue_family_index(),
                 index: 0,

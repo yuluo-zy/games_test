@@ -3,20 +3,14 @@ mod draw_support;
 mod wave3_support;
 use ash::vk::{self, Handle};
 use rhapsody::command::recording::Queue;
-use rhapsody::resource::{OwnershipRange, range_state::RangeOwner};
-use rhapsody::{
-    raw::buffer::{Buffer, BufferDesc},
-    rg::{
-        executor::{ExecutionBackend, PassContext},
-        graph::RenderGraph,
-        sync_plan::{BarrierKind, DependencyRef},
-        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::tracking::OwnershipRange;
+use rhapsody::tracking::range_state::RangeOwner;
+use rhapsody::rg::{executor::{ExecutionBackend, PassContext}, graph::RenderGraph, sync_plan::{BarrierKind, DependencyRef}, vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession}};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
 use std::sync::Arc;
 use wave3_support::*;
 
-fn families(device: &rhapsody::raw::device::Device) -> Vec<vk::QueueFamilyProperties> {
+fn families(device: &rhapsody::device::Device) -> Vec<vk::QueueFamilyProperties> {
     unsafe {
         device
             .instance()
@@ -75,7 +69,7 @@ fn execute_checked(
     let context = session.backend.plan_context();
     let definition = rhapsody::rg::plan::GraphDefinition::from_declaration(
         &built.declaration,
-        &mut session.backend.accesses,
+        &session.backend.accesses,
         context,
     )
     .unwrap();
@@ -95,7 +89,7 @@ fn execute_checked(
 fn copy_from_actual_primary_owner(
     env: &ValidatedEnv,
     destination: &mut VulkanGraphSession,
-    auxiliary: rhapsody::raw::device::DeviceQueue,
+    auxiliary: rhapsody::device::DeviceQueue,
 ) {
     let device = &env.device;
     assert_ne!(auxiliary.family, device.queue_family_index());

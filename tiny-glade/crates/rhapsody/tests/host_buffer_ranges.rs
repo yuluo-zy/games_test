@@ -2,18 +2,12 @@
 //! unknown-use fallback. No fake completion values or driver faults are used.
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    Error,
-    device::{Device, DeviceConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::{PendingCommand, VulkanCommandPool},
-        device::DeviceQueue,
-        instance::{InstanceBuilder, ValidationMessenger},
-        semaphore::TimelineSemaphore,
-    },
-    sync::QueueId,
-};
+use rhapsody::{Error, device::{Device, DeviceConfig}, sync::QueueId};
+use rhapsody::command::command_buffer::{PendingCommand, VulkanCommandPool};
+use rhapsody::device::DeviceQueue;
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::native::instance::{InstanceBuilder, ValidationMessenger};
+use rhapsody::device::semaphore::TimelineSemaphore;
 use std::sync::Arc;
 const TIMEOUT: u64 = 10_000_000_000;
 struct SignalOnDrop {
@@ -65,7 +59,7 @@ fn fixture() -> Option<(Arc<Device>, ValidationMessenger)> {
                 .layers
                 .push(std::ffi::CString::new("VK_LAYER_KHRONOS_validation").unwrap());
             let device = Device::new(
-                instance.build()?,
+                &instance.build()?,
                 None,
                 &DeviceConfig {
                     validation: true,
@@ -95,7 +89,7 @@ fn blocked_fill(
     }
     unsafe {
         command
-            .retain_opaque_buffer_range(buffer.clone(), 0, span)
+            .retain_opaque_buffer_range(buffer, 0, span)
             .unwrap();
     }
     if unknown == Some(false) {
@@ -251,7 +245,7 @@ fn metadata_admission_failure_stays_on_the_command_and_publishes_no_completion_p
             ));
         } else {
             assert!(matches!(
-                unsafe { command.retain_opaque_buffer_range(buffer.clone(), 0, span) },
+                unsafe { command.retain_opaque_buffer_range(&buffer, 0, span) },
                 Err(Error::OutOfHostMemory)
             ));
         }

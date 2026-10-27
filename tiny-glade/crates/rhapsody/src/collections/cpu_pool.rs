@@ -1,10 +1,7 @@
 //! Bounded CPU storage with exclusive leases. Native/GPU lifetime tracking does
 //! not belong here: payloads own their exact CPU reservations and reset rules.
-use crate::{
-    Error, Result,
-    device::{BudgetAction, BudgetCategory},
-    raw::allocator::{AllocatorStats, CpuMemoryReservation},
-};
+use crate::{Error, Result};
+use crate::accounting::{AllocatorStats, BudgetAction, BudgetCategory, CpuMemoryReservation};
 use parking_lot::Mutex;
 use std::sync::Arc;
 

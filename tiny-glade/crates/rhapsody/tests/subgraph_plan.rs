@@ -1,11 +1,6 @@
 //! Public subgraph construction and the production symbolic cache; CPU only.
-use rhapsody::rg::{
-    graph::{BufferDesc, Descriptor, RenderGraph},
-    plan::{GraphDefinition, PlanContext, compile_definition, compile_with_subgraphs},
-    resource::AccessRange,
-    subgraph::{SubgraphPlanCache, SubgraphQueueConstraint},
-    vulkan::AccessTable,
-};
+use rhapsody::rg::{graph::{Descriptor, RenderGraph}, plan::{GraphDefinition, PlanContext, compile_definition, compile_with_subgraphs}, resource::AccessRange, subgraph::{SubgraphPlanCache, SubgraphQueueConstraint}, vulkan::AccessTable};
+use rhapsody::rg::resource_registry::BufferDesc;
 const READ: u8 = 0x25;
 const WRITE: u8 = 0x34;
 fn descriptor() -> Descriptor {
@@ -54,7 +49,7 @@ fn fixture(prefix: bool, earlier_versions: usize, implementation: u64) -> GraphD
     graph.export(output.raw(), READ).unwrap();
     GraphDefinition::from_declaration(
         &graph.build().declaration,
-        &mut AccessTable::original(),
+        &AccessTable::original(),
         PlanContext::default(),
     )
     .unwrap()
@@ -269,7 +264,7 @@ fn failed_scopes_restore_exports_and_batch_policy_without_reusing_escaped_resour
     );
     let definition = GraphDefinition::from_declaration(
         &declaration,
-        &mut AccessTable::original(),
+        &AccessTable::original(),
         PlanContext::default(),
     )
     .unwrap();

@@ -2,12 +2,10 @@
 //! 视图缓存测试需要 Vulkan 设备，无设备时跳过（本机可用 lavapipe）。
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::raw::{
-    device::Device,
-    init::create_headless_device,
-    managed::resources::ResourceManager,
-    texture::{TextureDesc, TextureViewDesc},
-};
+use rhapsody::device::Device;
+use rhapsody::resource::managed::resources::ResourceManager;
+use rhapsody::resource::texture::{TextureDesc, TextureViewDesc};
+use rhapsody::device::selection::create_headless_device;
 use std::sync::Arc;
 
 #[test]

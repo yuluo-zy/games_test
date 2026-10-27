@@ -3,18 +3,9 @@
 //! all three classes, so the fixture needs no optional shader capability.
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::{
-    device::{Device, DeviceConfig, Feature, QueueClass, QueueConfig, QueuePreference},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        instance::{InstanceBuilder, ValidationMessenger},
-    },
-    rg::{
-        executor::PassContext,
-        graph::RenderGraph,
-        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::{device::{Device, DeviceConfig, Feature, QueueClass, QueueConfig, QueuePreference}, rg::{executor::PassContext, graph::RenderGraph, vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession}}};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::native::instance::{InstanceBuilder, ValidationMessenger};
 use std::sync::Arc;
 const READ: u8 = 0x25;
 const WRITE: u8 = 0x34;
@@ -52,7 +43,7 @@ impl Fixture {
                     },
                     ..DeviceConfig::headless()
                 };
-                let device = Device::new(builder.build()?, None, &config)?;
+                let device = Device::new(&builder.build()?, None, &config)?;
                 let validation = ValidationMessenger::new(device.instance())?;
                 Ok((device, validation))
             })(),
@@ -299,10 +290,8 @@ fn synchronization2_ownership_scopes_preserve_pixels_and_partial_recovery() {
 
 #[test]
 fn concurrent_disjoint_writes_do_not_inherit_whole_object_waits() {
-    use rhapsody::{
-        resource::{QueueFamilies, ResourceSharing},
-        rg::resource::AccessRange,
-    };
+    use rhapsody::rg::resource::AccessRange;
+    use rhapsody::tracking::{QueueFamilies, ResourceSharing};
     let Some(mut fixture) = Fixture::new(true) else {
         return;
     };
@@ -429,10 +418,8 @@ fn concurrent_disjoint_writes_do_not_inherit_whole_object_waits() {
 
 #[test]
 fn concurrent_temporal_image_preserves_its_real_sharing_across_frames() {
-    use rhapsody::{
-        raw::texture::TextureDesc,
-        resource::{QueueFamilies, ResourceSharing},
-    };
+    use rhapsody::tracking::{QueueFamilies, ResourceSharing};
+    use rhapsody::resource::texture::TextureDesc;
     let Some(mut fixture) = Fixture::new(true) else {
         return;
     };

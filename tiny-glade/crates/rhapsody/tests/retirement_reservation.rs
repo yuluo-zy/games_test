@@ -3,20 +3,16 @@
 mod allocation_counter;
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    device::{Device, DeviceConfig, DeviceQueue},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-        sampler::Sampler,
-        semaphore::TimelineSemaphore,
-    },
-};
+use rhapsody::device::{Device, DeviceConfig, DeviceQueue};
+use rhapsody::command::command_buffer::VulkanCommandPool;
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::sampler::Sampler;
+use rhapsody::device::semaphore::TimelineSemaphore;
 use std::sync::Arc;
 
 struct CpuOwner;
-impl rhapsody::resource::GpuUse for CpuOwner {
-    fn visit_uses(&self, _: &mut rhapsody::resource::UseVisitor<'_>) -> rhapsody::Result<()> {
+impl rhapsody::tracking::GpuUse for CpuOwner {
+    fn visit_uses(&self, _: &mut rhapsody::tracking::UseVisitor<'_>) -> rhapsody::Result<()> {
         Ok(())
     }
     fn held_until_completion(&self) -> bool {
@@ -141,7 +137,7 @@ fn denied_creation_returns_all_host_credits_and_can_recover() {
     };
     let initial = device.allocator_stats().cpu_memory_usage().total();
     let (layout, _) = std::alloc::Layout::new::<[usize; 2]>()
-        .extend(std::alloc::Layout::new::<rhapsody::resource::SyncCell>())
+        .extend(std::alloc::Layout::new::<rhapsody::tracking::SyncCell>())
         .unwrap();
     let sync_bytes = layout.pad_to_align().size() as u64;
     device
@@ -158,7 +154,7 @@ fn denied_creation_returns_all_host_credits_and_can_recover() {
 
 #[test]
 fn released_statistics_keep_the_exact_peak_without_allocating_in_release() {
-    let stats = rhapsody::raw::allocator::AllocatorStats::default();
+    let stats = rhapsody::accounting::AllocatorStats::default();
     let first = stats
         .register(
             64,
@@ -255,7 +251,7 @@ fn unused_dedicated_buffer_drop_does_not_allocate_a_statistics_snapshot() {
 
 #[test]
 fn rejected_registration_and_independent_heap_peaks_preserve_peak_evidence() {
-    use rhapsody::raw::allocator::AllocatorStats;
+    use rhapsody::accounting::AllocatorStats;
     let stats = AllocatorStats::default();
     let first = stats
         .register(
@@ -323,7 +319,7 @@ fn rejected_registration_and_independent_heap_peaks_preserve_peak_evidence() {
 
 #[test]
 fn image_view_and_second_command_ticket_refusals_restore_credits_and_recover() {
-    use rhapsody::raw::texture::{Texture, TextureDesc, TextureView, TextureViewDesc};
+    use rhapsody::resource::texture::{Texture, TextureDesc, TextureView, TextureViewDesc};
     let Some(device) = gpu_test_support::initialize(
         "image view and dual-command retirement admission",
         Device::new_headless(&DeviceConfig::headless()),
@@ -332,7 +328,7 @@ fn image_view_and_second_command_ticket_refusals_restore_credits_and_recover() {
     let shared_bytes = |layout: std::alloc::Layout| -> u64 {
         std::alloc::Layout::new::<[usize; 2]>().extend(layout).unwrap().0.pad_to_align().size() as u64
     };
-    let sync_bytes = shared_bytes(std::alloc::Layout::new::<rhapsody::resource::SyncCell>());
+    let sync_bytes = shared_bytes(std::alloc::Layout::new::<rhapsody::tracking::SyncCell>());
     // A real ordinary sampler owns only SyncCell storage and one retirement
     // node. Calibrate the actual charged node capacity, not a mirrored Node
     // layout or fake native handle. This is not native-create instrumentation.

@@ -1,10 +1,8 @@
 //! crates 域（vk-sync-fork / aftermath-rs / gpu-profiler / dxgi-enumerate-gpus）的聚焦测试。
 //! 访问码表的期望值按公开 vk-sync-fork 0.4.0 的变体内嵌，避免为测试引入第二套 ash 依赖。
-use rhapsody::raw::{
-    access_table::*,
-    aftermath::{self, *},
-    dxgi::{self, *},
-};
+use rhapsody::native::{access_table::*, aftermath::*, dxgi::*};
+use rhapsody::native::aftermath;
+use rhapsody::native::dxgi;
 use std::{
     ffi::{CStr, c_char, c_void},
     sync::{

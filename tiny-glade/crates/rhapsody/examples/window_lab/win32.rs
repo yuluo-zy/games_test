@@ -1,6 +1,7 @@
 //! Minimal single-window host. No renderer state is accessed from the window callback.
 use super::fixture::Result;
-use rhapsody::{interop::VulkanInstance, present::Surface};
+use rhapsody::native::surface::Surface;
+use rhapsody::native::VulkanInstance;
 use std::{
     ffi::{CString, c_void},
     sync::Arc,

@@ -1,12 +1,8 @@
 //! raw-core 域·描述符/着色器管线/渲染通道/绑定测试。
 //! 需要 Vulkan 设备的用例在无设备时跳过（本机用 lavapipe）。
 use ash::vk;
-use rhapsody::{
-    raw::sampler::BUILTIN_SAMPLER_NAMES,
-    rg::attachments::contract::{
-        AttachmentArray, DepthAccess, RenderPassAttachmentDesc, RenderPassDesc,
-    },
-};
+use rhapsody::rg::attachments::contract::{AttachmentArray, DepthAccess, RenderPassAttachmentDesc, RenderPassDesc};
+use rhapsody::resource::sampler::BUILTIN_SAMPLER_NAMES;
 
 fn color(format: vk::Format) -> RenderPassAttachmentDesc {
     RenderPassAttachmentDesc::new(format)

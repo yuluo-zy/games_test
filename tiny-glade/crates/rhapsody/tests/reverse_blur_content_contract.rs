@@ -78,7 +78,7 @@ fn fixture(
 }
 
 fn definition(raw: &GraphDeclaration) -> rhapsody::Result<GraphDefinition> {
-    GraphDefinition::from_declaration(raw, &mut AccessTable::original(), PlanContext::default())
+    GraphDefinition::from_declaration(raw, &AccessTable::original(), PlanContext::default())
 }
 
 #[test]

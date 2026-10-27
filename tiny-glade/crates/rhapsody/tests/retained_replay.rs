@@ -1,11 +1,7 @@
 //! Replaying a plan into a `RenderGraph` (resources in plan order + adopted
 //! passes) must declare exactly what normal declaration code declared.
-use rhapsody::rg::{
-    graph::{BufferDesc, Descriptor, OriginSource, RenderCallback, RenderGraph},
-    plan::{GraphDefinition, PlanContext, compile_definition},
-    resource::ResourceOrigin,
-    vulkan::AccessTable,
-};
+use rhapsody::rg::{graph::{Descriptor, OriginSource, RenderCallback, RenderGraph}, plan::{GraphDefinition, PlanContext, compile_definition}, resource::ResourceOrigin, vulkan::AccessTable};
+use rhapsody::rg::resource_registry::BufferDesc;
 
 const READ: u8 = 0x26;
 const WRITE: u8 = 0x34;
@@ -50,7 +46,7 @@ fn normal(token: u64) -> RenderGraph {
 fn definition(graph: &RenderGraph) -> GraphDefinition {
     GraphDefinition::from_declaration(
         graph.declaration(),
-        &mut AccessTable::original(),
+        &AccessTable::original(),
         PlanContext::default(),
     )
     .unwrap()
@@ -105,7 +101,7 @@ fn replayed_graph_declares_what_the_normal_path_declared() {
         compile_definition(
             GraphDefinition::from_declaration(
                 &got,
-                &mut AccessTable::original(),
+                &AccessTable::original(),
                 PlanContext::default()
             )
             .unwrap()

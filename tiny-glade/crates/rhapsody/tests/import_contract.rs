@@ -1,12 +1,10 @@
 //! 实际设备上的导入边界；缺少 Vulkan 时明确跳过，CPU 描述校验另有库内测试。
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::raw::{
-    buffer::{Buffer, BufferDesc},
-    device::Device,
-    init::create_headless_device,
-    texture::{Texture, TextureDesc},
-};
+use rhapsody::device::Device;
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::texture::{Texture, TextureDesc};
+use rhapsody::device::selection::create_headless_device;
 use rhapsody::rg::vulkan::{
     AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession,
 };

@@ -5,12 +5,12 @@
 //! popped first and destroyed with no lock held, so destruction may take
 //! memory (allocator) locks freely.
 use super::Device;
-use crate::raw::graveyard::{DeferredMemory, Doomed, RetirementStats};
+use crate::device::graveyard::{DeferredMemory, Doomed, RetirementStats};
 use crate::sync::{CompletedValues, SyncSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 pub(crate) struct Lifetime {
-    pub(crate) retirement: crate::sync::retire::Retirement<Doomed>,
+    pub(crate) retirement: crate::retire::Retirement<Doomed>,
     pub(crate) reclamation: crate::device::ReclamationConfig,
     pub(crate) idle_waits: AtomicU64,
 }
@@ -25,7 +25,15 @@ impl Lifetime {
     }
 }
 
-pub(crate) type RetireTicket = crate::sync::retire::RetirementTicket<Doomed>;
+pub(crate) type RetireTicket = crate::retire::RetirementTicket<Doomed>;
+
+/// Already-admitted CPU storage transferred with a newly bound raw resource.
+/// The object and synchronization cell then keep their credits independently.
+pub(crate) struct ResourceStorage {
+    pub retirement: RetireTicket,
+    pub object: crate::accounting::CpuMemoryReservation,
+    pub synchronization: crate::tracking::tracked::SyncCellStorage,
+}
 
 impl Device {
     pub(crate) fn reserve_retirement(&self) -> crate::Result<RetireTicket> {
@@ -99,12 +107,12 @@ impl Device {
             log::warn!("memory budget refresh failed: {error}");
         }
         let action = self.memory.stats.budget_action();
-        if action != crate::device::BudgetAction::None {
+        if action != crate::accounting::BudgetAction::None {
             // This O(1) empty-queue check releases only idle CPU backing.
             // It neither polls again nor spends/refreshes the native retirement
             // scan/destroy quota. The return value below still counts native
             // retirement entries, even when this releases nonzero CPU credit.
-            self.queues.pending_acquires.trim_empty_if_pressure();
+            self.extensions.trim_under_pressure();
         }
         let budget = self.lifetime.reclamation.budget(action);
         let count = self
@@ -130,14 +138,14 @@ impl Device {
         Ok(count)
     }
     pub(crate) fn collect_completed_snapshot(&self, completed: &CompletedValues) -> usize {
-        let count = self
+        
+        self
             .lifetime
             .retirement
             .collect_limited_retry(completed, usize::MAX, usize::MAX, |doomed| {
                 self.destroy_now(doomed)
             })
-            .destroyed;
-        count
+            .destroyed
     }
     pub(crate) fn pressure_reclamation_budget(&self) -> crate::device::ReclamationBudget {
         self.lifetime.reclamation.pressure
@@ -169,7 +177,7 @@ impl Device {
     }
     fn trim_unused_allocations(&self) {
         #[cfg(feature = "suballocation")]
-        if self.memory.stats.budget_action() == crate::device::BudgetAction::EvictCache
+        if self.memory.stats.budget_action() == crate::accounting::BudgetAction::EvictCache
             && let Some(suballocator) = &self.memory.suballocator
         {
             suballocator.trim_unused();

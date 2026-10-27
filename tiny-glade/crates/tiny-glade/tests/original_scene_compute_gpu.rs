@@ -1922,7 +1922,7 @@ mod path_upload_receipt_correctness {
         assert!(stats.cpu_memory_usage().total()<=before-charged,"diagnostic backing credit must return after export/drop");
 
         // Real enqueue budget rejection before any acceptance, with restoration on unwind.
-        struct Restore {stats:Arc<rhapsody::device::AllocatorStats>,limit:u64}
+        struct Restore {stats:Arc<rhapsody::accounting::AllocatorStats>,limit:u64}
         impl Drop for Restore {fn drop(&mut self){let _=self.stats.set_host_budget(self.limit);}}
         buffers.begin_buffer_upload_observation(&target).unwrap();
         let guard=Restore{stats:stats.clone(),limit:stats.host_budget_limit()};

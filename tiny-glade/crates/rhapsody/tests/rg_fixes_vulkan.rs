@@ -2,11 +2,9 @@
 //! temporal 导出 + 编译导出校验接入会话帧路径（ping-pong 多帧）。没有 Vulkan 设备时跳过。
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::raw::{
-    buffer::{Buffer, BufferDesc},
-    init::create_headless_device,
-    texture::TextureDesc,
-};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::texture::TextureDesc;
+use rhapsody::device::selection::create_headless_device;
 use rhapsody::rg::{
     executor::PassContext,
     graph::RenderGraph,
@@ -504,10 +502,10 @@ fn device_lost_is_visible_to_every_session() {
 
 #[test]
 fn raw_submission_cannot_signal_the_owned_device_timeline() {
-    use rhapsody::raw::command_buffer::VulkanCommandPool;
+    use rhapsody::command::command_buffer::VulkanCommandPool;
     let Some(session) = session() else { return };
     let device = session.backend.device().clone();
-    let queue = rhapsody::raw::device::DeviceQueue {
+    let queue = rhapsody::device::DeviceQueue {
         handle: device.primary_queue(),
         family: device.queue_family_index(),
         index: 0,

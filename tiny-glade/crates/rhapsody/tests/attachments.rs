@@ -1,14 +1,7 @@
 //! 检查会影响缓存正确性的兼容规则与原当前 pass 查找语义。
 use ash::vk;
-use rhapsody::{
-    rg::attachments::contract::{AttachmentKey, RenderPassKey},
-    rg::{
-        attachments::{DepthAccess, RenderPassAttachmentDesc},
-        graph::{AccessDeclaration, PassDeclaration},
-        pass_api::{Command, CommandBackend, RenderPassApi},
-        resource::ResourceHandle,
-    },
-};
+use rhapsody::{rg::attachments::contract::{AttachmentKey, RenderPassKey}, rg::{attachments::{DepthAccess, RenderPassAttachmentDesc}, graph::PassDeclaration, pass_api::{Command, CommandBackend, RenderPassApi}, resource::ResourceHandle}};
+use rhapsody::rg::resource_info::AccessDeclaration;
 struct Noop;
 impl CommandBackend for Noop {
     fn dispatch(&mut self, _: vk::CommandBuffer, _: Command<'_>) {}

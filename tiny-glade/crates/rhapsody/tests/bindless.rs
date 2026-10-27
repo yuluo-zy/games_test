@@ -1,16 +1,10 @@
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    bindless::{BindlessConfig, BindlessHeap},
-    device::{Device, DeviceConfig},
-    pipeline::{AsyncPipelineCompiler, CompilerConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-        semaphore::TimelineSemaphore,
-        shader::{PipelineCache, PipelineLayout},
-    },
-};
+use rhapsody::{bindless::{BindlessConfig, BindlessHeap}, device::{Device, DeviceConfig}, pipeline::{AsyncPipelineCompiler, CompilerConfig}};
+use rhapsody::command::command_buffer::VulkanCommandPool;
+use rhapsody::pipeline::shader::{PipelineCache, PipelineLayout};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::device::semaphore::TimelineSemaphore;
 use std::{sync::Arc, time::Duration};
 
 fn shader() -> Vec<u8> {
@@ -169,7 +163,7 @@ fn a_layout_shared_page_has_independent_slots_and_unused_leases() {
 fn pending_shader_retires_its_actual_page(
     device: Arc<Device>,
     heap: Arc<BindlessHeap>,
-    layout: Arc<rhapsody::raw::descriptor_set::VulkanDescriptorSetLayout>,
+    layout: Arc<rhapsody::command::descriptor_set::VulkanDescriptorSetLayout>,
     foreign: Option<Arc<rhapsody::bindless::BindlessLease>>,
 ) {
     let buffer = target(&device);
@@ -199,7 +193,7 @@ fn pending_shader_retires_its_actual_page(
     if let Some(foreign) = foreign {
         // 数字下标相同不构成同页证明；拒绝后还必须能正常绑定真实页。
         assert!(matches!(
-            unsafe { heap.bind_command(&mut command, pipeline.clone(), 0, &[foreign]) },
+            unsafe { heap.bind_command(&mut command, &pipeline, 0, &[foreign]) },
             Err(rhapsody::Error::InvalidUsage { .. })
         ));
     }
@@ -207,7 +201,7 @@ fn pending_shader_retires_its_actual_page(
         pipeline.bind_pipeline(command.raw_handle());
         heap.bind_command(
             &mut command,
-            pipeline.clone(),
+            &pipeline,
             0,
             std::slice::from_ref(&lease),
         )
@@ -245,7 +239,7 @@ fn pending_shader_retires_its_actual_page(
     let release_gate = ReleaseGate(gate.clone());
     let pending = command
         .submit_to(
-            rhapsody::raw::device::DeviceQueue {
+            rhapsody::device::DeviceQueue {
                 handle: device.primary_queue(),
                 family: device.queue_family_index(),
                 index: 0,
@@ -350,7 +344,7 @@ fn graph_binding_rejects_undeclared_lease_bytes_and_accepts_the_complete_shader_
         );
         pass.render_with_result_context(move |ctx: PassContext<'_>| {
             unsafe {
-                heap.bind_pass(&ctx, pipeline.clone(), 0, std::slice::from_ref(&lease))?;
+                heap.bind_pass(&ctx, &pipeline, 0, std::slice::from_ref(&lease))?;
                 let command = vk::CommandBuffer::from_raw(ctx.command.handle());
                 pipeline.bind_pipeline(command);
                 device.raw_device().cmd_push_constants(
@@ -500,7 +494,7 @@ fn known_host_slot_storage_is_admitted_and_released_by_the_unified_budget() {
 #[test]
 #[ignore = "由 root 显式运行真实设备布局矩阵"]
 fn actual_bindless_layout_support_matrix() {
-    use rhapsody::raw::descriptor_set::{LayoutBinding, LayoutPlan, VulkanDescriptorSetLayout};
+    use rhapsody::command::descriptor_set::{LayoutBinding, LayoutPlan, VulkanDescriptorSetLayout};
     // 矩阵包含变长绑定查询，必须先启用该 feature，不能用未启用特性的输入测支持。
     let mut config = DeviceConfig::headless();
     config.required_features = config

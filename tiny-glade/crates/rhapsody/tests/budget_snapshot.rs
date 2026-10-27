@@ -1,6 +1,6 @@
 //! 显存预算快照：原作 `refresh_memory_budget` 经 arc-swap 发布快照，`*_memory_budget_bytes` 只读快照。
 //! 无可用 Vulkan 实例时跳过；本机可用 `VK_ICD_FILENAMES=.../lvp_icd.json` 走 lavapipe。
-use rhapsody::raw::init::GraphicsInstance;
+use rhapsody::device::selection::GraphicsInstance;
 use std::sync::Arc;
 
 #[test]

@@ -1008,7 +1008,7 @@ pub(crate) mod test_host {
         pub cache: HashMap<RasterRenderPassDesc, ManagedHandle>,
         pub next_handle: u64,
         pub constants: Option<usize>,
-        constants_budget: Arc<rhapsody::device::AllocatorStats>,
+        constants_budget: Arc<rhapsody::accounting::AllocatorStats>,
         declaration_failed: bool,
         pub constant_plans: Arc<std::sync::Mutex<Vec<Vec<u32>>>>,
         pub constant_plan_enabled: bool,
@@ -1022,7 +1022,7 @@ pub(crate) mod test_host {
     impl MockHost {
         pub fn new() -> (MockHost, Rc<RefCell<Log>>) {
             let log = Rc::new(RefCell::new(Log::default()));
-            let constants_budget = Arc::new(rhapsody::device::AllocatorStats::default());
+            let constants_budget = Arc::new(rhapsody::accounting::AllocatorStats::default());
             let commit_scratch = super::super::draw_commit_scratch::DrawCommitScratchPool::new(constants_budget.clone(), 8, 8 << 20, 1 << 20).unwrap();
             (
                 MockHost {
@@ -1047,7 +1047,7 @@ pub(crate) mod test_host {
                 log,
             )
         }
-        pub fn constant_budget_for_test(&self) -> Arc<rhapsody::device::AllocatorStats> {
+        pub fn constant_budget_for_test(&self) -> Arc<rhapsody::accounting::AllocatorStats> {
             self.constants_budget.clone()
         }
         pub fn boxed(self) -> Box<dyn PassHost> {

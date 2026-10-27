@@ -29,9 +29,8 @@ pub(crate) struct Queues {
     pub(crate) timelines: Timelines<ash::Device>,
     /// Released ownership ranges whose acquire is coalesced into the next
     /// submit on the destination family (see `Device::queue_pending_acquire`).
-    pub(crate) pending_acquires: crate::device::PendingAcquires,
     /// Non-coherent dynamic-constants writes flushed before the next submit.
-    pub(crate) host_flush: crate::raw::dynamic_constants::HostFlushQueue,
+    pub(crate) host_flush: crate::device::host_flush::HostFlushQueue,
 }
 
 impl Queues {
@@ -109,7 +108,6 @@ impl Queues {
                 additional,
                 plan,
                 timelines,
-                pending_acquires: Default::default(),
                 host_flush: Default::default(),
             })
         }
@@ -152,3 +150,23 @@ impl crate::device::Device {
         &self.queues.timelines
     }
 }
+
+impl crate::device::Device {
+    /// A concurrent resource may only name queue families this device has a queue for.
+    pub(crate) fn validate_sharing(
+        &self,
+        sharing: crate::tracking::ResourceSharing,
+    ) -> crate::Result<()> {
+        let configured = |family: u32| {
+            family == self.queues.primary_family
+                || self.queues.additional.iter().any(|queue| queue.family == family)
+        };
+        if sharing.families().iter().any(|family| !configured(*family)) {
+            return Err(crate::Error::invalid_usage(
+                "concurrent resource names a family with no configured device queue",
+            ));
+        }
+        Ok(())
+    }
+}
+

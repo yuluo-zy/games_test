@@ -5,7 +5,7 @@
 use ash::vk;
 use rhapsody::{
     bindless::BindlessConfig, bindless::BindlessHeap, device::Device, resource::Texture,
-    resource::TextureDesc, resource::init_texture_data,
+    resource::TextureDesc, transfer::init_texture_data,
 };
 use std::{
     path::{Path, PathBuf},

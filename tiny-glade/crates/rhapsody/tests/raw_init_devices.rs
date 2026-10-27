@@ -1,16 +1,8 @@
 //! raw-init 域：设备排序 / 内存门槛 / missing_devices / 预算快照 / 厂商句柄匹配。
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::raw::init::{
-    AvailableGraphicsDevice, DeviceDecision, DeviceMemoryMetrics, DxgiAdapter, GraphicsInstance,
-    MissingGraphicsDevice, MissingVendor, meets_original_memory_threshold, missing_devices,
-    order_and_filter_devices_original, sort_devices_original,
-};
-use rhapsody::raw::physical_device::{
-    DeviceDriverVersion, DriverVendor, GraphicsDeviceKind, HeapBudget, MAX_MEMORY_HEAPS,
-    MemoryBudgetSnapshot, PerformanceInfo, VendorDeviceEntry, VendorPerformanceQueries,
-    format_vendor_performance_info, match_vendor_device_handle,
-};
+use rhapsody::device::selection::{AvailableGraphicsDevice, DeviceDecision, DeviceMemoryMetrics, DxgiAdapter, GraphicsInstance, MissingGraphicsDevice, MissingVendor, meets_original_memory_threshold, missing_devices, order_and_filter_devices_original, sort_devices_original};
+use rhapsody::native::physical_device::{DeviceDriverVersion, DriverVendor, GraphicsDeviceKind, HeapBudget, MAX_MEMORY_HEAPS, MemoryBudgetSnapshot, PerformanceInfo, VendorDeviceEntry, VendorPerformanceQueries, format_vendor_performance_info, match_vendor_device_handle};
 
 const GIB: u64 = 1 << 30;
 
@@ -355,7 +347,7 @@ fn create_by_uuid_selects_that_device_and_returns_unsupported_when_absent() {
         .expect("an available GPU is required");
     // 物化 Vec：克隆而非借用。
     assert_eq!(surface.available_devices().len(), surface.available.len());
-    let device = rhapsody::device::Device::new(graphics.instance.clone(), None, &rhapsody::device::DeviceConfig {
+    let device = rhapsody::device::Device::new(&graphics.instance, None, &rhapsody::device::DeviceConfig {
             preferred_device: rhapsody::device::DevicePreference::ByUuid(first.device_uuid),
             ..rhapsody::device::DeviceConfig::headless()
         })
@@ -368,7 +360,7 @@ fn create_by_uuid_selects_that_device_and_returns_unsupported_when_absent() {
         .iter()
         .all(|d| d.device_uuid != missing_uuid)
     {
-        let error = rhapsody::device::Device::new(graphics.instance.clone(), None, &rhapsody::device::DeviceConfig {
+        let error = rhapsody::device::Device::new(&graphics.instance, None, &rhapsody::device::DeviceConfig {
                 preferred_device: rhapsody::device::DevicePreference::ByUuid(missing_uuid),
                 ..rhapsody::device::DeviceConfig::headless()
             })
@@ -376,7 +368,7 @@ fn create_by_uuid_selects_that_device_and_returns_unsupported_when_absent() {
             .expect("missing UUID must be rejected");
         assert_eq!(error.kind(), rhapsody::ErrorKind::Unsupported);
         // Rejection does not mutate the candidate list or poison later creation.
-        let retried = rhapsody::device::Device::new(graphics.instance.clone(), None, &rhapsody::device::DeviceConfig {
+        let retried = rhapsody::device::Device::new(&graphics.instance, None, &rhapsody::device::DeviceConfig {
                 preferred_device: rhapsody::device::DevicePreference::ByUuid(first.device_uuid),
                 ..rhapsody::device::DeviceConfig::headless()
             })

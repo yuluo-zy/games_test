@@ -1,16 +1,7 @@
 //! Pure production planning, checked against an independent byte interpreter.
-use rhapsody::rg::{
-    graph::{
-        AccessDeclaration, BufferDesc, Descriptor, ExportDeclaration, GraphDeclaration,
-        OriginSource, PassDeclaration, ResourceDeclaration,
-    },
-    plan::{
-        CompiledPlan, GraphDefinition, PlanContext, compile_definition, compile_with_subgraphs,
-    },
-    plan_check::{check_definition, check_plan},
-    resource::{AccessRange, AccessVersion},
-    vulkan::AccessTable,
-};
+use rhapsody::rg::{graph::{Descriptor, GraphDeclaration, OriginSource, PassDeclaration, ResourceDeclaration}, plan::{CompiledPlan, GraphDefinition, PlanContext, compile_definition, compile_with_subgraphs}, plan_check::{check_definition, check_plan}, resource::{AccessRange, AccessVersion}, vulkan::AccessTable};
+use rhapsody::rg::resource_info::{AccessDeclaration, ExportDeclaration};
+use rhapsody::rg::resource_registry::BufferDesc;
 
 const READ: u8 = 0x26;
 const WRITE: u8 = 0x34;
@@ -35,7 +26,7 @@ fn graph(resources: usize) -> GraphDeclaration {
     GraphDeclaration {
         resources: (0..resources)
             .map(|index| ResourceDeclaration {
-                sharing: rhapsody::resource::ResourceSharing::Exclusive,
+                sharing: rhapsody::tracking::ResourceSharing::Exclusive,
                 name: format!("buffer-{index}").into(),
                 descriptor: Descriptor::Buffer(BufferDesc {
                     word_at_00: SIZE as u64,
@@ -58,7 +49,7 @@ fn pass(graph: &mut GraphDeclaration, accesses: Vec<AccessDeclaration>, side_eff
     });
 }
 fn definition(graph: &GraphDeclaration) -> GraphDefinition {
-    GraphDefinition::from_declaration(graph, &mut AccessTable::original(), PlanContext::default())
+    GraphDefinition::from_declaration(graph, &AccessTable::original(), PlanContext::default())
         .unwrap()
 }
 fn plan(graph: &GraphDeclaration) -> CompiledPlan {
@@ -206,7 +197,7 @@ fn public_definitions_reject_unresolved_versions_unknown_sources_and_invalid_ind
         .push(rhapsody::rg::plan::AccessSemantics {
             code: READ,
             declared_access: ash::vk::AccessFlags::empty(),
-            scope: rhapsody::resource::range_state::AccessScope {
+            scope: rhapsody::native::AccessScope {
                 stages: ash::vk::PipelineStageFlags::TRANSFER,
                 access: ash::vk::AccessFlags::TRANSFER_READ,
                 write: false,
@@ -285,7 +276,7 @@ fn executable_projection_rejects_lost_accesses_barriers_and_batch_coverage() {
 #[test]
 fn illegal_image_usage_is_rejected_even_when_the_pass_would_be_dead() {
     let descriptor = rhapsody::rg::vulkan::ResourceSpec::Image(
-        rhapsody::raw::texture::TextureDesc::new_2d(8, 8, ash::vk::Format::R8G8B8A8_UNORM),
+        rhapsody::resource::texture::TextureDesc::new_2d(8, 8, ash::vk::Format::R8G8B8A8_UNORM),
     )
     .descriptor();
     let mut graph = graph(1);
@@ -310,7 +301,7 @@ fn illegal_image_usage_is_rejected_even_when_the_pass_would_be_dead() {
 fn texture_provenance_tracks_aspects_mips_layers_and_partial_overwrites() {
     use ash::vk;
     let descriptor = rhapsody::rg::vulkan::ResourceSpec::Image(
-        rhapsody::raw::texture::TextureDesc::new_2d_array(16, 16, 2, vk::Format::D24_UNORM_S8_UINT)
+        rhapsody::resource::texture::TextureDesc::new_2d_array(16, 16, 2, vk::Format::D24_UNORM_S8_UINT)
             .mip_levels(2),
     )
     .descriptor();

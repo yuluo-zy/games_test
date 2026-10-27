@@ -1,13 +1,9 @@
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    device::{AllocationStrategy, Device, DeviceConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-        semaphore::TimelineSemaphore,
-    },
-};
+use rhapsody::device::{AllocationStrategy, Device, DeviceConfig};
+use rhapsody::command::command_buffer::VulkanCommandPool;
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::device::semaphore::TimelineSemaphore;
 use std::sync::Arc;
 
 struct Release(Arc<TimelineSemaphore>, bool);
@@ -37,7 +33,7 @@ impl Drop for Release {
 
 /// GPU phases exclude the independently charged host metadata; both remain
 /// admitted by the same total device budget.
-fn gpu_usage(device: &Device) -> rhapsody::device::BudgetUsage {
+fn gpu_usage(device: &Device) -> rhapsody::accounting::BudgetUsage {
     let mut usage = device.allocator_stats().budget_usage();
     let cpu = device.allocator_stats().cpu_memory_usage();
     usage.live -= cpu.live;
@@ -57,6 +53,9 @@ fn builtin_sampler_cache_charges_weak_allocations_and_has_no_device_cycle() {
     ) else {
         return;
     };
+    // The managed-resource store is created on first use; create it now so the baseline is
+    // non-zero (a total budget of 0 means unlimited) and does not move during the test.
+    device.resources().unwrap();
     let stats = device.allocator_stats().clone();
     let baseline = stats.cpu_memory_usage().total();
     stats
@@ -131,7 +130,7 @@ fn live_in_flight_and_retiring_memory_remains_charged_until_actual_gpu_completio
     command.end().unwrap();
     let pending = command
         .submit_to(
-            rhapsody::raw::device::DeviceQueue {
+            rhapsody::device::DeviceQueue {
                 handle: device.primary_queue(),
                 family: device.queue_family_index(),
                 index: 0,
@@ -169,7 +168,7 @@ fn live_in_flight_and_retiring_memory_remains_charged_until_actual_gpu_completio
 
 #[test]
 fn managed_payload_credit_follows_an_escaping_raw_owner_and_view() {
-    use rhapsody::raw::texture::{TextureDesc, TextureViewDesc};
+    use rhapsody::resource::texture::{TextureDesc, TextureViewDesc};
     let Some(device) = gpu_test_support::initialize(
         "managed CPU resource metadata",
         Device::new_headless(&DeviceConfig {
@@ -179,6 +178,9 @@ fn managed_payload_credit_follows_an_escaping_raw_owner_and_view() {
     ) else {
         return;
     };
+    // The managed-resource store is created on first use and then lives with the device;
+    // create it before taking the baseline the test compares against.
+    device.resources().unwrap();
     let initial = device.allocator_stats().cpu_memory_usage();
     let desc = TextureDesc::new_2d(4, 4, vk::Format::R8G8B8A8_UNORM).sampled();
     let managed = device
@@ -193,7 +195,7 @@ fn managed_payload_credit_follows_an_escaping_raw_owner_and_view() {
     let created = device.allocator_stats().cpu_memory_usage();
     assert!(created.live > initial.live);
     drop(managed);
-    assert!(device.resources().textures.get(key).is_none());
+    assert!(device.resources().unwrap().textures.get(key).is_none());
     let escaped = device.allocator_stats().cpu_memory_usage();
     assert!(
         escaped.live > initial.live,
@@ -220,7 +222,7 @@ fn managed_payload_credit_follows_an_escaping_raw_owner_and_view() {
 
 #[test]
 fn cpu_metadata_exhaustion_rejects_resource_and_view_creation_without_native_growth() {
-    use rhapsody::raw::texture::{Texture, TextureDesc, TextureViewDesc};
+    use rhapsody::resource::texture::{Texture, TextureDesc, TextureViewDesc};
     let Some(device) = gpu_test_support::initialize(
         "resource metadata admission",
         Device::new_headless(&DeviceConfig {
@@ -271,7 +273,7 @@ fn throttled_budget_refresh_skips_a_second_query_inside_the_interval() {
     let actual = second
         .as_ref()
         .or(first.as_ref())
-        .map(rhapsody::raw::physical_device::MemoryBudgetSnapshot::from_vk)
+        .map(rhapsody::native::physical_device::MemoryBudgetSnapshot::from_vk)
         .or(initial);
     assert_eq!(
         device.driver_memory_budget_snapshot(),
@@ -281,7 +283,7 @@ fn throttled_budget_refresh_skips_a_second_query_inside_the_interval() {
     if device.memory_budget_enabled() {
         // Under pressure the refresh is always due; otherwise the second call is skipped.
         let pressure =
-            device.allocator_stats().budget_action() != rhapsody::device::BudgetAction::None;
+            device.allocator_stats().budget_action() != rhapsody::accounting::BudgetAction::None;
         assert!(first.is_some(), "first call queries the driver");
         assert_eq!(second.is_some(), pressure);
     } else {

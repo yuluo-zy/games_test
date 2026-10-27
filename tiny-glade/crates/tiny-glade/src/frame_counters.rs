@@ -33,6 +33,25 @@ pub(crate) fn gpu_timing_enabled() -> bool {
     *ENABLED.get_or_init(|| std::env::var_os("TG_GPU_TIMING").is_some_and(|value| value == "1"))
 }
 
+fn env_flag(name: &str) -> bool {
+    std::env::var_os(name).is_some_and(|value| value == "1")
+}
+
+/// `TG_GPU_ISOLATE=1` (with `TG_GPU_TIMING=1`): drain the GPU before every
+/// pass's first timestamp so each span is that pass's own work. The frame runs
+/// serialised, so spans are exclusive costs, not production timings.
+pub(crate) fn gpu_isolate_enabled() -> bool {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ENABLED.get_or_init(|| env_flag("TG_GPU_ISOLATE"))
+}
+
+/// `TG_GPU_STATS=1` (with `TG_GPU_TIMING=1`): pipeline-statistics query per
+/// pass (input vertices, fragment and compute invocations).
+pub(crate) fn gpu_statistics_enabled() -> bool {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ENABLED.get_or_init(|| env_flag("TG_GPU_STATS"))
+}
+
 /// Aggregates GPU timestamp samples over a window of frames.
 ///
 /// Whole-command spans are summed per frame (single graphics queue, so this
@@ -44,6 +63,8 @@ pub(crate) struct GpuSpanWindow {
     command_spans: u64,
     command_ns: u64,
     passes: std::collections::HashMap<&'static str, (u64, u64)>,
+    /// Per pass: summed input vertices, fragment invocations, compute invocations.
+    statistics: std::collections::HashMap<&'static str, [u64; 3]>,
 }
 
 impl GpuSpanWindow {
@@ -61,6 +82,19 @@ impl GpuSpanWindow {
         }
     }
 
+    pub(crate) fn add_statistics(
+        &mut self,
+        pass_name: &'static str,
+        input_vertices: u64,
+        fragment_invocations: u64,
+        compute_invocations: u64,
+    ) {
+        let entry = self.statistics.entry(pass_name).or_default();
+        for (total, add) in entry.iter_mut().zip([input_vertices, fragment_invocations, compute_invocations]) {
+            *total = total.saturating_add(add);
+        }
+    }
+
     /// Counts a frame and, every `every` frames, returns the log line and resets.
     pub(crate) fn end_frame(&mut self, every: u64) -> Option<String> {
         self.frames += 1;
@@ -75,7 +109,17 @@ impl GpuSpanWindow {
             .iter()
             .take(20)
             .map(|(name, (ns, n))| {
-                format!("{name}={:.3}ms/frame(x{:.1})", ms(*ns) / frames, *n as f64 / frames)
+                let mut entry = format!("{name}={:.3}ms/frame(x{:.1})", ms(*ns) / frames, *n as f64 / frames);
+                if let Some([vertices, fragments, compute]) = self.statistics.get(*name) {
+                    // Per-frame averages; fragments in millions, the others in thousands.
+                    entry.push_str(&format!(
+                        "[vert={:.1}k frag={:.2}M comp={:.1}k]",
+                        *vertices as f64 / frames / 1e3,
+                        *fragments as f64 / frames / 1e6,
+                        *compute as f64 / frames / 1e3,
+                    ));
+                }
+                entry
             })
             .collect::<Vec<_>>()
             .join(", ");
@@ -117,6 +161,26 @@ mod tests {
         assert!(line.contains("command_sum_ms_per_frame=2.000"), "{line}");
         assert!(line.contains("Shadows=1.000ms/frame(x1.0)"), "{line}");
         assert!(window.end_frame(2).is_none(), "window must reset");
+    }
+
+    #[test]
+    fn gpu_window_appends_statistics_per_frame_and_resets_them() {
+        let mut window = GpuSpanWindow::default();
+        for _ in 0..2 {
+            window.add(4_000_000, Some("G-buffer"));
+            window.add_statistics("G-buffer", 3_000, 2_000_000, 0);
+            window.add(1_000_000, Some("DOF"));
+            let _ = window.end_frame(3);
+        }
+        window.add(4_000_000, Some("G-buffer"));
+        window.add_statistics("G-buffer", 3_000, 2_000_000, 500);
+        let line = window.end_frame(3).expect("window closes on the third frame");
+        assert!(line.contains("G-buffer=4.000ms/frame(x1.0)[vert=3.0k frag=2.00M comp=0.2k]"), "{line}");
+        // A pass without statistics keeps the plain format.
+        assert!(line.contains("DOF=0.667ms/frame(x0.7),") || line.ends_with("DOF=0.667ms/frame(x0.7)]; pass spans overlap command spans"), "{line}");
+        window.add(1_000_000, Some("G-buffer"));
+        let next = window.end_frame(1).unwrap();
+        assert!(!next.contains("vert="), "statistics must reset with the window: {next}");
     }
 }
 

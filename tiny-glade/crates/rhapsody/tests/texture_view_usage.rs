@@ -1,14 +1,8 @@
 //! Explicit native view usage, original packed radiance and attachment identity.
 use ash::vk;
-use rhapsody::{
-    bindless::{BindlessConfig, BindlessHeap},
-    device::{Device, DeviceConfig},
-    raw::{
-        instance::{InstanceBuilder, ValidationMessenger},
-        texture::{Texture, TextureDesc, TextureViewDesc},
-    },
-    rg::attachments::{Attachment, AttachmentCache, PreparedAttachments, RenderingPolicy},
-};
+use rhapsody::{bindless::{BindlessConfig, BindlessHeap}, device::{Device, DeviceConfig}, rg::attachments::{Attachment, AttachmentCache, PreparedAttachments, RenderingPolicy}};
+use rhapsody::resource::texture::{Texture, TextureDesc, TextureViewDesc};
+use rhapsody::native::instance::{InstanceBuilder, ValidationMessenger};
 use std::sync::Arc;
 
 fn fixture() -> rhapsody::Result<(Arc<Device>, ValidationMessenger)> {
@@ -18,7 +12,7 @@ fn fixture() -> rhapsody::Result<(Arc<Device>, ValidationMessenger)> {
         .layers
         .push(c"VK_LAYER_KHRONOS_validation".to_owned());
     let device = Device::new(
-        instance.build()?,
+        &instance.build()?,
         None,
         &DeviceConfig {
             validation: true,

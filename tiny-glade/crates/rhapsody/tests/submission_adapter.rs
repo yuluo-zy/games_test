@@ -155,10 +155,8 @@ fn known_loss_is_rejected_before_adapter_scratch_admission() {
 
 #[test]
 fn synchronization2_copies_with_real_timeline_waits() {
-    use rhapsody::raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-    };
+    use rhapsody::command::command_buffer::VulkanCommandPool;
+    use rhapsody::resource::buffer::{Buffer, BufferDesc};
     let Some(device) = gpu_test_support::initialize(
         "synchronization2 timeline submission",
         Device::new_headless(&DeviceConfig {

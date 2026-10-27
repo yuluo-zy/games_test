@@ -1,18 +1,9 @@
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-        semaphore::TimelineSemaphore,
-    },
-    rg::{
-        resource::AccessRange,
-        vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession},
-    },
-    transfer::{TransferConfig, TransferManager},
-};
+use rhapsody::{device::{Device, DeviceConfig}, rg::{resource::AccessRange, vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession}}, transfer::{TransferConfig, TransferManager}};
+use rhapsody::command::command_buffer::VulkanCommandPool;
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::device::semaphore::TimelineSemaphore;
 use std::sync::Arc;
 
 fn device() -> Option<Arc<Device>> {
@@ -144,7 +135,7 @@ fn distinct_target_batch_uses_one_slot_and_retains_fifo_priority_holes_and_oom_r
         .wait(5_000_000_000)
         .unwrap();
     for (index, target) in targets.into_iter().enumerate() {
-        let read = transfers.read_buffer(target, 0, 256).unwrap();
+        let read = transfers.read_buffer(&target, 0, 256).unwrap();
         read.wait(5_000_000_000).unwrap();
         let mut actual = [0; 256];
         assert_eq!(read.try_read(&mut actual).unwrap(), Some(256));
@@ -256,7 +247,7 @@ fn recoverable_submit_oom_keeps_original_ticket_payload_and_fifo_position() {
         .unwrap()
         .wait(5_000_000_000)
         .unwrap();
-    let read = transfers.read_buffer(target, 0, 32).unwrap();
+    let read = transfers.read_buffer(&target, 0, 32).unwrap();
     read.wait(5_000_000_000).unwrap();
     let mut actual = [0; 32];
     assert_eq!(read.try_read(&mut actual).unwrap(), Some(32));
@@ -326,7 +317,7 @@ fn owned_frame_deltas_preserve_disjoint_and_overlapping_updates_on_gpu() {
             .wait(5_000_000_000)
             .unwrap();
     }
-    let read = transfers.read_buffer(target, 0, 32).unwrap();
+    let read = transfers.read_buffer(&target, 0, 32).unwrap();
     read.wait(5_000_000_000).unwrap();
     let mut actual = [0; 32];
     read.try_read(&mut actual).unwrap().unwrap();
@@ -385,13 +376,13 @@ fn bounded_async_uploads_feed_the_graph_and_readbacks_keep_their_slots_leased() 
     pass.render(|_| true);
     let frame = session.execute_frame(graph.build()).unwrap();
     let first = transfers
-        .read_buffer(target.clone(), 128, expected.len())
+        .read_buffer(&target, 128, expected.len())
         .unwrap();
     let second = transfers
-        .read_buffer(target.clone(), 128, expected.len())
+        .read_buffer(&target, 128, expected.len())
         .unwrap();
     assert!(matches!(
-        transfers.read_buffer(target.clone(), 128, expected.len()),
+        transfers.read_buffer(&target, 128, expected.len()),
         Err(rhapsody::Error::Timeout)
     ));
     first.wait(10_000_000_000).unwrap();
@@ -402,11 +393,11 @@ fn bounded_async_uploads_feed_the_graph_and_readbacks_keep_their_slots_leased() 
     let clone = first.clone();
     drop(first);
     assert!(matches!(
-        transfers.read_buffer(target.clone(), 128, expected.len()),
+        transfers.read_buffer(&target, 128, expected.len()),
         Err(rhapsody::Error::Timeout)
     ));
     drop(clone);
-    let third = transfers.read_buffer(target, 128, expected.len()).unwrap();
+    let third = transfers.read_buffer(&target, 128, expected.len()).unwrap();
     third.wait(10_000_000_000).unwrap();
     assert_eq!(third.try_read(&mut actual).unwrap(), Some(expected.len()));
     assert_eq!(actual, expected);
@@ -487,7 +478,7 @@ fn nonblocking_host_writes_reject_in_flight_use_and_recover_after_completion() {
     command.end().unwrap();
     let pending = command
         .submit_to(
-            rhapsody::raw::device::DeviceQueue {
+            rhapsody::device::DeviceQueue {
                 handle: device.primary_queue(),
                 family: device.queue_family_index(),
                 index: 0,
@@ -497,7 +488,7 @@ fn nonblocking_host_writes_reject_in_flight_use_and_recover_after_completion() {
         )
         .unwrap();
     let rejected = target.write_bytes_unsynchronized(0, &[2; 64]);
-    let readback = transfers.read_buffer(target.clone(), 0, 64).unwrap();
+    let readback = transfers.read_buffer(&target, 0, 64).unwrap();
     let mut actual = [0; 64];
     assert_eq!(readback.try_read(&mut actual).unwrap(), None);
     release.signal();
@@ -598,7 +589,7 @@ fn queued_dirty_uploads_merge_exact_bytes_cancel_old_epochs_and_prioritize_other
     assert_eq!(first.offset, 0);
     assert_eq!(first.bytes, 8);
     first.wait(5_000_000_000).unwrap();
-    let read = manager.read_buffer(a, 0, 256).unwrap();
+    let read = manager.read_buffer(&a, 0, 256).unwrap();
     read.wait(5_000_000_000).unwrap();
     let mut output = [0; 256];
     read.try_read(&mut output).unwrap().unwrap();
@@ -651,7 +642,7 @@ fn queued_upload_full_staging_defers_without_publishing_then_recovers_after_real
     blocked.end().unwrap();
     let blocked = blocked
         .submit_to(
-            rhapsody::raw::device::DeviceQueue {
+            rhapsody::device::DeviceQueue {
                 handle: device.primary_queue(),
                 family: device.queue_family_index(),
                 index: 0,
@@ -687,7 +678,7 @@ fn queued_upload_full_staging_defers_without_publishing_then_recovers_after_real
         !manager.cancel_upload(&queued).unwrap(),
         "submitted work cannot be falsely cancelled"
     );
-    let read = manager.read_buffer(target, 0, 256).unwrap();
+    let read = manager.read_buffer(&target, 0, 256).unwrap();
     read.wait(5_000_000_000).unwrap();
     let mut output = [0; 256];
     read.try_read(&mut output).unwrap().unwrap();
@@ -796,7 +787,7 @@ fn readback_envelopes_reuse_capacity_and_escaping_tickets_keep_their_actual_cpu_
         .unwrap();
     let mut baseline = None;
     for _ in 0..64 {
-        let read = manager.read_buffer(target.clone(), 0, 256).unwrap();
+        let read = manager.read_buffer(&target, 0, 256).unwrap();
         read.wait(5_000_000_000).unwrap();
         let mut output = [0; 256];
         read.try_read(&mut output).unwrap().unwrap();
@@ -810,7 +801,7 @@ fn readback_envelopes_reuse_capacity_and_escaping_tickets_keep_their_actual_cpu_
             baseline = Some(bytes);
         }
     }
-    let escaped = manager.read_buffer(target, 0, 256).unwrap();
+    let escaped = manager.read_buffer(&target, 0, 256).unwrap();
     escaped.wait(5_000_000_000).unwrap();
     drop(manager);
     device.try_collect_all_completed().unwrap();
@@ -855,7 +846,7 @@ fn overwriting_a_range_read_by_earlier_gpu_work_is_ordered_by_tracked_state() {
         let bytes = [round + 1; 64];
         gpu_test_support::submit_upload(&mut manager, target.clone(), 32, &bytes).unwrap();
         // The readback reads the range; the next upload must order after it.
-        let readback = manager.read_buffer(target.clone(), 32, 64).unwrap();
+        let readback = manager.read_buffer(&target, 32, 64).unwrap();
         readback.wait(10_000_000_000).unwrap();
         let mut output = [0; 64];
         assert_eq!(readback.try_read(&mut output).unwrap(), Some(64));

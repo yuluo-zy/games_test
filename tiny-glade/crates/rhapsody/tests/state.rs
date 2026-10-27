@@ -29,10 +29,10 @@ fn graph_passes_commit_atomically_and_callbacks_are_consumed_once() {
         fn set_debug_name(&mut self, _: u64, _: rhapsody::rg::graph::Descriptor, _: &str) {}
     }
     impl rhapsody::rg::graph::AccessDependency for Fixture {
-        fn access_mask(&mut self, _: u8) -> ash::vk::AccessFlags {
+        fn access_mask(&self, _: u8) -> ash::vk::AccessFlags {
             ash::vk::AccessFlags::empty()
         }
-        fn is_write(&mut self, _: u8) -> bool {
+        fn is_write(&self, _: u8) -> bool {
             false
         }
     }
@@ -40,7 +40,7 @@ fn graph_passes_commit_atomically_and_callbacks_are_consumed_once() {
         decl,
         &mut Default::default(),
         &mut Fixture,
-        &mut Fixture,
+        &Fixture,
     )
     .unwrap();
     use rhapsody::command::recording::Queue;
@@ -49,7 +49,7 @@ fn graph_passes_commit_atomically_and_callbacks_are_consumed_once() {
     let owners = std::cell::RefCell::new(rhapsody::rg::owner_storage::ResourceOwners::default());
     let errors = std::cell::RefCell::new(None);
     #[cfg(feature = "cpu-probe")]
-    let command_workload = std::cell::Cell::new(rhapsody::rg::CommandWorkload::default());
+    let command_workload = std::cell::Cell::new(rhapsody::profile::CommandWorkload::default());
     let context = || rhapsody::rg::executor::PassContext {
         #[cfg(feature = "cpu-probe")]
         command_workload: &command_workload,

@@ -2,19 +2,10 @@
 //! render-graph planner's per-aspect depth/stencil layouts on a real device.
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::{
-    device::{Device, DeviceConfig, Feature},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        texture::TextureDesc,
-    },
-    resource::OwnershipRange,
-    rg::{
-        executor::PassContext,
-        resource::AccessRange,
-        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::{device::{Device, DeviceConfig, Feature}, rg::{executor::PassContext, resource::AccessRange, vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession}}};
+use rhapsody::tracking::OwnershipRange;
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::texture::TextureDesc;
 use std::sync::Arc;
 
 const TRANSFER_WRITE: u8 = 0x34;

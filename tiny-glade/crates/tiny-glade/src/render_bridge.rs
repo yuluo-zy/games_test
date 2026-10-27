@@ -280,7 +280,7 @@ impl CoreRenderBridge {
         &self.raster
     }
     /// Cumulative frame-plan cache statistics of the shared session.
-    pub fn plan_cache_stats(&self) -> rhapsody::rg::CacheStats {
+    pub fn plan_cache_stats(&self) -> rhapsody::collections::CacheStats {
         self.session.borrow().chain.plan_cache_stats()
     }
 

@@ -148,7 +148,7 @@ fn all_presets_keep_their_complete_description_and_d16_clear_size() {
         assert_eq!(library.get_rg_texture(TexturePreset(preset)).desc, expected);
         assert_eq!(
             format_bytes_per_texel(expected.format),
-            rhapsody::resource::try_vk_format_info(ash::vk::Format::from_raw(
+            rhapsody::format::observed::try_vk_format_info(ash::vk::Format::from_raw(
                 expected.format as i32
             ))
             .unwrap()

@@ -218,7 +218,7 @@ pub use crate::rhapsody_types::{
 pub struct ManagedHandle(pub u64);
 
 /// Managed handle wrapper for a typed GPU object
-/// (physical resource keys use `rhapsody::resource::Handle<T>`; game identity retained for
+/// (physical resource keys use `rhapsody::tracking::Handle<T>`; game identity retained for
 /// the wp1 `DrawPacket` / `draw_stream` surface).
 /// Clone/Debug are implemented manually (no `T: Clone/Debug` bound) so the
 /// handle stays usable as a map key / packet field for any object type.

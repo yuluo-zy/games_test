@@ -108,12 +108,12 @@ impl PassBuilder<'_> {
     ) -> Result<&mut Self, BuildError> {
         self.graph.check_pass_capacity()?;
         self.graph.check_handle(resource)?;
-        if usize::from(access_code) >= crate::raw::access_table::ACCESS_CODE_COUNT {
+        if usize::from(access_code) >= crate::native::access_table::ACCESS_CODE_COUNT {
             return Err(BuildError::Contract(
                 super::resource::ResourceContractError::InvalidAccessCode(access_code),
             ));
         }
-        if crate::raw::access_table::is_write(access_code) {
+        if crate::native::access_table::is_write(access_code) {
             return Err(BuildError::Contract(
                 super::resource::ResourceContractError::WrongAccessMode {
                     resource: resource.raw(),
@@ -150,12 +150,12 @@ impl PassBuilder<'_> {
     ) -> Result<&mut Self, BuildError> {
         self.graph.check_pass_capacity()?;
         self.graph.check_handle(resource)?;
-        if usize::from(access_code) >= crate::raw::access_table::ACCESS_CODE_COUNT {
+        if usize::from(access_code) >= crate::native::access_table::ACCESS_CODE_COUNT {
             return Err(BuildError::Contract(
                 super::resource::ResourceContractError::InvalidAccessCode(access_code),
             ));
         }
-        if crate::raw::access_table::is_write(access_code) {
+        if crate::native::access_table::is_write(access_code) {
             return Err(BuildError::Contract(
                 super::resource::ResourceContractError::WrongAccessMode {
                     resource: resource.raw(),
@@ -219,7 +219,7 @@ impl PassBuilder<'_> {
             match access.version {
                 super::resource::AccessVersion::Write { current, .. } => version = current,
                 super::resource::AccessVersion::Automatic
-                    if crate::raw::access_table::is_write(access.access_code) =>
+                    if crate::native::access_table::is_write(access.access_code) =>
                 {
                     version = version.checked_add(1).ok_or(BuildError::Contract(
                         super::resource::ResourceContractError::VersionOverflow(resource.raw()),
@@ -246,12 +246,12 @@ impl PassBuilder<'_> {
         if matches!(descriptor, super::graph::Descriptor::Image(_)) != texture {
             return Err(BuildError::ResourceKindMismatch(resource.raw()));
         }
-        if usize::from(access_code) >= crate::raw::access_table::ACCESS_CODE_COUNT {
+        if usize::from(access_code) >= crate::native::access_table::ACCESS_CODE_COUNT {
             return Err(BuildError::Contract(
                 super::resource::ResourceContractError::InvalidAccessCode(access_code),
             ));
         }
-        if crate::raw::access_table::is_write(access_code) != write {
+        if crate::native::access_table::is_write(access_code) != write {
             return Err(BuildError::Contract(
                 super::resource::ResourceContractError::WrongAccessMode {
                     resource: resource.raw(),

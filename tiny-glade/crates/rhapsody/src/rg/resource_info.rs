@@ -2,7 +2,7 @@
 //! ordered acquire/release events used to bind physical resources.
 use std::collections::HashSet;
 
-use crate::raw::resource_usage::{buffer_usage_for_access, image_usage_for_access};
+use crate::native::resource_usage::{buffer_usage_for_access, image_usage_for_access};
 use ash::vk::AccessFlags;
 
 /// Marks an absent previous/next/first/last access index.
@@ -235,7 +235,7 @@ impl ResourceInfo {
             ));
         }
         let mut access_count = 0usize;
-        let mut masks = [None; crate::raw::access_table::ACCESS_CODE_COUNT];
+        let mut masks = [None; crate::native::access_table::ACCESS_CODE_COUNT];
         for origin in origins {
             origin.type_code()?;
         }

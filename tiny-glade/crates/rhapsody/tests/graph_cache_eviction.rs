@@ -3,15 +3,8 @@
 //! recently used first, and never anything lent to a frame.
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::{
-    device::{AllocationStrategy, Device, DeviceConfig},
-    raw::buffer::{Buffer, BufferDesc},
-    rg::{
-        executor::PassContext,
-        graph::BuiltGraph,
-        vulkan::{AccessTable, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::{device::{AllocationStrategy, Device, DeviceConfig}, rg::{executor::PassContext, graph::BuiltGraph, vulkan::{AccessTable, ResourceSpec, VulkanGraphBackend, VulkanGraphSession}}};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
 use std::sync::Arc;
 
 const MIB: u64 = 1 << 20;

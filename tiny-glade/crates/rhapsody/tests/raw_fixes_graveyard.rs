@@ -1,7 +1,8 @@
 //! 真实 GPU 回归：提交失败不占时间线值，未完成工作不能提前回收。
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::raw::{graveyard::Doomed, init::create_headless_device};
+use rhapsody::device::graveyard::Doomed;
+use rhapsody::device::selection::create_headless_device;
 use rhapsody::sync::SyncSet;
 
 #[test]
@@ -101,13 +102,11 @@ fn unused_objects_are_destroyed_without_idle() {
 
 #[test]
 fn dropping_a_submission_defers_used_resources_without_blocking_or_retiring_unused_ones() {
-    use rhapsody::raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-        device::DeviceQueue,
-        sampler::Sampler,
-        semaphore::TimelineSemaphore,
-    };
+    use rhapsody::command::command_buffer::VulkanCommandPool;
+    use rhapsody::device::DeviceQueue;
+    use rhapsody::resource::buffer::{Buffer, BufferDesc};
+    use rhapsody::resource::sampler::Sampler;
+    use rhapsody::device::semaphore::TimelineSemaphore;
     use std::{
         sync::{Arc, mpsc},
         time::Duration,

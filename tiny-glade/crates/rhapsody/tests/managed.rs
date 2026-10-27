@@ -1,5 +1,5 @@
 //! Exercise the actual typed weak stores under concurrent ownership changes.
-use rhapsody::raw::managed::resources::ResourceManager;
+use rhapsody::resource::managed::resources::ResourceManager;
 use std::sync::{
     Arc,
     atomic::{AtomicUsize, Ordering},

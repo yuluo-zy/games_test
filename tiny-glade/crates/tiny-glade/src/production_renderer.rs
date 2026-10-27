@@ -24,10 +24,8 @@ use country_core::{
         world_frame as core_world_frame,
     },
 };
-use rhapsody::{
-    interop::InstanceBuilder, present::AcquiredImageLease, present::PresentTicket,
-    present::Swapchain, rg::SessionFrameReceipt,
-};
+use rhapsody::{present::AcquiredImageLease, present::PresentTicket, present::Swapchain, rg::SessionFrameReceipt};
+use rhapsody::native::InstanceBuilder;
 
 use crate::{
     egui_backend::EguiBackend,
@@ -725,7 +723,7 @@ impl ProductionRenderer {
         let platform = PlatformSurface::new(&window)?;
         let surface = platform.create_surface(instance.clone())?;
         let device = rhapsody::device::Device::new(
-            instance,
+            &instance,
             Some(&surface),
             &rhapsody::device::DeviceConfig {
                 preferred_device: preferred.map(rhapsody::device::DevicePreference::ByUuid).unwrap_or_default(),
@@ -914,11 +912,11 @@ impl ProductionRenderer {
         &self.device
     }
     /// 从当前窗口真实surface枚举一次候选；只读查询，不创建另一窗口或设备。
-    pub(crate) fn settings_graphics_devices(&self) -> Result<Vec<rhapsody::interop::AvailableGraphicsDevice>> {
+    pub(crate) fn settings_graphics_devices(&self) -> Result<Vec<rhapsody::device::AvailableGraphicsDevice>> {
         let instance = self.device.instance().clone();
-        let devices = rhapsody::interop::enumerate_physical_devices(instance.clone())?
+        let devices = rhapsody::native::enumerate_physical_devices(&instance.clone())?
             .into_iter().map(Arc::new).collect();
-        let graphics = rhapsody::interop::GraphicsInstance { instance, devices };
+        let graphics = rhapsody::device::GraphicsInstance { instance, devices };
         Ok(graphics.available_for_surface(Some(self.swapchain.surface.raw_handle()), Default::default())?
             .available_devices())
     }
@@ -1071,6 +1069,14 @@ impl ProductionRenderer {
             session.backend.poll_gpu_timings()?;
             for sample in session.backend.drain_gpu_timings() {
                 window.add(sample.duration_ns, sample.pass_name);
+                if let (Some(name), Some(stats)) = (sample.pass_name, sample.statistics) {
+                    window.add_statistics(
+                        name,
+                        stats.input_vertices,
+                        stats.fragment_invocations,
+                        stats.compute_invocations,
+                    );
+                }
             }
             Ok::<_, rhapsody::Error>(())
         });
@@ -1849,7 +1855,7 @@ impl ProductionRenderer {
             // Completion polls since the previous logged frame: how often the
             // frame asks the driver about GPU progress.
             let plans = self.bridge.plan_cache_stats();
-            let reasons = rhapsody::rg::CacheReason::ALL
+            let reasons = rhapsody::collections::CacheReason::ALL
                 .iter()
                 .filter_map(|reason| {
                     let count = plans.diagnostics.misses(*reason);
@@ -2251,6 +2257,10 @@ impl RenderHost for ProductionRenderHost<'_> {
         let config = (gpu_profiling || pass_spans).then(|| rhapsody::rg::GpuTimingConfig {
             pass_spans,
             pending_commands: if pass_spans { 1024 } else { 256 },
+            // Diagnostics layered on pass spans: serialised exclusive spans and
+            // per-pass pipeline statistics. Both are off unless requested.
+            isolate_passes: pass_spans && crate::frame_counters::gpu_isolate_enabled(),
+            pass_statistics: pass_spans && crate::frame_counters::gpu_statistics_enabled(),
             ..Default::default()
         });
         let result = self.renderer.bridge.with_session(|session| session.backend.configure_gpu_timing(config));
@@ -2764,14 +2774,14 @@ mod macos {
         }
         pub fn create_surface(
             &self,
-            instance: Arc<rhapsody::interop::VulkanInstance>,
-        ) -> Result<Arc<rhapsody::present::Surface>> {
+            instance: Arc<rhapsody::native::VulkanInstance>,
+        ) -> Result<Arc<rhapsody::native::surface::Surface>> {
             let loader =
                 ash::ext::metal_surface::Instance::new(&instance.entry, instance.raw_instance());
             let info = vk::MetalSurfaceCreateInfoEXT::default().layer((*self.layer).cast());
             let handle = unsafe { loader.create_metal_surface(&info, None) }?;
             Ok(Arc::new(unsafe {
-                rhapsody::present::Surface::from_raw(instance, handle, true)
+                rhapsody::native::surface::Surface::from_raw(instance, handle, true)
             }))
         }
     }
@@ -2824,13 +2834,13 @@ impl PlatformSurface {
 
     fn create_surface(
         &self,
-        instance: Arc<rhapsody::interop::VulkanInstance>,
-    ) -> Result<Arc<rhapsody::present::Surface>> {
+        instance: Arc<rhapsody::native::VulkanInstance>,
+    ) -> Result<Arc<rhapsody::native::surface::Surface>> {
         // Keep both the native Win32 identity and its actual window owner.
         // Surface destruction releases this lease after vkDestroySurfaceKHR;
         // failed swapchain teardown retains the same lease with the Surface.
         unsafe {
-            rhapsody::present::Surface::from_win32_retained(
+            rhapsody::native::surface::Surface::from_win32_retained(
                 instance,
                 self.hinstance,
                 self.hwnd,
@@ -2887,8 +2897,8 @@ mod linux {
         }
         pub fn create_surface(
             &self,
-            instance: Arc<rhapsody::interop::VulkanInstance>,
-        ) -> Result<Arc<rhapsody::present::Surface>> {
+            instance: Arc<rhapsody::native::VulkanInstance>,
+        ) -> Result<Arc<rhapsody::native::surface::Surface>> {
             let handle = match (self.window, self.display) {
                 (RawWindowHandle::Xlib(w), RawDisplayHandle::Xlib(d)) => {
                     let display = d.display.context("Xlib display is null")?;
@@ -2924,7 +2934,7 @@ mod linux {
                 _ => anyhow::bail!("winit window and display handles are of different kinds"),
             };
             Ok(Arc::new(unsafe {
-                rhapsody::present::Surface::from_raw(instance, handle, true)
+                rhapsody::native::surface::Surface::from_raw(instance, handle, true)
             }))
         }
     }
@@ -2942,8 +2952,8 @@ impl PlatformSurface {
     }
     fn create_surface(
         &self,
-        _: Arc<rhapsody::interop::VulkanInstance>,
-    ) -> Result<Arc<rhapsody::present::Surface>> {
+        _: Arc<rhapsody::native::VulkanInstance>,
+    ) -> Result<Arc<rhapsody::native::surface::Surface>> {
         anyhow::bail!("native surface adapter is unavailable")
     }
 }

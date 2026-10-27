@@ -172,7 +172,7 @@ struct BufferUploads {
 #[cfg(feature = "cpu-probe")]
 pub struct BufferUploadObservation {
     entries: Vec<ObservedBufferUpload>,
-    memory: rhapsody::device::CpuStorageReservation,
+    memory: rhapsody::accounting::CpuStorageReservation,
     target: Buffer,
     valid: bool,
     rejected_admissions: u64,
@@ -369,7 +369,7 @@ mod frame_buffer_tests {
             "a capacity retry must never submit the accepted prefix twice");
         let mut transfers = rhapsody::transfer::TransferManager::new(device.clone(),
             rhapsody::transfer::TransferConfig::default()).unwrap();
-        let ticket = transfers.read_buffer(host.managed_buffer(&handle).unwrap().shared(), 0, data.len()).unwrap();
+        let ticket = transfers.read_buffer(&host.managed_buffer(&handle).unwrap().shared(), 0, data.len()).unwrap();
         ticket.wait(10_000_000_000).unwrap();
         let mut actual = vec![0; data.len()];
         assert_eq!(ticket.try_read(&mut actual).unwrap(), Some(data.len()));
@@ -411,7 +411,7 @@ mod frame_buffer_tests {
             "repaired transactions restore the normal constant-time fast path");
         let mut transfer = rhapsody::transfer::TransferManager::new(device,
             rhapsody::transfer::TransferConfig::default()).unwrap();
-        let ticket = transfer.read_buffer(host.managed_buffer(&handle).unwrap().shared(), 0, 16).unwrap();
+        let ticket = transfer.read_buffer(&host.managed_buffer(&handle).unwrap().shared(), 0, 16).unwrap();
         ticket.wait(10_000_000_000).unwrap();
         let mut bytes = [0; 16];
         assert_eq!(ticket.try_read(&mut bytes).unwrap(), Some(16));
@@ -432,7 +432,7 @@ mod frame_buffer_tests {
     fn gpu_bytes(device: &Arc<Device>, buffer: ManagedBuffer) -> Vec<u8> {
         let mut transfer = rhapsody::transfer::TransferManager::new(
             device.clone(), rhapsody::transfer::TransferConfig::default()).unwrap();
-        let ticket = transfer.read_buffer(buffer.shared(), 0, 16).unwrap();
+        let ticket = transfer.read_buffer(&buffer.shared(), 0, 16).unwrap();
         ticket.wait(10_000_000_000).unwrap();
         let mut bytes = vec![0; 16];
         assert_eq!(ticket.try_read(&mut bytes).unwrap(), Some(16));
@@ -581,7 +581,7 @@ mod frame_buffer_tests {
         let read_all = |buffer: ManagedBuffer| {
             let mut transfers = rhapsody::transfer::TransferManager::new(device.clone(),
                 rhapsody::transfer::TransferConfig::default()).unwrap();
-            let read = transfers.read_buffer(buffer.shared(), 0, buffer.size as usize).unwrap();
+            let read = transfers.read_buffer(&buffer.shared(), 0, buffer.size as usize).unwrap();
             read.wait(10_000_000_000).unwrap();
             let mut bytes = vec![0; buffer.size as usize];
             assert_eq!(read.try_read(&mut bytes).unwrap(), Some(bytes.len()));
@@ -688,7 +688,7 @@ mod stable_frame_buffer_tests {
             assert!(Arc::ptr_eq(&old.shared(), &host.managed_buffer(&addressable).unwrap().shared()));
             let mut transfer = rhapsody::transfer::TransferManager::new(
                 device.clone(), rhapsody::transfer::TransferConfig::default()).unwrap();
-            let ticket = transfer.read_buffer(old.shared(), 0, 16).unwrap();
+            let ticket = transfer.read_buffer(&old.shared(), 0, 16).unwrap();
             ticket.wait(10_000_000_000).unwrap();
             assert_eq!(ticket.try_read(&mut observed).unwrap(), Some(16));
             assert_eq!(observed, [10; 16]);
@@ -704,7 +704,8 @@ mod mapped_raster_gpu_tests {
     use super::*;
     use country_core::{render::ssbo::{MappedStorageBuffer, StorageElement, MAPPED_MEMORY_READBACK},
         resources::{world_raster::{DirtyTilePublisher, WorldRaster}, world_raster_defs::PathRasterStagingSsbo}};
-    use rhapsody::{command::VulkanCommandPool, raw::semaphore::TimelineSemaphore};
+    use rhapsody::command::VulkanCommandPool;
+    use rhapsody::device::semaphore::TimelineSemaphore;
     use std::{sync::mpsc, time::Duration};
 
     // The fixture adds TRANSFER_SRC to the actual original staging allocation
@@ -795,8 +796,8 @@ mod mapped_raster_gpu_tests {
         let mut release = SignalOnDrop { semaphore: gate.clone(), armed: true };
         let mut command = pool.allocate().unwrap();
         unsafe {
-            command.retain_opaque_buffer_range(source.shared(), 0, source.size).unwrap();
-            command.retain_opaque_buffer_range(output.shared(), 0, output.size).unwrap();
+            command.retain_opaque_buffer_range(&source.shared(), 0, source.size).unwrap();
+            command.retain_opaque_buffer_range(&output.shared(), 0, output.size).unwrap();
         }
         command.begin().unwrap();
         unsafe {
@@ -816,7 +817,7 @@ mod mapped_raster_gpu_tests {
                     .size(output.size)], &[]);
         }
         command.end().unwrap();
-        let pending = command.submit_to(rhapsody::raw::device::DeviceQueue {
+        let pending = command.submit_to(rhapsody::device::DeviceQueue {
             handle: device.primary_queue(), family: device.queue_family_index(), index: 0,
         }, &[(gate, 1, vk::PipelineStageFlags::ALL_COMMANDS)], &[]).unwrap();
         assert!(!pending.is_complete().unwrap());
@@ -1711,9 +1712,9 @@ impl TextureHost {
                         bytes.len() as u64, vk::BufferUsageFlags::TRANSFER_SRC))?);
                 staging.write_bytes_unsynchronized(0, &bytes)?;
                 let queue = device.queue(rhapsody::device::QueueClass::Graphics)?;
-                rhapsody::resource::with_setup_command(&device, &[], |command| unsafe {
+                rhapsody::transfer::with_setup_command(&device, &[], |command| unsafe {
                     rhapsody::command::record_texture_regions(command, queue,
-                        texture.clone(), staging, &regions,
+                        &texture.clone(), &staging, &regions,
                         vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
                 })?.into_value();
                 #[cfg(feature = "cpu-probe")]
@@ -2121,7 +2122,7 @@ impl country_core::asset_libraries::texture_library::TextureLibraryDevice for Te
             let regions: Vec<_> = (0..layer_count)
                 .map(|layer| {
                     let start = layer as usize * bytes_per_layer;
-                    rhapsody::resource::TextureUpdateRegion {
+                    rhapsody::command::TextureUpdateRegion {
                         data: &data[start..start + bytes_per_layer],
                         extent,
                         mip_level,
@@ -2129,7 +2130,7 @@ impl country_core::asset_libraries::texture_library::TextureLibraryDevice for Te
                     }
                 })
                 .collect();
-            rhapsody::resource::update_texture_regions(&device, &managed, &regions)
+            rhapsody::transfer::update_texture_regions(&device, &managed, &regions)
                 .map_err(crate::render_upload_boundary::job_error)
         }).map_err(crate::render_upload_boundary::backend_error)
     }
@@ -2304,7 +2305,7 @@ use country_core::render::shader::boundary::{
     CompiledShaderPipeline as CoreCompiled, ComputePipeline, ComputePipelineDesc,
     Error as ShaderError, RasterPipeline, RasterPipelineDesc, RasterPipelineKey, ShaderBackend,
 };
-use rhapsody::bindless::BindlessShaderAbi as BindlessAbi;
+use rhapsody::pipeline::BindlessShaderAbi as BindlessAbi;
 use rhapsody::bindless::{
     BindlessConfig, BindlessHeap, BindlessLease, BindlessParameters, BindlessResource,
     BindlessShaderPackage,
@@ -2491,7 +2492,7 @@ impl RenderPassHost {
         for attachment in &key.attachments {
             let format = vk::Format::from_raw(attachment.format);
             if attachment.depth_stencil {
-                let aspects = rhapsody::resource::vk_format_valid_aspect_flags(format);
+                let aspects = rhapsody::format::vk_format_valid_aspect_flags(format);
                 if aspects.contains(vk::ImageAspectFlags::DEPTH) {
                     formats.depth = format;
                 }
@@ -4288,7 +4289,7 @@ impl CorePassGraph for GraphPasses {
                 .managed
                 .ok_or_else(|| rhapsody::Error::invalid_usage("staging copy has no resources"))?;
             #[cfg(feature = "cpu-probe")]
-            let mut copy_workload = rhapsody::rg::CommandWorkload::default();
+            let mut copy_workload = rhapsody::profile::CommandWorkload::default();
             for &(source, target, src_offset, dst_offset, size) in &declared {
                 let source = managed.buffer_for(source.raw()).map_err(|error| {
                     rhapsody::Error::invalid_usage_with("staging source", error)
@@ -4501,8 +4502,8 @@ impl CorePassGraph for GraphPasses {
 enum CopyWorkload { StagingH2d, ImmutableProducerH2d, CachedD2d }
 
 #[cfg(feature = "cpu-probe")]
-fn recorded_copy_workload(kind: CopyWorkload, bytes: u64) -> rhapsody::rg::CommandWorkload {
-    let mut workload = rhapsody::rg::CommandWorkload::default();
+fn recorded_copy_workload(kind: CopyWorkload, bytes: u64) -> rhapsody::profile::CommandWorkload {
+    let mut workload = rhapsody::profile::CommandWorkload::default();
     match kind {
         CopyWorkload::StagingH2d => workload.staging_h2d_copy_recorded_bytes = bytes,
         CopyWorkload::ImmutableProducerH2d => workload.immutable_producer_h2d_copy_recorded_bytes = bytes,
@@ -4581,7 +4582,7 @@ fn project_view_desc(
     if let Some(v) = view.aspect_mask {
         out.aspect = vk::ImageAspectFlags::from_raw(v);
     } else if out.aspect == (vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL) {
-        // O rhapsody::raw::managed::texture::create_vk_image_view 0x140bdcba0 @140bdcc8d..9d:
+        // O rhapsody::resource::managed::texture::create_vk_image_view 0x140bdcba0 @140bdcc8d..9d:
         // an unspecified aspect is `vk_format_valid_aspect_flags(format)`, and DEPTH|STENCIL (6)
         // becomes DEPTH (2) alone (a sampled view may not carry both: VUID-01976).
         out.aspect = vk::ImageAspectFlags::DEPTH;
@@ -4663,7 +4664,7 @@ pub(crate) fn compute_view_range(
     };
     let range = AccessRange::Texture {
         aspect_mask: view.aspect_mask.unwrap_or_else(|| {
-            rhapsody::resource::vk_format_valid_aspect_flags(vk::Format::from_raw(
+            rhapsody::format::vk_format_valid_aspect_flags(vk::Format::from_raw(
                 image.words_at_00_through_18[2] as i32,
             ))
             .as_raw()
@@ -4877,7 +4878,7 @@ struct ComputeExecHost<'a> {
     bind_parameters: &'a mut dyn FnMut(&[u8]) -> rhapsody::Result<()>,
     parameters: ComputeParameterState,
     #[cfg(feature = "cpu-probe")]
-    command_workload: rhapsody::rg::CommandWorkload,
+    command_workload: rhapsody::profile::CommandWorkload,
 }
 
 /// Executes the same admission checks as the native path. The closure returns
@@ -4887,13 +4888,13 @@ struct ComputeExecHost<'a> {
 #[cfg(feature = "cpu-probe")]
 fn issue_counted_compute_dispatch(
     parameters: &mut ComputeParameterState,
-    workload: &mut rhapsody::rg::CommandWorkload,
+    workload: &mut rhapsody::profile::CommandWorkload,
     indirect: bool,
     issue: impl FnOnce() -> Option<()>,
 ) -> Option<()> {
     if !parameters.can_dispatch() { return Some(()); }
     issue()?;
-    let mut issued = rhapsody::rg::CommandWorkload::default();
+    let mut issued = rhapsody::profile::CommandWorkload::default();
     if indirect { issued.indirect_dispatch_api_calls = 1; }
     else { issued.direct_dispatch_api_calls = 1; }
     workload.merge(issued);
@@ -5308,7 +5309,7 @@ impl GraphPasses {
                 contents_unused = inactive_texture_bindings.contains(&(index as u32));
                 allow_undefined = undefined_texture_bindings.contains(&(index as u32));
                 if allow_undefined
-                    && (contents_unused || rhapsody::command::is_write(access.access))
+                    && (contents_unused || rhapsody::native::is_write(access.access))
                 {
                     return Err(rhapsody::Error::invalid_usage(
                         "undefined texture read metadata conflicts with its actual access",
@@ -5358,7 +5359,7 @@ impl GraphPasses {
                             | CorePassBinding::Buffer { resource }
                                 if !used_image_views[index]
                                     && *resource == access.resource
-                                    && !rhapsody::command::is_write(access.access) =>
+                                    && !rhapsody::native::is_write(access.access) =>
                             {
                                 Some(index)
                             }
@@ -5389,12 +5390,12 @@ impl GraphPasses {
         declared.on_queue(rhapsody::device::QueueClass::Compute);
         for (a, range, contents_unused, allow_undefined, preserves_texture) in &declared_accesses {
             let resource = declared.resource_handle(a.resource)?;
-            if *contents_unused && !rhapsody::command::is_write(a.access) {
+            if *contents_unused && !rhapsody::native::is_write(a.access) {
                 declared.add_inactive_resource_read_range(resource, a.access, a.group, *range)?;
-            } else if *allow_undefined && !rhapsody::command::is_write(a.access) {
+            } else if *allow_undefined && !rhapsody::native::is_write(a.access) {
                 declared.add_undefined_content_read_range(resource, a.access, a.group, *range)?;
             } else if (*preserves_texture || preserving_buffers.contains(&a.resource))
-                && rhapsody::command::is_write(a.access)
+                && rhapsody::native::is_write(a.access)
             {
                 declared
                     .add_preserving_resource_access_range(resource, a.access, a.group, *range)?;
@@ -5596,7 +5597,7 @@ impl GraphPasses {
                     )
                     .inspect_err(|error| diagnose("parameters.complete_group", error))?;
                 // 原访问范围与上传角色已在同一组内保留；迁页后不使用旧数值下标。
-                unsafe { next.bind_pass(&ctx, pipeline.clone())? };
+                unsafe { next.bind_pass(&ctx, &pipeline.clone())? };
                 parameters = Some(next);
                 Ok(())
             };
@@ -5632,16 +5633,16 @@ impl GraphPasses {
     }
 }
 
-impl rhapsody::resource::GpuUse for RasterEntry {
-    fn visit_uses(&self, visit: &mut rhapsody::resource::UseVisitor<'_>) -> rhapsody::Result<()> {
+impl rhapsody::tracking::GpuUse for RasterEntry {
+    fn visit_uses(&self, visit: &mut rhapsody::tracking::UseVisitor<'_>) -> rhapsody::Result<()> {
         if let Ok(pipeline) = self.pipeline.try_get() {
             pipeline.visit_uses(visit)?;
         }
         Ok(())
     }
 }
-impl rhapsody::resource::GpuUse for ComputeEntry {
-    fn visit_uses(&self, visit: &mut rhapsody::resource::UseVisitor<'_>) -> rhapsody::Result<()> {
+impl rhapsody::tracking::GpuUse for ComputeEntry {
+    fn visit_uses(&self, visit: &mut rhapsody::tracking::UseVisitor<'_>) -> rhapsody::Result<()> {
         if let Ok(pipeline) = self.pipeline.try_get() {
             pipeline.visit_uses(visit)?;
         }
@@ -5717,7 +5718,7 @@ mod buffer_description_tests {
 #[cfg(all(test, feature = "cpu-probe"))]
 mod command_workload_probe_tests {
     use super::{ComputeParameterState, CopyWorkload, issue_counted_compute_dispatch, recorded_copy_workload};
-    use rhapsody::rg::CommandWorkload;
+    use rhapsody::profile::CommandWorkload;
 
     #[test]
     fn rejected_or_unresolved_dispatch_never_records_a_native_command() {

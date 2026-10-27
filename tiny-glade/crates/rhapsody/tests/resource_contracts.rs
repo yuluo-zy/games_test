@@ -1,11 +1,7 @@
 //! Production graph IDs, resource versions and bounded access validation; CPU only.
 use ash::vk;
-use rhapsody::rg::{
-    graph::{BufferDesc, BuildError, Descriptor, OriginSource, RenderGraph},
-    plan::{GraphDefinition, PlanContext},
-    resource::{AccessRange, AccessVersion, ResourceContractError, ResourceHandle, ResourceOrigin},
-    vulkan::{AccessTable, ResourceSpec},
-};
+use rhapsody::rg::{graph::{BuildError, Descriptor, OriginSource, RenderGraph}, plan::{GraphDefinition, PlanContext}, resource::{AccessRange, AccessVersion, ResourceContractError, ResourceHandle, ResourceOrigin}, vulkan::{AccessTable, ResourceSpec}};
+use rhapsody::rg::resource_registry::BufferDesc;
 
 const READ: u8 = 0x26;
 const WRITE: u8 = 0x34;
@@ -19,7 +15,7 @@ fn buffer_desc() -> BufferDesc {
 fn graph_definition(graph: RenderGraph) -> Result<GraphDefinition, rhapsody::Error> {
     GraphDefinition::from_declaration(
         &graph.build().declaration,
-        &mut AccessTable::original(),
+        &AccessTable::original(),
         PlanContext::default(),
     )
 }
@@ -273,8 +269,8 @@ fn export_range_validation_rejects_wrong_kind_and_bounds_before_inserting() {
     assert!(graph.build().declaration.exports.is_empty());
 }
 
-fn texture_descriptor() -> rhapsody::rg::graph::TextureDesc {
-    let desc = rhapsody::raw::texture::TextureDesc::new_2d(16, 16, vk::Format::D24_UNORM_S8_UINT)
+fn texture_descriptor() -> rhapsody::rg::resource_registry::TextureDesc {
+    let desc = rhapsody::resource::texture::TextureDesc::new_2d(16, 16, vk::Format::D24_UNORM_S8_UINT)
         .mip_levels(2);
     let Descriptor::Image(desc) = ResourceSpec::Image(desc).descriptor() else {
         unreachable!()
@@ -391,7 +387,7 @@ fn cached_plan_rebinding_revalidates_undefined_image_import_before_allocation() 
     let mut declaration = graph.build().declaration;
     let definition = GraphDefinition::from_declaration(
         &declaration,
-        &mut AccessTable::original(),
+        &AccessTable::original(),
         PlanContext::default(),
     )
     .unwrap();
@@ -406,7 +402,7 @@ fn cached_plan_rebinding_revalidates_undefined_image_import_before_allocation() 
         declaration,
         &mut Default::default(),
         &mut backend,
-        &mut AccessTable::original(),
+        &AccessTable::original(),
     );
     assert_eq!(
         result.err().unwrap().kind(),

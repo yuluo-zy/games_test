@@ -5,7 +5,7 @@
 //! - 默认并行（`ParallelRecording::PARALLEL`）、`batch_per_pass`、共享计算池的均衡分块的缓冲内容逐字节一致且等于期望值；
 //! - 分块数与均衡切分算法一致（手算 + `plan_chunks` 双重核对）；
 //! - `ExecutionStats` 的 `parallel_batches/chunks`、命令缓冲数、屏障计数；
-//! - 默认 `PARALLEL` 在冷帧与轻帧也使用任务池分块。
+//! - 默认 `PARALLEL` 对冷帧与轻帧单块内联录制（不进线程池）；`ALWAYS_PARALLEL` 保留旧的总是分块策略。
 mod draw_support;
 mod wave3_support;
 use rhapsody::rg::executor::PassPgoNameId;
@@ -35,7 +35,7 @@ fn run_once(
     batch_per_pass: bool,
     salt: u32,
 ) -> Observed {
-    let device = rhapsody::raw::init::create_headless_device().expect("设备");
+    let device = rhapsody::device::selection::create_headless_device().expect("设备");
     let mut session = new_session(&device, parallel);
     let bufs = BigBuffers::new(&mut session, FILLS, COPIES);
     if let Some(seed) = seed {
@@ -50,7 +50,7 @@ fn run_once(
 }
 
 fn have_vulkan() -> bool {
-    rhapsody::raw::init::create_headless_device().is_ok()
+    rhapsody::device::selection::create_headless_device().is_ok()
 }
 
 #[test]
@@ -81,23 +81,40 @@ fn all_chunking_strategies_agree_byte_for_byte_and_match_the_budget_algorithm() 
         "balanced_chunks 与手算一致"
     );
 
-    // 1. 默认并行基线：不分块。
-    let default_run = run_once(ParallelRecording::PARALLEL, None, false, salt);
+    // 1. 总是并行基线（旧的生产策略）：冷帧也分成八个 worker 块。
+    let default_run = run_once(ParallelRecording::ALWAYS_PARALLEL, None, false, salt);
     assert_eq!(
         default_run.run.buffers, expected,
-        "默认并行结果必须等于期望常量/拷贝"
+        "总是并行的结果必须等于期望常量/拷贝"
     );
     let s = default_run.run.receipt.stats;
     assert_eq!(
         (s.batches, s.parallel_batches, s.chunks),
         (1, 1, 8),
-        "默认并行：1 个 batch、无并行分块"
+        "总是并行：1 个 batch、八个 worker 块"
     );
     let default_commands = default_run.run.receipt.stats.commands_recorded as usize;
     // 初始屏障和 pass 复用同一命令缓冲。
     assert_eq!(
         default_commands, 8,
         "cold recording dispatches eight worker chunks"
+    );
+
+    // 1b. 新默认（自适应）：冷帧没有统计，单块内联录制，字节与总是并行一致。
+    let inline = run_once(ParallelRecording::PARALLEL, None, false, salt);
+    assert_eq!(inline.run.buffers, expected, "单块内联结果必须相同");
+    let s = inline.run.receipt.stats;
+    assert_eq!(
+        (s.batches, s.parallel_batches, s.chunks, s.commands_recorded),
+        (1, 1, 1, 1),
+        "默认并行：冷帧 1 个 batch、1 块、1 条命令缓冲"
+    );
+    // 屏障事件与分块无关：单块与八块必须产生同样的屏障统计。
+    let (inline_stats, pooled_stats) = (inline.run.receipt.stats, default_run.run.receipt.stats);
+    assert_eq!(
+        (inline_stats.barrier_commands, inline_stats.barrier_transitions),
+        (pooled_stats.barrier_commands, pooled_stats.barrier_transitions),
+        "单块与八块的屏障统计"
     );
 
     // 2. batch_per_pass：每 pass 一个 batch，每个 batch 单块（无并行）。
@@ -170,7 +187,7 @@ fn the_second_frame_chunks_by_the_first_frames_measured_durations() {
     if !have_vulkan() {
         return;
     }
-    let device = rhapsody::raw::init::create_headless_device().unwrap();
+    let device = rhapsody::device::selection::create_headless_device().unwrap();
     // 显式限制为四块，检查第二帧使用第一帧的实际耗时切分。
     let parallel = ParallelRecording {
         strategy: ChunkStrategy::Balanced {
@@ -262,22 +279,26 @@ fn balanced_chunk_sizes_match_the_default_parallel_bytes() {
         );
         println!("Balanced {label}：{} 块，线程 {}", s.chunks, run.threads);
     }
-    // Cold and light frames use the same worker path; PGO only changes weights.
-    let light = run_once(ParallelRecording::PARALLEL, None, false, salt);
-    assert_eq!(light.run.buffers, default_run.run.buffers);
+    // The always-parallel policy records a cold frame with eight worker chunks.
+    let pooled = run_once(ParallelRecording::ALWAYS_PARALLEL, None, false, salt);
+    assert_eq!(pooled.run.buffers, default_run.run.buffers);
+    assert_eq!(pooled.run.receipt.stats.chunks, 8);
     assert_eq!(
-        light.run.receipt.stats.parallel_batches, 1,
-        "PARALLEL 无统计时走默认并行"
-    );
-    assert_eq!(
-        light.run.receipt.stats.commands_recorded, 8,
+        pooled.run.receipt.stats.commands_recorded, 8,
         "所有 worker 分块都复用首条命令缓冲"
     );
-    let light = run_once(ParallelRecording::PARALLEL, Some(&seed), false, salt);
-    assert_eq!(
-        light.run.receipt.stats.parallel_batches, 1,
-        "总耗时 480ns < 200µs，PARALLEL 仍走默认并行"
-    );
+    // The default policy never pays a pool dispatch for a cold or light batch: with no
+    // statistics, or a measured total (480 ns) far below the dispatch cost, one chunk.
+    for seeded in [None, Some(seed.as_slice())] {
+        let light = run_once(ParallelRecording::PARALLEL, seeded, false, salt);
+        assert_eq!(light.run.buffers, default_run.run.buffers);
+        let s = light.run.receipt.stats;
+        assert_eq!(
+            (s.parallel_batches, s.chunks, s.commands_recorded),
+            (1, 1, 1),
+            "默认并行对冷帧/轻帧单块内联"
+        );
+    }
     let heavy: Vec<Option<u64>> = seed.iter().map(|d| d.map(|d| d * 1000)).collect();
     let heavy_run = run_once(ParallelRecording::PARALLEL, Some(&heavy), false, salt);
     assert_eq!(heavy_run.run.buffers, default_run.run.buffers);

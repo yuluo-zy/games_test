@@ -3,8 +3,9 @@
 //! # Structure
 //! `Device` is a thin owner of five components, each with its own state and
 //! locks; methods are implemented next to the component they use:
-//! - [`Caches`](super::caches) — managed-resource store, built-in samplers,
-//!   shared setup context;
+//! - [`Extensions`](super::extensions) — typed per-device state owned by the
+//!   resource and transfer layers (managed-resource store, built-in samplers,
+//!   parked setup pools), created on first use;
 //! - [`Lifetime`](super::lifetime) — retirement queue and reclamation policy;
 //! - [`Memory`](super::memory) — allocation accounting, suballocator, driver
 //!   budgets, eviction registry;
@@ -15,7 +16,7 @@
 //! # Lock order
 //! Components never call into each other while holding one of their own
 //! locks, with these documented nestings (outer → inner):
-//! `Caches` (sampler table / setup pool list) → `Memory` and managed-store locks;
+//! extension state (sampler table / setup pool list) → `Memory` and managed-store locks;
 //! Pending acquire lists are drained before taking resource sync cells;
 //! `Queues` per-queue locks (ascending queue index) → the native queue call only.
 //! Retirement and eviction run their callbacks with no lock held.
@@ -23,12 +24,12 @@
 //! # Drop order
 //! `Device::drop` waits for the GPU and drains the retirement queue (the only
 //! step needing several components). Fields then drop in declaration order:
-//! caches → lifetime → memory (suballocator blocks freed) → queues (timeline
+//! extensions → lifetime → memory (suballocator blocks freed) → queues (timeline
 //! semaphores destroyed) → core (`VkDevice` destroyed, then the instance).
 use ash::vk;
 use std::sync::Arc;
 
-use super::caches::Caches;
+use super::extensions::Extensions;
 use super::lifetime::Lifetime;
 use super::memory::Memory;
 use super::native::DeviceCore;
@@ -40,7 +41,7 @@ pub struct Device {
     self_ref: std::sync::Weak<Self>,
     #[cfg(feature = "cpu-probe")]
     upload_probe: super::texture_upload_probe::TextureUploadProbeCounters,
-    pub(crate) caches: Caches,
+    pub(crate) extensions: Extensions,
     pub(crate) lifetime: Lifetime,
     pub(crate) memory: Memory,
     pub(crate) queues: Queues,
@@ -69,14 +70,13 @@ impl Device {
             .expect("device method called with a live owner")
     }
     pub(crate) fn create_with_runtime(
-        physical: Arc<crate::raw::physical_device::PhysicalDevice>,
+        physical: Arc<crate::native::physical_device::PhysicalDevice>,
         info: &vk::DeviceCreateInfo<'_>,
         plan: crate::device::QueuePlan,
         runtime: crate::device::init::RuntimeConfig,
     ) -> crate::Result<Arc<Self>> {
         // Prepare fallible host metadata before creating a native VkDevice.
         let stats = Memory::new_stats(&runtime)?;
-        let caches = Caches::new(stats.clone())?;
         // Each component releases what it created when a later step fails.
         let core = unsafe { DeviceCore::create(physical, info, &runtime)? };
         let queues = unsafe { Queues::create(&core.device, info, plan)? };
@@ -85,7 +85,7 @@ impl Device {
             self_ref: weak.clone(),
             #[cfg(feature = "cpu-probe")]
             upload_probe: Default::default(),
-            caches,
+            extensions: Extensions::default(),
             lifetime: Lifetime::new(runtime.reclamation),
             memory,
             queues,
@@ -102,7 +102,7 @@ impl Device {
     }
 
     /// 此逻辑设备的生命周期标识；同一物理 GPU 上创建的设备也拥有不同代际。
-    pub fn generation(&self) -> crate::device::DeviceGeneration {
+    pub fn generation(&self) -> crate::sync::DeviceGeneration {
         self.core.generation
     }
     pub fn caps(&self) -> &crate::device::DeviceCaps {
@@ -162,7 +162,7 @@ impl Device {
         &self.core.device
     }
     /// Interop escape hatch: the instance this device was created from.
-    pub fn instance(&self) -> &Arc<crate::raw::instance::VulkanInstance> {
+    pub fn instance(&self) -> &Arc<crate::native::instance::VulkanInstance> {
         &self.core.instance
     }
 }
@@ -173,11 +173,10 @@ impl Drop for Device {
         // queued retirements remain. Draining needs the core (destroy calls)
         // and memory (frees), so it happens before any component drops.
         self.drain_retirement_for_drop();
-        // Cached entries only hold weak handles and host metadata tickets.
-        self.caches.clear_samplers();
-        // The GPU is idle and every retired command buffer is freed: destroy
-        // the parked setup pools (they hold no device reference).
-        self.caches.setup.drain_idle();
+        // The GPU is idle and every retired command buffer is freed: extensions drop the
+        // built-in sampler tickets and destroy the parked setup pools (they hold no
+        // device reference).
+        self.extensions.release_for_device_drop();
         // Components drop in field order (see the module documentation).
     }
 }
@@ -188,7 +187,7 @@ impl Device {
     /// no-op (one atomic load) when nothing is pending, e.g. coherent memory.
     pub(crate) fn flush_deferred_host_writes(&self) -> crate::Result<()> {
         self.queues.host_flush.flush_with(|ranges| {
-            crate::error::observe_vulkan(self, unsafe {
+            crate::device::observe_vulkan(self, unsafe {
                 self.core.device.flush_mapped_memory_ranges(ranges)
             })
         })
@@ -243,7 +242,7 @@ impl Device {
         self.core.physical
     }
     /// Immutable physical-device metadata captured during device creation.
-    pub fn physical_device_info(&self) -> &Arc<crate::raw::physical_device::PhysicalDevice> {
+    pub fn physical_device_info(&self) -> &Arc<crate::native::physical_device::PhysicalDevice> {
         &self.core.physical_info
     }
 
@@ -251,7 +250,7 @@ impl Device {
         self.queues.primary_family
     }
     /// Debug utils when the instance enabled `VK_EXT_debug_utils`.
-    pub(crate) fn debug_utils_option(&self) -> Option<crate::raw::debug::DebugUtils> {
+    pub(crate) fn debug_utils_option(&self) -> Option<crate::device::debug::DebugUtils> {
         self.core
             .instance
             .enabled_extensions
@@ -259,113 +258,26 @@ impl Device {
             .any(|e| e == "VK_EXT_debug_utils")
             .then(|| self.debug_utils())
     }
-    pub(crate) fn debug_utils(&self) -> crate::raw::debug::DebugUtils {
-        crate::raw::debug::DebugUtils::new(&self.shared().core.instance.instance, self.shared())
+    pub(crate) fn debug_utils(&self) -> crate::device::debug::DebugUtils {
+        crate::device::debug::DebugUtils::new(&self.shared().core.instance.instance, self.shared())
     }
 
     /// Runtime bindless descriptor limit.
     pub fn max_bindless_descriptor_count(&self) -> u32 {
         self.max_descriptor_set_update_after_bind_sampled_images()
     }
-    /// Allocate a primary command buffer from a new pool for `family` and name
-    /// it when debug utils are enabled.
-    pub fn create_command_buffer(
-        &self,
-        family: u32,
-        name: &str,
-    ) -> crate::Result<crate::raw::command_buffer::VulkanCommandBuffer> {
-        let command =
-            crate::raw::command_buffer::VulkanCommandPool::new_for_family(self.shared(), family)?
-                .allocate()?;
-        if let Some(utils) = self.debug_utils_option() {
-            let _ = unsafe { utils.set_object_name(command.handle, name) };
-        }
-        Ok(command)
-    }
-    /// 创建 GPU 分析输出缓冲。
-    pub fn create_gpu_profiler_output_buffer(
-        &self,
-        size: u64,
-    ) -> crate::error::Result<crate::raw::buffer::Buffer> {
-        crate::raw::buffer::Buffer::new(
-            self.shared(),
-            &crate::raw::buffer::BufferDesc::new_gpu_to_cpu(
-                size,
-                vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_DST,
-            ),
-        )
-    }
-    /// 初始化纹理数据：经暂存缓冲在共享 setup 上下文上异步上传（见 `raw::setup`），不等待 GPU。
-    pub fn init_texture_data(
-        &self,
-        texture: &crate::raw::texture::Texture,
-        bytes: &[u8],
-    ) -> crate::error::Result<()> {
-        crate::raw::setup::init_texture_data(&self.shared(), texture, bytes)
-    }
-    pub fn update_texture(
-        &self,
-        texture: &crate::raw::texture::Texture,
-        bytes: &[u8],
-    ) -> crate::error::Result<()> {
-        crate::raw::setup::update_texture(&self.shared(), texture, bytes)
-    }
 
-    /// Record one barrier batch through the enabled barrier API
-    /// (synchronization2; empty stage masks
-    /// keep their empty-scope meaning on both).
-    ///
-    /// # Safety
-    /// `command` must be recording on this device and every barrier resource
-    /// must stay alive through the command's completion.
-    pub unsafe fn issue_barriers(
-        &self,
-        command: vk::CommandBuffer,
-        scope: &crate::raw::barrier::SynchronizationScope,
-    ) -> crate::error::Result<()> {
-        unsafe { crate::raw::barrier::BarrierDispatch::new(self).issue(self, command, scope) }
-    }
-    /// Record the batch, then clear its barriers for reuse.
-    ///
-    /// # Safety
-    /// As [`Self::issue_barriers`].
-    pub unsafe fn issue_and_reset_pipeline_barrier(
-        &self,
-        command: vk::CommandBuffer,
-        scope: &mut crate::raw::barrier::SynchronizationScope,
-    ) -> crate::error::Result<()> {
-        let issued = unsafe { self.issue_barriers(command, scope) };
-        scope.memory.clear();
-        scope.buffers.clear();
-        scope.images.clear();
-        issued
-    }
-    /// Full execution and memory dependency (all commands to all commands).
-    ///
-    /// # Safety
-    /// `command` must be recording on this device.
-    pub unsafe fn issue_full_pipeline_barrier(
-        &self,
-        command: vk::CommandBuffer,
-    ) -> crate::error::Result<()> {
-        let mut scope = crate::raw::barrier::SynchronizationScope::new(
-            vk::PipelineStageFlags::ALL_COMMANDS,
-            vk::PipelineStageFlags::ALL_COMMANDS,
-        );
-        scope.memory.push(
-            vk::MemoryBarrier::default()
-                .src_access_mask(vk::AccessFlags::MEMORY_WRITE)
-                .dst_access_mask(vk::AccessFlags::MEMORY_READ | vk::AccessFlags::MEMORY_WRITE),
-        );
-        unsafe { self.issue_barriers(command, &scope) }
-    }
-    /// Record `body` after the declared accesses on the shared setup context
-    /// and submit without waiting (see [`crate::raw::setup::with_setup_resources`]).
-    pub fn with_setup_resources<R>(
-        &self,
-        accesses: &[crate::raw::setup::SetupAccess<'_>],
-        body: impl FnOnce(vk::CommandBuffer) -> R,
-    ) -> crate::error::Result<crate::raw::setup::SetupSubmission<R>> {
-        crate::raw::setup::with_setup_resources(&self.shared(), accesses, body)
-    }
+}
+
+/// Publish terminal device loss at the native call boundary.
+pub(crate) fn observe_vulkan<T>(
+    device: &Device,
+    result: std::result::Result<T, ash::vk::Result>,
+) -> crate::Result<T> {
+    result.map_err(|error| {
+        if error == ash::vk::Result::ERROR_DEVICE_LOST {
+            device.queues.timelines.mark_device_lost();
+        }
+        crate::Error::from(error)
+    })
 }

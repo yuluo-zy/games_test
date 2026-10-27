@@ -1,5 +1,5 @@
 //! Evictable graph caches: the idle resource pool and the transient alias
-//! sets, registered with the device's [`EvictionRegistry`](crate::device::EvictionRegistry).
+//! sets, registered with the device's [`EvictionRegistry`](crate::accounting::EvictionRegistry).
 //!
 //! # Ownership
 //! A pooled resource is *parked* here when its frame completes: the
@@ -27,7 +27,9 @@ use super::{
     transient_resources::AliasCache,
     vulkan::GpuResource,
 };
-use crate::{device::Evictable, resource::ResourceSharing, sync::CompletedValues};
+use crate::sync::CompletedValues;
+use crate::tracking::ResourceSharing;
+use crate::accounting::Evictable;
 use parking_lot::{Mutex, MutexGuard};
 use std::{collections::BTreeMap, sync::Arc};
 

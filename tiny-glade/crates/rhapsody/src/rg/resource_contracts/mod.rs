@@ -1,0 +1,408 @@
+//! Descriptor-only resource validation shared by the production graph planner.
+use super::{
+    graph::{BuildError, GraphDeclaration, OriginSource},
+    resource::{AccessRange, AccessVersion, RangeError, ResourceContractError as Contract},
+    resource_info::{AccessDeclaration, entry_content_resources},
+};
+
+pub(crate) fn range_error(resource: u32, error: RangeError) -> BuildError {
+    BuildError::Contract(match error {
+        RangeError::WrongKind => Contract::WrongRangeKind { resource },
+        RangeError::InvalidBounds => Contract::InvalidRange { resource },
+    })
+}
+
+// Format diagnostics only on the existing rejection path. Successful frames
+// perform no additional validation, graph traversal or allocation here.
+#[cold]
+fn uninitialized_read(graph: &GraphDeclaration, resource: u32, pass: u32) -> BuildError {
+    log::error!("undefined graph contents: resource={resource} declaration={:?} pass={pass} name={:?}",
+        graph.resources.get(resource as usize), graph.passes.get(pass as usize).map(|p| &p.name));
+    for (index, node) in graph.passes.iter().enumerate().take(pass as usize + 1) {
+        for access in node.accesses.iter().filter(|a| a.resource_index == resource) {
+            log::error!("undefined graph contents: preceding pass={index} name={:?} access={access:?}", node.name);
+        }
+    }
+    BuildError::Contract(Contract::UninitializedRead { resource, pass })
+}
+
+pub fn validate_contracts(
+    graph: &GraphDeclaration,
+    is_write: impl FnMut(u8) -> bool,
+) -> Result<(), BuildError> {
+    resolve_contracts(graph, is_write).map(|_| ())
+}
+
+/// Resolve the raw access-code adapter into the same version contract used by
+/// typed IDs. Imports provide version zero; created resources require a write.
+pub fn resolve_contracts(
+    graph: &GraphDeclaration,
+    is_write: impl FnMut(u8) -> bool,
+) -> Result<Vec<Vec<AccessDeclaration>>, BuildError> {
+    resolve_with_initialization(graph, is_write).map(|(passes, _)| passes)
+}
+
+/// Recheck dynamic import initialization after a complete comparison with a
+/// validated normalized definition. Resource indices, ranges, versions and
+/// access modes are already identical; only boundary state can invalidate reads.
+/// Whole-range writes and initialized imports require no temporary storage.
+pub(crate) fn validate_matching_initialization(
+    graph: &GraphDeclaration,
+    is_write: impl Fn(u8) -> bool + Copy,
+) -> Result<(), BuildError> {
+    // Created resources are undefined on every frame, so the full resolve that
+    // admitted this plan already proved their reads and exports against the
+    // identical access stream. Only image imports with undefined boundary
+    // contents depend on this frame.
+    let dynamic_undefined = |resource: usize| {
+        let resource = &graph.resources[resource];
+        matches!(resource.descriptor, super::graph::Descriptor::Image(_))
+            && matches!(
+                resource.source,
+                OriginSource::ImportOwned {
+                    initial_access: 0,
+                    ..
+                } | OriginSource::ImportUnowned {
+                    initial_access: 0,
+                    ..
+                }
+            )
+    };
+    for (pass_index, pass) in graph.passes.iter().enumerate() {
+        let entry_resources = entry_content_resources(&pass.accesses);
+        for (access_index, access) in pass.accesses.iter().enumerate() {
+            if access.requires_defined_contents(is_write(access.access_code))
+                && dynamic_undefined(access.resource_index as usize)
+            {
+                let writes = graph.passes[..=pass_index]
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(index, pass)| {
+                        let count = if index == pass_index {
+                            if entry_resources.contains(&access.resource_index) {
+                                0
+                            } else {
+                                access_index
+                            }
+                        } else {
+                            pass.accesses.len()
+                        };
+                        pass.accesses[..count].iter()
+                    })
+                    .filter(|previous| previous.resource_index == access.resource_index)
+                    .filter(|previous| is_write(previous.access_code))
+                    .map(|previous| previous.range);
+                if !covers_iter(
+                    writes,
+                    access.range,
+                    graph.resources[access.resource_index as usize].descriptor,
+                )
+                .map_err(|error| range_error(access.resource_index, error))?
+                {
+                    return Err(uninitialized_read(graph, access.resource_index, pass_index as u32));
+                }
+            }
+        }
+    }
+    for export in &graph.exports {
+        if dynamic_undefined(export.resource_index as usize) {
+            let writes = graph
+                .passes
+                .iter()
+                .flat_map(|pass| &pass.accesses)
+                .filter(|access| access.resource_index == export.resource_index)
+                .filter(|access| is_write(access.access_code))
+                .map(|access| access.range);
+            if !covers_iter(
+                writes,
+                export.range,
+                graph.resources[export.resource_index as usize].descriptor,
+            )
+            .map_err(|error| range_error(export.resource_index, error))?
+            {
+                return Err(uninitialized_read(graph, export.resource_index, graph.passes.len() as u32));
+            }
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn covers_iter(
+    writes: impl Iterator<Item = AccessRange> + Clone,
+    read: AccessRange,
+    descriptor: super::graph::Descriptor,
+) -> Result<bool, RangeError> {
+    let mut any = false;
+    for write in writes.clone() {
+        any = true;
+        if write.contains(read) {
+            return Ok(true);
+        }
+    }
+    if !any {
+        return Ok(false);
+    }
+    match read.normalized(descriptor)? {
+        AccessRange::Buffer { offset, size } => {
+            let end = offset + size;
+            let mut cursor = offset;
+            while cursor < end {
+                let mut covered_end = cursor;
+                for write in writes.clone() {
+                    if let AccessRange::Buffer { offset, size } = write.normalized(descriptor)?
+                        && offset <= cursor
+                    {
+                        covered_end = covered_end.max(offset + size);
+                    }
+                }
+                if covered_end == cursor {
+                    return Ok(false);
+                }
+                cursor = covered_end.min(end);
+            }
+        }
+        AccessRange::Texture {
+            aspect_mask,
+            base_mip_level,
+            level_count,
+            base_array_layer,
+            layer_count,
+        } => {
+            // Sweep only existing rectangle boundaries. Within each mip slab,
+            // initialized layers form a one-dimensional interval union. This
+            // avoids temporary fragment Vecs and never enumerates image bytes
+            // or every array layer. All ranges were descriptor validated.
+            let mip_end = base_mip_level + level_count;
+            let layer_end = base_array_layer + layer_count;
+            for bit in 0..u32::BITS {
+                let aspect = 1u32 << bit;
+                if aspect_mask & aspect == 0 {
+                    continue;
+                }
+                let mut mip = base_mip_level;
+                while mip < mip_end {
+                    let mut next_mip = mip_end;
+                    for write in writes.clone() {
+                        if let AccessRange::Texture {
+                            aspect_mask,
+                            base_mip_level,
+                            level_count,
+                            ..
+                        } = write.normalized(descriptor)?
+                            && aspect_mask & aspect != 0
+                        {
+                            let end = base_mip_level + level_count;
+                            if base_mip_level > mip {
+                                next_mip = next_mip.min(base_mip_level);
+                            }
+                            if end > mip {
+                                next_mip = next_mip.min(end);
+                            }
+                        }
+                    }
+                    let mut layer = base_array_layer;
+                    while layer < layer_end {
+                        let mut covered_end = layer;
+                        for write in writes.clone() {
+                            if let AccessRange::Texture {
+                                aspect_mask,
+                                base_mip_level,
+                                level_count,
+                                base_array_layer,
+                                layer_count,
+                            } = write.normalized(descriptor)?
+                                && aspect_mask & aspect != 0
+                                && base_mip_level <= mip
+                                && base_mip_level + level_count >= next_mip
+                                && base_array_layer <= layer
+                            {
+                                covered_end = covered_end.max(base_array_layer + layer_count);
+                            }
+                        }
+                        if covered_end == layer {
+                            return Ok(false);
+                        }
+                        layer = covered_end.min(layer_end);
+                    }
+                    mip = next_mip;
+                }
+            }
+        }
+        AccessRange::Whole => unreachable!("whole range is normalized above"),
+    }
+    Ok(true)
+}
+
+pub(crate) fn initialized_resources(
+    graph: &GraphDeclaration,
+    is_write: impl FnMut(u8) -> bool,
+) -> Result<Vec<bool>, BuildError> {
+    resolve_with_initialization(graph, is_write).map(|(_, initialized)| initialized)
+}
+
+fn resolve_with_initialization(
+    graph: &GraphDeclaration,
+    mut is_write: impl FnMut(u8) -> bool,
+) -> Result<(Vec<Vec<AccessDeclaration>>, Vec<bool>), BuildError> {
+    graph.validate()?;
+    let mut versions = vec![0u32; graph.resources.len()];
+    let mut initialized: Vec<Vec<AccessRange>> = graph
+        .resources
+        .iter()
+        .map(|resource| {
+            let undefined = matches!(resource.source, OriginSource::Create)
+                || matches!(resource.descriptor, super::graph::Descriptor::Image(_))
+                    && matches!(
+                        resource.source,
+                        OriginSource::ImportOwned {
+                            initial_access: 0,
+                            ..
+                        } | OriginSource::ImportUnowned {
+                            initial_access: 0,
+                            ..
+                        }
+                    );
+            if undefined {
+                Vec::new()
+            } else {
+                vec![AccessRange::Whole]
+            }
+        })
+        .collect();
+    let mut passes = Vec::with_capacity(graph.passes.len());
+    for (pass_index, pass) in graph.passes.iter().enumerate() {
+        let entry_lengths: smallvec::SmallVec<[(u32, usize); 2]> =
+            entry_content_resources(&pass.accesses)
+                .into_iter()
+                .map(|resource| (resource, initialized[resource as usize].len()))
+                .collect();
+        let mut accesses = Vec::with_capacity(pass.accesses.len());
+        for access in &pass.accesses {
+            if usize::from(access.access_code) >= crate::native::access_table::ACCESS_CODE_COUNT {
+                return Err(BuildError::Contract(Contract::InvalidAccessCode(
+                    access.access_code,
+                )));
+            }
+            let resource = access.resource_index as usize;
+            let descriptor = graph.resources[resource].descriptor;
+            access
+                .range
+                .validate(descriptor)
+                .map_err(|error| range_error(access.resource_index, error))?;
+            let current = versions[resource];
+            let write = is_write(access.access_code);
+            if !access.valid_content_mode(write) {
+                return Err(BuildError::Contract(Contract::WrongAccessMode {
+                    resource: access.resource_index,
+                    access_code: access.access_code,
+                }));
+            }
+            let resolved = match (access.version, write) {
+                (AccessVersion::Automatic, false) => AccessVersion::Read(current),
+                (AccessVersion::Automatic, true) => AccessVersion::Write {
+                    previous: current,
+                    current: current.checked_add(1).ok_or(BuildError::Contract(
+                        Contract::VersionOverflow(access.resource_index),
+                    ))?,
+                },
+                (AccessVersion::Read(version), false) => {
+                    check_version(access.resource_index, current, version)?;
+                    access.version
+                }
+                (
+                    AccessVersion::Write {
+                        previous,
+                        current: next,
+                    },
+                    true,
+                ) => {
+                    check_version(access.resource_index, current, previous)?;
+                    if previous.checked_add(1) != Some(next) {
+                        return Err(BuildError::Contract(Contract::InvalidWriteVersion {
+                            resource: access.resource_index,
+                            previous,
+                            current: next,
+                        }));
+                    }
+                    access.version
+                }
+                _ => {
+                    return Err(BuildError::Contract(Contract::WrongAccessMode {
+                        resource: access.resource_index,
+                        access_code: access.access_code,
+                    }));
+                }
+            };
+            let input_ranges = &initialized[resource][..entry_lengths
+                .iter()
+                .find_map(|&(saved, length)| (saved == access.resource_index).then_some(length))
+                .unwrap_or(initialized[resource].len())];
+            if access.requires_defined_contents(write)
+                && !covers(input_ranges, access.range, descriptor)
+                    .map_err(|error| range_error(access.resource_index, error))?
+            {
+                return Err(uninitialized_read(graph, access.resource_index, pass_index as u32));
+            }
+            if let AccessVersion::Write { current, .. } = resolved {
+                versions[resource] = current;
+                initialized[resource].push(access.range);
+            }
+            accesses.push(AccessDeclaration {
+                version: resolved,
+                ..*access
+            });
+        }
+        passes.push(accesses);
+    }
+    for export in &graph.exports {
+        if usize::from(export.access_code) >= crate::native::access_table::ACCESS_CODE_COUNT {
+            return Err(BuildError::Contract(Contract::InvalidAccessCode(
+                export.access_code,
+            )));
+        }
+        let resource = export.resource_index as usize;
+        if !covers(
+            &initialized[resource],
+            export.range,
+            graph.resources[resource].descriptor,
+        )
+        .map_err(|error| range_error(export.resource_index, error))?
+        {
+            return Err(uninitialized_read(graph, export.resource_index, graph.passes.len() as u32));
+        }
+    }
+    let full = graph
+        .resources
+        .iter()
+        .zip(&initialized)
+        .enumerate()
+        .map(|(index, (resource, ranges))| {
+            covers(ranges, AccessRange::Whole, resource.descriptor)
+                .map_err(|error| range_error(index as u32, error))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok((passes, full))
+}
+
+fn check_version(resource: u32, expected: u32, actual: u32) -> Result<(), BuildError> {
+    if expected != actual {
+        Err(BuildError::Contract(Contract::StaleVersion {
+            resource,
+            expected,
+            actual,
+        }))
+    } else {
+        Ok(())
+    }
+}
+
+pub(crate) fn covers(
+    writes: &[AccessRange],
+    read: AccessRange,
+    descriptor: super::graph::Descriptor,
+) -> Result<bool, RangeError> {
+    covers_iter(writes.iter().copied(), read, descriptor)
+}
+
+#[cfg(test)]
+mod coverage_tests;

@@ -2,14 +2,10 @@
 //! submission locks, and give up with `Timeout` after their bound.
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-        semaphore::TimelineSemaphore,
-    },
-};
+use rhapsody::device::{Device, DeviceConfig};
+use rhapsody::command::command_buffer::VulkanCommandPool;
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::device::semaphore::TimelineSemaphore;
 use std::sync::Arc;
 
 fn signal(gate: &TimelineSemaphore) {
@@ -57,7 +53,7 @@ fn bounded_host_wait_times_out_and_completes_after_the_gpu_finishes() {
     command.end().unwrap();
     let pending = command
         .submit_to(
-            rhapsody::raw::device::DeviceQueue {
+            rhapsody::device::DeviceQueue {
                 handle: device.primary_queue(),
                 family: device.queue_family_index(),
                 index: 0,

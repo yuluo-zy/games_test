@@ -1,6 +1,7 @@
 //! Fixed-size receipt observations. Serialize only after the measured interval.
 use country_core::render::declare_probe::{self, CollectCounts};
-use rhapsody::rg::{CommandWorkload, ExecutionStats};
+use rhapsody::rg::ExecutionStats;
+use rhapsody::profile::CommandWorkload;
 use rhapsody::device::TextureUploadProbeSnapshot;
 use serde::Serialize;
 

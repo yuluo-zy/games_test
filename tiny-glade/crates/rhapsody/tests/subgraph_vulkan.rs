@@ -1,16 +1,9 @@
 //! Cached local analyses still execute real GPU work and synchronize boundaries.
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::{
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        init::create_headless_device,
-    },
-    rg::{
-        resource::AccessRange,
-        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::rg::{resource::AccessRange, vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession}};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::device::selection::create_headless_device;
 use std::sync::Arc;
 const READ: u8 = 0x25;
 const WRITE: u8 = 0x34;

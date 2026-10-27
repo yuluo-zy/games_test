@@ -1,11 +1,8 @@
 //! Task-owned CPU constants. Actual byte backing, pool index, task stock and
 //! published owner metadata all retain non-Clone host-budget reservations.
 use parking_lot::{Mutex, MutexGuard};
-use rhapsody::{
-    Error, Result,
-    device::{AllocatorStats, CpuStorageReservation},
-    resource::CpuBytes,
-};
+use rhapsody::{Error, Result, resource::CpuBytes};
+use rhapsody::accounting::{AllocatorStats, CpuStorageReservation};
 use std::sync::Arc;
 
 const IDLE_BUDGET: usize = 16 << 20;
@@ -430,7 +427,7 @@ impl ConstantPool {
     }
 }
 
-impl rhapsody::device::Evictable for ConstantPool {
+impl rhapsody::accounting::Evictable for ConstantPool {
     fn evict_idle(&self, _: &rhapsody::sync::CompletedValues, target_bytes: u64) -> u64 {
         self.trim_idle(target_bytes)
     }

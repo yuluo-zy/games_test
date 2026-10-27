@@ -1,11 +1,8 @@
 //! Destructible CPU recording values use owned leases, never a Copy bump arena.
-use crate::{
-    Result,
-    raw::{
-        binding::{ResourceOwner, RetainedResource, Retention},
-        temp_list_pool::{TempListLease, TempListPool},
-    },
-};
+use crate::Result;
+use crate::collections::temp_list_pool::{TempListLease, TempListPool};
+use crate::command::binding::{RetainedResource, Retention};
+use crate::tracking::ResourceOwner;
 
 pub struct ResourceOwners {
     storage: Storage,
@@ -43,10 +40,10 @@ impl ResourceOwners {
     }
     pub(crate) fn add_upload_read(
         &mut self,
-        buffer: std::sync::Arc<crate::raw::buffer::Buffer>,
+        buffer: std::sync::Arc<crate::resource::buffer::Buffer>,
         offset: u64,
         size: u64,
-        scope: crate::resource::range_state::AccessScope,
+        scope: crate::native::AccessScope,
     ) -> Result<()> {
         self.add_retained(RetainedResource(Retention::UploadRead {
             buffer,

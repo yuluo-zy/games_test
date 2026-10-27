@@ -1,7 +1,8 @@
 //! raw-core 命令缓冲 / 提交引擎 / 设备创建尾段 / 统计的行为测试（机器码事实见各被测函数文档）。
 //! 需要 Vulkan 的用例在无设备时跳过；本机可用 lavapipe。
 use ash::vk;
-use rhapsody::raw::{init::create_headless_device, stats::RenderStats};
+use rhapsody::device::stats::RenderStats;
+use rhapsody::device::selection::create_headless_device;
 use std::sync::atomic::Ordering;
 
 #[test]
@@ -45,7 +46,7 @@ fn device_is_released_after_last_resource_without_cache_cycles() {
     let weak_device = std::sync::Arc::downgrade(&device);
     let buffer = device
         .create_buffer(
-            &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(
+            &rhapsody::resource::buffer::BufferDesc::new_gpu_to_cpu(
                 16,
                 vk::BufferUsageFlags::TRANSFER_DST,
             ),

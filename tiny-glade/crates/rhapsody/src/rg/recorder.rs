@@ -1,7 +1,7 @@
 //! Consumes the one bound native range plan. This recorder schedules callbacks
 //! and command boundaries; it never reconstructs synchronization from access codes.
 use super::sync_plan::{BarrierPhase, BoundTransition, SynchronizationPlanner};
-pub use crate::command::recording::{Command, CommandState};
+use crate::command::recording::{Command, CommandState};
 use std::sync::Arc;
 #[derive(Clone, Copy, Debug)]
 pub struct Pass {

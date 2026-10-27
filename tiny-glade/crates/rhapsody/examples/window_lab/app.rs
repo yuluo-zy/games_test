@@ -9,13 +9,8 @@ use super::{
     transient_scene::{TransientReport, TransientScene},
 };
 use ash::vk::{self, Handle};
-use rhapsody::{
-    device::Device, interop::InstanceBuilder, interop::ValidationMessenger, present::Swapchain,
-    resource::Buffer, resource::BufferDesc, resource::Texture, resource::TextureDesc,
-    rg::AccessTable, rg::BuiltGraph, rg::FrameLoop, rg::FrameStatus, rg::GpuResource,
-    rg::PassContext, rg::PresentTarget, rg::RenderGraph, rg::ResourceSpec, rg::VulkanGraphBackend,
-    rg::VulkanGraphSession,
-};
+use rhapsody::{device::Device, present::Swapchain, resource::Buffer, resource::BufferDesc, resource::Texture, resource::TextureDesc, rg::AccessTable, rg::BuiltGraph, rg::FrameLoop, rg::FrameStatus, rg::GpuResource, rg::PassContext, rg::PresentTarget, rg::RenderGraph, rg::ResourceSpec, rg::VulkanGraphBackend, rg::VulkanGraphSession};
+use rhapsody::native::{InstanceBuilder, ValidationMessenger};
 use serde::Serialize;
 use std::{
     collections::{BTreeSet, VecDeque},
@@ -488,7 +483,7 @@ struct StabilitySample {
 }
 #[derive(Serialize)]
 struct CacheCauseReport {
-    reason: rhapsody::rg::CacheReason,
+    reason: rhapsody::collections::CacheReason,
     misses: u64,
     invalidations: u64,
 }
@@ -545,7 +540,7 @@ impl Report {
             .into_iter()
             .map(|(domain, diagnostics)| CacheDomainReport {
                 domain,
-                causes: rhapsody::rg::CacheReason::ALL
+                causes: rhapsody::collections::CacheReason::ALL
                     .into_iter()
                     .map(|reason| CacheCauseReport {
                         reason,

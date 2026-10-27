@@ -3,7 +3,9 @@
 #![allow(clippy::single_range_in_vec_init)]
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::raw::{buffer::BufferDesc, device::Device, init::create_headless_device};
+use rhapsody::device::Device;
+use rhapsody::resource::buffer::BufferDesc;
+use rhapsody::device::selection::create_headless_device;
 
 fn device() -> Option<std::sync::Arc<Device>> {
     gpu_test_support::initialize("device API", create_headless_device())
@@ -47,10 +49,8 @@ fn gpu_only_buffer_goes_through_staging_and_foreign_handles_are_rejected() {
 
 #[test]
 fn dynamic_attachment_views_are_cached_and_reject_foreign_devices() {
-    use rhapsody::{
-        raw::texture::{Texture, TextureDesc},
-        rg::attachments::{Attachment, AttachmentCache, PreparedAttachments, RenderingPolicy},
-    };
+    use rhapsody::rg::attachments::{Attachment, AttachmentCache, PreparedAttachments, RenderingPolicy};
+    use rhapsody::resource::texture::{Texture, TextureDesc};
     use std::sync::Arc;
     let (Some(a), Some(b)) = (device(), device()) else {
         return;
@@ -100,10 +100,8 @@ fn dynamic_attachment_views_are_cached_and_reject_foreign_devices() {
 
 #[test]
 fn attachment_cache_releases_views_of_textures_nobody_else_owns() {
-    use rhapsody::{
-        raw::texture::{Texture, TextureDesc},
-        rg::attachments::{Attachment, AttachmentCache, RenderingPolicy},
-    };
+    use rhapsody::rg::attachments::{Attachment, AttachmentCache, RenderingPolicy};
+    use rhapsody::resource::texture::{Texture, TextureDesc};
     use std::sync::Arc;
     let Some(device) = device() else { return };
     let new_texture = || {
@@ -161,10 +159,8 @@ fn attachment_cache_releases_views_of_textures_nobody_else_owns() {
 
 #[test]
 fn real_attachment_storage_is_budgeted_retained_and_applies_owner_backpressure() {
-    use rhapsody::{
-        raw::texture::{Texture, TextureDesc},
-        rg::attachments::{Attachment, AttachmentCache, RenderingPolicy},
-    };
+    use rhapsody::rg::attachments::{Attachment, AttachmentCache, RenderingPolicy};
+    use rhapsody::resource::texture::{Texture, TextureDesc};
     use std::sync::Arc;
     let Some(device) = device() else { return };
     let texture = Arc::new(
@@ -239,7 +235,7 @@ fn real_attachment_storage_is_budgeted_retained_and_applies_owner_backpressure()
 
 #[test]
 fn texture_descriptor_validation_rejects_invalid_fields_without_a_device() {
-    use rhapsody::raw::texture::{TextureDesc, TextureKind};
+    use rhapsody::resource::texture::{TextureDesc, TextureKind};
     let valid = TextureDesc::new_2d(16, 16, vk::Format::R8G8B8A8_UNORM).sampled();
     assert!(valid.validate().is_ok());
     for invalid in [
@@ -281,7 +277,7 @@ fn pass_object_retention_cannot_bypass_memory_declarations_even_when_error_is_ig
         return;
     };
     let buffer = std::sync::Arc::new(
-        rhapsody::raw::buffer::Buffer::new(
+        rhapsody::resource::buffer::Buffer::new(
             device.clone(),
             &BufferDesc::new_cpu_to_gpu(16, vk::BufferUsageFlags::TRANSFER_SRC),
         )
@@ -304,7 +300,7 @@ fn pass_object_retention_cannot_bypass_memory_declarations_even_when_error_is_ig
         rhapsody::ErrorKind::InvalidUsage
     );
     assert!(session.backend.submissions.is_empty());
-    rhapsody::resource::GpuUse::visit_uses(buffer.as_ref(), &mut |cell| {
+    rhapsody::tracking::GpuUse::visit_uses(buffer.as_ref(), &mut |cell| {
         assert!(cell.snapshot().is_empty());
         Ok(())
     })
@@ -320,18 +316,12 @@ fn pass_object_retention_cannot_bypass_memory_declarations_even_when_error_is_ig
 
 #[test]
 fn prepared_clear_requires_an_actual_attachment_write_scope() {
-    use rhapsody::{
-        raw::{
-            command_buffer::VulkanCommandPool,
-            resource_access::image_access,
-            texture::{Texture, TextureDesc},
-        },
-        resource::{OwnershipRange, range_state::AccessScope},
-        rg::{
-            attachments::{Attachment, AttachmentCache, RenderingPolicy},
-            pass_api::{AshCommandBackend, RenderPassApi},
-        },
-    };
+    use rhapsody::rg::{attachments::{Attachment, AttachmentCache, RenderingPolicy}, pass_api::{AshCommandBackend, RenderPassApi}};
+    use rhapsody::tracking::OwnershipRange;
+    use rhapsody::command::command_buffer::VulkanCommandPool;
+    use rhapsody::command::resource_access::image_access;
+    use rhapsody::resource::texture::{Texture, TextureDesc};
+    use rhapsody::native::AccessScope;
     let Some(device) = device() else {
         return;
     };
@@ -370,7 +360,7 @@ fn prepared_clear_requires_an_actual_attachment_write_scope() {
     unsafe {
         image_access(
             &mut read,
-            texture.clone(),
+            &texture,
             queue,
             range,
             AccessScope {
@@ -392,7 +382,7 @@ fn prepared_clear_requires_an_actual_attachment_write_scope() {
     unsafe {
         image_access(
             &mut write,
-            texture.clone(),
+            &texture,
             queue,
             range,
             AccessScope {

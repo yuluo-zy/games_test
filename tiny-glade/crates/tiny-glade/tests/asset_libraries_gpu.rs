@@ -6,10 +6,10 @@ use country_core::{
     render::load_texture::boundary::{TextureDesc, TextureDevice},
     resources::texture_presets::TexturePreset,
 };
-use rhapsody::{
-    command::buffer_access, command::image_access, resource::AccessScope, resource::Buffer,
-    resource::BufferDesc, resource::OwnershipRange, resource::with_setup_command,
-};
+use rhapsody::{command::buffer_access, command::image_access, resource::Buffer, resource::BufferDesc};
+use rhapsody::tracking::OwnershipRange;
+use rhapsody::transfer::with_setup_command;
+use rhapsody::native::AccessScope;
 use std::sync::Arc;
 use tiny_glade::render_host::TextureHost;
 
@@ -76,7 +76,7 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
     with_setup_command(&device, &[], |command| unsafe {
         image_access(
             command,
-            owner.clone(),
+            &owner.clone(),
             queue,
             OwnershipRange::Image {
                 aspects: vk::ImageAspectFlags::COLOR.as_raw(),
@@ -94,7 +94,7 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
         )?;
         buffer_access(
             command,
-            output.clone(),
+            &output.clone(),
             queue,
             0,
             64,
@@ -123,7 +123,7 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
         );
         buffer_access(
             command,
-            output.clone(),
+            &output.clone(),
             queue,
             0,
             64,
@@ -134,7 +134,7 @@ fn native_texture_clear_changes_pixels_and_descriptor_owns_a_real_view() {
             },
         )
     })
-    .and_then(|setup| setup.wait(rhapsody::resource::SETUP_WAIT_TIMEOUT_NS))
+    .and_then(|setup| setup.wait(rhapsody::transfer::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut pixels = [0xff; 64];
     output.read_bytes(0, &mut pixels).unwrap();
@@ -218,19 +218,19 @@ fn mei_file_image_uses_real_upload_cache_descriptor_and_releases_host_slot() -> 
     let queue = device.queue(rhapsody::device::QueueClass::Graphics)?;
     // SAFETY：源纹理、目标缓冲均由当前设备创建，访问登记后提交并等待完成。
     with_setup_command(&device,&[],|command| unsafe {
-        image_access(command,owner.clone(),queue,OwnershipRange::Image {
+        image_access(command,&owner.clone(),queue,OwnershipRange::Image {
             aspects:vk::ImageAspectFlags::COLOR.as_raw(),base_mip:0,mip_count:1,base_layer:0,layer_count:1,
         },AccessScope { stages:vk::PipelineStageFlags::TRANSFER,access:vk::AccessFlags::TRANSFER_READ,write:false },vk::ImageLayout::TRANSFER_SRC_OPTIMAL)?;
-        buffer_access(command,output.clone(),queue,0,8,AccessScope {
+        buffer_access(command,&output.clone(),queue,0,8,AccessScope {
             stages:vk::PipelineStageFlags::TRANSFER,access:vk::AccessFlags::TRANSFER_WRITE,write:true,
         })?;
         device.raw_device().cmd_copy_image_to_buffer(command.raw_handle(),owner.raw_handle(),vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
             output.raw_handle(),&[vk::BufferImageCopy::default().image_subresource(vk::ImageSubresourceLayers::default()
                 .aspect_mask(vk::ImageAspectFlags::COLOR).layer_count(1)).image_extent(vk::Extent3D {width:2,height:1,depth:1})]);
-        buffer_access(command,output.clone(),queue,0,8,AccessScope {
+        buffer_access(command,&output.clone(),queue,0,8,AccessScope {
             stages:vk::PipelineStageFlags::HOST,access:vk::AccessFlags::HOST_READ,write:false,
         })
-    })?.wait(rhapsody::resource::SETUP_WAIT_TIMEOUT_NS)?;
+    })?.wait(rhapsody::transfer::SETUP_WAIT_TIMEOUT_NS)?;
     let mut actual = vec![0;8];output.read_bytes(0,&mut actual)?;
     assert_eq!(actual,expected);
     let pending_frame=cache.retained_textures();

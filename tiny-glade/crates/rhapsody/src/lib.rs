@@ -32,19 +32,23 @@ macro_rules! internal_mod {
     )+};
 }
 
+pub mod accounting;
 pub mod bindless;
 pub mod collections;
 pub mod command;
 pub mod device;
+pub mod format;
 mod error;
-pub mod interop;
+pub mod native;
 pub mod pipeline;
+pub mod profile;
 pub mod present;
 pub mod resource;
 pub mod rg;
 pub mod sync;
+pub mod tracking;
 pub mod transfer;
-internal_mod!(log_ring, raw);
+internal_mod!(log_ring, retire, trace);
 
 pub use error::{Error, ErrorKind, Result, SharedError};
 pub use log_ring::{dump_log_vec, init_logging, record_log};

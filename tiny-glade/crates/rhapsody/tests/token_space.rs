@@ -1,14 +1,12 @@
 //! 后端导入 token 与跨帧 temporal token 必须来自同一个空间：先后各分配一个资源，token 不能撞。
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::raw::{
-    buffer::{Buffer, BufferDesc},
-    init::create_headless_device,
-};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::device::selection::create_headless_device;
 use rhapsody::rg::vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend};
 use std::sync::Arc;
 
-fn buffer(device: &Arc<rhapsody::raw::device::Device>) -> Arc<Buffer> {
+fn buffer(device: &Arc<rhapsody::device::Device>) -> Arc<Buffer> {
     Arc::new(
         Buffer::new(
             device.clone(),

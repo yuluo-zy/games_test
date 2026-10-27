@@ -89,7 +89,7 @@ impl SubgraphBuilder<'_> {
         range
             .validate(self.graph.declaration.resources[resource.raw() as usize].descriptor)
             .map_err(|error| super::resource_contracts::range_error(resource.raw(), error))?;
-        if usize::from(access_code) >= crate::raw::access_table::ACCESS_CODE_COUNT {
+        if usize::from(access_code) >= crate::native::access_table::ACCESS_CODE_COUNT {
             return Err(crate::Error::invalid_usage(
                 "subgraph port access code is invalid",
             ));
@@ -352,7 +352,7 @@ pub(crate) fn validate_subgraphs(definition: &GraphDefinition) -> crate::Result<
             port.range
                 .validate(resource.descriptor)
                 .map_err(|error| super::resource_contracts::range_error(port.resource, error))?;
-            if usize::from(port.access_code) >= crate::raw::access_table::ACCESS_CODE_COUNT {
+            if usize::from(port.access_code) >= crate::native::access_table::ACCESS_CODE_COUNT {
                 return Err(crate::Error::invalid_usage(
                     "subgraph port access code is invalid",
                 ));
@@ -365,7 +365,7 @@ pub(crate) fn validate_subgraphs(definition: &GraphDefinition) -> crate::Result<
                     crate::Error::invalid_usage("subgraph port access has no classification")
                 })?;
             if matches!(resource.descriptor, super::graph::Descriptor::Image(_)) {
-                crate::raw::resource_usage::image_usage_for_access(semantic.declared_access)?;
+                crate::native::resource_usage::image_usage_for_access(semantic.declared_access)?;
             }
         }
         if scope.interface.side_effect

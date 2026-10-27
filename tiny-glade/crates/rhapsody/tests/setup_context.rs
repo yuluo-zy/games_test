@@ -2,13 +2,9 @@
 //! opt-in waits.
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        setup::{SETUP_WAIT_TIMEOUT_NS, SetupAccess, with_setup_resources},
-    },
-};
+use rhapsody::device::{Device, DeviceConfig};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::transfer::setup::{SETUP_WAIT_TIMEOUT_NS, SetupAccess, with_setup_resources};
 use std::sync::Arc;
 
 fn device() -> Option<Arc<Device>> {
@@ -27,7 +23,7 @@ fn copy(
     destination: &Buffer,
     offset: u64,
     size: u64,
-) -> rhapsody::raw::setup::SetupSubmission<()> {
+) -> rhapsody::transfer::setup::SetupSubmission<()> {
     with_setup_resources(
         device,
         &[
@@ -166,7 +162,7 @@ fn fill(
     offset: u64,
     size: u64,
     value: u32,
-) -> rhapsody::raw::setup::SetupSubmission<()> {
+) -> rhapsody::transfer::setup::SetupSubmission<()> {
     with_setup_resources(
         device,
         &[SetupAccess::transfer_write(buffer, offset, size)],

@@ -178,7 +178,7 @@ mod tests {
     use std::sync::Arc;
     #[test]
     fn cancelled_commit_reuses_capacity_and_clears_all_graph_ids() {
-        let budget = Arc::new(rhapsody::device::AllocatorStats::default());
+        let budget = Arc::new(rhapsody::accounting::AllocatorStats::default());
         let pool = DrawCommitScratchPool::new(budget.clone(), 2, 8 << 20, 1 << 20).unwrap();
         let mut first = pool.checkout().unwrap();
         prepare(&mut first, 3, 65, 130, true).unwrap();
@@ -202,7 +202,7 @@ mod tests {
     }
     #[test]
     fn scratch_budget_refusal_preserves_existing_capacity_and_recovers() {
-        let budget = Arc::new(rhapsody::device::AllocatorStats::default());
+        let budget = Arc::new(rhapsody::accounting::AllocatorStats::default());
         let pool = DrawCommitScratchPool::new(budget.clone(), 1, 8 << 20, 1 << 20).unwrap();
         let mut lease = pool.checkout().unwrap();
         let usage = budget.cpu_memory_usage().total();
@@ -221,7 +221,7 @@ mod tests {
     }
     #[test]
     fn constant_plan_is_budgeted_cleared_and_shares_bounded_pool_with_commit() {
-        let budget = Arc::new(rhapsody::device::AllocatorStats::default());
+        let budget = Arc::new(rhapsody::accounting::AllocatorStats::default());
         let pool = DrawCommitScratchPool::new(budget.clone(), 2, 8 << 20, 1 << 20).unwrap();
         let mut plan = pool.checkout().unwrap();
         let usage = budget.cpu_memory_usage().total();
@@ -244,7 +244,7 @@ mod tests {
     }
     #[test]
     fn first_page_avoids_full_access_remap_storage() {
-        let budget = Arc::new(rhapsody::device::AllocatorStats::default());
+        let budget = Arc::new(rhapsody::accounting::AllocatorStats::default());
         let pool = DrawCommitScratchPool::new(budget, 1, 8 << 20, 1 << 20).unwrap();
         let mut lease = pool.checkout().unwrap();
         prepare(&mut lease, 1, 3, 100_000, false).unwrap();

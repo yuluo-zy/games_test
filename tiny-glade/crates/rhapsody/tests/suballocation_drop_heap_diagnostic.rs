@@ -6,13 +6,9 @@ mod allocation_counter;
 mod gpu_test_support;
 use allocation_counter::Sample;
 use ash::vk;
-use rhapsody::{
-    device::{AllocationStrategy, Device, DeviceConfig, GpuMemoryUsage},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-    },
-};
+use rhapsody::device::{AllocationStrategy, Device, DeviceConfig, GpuMemoryUsage};
+use rhapsody::command::command_buffer::VulkanCommandPool;
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
 use serde_json::json;
 use std::sync::Arc;
 
