@@ -82,8 +82,15 @@ fn run() -> Result<()> {
     anyhow::ensure!(!wall_source_diagnostic || (cfg!(feature = "cpu-probe") && mode == "on"),
         "Wall source diagnostic requires cpu-probe/on");
     let gpu_diagnostic = std::env::var("TG_GPU_DIAGNOSTIC").is_ok_and(|s| s == "1");
+    let gpu_pass_spans = std::env::var("TG_GPU_PASS_SPANS").is_ok_and(|s| s == "1");
+    let gpu_isolate = std::env::var("TG_GPU_ISOLATE").is_ok_and(|s| s == "1");
+    let gpu_statistics = std::env::var("TG_GPU_STATS").is_ok_and(|s| s == "1");
     anyhow::ensure!(!gpu_diagnostic || !wall_source_diagnostic,
         "GPU timing and allocating Wall source diagnostics must run separately");
+    anyhow::ensure!(!gpu_pass_spans || gpu_diagnostic,
+        "GPU pass spans require the separate GPU diagnostic");
+    anyhow::ensure!(!gpu_isolate && !gpu_statistics || gpu_pass_spans,
+        "GPU pass isolation/statistics require pass spans");
     anyhow::ensure!(!gpu_diagnostic || (cfg!(feature = "cpu-probe") && mode == "on" && !bill),
         "GPU diagnostic needs cpu-probe/on and cannot be combined with management bill");
     anyhow::ensure!(std::env::var("TG_GPU_TIMING").is_err(),
@@ -133,7 +140,8 @@ fn run() -> Result<()> {
         let frames = warmup.checked_add(samples).and_then(|n| n.checked_add(1))
             .context("GPU diagnostic frame count overflow")?;
         let capacity = number("TG_GPU_DIAGNOSTIC_CAPACITY", frames.saturating_mul(128).min(2_000_000))?;
-        Some(gpu_diagnostic::GpuDiagnostic::new(&mut bridge, &device, frames, capacity)?)
+        Some(gpu_diagnostic::GpuDiagnostic::new(
+            &mut bridge, &device, frames, capacity, gpu_pass_spans, gpu_isolate, gpu_statistics)?)
     } else {
         // A clean run must not inherit a timestamp ring from renderer warmup.
         bridge.with_session(|s| s.backend.configure_gpu_timing(None))?;

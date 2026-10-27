@@ -203,7 +203,10 @@ def frozen_identity(build_path):
                    'build_acceptance_scope':proof}
 
 
-def environment(install, session, scene, warmup, samples, capacity):
+def environment(install, session, scene, warmup, samples, capacity,
+                pass_spans=False, isolate=False, statistics=False):
+    require(pass_spans or not (isolate or statistics),
+            'GPU pass isolation/statistics require pass spans')
     env = {name: value for name, value in os.environ.items()
            if not name.startswith(('TG_', 'RHAPSODY_'))}
     env.update(TG_INSTALL_ROOT=str(install), RUST_LOG='warn', CARGO_INCREMENTAL='0',
@@ -212,6 +215,12 @@ def environment(install, session, scene, warmup, samples, capacity):
                TG_CPU_PROBE_OUT=str(session), TG_CPU_PROBE_GATE='1',
                TG_CPU_PROBE_WARMUP=str(warmup), TG_CPU_PROBE_SAMPLES=str(samples),
                TG_GPU_DIAGNOSTIC='1', TG_GPU_DIAGNOSTIC_CAPACITY=str(capacity))
+    if pass_spans:
+        env['TG_GPU_PASS_SPANS'] = '1'
+    if isolate:
+        env['TG_GPU_ISOLATE'] = '1'
+    if statistics:
+        env['TG_GPU_STATS'] = '1'
     return env
 
 
@@ -227,7 +236,10 @@ def strict_log(text):
             'requested exact fixture did not execute')
 
 
-def validate_session(report, pid, scene, warmup, samples):
+def validate_session(report, pid, scene, warmup, samples,
+                     pass_spans=False, isolate=False, statistics=False):
+    require(pass_spans or not (isolate or statistics),
+            'GPU pass isolation/statistics require pass spans')
     require(report.get('schema') == 'headless-cpu-closure-v1' and report.get('valid') is True,
             'fixture session invalid')
     require(report.get('process_id') == pid and report.get('scenario') == scene
@@ -267,15 +279,20 @@ def validate_session(report, pid, scene, warmup, samples):
     gpu = report.get('gpu_diagnostic') or {}
     frames, points, commands = gpu.get('frames'), gpu.get('receipt_points'), gpu.get('samples')
     require(gpu.get('schema') == 'headless-gpu-command-diagnostic-v1' and gpu.get('valid') is True
-            and gpu.get('pass_spans') is False
+            and gpu.get('pass_spans') is pass_spans
+            and gpu.get('isolate_passes') is isolate
+            and gpu.get('pass_statistics') is statistics
             and gpu.get('command_span_sum_and_max_are_not_frame_latency') is True,
             'GPU diagnostic missing/invalid or overlapping pass spans enabled')
     require(isinstance(frames,list) and len(frames)==warmup+samples+1 and frames
             and isinstance(points,list) and points and isinstance(commands,list) and commands,
             'GPU diagnostic observations missing')
     stats=gpu.get('ring_stats') or {}
+    pass_commands = gpu.get('pass_samples') or []
+    expected_timestamp_count = len(commands) + len(pass_commands)
     require(all(stats.get(k)==0 for k in ('pending','capacity_skips','retained_samples'))
-            and stats.get('completed')==gpu.get('drained_samples')==gpu.get('sample_count')==len(commands),
+            and stats.get('completed')==gpu.get('drained_samples')==expected_timestamp_count
+            and gpu.get('sample_count')==len(commands),
             'GPU timing pending/skipped/evicted/truncated')
     require(type(gpu.get('timestamp_period_ns')) in (int,float) and math.isfinite(gpu['timestamp_period_ns'])
             and gpu['timestamp_period_ns']>0,
@@ -307,6 +324,41 @@ def validate_session(report, pid, scene, warmup, samples):
         require(type(frame.get('expected_commands')) is int and frame['expected_commands']>0
                 and count==frame['expected_commands'] and frame.get('measured') is (index>=warmup),
                 'missing/duplicated command timings or warmup association mismatch')
+    pass_associations = gpu.get('pass_sample_frame_indices')
+    statistic_fields = ('input_vertices','input_primitives','vertex_invocations',
+                        'clipping_invocations','clipping_primitives',
+                        'fragment_invocations','compute_invocations')
+    if pass_spans:
+        require(isinstance(pass_commands,list) and pass_commands
+                and isinstance(pass_associations,list)
+                and len(pass_commands)==len(pass_associations)==gpu.get('pass_sample_count'),
+                'GPU pass timing samples missing')
+        per_frame=[0]*len(frames)
+        unique=set()
+        for sample, frame in zip(pass_commands,pass_associations):
+            require(type(frame) is int and 0<=frame<len(frames), 'GPU pass sample has no frame owner')
+            require(type(sample.get('pass_index')) is int and sample['pass_index']>=0
+                    and isinstance(sample.get('pass_name'),str) and sample['pass_name'],
+                    'GPU pass identity invalid')
+            require(type(sample.get('duration_ns')) is int and sample['duration_ns']>=0
+                    and type(sample.get('recording_epoch')) is int and sample['recording_epoch']>0,
+                    'GPU pass timing invalid')
+            require((frame,sample['pass_index']) not in unique, 'duplicate GPU pass timing')
+            unique.add((frame,sample['pass_index']))
+            require(owners.get((sample.get('queue'),sample.get('completion_value')))==frame,
+                    'GPU pass receipt association differs')
+            pass_statistics = sample.get('statistics')
+            if statistics:
+                require(isinstance(pass_statistics,dict)
+                        and all(type(pass_statistics.get(name)) is int and pass_statistics[name]>=0
+                                for name in statistic_fields),
+                        'GPU pass pipeline statistics missing')
+            else:
+                require(pass_statistics is None, 'unexpected GPU pass statistics')
+            per_frame[frame]+=1
+        require(all(count>0 for count in per_frame), 'GPU pass timing missing from a frame')
+    else:
+        require(not pass_commands, 'pass spans unexpectedly enabled')
     require(all(all(a.get(k)==b.get(k) for k in ('world_tick','receipt','attempt'))
                 for a,b in zip(frames[warmup:],rows)), 'GPU/measured workload association mismatch')
     require(all(a['expected_commands']==b.get('graph_commands_recorded')
@@ -331,12 +383,15 @@ def run(args):
             'controller':{'path':str(controller),'sha256':digest(controller)},
             'frozen_build':identity,'build_json':str(build_path),'settings':{
                 'scene':args.scene,'warmup':args.warmup,'samples':args.samples,'capture_capacity':capacity,
-                'ring_pending_capacity':4096,'ring_retained_capacity':4096,'pass_spans':False,
+                'ring_pending_capacity':4096,'ring_retained_capacity':4096,
+                'pass_spans':args.pass_spans,'isolate_passes':args.isolate,
+                'pass_statistics':args.stats,
                 'dimensions':'1280x720','process_priority':'NORMAL_PRIORITY_CLASS'},
             'artifacts':{},'started_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())}
     process=None
     try:
-        env=environment(Path(args.install_root).resolve(strict=True),session,args.scene,args.warmup,args.samples,capacity)
+        env=environment(Path(args.install_root).resolve(strict=True),session,args.scene,args.warmup,args.samples,capacity,
+                        args.pass_spans,args.isolate,args.stats)
         command=[build['executable'],TEST,'--exact','--ignored','--nocapture','--test-threads=1']
         record['command']=command
         record['runtime_vulkan_environment']={k:v for k,v in sorted(env.items()) if k.startswith(('VK_','VULKAN_'))}
@@ -357,7 +412,8 @@ def run(args):
             record['exit_code']=process.wait(timeout=max(.1,deadline-time.monotonic()))
         require(record['exit_code']==0,'GPU diagnostic fixture failed; see fixture.log')
         strict_log(log_path.read_text(encoding='utf-8'))
-        validate_session(json.loads(session.read_text(encoding='utf-8')),process.pid,args.scene,args.warmup,args.samples)
+        validate_session(json.loads(session.read_text(encoding='utf-8')),process.pid,args.scene,args.warmup,args.samples,
+                         args.pass_spans,args.isolate,args.stats)
         _,after=frozen_identity(build_path)
         require(after==identity and digest(controller)==record['controller']['sha256'],
                 'frozen executable/source/controller identity changed')
@@ -391,6 +447,12 @@ def main():
     parser.add_argument('--warmup',type=int,default=600)
     parser.add_argument('--samples',type=int,default=3000)
     parser.add_argument('--capacity',type=int)
+    parser.add_argument('--pass-spans',action='store_true',
+                        help='record named per-pass GPU timestamp spans')
+    parser.add_argument('--isolate',action='store_true',
+                        help='serialise pass spans to measure exclusive pass cost; requires pass spans')
+    parser.add_argument('--stats',action='store_true',
+                        help='record pipeline statistics for each pass; requires pass spans')
     parser.add_argument('--timeout',type=float,default=3600)
     print(json.dumps(run(parser.parse_args()),indent=2,ensure_ascii=False))
 
