@@ -44,7 +44,8 @@ impl GpuDiagnostic {
         // Configure exactly once before workload warmup. pass spans would
         // overlap whole-command samples and are deliberately forbidden here.
         bridge.with_session(|s| s.backend.configure_gpu_timing(Some(GpuTimingConfig {
-            pass_spans:false, pending_commands:4096, retained_samples:4096,
+            pass_spans:false, isolate_passes:false, pass_statistics:false,
+            pending_commands:4096, retained_samples:4096,
         })))?;
         Ok(Self {frames:frame_rows,points,samples,frame_limit:frames,capacity,drained:0,
             valid:true,stats:None,last_poll_stats:None,period_ns,queue_bits})
