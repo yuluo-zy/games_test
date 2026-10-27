@@ -1,6 +1,6 @@
 # GPU pass 级性能测试方案（2026-10-27）
 
-状态：**Windows headless Runner 已接入并完成一次 many_draws 隔离+统计试跑**。
+状态：**Windows headless Runner 已接入，并完成 static/many_draws 隔离+统计试跑**。
 完整三模式、两场景、三次重复矩阵和同机原作对照仍未执行，本文不宣布验收通过。
 
 ## 1. 为什么需要这份方案
@@ -140,6 +140,11 @@ Windows 实体机增量验证：
   输入顶点 6,243.2k、输入图元 2,081.1k、片元调用 26.90M，即 29.19 次片元调用/720p 像素。
 - Depth of field 22.598ms（942.1k compute calls）、G-buffer OC/2 21.412ms、
   三个 Shadows 合计 59.997ms、Deferred lighting 8.982ms。
+- `static` 同配置单轮同样有效；隔离成本均值合计 154.692ms。G-buffer 32.779ms，
+  统计为输入顶点 1,121.5k、输入图元 373.8k、片元调用 3.16M、3.43 次片元/像素。
+  Depth of field 21.355ms、G-buffer OC/2 19.852ms、三个 Shadows 合计
+  13.382ms、Deferred lighting 8.542ms。session SHA256
+  `ab29eb37e50394bd0f1be3c2bb02916da1fb55b0a12c875401f85115d90f0176`。
 
 仍未验证：
 

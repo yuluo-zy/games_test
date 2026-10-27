@@ -5,9 +5,9 @@
 [GPU pass 级性能测试方案](gpu-pass-diagnostic-plan-20261027.md): serialised
 (isolated) per-pass GPU spans and per-pass pipeline statistics are now wired
 through the Windows headless controller (`--pass-spans --isolate --stats`).
-One valid `many_draws` 200/120 isolate+statistics run has completed, but the
-static scene, three-run matrix and same-machine original-game comparison remain
-open. The run is diagnostic evidence, not a performance acceptance gate.
+Valid 200/120 isolate+statistics runs have completed for both `static` and
+`many_draws`, but the three-run matrix and same-machine original-game comparison
+remain open. These runs are diagnostic evidence, not performance acceptance.
 
 ## Current WIP publication checkpoint: 2026-10-27
 
