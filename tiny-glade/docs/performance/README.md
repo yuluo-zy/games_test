@@ -1,5 +1,9 @@
 # Windows performance work
 
+## GPU pass-level test plan: 2026-10-27
+
+[GPU pass 级性能测试方案](gpu-pass-diagnostic-plan-20261027.md): serialised (isolated) per-pass GPU spans and per-pass pipeline statistics (`TG_GPU_ISOLATE=1`, `TG_GPU_STATS=1`, on top of `TG_GPU_TIMING=1`), the static / many_draws measurement matrix, interpretation rules, and the required same-machine comparison with the original game. The plan is not yet executed on a physical GPU; it reports no new numbers and marks no gate complete.
+
 ## Current WIP publication checkpoint: 2026-10-27
 
 The user explicitly requested committing and pushing the current implementation and unfinished-work list before full acceptance. [Current measured result and remaining work](current-version-p95-20261027.md): static headless render-phase owner CPU p95 **12.6120ms** (3,000 samples); whole-owner p95 15.7644ms. Owner checks passed, while the original full-process capture remains failed. The other three current-version scenes, full correctness/performance/pressure acceptance and production-window verification remain pending. No relative speedup is established.
