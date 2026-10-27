@@ -1,3 +1,11 @@
+# Remote publication authorization
+
+On 2026-10-27 the user explicitly instructed: “先把 修改 和待完成的内容 提交git 并推送”. This authorizes publishing the present WIP implementation and remaining-work list now, superseding the earlier condition that all acceptance finish before push. It does not mark any pending test or performance gate complete.
+
+Destination: `git@github.com:yuluo-zy/games_test.git`; new branch `codex/perf-windows-20261026`, continuing `codex/render-cpu-cleanup-20261026`. Preserve true upstream 8fd→695 ancestry, replay the independent Cgame commits under `tiny-glade/`, retain every untouched upstream path and verify mapped blobs/modes. Use a normal explicit push to the new branch; no source-branch overwrite, force, mirror or deletion. Refresh remote refs and verify the resulting remote tip. Raw `.perf` traces, binaries/PDBs, assets and caches are excluded.
+
+## Earlier condition, superseded by the explicit WIP instruction
+
 # Remote publication condition
 
 The user authorized publication only after implementation and acceptance are fully complete. Destination: `git@github.com:yuluo-zy/games_test.git`, proposed new branch `codex/perf-windows-20261026`, continuing work sourced from `codex/render-cpu-cleanup-20261026`. This authorization replaces the original delivery boundary of keeping everything local; it does not waive the acceptance gates.

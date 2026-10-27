@@ -1,0 +1,131 @@
+{
+  "schema": "headless-owner-only-readonly-derivation-v1",
+  "owner_scope_valid": true,
+  "full_process_valid": false,
+  "original_global_policy_passed": false,
+  "production_16ms_acceptance": false,
+  "production_render_thread_measured": false,
+  "original_run_valid": false,
+  "original_run_error": "ValueError('missing/ambiguous lifecycle completion for active TID 11788')",
+  "source_commit": "bd7e1098284028d8d38eed92ea7b1415269d3a09",
+  "executable_sha256": "2bc6617596641e41412d7e6db2f3161a4bada23a4d78f32bb224bb367744ad88",
+  "frozen_artifacts": {
+    "original_gameplay_chain-bb29b8601c0e3f57.exe": {
+      "sha256": "2bc6617596641e41412d7e6db2f3161a4bada23a4d78f32bb224bb367744ad88",
+      "expected_sha256": "2bc6617596641e41412d7e6db2f3161a4bada23a4d78f32bb224bb367744ad88"
+    },
+    "original_gameplay_chain-bb29b8601c0e3f57.pdb": {
+      "sha256": "af70419bf12f2337bffab3de1ae8a6d942e2c06658b17a58f3316b1db811311d",
+      "expected_sha256": "af70419bf12f2337bffab3de1ae8a6d942e2c06658b17a58f3316b1db811311d"
+    },
+    "fmod.dll": {
+      "sha256": "d563ad96042c096985735b0d1fdab80fe5c7f27663171ff1550ac8ebf4c7eba6",
+      "expected_sha256": "d563ad96042c096985735b0d1fdab80fe5c7f27663171ff1550ac8ebf4c7eba6"
+    },
+    "fmodstudio.dll": {
+      "sha256": "dc61fae2e70ec3a16fa78b678a0fc9ff1852491077a21c2b9c11bf4d160207ff",
+      "expected_sha256": "dc61fae2e70ec3a16fa78b678a0fc9ff1852491077a21c2b9c11bf4d160207ff"
+    }
+  },
+  "scenario": "static",
+  "warmup": 600,
+  "samples": 3000,
+  "mode": "on",
+  "clock_policy_context": {
+    "id": "windows-etw-qpc-calibrated-v1",
+    "definition_sha256": "e17a3a41ec2020d6964827d77d71c4d282cc31ff4d070571aa9c0c3ed6e2de81",
+    "calibration_sha256": "6a3274f4d8753d30b04348a701804bf4a796788c5ab11b11cbd140ce467330ae",
+    "hardware_sha256": "3aec5a177c83fde9b04efa0181f4eaa998ec153bed35da8c17007d1f1a0c9280"
+  },
+  "scope": "Only ETW CPU for known headless owner TID1960; App plus renderer on same owner, not production resident render thread. Existing global report remains failed. No full-process/non-owner percentile claim.",
+  "scope_rule": "one owner generation enclosing complete observation window; original parser exclusive perCPU interrupt subtraction; raw trace/intent/session/EXE/MS identity verified; owner OS and MS cumulative both<=2%; raw 3000 observations retained",
+  "gates": {
+    "original_session_attribution_validation": true,
+    "prospective_context_original_evidence_and_six_tools_unchanged": true,
+    "raw_csv_identity_matches_original_capture": true,
+    "etl_and_official_csv_sha_match_original_capture": true,
+    "binary_pdb_fmod_seals_match": true,
+    "lost_events_and_buffers_zero": true,
+    "trace_strictly_encloses_frame_envelope": true,
+    "owner_has_single_pid_generation_covering_envelope": true,
+    "owner_numeric_tid_not_reused_by_other_pid_in_envelope": true,
+    "owner_no_unmatched_scheduling_events": true,
+    "owner_all_recorded_spans_close_before_trace_end": true,
+    "owner_getthreadtimes_cumulative_within_2pct": true,
+    "owner_microsoft_cumulative_within_2pct": true,
+    "owner_observation_count_exactly_3000": true
+  },
+  "owner_cumulative": {
+    "etw_cpu_ns": 37590714000.0,
+    "getthreadtimes_cpu_ns": 37234375000,
+    "relative_error": 0.009479442183513726,
+    "official_cpu_ns": 37591000000,
+    "official_relative_error": 7.608204091404857e-06
+  },
+  "statistics": {
+    "render_phase_owner_cpu_ms": {
+      "n": 3000,
+      "mean_ms": 9.574786366666666,
+      "p50_ms": 9.1484,
+      "p95_ms": 12.612,
+      "p99_ms": 14.7553
+    },
+    "prepare_execute_owner_cpu_ms": {
+      "n": 3000,
+      "mean_ms": 9.5382581,
+      "p50_ms": 9.1151,
+      "p95_ms": 12.574,
+      "p99_ms": 14.7069
+    },
+    "host_completion_owner_cpu_ms": {
+      "n": 3000,
+      "mean_ms": 12.5272311,
+      "p50_ms": 12.0889,
+      "p95_ms": 15.7644,
+      "p99_ms": 18.211
+    },
+    "app_cpu_ms": {
+      "n": 3000,
+      "mean_ms": 2.059031,
+      "p50_ms": 2.0463,
+      "p95_ms": 2.4037,
+      "p99_ms": 2.6011
+    }
+  },
+  "frame_cache": {
+    "path": "C:\\Users\\liyu\\.codex\\visualizations\\2026\\10\\26\\01a17714-b237-7ed3-8e87-7aeaa53c4a51\\static-bd7e109-lifecycle-diagnostic\\owner-frame-cache.json",
+    "sha256": "7061f05b64c85d74cfb1989bb72681c8261e904f5f46f662617ba773b918510d"
+  },
+  "inputs": {
+    "run.json": {
+      "path": "C:\\game\\.perf\\headless-runs\\current-four-scenes-bd7e109-static-r1\\run.json",
+      "sha256": "358bdf07ec49dd48edf71dd27b005a94a31e791cab82ef357485c0e408c595fa"
+    },
+    "session.json": {
+      "path": "C:\\game\\.perf\\headless-runs\\current-four-scenes-bd7e109-static-r1\\session.json",
+      "sha256": "ebc6225ed1c1948526f36fbbc2f09a2608cc409941cf03ef009e727a8f61b9c7"
+    },
+    "clock-policy-intent.json": {
+      "path": "C:\\game\\.perf\\headless-runs\\current-four-scenes-bd7e109-static-r1\\clock-policy-intent.json",
+      "sha256": "6bd8b45df6a0704eaa81ac459f3397417bc94a1a91a0dcde21fd18ef871fca1f"
+    },
+    "official-owner.csv": {
+      "path": "C:\\game\\.perf\\headless-runs\\current-four-scenes-bd7e109-static-r1\\official-owner.csv",
+      "sha256": "44f348723b625ac30576882d5df55e4e1a97cd99fdf9a4df2c617db44b5de357"
+    }
+  },
+  "raw_trace": {
+    "csv_path": "C:\\game\\.perf\\headless-runs\\current-four-scenes-bd7e109-static-r1\\schedule.csv",
+    "csv_sha256": "787577ee33589d0d5c2cae671296d0786e1cce576fe1947b7d4ce8ad3076a597",
+    "csv_bytes": 7402580138,
+    "etl_sha256": "f22869ff60c7342b858d08ccc9396b5ce00e6cb8227b08a35f26e635c3c94c19"
+  },
+  "derivation_script": {
+    "path": "C:\\Users\\liyu\\.codex\\visualizations\\2026\\10\\26\\01a17714-b237-7ed3-8e87-7aeaa53c4a51\\diagnose_static_tid_11788.py",
+    "sha256": "081a9e85bfefe15869060d640154f9daec6aad6ef3fd164be03548f3724e2f86"
+  },
+  "post_dpc_isr_intervals_source": "Existing perf_etw.union/subtract/Timeline, source SHA bound by diagnostic. First scan retained clipped per-frame CPU cache, not full raw owner interval endpoints. No second CSV pass performed.",
+  "new_measurement_started": false,
+  "qualified_tools_modified": false,
+  "original_records_modified": false
+}

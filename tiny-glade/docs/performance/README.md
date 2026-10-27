@@ -1,5 +1,11 @@
 # Windows performance work
 
+## Current WIP publication checkpoint: 2026-10-27
+
+The user explicitly requested committing and pushing the current implementation and unfinished-work list before full acceptance. [Current measured result and remaining work](current-version-p95-20261027.md): static headless render-phase owner CPU p95 **12.6120ms** (3,000 samples); whole-owner p95 15.7644ms. Owner checks passed, while the original full-process capture remains failed. The other three current-version scenes, full correctness/performance/pressure acceptance and production-window verification remain pending. No relative speedup is established.
+
+The former memory block has lifted and the probe/surface workspace all-target typecheck passed at bd7e109. The following checkpoints are retained at their historical source boundaries.
+
 ## Latest evidence: 2026-10-27 / native f39dc61; engineering fa98f8d
 
 Native verification checkpoint `f39dc61eef85edebda2f491b4d31d9ff9e85c144` commits pending-acquire W2,

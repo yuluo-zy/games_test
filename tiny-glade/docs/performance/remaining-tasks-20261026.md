@@ -1,5 +1,19 @@
 # 当前进度与未完成任务（最新证据更新：2026-10-27）
 
+## 当前 WIP 发布清单（优先于下方历史快照）
+
+用户现要求先推送已有修改和开放项，不以全部验收完成为此次推送前提。静态当前版本渲染阶段 owner p95 **12.6120ms**，整帧 owner p95 **15.7644ms**；仅 owner 证据通过，原全进程失败保留。其余三个当前场景待测。详情见[本次实际测量](current-version-p95-20261027.md)。
+
+1. 大量绘制、局部编辑、连续编辑：尚未启动本次当前版本采样；分别预热 600 / 采样 3,000 帧。
+2. 静态全进程校验：保留原失败，修正并验证线程 T-End 后同一代 kernel cleanup 再次调度的识别；不能将现有 owner 派生结果升级为全进程通过。
+3. 最新默认 workspace 全目标检查，以及 canonical 5 / local surface 6 / pending-acquire 9 / Tiny observer 2 / EffectsHost lifecycle 1 的实际执行仍待补齐；探针+surface workspace 类型检查已通过，不替代原生执行。
+4. 水/冰严格像素、实际 GPU 输入闭环、Collect 代表性取消/预算耗尽恢复和四场景回归仍待完成。
+5. 探针开销 ≤1%、正式多轮性能验收、完整压力回收及稳定负载/效果切换/resize 各 30 分钟且 10,000 帧仍待验。
+6. 默认 suballocation 的 Drop/回收仍有 Rust 堆分配；Painterly Ready/progress、一次性 LUT 与 capture 发布事务的 OOM 恢复方案尚未实现。
+7. 真实窗口 WSI 兼容按此前指示暂缓，macOS 待验。只测当前版本不能计算相对优化前的提升百分比。
+
+## 以下为此前 checkpoint 原文（含当时的内存阻塞与待验状态）
+
 ## 最新进展：2026-10-27 / native f39dc61；engineering fa98f8d
 
 此次 native 验证 checkpoint 是 clean `f39dc61eef85edebda2f491b4d31d9ff9e85c144`，当前工程 HEAD 已为 `fa98f8d4367cc6ce24fd5d7a5e03cc82b36008d7`，不能把 f39 证据扩大到后续改动。最终 Tiny/workspace 类型检查或全部原生验收仍未完成。

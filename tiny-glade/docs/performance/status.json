@@ -2762,5 +2762,47 @@
         "bytes": 0
       }
     }
+  },
+  "current_wip_publication_20261027": {
+    "publication_authorization": "Explicit user request to commit and push current modifications and unfinished work; supersedes final-acceptance-before-push condition",
+    "remote": "git@github.com:yuluo-zy/games_test.git",
+    "target_branch": "codex/perf-windows-20261026",
+    "acceptance_complete": false,
+    "measured_source_commit": "bd7e1098284028d8d38eed92ea7b1415269d3a09",
+    "report": "current-version-p95-20261027.md",
+    "static_owner_scope_valid": true,
+    "static_original_global_capture_valid": false,
+    "static_render_phase_cpu_ms": {
+      "n": 3000,
+      "mean_ms": 9.574786366666666,
+      "p50_ms": 9.1484,
+      "p95_ms": 12.612,
+      "p99_ms": 14.7553
+    },
+    "static_whole_owner_cpu_ms": {
+      "n": 3000,
+      "mean_ms": 12.5272311,
+      "p50_ms": 12.0889,
+      "p95_ms": 15.7644,
+      "p99_ms": 18.211
+    },
+    "remaining_current_scenes": [
+      "many_draws",
+      "local_edit",
+      "continuous_edit"
+    ],
+    "relative_speedup_established": false,
+    "production_render_thread_measured": false,
+    "workspace_probe_surface_all_targets_typecheck_passed": true,
+    "typecheck_sha256": "08ae802d880a7fe5df1723d2538a81e1b896911c4d30cf039e24309773d499d2",
+    "unfinished_tasks": [
+      "1. 大量绘制、局部编辑、连续编辑：尚未启动本次当前版本采样；分别预热 600 / 采样 3,000 帧。",
+      "2. 静态全进程校验：保留原失败，修正并验证线程 T-End 后同一代 kernel cleanup 再次调度的识别；不能将现有 owner 派生结果升级为全进程通过。",
+      "3. 最新默认 workspace 全目标检查，以及 canonical 5 / local surface 6 / pending-acquire 9 / Tiny observer 2 / EffectsHost lifecycle 1 的实际执行仍待补齐；探针+surface workspace 类型检查已通过，不替代原生执行。",
+      "4. 水/冰严格像素、实际 GPU 输入闭环、Collect 代表性取消/预算耗尽恢复和四场景回归仍待完成。",
+      "5. 探针开销 ≤1%、正式多轮性能验收、完整压力回收及稳定负载/效果切换/resize 各 30 分钟且 10,000 帧仍待验。",
+      "6. 默认 suballocation 的 Drop/回收仍有 Rust 堆分配；Painterly Ready/progress、一次性 LUT 与 capture 发布事务的 OOM 恢复方案尚未实现。",
+      "7. 真实窗口 WSI 兼容按此前指示暂缓，macOS 待验。只测当前版本不能计算相对优化前的提升百分比。"
+    ]
   }
 }
