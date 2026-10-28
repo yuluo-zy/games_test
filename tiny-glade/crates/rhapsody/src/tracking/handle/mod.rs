@@ -17,7 +17,7 @@
 //! 并发访问由上层用锁或按执行线程拆分。资源本体以 `Arc<资源>` 形式存入，句柄只是指向
 //! 它的轻量索引。
 //!
-//! 与图层的 `TextureId`/`BufferId`（见 `ARCHITECTURE.md` §3.5）不同，本模块是 raw 层
+//! 与图层的 `TextureId`/`BufferId`（见 `ARCHITECTURE.md` 的「资源身份与使用追踪」一节）不同，本模块是 raw 层
 //! 的通用句柄基础设施，不绑定任何具体资源类型。
 
 use slotmap::{DefaultKey, Key, SlotMap};

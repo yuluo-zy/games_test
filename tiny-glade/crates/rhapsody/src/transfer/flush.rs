@@ -117,7 +117,7 @@ impl TransferManager {
     /// of the graphics family or a concurrent image orders consumers through
     /// the timeline semaphore only; an exclusive image of another family is
     /// released there (including the final layout transition) and its acquire
-    /// is queued on the device (see [`UploadTicket`]). Otherwise it runs on
+    /// is queued on the device (see `UploadTicket`). Otherwise it runs on
     /// the graphics queue. Never waits; the returned point is the batch's
     /// submit point (the release point when ownership moved).
     pub fn upload_textures(&mut self, uploads: &[TextureUpload<'_>]) -> crate::Result<SyncPoint> {

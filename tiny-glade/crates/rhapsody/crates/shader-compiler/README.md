@@ -1,11 +1,11 @@
 # shader-compiler
 
-已恢复的 shader 构建子链：`preprocess` 调用原 `shader-prepper` 处理 include/pragma once/#line，`DxcRequest` 恢复 stage/入口/profile/参数顺序，`reflect` 调用原 SpirQ fork，`pack` 完成 SPIR-V 后处理与 Speedy 打包，`build` 连接完整可运行链。运行时依赖资产结构的公共包为 `shader-pipeline`。
+rhapsody 的着色器离线构建器：HLSL 预处理、DXC 调用、SPIR-V 反射、包打包与 bindless ABI 降级。运行时依赖的资产结构由 `shader-pipeline` 提供，本 crate 以 `pub use shader_pipeline` 重新导出它。
 
-源文件：[`rhapsody-rebuild/src/shader_compiler.rs`](../../../../../reverse-engineering/tiny-glade/reconstruction/rhapsody-rebuild/src/shader_compiler.rs) 及同名目录。提交 `e4e0fbe2` 恢复实际构建，`db1ecad7` 修复 original artifact 宏与 TGV recipe 分离、独立反射和原 runtime load。来源证据见 [`shader-build-2026-10-13`](../../../../../reverse-engineering/tiny-glade/evidence/shader-build-2026-10-13/SUMMARY.md) 与 [`shader-gap-investigation-2026-10-13`](../../../../../reverse-engineering/tiny-glade/evidence/shader-gap-investigation-2026-10-13/SUMMARY.md)，逐文件记录在上级 [migration-sources.json](../../migration-sources.json)。
+- `preprocess::prepare_file`：include、`#pragma once`、`#line` 处理。
+- `lib.rs` 的 `DxcStage`、`DxcRequest`、`EmbeddedDxcRequest`、`CompileError`：DXC 参数构造（`prepared_arguments`）、真实编译（`compile_prepared(dxc, input, output)`）与 SPIR-V 模块校验（`validate_module`）。DXC 路径由调用方传入；测试通过 `DXC` 环境变量查找，默认 `~/tools/dxc/bin/dxc`，找不到时跳过。
+- `build::{build_pipeline, build_pipeline_with_recipe, raster_variants}`：单个 compute 或 vertex/fragment 管线的完整构建。
+- `reflect::generate_reflection`、`pack::{prepare_spirv_for_package, package}`：反射与发行格式打包。
+- `bindless::{BindlessAbi, lower_pipeline, lower_pipeline_with_limit}`：把已编译管线降级到共享 heap ABI。
 
-已完成可调用预处理→真实 DXC→反射→打包子链；源选择 recipe 不参与原 artifact key；失败保存诊断且不把旧输出当成功。后者以及临时目录/provider 适配是明确的本工程策略，不宣称与原离线工具完全相同。
-
-还缺原 DXC 版本/fork commit、离线 CLI、provider/cache/temp 命名和清理、异常策略与完整资产状态机。原作者公开编译器补丁不能直接当本构建的来源身份。当前请求签名来源是发行 SPIR-V 的 `OpModuleProcessed`，不是凭空生成离线原工具。
-
-历史实编译覆盖 404 包/638 阶段，失败 0，397/404 typed 反射相同；132 zero-key tuple、7 schema 残差、325 阶段完整公共接口差异与整帧仍未闭合。本包可开发实现与原整工具验收分开记录；本次迁移没有重新宣称全量原 shader 语义一致。
+目前未完全恢复的部分：原离线工具的 DXC 版本与 fork 提交、完整的异常与临时目录/缓存策略，以及完整资产状态机。测试 `tests/original_contract.rs` 需要原游戏资产，由 `TG_B_GAME_ROOT` 指定；缺失时显式跳过。本次没有运行这些测试。

@@ -1,4 +1,4 @@
-//! B 版已恢复的渲染图、资源与 Vulkan 调用链；原作等价性范围见 README。
+//! 已恢复的渲染图、资源与 Vulkan 调用链；原作等价性范围见 README。
 //!
 //! # Public surface
 //! - [`device`] — device creation, capabilities, queues, submission, budgets;
@@ -10,7 +10,6 @@
 //! - [`present`] — surfaces and swapchains;
 //! - [`transfer`] — asynchronous uploads;
 //! - [`sync`] — queue ids, sync points and completion values;
-//! - [`interop`] — explicit escape hatches to instances and native handles;
 //! - [`Error`], [`ErrorKind`], [`Result`] and the log ring helpers.
 //!
 //! Everything else is implementation detail. The `test-support` feature makes

@@ -1,25 +1,40 @@
-# Window Lab V0 验收记录
+# Window Lab 验证状态
 
-本文件保存窗口检查的报告入口。当前里程碑状态统一见 [REFACTOR_PROGRESS.md](../../REFACTOR_PROGRESS.md)，版本目标见 [DELIVERY_PLAN.md](../../DELIVERY_PLAN.md)。
+本页只记录当前状态。用法见 [README](README.md)，交换链语义见 [交换链 README](../../src/present/swapchain/README.md)。
 
-## 2026-10-17：macOS / Apple M3 / MoltenVK
+## 检查项
 
-- [360 帧基线](../../reports/refactor/2026-10-17-moltenvk/window/report.json)：360 帧读回一致，4 素材、缩放及最小化恢复脚本完成，validation error/warning 0。
-- [1000 帧 WSI 压力](../../reports/refactor/2026-10-17-moltenvk/wsi-stress/report.json)：100 次实际 resize、20 次完整最小化/恢复，1000 帧读回一致，开启同步验证，error/warning 0。
-- [GPU 离屏读回图](../../reports/refactor/2026-10-17-moltenvk/window/readback.png)不作为最终屏幕截图。Computer Use 未授予权限，屏幕像素与键盘交互保持未验证；Windows 没有本轮运行结果。
-
-## 2026-10-16 历史记录
-
-以下为当日快照，不覆盖后续 macOS 实测。
-
-| 检查 | 状态 | 证据 / 限制 |
+| 检查 | 命令 | 说明 |
 | --- | --- | --- |
-| example 构建 | PASS（首轮） | `cargo build -p rhapsody --example window_lab --offline` 成功；最终变更后复验待登记 |
-| 素材单测 | PASS | `cargo test -p rhapsody --example window_lab --offline`：3/3 通过 |
-| 360 帧真实窗口 + GPU 读回 | PENDING | 等待窗口运行验收 |
-| 缩放/最小化/恢复 | PENDING | 待运行 `--script` |
-| 暂停/单步/切换/关闭 | BLOCKED | 自动审批两次拒绝 computer-use 初始化，理由是判定缺少分支边界后的授权；已请求用户再次授权新 demo 窗口验收 |
-| 最终显示图像检查 | BLOCKED | 同上；未用其他工具绕过窗口操作拒绝 |
-| M0 里程碑 | IN_PROGRESS | 编译和 CPU 单测不替代实际窗口验收 |
+| 示例构建 | `cargo build -p rhapsody --example window_lab --offline` | 所有平台可运行。 |
+| 单元测试 | `cargo test -p rhapsody --example window_lab --offline` | 仅 Windows 与 macOS 编译运行，其他平台 0 个测试。 |
+| 功能套件 | `python3 crates/rhapsody/tools/window_lab_checks.py --build --suite functional --output <dir>` | 依次运行多组 GPU 场景，耗时长。 |
+| 性能套件 | `... --suite performance` | 依赖历史对照二进制，见 README 的验证脚本一节。 |
+| 长跑套件 | `... --suite long-run` | 默认每组至少 30 分钟。 |
+| 窗口显示检查 | 人工 | 报告中的 `window_visual_check` 固定为 `pending`，需人工或桌面截图确认最终显示的颜色、缩放与方向。 |
 
-本记录不证明新的提交事务、呈现生命周期或任何后续优化完成。
+## 当前已验证
+
+| 平台 | 项目 | 结果 |
+| --- | --- | --- |
+| Linux | `cargo build -p rhapsody --example window_lab --offline` | 通过（本次运行）。 |
+| Linux | `cargo test -p rhapsody --example window_lab --offline` | 编译通过，运行 0 个测试（模块被平台 `cfg` 排除）。 |
+
+## 未验证
+
+- Windows：窗口运行、功能套件、性能与长跑套件均未在当前源码上运行。
+- macOS（MoltenVK）：窗口运行与功能套件未在当前源码上重新运行。早期运行的证据目录已删除，无法复核，因此不作为当前结论。
+- 单元测试在 Windows 与 macOS 上未在本次运行中执行。
+- 窗口显示检查：未进行。
+- `tools/window_lab_checks.py`：仅核对了参数定义，未运行。
+- 无 `VK_EXT_swapchain_maintenance1` 的 `QueueIdle` 呈现路径：交换链 README 记录过一次临时关闭扩展后的测试运行，该结果不计为 Window Lab 验收，且本次未重跑。
+- `--require-validation` 在有验证层的环境下的完整通过路径：未验证。
+
+## 仍待完成
+
+1. 在 Windows 上运行单元测试与主要场景（`showcase`、`fixture --script`、`--wsi-stress`）。
+2. 在 macOS/MoltenVK 上于当前源码重跑窗口与功能套件。
+3. 运行 `window_lab_checks.py --suite functional` 并保存结果。
+4. 完成窗口显示的人工检查。
+5. 在无 `maintenance1` 的设备上运行 `QueueIdle` 呈现路径的窗口验证。
+6. 性能与长跑套件的对照结果需在当前构建上重新产生。

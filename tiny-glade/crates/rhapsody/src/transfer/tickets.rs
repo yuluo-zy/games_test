@@ -15,7 +15,7 @@ use super::staging::ReadbackLease;
 /// ran on a transfer queue of another family, it is the release point: the
 /// graphics-family acquire is still pending on the device and is recorded by
 /// the next render-graph batch (or graph import), the next graphics-queue
-/// command of the transfer manager, or [`TransferManager::flush_acquires`].
+/// command of the transfer manager, or `TransferManager::flush_acquires`.
 /// Waiting `point` therefore guarantees the bytes were written, while GPU
 /// consumers are ordered by the tracked range state.
 #[derive(Clone)]

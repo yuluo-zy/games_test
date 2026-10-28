@@ -1,4 +1,4 @@
-//! Semantic resource identity and GPU-use tracking (see `ARCHITECTURE.md` §3.5).
+//! Semantic resource identity and GPU-use tracking (see the「资源身份与使用追踪」section of `ARCHITECTURE.md`).
 //!
 //! - `handle`: typed generational [`Handle`] and dense [`ResourceStore`];
 //! - `tracked`: the record of a resource's last GPU use, [`SyncCell`];
