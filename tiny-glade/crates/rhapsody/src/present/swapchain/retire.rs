@@ -64,9 +64,45 @@ impl Swapchain {
         }
     }
 
+    /// Which proof stands in for present completion on this device.
+    pub(super) fn present_proof(&self) -> super::policy::PresentProof {
+        self.policy.present_proof(
+            self.device
+                .caps()
+                .is_enabled(crate::device::Feature::SwapchainMaintenance1),
+        )
+    }
+
+    /// Without present fences, submit an empty batch to the presentation queue
+    /// and wait, bounded by `timeout`, for its timeline value. Queue work
+    /// completes in submission order, so that value proves every earlier
+    /// operation on the queue (including presents) has finished. Every issued
+    /// present of this and all retired generations is then complete. The
+    /// caller holds the WSI lock, so no present races the mark. A timeout or
+    /// device loss returns an error before anything is marked complete.
+    pub(super) fn prove_presents_by_queue_idle(&self, timeout: u64) -> Result<()> {
+        let device = &self.device;
+        let point = device.submit_prepared(
+            device.queues.primary,
+            &[crate::native::submit::PreparedSubmit {
+                commands: Default::default(),
+                wait_semaphores: Default::default(),
+                wait_values: Default::default(),
+                wait_stages: Default::default(),
+                signal_semaphores: Default::default(),
+                signal_values: Default::default(),
+            }],
+            vk::Fence::null(),
+        )?;
+        device.queues.timelines.wait(&point.into(), timeout)?;
+        self.confirm_generation_complete();
+        Ok(())
+    }
+
     /// Stop new acquisitions and wait for actual acquire, GPU and presentation
     /// completion proofs. On failure the caller still owns this generation and
-    /// may retry. No queue/device-idle result is used as a present proof.
+    /// may retry. With present fences no queue/device-idle result is used as a
+    /// present proof; without them (no maintenance1) a queue-idle is.
     pub fn shutdown(&self, timeout: u64) -> Result<()> {
         let wsi = self.wsi.lock();
         let (leases, presentations) = {
@@ -88,6 +124,11 @@ impl Swapchain {
         }
         for image in &presentations {
             image.finish_gpu_use(timeout)?;
+        }
+        if self.present_proof() == super::policy::PresentProof::QueueIdle {
+            self.prove_presents_by_queue_idle(timeout)?;
+        }
+        for image in &presentations {
             image.finish_shutdown(timeout)?;
         }
         drop(wsi);

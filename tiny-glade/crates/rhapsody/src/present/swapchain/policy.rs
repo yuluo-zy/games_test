@@ -6,21 +6,35 @@ use super::MAX_RETIRED_GENERATIONS;
 /// Completion guarantees required by a swapchain owner.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum SwapchainPolicy {
-    /// Production presentation and provable final teardown require maintenance1.
+    /// Production presentation. With `VK_EXT_swapchain_maintenance1` final
+    /// teardown is proven by present fences; without it (e.g. Intel UHD 630)
+    /// teardown and generation retirement fall back to a queue-idle proof
+    /// (`PresentProof::QueueIdle`).
     #[default]
     Strict,
     /// Acquisition tests and offscreen consumers; presentation is rejected.
     AcquireOnly,
 }
 
+/// How final presentation completion is proven for a generation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum PresentProof {
+    /// Per-present fences (maintenance1), plus reacquisition of the same
+    /// image and the newer generation's first completed present.
+    Fences,
+    /// No present fences. A bounded wait on an empty submit to the
+    /// presentation queue proves completion (see
+    /// `Swapchain::prove_presents_by_queue_idle`). Used at teardown and when
+    /// the retired-generation budget is full.
+    QueueIdle,
+}
+
 impl SwapchainPolicy {
-    pub(super) fn validate(self, maintenance1: bool) -> Result<()> {
+    pub(super) fn present_proof(self, maintenance1: bool) -> PresentProof {
         if self == Self::Strict && !maintenance1 {
-            Err(Error::unsupported(
-                "严格呈现关闭需要 swapchainMaintenance1；只获取图像可选择 AcquireOnly",
-            ))
+            PresentProof::QueueIdle
         } else {
-            Ok(())
+            PresentProof::Fences
         }
     }
     pub(super) fn allow_present(self) -> Result<()> {
@@ -50,7 +64,7 @@ pub enum PresentPolicy {
     /// Return the image without presenting it. With
     /// `VK_EXT_swapchain_maintenance1` release-images that is a true release
     /// (nothing reaches the screen). Where the release call is not usable
-    /// (see [`Swapchain::can_release_images`]) the acquire wait is still
+    /// (see `Swapchain::can_release_images`) the acquire wait is still
     /// consumed by a real submit and a cleared opaque black frame is
     /// presented instead of undefined content.
     #[default]

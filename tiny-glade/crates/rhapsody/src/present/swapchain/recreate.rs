@@ -18,7 +18,10 @@ use super::frame_sync::FrameSemaphores;
 use super::fullscreen::FullscreenFallback;
 use super::fullscreen::FullscreenState;
 use super::policy::SwapchainPolicy;
+use super::policy::PresentProof;
 use super::policy::check_retired_generation_budget;
+use super::ACQUIRE_TIMEOUT_NS;
+use super::MAX_RETIRED_GENERATIONS;
 use super::progress::ImagePresentation;
 use super::wsi::wsi_call;
 
@@ -56,11 +59,6 @@ impl Swapchain {
         usage: vk::ImageUsageFlags,
         policy: SwapchainPolicy,
     ) -> Result<Self> {
-        policy.validate(
-            device
-                .caps()
-                .is_enabled(crate::device::Feature::SwapchainMaintenance1),
-        )?;
         unsafe {
             Self::new_with_old(
                 device,
@@ -407,8 +405,17 @@ impl Swapchain {
         let same_surface = Arc::ptr_eq(surface, &self.surface);
         // Every retry polls existing acquire/present/cleanup proofs first. If
         // none has progressed, retain the current generation and apply bounded
-        // backpressure; queue-idle is not a substitute for a present proof.
+        // backpressure. Without present fences (no maintenance1) queue-idle is
+        // the proof, so exhausting the budget pays one idle instead of failing.
         self.collect_presentations()?;
+        if self.retired_generation_count() >= MAX_RETIRED_GENERATIONS
+            && self.present_proof() == PresentProof::QueueIdle
+        {
+            let _wsi = self.wsi.lock();
+            self.prove_presents_by_queue_idle(ACQUIRE_TIMEOUT_NS)?;
+            drop(_wsi);
+            self.collect_presentations()?;
+        }
         check_retired_generation_budget(self.retired_generation_count())?;
         let _wsi = self.wsi.lock();
         let (desc, fullscreen, old) = {

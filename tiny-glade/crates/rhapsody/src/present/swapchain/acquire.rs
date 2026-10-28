@@ -294,8 +294,10 @@ impl Swapchain {
     /// # Safety
     /// The index must be acquired from this generation and transitioned to
     /// PRESENT_SRC_KHR. Waits must be same-device binary semaphores with a single
-    /// submitted signal, externally synchronized and kept alive until a real
-    /// presentation completion proof (not merely rendering or queue-idle).
+    /// submitted signal, externally synchronized and kept alive until a
+    /// presentation completion proof exists: a present fence with maintenance1,
+    /// otherwise reacquisition or the generation's queue-idle proof
+    /// (`PresentProof`). Rendering completion alone is never enough.
     pub unsafe fn present(&self, index: u32, wait: &[vk::Semaphore]) -> Result<bool> {
         let suboptimal = unsafe { self.present_unnoted(index, wait) }?;
         if suboptimal {

@@ -1,6 +1,6 @@
 use super::*;
 use super::frame_sync::FrameSlotState;
-use crate::present::swapchain::policy::check_retired_generation_budget;
+use crate::present::swapchain::policy::{PresentProof, check_retired_generation_budget};
 use crate::present::swapchain::progress::PendingFence;
 use crate::present::swapchain::wsi::WsiFenceOperations;
 use crate::present::swapchain::wsi::present_was_enqueued;
@@ -156,14 +156,13 @@ impl WsiFenceOperations for FaultFences {
 }
 
 #[test]
-fn production_policy_requires_provable_shutdown_but_acquire_only_does_not() {
+fn strict_policy_falls_back_to_queue_idle_proof_without_maintenance1() {
     assert_eq!(SwapchainPolicy::default(), SwapchainPolicy::Strict);
-    assert_eq!(
-        SwapchainPolicy::Strict.validate(false).unwrap_err().kind(),
-        ErrorKind::Unsupported
-    );
-    assert!(SwapchainPolicy::Strict.validate(true).is_ok());
-    assert!(SwapchainPolicy::AcquireOnly.validate(false).is_ok());
+    assert_eq!(SwapchainPolicy::Strict.present_proof(true), PresentProof::Fences);
+    assert_eq!(SwapchainPolicy::Strict.present_proof(false), PresentProof::QueueIdle);
+    // Acquire-only chains never present, so they never need a proof.
+    assert_eq!(SwapchainPolicy::AcquireOnly.present_proof(false), PresentProof::Fences);
+    assert!(SwapchainPolicy::Strict.allow_present().is_ok());
     assert_eq!(
         SwapchainPolicy::AcquireOnly
             .allow_present()

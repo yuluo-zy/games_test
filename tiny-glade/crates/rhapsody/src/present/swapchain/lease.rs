@@ -589,8 +589,9 @@ impl PresentTicket {
         Ok(crate::sync::SyncSet::from(self.point)
             .is_reached(&self.sync.device.queues.timelines.poll()?))
     }
-    /// Without maintenance1, a newer acquisition fence proves presentation
-    /// completion. Shutdown never treats queue-idle as presentation completion.
+    /// Without present fences (no maintenance1), completion is recorded by a
+    /// later acquisition of the same image or by the queue-idle proof
+    /// (`PresentProof::QueueIdle`), which teardown and budget recovery use.
     pub fn is_present_complete(&self) -> Result<bool> {
         self.swapchain.collect_presentations()?;
         Ok(self.presentation.progress.lock().completed(self.serial))
