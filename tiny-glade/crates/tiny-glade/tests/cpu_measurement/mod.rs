@@ -103,6 +103,7 @@ fn run() -> Result<()> {
     let canonical_brick_layout = if canonical_wall_layout {
         Some(sparse_layout::before_first_gameplay_warmup(driver.app_mut().world_mut(), &mut bridge)?)
     } else { None };
+    apply_perf_quality(driver.app_mut().world_mut())?;
     let boot_clock = clock_input(driver.app().world());
     tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, driver.app_mut().world_mut())?;
     bridge.accept_gameplay_warmup(driver.app().world().resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>())?;
@@ -388,4 +389,26 @@ fn clock_input(world: &bevy_ecs::world::World) -> serde_json::Value {
         "render_frame":frame.frame_counter,"time_of_day_bits":frame.time_of_day.to_bits(),
         "camera_bits":world.resource::<country_core::systems::camera_rig::MainCamera>()
             .read_matrix(0xc0).to_cols_array().map(f32::to_bits)})
+}
+
+
+/// `TG_PERF_QUALITY` selects the same video fields as the in-game quality
+/// presets (`gui/settings.rs` QUALITY_SETTINGS); absent means the default
+/// `VideoSettings` (the `quality` preset: no upscaling, DoF on).
+fn apply_perf_quality(world: &mut bevy_ecs::world::World) -> anyhow::Result<()> {
+    use country_core::render::render_config::{UpscalingMode, UpscalingPreset};
+    let name = std::env::var("TG_PERF_QUALITY").unwrap_or_else(|_| "quality".into());
+    let (mode, preset, dof) = match name.as_str() {
+        "performance" => (UpscalingMode::Tgsr, UpscalingPreset::Performance, false),
+        "balanced" => (UpscalingMode::Tgsr, UpscalingPreset::Quality, true),
+        "quality" => (UpscalingMode::Off, UpscalingPreset::Quality, true),
+        other => anyhow::bail!("TG_PERF_QUALITY must be performance, balanced or quality, got {other}"),
+    };
+    let mut config = world.get_resource_mut::<country_core::game_config::GameConfig>()
+        .ok_or_else(|| anyhow::anyhow!("GameConfig resource missing before perf quality preset"))?;
+    config.video.upscaling_mode = mode;
+    config.video.upscaling_preset = preset;
+    config.video.dof_enable = dof;
+    eprintln!("perf quality preset: {name}");
+    Ok(())
 }

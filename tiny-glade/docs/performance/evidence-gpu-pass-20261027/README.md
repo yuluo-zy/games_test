@@ -12,6 +12,14 @@ not production-frame latency or a performance acceptance result.
   `e4fe726fe4949bab3c645197db15760307ac03bd440dd2877b9ecc291246f44d`.
 - GPU: Intel UHD Graphics 630.
 - Output: 1280x720, Release, mimalloc, `cpu-probe`.
+- Quality preset: `quality` (default `VideoSettings`: `upscaling_mode=Off`,
+  `dof_enable=true`). `run.json` of this run predates the `quality_preset`
+  field; the preset is inferred from the recorded `TAA` pass (the TGSR passes
+  are only declared when upscaling is on), 942,080 compute invocations
+  (1280x736, no internal downscale) and the 21ms DoF pass. TGSR was therefore
+  not measured here; see
+  [section 10 of the plan](../gpu-pass-diagnostic-plan-20261027.md) for the
+  preset comparison.
 - Both isolated sessions use 200 warmup frames and 120 clean observations.
 - Vulkan validation found no diagnostics; timestamp pending and capacity skips
   were zero; pipeline statistics were present for every recorded pass.

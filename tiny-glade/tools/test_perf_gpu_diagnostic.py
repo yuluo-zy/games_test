@@ -80,6 +80,13 @@ class DiagnosticValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             tool.environment('asset','report','static',600,3000,500000,False,False,True)
 
+    def test_quality_preset_is_exported_and_validated(self):
+        env=tool.environment('asset','report','static',600,3000,500000,True,True,True,'performance')
+        self.assertEqual(env['TG_PERF_QUALITY'],'performance')
+        self.assertEqual(tool.environment('asset','report','static',1,1,1)['TG_PERF_QUALITY'],'quality')
+        with self.assertRaises(ValueError):
+            tool.environment('asset','report','static',1,1,1,quality='ultra')
+
     def test_missing_or_partial_workload_not_treated_as_zero(self):
         for field in ('actual_workload','gpu_diagnostic','input_before'):
             report=report_fixture();del report[field]

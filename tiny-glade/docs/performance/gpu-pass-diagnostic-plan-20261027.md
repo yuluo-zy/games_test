@@ -169,3 +169,66 @@ python -B tools/perf_gpu_diagnostic.py `
   --scene many_draws --warmup 200 --samples 120 `
   --capacity 200000 --pass-spans --isolate --stats
 ```
+
+## 10. 预设对照（Performance / Balanced / Quality）
+
+`evidence-gpu-pass-20261027/` 的两次测量使用 `quality` 预设（不开上采样，DoF 开），
+所以 TGSR 三个 pass 与内部分辨率缩小后的各 pass 耗时都没有数据。本节补测。
+
+### 预设定义
+
+夹具环境变量 `TG_PERF_QUALITY` 与 controller 参数 `--quality` 对应游戏内 `QUALITY_SETTINGS`
+（`gui/settings.rs`）：
+
+| `--quality` | upscaling_mode | upscaling_preset（内部分辨率比例） | dof_enable | 说明 |
+| --- | --- | --- | --- | --- |
+| `quality`（默认） | Off | Quality | true | 与已有 evidence 一致 |
+| `balanced` | Tgsr | Quality（约 0.58~0.67，以 `render_config.rs` 为准） | true | TGSR 加 DoF |
+| `performance` | Tgsr | Performance（约 0.5） | false | TGSR，无 DoF |
+
+`UltraQuality` 需要 world scale 1.5 和自适应分辨率路径，不在本对照范围。
+`run.json` 的 `settings.quality_preset` 记录实际使用的预设；没有该字段的旧 run 视为 `quality`。
+
+### 步骤
+
+每个预设、每个场景各跑一次（static 与 many_draws），其余参数与已有 evidence 相同：
+
+```powershell
+foreach ($q in 'quality','balanced','performance') {
+  foreach ($scene in 'static','many_draws') {
+    python -B tools/perf_gpu_diagnostic.py `
+      --build-json .perf/headless-builds/BUILD/build.json `
+      --output .perf/gpu-diagnostics/$q-$scene `
+      --scene $scene --warmup 200 --samples 120 --capacity 200000 `
+      --pass-spans --isolate --stats --quality $q
+  }
+}
+# 每个 session.json 生成排名
+python docs/performance/evidence-gpu-pass-20261027/analyze_gpu_passes.py `
+  .perf/gpu-diagnostics/performance-static/session.json --output performance-static-ranking.json
+```
+
+必须使用同一个冻结 EXE。`quality` 一组是重复测量，用来对照已有 evidence 确认可复现。
+
+### 要回答的问题与判读
+
+| 问题 | 看什么 | 判读 |
+| --- | --- | --- |
+| TGSR 自身开销 | `TGSR blur lum` + `TGSR reproject` + `TGSR` 三个 pass 之和，对比 `quality` 组的 `TAA`（4.10ms） | 之和小于约 5ms 则不值得改 `tgsr.cs.hlsl` |
+| 内部分辨率缩小能省多少 | DOF、Apply deferred lighting、Volumetrics、Apply screen shadows、Trace GI、Reproject GI 在各预设下的耗时比，对照像素比 | 接近像素比说明像素绑定；不缩说明受固定开销或几何限制 |
+| 几何绑定的 pass 是否缩小 | G-buffer、G-buffer OC/2、Shadows 的顶点数与耗时 | 顶点数应不变；耗时若显著下降说明 G-buffer 有片元绑定部分，可回答"顶点还是片元绑定" |
+| 总帧时间 | isolated pass total mean | 仅作预设间相对比较，不是生产帧延迟 |
+| 画质代价 | 另用 `tools/compare_surface_pixels.py` 对各预设出图 | 本文不判定画质，只给性能侧数据 |
+
+### 完成标准
+
+- 6 组 run 都 `valid`，Vulkan 校验无诊断，`settings.quality_preset` 与目录名一致。
+- `quality` 组的 isolated total 与已有 evidence 的 154.7ms 偏差在 run-to-run 离散度内（先看 p95 与已有两次的差）。
+- 三个 TGSR pass 在 `balanced`、`performance` 两组中出现，在 `quality` 组中不出现；否则说明预设没有生效，该组作废。
+- 结果写入新的 `evidence-gpu-pass-<date>/`，不修改已有 evidence 目录。
+
+### 状态
+
+`TG_PERF_QUALITY` 的夹具实现（`tests/cpu_measurement/mod.rs`）未在 Linux 编译验证
+（tiny-glade 在本机无法构建）；controller 与其单元测试已在本机通过。首次运行请先看
+`fixture.log` 中的 `perf quality preset: ...` 行。

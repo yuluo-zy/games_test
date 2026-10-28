@@ -203,8 +203,12 @@ def frozen_identity(build_path):
                    'build_acceptance_scope':proof}
 
 
+QUALITY_PRESETS = ('performance', 'balanced', 'quality')
+
+
 def environment(install, session, scene, warmup, samples, capacity,
-                pass_spans=False, isolate=False, statistics=False):
+                pass_spans=False, isolate=False, statistics=False, quality='quality'):
+    require(quality in QUALITY_PRESETS, f'quality preset must be one of {QUALITY_PRESETS}')
     require(pass_spans or not (isolate or statistics),
             'GPU pass isolation/statistics require pass spans')
     env = {name: value for name, value in os.environ.items()
@@ -214,7 +218,8 @@ def environment(install, session, scene, warmup, samples, capacity,
                TG_TEST_SIZE='1280x720', TG_PERF_SCENARIO=scene, TG_CPU_PROBE_MODE='on',
                TG_CPU_PROBE_OUT=str(session), TG_CPU_PROBE_GATE='1',
                TG_CPU_PROBE_WARMUP=str(warmup), TG_CPU_PROBE_SAMPLES=str(samples),
-               TG_GPU_DIAGNOSTIC='1', TG_GPU_DIAGNOSTIC_CAPACITY=str(capacity))
+               TG_GPU_DIAGNOSTIC='1', TG_GPU_DIAGNOSTIC_CAPACITY=str(capacity),
+               TG_PERF_QUALITY=quality)
     if pass_spans:
         env['TG_GPU_PASS_SPANS'] = '1'
     if isolate:
@@ -386,12 +391,13 @@ def run(args):
                 'ring_pending_capacity':4096,'ring_retained_capacity':4096,
                 'pass_spans':args.pass_spans,'isolate_passes':args.isolate,
                 'pass_statistics':args.stats,
+                'quality_preset':getattr(args,'quality','quality'),
                 'dimensions':'1280x720','process_priority':'NORMAL_PRIORITY_CLASS'},
             'artifacts':{},'started_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime())}
     process=None
     try:
         env=environment(Path(args.install_root).resolve(strict=True),session,args.scene,args.warmup,args.samples,capacity,
-                        args.pass_spans,args.isolate,args.stats)
+                        args.pass_spans,args.isolate,args.stats,getattr(args,'quality','quality'))
         command=[build['executable'],TEST,'--exact','--ignored','--nocapture','--test-threads=1']
         record['command']=command
         record['runtime_vulkan_environment']={k:v for k,v in sorted(env.items()) if k.startswith(('VK_','VULKAN_'))}
@@ -413,7 +419,7 @@ def run(args):
         require(record['exit_code']==0,'GPU diagnostic fixture failed; see fixture.log')
         strict_log(log_path.read_text(encoding='utf-8'))
         validate_session(json.loads(session.read_text(encoding='utf-8')),process.pid,args.scene,args.warmup,args.samples,
-                         args.pass_spans,args.isolate,args.stats)
+                         args.pass_spans,args.isolate,args.stats,getattr(args,'quality','quality'))
         _,after=frozen_identity(build_path)
         require(after==identity and digest(controller)==record['controller']['sha256'],
                 'frozen executable/source/controller identity changed')
@@ -453,6 +459,9 @@ def main():
                         help='serialise pass spans to measure exclusive pass cost; requires pass spans')
     parser.add_argument('--stats',action='store_true',
                         help='record pipeline statistics for each pass; requires pass spans')
+    parser.add_argument('--quality',choices=QUALITY_PRESETS,default='quality',
+                        help='quality preset: performance=TGSR(Performance)+no DoF, '
+                             'balanced=TGSR(Quality)+DoF, quality=no upscaling+DoF (default, the original evidence preset)')
     parser.add_argument('--timeout',type=float,default=3600)
     print(json.dumps(run(parser.parse_args()),indent=2,ensure_ascii=False))
 
