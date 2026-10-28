@@ -1,4 +1,28 @@
 use super::*;
+/// Namespace of the cache the pre-existing tests pretend to run in.
+const NS: u64 = 1;
+/// Namespace of a different cache.
+const FOREIGN: u64 = 2;
+fn key(
+    request: ResultRequest,
+    generation: u64,
+    descriptor: Descriptor,
+    sharing: crate::tracking::ResourceSharing,
+    final_access: u8,
+    enabled: bool,
+) -> crate::Result<Option<ResultKey>> {
+    super::key(request, NS, generation, descriptor, sharing, final_access, enabled)
+}
+fn lookup(
+    handle: ResourceHandle,
+    hit: bool,
+    version: u64,
+    produced: SyncSet,
+    node: ResultNodeId,
+    key: Option<&ResultKey>,
+) -> ResultLookup {
+    super::lookup(handle, hit, version, produced, NS, node, key)
+}
 fn request(dependencies: ResultDependencies) -> ResultRequest {
     ResultRequest {
         node: ResultNodeId(1),
@@ -223,11 +247,13 @@ fn lineage_keeps_evicted_parent_inputs_and_unknown_parent_never_becomes_cacheabl
     .unwrap();
     assert!(child.inputs.contains(&DependencyVersion {
         id: DependencyId::External(8),
-        version: 2
+        version: 2,
+        namespace: 0
     }));
     assert!(child.inputs.contains(&DependencyVersion {
         id: DependencyId::Result(ResultNodeId(1)),
-        version: 11
+        version: 11,
+        namespace: NS
     }));
     let unknown = lookup(
         ResourceHandle::from_raw(0),
@@ -260,5 +286,106 @@ fn lineage_keeps_evicted_parent_inputs_and_unknown_parent_never_becomes_cacheabl
         )
         .unwrap()
         .is_none()
+    );
+}
+
+fn result_dependency(namespace: u64, node: u64, version: u64) -> ContentDependency {
+    ContentDependency {
+        value: DependencyVersion {
+            id: DependencyId::Result(ResultNodeId(node)),
+            version,
+            namespace,
+        },
+        lineage: Vec::new(),
+        cacheable: true,
+    }
+}
+fn key_in(namespace: u64, dependency: ContentDependency) -> Option<ResultKey> {
+    super::key(
+        request(ResultDependencies::Complete(vec![dependency])),
+        namespace,
+        9,
+        descriptor(),
+        crate::tracking::ResourceSharing::Exclusive,
+        0x25,
+        true,
+    )
+    .unwrap()
+}
+#[test]
+fn dependencies_issued_by_another_cache_are_never_cacheable_here() {
+    assert!(key_in(NS, result_dependency(NS, 5, 1)).is_some());
+    assert!(
+        key_in(NS, result_dependency(FOREIGN, 5, 1)).is_none(),
+        "node 5 / version 1 of another cache is not this cache's node 5 / version 1"
+    );
+    let mut nested = result_dependency(NS, 6, 1);
+    nested.lineage.push(DependencyVersion {
+        id: DependencyId::Result(ResultNodeId(7)),
+        version: 1,
+        namespace: FOREIGN,
+    });
+    assert!(key_in(NS, nested).is_none(), "foreign lineage entries count too");
+    // External dependencies are versioned by the host and valid in every cache.
+    assert!(key_in(NS, ContentDependency::external(3, 1)).is_some());
+    assert!(key_in(FOREIGN, ContentDependency::external(3, 1)).is_some());
+}
+#[test]
+fn identical_requests_in_different_caches_have_different_keys() {
+    let a = key_in(NS, ContentDependency::external(3, 1)).unwrap();
+    let b = key_in(FOREIGN, ContentDependency::external(3, 1)).unwrap();
+    assert_ne!(a, b);
+    assert_eq!(a, key_in(NS, ContentDependency::external(3, 1)).unwrap());
+}
+#[test]
+fn every_cache_gets_its_own_nonzero_namespace() {
+    let (a, b) = (ResultCache::new(1, 1), ResultCache::new(1, 1));
+    assert!(a.namespace != 0 && b.namespace != 0);
+    assert_ne!(a.namespace, b.namespace);
+}
+#[test]
+fn invalidation_only_reaches_dependencies_of_its_own_namespace() {
+    let mut cache = ResultCache::new(8, 1 << 20);
+    let own = cache.namespace;
+    let store = |cache: &mut ResultCache, node: u64, namespace: u64| {
+        let payload = Arc::new(ResultKeyPayload {
+            namespace: own,
+            node: ResultNodeId(node),
+            device_generation: 9,
+            inputs: vec![DependencyVersion {
+                id: DependencyId::Result(ResultNodeId(5)),
+                version: 1,
+                namespace,
+            }],
+            parameters: Vec::new(),
+            shader_implementation: 0,
+            shader_interface: 0,
+            descriptor: descriptor(),
+            sharing: crate::tracking::ResourceSharing::Exclusive,
+            final_access: 0x25,
+        });
+        let bytes = payload.bytes();
+        let output = CachedOutput {
+            owned: OwnedOutput {
+                token: node,
+                resource: None,
+                retirement: cache.retired.clone(),
+            },
+            version: 1,
+            produced: SyncSet::EMPTY,
+        };
+        assert!(matches!(
+            cache.cache.insert(payload, output, bytes),
+            Inserted::Stored(_)
+        ));
+    };
+    store(&mut cache, 10, own);
+    store(&mut cache, 11, FOREIGN);
+    cache.invalidate(DependencyId::Result(ResultNodeId(5)), 2);
+    assert_eq!(cache.cache.len(), 1);
+    assert_eq!(cache.counters.invalidations, 1);
+    assert!(
+        cache.cache.iter().all(|(key, _)| key.node == ResultNodeId(11)),
+        "only the entry depending on the foreign node 5 survives"
     );
 }

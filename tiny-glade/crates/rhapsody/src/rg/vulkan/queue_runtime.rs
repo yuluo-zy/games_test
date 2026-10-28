@@ -10,6 +10,15 @@ use std::sync::Arc;
 use crate::{rg::{executor::QueuePrelude, queue_schedule::QueueDomain, sync_plan::{self, BoundBatchKind, BoundSynchronization, DependencyRef, SynchronizationPlanner}}, sync::SyncPoint};
 use crate::tracking::{ResourceSharing, SyncCell};
 use crate::tracking::range_state::{RangeCell, RangeOwner, RangeStateConfig, Storage};
+/// The planner is rebuilt every frame and needs unique access. Another holder
+/// means a recorder or batch outlived its frame, which is an ownership error:
+/// waiting longer cannot fix it, so it is not reported as `Timeout`.
+fn exclusive_planner(
+    planner: &mut Arc<SynchronizationPlanner>,
+) -> crate::Result<&mut SynchronizationPlanner> {
+    Arc::get_mut(planner)
+        .ok_or_else(|| crate::Error::invalid_usage("synchronization planner is still borrowed"))
+}
 pub(super) struct QueueRuntime {
     pub multi_queue: bool,
     planner: Arc<SynchronizationPlanner>,
@@ -166,9 +175,7 @@ impl VulkanGraphBackend {
         self.queue_runtime.active_batch = None;
         self.queue_runtime.tokens.values.clear();
         self.queue_runtime.points.values.clear();
-        if Arc::get_mut(&mut self.queue_runtime.planner).is_none() {
-            return Err(crate::Error::invalid_usage("synchronization planner is still borrowed"));
-        }
+        exclusive_planner(&mut self.queue_runtime.planner)?;
         for batch in &plan.range_program.batches {
             let flags = *self
                 .queue_runtime
@@ -211,7 +218,7 @@ impl VulkanGraphBackend {
         let domains = self.domains();
         let stats = &self.device.memory.stats;
         let runtime = &mut self.queue_runtime;
-        let planner = Arc::get_mut(&mut runtime.planner).ok_or(crate::Error::Timeout)?;
+        let planner = exclusive_planner(&mut runtime.planner)?;
         planner.begin();
         let count = compiled.snapshot.physical_mapping.len();
         runtime.tokens.grow(
@@ -496,5 +503,32 @@ impl VulkanGraphBackend {
             value: point.value,
             stage: vk::PipelineStageFlags::ALL_COMMANDS,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::error::ErrorKind;
+
+    fn shared_planner() -> Arc<SynchronizationPlanner> {
+        SynchronizationPlanner::new_shared(
+            Arc::new(crate::accounting::AllocatorStats::default()),
+            Default::default(),
+        )
+        .unwrap()
+    }
+
+    /// A planner that is still borrowed is an ownership error, not an expired
+    /// wait: callers must not retry it as if more time would help.
+    #[test]
+    fn a_borrowed_planner_is_invalid_usage_not_a_timeout() {
+        let mut planner = shared_planner();
+        let borrower = planner.clone();
+        let error = exclusive_planner(&mut planner).err().expect("still borrowed");
+        assert_eq!(error.kind(), ErrorKind::InvalidUsage);
+        assert!(!matches!(error, crate::Error::Timeout));
+        drop(borrower);
+        assert!(exclusive_planner(&mut planner).is_ok());
     }
 }

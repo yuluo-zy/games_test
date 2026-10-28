@@ -9,9 +9,23 @@ use crate::sync::{CompletedValues, SyncSet};
 use std::{
     collections::{BTreeSet, HashMap},
     ops::Range,
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
+/// Source of per-cache namespaces. `0` is reserved for host-versioned
+/// `External` dependencies, so the first cache gets `1`.
+static NEXT_NAMESPACE: AtomicU64 = AtomicU64::new(1);
+
+/// Identity of one cached node, chosen by the host.
+///
+/// The id must be unique among the nodes of one `ResultCache` (that is, one
+/// graph session) and stable across frames, otherwise nothing is ever reused.
+/// It is deliberately not tied to a frame's `GraphId`, which changes every
+/// frame. Two caches never share ids: each cache has its own namespace, and a
+/// dependency issued by another cache is treated as not cacheable.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ResultNodeId(pub u64);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -23,6 +37,10 @@ pub enum DependencyId {
 struct DependencyVersion {
     id: DependencyId,
     version: u64,
+    /// The cache that issued a `Result` dependency; `0` for `External` ones,
+    /// whose versions the host owns. Versions are counted per cache, so
+    /// without this a foreign `(node, version)` could equal a local one.
+    namespace: u64,
 }
 /// Result dependencies carry their transitive provenance. Evicting a parent
 /// result therefore cannot sever a cached child's invalidation path.
@@ -38,6 +56,7 @@ impl ContentDependency {
             value: DependencyVersion {
                 id: DependencyId::External(id),
                 version,
+                namespace: 0,
             },
             lineage: Vec::new(),
             cacheable: true,
@@ -48,6 +67,13 @@ impl ContentDependency {
     }
     pub fn version(&self) -> u64 {
         self.value.version
+    }
+    /// Whether this dependency, and everything it descends from, can be
+    /// matched by the cache with this namespace.
+    fn belongs_to(&self, namespace: u64) -> bool {
+        std::iter::once(&self.value)
+            .chain(&self.lineage)
+            .all(|value| value.namespace == 0 || value.namespace == namespace)
     }
 }
 #[derive(Clone, Debug, Default)]
@@ -84,6 +110,7 @@ impl ResultLookup {
 type ResultKey = Arc<ResultKeyPayload>;
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct ResultKeyPayload {
+    namespace: u64,
     node: ResultNodeId,
     device_generation: u64,
     inputs: Vec<DependencyVersion>,
@@ -173,6 +200,7 @@ pub struct ResultCache {
     frames: HashMap<GraphId, PendingFrame>,
     enabled: bool,
     next_version: u64,
+    namespace: u64,
     counters: ResultCacheStats,
 }
 impl Default for ResultCache {
@@ -188,6 +216,7 @@ impl ResultCache {
             frames: HashMap::new(),
             enabled: true,
             next_version: 1,
+            namespace: NEXT_NAMESPACE.fetch_add(1, Ordering::Relaxed),
             counters: Default::default(),
         }
     }
@@ -431,6 +460,11 @@ impl ResultCache {
         }
     }
     fn invalidate(&mut self, id: DependencyId, version: u64) {
+        let namespace = self.namespace;
+        let issued_by = move |id: DependencyId| match id {
+            DependencyId::External(_) => 0,
+            DependencyId::Result(_) => namespace,
+        };
         let mut sources = vec![(id, Some(version))];
         let mut visited = BTreeSet::new();
         while let Some((source, version)) = sources.pop() {
@@ -439,7 +473,9 @@ impl ResultCache {
             }
             let affected = |key: &ResultKey| {
                 key.inputs.iter().any(|input| {
-                    input.id == source && version.is_none_or(|version| input.version != version)
+                    input.id == source
+                        && input.namespace == issued_by(source)
+                        && version.is_none_or(|version| input.version != version)
                 })
             };
             for frame in self.frames.values_mut() {
@@ -517,6 +553,7 @@ fn result_key_difference(old: &ResultKeyPayload, new: &ResultKeyPayload) -> Cach
 }
 fn key(
     request: ResultRequest,
+    namespace: u64,
     generation: u64,
     descriptor: Descriptor,
     sharing: crate::tracking::ResourceSharing,
@@ -540,7 +577,9 @@ fn key(
     };
     if !enabled
         || request.parameters.len() > 65536
-        || dependencies.iter().any(|dependency| !dependency.cacheable)
+        || dependencies
+            .iter()
+            .any(|dependency| !dependency.cacheable || !dependency.belongs_to(namespace))
     {
         return Ok(None);
     }
@@ -557,6 +596,7 @@ fn key(
         return Ok(None);
     }
     Ok(Some(Arc::new(ResultKeyPayload {
+        namespace,
         node: request.node,
         device_generation: generation,
         inputs: inputs.into_iter().collect(),
@@ -573,6 +613,7 @@ fn lookup(
     hit: bool,
     version: u64,
     produced: SyncSet,
+    namespace: u64,
     node: ResultNodeId,
     key: Option<&ResultKey>,
 ) -> ResultLookup {
@@ -585,6 +626,7 @@ fn lookup(
             value: DependencyVersion {
                 id: DependencyId::Result(node),
                 version,
+                namespace,
             },
             lineage: key.map_or_else(Vec::new, |key| key.inputs.clone()),
             cacheable: key.is_some(),
@@ -616,7 +658,7 @@ impl VulkanGraphSession {
         let bypass_reason = if !self.result_cache.enabled {
             CacheReason::Disabled
         } else if matches!(&request.dependencies, ResultDependencies::Unknown)
-            || matches!(&request.dependencies, ResultDependencies::Complete(inputs) if inputs.iter().any(|input| !input.cacheable))
+            || matches!(&request.dependencies, ResultDependencies::Complete(inputs) if inputs.iter().any(|input| !input.cacheable || !input.belongs_to(self.result_cache.namespace)))
         {
             CacheReason::UnknownDependencies
         } else {
@@ -624,6 +666,7 @@ impl VulkanGraphSession {
         };
         let key = key(
             request,
+            self.result_cache.namespace,
             self.backend.device.generation().value(),
             spec.descriptor(),
             spec.sharing(),
@@ -646,6 +689,7 @@ impl VulkanGraphSession {
                     false,
                     pending.version,
                     SyncSet::EMPTY,
+                    self.result_cache.namespace,
                     node,
                     Some(key),
                 ));
@@ -665,7 +709,15 @@ impl VulkanGraphSession {
                     final_access,
                     spec.sharing(),
                 )?;
-                let result = lookup(handle, true, version, produced, node, Some(key));
+                let result = lookup(
+                    handle,
+                    true,
+                    version,
+                    produced,
+                    self.result_cache.namespace,
+                    node,
+                    Some(key),
+                );
                 self.result_cache
                     .frames
                     .get_mut(&graph_id)
@@ -744,7 +796,15 @@ impl VulkanGraphSession {
             .get_mut(&graph_id)
             .unwrap()
             .invalidated = false;
-        let result = lookup(handle, false, version, SyncSet::EMPTY, node, key.as_ref());
+        let result = lookup(
+            handle,
+            false,
+            version,
+            SyncSet::EMPTY,
+            self.result_cache.namespace,
+            node,
+            key.as_ref(),
+        );
         self.result_cache
             .frames
             .get_mut(&graph_id)
