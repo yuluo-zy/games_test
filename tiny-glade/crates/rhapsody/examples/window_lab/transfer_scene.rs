@@ -194,7 +194,7 @@ impl TransferScene {
             self.queued = None;
             let ticket =
                 self.manager
-                    .read_buffer(self.destination.clone(), self.next_offset, CHUNK)?;
+                    .read_buffer(&self.destination, self.next_offset, CHUNK)?;
             self.submissions.insert(ticket.completion());
             if self.stalled {
                 self.report.capacity_recoveries += 1;
@@ -216,7 +216,7 @@ impl TransferScene {
         if self.pending.len() == SLOTS as usize {
             // Leases, including completed ones deliberately held by this
             // consumer, must prevent the mapped slots being recycled.
-            match self.manager.read_buffer(self.destination.clone(), 0, CHUNK) {
+            match self.manager.read_buffer(&self.destination, 0, CHUNK) {
                 Err(rhapsody::Error::Timeout) => {
                     self.report.full_capacity_checks += 1;
                     self.stalled = true;
