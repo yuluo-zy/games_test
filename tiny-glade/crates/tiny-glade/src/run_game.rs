@@ -1154,6 +1154,15 @@ fn install_toolbar_shape_dependencies(app: &mut bevy_app::App) {
         .add_event::<country_core::systems::audio::PlayBuildingAudio>()
         .add_event::<country_core::systems::audio::PlayTimberframeSound>()
         .add_event::<country_core::systems::audio::RequestWallMaterialAudio>();
+    // Producer of the AdjustWallHeightUi / InitAdjWallHeightMode / FinishAdjWallHeightMode
+    // events consumed by ui_adjust_wall_height_mode + history_record_adjust_wall_height.
+    // Native home is the shapes set (17), before the wall publish set (19) / history set (34).
+    app.add_systems(
+        bevy_app::Update,
+        country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height::ui_adjust_wall_height
+            .in_set(GameSystemSet(17))
+            .run_if(is_gameplay_active),
+    );
     app.add_systems(bevy_app::Update, (
         (
             shapes::shape_placement::shape_placement_params,

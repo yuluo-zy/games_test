@@ -179,11 +179,11 @@ pub struct SnapMode(pub u8);
 pub struct DontRecalculateShapePlacement;
 
 #[derive(Clone, Copy, Debug)]
-struct SnapProposal {
-    wall: WallId,
-    normal: Vec2,
-    u: f32,
-    point: Vec3,
+pub(crate) struct SnapProposal {
+    pub(crate) wall: WallId,
+    pub(crate) normal: Vec2,
+    pub(crate) u: f32,
+    pub(crate) point: Vec3,
 }
 
 /// 原闭包 140b15f80：资格判据来自 Public +0x280（来源 terrain_floor），
@@ -237,7 +237,7 @@ fn distance_xz(a: Vec3, b: Vec3) -> f32 {
     (dz * dz + dx * dx).sqrt()
 }
 
-fn nearest_proposal(
+pub(crate) fn nearest_proposal(
     public: &PublicWalls,
     spatial: &WallSpatialHash,
     cursor: Vec3,

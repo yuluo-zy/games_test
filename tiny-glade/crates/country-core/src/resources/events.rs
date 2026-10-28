@@ -99,3 +99,9 @@ pub struct InitAdjWallHeightMode;
 /// 音频和旧历史消费者只判非空，不代表生产者没有载荷。
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct FinishAdjWallHeightMode(pub crate::resources::walls::WallId);
+
+/// Original `OnShapeMoved` (produced by `ui_move_shapes` case 3 commit, 0x20 push row).
+/// Reader not yet located: payload is a placeholder carrying the moved wall id; exact
+/// fields pending analysis (registered UNKNOWN — not fabricated further).
+#[derive(Event, Clone, Copy, Debug)]
+pub struct OnShapeMoved(pub crate::resources::walls::WallId);

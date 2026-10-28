@@ -2,6 +2,7 @@
 //! Original submodules (`adjust_wall_height::{adjust_wall_height_impl, signifier_animation, ui_adjust_wall_height_mode}`).
 pub mod adjust_wall_height_impl;
 pub mod signifier_animation;
+pub mod ui_adjust_wall_height;
 pub mod ui_adjust_wall_height_mode;
 use crate::systems::wall::height_command::AdjustWallHeightRequest;
 use crate::systems::wall::height_command::WallHeightCommandError;

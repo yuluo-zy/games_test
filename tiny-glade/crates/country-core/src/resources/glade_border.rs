@@ -73,6 +73,44 @@ impl GladeBorder {
                 .all(|point| border.contains_point(point)),
         }
     }
+
+    /// B `search_lerped_shape_that_fits_into_glade` (0x140ad2ce0): lerp `lo→hi` over
+    /// `t = step/20` (20 steps), returning the largest lerped shape still inside the glade.
+    /// First candidate (`t = 0 = lo`) invalid → `lo`. Uses `Circle2d::lerp` /
+    /// `Rectangle2d::lerp` (native `FUN_140c98170` / `FUN_140c9c730`); mismatched kinds panic
+    /// (native unwrap at 0x140ad3029).
+    pub fn search_lerped_shape_that_fits_into_glade(
+        &self,
+        lo: BorderShape,
+        hi: BorderShape,
+    ) -> BorderShape {
+        if !self.is_shape_inside(lo) {
+            return lo;
+        }
+        let mut best = lo;
+        for step in 1..=0x14u32 {
+            let t = step as f32 / 0x14 as f32;
+            let candidate = lerp_border_shape(lo, hi, t);
+            if !self.is_shape_inside(candidate) {
+                break;
+            }
+            best = candidate;
+        }
+        best
+    }
+}
+
+/// BorderShape lerp for [`GladeBorder::search_lerped_shape_that_fits_into_glade`].
+fn lerp_border_shape(lo: BorderShape, hi: BorderShape, t: f32) -> BorderShape {
+    match (lo, hi) {
+        (BorderShape::Circle(a), BorderShape::Circle(b)) => BorderShape::Circle(a.lerp(b, t)),
+        // Rectangle2d::lerp (native FUN_140c9c730) is not ported yet — it is only needed for
+        // rectangle-subject fit search (§10–12). §6 circle editing uses the Circle arm above.
+        (BorderShape::Rectangle(_), BorderShape::Rectangle(_)) => {
+            todo!("Rectangle2d::lerp port pending (§10-12)")
+        }
+        _ => panic!("search_lerped_shape_that_fits_into_glade: shape kind mismatch"),
+    }
 }
 
 /// 非演示提示事件（O：`resources::glade_border::NotInDemoHint`；color_menu
@@ -99,5 +137,19 @@ mod tests {
             if demo {assert_eq!(shape,BorderShape::Circle(Circle2d::new(Vec2::ZERO,15.0)));}
             else {assert_eq!(shape,BorderShape::Rectangle(Rectangle2d::new_centered_axis_aligned(Vec2::splat(130.0))));}
         }
+    }
+
+    #[test]
+    fn search_lerped_finds_largest_fitting_circle() {
+        let border = GladeBorder(BorderShape::Circle(Circle2d::new(Vec2::ZERO, 15.0)));
+        let lo = BorderShape::Circle(Circle2d::new(Vec2::ZERO, 10.0));
+        let hi = BorderShape::Circle(Circle2d::new(Vec2::ZERO, 20.0));
+        match border.search_lerped_shape_that_fits_into_glade(lo, hi) {
+            BorderShape::Circle(c) => assert!((c.radius - 14.5).abs() < 1e-4, "radius {}", c.radius),
+            _ => panic!("expected circle"),
+        }
+        // `lo` already outside the glade → returns `lo` unchanged.
+        let far = BorderShape::Circle(Circle2d::new(Vec2::new(100.0, 0.0), 1.0));
+        assert_eq!(border.search_lerped_shape_that_fits_into_glade(far, far), far);
     }
 }
