@@ -29,4 +29,4 @@
 
 原入口运行、真实游戏消费者接线、A/C适配与完整游戏验收继续登记为缺口。总进度中的两条既有 country-core 缺失路径记录来自其他任务，本批未新增此类问题。
 
-[整合结果与源码输入哈希](integration/summary.json) · [独立审阅](integration/source-review.json) · [模块进度](../../MODULE_PROGRESS.md)
+[整合结果与源码输入哈希](integration/summary.json) · [独立审阅](integration/source-review.json) · [模块进度](../../docs/reference/MODULE_PROGRESS.md)

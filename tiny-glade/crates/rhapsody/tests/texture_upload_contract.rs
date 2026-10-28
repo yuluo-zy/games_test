@@ -1,14 +1,10 @@
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        setup::{SETUP_WAIT_TIMEOUT_NS, SetupAccess, init_texture_data, with_setup_resources},
-        texture::{Texture, TextureDesc, TextureKind, TextureViewDesc},
-        texture_upload::{copy_format_params, linear_regions, plan_texture_copies},
-    },
-};
+use rhapsody::device::{Device, DeviceConfig};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::texture::{Texture, TextureDesc, TextureKind, TextureViewDesc};
+use rhapsody::transfer::setup::{SETUP_WAIT_TIMEOUT_NS, SetupAccess, init_texture_data, with_setup_resources};
+use rhapsody::command::texture_copy::{copy_format_params, linear_regions, plan_texture_copies};
 
 #[test]
 fn default_views_match_texture_dimensions_and_create_real_vulkan_views() {
@@ -199,17 +195,12 @@ fn cube_faces_cube_array_faces_and_odd_r8_mips_upload_every_subresource() {
 #[test]
 fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_layout() {
     use ash::vk::Handle;
-    use rhapsody::{
-        raw::{
-            resource_access::{buffer_access, image_access},
-            setup::with_setup_command,
-            texture_upload::{record_texture_regions, record_texture_zero_fill},
-        },
-        resource::{OwnershipRange, range_state::AccessScope},
-        rg::vulkan::{
-            AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession,
-        },
-    };
+    use rhapsody::rg::vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession};
+    use rhapsody::tracking::OwnershipRange;
+    use rhapsody::command::resource_access::{buffer_access, image_access};
+    use rhapsody::transfer::setup::with_setup_command;
+    use rhapsody::command::texture_copy::{record_texture_regions, record_texture_zero_fill};
+    use rhapsody::native::AccessScope;
     use std::sync::Arc;
     let Some(device) = gpu_test_support::initialize(
         "recorded upload range state",
@@ -274,12 +265,12 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
         .aspect_mask(vk::ImageAspectFlags::COLOR)
         .layer_count(1);
     with_setup_command(&device, &[], |command| unsafe {
-        record_texture_zero_fill(command, texture.clone(), queue)?;
+        record_texture_zero_fill(command, &texture, queue)?;
         record_texture_regions(
             command,
             queue,
-            texture.clone(),
-            staging.clone(),
+            &texture,
+            &staging,
             &[vk::BufferImageCopy::default()
                 .image_subresource(layers)
                 .image_extent(vk::Extent3D {
@@ -292,8 +283,8 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
         record_texture_regions(
             command,
             queue,
-            texture.clone(),
-            staging.clone(),
+            &texture,
+            &staging,
             &[vk::BufferImageCopy::default()
                 .buffer_offset(256)
                 .image_subresource(layers)
@@ -307,13 +298,13 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
         )?;
         image_access(
             command,
-            texture.clone(),
+            &texture,
             queue,
             range,
             transfer_read,
             vk::ImageLayout::TRANSFER_SRC_OPTIMAL,
         )?;
-        buffer_access(command, readback.clone(), queue, 0, 256, transfer_write)?;
+        buffer_access(command, &readback, queue, 0, 256, transfer_write)?;
         device.raw_device().cmd_copy_image_to_buffer(
             command.raw_handle(),
             texture.raw_handle(),
@@ -325,7 +316,7 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
         );
         image_access(
             command,
-            texture.clone(),
+            &texture,
             queue,
             range,
             AccessScope {
@@ -337,7 +328,7 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
         )?;
         buffer_access(
             command,
-            readback.clone(),
+            &readback,
             queue,
             0,
             256,
@@ -349,7 +340,7 @@ fn recorded_uploads_share_virtual_state_and_graph_import_uses_physical_final_lay
         )
     })
     .unwrap()
-    .wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS)
+    .wait(rhapsody::transfer::setup::SETUP_WAIT_TIMEOUT_NS)
     .unwrap();
     let mut expected = [0u8; 256];
     for pixel in expected.as_chunks_mut::<4>().0 {

@@ -1,9 +1,9 @@
 //! Typed weak stores and the attached physical-device configuration.
 //! 需要 Vulkan 的用例在无实例时跳过（本机用 lavapipe）。
 mod gpu_test_support;
-use rhapsody::raw::device::Device;
-use rhapsody::raw::init::{DeviceSelectionPolicy, GraphicsInstance};
-use rhapsody::raw::physical_device::PhysicalDevice;
+use rhapsody::device::Device;
+use rhapsody::device::selection::{DeviceSelectionPolicy, GraphicsInstance};
+use rhapsody::native::physical_device::PhysicalDevice;
 use std::sync::Arc;
 
 fn headless() -> Option<(GraphicsInstance, Arc<Device>)> {
@@ -15,7 +15,7 @@ fn headless() -> Option<(GraphicsInstance, Arc<Device>)> {
             .into_iter()
             .next()
             .ok_or_else(|| rhapsody::Error::unsupported("no headless candidate"))?;
-        let device = Device::new(graphics.instance.clone(), None, &rhapsody::device::DeviceConfig {
+        let device = Device::new(&graphics.instance, None, &rhapsody::device::DeviceConfig {
             preferred_device: rhapsody::device::DevicePreference::ByUuid(candidate.device_uuid),
             ..rhapsody::device::DeviceConfig::headless()
         })?;
@@ -32,7 +32,7 @@ fn device_stores_release_unused_resources_without_sequence_buckets() {
     };
     let buffer = device
         .create_buffer(
-            &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(
+            &rhapsody::resource::buffer::BufferDesc::new_gpu_to_cpu(
                 16,
                 ash::vk::BufferUsageFlags::TRANSFER_DST,
             ),
@@ -43,13 +43,13 @@ fn device_stores_release_unused_resources_without_sequence_buckets() {
     let key = buffer.key();
     let weak = Arc::downgrade(&buffer.shared());
     drop(buffer);
-    assert!(device.resources().buffers.get(key).is_none());
+    assert!(device.resources().unwrap().buffers.get(key).is_none());
     assert!(weak.upgrade().is_none());
 }
 
 #[test]
 fn device_tables_have_independent_typed_store_identities() {
-    use rhapsody::raw::managed::resources::ManagedResources;
+    use rhapsody::resource::managed::resources::ManagedResources;
     let (a, b) = (
         ManagedResources::new(Default::default()).unwrap(),
         ManagedResources::new(Default::default()).unwrap(),

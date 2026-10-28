@@ -2,6 +2,20 @@
 
 持续开发的 Rust workspace，按原 B 功能结构整理已恢复游戏源码、渲染框架、自有工具和 HLSL。集成入口为 crates/tiny-glade；各 package README 说明模块功能、原逆向文件位置、Git 来源、已完成内容与缺口。
 
+## 逆向证据入口
+
+本工程是正式实现。原版行为、PDB、差分证据与可编译验证工程在 [`../reverse-engineering/tiny-glade/`](../reverse-engineering/tiny-glade/README.md)，按需查阅，不要整体加载：
+
+| 需要 | 打开 |
+|---|---|
+| 当前模块状态 | [`reports/business/2026-10-23-module-recovery/STATUS.md`](reports/business/2026-10-23-module-recovery/STATUS.md) |
+| 原版证据索引 | [`../reverse-engineering/tiny-glade/evidence/README.md`](../reverse-engineering/tiny-glade/evidence/README.md) |
+| PDB / 符号 / 结构 | [`../reverse-engineering/tiny-glade/skeleton/README.md`](../reverse-engineering/tiny-glade/skeleton/README.md) |
+| reconstruction 与正式工程差异、移植清单 | [`../reverse-engineering/tiny-glade/reconstruction/PORTING-CHECKLIST.md`](../reverse-engineering/tiny-glade/reconstruction/PORTING-CHECKLIST.md) |
+| MCP / Ghidra / ReVa | [`../reverse-engineering/tiny-glade/docs/current/AI_REVERSE_TOOLS.md`](../reverse-engineering/tiny-glade/docs/current/AI_REVERSE_TOOLS.md) |
+
+先读 [`../reverse-engineering/tiny-glade/README.md`](../reverse-engineering/tiny-glade/README.md) 的“按任务直达”和“渐进式披露”，再进入具体目录。
+
 ## 功能归宿
 
 | 内容 | 工程目录 |
@@ -35,22 +49,30 @@
 
 以上属于用户明确缩减的项目范围，不列为待恢复缺口，也不重新导入。历史恢复源码、原作依赖锁和旧证据保留供查阅。既有测试报告保留其原验证范围；删除后的结构、清单检查及检查限制见 [scope-removal-validation.json](provenance/scope-removal-validation.json)。
 
+2026-10-24：按用户要求删除许可证服务和整个 Credits 制作人员页面，包括菜单入口、页面状态、滚动控件和专属测试，并移除其 HTTP 依赖。原作分析证据保留为历史，不列为当前待恢复业务。当前模块状态与验证见 [业务台账](reports/business/2026-10-23-module-recovery/STATUS.md)。
+
+2026-10-24：用户明确将真实 Steam SDK 接入排除出本轮修复范围（TB-R8），保留当前注入接口及 host 启动方式；不作为 toolbar 收口阻断。相关决定与其余修复见上述业务台账。
+
 ## 开发与验证
 
-```powershell
+```bash
 cargo check
 cargo check-all
 cargo test-all
 cargo lint
 cargo fmt --all --check
-py -3 tools/verify_inventory.py
+python3 tools/verify_inventory.py
 ```
+
+Windows 环境可将最后一行改为 `py -3 tools/verify_inventory.py`。
 
 根 Cargo.toml 管理 workspace、原公共依赖/fork、版本、最低 Rust、lint 和构建配置；每个包声明自己的功能与 README。恢复源码使用 let-chains，根声明最低 Rust 1.88；实际测试工具链在验收记录单列，不以新版本机编译成功冒称1.88已验证。默认入口是 library，游戏启动、窗口、实际 GPU/backend 和全场景仍需继续开发。
 
 公共依赖按 provenance/original-Cargo.lock 的 B 版本/来源复用。原 Bevy fork 仓库/commit 未核实，不编造。原 gpu-allocator 本地 fork 未找回；可选 rhapsody/candidate-suballocation 使用明确登记的0.27候选，默认关闭，不计原依赖身份恢复。其它实验/候选功能见各包 feature 说明。
 
-## Git 审计
+## 历史 Git 审计
+
+以下记录针对早期仓库提交历史；当前工作区于 2026-10-25 建立了新的根仓库，未导入旧 Git 历史；以下提交号与推送描述仅作历史留存。
 
 重点核对 b5965593、664f6a65 的 country-core 恢复、52a14460及后续 rhapsody 修复、81aa0042 的 HLSL、早期建筑/历史和基础库提交。上一版整理把部分系统未完成错误地当作整包不纳入，并将 paths/lang-lib/tabloid 选回旧快照；本次补回完成实现，保留最新产品修复，并在包 README 记录其原行为差异。
 
@@ -58,4 +80,4 @@ py -3 tools/verify_inventory.py
 
 来源映射与快照在 [sources.json](provenance/sources.json)，专项复核与排除原因在 [AUDIT.md](provenance/AUDIT.md)。Cargo/mod/trait 开发接线不计新逆向成果。旧导入快照和报告保留为 sources-initial-import.json 与 validation-initial-import.json。
 
-当前编译、测试和清单结果见 [validation.json](provenance/validation.json)。历史原指令差分、静态分析和GPU证据仍在仓库 reverse-engineering/tiny-glade。编译与单测不能推断整游戏、全GPU帧、全输入域或 A/C 版本等价。
+当前编译、测试和清单结果见 [validation.json](provenance/validation.json)。历史原指令差分、静态分析和GPU证据仍在同工作区的 [`../reverse-engineering/tiny-glade`](../reverse-engineering/tiny-glade)。编译与单测不能推断整游戏、全GPU帧、全输入域或 A/C 版本等价。

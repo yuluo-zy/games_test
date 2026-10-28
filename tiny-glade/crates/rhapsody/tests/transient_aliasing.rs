@@ -1,18 +1,9 @@
 //! S05 exercises real alias bindings through the production session recorder.
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::{
-    device::{AllocationStrategy, Device, DeviceConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        texture::TextureDesc,
-    },
-    rg::{
-        executor::PassContext,
-        graph::RenderGraph,
-        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::{device::{AllocationStrategy, Device, DeviceConfig}, rg::{executor::PassContext, graph::RenderGraph, vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession}}};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::texture::TextureDesc;
 use std::sync::Arc;
 const READ: u8 = 0x25;
 const WRITE: u8 = 0x34;
@@ -224,7 +215,7 @@ fn run_with_strategy(enabled: bool, allocation: AllocationStrategy) -> Option<Ru
                 && transition.old_layout == vk::ImageLayout::UNDEFINED
                 && matches!(
                     transition.range,
-                    rhapsody::resource::OwnershipRange::Image { .. }
+                    rhapsody::tracking::OwnershipRange::Image { .. }
                 )
         })
         .count();
@@ -254,7 +245,7 @@ fn run_with_strategy(enabled: bool, allocation: AllocationStrategy) -> Option<Ru
                         && transition.new_layout == vk::ImageLayout::TRANSFER_DST_OPTIMAL
                         && matches!(
                             transition.range,
-                            rhapsody::resource::OwnershipRange::Image {
+                            rhapsody::tracking::OwnershipRange::Image {
                                 aspects: 1,
                                 base_mip: 0,
                                 mip_count: 1,
@@ -386,7 +377,7 @@ fn unrelated_passes_do_not_alias_even_when_recording_indices_are_disjoint() {
     session.wait_submits_done(TIMEOUT).unwrap();
 }
 
-struct Release(Arc<rhapsody::raw::semaphore::TimelineSemaphore>, bool);
+struct Release(Arc<rhapsody::device::semaphore::TimelineSemaphore>, bool);
 impl Release {
     fn signal(&mut self) {
         if !self.1 {
@@ -428,7 +419,7 @@ fn simultaneously_pending_frames_allocate_distinct_backings_and_release_once() {
     // This guard drops before Session on assertion failure, so pending submits
     // can always finish during Session cleanup.
     let mut release = Release(
-        rhapsody::raw::semaphore::TimelineSemaphore::new(device.clone(), 0).unwrap(),
+        rhapsody::device::semaphore::TimelineSemaphore::new(device.clone(), 0).unwrap(),
         false,
     );
     let mut allocations = Vec::new();

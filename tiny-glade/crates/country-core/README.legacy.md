@@ -48,8 +48,8 @@
 | `src/recovered_building/history_snapshots.rs` | `History` 快照表：无分支二分 + "取更近者"（平局取后者）、`current_snapshot`/`set_current_snapshot`（已存在则 panic）/`closest_resolved_snapshot`、`insert_starting_edit`（`cursor += 1`、链首插入）、两个 diff 空判定（读容量）、`is_default_stair_width` | `add_decorator_diff` 的 checksum 校验与边循环、`history_process` 的命令生成与去重校验、`ReplayBuffer`、各领域 `replay_*` 系统 |
 | `src/resources/time_of_day.rs` | `remap_hour_to_fmod_hour`（0x140a74790）：夏季 6 个关键帧、冬季 x/y 各 8 个关键帧（此前文档写 x=7、y=9 有误） | `time_of_day` 系统本体（0x140a73460）、`TodSequence::snapshot_at_tod` |
 | `src/systems/weather_system.rs` | `weather_system`（0x1408e5b00）：冬季降雪强度随 10 分钟正弦涨落并钳到 `[0, 1]` | `SnowIntensity` 前 0xc 字节 |
-| [`src/recovered_building/`](src/recovered_building/README.md) | 早期原指令/状态证据约束的建筑、墙、门窗、历史和生命周期 CPU 实现 | 详见子目录 README；这些是已解析输入的 CPU 投影，与渲染侧类型不是已证明相同的原 ABI |
-| [`src/recovered_systems/`](src/recovered_systems/README.md) | 树删除条件、水栅格闭包、动物 locomotion predicate、墙音频 kind 表/音乐边界、clutter 删除 schema 的已闭合 CPU 子函数 | 各系统完整状态机、真实查询/资源、音频和 replay 消费；详见子目录来源与范围 |
+| `src/systems/`（原 recovered_building 已迁入） | 早期原指令/状态证据约束的建筑、墙、门窗、历史和生命周期 CPU 实现 | 详见子目录 README；这些是已解析输入的 CPU 投影，与渲染侧类型不是已证明相同的原 ABI |
+| `src/systems/`（原 recovered_systems 已迁入） | 树删除条件、水栅格闭包、动物 locomotion predicate、墙音频 kind 表/音乐边界、clutter 删除 schema 的已闭合 CPU 子函数 | 各系统完整状态机、真实查询/资源、音频和 replay 消费；详见子目录来源与范围 |
 | `src/utils/` | 稳定 ID 压缩和世界栅格采样已委托共享 `utils`；本地仅保留消费接口适配及自有 Transform | [索引/采样原码验收](../../../reverse-engineering/tiny-glade/evidence/utils-gap-recovery-2026-10-14/REPORT.md)；Transform 未恢复的 `look_at`/`abs_diff_eq` 未纳入 |
 
 `recovered_building/nani_solid_vertex_color.rs` 是早期已解析输入的 CPU 数据编码规则；`render/nani/` 管理实际渲染声明和实例集合。二者角色不同，并存不表示原内存布局、生产者链或 ECS 类型身份已经统一。
@@ -58,10 +58,10 @@
 
 - Git `664f6a65`：`feat(country-core): 全量恢复 21 工作包并整合为可编译 crate`。其大部分是路径/类型骨架，不能整体当成已恢复功能。
 - Git `b5965593`：`feat(country-core): 渲染模块 A1–A4/N/D/C/S/H 按原机器码恢复，附统一测试台与审计工具`。此次渲染实现整理的主要依据。
-- 实现来源：[reconstruction/country-core/src/](../../../reverse-engineering/tiny-glade/reconstruction/country-core/src/)。原模块树与每个函数的 B 地址、O/I/U 注释保留在源码中。
-- 原始取证及合同：[reconstruction/country-core-render/](../../../reverse-engineering/tiny-glade/reconstruction/country-core-render/) 下 `wp*/contracts`、原机器码/反编译材料。
+- 实现来源：[reconstruction/country-core/src/](../../../reverse-engineering/tiny-glade/reconstruction/country-core/src)。原模块树与每个函数的 B 地址、O/I/U 注释保留在源码中。
+- 原始取证及合同：[reconstruction/country-core-render/](../../../reverse-engineering/tiny-glade/reconstruction/country-core-render) 下 `wp*/contracts`、原机器码/反编译材料。
 - 独立审计：[AUDIT_REPORT.md](../../../reverse-engineering/tiny-glade/evidence/country-core-audit/AUDIT_REPORT.md)、[L0_NOTES.md](../../../reverse-engineering/tiny-glade/evidence/country-core-audit/L0_NOTES.md)、[B_SUMMARY.md](../../../reverse-engineering/tiny-glade/evidence/country-core-audit/B_SUMMARY.md) 和同目录 A3/B 分域报告。
-- 旧测试挂载清单：[l0-harness](../../../reverse-engineering/tiny-glade/tools/country-core-audit/l0-harness/)。这里只用它核对遗漏的真实源码和已有测试；没有引入 `parking_lot_shim`、`slotmap_shim`、`half_shim`。
+- 旧测试挂载清单：[l0-harness](../../../reverse-engineering/tiny-glade/tools/country-core-audit/l0-harness)。这里只用它核对遗漏的真实源码和已有测试；没有引入 `parking_lot_shim`、`slotmap_shim`、`half_shim`。
 - 逐文件映射、原输入哈希和工程适配记录见 [render-source-map.json](render-source-map.json)。建筑来源单列于 `src/recovered_building/README.md`。
 - 对旧 `country-core/src` 的 595 份源码另作覆盖清单，逐文件裁决了 41 份未映射且无显式 Gap/TODO 的候选，见 [country-source-coverage.json](country-source-coverage.json)。该扫描仍区分空体、写死示例、仅数据/容器转发、停止候选和实际已恢复函数；含显式缺口文件并未因此被整体宣布无可用函数。
 - 相机叶来源：`reconstruction/camera/schema.rs`（Git `8107b475`）；原码证据 `evidence/parallel-camera/B-decompile/140911e30.c`。

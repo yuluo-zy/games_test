@@ -1,4 +1,4 @@
-//! B 版已恢复的渲染图、资源与 Vulkan 调用链；原作等价性范围见 README。
+//! 已恢复的渲染图、资源与 Vulkan 调用链；原作等价性范围见 README。
 //!
 //! # Public surface
 //! - [`device`] — device creation, capabilities, queues, submission, budgets;
@@ -10,7 +10,6 @@
 //! - [`present`] — surfaces and swapchains;
 //! - [`transfer`] — asynchronous uploads;
 //! - [`sync`] — queue ids, sync points and completion values;
-//! - [`interop`] — explicit escape hatches to instances and native handles;
 //! - [`Error`], [`ErrorKind`], [`Result`] and the log ring helpers.
 //!
 //! Everything else is implementation detail. The `test-support` feature makes
@@ -32,19 +31,23 @@ macro_rules! internal_mod {
     )+};
 }
 
+pub mod accounting;
 pub mod bindless;
 pub mod collections;
 pub mod command;
 pub mod device;
+pub mod format;
 mod error;
-pub mod interop;
+pub mod native;
 pub mod pipeline;
+pub mod profile;
 pub mod present;
 pub mod resource;
 pub mod rg;
 pub mod sync;
+pub mod tracking;
 pub mod transfer;
-internal_mod!(log_ring, raw);
+internal_mod!(log_ring, retire, trace);
 
 pub use error::{Error, ErrorKind, Result, SharedError};
 pub use log_ring::{dump_log_vec, init_logging, record_log};

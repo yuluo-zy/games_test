@@ -1,13 +1,10 @@
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    bindless::BindlessConfig, bindless::BindlessHeap, bindless::BindlessParameters,
-    bindless::BindlessResource, bindless::BindlessShaderPackage, device::Device,
-    device::DeviceConfig, pipeline::AsyncPipelineCompiler, pipeline::CompilerConfig,
-    pipeline::HotPipeline, raw::buffer::Buffer, raw::buffer::BufferDesc,
-    raw::command_buffer::VulkanCommandPool, raw::dynamic_constants::DynamicConstants,
-    raw::shader::PipelineCache,
-};
+use rhapsody::{bindless::BindlessConfig, bindless::BindlessHeap, bindless::BindlessParameters, bindless::BindlessResource, bindless::BindlessShaderPackage, device::Device, device::DeviceConfig, pipeline::AsyncPipelineCompiler, pipeline::CompilerConfig, pipeline::HotPipeline};
+use rhapsody::command::command_buffer::VulkanCommandPool;
+use rhapsody::pipeline::shader::PipelineCache;
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::dynamic_constants::DynamicConstants;
 use shader_pipeline::{
     compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
     reflection::BindingLocation,
@@ -105,7 +102,7 @@ fn lower_preserves_shared_types_and_bounds_an_independent_array_index_table() {
     assert_eq!(abi.parameter_bytes, 16);
     assert_eq!(abi.bindings[0].parameter_count, 2);
     assert_eq!(abi.bindings[1].parameter_count, 1);
-    let actual = rhapsody::raw::shader::reflect_spirv_entries(&stages[0].spirv).unwrap();
+    let actual = rhapsody::pipeline::shader::reflect_spirv_entries(&stages[0].spirv).unwrap();
     assert_eq!(actual.len(), 1);
     assert!(
         actual[0]
@@ -216,7 +213,7 @@ fn real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set() 
         unsafe {
             pipeline.bind_pipeline(command.raw_handle());
             prepared
-                .bind_command(&mut command, pipeline.clone())
+                .bind_command(&mut command, &pipeline)
                 .unwrap();
             device
                 .raw_device()
@@ -238,7 +235,7 @@ fn real_uniform_push_and_descriptor_array_execute_through_one_shared_heap_set() 
                 &[],
             );
             changed_push
-                .bind_command(&mut command, pipeline.clone())
+                .bind_command(&mut command, &pipeline)
                 .unwrap();
             device
                 .raw_device()
@@ -417,12 +414,12 @@ fn complete_groups_page_without_changing_the_abi_or_immutable_push_values() {
     let foreign_words: Vec<u8> = [99u32, 0, 1, 2].into_iter()
         .flat_map(u32::to_le_bytes).collect();
     foreign_parameters.write_bytes(0, &foreign_words).unwrap();
-    let foreign_pool = rhapsody::raw::descriptor_set::VulkanDescriptorPool::new(
+    let foreign_pool = rhapsody::command::descriptor_set::VulkanDescriptorPool::new(
         device.clone(), heap.layout.plan(), 1).unwrap();
     let mut foreign = foreign_pool.allocate(heap.layout.clone()).unwrap();
     for (index, owner) in owners.iter().cloned()
         .chain([foreign_parameters.clone(), foreign_parameters.clone()]).enumerate() {
-        unsafe { foreign.update(2, index as u32, &rhapsody::raw::binding::DescriptorSetBinding::Buffer {
+        unsafe { foreign.update(2, index as u32, &rhapsody::command::binding::DescriptorSetBinding::Buffer {
             ty: vk::DescriptorType::STORAGE_BUFFER,
             info: vk::DescriptorBufferInfo::default().buffer(owner.raw_handle()).offset(0)
                 .range(if index < 3 { 4 } else { 16 }),
@@ -445,7 +442,7 @@ fn complete_groups_page_without_changing_the_abi_or_immutable_push_values() {
                     &[foreign.raw_handle()], &[]);
             }
             prepared[selection]
-                .bind_command(&mut command, pipeline.clone())
+                .bind_command(&mut command, &pipeline)
                 .unwrap();
             device
                 .raw_device()

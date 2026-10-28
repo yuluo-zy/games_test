@@ -21,10 +21,8 @@ use country_core::{
     resources::texture_presets::TexturePreset,
     rhapsody_types::{Texture, TextureDesc},
 };
-use rhapsody::{
-    bindless::BindlessParameters, bindless::BindlessResource, bindless::BindlessShaderAbi,
-    resource::DynamicConstantsChunk, resource::TextureView,
-};
+use rhapsody::{bindless::BindlessParameters, bindless::BindlessResource, resource::DynamicConstantsChunk, resource::TextureView};
+use rhapsody::pipeline::BindlessShaderAbi;
 use shader_pipeline::{reflection::BindingKind, reflection::BindingLocation};
 use std::sync::Arc;
 

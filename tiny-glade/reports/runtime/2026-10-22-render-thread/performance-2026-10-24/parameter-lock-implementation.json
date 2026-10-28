@@ -1,0 +1,74 @@
+{
+  "status": "implemented; GPU/host and all-target regressions passed; production-allocator measurement pending",
+  "recorded_utc": "2026-10-24T09:00:44.135845+00:00",
+  "changes": [
+    "Canonical finish/with_push allocator callback reserves the existing dynamic-constant slice; host write and descriptor creation happen after the caller releases its allocator mutex. All production/example/test consumers migrated, no compatibility overload.",
+    "Remove repeated slot-generation mutex checks: BindlessLease index is private and immutable; only final Arc Drop retires it. Heap/type/pipeline boundary checks remain; final-drop debug invariant remains."
+  ],
+  "sources": {
+    "crates/rhapsody/src/bindless.rs": "3fb872f78305960d3ac17eecd55f6731f23e5f68d5399707d57b438531371a17",
+    "crates/rhapsody/src/bindless_parameters.rs": "174b4829919ae55a6586a00288c527551d9d985e039b35c7a428362ccea70995",
+    "crates/rhapsody/src/rg/indirect_count.rs": "f0649f67d6264eab50214599a8c7d44c1f9ba9720115c956782e758e6415fbe4",
+    "crates/rhapsody/examples/window_lab/scene.rs": "576e1caa843dfb0ae041d1ddae186dc3e2226b27f11a2291d68104b91d5147dd",
+    "crates/rhapsody/tests/bindless_shader_abi.rs": "3711f072e05aa2e6e785c8a1a3298e6d8cf2e16eecc6d4f10700d0ae49922575",
+    "crates/rhapsody/tests/reverse_blur_original_vulkan.rs": "e3ee96637b29f32deaeca8cfce23c658802474798c0f08cfd2d6bcff1044edb8",
+    "crates/tiny-glade/src/render_host.rs": "8681285a634e300c218a87a529b9e699bd47713df92312d7db51b476f4ef316a",
+    "crates/tg-text/src/gpu/frame.rs": "e23212fece71da89b818f7e66df50d946791ed1aa96f4f5f2dd2cee584e8eb96"
+  },
+  "tests": {
+    "bindless": {
+      "passed": 6,
+      "ignored": 1
+    },
+    "bindless_shader_abi": {
+      "passed": 5
+    },
+    "reverse_blur_original_vulkan": {
+      "passed": 2
+    },
+    "render_host": {
+      "passed": 27
+    },
+    "workspace_all_targets": "passed on check-retry2; earlier concurrent audio integration failures preserved"
+  },
+  "logs": [
+    {
+      "path": "tg-parameter-lock-check.log",
+      "sha256": "0ce60f1ddc7f09622b3a19003e1fa4fcc4eb42f1ecfda264bfb9cbba484bac40"
+    },
+    {
+      "path": "tg-parameter-lock-check-retry.log",
+      "sha256": "acb15f6891783c35da4ca349ce55ed5205d11a3fffd46d851d6c0217d06116de"
+    },
+    {
+      "path": "tg-parameter-lock-check-retry2.log",
+      "sha256": "484503b6445aec67d0ddc741c75603db2a40f12fe9ecc2e8aae67fe02ad84a6f"
+    },
+    {
+      "path": "tg-parameter-lock-gpu.log",
+      "sha256": "28f7e6d2461af9c73fe3378dd671d7abbcbc49078d968c9b8b3b57cf64ca33ce"
+    },
+    {
+      "path": "tg-parameter-lock-host.log",
+      "sha256": "dc97735e7ea191d36e947da24ebcdef7fd01f6a3419a37fe690c7c4ba73f8f1f"
+    },
+    {
+      "path": "tg-parameter-lock-release.log",
+      "sha256": "c375f3c332ef1033986eb57143e4aea2e26aa0a1db9d2d2ba974360488817c72"
+    },
+    {
+      "path": "tg-production-perf-check.log",
+      "sha256": "246cf4fecdf2f6436f2f5f544aaf8fcc9982a5ce176ff7b9ff8fb8275ad5698b"
+    }
+  ],
+  "latest_sources": {
+    "crates/rhapsody/src/bindless.rs": "3fb872f78305960d3ac17eecd55f6731f23e5f68d5399707d57b438531371a17",
+    "crates/rhapsody/src/bindless_parameters.rs": "174b4829919ae55a6586a00288c527551d9d985e039b35c7a428362ccea70995",
+    "crates/rhapsody/src/rg/indirect_count.rs": "f0649f67d6264eab50214599a8c7d44c1f9ba9720115c956782e758e6415fbe4",
+    "crates/rhapsody/examples/window_lab/scene.rs": "576e1caa843dfb0ae041d1ddae186dc3e2226b27f11a2291d68104b91d5147dd",
+    "crates/rhapsody/tests/bindless_shader_abi.rs": "3711f072e05aa2e6e785c8a1a3298e6d8cf2e16eecc6d4f10700d0ae49922575",
+    "crates/rhapsody/tests/reverse_blur_original_vulkan.rs": "e3ee96637b29f32deaeca8cfce23c658802474798c0f08cfd2d6bcff1044edb8",
+    "crates/tiny-glade/src/render_host.rs": "8681285a634e300c218a87a529b9e699bd47713df92312d7db51b476f4ef316a",
+    "crates/tg-text/src/gpu/frame.rs": "e23212fece71da89b818f7e66df50d946791ed1aa96f4f5f2dd2cee584e8eb96"
+  }
+}

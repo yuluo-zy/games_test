@@ -1048,8 +1048,8 @@ mod tests {
     #[test]
     fn pending_gpu_pixels_yield_with_one_cpu_buffer_and_deliver_once_after_completion() {
         use ash::vk;
-        use rhapsody::{command::VulkanCommandPool, device::{Device, DeviceConfig, DeviceQueue},
-            raw::semaphore::TimelineSemaphore, resource::BufferDesc};
+        use rhapsody::{command::VulkanCommandPool, device::{Device, DeviceConfig, DeviceQueue}, resource::BufferDesc};
+        use rhapsody::device::semaphore::TimelineSemaphore;
         struct Release(Option<Arc<TimelineSemaphore>>);
         impl Release {
             fn signal(&mut self) {
@@ -1081,7 +1081,7 @@ mod tests {
         let mut release = Release(Some(gate.clone()));
         let pool = VulkanCommandPool::new(device.clone()).unwrap();
         let mut command = pool.allocate().unwrap();
-        unsafe { command.retain_opaque_buffer_range(buffer.shared(), 0, 16) }.unwrap();
+        unsafe { command.retain_opaque_buffer_range(&buffer.shared(), 0, 16) }.unwrap();
         command.begin().unwrap();
         unsafe {
             device.raw_device().cmd_fill_buffer(command.raw_handle(), buffer.raw_handle(), 0, 16, 0x44332211);
@@ -1096,7 +1096,7 @@ mod tests {
             family: device.queue_family_index(), index: 0},
             &[(gate, 1, vk::PipelineStageFlags::ALL_COMMANDS)], &[]).unwrap();
         let mut graph = rhapsody::rg::RenderGraph::new();
-        let logical = graph.create_buffer("screenshot logical owner", rhapsody::rg::graph::BufferDesc {
+        let logical = graph.create_buffer("screenshot logical owner", rhapsody::rg::resource_registry::BufferDesc {
             word_at_00: 16, word_at_08: vk::BufferUsageFlags::TRANSFER_DST.as_raw(), bytes_at_0c_through_0e: [2, 0, 0],
         }).unwrap().raw();
         let (send, pixels) = std::sync::mpsc::channel();

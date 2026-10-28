@@ -1,6 +1,6 @@
 # 共享基础模块：并行代码 review 与修复
 
-**统计口径修正：** 下文609/314及原因拆分是首次review时的原始混合库存快照，包含宏、类型helper与待分类项。用户指出误计后已分离62自动实现/依赖转发、46 schema helper与33待分类记录；当前业务主表为468观察/280部分分析/188未触及/274候选映射，194项业务接口无映射实现。见[分类表](../../INTERFACE_CLASSIFICATION.md)与[当前缺口](../../UNRECOVERED_INTERFACES.md)。此修正没有修改源码/历史差分或新增功能验收；下方代码修复与测试证据继续保留原范围。
+**统计口径修正：** 下文609/314及原因拆分是首次review时的原始混合库存快照，包含宏、类型helper与待分类项。用户指出误计后已分离62自动实现/依赖转发、46 schema helper与33待分类记录；当前业务主表为468观察/280部分分析/188未触及/274候选映射，194项业务接口无映射实现。见[分类表](../../docs/reference/INTERFACE_CLASSIFICATION.md)与[当前缺口](../../docs/current/UNRECOVERED_INTERFACES.md)。此修正没有修改源码/历史差分或新增功能验收；下方代码修复与测试证据继续保留原范围。
 
 三名独立 review agent 分别负责 utils 顶层、几何/曲线/Transform、asset/asset-pipe；父 agent 审查 paths/lang-lib/tabloid/theme-defs 并做统一回归。范围是此前恢复的七包，不包含其他并行工程。69 份当前源码/测试/示例 SHA 已登记；这不是原作文件或函数完成数量。
 
@@ -23,7 +23,7 @@ LoopRange 的 inherent len 与 ExactSizeIterator::len 是不同调用；后者�
 
 ## 未恢复接口与原因
 
-[完整314项清单](../../UNRECOVERED_INTERFACES.md)逐项列出原接口、原源码、原因及原审计缺口；[机器清单](../../tracking/unrecovered-shared-foundation-interfaces.json)便于后续推进。
+[完整314项清单](../../docs/current/UNRECOVERED_INTERFACES.md)逐项列出原接口、原源码、原因及原审计缺口；[机器清单](../../tracking/unrecovered-shared-foundation-interfaces.json)便于后续推进。
 
 - 199项尚未进行接受的业务分析；44项虽有伪码，但还未解释成业务合同。
 - 64项trait/schema归属待定，需要区分游戏字段/规则与派生或依赖胶水。

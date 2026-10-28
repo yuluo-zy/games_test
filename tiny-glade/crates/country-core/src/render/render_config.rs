@@ -63,7 +63,7 @@ impl FrameRenderConfig {
 }
 use uuid::Uuid;
 
-use rhapsody::interop::GraphicsInstanceLayerAllowlist;
+use rhapsody::native::GraphicsInstanceLayerAllowlist;
 
 /// 原RON14034c620：Best为无载荷变体，ClosestMatch为VideoMode新类型变体。
 /// 全屏／独占的开启分别由DisplayConfig两个bool决定，不是此枚举的变体含义。

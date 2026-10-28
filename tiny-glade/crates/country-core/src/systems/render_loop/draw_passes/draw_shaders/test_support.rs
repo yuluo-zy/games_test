@@ -55,6 +55,9 @@ pub struct RecHost {
 }
 
 impl PassHost for RecHost {
+    fn checkout_draw_scratch(&self) -> rhapsody::Result<crate::render::pass_builder::draw_commit_scratch::DrawCommitScratchLease> {
+        self.inner.checkout_draw_scratch()
+    }
     fn raster_shader(
         &self,
         s: &Handle<RasterShaderProgram>,

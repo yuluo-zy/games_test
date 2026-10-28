@@ -2,7 +2,7 @@
 //! `cargo test -p rhapsody --release --test core_perf -- --ignored --nocapture`
 use ash::vk;
 use rhapsody::device::{Device, DeviceConfig};
-use rhapsody::raw::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
 use std::time::Instant;
 
 fn device() -> Option<std::sync::Arc<Device>> {

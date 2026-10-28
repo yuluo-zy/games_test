@@ -1,0 +1,134 @@
+{
+  "id": "TG-9f683436506c749786",
+  "source_path": "crates/tabloid/src/lib.rs",
+  "category": "core",
+  "target_version": "C",
+  "versions": [
+    "A",
+    "B",
+    "C"
+  ],
+  "priority_score": 78,
+  "family": "other_game_or_owner_review",
+  "claim_mode": "candidate_reconstruction",
+  "cross_version_pairs": [
+    {
+      "versions": [
+        "A",
+        "B"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "A",
+        "C"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "B",
+        "C"
+      ],
+      "same_file_source_checksum_set": true,
+      "shared_source_checksums": [
+        "ddca6c5ca6fcb266c938eda8a3c33923911fdb23ff5e3408b5cdf9a1e9f27e56"
+      ],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    }
+  ],
+  "function_ids": [
+    "3756f3b4f392e554b0",
+    "6e00c5d06ee79c39af",
+    "85b3a54261d9139b5d",
+    "a4d220688d6b52d185",
+    "abce8afa93d92d5cd7",
+    "ae63a3326aa7e9873e",
+    "d88db28e368d353da5",
+    "ef4421e9ad85cdebb3",
+    "029accbf638ec80e36",
+    "15b1dbdc4e2fec59df",
+    "2977948b0d6eda3d2e",
+    "43ceea838641364dde",
+    "51216fe5f9f44c3087",
+    "5da10e546041625822",
+    "60933a0914ebdb7837",
+    "9e700ed149cb2272e2",
+    "bdbacb2d2a46ac0ab1",
+    "be0fcf07106966bcce",
+    "d2b896ddb2b855ebef",
+    "09db6c040c1ffd12cd",
+    "0f7f868e341999a830",
+    "26bad69ca13168d9e1",
+    "2d0219515714115e26",
+    "3e8a222704fa08268d",
+    "662907b3252fc79ea5",
+    "a74abe6db273dc7249",
+    "c24dab1c1980fea4f5",
+    "ea247a50ed919b32e5",
+    "f84a27701a529fa851",
+    "fc1e800c207b2ca03c"
+  ],
+  "related_callee_tasks": [
+    "TG-f7070bb3446b7a37eb",
+    "TG-f633d8ae33d6b16434"
+  ],
+  "related_caller_tasks": [
+    "TG-8999cb2dca3acc93d0",
+    "TG-73794e744b7aba73d4",
+    "TG-fc87e793a609063f14",
+    "TG-89621bad1106d1999d",
+    "TG-f7070bb3446b7a37eb",
+    "TG-ddd578a440ef0d4e61",
+    "TG-6f2c1224768f58ae3c",
+    "TG-89a9031b6ce7beb8e6",
+    "TG-2cc8aec081d0811cbe",
+    "TG-1463dd49d73d543435",
+    "TG-a8ca29dcfe65c20206",
+    "TG-0ae36c51eb110c07c2",
+    "TG-02c364fc151cbb9b45"
+  ],
+  "source_inputs": {
+    "A": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/A/crates/tabloid/src/lib.rs",
+      "sha256": "ede78fe13c59c43667fdc4230f05766f52846dc82b0aaf734bbd7e89d2828f7a",
+      "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+      "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5"
+    },
+    "B": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/tabloid/src/lib.rs",
+      "sha256": "f917a4759ebfa97aa0cb65a1aa3ed188dcb09421466875ce0e14c030e00ff2bb",
+      "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+    },
+    "C": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/C/crates/tabloid/src/lib.rs",
+      "sha256": "6118e08c9752d66fa7edb12b96b16bad9706dccb43549de0dbed079b1e79a19f",
+      "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+      "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902"
+    }
+  },
+  "assignment_unit": "one source-file family across A/B/C; one owner to prevent overlapping file edits",
+  "deliverable": "independent candidate Rust + ABI/field/dependency contracts + producer/consumer and removal/history boundaries + evidence handoff",
+  "implementation_status": "not_assessed; existing Rust must be checked before duplicate work",
+  "semantic_acceptance": false,
+  "existing_reconstruction_candidates": [
+    "reconstruction/history/transaction.rs"
+  ],
+  "known_B_evidence_function_ids": [],
+  "data_structure_metadata": {
+    "A": "skeleton/A/crates/tabloid/src/lib.rs.structures.json.gz",
+    "B": "skeleton/B/crates/tabloid/src/lib.rs.structures.json.gz",
+    "C": "skeleton/C/crates/tabloid/src/lib.rs.structures.json.gz"
+  },
+  "handoff": "task-index/handoffs/TG-9f683436506c749786.json",
+  "handoff_audit": "task-index/handoffs/TG-9f683436506c749786.audit.json"
+}

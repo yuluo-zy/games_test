@@ -2,7 +2,7 @@
 
 本目录把配置、磁盘资产和会话请求转为 ECS 资源、资产句柄和加载任务。2026-10-18 已按工程正确性重新整理；代码注释以中文职责说明为主，原逆向地址和旧结论保留在历史证据中。本轮有意调整旧设计，不据此宣称原版等价。
 
-原审查与修复状态见 [REVIEW.md](REVIEW.md)，变更与验证记录见 [修复报告](../../../../reports/startup-refactor-2026-10-18/README.md)。
+原审查与修复状态见 [REVIEW.md](REVIEW.md)，变更与验证记录见 [修复报告](../../../../reports/runtime/2026-10-18-startup-refactor/README.md)。
 
 ## 启动阶段
 
@@ -26,7 +26,7 @@
 1. 没有 NextSession 时直接跳过；None 请求只移除一次。已有加载尚未完成时保留后续请求，不覆盖当前动作和信号。
 2. 选择最近会话或指定 ID，检查可加载状态与历史文件。新建时从 demo/full 模板选择起始历史；第一次用 intro，以后排序并循环其他目录。没有候选目录返回错误。
 3. 新存档的 meta 和 snapshots 在同分区临时目录中准备，全部成功后 rename 发布。复制失败自动清理，不再忽略错误、留下半成品会话。新会话的历史来源仍是选中模板文件。
-4. 从主题资产载入 GladeSettings。demo 优先读取当前 World 的 GameConfig，并覆盖主题、颜色和落叶设置；进程级 setter 只保留为旧宿主兼容入口。
+4. 从主题资产载入 GladeSettings。demo 读取当前 World 的 GameConfig，并覆盖主题、颜色和落叶设置。
 5. 准备成功后更新 ActiveSession、配置和 AppMode，移动 on_load 动作到 LoadGameManager，移除请求并发送会话选择事件。失败保留请求及其动作，不提前发成功通知。
 
 `OnLoadEntry::Batch` 拥有完整命令，`OnLoadEntry::Fence` 拥有 Arc 信号；取消、复制和重试不再依赖把整数还原为 Arc。旧式裸地址 fence 被明确拒绝，其他尚未知含义的旧命令交给宿主处理，不能静默丢弃。

@@ -49,4 +49,4 @@ python3 scripts/native-workflow/run_pet_pilot.py evidence/toolchain-pet-pilot-20
 
 这会一次完成 MCP 批量、原证据冷/热采集、公共依赖对照、交接审计；`--skip-mcp` 仅用于无需重新查询可变数据库时。业务检查复用 [既有执行命令](critters-local-world-results.md)，与工具数据采集分别计时。修改目标/范围时复制并更新项目 recipe、plan、manifest、ledger，身份错误必须失败，不自动换版本。两个版本的地址不能套用。项目内附测试脚本 `scripts/native-workflow/test_helpers.py --output <项目内新目录>`。
 
-源代码、技能快照和试跑证据已保存到 [检查点](../../checkpoints/native-workflow-pet-2026-10-11/manifest.json)。归档排除原二进制/PDB、target 和缓存，恢复说明单独保留。
+源代码、技能快照和试跑证据已保存到 检查点。归档排除原二进制/PDB、target 和缓存，恢复说明单独保留。

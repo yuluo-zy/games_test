@@ -3,14 +3,8 @@
 #[path = "../gpu_test_support/mod.rs"]
 pub mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    command::PendingCommand, command::VulkanCommandPool, device::Device,
-    interop::create_headless_device, pipeline::DynamicRenderingFormats, pipeline::PipelineCache,
-    pipeline::PipelineLayout, pipeline::RasterPipelineDesc, pipeline::RasterPipelineOpts,
-    pipeline::ShaderModule, pipeline::VulkanPipeline, resource::BufferDesc,
-    resource::ManagedBuffer, resource::ManagedTexture, resource::ManagedTextureView,
-    resource::TextureDesc, resource::TextureViewDesc,
-};
+use rhapsody::{command::PendingCommand, command::VulkanCommandPool, device::Device, pipeline::DynamicRenderingFormats, pipeline::PipelineCache, pipeline::PipelineLayout, pipeline::RasterPipelineDesc, pipeline::RasterPipelineOpts, pipeline::ShaderModule, pipeline::VulkanPipeline, resource::BufferDesc, resource::ManagedBuffer, resource::ManagedTexture, resource::ManagedTextureView, resource::TextureDesc, resource::TextureViewDesc};
+use rhapsody::device::create_headless_device;
 use std::sync::Arc;
 
 pub const SIZE: u32 = 64;

@@ -2,9 +2,9 @@
 
 状态：部分候选实现。完整模块验收：未通过。
 
-B原接口已观察/已分析/未触及：14/13/1。[逐接口进度](../../INTERFACE_PROGRESS.md)。
+B原接口已观察/已分析/未触及：14/13/1。[逐接口进度](../../docs/current/INTERFACE_PROGRESS.md)。
 
-[业务功能对照](../../FOUNDATION_BUSINESS_COMPARISON.md)：{"implemented_scoped": 9, "out_of_baseline": 1}。此为功能行分类，不是完成率；源码缺失与原验证/库外接线分开。
+[业务功能对照](../../docs/reference/FOUNDATION_BUSINESS_COMPARISON.md)：{"implemented_scoped": 9, "out_of_baseline": 1}。此为功能行分类，不是完成率；源码缺失与原验证/库外接线分开。
 
 定义归属：private_game_source。
 
@@ -61,7 +61,7 @@ B两原文件的图片处理、mip/padding、DDS/数组、原压缩preset、版�
 - [evidence/shared-foundation-review-2026-10-13/REVIEW.md](../../evidence/shared-foundation-review-2026-10-13/REVIEW.md)
 - [tracking/shared-foundation-code-review.json](../shared-foundation-code-review.json)
 - [evidence/shared-foundation-review-2026-10-13/integration-validation.json](../../evidence/shared-foundation-review-2026-10-13/integration-validation.json)
-- [FOUNDATION_BUSINESS_COMPARISON.md](../../FOUNDATION_BUSINESS_COMPARISON.md)
+- [FOUNDATION_BUSINESS_COMPARISON.md](../../docs/reference/FOUNDATION_BUSINESS_COMPARISON.md)
 - [tracking/shared-foundation-business-comparison.json](../shared-foundation-business-comparison.json)
 
 ## 原作文件逐项覆盖

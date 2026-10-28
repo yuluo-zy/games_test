@@ -3,14 +3,8 @@
 //! performance result. Callback bodies and report serialization are allocation-free
 //! or outside the counted interval. Run this binary alone with --nocapture.
 use ash::vk;
-use rhapsody::{
-    raw::submit,
-    rg::{
-        executor::{ExecutionBackend, ExecutionChain},
-        graph::{self, Descriptor, RenderGraph, ResourceBackend},
-        parallel::ParallelRecording,
-    },
-};
+use rhapsody::rg::{executor::{ExecutionBackend, ExecutionChain}, graph::{self, Descriptor, RenderGraph, ResourceBackend}, parallel::ParallelRecording};
+use rhapsody::native::submit;
 mod allocation_counter;
 mod cpu_graph_support;
 #[cfg(unix)]
@@ -154,7 +148,7 @@ fn fixed_graph() -> graph::BuiltGraph {
 }
 fn fixed_resource_graph() -> graph::BuiltGraph {
     let mut graph = RenderGraph::new();
-    let descriptor = Descriptor::Buffer(graph::BufferDesc {
+    let descriptor = Descriptor::Buffer(rhapsody::rg::resource_registry::BufferDesc {
         word_at_00: 64,
         word_at_08: 0,
         bytes_at_0c_through_0e: [0; 3],
@@ -192,7 +186,7 @@ fn fixed_graph_reports_real_build_and_cached_execution_allocations() {
             cpu: enabled.then(|| {
                 rhapsody::command::CpuArenaPool::new(
                     Default::default(),
-                    std::sync::Arc::new(rhapsody::raw::allocator::AllocatorStats::default()),
+                    std::sync::Arc::new(rhapsody::accounting::AllocatorStats::default()),
                 )
                 .unwrap()
             }),
@@ -206,16 +200,17 @@ fn fixed_graph_reports_real_build_and_cached_execution_allocations() {
             ..Default::default()
         };
         let mut pool = graph::Pool::default();
-        let mut dependency = rhapsody::rg::vulkan::AccessTable::original();
+        let dependency = rhapsody::rg::vulkan::AccessTable::original();
         // The CPU-only adapter has no completion poll. Keep the finite measurement
         // below the already warmed pending-vector capacity; no Vulkan liveness claim.
         for _ in 0..300 {
-            let (declaration, mut callbacks, _) = factory().into_parts();
+            let (declaration, mut callbacks, _, declaration_error) = factory().into_parts();
+            assert!(declaration_error.is_none());
             let frame = chain
                 .execute_graph_with_context(
                     declaration,
                     &mut pool,
-                    &mut dependency,
+                    &dependency,
                     &mut backend,
                     &mut callbacks,
                 )
@@ -224,14 +219,15 @@ fn fixed_graph_reports_real_build_and_cached_execution_allocations() {
         }
         #[cfg(unix)]
         if resources && enabled && std::env::var_os("RHAPSODY_TRACE_CPU_ALLOCATIONS").is_some() {
-            let (declaration, mut callbacks, _) = factory().into_parts();
+            let (declaration, mut callbacks, _, declaration_error) = factory().into_parts();
+            assert!(declaration_error.is_none());
             allocation_trace::ENABLED.with(|enabled| enabled.set(true));
             let (frame, sample) = measured(|| {
                 chain
                     .execute_graph_with_context(
                         declaration,
                         &mut pool,
-                        &mut dependency,
+                        &dependency,
                         &mut backend,
                         &mut callbacks,
                     )
@@ -247,12 +243,13 @@ fn fixed_graph_reports_real_build_and_cached_execution_allocations() {
         for _ in 0..128 {
             let (built, build) = measured(factory);
             let ((frame, callbacks), execute) = measured(|| {
-                let (declaration, mut callbacks, _) = built.into_parts();
+                let (declaration, mut callbacks, _, declaration_error) = built.into_parts();
+                assert!(declaration_error.is_none());
                 let frame = chain
                     .execute_graph_with_context(
                         declaration,
                         &mut pool,
-                        &mut dependency,
+                        &dependency,
                         &mut backend,
                         &mut callbacks,
                     )
@@ -297,7 +294,7 @@ fn fixed_graph_reports_real_build_and_cached_execution_allocations() {
 fn warmed_cpu_frame_scratch_reuses_actual_storage_without_heap_allocation() {
     let pool = rhapsody::command::CpuArenaPool::new(
         Default::default(),
-        std::sync::Arc::new(rhapsody::raw::allocator::AllocatorStats::default()),
+        std::sync::Arc::new(rhapsody::accounting::AllocatorStats::default()),
     )
     .unwrap();
     for _ in 0..50 {
@@ -328,7 +325,10 @@ fn production_recorder_arena_matches_vec_events_and_returns_cpu_memory_after_cal
     let mut traces = Vec::new();
     for enabled in [false, true] {
         let mut chain = ExecutionChain::new(vk::Queue::null(), vec![], 1);
-        chain.parallel = ParallelRecording::PARALLEL;
+        // This test is about several concurrent chunks: every callback is dispatched before
+        // the first worker error is joined. The default strategy records a light batch as
+        // one inline chunk instead (see the test below), so the chunking is explicit here.
+        chain.parallel = ParallelRecording::EVERY_PASS;
         let mut backend = CpuBackend {
             trace: true,
             cpu: enabled.then(|| {
@@ -351,7 +351,7 @@ fn production_recorder_arena_matches_vec_events_and_returns_cpu_memory_after_cal
         let mut pool = graph::Pool::default();
         for frame in 0..18 {
             let mut graph = RenderGraph::new();
-            let descriptor = Descriptor::Buffer(graph::BufferDesc {
+            let descriptor = Descriptor::Buffer(rhapsody::rg::resource_registry::BufferDesc {
                 word_at_00: 64,
                 word_at_08: 0,
                 bytes_at_0c_through_0e: [0; 3],
@@ -381,11 +381,12 @@ fn production_recorder_arena_matches_vec_events_and_returns_cpu_memory_after_cal
                 Ok(())
             });
             graph.export(output, 0x25).unwrap();
-            let (declaration, mut callbacks, _) = graph.build().into_parts();
+            let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+            assert!(declaration_error.is_none());
             let result = chain.execute_graph_with_context(
                 declaration,
                 &mut pool,
-                &mut rhapsody::rg::vulkan::AccessTable::original(),
+                &rhapsody::rg::vulkan::AccessTable::original(),
                 &mut backend,
                 &mut callbacks,
             );
@@ -441,4 +442,67 @@ fn production_recorder_arena_matches_vec_events_and_returns_cpu_memory_after_cal
         traces.push(trace);
     }
     assert_eq!(traces[0], traces[1]);
+}
+
+#[test]
+fn default_strategy_records_a_light_batch_inline_and_stops_at_the_first_failing_callback() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+    };
+    let mut chain = ExecutionChain::new(vk::Queue::null(), vec![], 1);
+    assert_eq!(chain.parallel, ParallelRecording::default());
+    let mut backend = CpuBackend {
+        trace: true,
+        ..Default::default()
+    };
+    let mut pool = graph::Pool::default();
+    let caller = std::thread::current().id();
+    let calls = Arc::new(AtomicUsize::new(0));
+    let on_caller = Arc::new(AtomicBool::new(true));
+    let mut graph = RenderGraph::new();
+    let descriptor = Descriptor::Buffer(rhapsody::rg::resource_registry::BufferDesc {
+        word_at_00: 64,
+        word_at_08: 0,
+        bytes_at_0c_through_0e: [0; 3],
+    });
+    let input = graph.import_unowned("input", descriptor, 11, 0x25).unwrap();
+    let output = graph.import_unowned("output", descriptor, 12, 0x25).unwrap();
+    let mut pass = graph.add_pass("write");
+    pass.add_resource_access(input, 0x25, 0).unwrap();
+    pass.add_resource_access(output, 0x34, 1).unwrap();
+    let (writes, here) = (calls.clone(), on_caller.clone());
+    pass.render_with_result_context(move |_| {
+        writes.fetch_add(1, Ordering::Relaxed);
+        here.fetch_and(std::thread::current().id() == caller, Ordering::Relaxed);
+        Err(rhapsody::Error::OutOfDeviceMemory)
+    });
+    let mut pass = graph.add_pass("consume");
+    pass.side_effect();
+    pass.add_resource_access(output, 0x25, 2).unwrap();
+    let reads = calls.clone();
+    pass.render_with_result_context(move |_| {
+        reads.fetch_add(1, Ordering::Relaxed);
+        Ok(())
+    });
+    graph.export(output, 0x25).unwrap();
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    let result = chain.execute_graph_with_context(
+        declaration,
+        &mut pool,
+        &rhapsody::rg::vulkan::AccessTable::original(),
+        &mut backend,
+        &mut callbacks,
+    );
+    assert!(matches!(
+        result,
+        Err(rhapsody::rg::executor::Error::Validation(
+            rhapsody::Error::OutOfDeviceMemory
+        ))
+    ));
+    // One chunk is recorded in order on the calling thread: the failure of the first
+    // callback ends the chunk, so the second one is never dispatched.
+    assert_eq!(calls.load(Ordering::Relaxed), 1);
+    assert!(on_caller.load(Ordering::Relaxed));
 }

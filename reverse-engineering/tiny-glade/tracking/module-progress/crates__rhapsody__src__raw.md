@@ -2,7 +2,7 @@
 
 状态：部分接线。完整模块验收：未通过。
 
-B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../INTERFACE_PROGRESS.md)。
+B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../docs/current/INTERFACE_PROGRESS.md)。
 
 定义归属：private_game_source。
 
@@ -63,7 +63,7 @@ B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../IN
 | `crates/rhapsody/src/raw/instance.rs` | A,B | [reconstruction/rhapsody-rebuild/src/raw/instance.rs](../../reconstruction/rhapsody-rebuild/src/raw/instance.rs)：pdb_structure_aligned_candidate_path; not_original_text | 全集/逐函数映射待核对 | candidate_present；not_file_level_verified |
 | `crates/rhapsody/src/raw/physical_device.rs` | A,B | [reconstruction/rhapsody-rebuild/src/raw/physical_device.rs](../../reconstruction/rhapsody-rebuild/src/raw/physical_device.rs)：pdb_structure_aligned_candidate_path; not_original_text | 全集/逐函数映射待核对 | candidate_present；not_file_level_verified |
 | `crates/rhapsody/src/raw/profiler.rs` | B | [reconstruction/rhapsody-rebuild/src/raw/profiler.rs](../../reconstruction/rhapsody-rebuild/src/raw/profiler.rs)：pdb_structure_aligned_candidate_path; not_original_text | 全集/逐函数映射待核对 | candidate_present；not_file_level_verified |
-| `crates/rhapsody/src/raw/ray_tracing.rs` | A,B | [reconstruction/rhapsody-rebuild/src/raw/ray_tracing.rs](../../reconstruction/rhapsody-rebuild/src/raw/ray_tracing.rs)（缺失）：pdb_structure_aligned_candidate_path; not_original_text | 全集/逐函数映射待核对 | recorded_missing；not_file_level_verified |
+| `crates/rhapsody/src/raw/ray_tracing.rs` | A,B | [reconstruction/rhapsody-rebuild/src/raw/ray_tracing.rs](../../reconstruction/render/original-skeleton/crates/rhapsody/src/raw/ray_tracing.rs)（缺失）：pdb_structure_aligned_candidate_path; not_original_text | 全集/逐函数映射待核对 | recorded_missing；not_file_level_verified |
 | `crates/rhapsody/src/raw/render_pass.rs` | A,B | [reconstruction/rhapsody-rebuild/src/raw/render_pass.rs](../../reconstruction/rhapsody-rebuild/src/raw/render_pass.rs)：pdb_structure_aligned_candidate_path; not_original_text | 全集/逐函数映射待核对 | candidate_present；not_file_level_verified |
 | `crates/rhapsody/src/raw/sampler.rs` | A,B | [reconstruction/rhapsody-rebuild/src/raw/sampler.rs](../../reconstruction/rhapsody-rebuild/src/raw/sampler.rs)：pdb_structure_aligned_candidate_path; not_original_text | 全集/逐函数映射待核对 | candidate_present；not_file_level_verified |
 | `crates/rhapsody/src/raw/semaphore.rs` | A,B | [reconstruction/rhapsody-rebuild/src/raw/semaphore.rs](../../reconstruction/rhapsody-rebuild/src/raw/semaphore.rs)：pdb_structure_aligned_candidate_path; not_original_text | 全集/逐函数映射待核对 | candidate_present；not_file_level_verified |

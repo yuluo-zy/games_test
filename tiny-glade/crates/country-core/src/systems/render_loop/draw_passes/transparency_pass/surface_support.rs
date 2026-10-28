@@ -288,6 +288,63 @@ pub fn ray_units(width: u32, height: u32) -> u32 {
 // 栅格 pass（水 / 冰共用的外壳）
 // ---------------------------------------------------------------------------------------------
 
+
+/// Acceptance-only control for the existing surface declaration loop. This
+/// feature is absent from normal production builds; no runtime environment
+/// variable is read by the renderer.
+#[cfg(feature = "test-support")]
+std::thread_local! {
+    static TEST_SURFACE_INLINE: core::cell::Cell<bool> = const { core::cell::Cell::new(false) };
+    static TEST_SURFACE_STATS: core::cell::Cell<SurfaceCollectTestStats> = const {
+        core::cell::Cell::new(SurfaceCollectTestStats {
+            inline_calls: 0, inline_draws: 0, worker_calls: 0,
+            worker_tasks: 0, worker_draws: 0, owner_collect_tasks: 0,
+        })
+    };
+}
+
+#[cfg(feature = "test-support")]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct SurfaceCollectTestStats {
+    pub inline_calls: u64,
+    pub inline_draws: u64,
+    pub worker_calls: u64,
+    pub worker_tasks: u64,
+    pub worker_draws: u64,
+    pub owner_collect_tasks: u64,
+}
+
+#[cfg(feature = "test-support")]
+pub fn with_surface_collect_mode_for_test<T>(inline: bool, run: impl FnOnce() -> T) -> T {
+    let previous = TEST_SURFACE_INLINE.with(|value| value.replace(inline));
+    struct Restore(bool);
+    impl Drop for Restore {
+        fn drop(&mut self) { TEST_SURFACE_INLINE.with(|value| value.set(self.0)); }
+    }
+    let _restore = Restore(previous);
+    run()
+}
+
+#[cfg(feature = "test-support")]
+pub fn take_surface_collect_test_stats() -> SurfaceCollectTestStats {
+    TEST_SURFACE_STATS.with(|value| value.replace(SurfaceCollectTestStats::default()))
+}
+
+/// Non-destructive owner-local snapshot for paired correctness observations.
+/// It leaves the fixture's complete thirty-frame accounting intact.
+#[cfg(feature = "surface-compare-test")]
+pub fn surface_collect_test_stats_for_test() -> SurfaceCollectTestStats {
+    TEST_SURFACE_STATS.with(core::cell::Cell::get)
+}
+
+struct CollectedSurfaceOps {
+    ops: Vec<PlanOp>,
+    #[cfg(feature = "test-support")]
+    thread: std::thread::ThreadId,
+    #[cfg(feature = "test-support")]
+    draws: usize,
+}
+
 /// `RasterPass::new_impl(name, colors, depth(tag0 可写、无清除、layer 0), viewport = extent_2d(depth))` + 列表遍历 + `render`。
 ///
 /// 每个元素（O：0x1409bfaf0.. / 0x1409c1050..）：`DrawPacket::new(head = [1, item.vao], shader = item.shader, 默认状态)` →
@@ -300,7 +357,7 @@ pub fn run_surface_raster(
     colors: &[ColorAttachment],
     depth: &RgTexture,
     items: &[DrawEntry],
-    per_item: &dyn for<'p> Fn(DrawBuilder<'p>) -> DrawBuilder<'p>,
+    per_item: &(dyn for<'p> Fn(&SurfaceRasterTrace, DrawBuilder<'p>) -> DrawBuilder<'p> + Sync),
 ) {
     let depth_att = DepthAttachment {
         writable: true,
@@ -313,16 +370,73 @@ pub fn run_surface_raster(
     let mut pass = RasterPass::new(name, colors, Some(&depth_att), host)
         .with_viewport([depth.desc.extent[0], depth.desc.extent[1]]);
     let params = ctx.common_params(false);
-    for (item, func) in items {
-        let state = pass.host.default_raster_state();
+    let world: &bevy_ecs::world::World = ctx.world;
+    // The inline reference is the same production DrawBuilder sequence. It is
+    // available only in integration-test builds, without a second render host.
+    #[cfg(feature = "test-support")]
+    if TEST_SURFACE_INLINE.with(core::cell::Cell::get) {
+        TEST_SURFACE_STATS.with(|value| {
+            let mut stats = value.get();
+            stats.inline_calls += 1;
+            stats.inline_draws += items.len() as u64;
+            value.set(stats);
+        });
+        for (item, func) in items {
+            let state = pass.host.default_raster_state();
+            let packet = item.to_draw_packet(state);
+            let builder = DrawBuilder::new(&mut pass, packet, 0)
+                .bind_common::<ColorLibrarySsbo>(&params, &item.params.transform);
+            let mut builder = per_item(env, builder);
+            let packet = builder.packet_mut();
+            packet.state = packet.state.set_byte3_field_2();
+            func(builder, &item.params, world);
+        }
+        env.op(PlanKind::RasterRender, None);
+        pass.render();
+        return;
+    }
+    #[cfg(feature = "test-support")]
+    let owner_thread = std::thread::current().id();
+    #[cfg(feature = "test-support")]
+    TEST_SURFACE_STATS.with(|value| {
+        let mut stats = value.get();
+        stats.worker_calls += 1;
+        value.set(stats);
+    });
+    super::super::d_main_support::collect_draw_pages(&mut pass, items,
+        |host, (item, _)| super::super::d_main_support::draw_constant_bytes(host, item.shader, 0),
+        |local, items| {
+        // This Rc never crosses a worker boundary. Only the owned Vec returns
+        // with its DrawBatch; the owner merges page/draw order after joining.
+        let trace = SurfaceRasterTrace(Rc::new(RefCell::new(Vec::new())));
+        for (item, func) in items {
+        let state = local.host.default_raster_state();
         let packet = item.to_draw_packet(state);
-        let builder = DrawBuilder::new(&mut pass, packet, 0)
+        let builder = DrawBuilder::new(local, packet, 0)
             .bind_common::<ColorLibrarySsbo>(&params, &item.params.transform);
-        let mut builder = per_item(builder);
+        let mut builder = per_item(&trace, builder);
         let p = builder.packet_mut();
         p.state = p.state.set_byte3_field_2();
-        func(builder, &item.params, &mut *ctx.world);
-    }
+        func(builder, &item.params, world);
+        }
+        CollectedSurfaceOps {
+            ops: std::mem::take(&mut *trace.0.borrow_mut()),
+            #[cfg(feature = "test-support")]
+            thread: std::thread::current().id(),
+            #[cfg(feature = "test-support")]
+            draws: items.len(),
+        }
+    }, |result| {
+        #[cfg(feature = "test-support")]
+        TEST_SURFACE_STATS.with(|value| {
+            let mut stats = value.get();
+            if result.thread == owner_thread { stats.owner_collect_tasks += 1; }
+            else { stats.worker_tasks += 1; }
+            stats.worker_draws += result.draws as u64;
+            value.set(stats);
+        });
+        env.0.borrow_mut().extend(result.ops);
+    });
     env.op(PlanKind::RasterRender, None);
     pass.render();
 }

@@ -1,9 +1,6 @@
 //! 构图绑定登记访问，并由原账本规则合并；不能保留任意不兼容组合。
-use rhapsody::rg::{
-    graph::{BufferDesc, Descriptor, OriginSource, RenderGraph, TextureDesc},
-    pass_bindings::PassBindingError,
-    resource::ResourceOrigin,
-};
+use rhapsody::rg::{graph::{Descriptor, OriginSource, RenderGraph}, pass_bindings::PassBindingError, resource::ResourceOrigin};
+use rhapsody::rg::resource_registry::{BufferDesc, TextureDesc};
 #[test]
 fn typed_refs_register_access_and_preserve_original_upgrade_records() {
     let mut graph = RenderGraph::new();

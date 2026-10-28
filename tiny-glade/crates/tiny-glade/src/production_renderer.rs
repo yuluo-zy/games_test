@@ -24,10 +24,8 @@ use country_core::{
         world_frame as core_world_frame,
     },
 };
-use rhapsody::{
-    interop::InstanceBuilder, present::AcquiredImageLease, present::PresentTicket,
-    present::Swapchain, rg::SessionFrameReceipt,
-};
+use rhapsody::{present::AcquiredImageLease, present::PresentTicket, present::Swapchain, rg::SessionFrameReceipt};
+use rhapsody::native::InstanceBuilder;
 
 use crate::{
     egui_backend::EguiBackend,
@@ -162,24 +160,40 @@ pub fn prepare_headless_gameplay_frame(
     bridge: &mut crate::render_bridge::CoreRenderBridge,
     world: &mut World,
 ) -> Result<PreparedHeadlessGameplayFrame> {
+    prepare_headless_gameplay_frame_with_lists(bridge, world, &mut DrawLists::new())
+}
+
+/// Reuse the caller-owned lists, matching the resident production renderer.
+/// Measurement uses the same graph preparation and physical resource protocol.
+pub fn prepare_headless_gameplay_frame_with_lists(
+    bridge: &mut crate::render_bridge::CoreRenderBridge,
+    world: &mut World,
+    lists: &mut DrawLists,
+) -> Result<PreparedHeadlessGameplayFrame> {
     let started = std::time::Instant::now();
-    let mut lists = DrawLists::new();
-    build_draw_lists(world, bridge.shader_library().as_ref(), &mut lists);
+    lists.clear();
+    build_draw_lists(world, bridge.shader_library().as_ref(), lists);
     lists.sort();
-    bridge.raster_resources().refresh_draw_vaos(world, &lists).context("refresh draw VAOs")?;
+    bridge.raster_resources().refresh_draw_vaos(world, lists).context("refresh draw VAOs")?;
     let draw_lists = started.elapsed();
+    #[cfg(feature = "cpu-probe")]
+    crate::render_cpu_probe::stage_boundary(0);
     let extent = world_extent(world, None, None)?;
     let started = std::time::Instant::now();
     let (output, built) = bridge.build_frame(|frame| {
         frame.with_main_prelude(world, |frame, world| {
-            build_full_world_stage(frame, world, &lists, extent, None, None)
+            build_full_world_stage(frame, world, lists, extent, None, None)
         })
     }).context("declare world graph")?;
     let declare = started.elapsed();
+    #[cfg(feature = "cpu-probe")]
+    crate::render_cpu_probe::stage_boundary(1);
     let started = std::time::Instant::now();
     let capture_graph_id = built.graph_id();
     let compiled = bridge.compile_built(built).context("compile world graph")?;
     let compile = started.elapsed();
+    #[cfg(feature = "cpu-probe")]
+    crate::render_cpu_probe::stage_boundary(2);
     Ok(PreparedHeadlessGameplayFrame { compiled, capture_graph_id, output: output.texture,
         draw_lists, declare, compile })
 }
@@ -608,7 +622,13 @@ pub struct ProductionRenderer {
     timing: Option<RenderStageTiming>,
     timing_gameplay_count: u64,
     #[cfg(feature = "cpu-probe")]
-    cpu_recorder: Option<crate::render_cpu_probe::CpuIntervalRecorder>,
+    cpu_recorder: Option<crate::render_cpu_probe::CpuProbeSession>,
+    #[cfg(feature = "cpu-probe")]
+    cpu_attempt: u64,
+    #[cfg(feature = "cpu-probe")]
+    cpu_world_tick: u64,
+    #[cfg(feature = "cpu-probe")]
+    cpu_gameplay: bool,
     gpu_span_window: crate::frame_counters::GpuSpanWindow,
     compiled_shader_root: PathBuf,
     pending: VecDeque<PresentTicket>,
@@ -703,7 +723,7 @@ impl ProductionRenderer {
         let platform = PlatformSurface::new(&window)?;
         let surface = platform.create_surface(instance.clone())?;
         let device = rhapsody::device::Device::new(
-            instance,
+            &instance,
             Some(&surface),
             &rhapsody::device::DeviceConfig {
                 preferred_device: preferred.map(rhapsody::device::DevicePreference::ByUuid).unwrap_or_default(),
@@ -770,6 +790,12 @@ impl ProductionRenderer {
             timing_gameplay_count: 0,
             #[cfg(feature = "cpu-probe")]
             cpu_recorder: None,
+            #[cfg(feature = "cpu-probe")]
+            cpu_attempt: 0,
+            #[cfg(feature = "cpu-probe")]
+            cpu_world_tick: 0,
+            #[cfg(feature = "cpu-probe")]
+            cpu_gameplay: false,
             gpu_span_window: Default::default(),
             compiled_shader_root,
             pending: VecDeque::new(),
@@ -886,11 +912,11 @@ impl ProductionRenderer {
         &self.device
     }
     /// 从当前窗口真实surface枚举一次候选；只读查询，不创建另一窗口或设备。
-    pub(crate) fn settings_graphics_devices(&self) -> Result<Vec<rhapsody::interop::AvailableGraphicsDevice>> {
+    pub(crate) fn settings_graphics_devices(&self) -> Result<Vec<rhapsody::device::AvailableGraphicsDevice>> {
         let instance = self.device.instance().clone();
-        let devices = rhapsody::interop::enumerate_physical_devices(instance.clone())?
+        let devices = rhapsody::native::enumerate_physical_devices(&instance.clone())?
             .into_iter().map(Arc::new).collect();
-        let graphics = rhapsody::interop::GraphicsInstance { instance, devices };
+        let graphics = rhapsody::device::GraphicsInstance { instance, devices };
         Ok(graphics.available_for_surface(Some(self.swapchain.surface.raw_handle()), Default::default())?
             .available_devices())
     }
@@ -945,6 +971,8 @@ impl ProductionRenderer {
             self.acquired.is_none() && self.presentation.is_none(),
             "cannot switch App while its WSI acquisition is live"
         );
+        #[cfg(feature = "cpu-probe")]
+        self.reset_cpu_recorder_baseline();
         let key = Arc::as_ptr(&shaders) as usize;
         let previous = Arc::as_ptr(&self.shaders) as usize;
         let mut next = match self.other_applications.remove(&key) {
@@ -1008,6 +1036,8 @@ impl ProductionRenderer {
         Ok(())
     }
     pub fn suspend(&mut self) -> Result<()> {
+        #[cfg(feature = "cpu-probe")]
+        self.reset_cpu_recorder_baseline();
         self.suspended = true;
         if let Some(image) = self.acquired.take() {
             image.cancel(timeout_ns())?;
@@ -1015,6 +1045,8 @@ impl ProductionRenderer {
         Ok(())
     }
     pub fn resume(&mut self) -> Result<()> {
+        #[cfg(feature = "cpu-probe")]
+        self.reset_cpu_recorder_baseline();
         if let Some(platform) = &self.platform { platform.update(&self.window)?; }
         self.suspended = false;
         self.swapchain.mark_stale();
@@ -1037,6 +1069,14 @@ impl ProductionRenderer {
             session.backend.poll_gpu_timings()?;
             for sample in session.backend.drain_gpu_timings() {
                 window.add(sample.duration_ns, sample.pass_name);
+                if let (Some(name), Some(stats)) = (sample.pass_name, sample.statistics) {
+                    window.add_statistics(
+                        name,
+                        stats.input_vertices,
+                        stats.fragment_invocations,
+                        stats.compute_invocations,
+                    );
+                }
             }
             Ok::<_, rhapsody::Error>(())
         });
@@ -1415,6 +1455,12 @@ impl ProductionRenderer {
             timing_gameplay_count: 0,
             #[cfg(feature = "cpu-probe")]
             cpu_recorder: None,
+            #[cfg(feature = "cpu-probe")]
+            cpu_attempt: 0,
+            #[cfg(feature = "cpu-probe")]
+            cpu_world_tick: 0,
+            #[cfg(feature = "cpu-probe")]
+            cpu_gameplay: false,
             gpu_span_window: Default::default(),
             compiled_shader_root,
             pending: VecDeque::new(),
@@ -1734,7 +1780,7 @@ impl ProductionRenderer {
     #[cfg(feature = "cpu-probe")]
     pub fn install_cpu_recorder(
         &mut self,
-        recorder: crate::render_cpu_probe::CpuIntervalRecorder,
+        recorder: crate::render_cpu_probe::CpuProbeSession,
     ) {
         self.cpu_recorder = Some(recorder);
     }
@@ -1744,7 +1790,7 @@ impl ProductionRenderer {
     #[cfg(feature = "cpu-probe")]
     pub fn take_cpu_recorder(
         &mut self,
-    ) -> Option<crate::render_cpu_probe::CpuIntervalRecorder> {
+    ) -> Option<crate::render_cpu_probe::CpuProbeSession> {
         self.cpu_recorder.take()
     }
 
@@ -1768,11 +1814,7 @@ impl ProductionRenderer {
     #[cfg(feature = "cpu-probe")]
     fn record_cpu_interval(&mut self, frame: u64, receipt: Option<u64>, attempt: u64, observed: bool) {
         if let Some(recorder) = self.cpu_recorder.as_mut() {
-            if observed {
-                recorder.record_observed(frame, receipt, attempt);
-            } else {
-                recorder.record_unobserved(frame, attempt);
-            }
+            recorder.record(frame, receipt, attempt, observed);
         }
     }
 
@@ -1784,6 +1826,15 @@ impl ProductionRenderer {
         self.bridge.end_display_frame();
         // Drain the per-frame counters even for frames that are not logged, so
         // a logged frame never carries totals from skipped ones.
+        #[cfg(feature = "cpu-probe")]
+        if self.cpu_gameplay {
+            let receipt = self.frame_observation.as_ref().and_then(|observation|
+                matches!(observation.kind, ProductionGraphKind::Main { world_rendered: true, .. })
+                    .then_some(observation.receipt_frame));
+            let observed = self.first_error.is_none() && !self.cancel_preparation
+                && self.frame_present_queued && receipt.is_some();
+            self.record_cpu_interval(self.cpu_world_tick, receipt, self.cpu_attempt, observed);
+        }
         let counters = self.timing.is_some().then(crate::frame_counters::take);
         // Drain every timed frame, including those omitted by log sampling.
         // Otherwise the next sampled line reports many frames as one frame.
@@ -1792,18 +1843,6 @@ impl ProductionRenderer {
         let every = crate::game_loop::frame_timing_every();
         if let Some(t) = self.timing.take() {
             let emit = t.frame <= 3 || t.frame % every == 0;
-            // The clean CPU recorder fires on every completion point, not just
-            // logged frames: it is independent of the frame-timing log and its
-            // sampling gate. Failed/cancelled frames advance the baseline as
-            // unobserved so a later clean interval does not absorb their CPU.
-            #[cfg(feature = "cpu-probe")]
-            {
-                let observed = self.first_error.is_none() && !self.cancel_preparation;
-                let attempt = self.timing_gameplay_count;
-                let receipt = t.receipt;
-                let frame = t.frame;
-                self.record_cpu_interval(frame, receipt, attempt, observed);
-            }
             if !emit { return self.take_error().map_or(Ok(()), Err); }
             let ms = |d: Duration| d.as_secs_f64() * 1000.0;
             let c = counters.unwrap_or_default();
@@ -1816,7 +1855,7 @@ impl ProductionRenderer {
             // Completion polls since the previous logged frame: how often the
             // frame asks the driver about GPU progress.
             let plans = self.bridge.plan_cache_stats();
-            let reasons = rhapsody::rg::CacheReason::ALL
+            let reasons = rhapsody::collections::CacheReason::ALL
                 .iter()
                 .filter_map(|reason| {
                     let count = plans.diagnostics.misses(*reason);
@@ -1891,6 +1930,15 @@ impl ProductionRenderer {
     }
     fn front_host<'a>(&'a mut self, world: &'a mut World, egui: &'a mut EguiBackend) -> ProductionRenderHost<'a> {
         world.remove_resource::<crate::gpu_readback::SubmittedFrameCompletion>();
+        #[cfg(feature = "cpu-probe")]
+        {
+            self.cpu_attempt += 1;
+            self.cpu_gameplay = world.contains_resource::<crate::run_game::GameplayApplication>();
+            self.cpu_world_tick = world.get_resource::<crate::render_thread::ExtractedAt>()
+                .map(|at| u64::from(at.game.get()))
+                .or_else(|| world.get_resource::<country_core::resources::game_clock::GameClock>()
+                    .map(|clock| u64::from(clock.frame_count))).unwrap_or(self.cpu_attempt);
+        }
         self.timing = if crate::game_loop::frame_timing_enabled() && world.contains_resource::<crate::run_game::GameplayApplication>() {
             self.timing_gameplay_count += 1;
             Some(RenderStageTiming { frame: self.timing_gameplay_count, ..Default::default() })
@@ -2209,6 +2257,10 @@ impl RenderHost for ProductionRenderHost<'_> {
         let config = (gpu_profiling || pass_spans).then(|| rhapsody::rg::GpuTimingConfig {
             pass_spans,
             pending_commands: if pass_spans { 1024 } else { 256 },
+            // Diagnostics layered on pass spans: serialised exclusive spans and
+            // per-pass pipeline statistics. Both are off unless requested.
+            isolate_passes: pass_spans && crate::frame_counters::gpu_isolate_enabled(),
+            pass_statistics: pass_spans && crate::frame_counters::gpu_statistics_enabled(),
             ..Default::default()
         });
         let result = self.renderer.bridge.with_session(|session| session.backend.configure_gpu_timing(config));
@@ -2722,14 +2774,14 @@ mod macos {
         }
         pub fn create_surface(
             &self,
-            instance: Arc<rhapsody::interop::VulkanInstance>,
-        ) -> Result<Arc<rhapsody::present::Surface>> {
+            instance: Arc<rhapsody::native::VulkanInstance>,
+        ) -> Result<Arc<rhapsody::native::surface::Surface>> {
             let loader =
                 ash::ext::metal_surface::Instance::new(&instance.entry, instance.raw_instance());
             let info = vk::MetalSurfaceCreateInfoEXT::default().layer((*self.layer).cast());
             let handle = unsafe { loader.create_metal_surface(&info, None) }?;
             Ok(Arc::new(unsafe {
-                rhapsody::present::Surface::from_raw(instance, handle, true)
+                rhapsody::native::surface::Surface::from_raw(instance, handle, true)
             }))
         }
     }
@@ -2782,13 +2834,13 @@ impl PlatformSurface {
 
     fn create_surface(
         &self,
-        instance: Arc<rhapsody::interop::VulkanInstance>,
-    ) -> Result<Arc<rhapsody::present::Surface>> {
+        instance: Arc<rhapsody::native::VulkanInstance>,
+    ) -> Result<Arc<rhapsody::native::surface::Surface>> {
         // Keep both the native Win32 identity and its actual window owner.
         // Surface destruction releases this lease after vkDestroySurfaceKHR;
         // failed swapchain teardown retains the same lease with the Surface.
         unsafe {
-            rhapsody::present::Surface::from_win32_retained(
+            rhapsody::native::surface::Surface::from_win32_retained(
                 instance,
                 self.hinstance,
                 self.hwnd,
@@ -2845,8 +2897,8 @@ mod linux {
         }
         pub fn create_surface(
             &self,
-            instance: Arc<rhapsody::interop::VulkanInstance>,
-        ) -> Result<Arc<rhapsody::present::Surface>> {
+            instance: Arc<rhapsody::native::VulkanInstance>,
+        ) -> Result<Arc<rhapsody::native::surface::Surface>> {
             let handle = match (self.window, self.display) {
                 (RawWindowHandle::Xlib(w), RawDisplayHandle::Xlib(d)) => {
                     let display = d.display.context("Xlib display is null")?;
@@ -2882,7 +2934,7 @@ mod linux {
                 _ => anyhow::bail!("winit window and display handles are of different kinds"),
             };
             Ok(Arc::new(unsafe {
-                rhapsody::present::Surface::from_raw(instance, handle, true)
+                rhapsody::native::surface::Surface::from_raw(instance, handle, true)
             }))
         }
     }
@@ -2900,8 +2952,8 @@ impl PlatformSurface {
     }
     fn create_surface(
         &self,
-        _: Arc<rhapsody::interop::VulkanInstance>,
-    ) -> Result<Arc<rhapsody::present::Surface>> {
+        _: Arc<rhapsody::native::VulkanInstance>,
+    ) -> Result<Arc<rhapsody::native::surface::Surface>> {
         anyhow::bail!("native surface adapter is unavailable")
     }
 }

@@ -1,0 +1,26 @@
+{
+  "updated_utc": "2026-10-25T14:00:06.663276+00:00",
+  "terminated_own_processes": [
+    {
+      "pid": 92172,
+      "command": "/bin/zsh -lc ls -ld target target/debug target/debug/deps; rg -n 'target-dir|incremental' .cargo/config.toml ../.cargo/config.toml Cargo.toml 2>/dev/null; pwd; ls -l target/debug/deps | head -n 8; df -h ."
+    },
+    {
+      "pid": 92184,
+      "command": "ls -l target/debug/deps"
+    },
+    {
+      "pid": 90285,
+      "command": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /tmp/tg-perf160-descriptor-verify.py"
+    }
+  ],
+  "reason": "An own immediate target/debug/deps listing/glob outlived the tool yield and overlapped the clean baseline. Exclude the run; repeat only that baseline after stopping owned query. No other user process stopped.",
+  "rejected_runs": [
+    "cpu-nani-bound-clean-v23/many_draws-parallel-round1/run.json",
+    "cpu-nani-bound-clean-v24/many_draws-parallel-round1/run.json"
+  ],
+  "candidate_query_overlap": {
+    "query_stopped_s_since_start": 115.055142,
+    "warmup_frame600_elapsed_s": 44.213922583
+  }
+}

@@ -9,13 +9,8 @@ use super::{
     transient_scene::{TransientReport, TransientScene},
 };
 use ash::vk::{self, Handle};
-use rhapsody::{
-    device::Device, interop::InstanceBuilder, interop::ValidationMessenger, present::Swapchain,
-    resource::Buffer, resource::BufferDesc, resource::Texture, resource::TextureDesc,
-    rg::AccessTable, rg::BuiltGraph, rg::FrameLoop, rg::FrameStatus, rg::GpuResource,
-    rg::PassContext, rg::PresentTarget, rg::RenderGraph, rg::ResourceSpec, rg::VulkanGraphBackend,
-    rg::VulkanGraphSession,
-};
+use rhapsody::{device::Device, present::Swapchain, resource::Buffer, resource::BufferDesc, resource::Texture, resource::TextureDesc, rg::AccessTable, rg::BuiltGraph, rg::FrameLoop, rg::FrameStatus, rg::GpuResource, rg::PassContext, rg::PresentTarget, rg::RenderGraph, rg::ResourceSpec, rg::VulkanGraphBackend, rg::VulkanGraphSession};
+use rhapsody::native::{InstanceBuilder, ValidationMessenger};
 use serde::Serialize;
 use std::{
     collections::{BTreeSet, VecDeque},
@@ -63,6 +58,16 @@ struct Options {
     transient_scale: u32,
     pipeline_cache: PathBuf,
 }
+/// Per-pass timestamps need GPU timing. Asking for them implies it, but an
+/// explicit `--gpu-timing off` contradicts them, whichever flag came first.
+fn resolve_gpu_timing(pass_timing: bool, explicit: Option<bool>) -> Result<bool> {
+    match (pass_timing, explicit) {
+        (true, Some(false)) => Err("per-pass timestamps require GPU timing".into()),
+        (true, None) => Ok(true),
+        (_, Some(value)) => Ok(value),
+        (false, None) => Ok(false),
+    }
+}
 impl Options {
     fn parse() -> Result<Option<Self>> {
         Self::parse_from(std::env::args().skip(1))
@@ -104,6 +109,7 @@ impl Options {
         };
         let mut explicit_frames = false;
         let mut explicit_queues = false;
+        let mut explicit_gpu_timing = None;
         let mut args = args.into_iter();
         while let Some(arg) = args.next() {
             match arg.as_str() {
@@ -122,11 +128,11 @@ impl Options {
                         SharingChoice::parse(&args.next().ok_or("missing sharing mode")?)?
                 }
                 "--gpu-timing" => {
-                    options.gpu_timing = match args.next().as_deref() {
+                    explicit_gpu_timing = Some(match args.next().as_deref() {
                         Some("on") => true,
                         Some("off") => false,
                         _ => return Err("gpu timing must be on or off".into()),
-                    }
+                    })
                 }
                 "--gpu-pass-timing" => {
                     options.gpu_pass_timing = match args.next().as_deref() {
@@ -134,7 +140,6 @@ impl Options {
                         Some("off") => false,
                         _ => return Err("gpu pass timing must be on or off".into()),
                     };
-                    options.gpu_timing |= options.gpu_pass_timing;
                 }
                 "--vsync" => {
                     options.vsync = match args.next().as_deref() {
@@ -225,16 +230,14 @@ impl Options {
                 }
                 "--help" | "-h" => {
                     println!(
-                        "Window Lab\n--gpu-timing on|off --gpu-pass-timing on|off --vsync on|off --warmup N --samples 1..10000 --plan-cache on|off --subgraph-cache on|off --result-cache on|off --allocation suballocated|dedicated --queues off|prefer|require --sharing exclusive|concurrent --scene fixture|raster|temporal|transfer|transient|result|multi-queue|showcase --transient-aliasing on|off --transient-attachments 3..64 --transient-scale 1..8 --rendering auto|dynamic --scene-script --shader-script --repeat-script --pipeline-cache FILE --playlist FILE --frames N --min-run-seconds N --fps 1..240 --script | --wsi-stress --report FILE --capture FILE.ppm --require-validation\nKeys: Space pause, N next clip, Right step, Esc quit\nPPM/P3/P6 images are supported; no video codec is required."
+                        "Window Lab\n--gpu-timing on|off --gpu-pass-timing on|off --vsync on|off --warmup N --samples 1..10000 --plan-cache on|off --subgraph-cache on|off --result-cache on|off --allocation suballocated|dedicated --queues off|prefer|require --sharing exclusive|concurrent --scene fixture|raster|temporal|transfer|transient|result|multi-queue|showcase --transient-aliasing on|off --transient-attachments 3..64 --transient-scale 1..8 --rendering auto|dynamic --scene-script --shader-script --repeat-script --pipeline-cache FILE --playlist FILE --frames N --min-run-seconds N --fps 1..240 --script | --wsi-stress --report FILE --capture FILE.ppm --require-validation --performance\nKeys: Space pause, N next clip, Right step, Esc quit\nPPM/P3/P6 images are supported; no video codec is required."
                     );
                     return Ok(None);
                 }
                 _ => return Err(format!("unknown option: {arg}").into()),
             }
         }
-        if options.gpu_pass_timing && !options.gpu_timing {
-            return Err("per-pass timestamps require GPU timing".into());
-        }
+        options.gpu_timing = resolve_gpu_timing(options.gpu_pass_timing, explicit_gpu_timing)?;
         if options.minimum_run_seconds.is_some() && !explicit_frames {
             return Err("--min-run-seconds requires explicit finite --frames".into());
         }
@@ -488,7 +491,7 @@ struct StabilitySample {
 }
 #[derive(Serialize)]
 struct CacheCauseReport {
-    reason: rhapsody::rg::CacheReason,
+    reason: rhapsody::collections::CacheReason,
     misses: u64,
     invalidations: u64,
 }
@@ -545,7 +548,7 @@ impl Report {
             .into_iter()
             .map(|(domain, diagnostics)| CacheDomainReport {
                 domain,
-                causes: rhapsody::rg::CacheReason::ALL
+                causes: rhapsody::collections::CacheReason::ALL
                     .into_iter()
                     .map(|reason| CacheCauseReport {
                         reason,
@@ -959,7 +962,7 @@ impl Lab {
         let messenger = ValidationMessenger::new(&instance)?;
         let surface = window.create_surface(instance.clone())?;
         let device = rhapsody::device::Device::new(
-            instance,
+            &instance,
             Some(&surface),
             &rhapsody::device::DeviceConfig {
                 validation: report.validation_enabled,
@@ -1502,7 +1505,7 @@ pub fn run() -> Result<()> {
             .success()
             .then(|| String::from_utf8_lossy(&output.stdout).trim().to_owned())
     };
-    let mut report = Report { schema_version: 1, milestone: match options.scene { SceneKind::Showcase => "continuous composite GPU acceptance", SceneKind::Fixture => "M0 / baseline fixture player", SceneKind::Transfer => "M4 / S07 bounded transfer acceptance", SceneKind::Transient => "M6 / S05 transient attachment chain", SceneKind::ResultCache => "M5 / S06 versioned result cache", SceneKind::MultiQueue => "M8 / S08 physical multi-queue dependency chain", _ => "M3 / S03 raster and S04 temporal acceptance" }.into(),
+    let mut report = Report { schema_version: 1, milestone: match options.scene { SceneKind::Showcase => "continuous composite GPU acceptance", SceneKind::Fixture => "baseline fixture player", SceneKind::Transfer => "bounded transfer acceptance", SceneKind::Transient => "transient attachment chain", SceneKind::ResultCache => "versioned result cache", SceneKind::MultiQueue => "physical multi-queue dependency chain", _ => "raster and temporal acceptance" }.into(),
         performance_mode: options.performance,
         platform: std::env::consts::OS.into(), window_backend: platform::BACKEND.into(),
         git_revision_at_launch: git(&["rev-parse", "HEAD"]),
@@ -1514,7 +1517,7 @@ pub fn run() -> Result<()> {
         window_visual_check: "pending; offscreen readback is verified separately".into(),
         limitations: vec!["Production FrameLoop submits the offscreen graph and display work with timeline dependencies".into(),
             "Per-frame CPU fixture generation and GPU readback are correctness checks, not renderer benchmarks".into(),
-            "Production presentation requires maintenance1 and waits actual presentation fences at shutdown".into(),
+            "Production presentation proves completion at shutdown: present fences with maintenance1, otherwise a timeout-bounded queue-idle proof (see present/swapchain/README.md)".into(),
             "GPU command timestamps require --gpu-timing on; opaque driver pool/pipeline memory is unavailable".into()], ..Default::default() };
     let started = Instant::now();
     let result = play(&options, &mut report, started);
@@ -1922,6 +1925,46 @@ fn play(options: &Options, report: &mut Report, launched_at: Instant) -> Result<
 #[cfg(test)]
 mod stress_tests {
     use super::*;
+
+    #[test]
+    fn gpu_timing_flags_do_not_depend_on_argument_order() {
+        let parse = |args: &[&str]| Options::parse_from(args.iter().map(|arg| (*arg).to_owned()));
+        let timing = |args: &[&str]| parse(args).map(|options| {
+            let options = options.unwrap();
+            (options.gpu_timing, options.gpu_pass_timing)
+        });
+        assert_eq!(timing(&[]).unwrap(), (false, false));
+        assert_eq!(timing(&["--gpu-timing", "on"]).unwrap(), (true, false));
+        // Per-pass timestamps need GPU timing, so asking for them implies it.
+        assert_eq!(timing(&["--gpu-pass-timing", "on"]).unwrap(), (true, true));
+        for args in [
+            ["--gpu-timing", "on", "--gpu-pass-timing", "on"],
+            ["--gpu-pass-timing", "on", "--gpu-timing", "on"],
+        ] {
+            assert_eq!(timing(&args).unwrap(), (true, true), "{args:?}");
+        }
+        // An explicit contradiction is rejected whichever flag comes first.
+        for args in [
+            ["--gpu-timing", "off", "--gpu-pass-timing", "on"],
+            ["--gpu-pass-timing", "on", "--gpu-timing", "off"],
+        ] {
+            assert!(parse(&args).is_err(), "{args:?}");
+        }
+        assert_eq!(
+            timing(&["--gpu-timing", "off", "--gpu-pass-timing", "off"]).unwrap(),
+            (false, false)
+        );
+    }
+
+    #[test]
+    fn resolve_gpu_timing_covers_every_combination() {
+        assert!(!resolve_gpu_timing(false, None).unwrap());
+        assert!(resolve_gpu_timing(true, None).unwrap());
+        assert!(resolve_gpu_timing(false, Some(true)).unwrap());
+        assert!(!resolve_gpu_timing(false, Some(false)).unwrap());
+        assert!(resolve_gpu_timing(true, Some(true)).unwrap());
+        assert!(resolve_gpu_timing(true, Some(false)).is_err());
+    }
 
     #[test]
     fn repeat_script_requires_a_script_and_preserves_the_baseline_default() {

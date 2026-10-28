@@ -1,0 +1,152 @@
+[
+  {
+    "name": "160a-descriptor-cpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "rhapsody",
+      "--lib",
+      "raw::binding::tests",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 0.7074637920595706,
+    "log": "/tmp/tg-perf160a-descriptor-cpu.log",
+    "log_sha256": "589ef28c83cca018483edecf3e461bf971fc803a3648215eae3e5e35962c7431"
+  },
+  {
+    "name": "160b-descriptor-abi-gpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "rhapsody",
+      "--test",
+      "bindless_shader_abi",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 47.682533291867,
+    "log": "/tmp/tg-perf160b-descriptor-abi-gpu.log",
+    "log_sha256": "0f3a3aa9c080843c07a90325e83d0d1ed267c93d908a3c8295c457592017ae6f"
+  },
+  {
+    "name": "160c-descriptor-retention-gpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "rhapsody",
+      "--test",
+      "command_retention",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 101,
+    "elapsed_s": 50.46518408297561,
+    "log": "/tmp/tg-perf160c-descriptor-retention-gpu.log",
+    "log_sha256": "cf12242c87052262b688712535396c444b85313fc93f4f0fd1656259d65fbf51"
+  },
+  {
+    "name": "160c2-descriptor-retention-gpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "rhapsody",
+      "--test",
+      "command_retention",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 48.629048583097756,
+    "log": "/tmp/tg-perf160c2-descriptor-retention-gpu.log",
+    "log_sha256": "eb336df76038ad54b8cb5453bc5430fa63b17c54bdbd2cd2396644558bab39d1"
+  },
+  {
+    "name": "160d-descriptor-raster-gpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--test",
+      "original_raster_gpu",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 266.5008882919792,
+    "log": "/tmp/tg-perf160d-descriptor-raster-gpu.log",
+    "log_sha256": "4f1d24e565edde019b0f1744fa4dab0697481815a84de792be9f442f6de29013"
+  },
+  {
+    "name": "160e-descriptor-text-gpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "tg-text",
+      "--test",
+      "gpu_pipeline",
+      "--features",
+      "gpu",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 92.30990941612981,
+    "log": "/tmp/tg-perf160e-descriptor-text-gpu.log",
+    "log_sha256": "531c3b2922bbdf1b3fc9219bcd817413116cd30eff767dc6b52658d9a53aff02"
+  },
+  {
+    "name": "160f-descriptor-targets",
+    "command": [
+      "cargo",
+      "check",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "-p",
+      "rhapsody",
+      "-p",
+      "tg-text",
+      "--all-targets",
+      "--features",
+      "tiny-glade/profile,rhapsody/test-support,tg-text/gpu",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 162.94528974988498,
+    "log": "/tmp/tg-perf160f-descriptor-targets.log",
+    "log_sha256": "6cfec0097931cac65575d8fa07c581ee7ea838a3c11205b0ac02ece4a54fd8ce"
+  }
+]

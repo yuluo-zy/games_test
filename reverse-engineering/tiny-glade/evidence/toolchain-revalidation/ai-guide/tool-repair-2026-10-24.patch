@@ -1,0 +1,255 @@
+--- /Users/yuluo/.codex/mcp-tools/reverse-operator.py
++++ /Users/yuluo/.codex/mcp-tools/reverse-operator.py
+@@ -50,7 +50,7 @@
+     if args.backend == 're-mcp' and args.worker == 'shared':
+         args.worker = 'read-' + str(os.getpid())
+     job=json.loads(Path(args.job).read_text()) if args.job else []
+-    output=Path(args.output) if args.output else ROOT/'games_test/reverse-engineering/tiny-glade/evidence/toolchain'/('session-'+args.backend+'-'+args.worker+'-'+str(os.getpid())+'.json')
++    output=Path(args.output) if args.output else ROOT/'reverse-engineering/tiny-glade/evidence/toolchain'/('session-'+args.backend+'-'+args.worker+'-'+str(os.getpid())+'.json')
+     output.parent.mkdir(parents=True,exist_ok=True)
+     env={'TG_MCP_WORKER':args.worker,'TG_MCP_ACCESS':'write' if args.write else 'read',
+          'GHIDRA_INSTALL_DIR':str(ROOT/'tools/ghidra_12.1.4_PUBLIC'),
+--- /Users/yuluo/.codex/mcp-tools/ghidra/launch.py
++++ /Users/yuluo/.codex/mcp-tools/ghidra/launch.py
+@@ -100,6 +100,30 @@
+         return metadata.get('program_name') == PROGRAM and metadata.get('function_count', 0) > 0
+     except (OSError, ValueError, KeyError, subprocess.SubprocessError):
+         return False
++
++
++
++def check_database(state):
++    """定点检查符号索引与字节读取；元数据存活不能证明数据库可用。"""
++    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
++    def query(endpoint, **values):
++        values['program'] = PROGRAM
++        url = state['url'] + '/' + endpoint + '?' + urllib.parse.urlencode(values)
++        with opener.open(url, timeout=15) as response:
++            payload = json.load(response)
++        if not isinstance(payload, dict) or payload.get('error') or payload.get('success') is False:
++            raise RuntimeError('Database health query failed: ' + str(payload))
++        return payload
++    functions = query('get_functions', functions='0x14090e510', fields='signature',
++                      include_call_context='false')
++    entries = functions.get('functions', {})
++    if not entries.get('0x14090e510', {}).get('signature'):
++        raise RuntimeError('Database health check could not read the known B function')
++    memory = query('read_memory', address='0x140949c20', length=20)
++    expected = '8b01f3480f2ac08b4104f3480f2ac8f30f5ec1c3'
++    if memory.get('hex', '').lower() != expected:
++        raise RuntimeError('Database health check read different B instruction bytes')
++    return {'symbol_index': True, 'known_instruction_bytes': True}
+ 
+ 
+ def ensure_backend():
+@@ -155,6 +179,7 @@
+         return
+     state = ensure_backend()
+     if sys.argv[1:2] == ['--check']:
++        state = {**state, 'health': check_database(state)}
+         print(json.dumps(state))
+         return
+     config = json.loads((HERE / 'tools.json').read_text())
+--- /Users/yuluo/.codex/mcp-tools/reva/proxy.py
++++ /Users/yuluo/.codex/mcp-tools/reva/proxy.py
+@@ -23,8 +23,17 @@
+         async with ClientSession(read, write) as upstream:
+             await upstream.initialize()
+             catalog = await upstream.list_tools()
++            tools = list(catalog.tools)
++            seen_cursors = set()
++            while catalog.nextCursor:
++                cursor = catalog.nextCursor
++                if cursor in seen_cursors:
++                    raise RuntimeError('ReVa tool catalog repeated a pagination cursor')
++                seen_cursors.add(cursor)
++                catalog = await asyncio.wait_for(upstream.list_tools(cursor=cursor), 30)
++                tools.extend(catalog.tools)
+             selected = []
+-            for tool in catalog.tools:
++            for tool in tools:
+                 if tool.name not in ALLOWED:
+                     continue
+                 tool = copy.deepcopy(tool)
+--- /Users/yuluo/.codex/mcp-tools/ghidra/launch.py
++++ /Users/yuluo/.codex/mcp-tools/ghidra/launch.py
+@@ -184,7 +184,9 @@
+         return
+     config = json.loads((HERE / 'tools.json').read_text())
+     config['env'] = {**config.get('env', {}), 'GHIDRA_MCP_URL': state['url'],
+-                     'TG_MCP_BACKEND_PID': str(state['pid'])}
++                     'TG_MCP_BACKEND_PID': str(state['pid']),
++                     'TG_MCP_STATE_PATH': str(RUNTIME / 'state.json'),
++                     'TG_MCP_BOUND_PROJECT': str(PROJECT)}
+     if ACCESS == 'read':
+         config['tools'] = [name for name in config['tools'] if name not in WRITE_TOOLS]
+     session_config = RUNTIME / ('bridge-' + str(os.getpid()) + '.json')
+--- /Users/yuluo/.codex/mcp-tools/ghidra/bridge_entry.py
++++ /Users/yuluo/.codex/mcp-tools/ghidra/bridge_entry.py
+@@ -1,14 +1,28 @@
+-"""Pin the official bridge's instance discovery to this worker's backend."""
++"""Pin discovery to one verified worker, allowing its backend to reconnect."""
++import json
+ import os
++from pathlib import Path
+ from bridge_mcp_ghidra import discovery
+ from bridge_mcp_ghidra.cli import main
+ 
+ expected_pid = int(os.environ['TG_MCP_BACKEND_PID'])
++state_path = os.environ.get('TG_MCP_STATE_PATH')
++bound_project = os.environ.get('TG_MCP_BOUND_PROJECT')
+ original_discover = discovery.discover_instances
+ 
+ 
+ def pinned_instances():
+-    return [instance for instance in original_discover() if instance.get('pid') == expected_pid]
++    # 后端获授权重启后 PID 会改变；仅跟随同一项目和同一原作身份的状态文件。
++    pid = expected_pid
++    if state_path and bound_project:
++        state = json.loads(Path(state_path).read_text())
++        if (state.get('project') != bound_project
++                or state.get('program') != 'tiny-glade.exe'
++                or state.get('database_sha256') !=
++                   'cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323'):
++            raise RuntimeError('Worker identity changed; refuse cross-project reconnect')
++        pid = int(state['pid'])
++    return [instance for instance in original_discover() if instance.get('pid') == pid]
+ 
+ 
+ discovery.discover_instances = pinned_instances
+--- /Users/yuluo/.codex/mcp-tools/reva/proxy.py
++++ /Users/yuluo/.codex/mcp-tools/reva/proxy.py
+@@ -17,7 +17,7 @@
+ ALLOWED = READ | WRITE if ACCESS == 'write' else READ
+ 
+ 
+-async def main():
++async def catalog_tools():
+     state = await asyncio.to_thread(ensure)
+     async with streamablehttp_client(state['url']) as (read, write, _):
+         async with ClientSession(read, write) as upstream:
+@@ -32,56 +32,78 @@
+                 seen_cursors.add(cursor)
+                 catalog = await asyncio.wait_for(upstream.list_tools(cursor=cursor), 30)
+                 tools.extend(catalog.tools)
+-            selected = []
+-            for tool in tools:
+-                if tool.name not in ALLOWED:
+-                    continue
+-                tool = copy.deepcopy(tool)
+-                tool.annotations = types.ToolAnnotations(readOnlyHint=tool.name in READ, destructiveHint=False)
+-                if tool.name == 'get-decompilation':
+-                    for field in ('includeIncomingReferences', 'includeReferenceContext'):
+-                        if field in tool.inputSchema.get('properties', {}):
+-                            tool.inputSchema['properties'][field]['default'] = False
+-                selected.append(tool)
+-            app = Server('reva-worker-' + WORKER)
++            return tools
+ 
+-            @app.list_tools()
+-            async def list_tools():
+-                return selected
+ 
+-            @app.call_tool()
+-            async def call_tool(name, arguments):
+-                if name not in ALLOWED:
+-                    raise ValueError('Tool is unavailable in this worker profile')
+-                args = dict(arguments or {})
+-                if 'programPath' in next(t for t in selected if t.name == name).inputSchema.get('properties', {}):
+-                    if args.get('programPath', '/tiny-glade.exe') != '/tiny-glade.exe':
+-                        raise ValueError('This worker is bound to /tiny-glade.exe')
+-                    args['programPath'] = '/tiny-glade.exe'
+-                if name == 'get-decompilation':
+-                    args.setdefault('includeIncomingReferences', False)
+-                    args.setdefault('includeReferenceContext', False)
+-                if ACCESS == 'write' and name in ('write-script', 'edit-script', 'read-script', 'run-script'):
+-                    if args.get('scriptName'):
+-                        filename = args['scriptName']
+-                        if Path(filename).name != filename or not filename.endswith('.py'):
+-                            raise ValueError('Use a simple Python script filename')
+-                        args['scriptName'] = WORKER + '_' + filename
+-                    if args.get('scriptPath') and name in ('write-script', 'edit-script'):
+-                        folder = Path('/Users/yuluo/ghidra_scripts') / WORKER
+-                        folder.mkdir(parents=True, exist_ok=True)
+-                        path = Path(args['scriptPath']).resolve()
+-                        if not path.is_relative_to(folder.resolve()):
+-                            raise ValueError('Writable scriptPath must be inside ' + str(folder))
++async def call_upstream(name, args):
++    # stdio 客户端可以长驻；HTTP 会话限于一次调用，避免闲置会话过期后永久空错误。
++    # 不自动重试写请求；失败时明确暴露状态不确定，避免重复事务。
++    state = await asyncio.to_thread(ensure)
++    try:
++        async with streamablehttp_client(state['url']) as (read, write, _):
++            async with ClientSession(read, write) as upstream:
++                await upstream.initialize()
+                 result = await upstream.call_tool(name, args)
+-                if name == 'run-script' and not result.isError:
+-                    payload = json.loads('\n'.join(block.text for block in result.content if block.type == 'text'))
+-                    if payload.get('success') is not True or payload.get('timedOut'):
+-                        result.isError = True
+-                return result
++    except Exception as error:
++        return types.CallToolResult(isError=True, content=[types.TextContent(
++            type='text', text=f'ReVa {name} failed; request was not replayed: {error!r}')])
++    if result.isError and not any(getattr(block, 'text', '').strip() for block in result.content):
++        result.content = [types.TextContent(type='text', text=f'ReVa {name} returned an empty tool error; request was not replayed')]
++    return result
+ 
+-            async with stdio_server() as (local_read, local_write):
+-                await app.run(local_read, local_write, app.create_initialization_options())
++
++async def main():
++    tools = await catalog_tools()
++    selected = []
++    for tool in tools:
++        if tool.name not in ALLOWED:
++            continue
++        tool = copy.deepcopy(tool)
++        tool.annotations = types.ToolAnnotations(readOnlyHint=tool.name in READ, destructiveHint=False)
++        if tool.name == 'get-decompilation':
++            for field in ('includeIncomingReferences', 'includeReferenceContext'):
++                if field in tool.inputSchema.get('properties', {}):
++                    tool.inputSchema['properties'][field]['default'] = False
++        selected.append(tool)
++    app = Server('reva-worker-' + WORKER)
++
++    @app.list_tools()
++    async def list_tools():
++        return selected
++
++    @app.call_tool()
++    async def call_tool(name, arguments):
++        if name not in ALLOWED:
++            raise ValueError('Tool is unavailable in this worker profile')
++        args = dict(arguments or {})
++        if 'programPath' in next(t for t in selected if t.name == name).inputSchema.get('properties', {}):
++            if args.get('programPath', '/tiny-glade.exe') != '/tiny-glade.exe':
++                raise ValueError('This worker is bound to /tiny-glade.exe')
++            args['programPath'] = '/tiny-glade.exe'
++        if name == 'get-decompilation':
++            args.setdefault('includeIncomingReferences', False)
++            args.setdefault('includeReferenceContext', False)
++        if ACCESS == 'write' and name in ('write-script', 'edit-script', 'read-script', 'run-script'):
++            if args.get('scriptName'):
++                filename = args['scriptName']
++                if Path(filename).name != filename or not filename.endswith('.py'):
++                    raise ValueError('Use a simple Python script filename')
++                args['scriptName'] = WORKER + '_' + filename
++            if args.get('scriptPath') and name in ('write-script', 'edit-script'):
++                folder = Path('/Users/yuluo/ghidra_scripts') / WORKER
++                folder.mkdir(parents=True, exist_ok=True)
++                path = Path(args['scriptPath']).resolve()
++                if not path.is_relative_to(folder.resolve()):
++                    raise ValueError('Writable scriptPath must be inside ' + str(folder))
++        result = await call_upstream(name, args)
++        if name == 'run-script' and not result.isError:
++            payload = json.loads('\n'.join(block.text for block in result.content if block.type == 'text'))
++            if payload.get('success') is not True or payload.get('timedOut'):
++                result.isError = True
++        return result
++
++    async with stdio_server() as (local_read, local_write):
++        await app.run(local_read, local_write, app.create_initialization_options())
+ 
+ 
+ if __name__ == '__main__':

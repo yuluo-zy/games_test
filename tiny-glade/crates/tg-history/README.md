@@ -10,7 +10,7 @@
 
 屋顶只投影四种已支持命令：创建、删除、外观前后值编辑、屋脊方向切换。`Roof*` 类型保留现有 Serde 字段名和 `serde(flatten)` 扩展字段。`wall_index` 是交由调用方解释的序列化墙引用；本包不进行运行时实体转换。屋顶投影拥有自己的字段，可以在原文档释放后继续使用。
 
-上述分类和投影并未覆盖 B 的完整历史类型：`Cobblestone3`、`Decorator`、`AutoClutter` 当前归为未知外层标签，屋顶 tag 4 尚无本包类型投影。其 JSON 值仍保留。原历史运行时位于 `country-core`，详细去向及未完成部分见 [B 版覆盖对照](../../reports/iced-history-b-comparison-2026-10-18/README.md)。
+上述分类和投影并未覆盖 B 的完整历史类型：`Cobblestone3`、`Decorator`、`AutoClutter` 当前归为未知外层标签，屋顶 tag 4 尚无本包类型投影。其 JSON 值仍保留。原历史运行时位于 `country-core`，详细去向及未完成部分见 [B 版覆盖对照](../../reports/ui-input/2026-10-18-iced-history-b-comparison/README.md)。
 
 `raw()` 和 `to_json()` 保留 JSON 值、未知数据和 `u64` ID；不保证空白、键顺序或数字文本写法原样不变。屋顶的 `f32` 投影不会覆盖原始 JSON 数值，也不添加范围钳制或默认迁移规则。
 
@@ -80,7 +80,7 @@ assert_eq!(summary.entries, 1);
 
 本包只访问历史文档的序列化数据，不执行游戏世界编辑或回放。快照引用不意味着对应资产存在或能够加载；调用方负责解析外部资源和验证运行时状态。版本字段和原始载荷按存储值保留，不推断不同命令家族之间的对应关系，也不执行版本迁移。
 
-[源码审查、接口迁移与验证报告](../../reports/iced-history-refactor-2026-10-18/README.md)
+[源码审查、接口迁移与验证报告](../../reports/ui-input/2026-10-18-iced-history-refactor/README.md)
 
 ## 验证
 

@@ -15,13 +15,13 @@ use core::ops::Deref;
 /// 只在启动枚举一次；设置页不再逐帧扫描驱动，也不把兼容性诊断当成创建失败。
 #[derive(Resource, Clone, Debug, Default)]
 pub struct AvailableGraphicsDevices {
-    pub devices: Vec<rhapsody::interop::AvailableGraphicsDevice>,
-    pub init_states: Vec<(uuid::Uuid, rhapsody::interop::AvailableGraphicsDeviceInitState)>,
+    pub devices: Vec<rhapsody::device::AvailableGraphicsDevice>,
+    pub init_states: Vec<(uuid::Uuid, rhapsody::device::AvailableGraphicsDeviceInitState)>,
 }
 impl AvailableGraphicsDevices {
-    pub fn from_enumeration(devices: Vec<rhapsody::interop::AvailableGraphicsDevice>) -> Self {
+    pub fn from_enumeration(devices: Vec<rhapsody::device::AvailableGraphicsDevice>) -> Self {
         let init_states = devices.iter().map(|device| (uuid::Uuid::from_bytes(device.device_uuid),
-            rhapsody::interop::AvailableGraphicsDeviceInitState { tag: 0 })).collect();
+            rhapsody::device::AvailableGraphicsDeviceInitState { tag: 0 })).collect();
         Self { devices, init_states }
     }
     /// 仅实际设备创建失败的调用者可以写入；候选枚举错误不走这条路径。

@@ -1788,3 +1788,349 @@ fn original_spd_large_mip_chain_uses_uploaded_zero_atomic_and_reuses_it_next_fra
         "the second frame must reuse the actual atomic allocation"
     );
 }
+
+// Separate correctness-only fixture: explicit drains/readback, no clean CPU claim.
+#[cfg(feature = "cpu-probe")]
+mod path_upload_receipt_correctness {
+    use super::*;
+    use country_core::render::ssbo::rhapsody_boundary::Buffer as CoreBuffer;
+    use tiny_glade::render_host::{BufferHost, BufferUploadObservation};
+
+    fn stage_path(world: &mut World, value: u8, initialize: bool) -> rhapsody::Result<()> {
+        world.resource_scope(|world, mut raster: bevy_ecs::change_detection::Mut<PathRaster>| {
+            if initialize {
+                raster.write_composite(None);
+            } else {
+                let changed: usize = (248..264).map(|y| raster.composite()[y*512+248..y*512+264]
+                    .iter().filter(|&&byte| byte != value).count()).sum();
+                assert_eq!(changed, 256, "the intended local edit must actually change every ROI byte");
+                for y in 248..264 { raster.composite_mut()[y*512+248..y*512+264].fill(value); }
+                for y in 31..33 { for x in 31..33 { raster.dirty_mut().set_cell(x,y); } }
+            }
+            let mut library = world.resource_mut::<AssetSsboLibrary>();
+            let staging = library.get_mut::<PathRasterStagingSsbo>().expect("real typed Path staging");
+            let mut spans = 0usize;
+            let result = staging.with_cpu_write_regions(|mapped, ranges| {
+                let start = ranges.len();
+                raster.copy_to_staging_with_ranges(0, bytemuck::cast_slice_mut(mapped), ranges);
+                spans = ranges.len()-start;
+                if !initialize {
+                    assert_eq!(&ranges[start..], &[
+                        128960..129024, 129024..129088, 133056..133120, 133120..133184]);
+                }
+            });
+            // A failed write keeps the same real CPU shadow/pending spans.
+            result?;
+            if !initialize { assert_eq!(spans, 4); }
+            Ok(())
+        })
+    }
+
+    fn assert_target_tickets(probe: &BufferUploadObservation, target: CoreBuffer,
+        value: u8, buffers: &BufferHost, device: &Arc<rhapsody::device::Device>) {
+        assert!(probe.valid());
+        assert_eq!(probe.target(),target);
+        assert_eq!(probe.rejected_admissions(),0);
+        assert_eq!(probe.entries().len(),2, "four producer tiles merge into two actual queued intervals");
+        let current = buffers.managed_buffer(&target).expect("live selected logical generation").shared();
+        let completed = device.poll().unwrap();
+        let expected = [(128960u64,128u64),(133056,128)];
+        for (entry,(offset,bytes)) in probe.entries().iter().zip(expected) {
+            assert_eq!(entry.logical,target);
+            assert_eq!((entry.submission.offset,entry.submission.bytes),(offset,bytes));
+            assert_eq!(entry.submission.options.key.0,target.id);
+            assert_eq!(entry.submission.device_generation,device.generation());
+            assert_eq!(entry.payload_blake3,*blake3::hash(&[value;128]).as_bytes());
+            assert!(entry.submission.same_owner(&current));
+            assert!(entry.submission.owner_alive() && entry.submission.device_alive());
+            match entry.submission.status() {
+                rhapsody::transfer::UploadStatus::Submitted(point) => {
+                    assert!(rhapsody::sync::SyncSet::from_point(point).is_reached(&completed));
+                }
+                state => panic!("target upload has no successful completed submit: {state:?}"),
+            }
+        }
+    }
+
+    fn render_path(fixture: &mut Fixture, target: CoreBuffer, upload: bool, roi_value: u8) {
+        fixture.world.increment_change_tick();
+        let ((staging, output_resource, output), built) = fixture.bridge.build_frame(|frame| {
+            tiny_glade::frame_setup::with_frame_resources(frame,&mut fixture.world,|frame,world| {
+                let uploaded = scene_compute::upload_raster_staging_to_texture(frame,world,1)?;
+                assert_eq!(uploaded.is_some(),upload);
+                // Use the same library cache and current graph scope as W1.
+                let staging = world.resource::<AssetSsboLibrary>()
+                    .get_rg_buffer::<PathRasterStagingSsbo>(&mut frame.resource_graph());
+                let graph = frame.with_graph(|graph| Ok(graph.graph_id().raw()))?;
+                assert_eq!(staging.generation,graph);
+                let source = world.resource::<AssetTextureLibrary>().get_rg_texture(TexturePreset(1));
+                let output_resource = source.resource as u32;
+                let output = readback(frame,world,&fixture.shaders,&fixture.device,
+                    RgTexture{resource:output_resource,desc:source.desc})?;
+                Ok((staging,output_resource,output))
+            })
+        }).unwrap();
+        let receipt = fixture.bridge.execute_test_graph(built).unwrap();
+        assert!(!receipt.receipts.is_empty());
+        assert!(receipt.stats.command_workload.valid);
+        assert_eq!(receipt.stats.command_workload.direct_dispatch_api_calls,u64::from(upload));
+        assert_eq!(receipt.stats.command_workload.indirect_dispatch_api_calls,0);
+        assert_eq!(receipt.snapshot.pass_order.len(),receipt.snapshot.pass_ranges.len());
+        let slots:Vec<_> = receipt.snapshot.pass_order.iter().enumerate()
+            .filter(|(_,name)| name.as_str()=="Upload cpu raster").map(|(i,_)|i).collect();
+        assert_eq!(slots.len(),usize::from(upload));
+        if let Some(&slot)=slots.first() {
+            let accesses=&receipt.snapshot.accesses[receipt.snapshot.pass_ranges[slot].clone()];
+            assert!(accesses.iter().any(|a| a.resource_index==staging.resource as u32 && a.access_code==0x1a));
+            assert!(accesses.iter().any(|a| a.resource_index==output_resource && a.access_code==0x32));
+            let mapping=receipt.snapshot.physical_mapping.iter().find(|m|m.logical==staging.resource as u32)
+                .expect("retained typed staging physical mapping");
+            assert_eq!(mapping.token,Some(tiny_glade::render_host::graph_token(target.id)));
+        }
+        fixture.bridge.wait_submits_done(10_000_000_000).unwrap();
+        let completed=fixture.device.poll().unwrap();
+        for &point in &receipt.receipts {
+            assert!(rhapsody::sync::SyncSet::from_point(point).is_reached(&completed));
+        }
+        let mut bytes=vec![0;512*512*4];output.read_bytes(0,&mut bytes).unwrap();
+        for y in 0..512 { for x in 0..512 {
+            let expected=if (248..264).contains(&x)&&(248..264).contains(&y) {roi_value} else {0};
+            let red=bytes[(y*512+x)*4];
+            assert!(red.abs_diff(original_resolve_byte(expected))<=1,"Path pixel {x},{y}: {red} vs {expected}");
+        }}
+    }
+
+    #[test]
+    fn path_local_edit_uses_its_queued_owner_then_real_w1_and_recovers_rejection() {
+        let mut fixture=Fixture::new().expect("this correctness test requires actual Vulkan initialization");
+        let buffers=fixture.bridge.hosts().buffers.clone();
+        fixture.world.resource::<AssetSsboLibrary>().add_new::<PathRasterStagingSsbo>(buffers.as_ref());
+        fixture.world.insert_resource(PathRaster::new(DirtyTilePublisher::unique()));
+        let target=*fixture.world.resource::<AssetSsboLibrary>().get_buffer::<PathRasterStagingSsbo>().unwrap();
+        stage_path(&mut fixture.world,0,true).unwrap();
+        fixture.world.resource_mut::<AssetSsboLibrary>().flush_pending_uploads(buffers.as_ref()).unwrap();
+        render_path(&mut fixture,target,true,0);
+
+        buffers.begin_buffer_upload_observation(&target).unwrap();
+        stage_path(&mut fixture.world,255,false).unwrap();
+        fixture.world.resource_mut::<AssetSsboLibrary>().flush_pending_uploads(buffers.as_ref()).unwrap();
+        render_path(&mut fixture,target,true,255);
+        let probe=buffers.take_buffer_upload_observation().unwrap();
+        assert_target_tickets(&probe,target,255,&buffers,&fixture.device);
+        let charged=probe.storage_bytes();let stats=fixture.device.allocator_stats();
+        let before=stats.cpu_memory_usage().total();drop(probe);
+        assert!(stats.cpu_memory_usage().total()<=before-charged,"diagnostic backing credit must return after export/drop");
+
+        // Real enqueue budget rejection before any acceptance, with restoration on unwind.
+        struct Restore {stats:Arc<rhapsody::accounting::AllocatorStats>,limit:u64}
+        impl Drop for Restore {fn drop(&mut self){let _=self.stats.set_host_budget(self.limit);}}
+        buffers.begin_buffer_upload_observation(&target).unwrap();
+        let guard=Restore{stats:stats.clone(),limit:stats.host_budget_limit()};
+        stats.set_host_budget(stats.cpu_memory_usage().total()).unwrap();
+        let rejected=stage_path(&mut fixture.world,0,false);
+        let retry_while_rejected=fixture.world.resource_mut::<AssetSsboLibrary>().flush_pending_uploads(buffers.as_ref());
+        drop(guard); // restore before assertions and any GPU/cleanup work
+        assert_eq!(rejected.unwrap_err().kind(),rhapsody::ErrorKind::OutOfMemory);
+        assert_eq!(retry_while_rejected.unwrap_err().kind(),rhapsody::ErrorKind::OutOfMemory);
+        assert!(fixture.world.resource::<PathRaster>().published());
+        assert!((248..264).all(|y| fixture.world.resource::<PathRaster>().composite()[y*512+248..y*512+264].iter().all(|&b|b==0)));
+        let refused=buffers.take_buffer_upload_observation().unwrap();
+        assert!(refused.entries().is_empty(),"pre-admission failure cannot invent a submitted ticket");
+        assert!(!refused.valid());
+        assert!(refused.rejected_admissions() >= 2);
+        assert_eq!(buffers.queued_upload_stats().unwrap().queued_jobs, 0);
+        drop(refused);
+        // Queue admission failed before native submit. The real incomplete-write
+        // guard must reject execution, rather than clear Path's publication flag.
+        assert_eq!(buffers.poll_pending_uploads().unwrap_err().kind(), rhapsody::ErrorKind::OutOfMemory);
+        assert!(fixture.world.resource::<PathRaster>().published());
+        buffers.begin_buffer_upload_observation(&target).unwrap();
+        // Retry the retained producer spans, with NO second logical edit.
+        fixture.world.resource_mut::<AssetSsboLibrary>().flush_pending_uploads(buffers.as_ref()).unwrap();
+        render_path(&mut fixture,target,true,0);
+        let recovered=buffers.take_buffer_upload_observation().unwrap();
+        assert_target_tickets(&recovered,target,0,&buffers,&fixture.device);drop(recovered);
+        render_path(&mut fixture,target,false,0);
+    }
+}
+
+/// Exercise the REAL effect adapter over one Bridge/Session. Merely retaining
+/// a named allocation is not reusable contents; native publication is required.
+/// This does not make Painterly's declaration-time progress transactional.
+#[test]
+fn effects_host_temporal_reuse_tracks_real_submission_resize_and_cancellation() {
+    use country_core::{
+        asset_libraries::vao_library::AssetVAOLibrary,
+        systems::render_loop::{
+            compute_passes::{pass_kit::binding, reprojection},
+            painterly as p,
+        },
+    };
+    use p::PassHost as _;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use tiny_glade::{effects_host::EffectsHost, frame_world::{FrameLibraries, FrameWorldAccess}};
+
+    let Some(mut fixture) = Fixture::new() else { return; };
+    let initialized = Arc::new(AtomicUsize::new(0));
+    let mut submitted_initializers = 0;
+    let mut reference_pixel = None;
+    for step in 0..8 {
+        // 0 fresh declaration cancelled; 1 first successful publication;
+        // 2 valid old history cancelled; 3 resized declaration cancelled;
+        // 4 resized initialization compiled but cancelled before recording;
+        // 5 retry actually submitted; 6 valid old history cancelled; 7 reused.
+        let resized = step >= 3;
+        let dims = if resized { [8, 4] } else { [16, 8] };
+        let size = if resized { 128u32 } else { 64 };
+        let initialize = matches!(step, 1 | 4 | 5 | 7);
+        let expected_reused = matches!(step, 2 | 6 | 7);
+        let marker = 0x1234_ab00u32 + step as u32;
+        let (((texture_reused, buffer_reused), readbacks), built) = fixture.bridge.build_frame(|frame| {
+            tiny_glade::frame_setup::with_frame_resources(frame, &mut fixture.world, |frame, world| {
+                let source = if initialize {
+                    let source = Arc::new(rhapsody::resource::Texture::new(
+                        fixture.device.clone(),
+                        &rhapsody::resource::TextureDesc::new_2d(dims[0], dims[1], vk::Format::R32_SFLOAT)
+                            .usage(vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_DST),
+                    )?);
+                    let source_id = frame.import_native_texture(source.clone(), 0)?;
+                    frame.with_graph(|graph| {
+                        let device = fixture.device.clone();
+                        let mut clear = graph.add_pass("effect history fixture input");
+                        clear.add_resource_access(source_id, 0x34, 0)?;
+                        clear.render_with_result_context(move |ctx| {
+                            unsafe {
+                                device.raw_device().cmd_clear_color_image(
+                                    vk::CommandBuffer::from_raw(ctx.command.handle()), source.raw_handle(),
+                                    vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                                    &vk::ClearColorValue { float32: [0.25, 0., 0., 1.] },
+                                    &[vk::ImageSubresourceRange::default().aspect_mask(vk::ImageAspectFlags::COLOR)
+                                        .level_count(1).layer_count(1)],
+                                );
+                            }
+                            Ok(())
+                        });
+                        Ok(())
+                    })?;
+                    Some(RgTexture { resource: source_id.raw(),
+                        desc: TextureDesc::new_2d(dims, vk::Format::R32_SFLOAT.as_raw() as u32).sampled() })
+                } else { None };
+
+                let (target, counter, reused) = {
+                    let shaders = frame.shader_library();
+                    let backend = frame.shader_backend();
+                    let raster = frame.raster_resources();
+                    let access = FrameWorldAccess::new(FrameLibraries {
+                        shaders: shaders.as_ref(), textures: world.resource::<AssetTextureLibrary>(),
+                        ssbos: world.resource::<AssetSsboLibrary>(), vaos: world.resource::<AssetVAOLibrary>(),
+                        placement: world.resource::<AssetPlacementDataLibrary>(), constants: raster.dynamic_constants(),
+                    }, frame.compute_device()).with_resource_graph_factory(frame.resource_graph_factory());
+                    let mut effects = EffectsHost::new(frame, &access, &*backend, shaders.as_ref(),
+                        None, None, None, false);
+                    let texture = effects.temporal_texture("effects validity target", p::TextureDesc {
+                        extent: dims, format: vk::Format::R32_SFLOAT.as_raw() as u32, storage: true, sampled: true,
+                    }).map_err(|e| rhapsody::Error::invalid_usage(e.to_string()))?;
+                    let buffer = effects.temporal_buffer("effects validity counter", p::BufferDesc {
+                        size,
+                        // The compatibility field is forwarded as the original
+                        // BufferDesc usage argument. Admit the actual test fill/copy.
+                        align: (vk::BufferUsageFlags::STORAGE_BUFFER | vk::BufferUsageFlags::TRANSFER_SRC
+                            | vk::BufferUsageFlags::TRANSFER_DST).as_raw(), flag: true,
+                    }).map_err(|e| rhapsody::Error::invalid_usage(e.to_string()))?;
+                    let target = effects.texture(texture.tex)?;
+                    if let Some(source) = source {
+                        let source = effects.register_texture(source);
+                        // Original packaged depth-copy program, through the
+                        // production EffectsHost declaration/parameter path.
+                        effects.submit_compute(p::ComputePassDesc {
+                            name: "effect history fixture actual copy", source: p::ComputeSource::Uri(reprojection::COPY_URI),
+                            ops: vec![
+                                p::ComputeOp::BindTexture { key: binding::INPUT_TEX, access: 0x19, tex: source, write: false },
+                                p::ComputeOp::BindTexture { key: binding::OUTPUT_TEX, access: 0x32, tex: texture.tex, write: true },
+                            ], push_constants: Vec::new(), dispatch_threads: [dims[0], dims[1], 1],
+                        });
+                    }
+                    effects.finish()?;
+                    (target, buffer.buf, (texture.reused, buffer.reused))
+                };
+                if !initialize { return Ok((reused, None)); }
+
+                frame.with_graph(|graph| {
+                    let device = fixture.device.clone();
+                    let calls = initialized.clone();
+                    let mut fill = graph.add_pass("effect history fixture actual counter fill");
+                    let counter_id = fill.resource_handle(counter.0)?;
+                    fill.add_resource_access(counter_id, 0x34, 0)?;
+                    fill.render_with_result_context(move |ctx| {
+                        let target = ctx.managed.ok_or_else(|| rhapsody::Error::invalid_usage("effect counter owner"))?
+                            .buffer_for(counter.0)?;
+                        unsafe { device.raw_device().cmd_fill_buffer(
+                            vk::CommandBuffer::from_raw(ctx.command.handle()), target.raw(), 0, u64::from(size), marker); }
+                        calls.fetch_add(1, Ordering::Relaxed);
+                        Ok(())
+                    });
+                    Ok(())
+                })?;
+                let image_readback = readback(frame, world, &fixture.shaders, &fixture.device, target)?;
+                let buffer_readback = Arc::new(rhapsody::resource::Buffer::new(fixture.device.clone(),
+                    &rhapsody::resource::BufferDesc::new_gpu_to_cpu(u64::from(size), vk::BufferUsageFlags::TRANSFER_DST))?);
+                let output_id = frame.import_native_buffer(buffer_readback.clone(), 0)?;
+                frame.with_graph(|graph| {
+                    let device = fixture.device.clone();
+                    let output = buffer_readback.clone();
+                    let mut copy = graph.add_pass("effect history fixture counter readback");
+                    let counter_id = copy.resource_handle(counter.0)?;
+                    copy.add_resource_access(counter_id, 0x25, 0)?;
+                    copy.add_resource_access(output_id, 0x34, 0)?;
+                    copy.render_with_result_context(move |ctx| {
+                        let source = ctx.managed.ok_or_else(|| rhapsody::Error::invalid_usage("effect counter readback owner"))?
+                            .buffer_for(counter.0)?;
+                        unsafe { device.raw_device().cmd_copy_buffer(vk::CommandBuffer::from_raw(ctx.command.handle()),
+                            source.raw(), output.raw_handle(), &[vk::BufferCopy { src_offset: 0, dst_offset: 0, size: u64::from(size) }]); }
+                        Ok(())
+                    });
+                    graph.export(output_id, 0x26)?;
+                    Ok(())
+                })?;
+                Ok((reused, Some((image_readback, buffer_readback))))
+            })
+        }).unwrap();
+        assert_eq!(texture_reused, expected_reused, "real EffectsHost texture, step {step}");
+        assert_eq!(buffer_reused, expected_reused, "real EffectsHost buffer, step {step}");
+        let queue_before = fixture.device.retirement_stats().submitted;
+        if step == 4 {
+            fixture.bridge.prepare_test_execution().unwrap();
+            let prepared = fixture.bridge.compile_built(built).unwrap();
+            drop(prepared); // Existing CompiledCoreGraph::Drop cancels exactly this frame.
+            assert_eq!(initialized.load(Ordering::Relaxed), submitted_initializers);
+        } else if !initialize {
+            fixture.bridge.cancel_built(built).unwrap();
+            assert_eq!(fixture.device.retirement_stats().submitted, queue_before,
+                "cancelling the graph must not submit graph work, step {step}");
+            assert_eq!(initialized.load(Ordering::Relaxed), submitted_initializers);
+        } else {
+            let receipt = fixture.bridge.execute_test_graph(built).unwrap();
+            assert!(receipt.snapshot.pass_order.iter().any(|name| name == "effect history fixture actual copy"));
+            assert!(receipt.snapshot.pass_order.iter().any(|name| name == "effect history fixture actual counter fill"));
+            fixture.bridge.wait_submits_done(10_000_000_000).unwrap();
+            submitted_initializers += 1;
+            assert_eq!(initialized.load(Ordering::Relaxed), submitted_initializers);
+            let (image, buffer) = readbacks.expect("actual submitted readbacks");
+            let mut pixels = vec![0; (dims[0]*dims[1]*4) as usize];
+            image.read_bytes(0, &mut pixels).unwrap();
+            let first = <[u8; 4]>::try_from(&pixels[..4]).unwrap();
+            assert_eq!(first[3], 255);
+            assert!(first[0] > 0, "known nonzero native copy input must reach readback");
+            assert!(pixels.chunks_exact(4).all(|pixel| pixel == first));
+            if let Some(reference) = reference_pixel { assert_eq!(first, reference); }
+            else { reference_pixel = Some(first); }
+            let mut bytes = vec![0; size as usize];
+            buffer.read_bytes(0, &mut bytes).unwrap();
+            assert!(bytes.chunks_exact(4).all(|word| word == marker.to_le_bytes()),
+                "real named buffer fill must reach native readback, step {step}");
+        }
+        assert_eq!(fixture.bridge.with_session(|session| session.pending_frame_count()), 0);
+        assert_eq!(fixture.bridge.with_session(|session| session.frame_import_count()), 0);
+    }
+    assert_eq!(submitted_initializers, 3);
+}

@@ -2,6 +2,8 @@
 
 2026-10-13 修复。该目录使用已安装的 ReVa Java 服务、Ghidra/PyGhidra 和官方 Python MCP SDK，不依赖旧 Mac 用户目录或当前 Codex 临时 MCP 会话。
 
+> 当前 Mac 检出路径：`/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/scripts/reverse_tools/`。以下 `D:/` 命令仅适用于 Windows 主机。
+
 ```powershell
 & D:/tools/reverse-engineering/venvs/reverse-engineering-assistant/Scripts/python.exe D:/game/reverse-engineering/tiny-glade/scripts/reverse_tools/reverse_operator.py ghidra D:/game/reverse-engineering/tiny-glade/tool-usage/jobs/windows-ghidra-read.json D:/game/reverse-engineering/tiny-glade/evidence/my-query.json --worker foundation-utils
 ```

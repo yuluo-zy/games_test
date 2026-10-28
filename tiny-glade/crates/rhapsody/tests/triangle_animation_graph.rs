@@ -12,19 +12,9 @@ mod draw_support;
 use ash::vk::{self, Handle};
 use draw_support::*;
 use parking_lot::Mutex;
-use rhapsody::{
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        texture::TextureDesc,
-    },
-    rg::{
-        attachments::{Attachment, AttachmentCache},
-        executor::PassContext,
-        graph::RenderGraph,
-        pass_api::{AshCommandBackend, RenderPassApi},
-        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::rg::{attachments::{Attachment, AttachmentCache}, executor::PassContext, graph::RenderGraph, pass_api::{AshCommandBackend, RenderPassApi}, vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession}};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::texture::TextureDesc;
 use std::sync::{
     Arc, Weak,
     atomic::{AtomicUsize, Ordering},

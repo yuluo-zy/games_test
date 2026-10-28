@@ -48,7 +48,7 @@ mod tests {
     }
     #[test]
     fn native40_full_body_debug_toggle_cases() {
-        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../reverse-engineering/tiny-glade/evidence/round12/brush-runtime-full/native-human-scale-fixtures.json"))).unwrap();
+        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/tests/fixtures/original/round12/brush-runtime-full/native-human-scale-fixtures.json"))).unwrap();
         for case in fixtures.as_array().unwrap() {
             let input = &case["input"];
             let native = &case["native"];

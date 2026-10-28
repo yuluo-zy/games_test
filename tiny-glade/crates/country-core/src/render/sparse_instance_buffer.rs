@@ -276,6 +276,17 @@ pub struct SparseInstanceBuffer<T: SparseSsbo> {
     change_notifier: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
+#[cfg(feature = "test-support")]
+#[derive(Debug, Clone, Copy)]
+pub struct SparseFixtureReferences {
+    pub cached_draw_snapshot: bool,
+    pub draw_snapshot_strong: usize,
+    pub draw_snapshot_weak: usize,
+    pub owned_buffer_present: bool,
+    pub owned_buffer_strong: usize,
+    pub owned_buffer_weak: usize,
+}
+
 fn zeroed_bitset(words: usize) -> Box<[AtomicUsize]> {
     (0..words).map(|_| AtomicUsize::new(0)).collect()
 }
@@ -357,6 +368,20 @@ impl<T: SparseSsbo> SparseInstanceBuffer<T> {
         SparseDrawView {
             byte_map: &self.byte_map,
             active: ActiveChunks::Live(&self.active_bitset),
+        }
+    }
+
+    /// Fixture-only readonly evidence; no hot-path call or mutation.
+    #[cfg(feature = "test-support")]
+    pub fn fixture_reference_state(&self) -> SparseFixtureReferences {
+        let cache = self.draw_snapshot.lock();
+        SparseFixtureReferences {
+            cached_draw_snapshot: cache.is_some(),
+            draw_snapshot_strong: cache.as_ref().map_or(0, Arc::strong_count),
+            draw_snapshot_weak: cache.as_ref().map_or(0, Arc::weak_count),
+            owned_buffer_present: self._buffer_owner.is_some(),
+            owned_buffer_strong: self._buffer_owner.as_ref().map_or(0, Arc::strong_count),
+            owned_buffer_weak: self._buffer_owner.as_ref().map_or(0, Arc::weak_count),
         }
     }
 

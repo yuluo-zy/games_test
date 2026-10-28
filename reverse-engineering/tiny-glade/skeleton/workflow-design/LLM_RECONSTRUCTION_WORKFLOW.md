@@ -255,9 +255,9 @@ overlay 更改签名、字段或 CFG 时，标出受影响函数和消费者；�
 
 ## 15. 依据与阅读入口
 
-- [项目约束](../../AGENTS.md)、[MCP 工具与 SDK 说明](../../AI_REVERSE_TOOLS.md)、[当前项目记忆](../../PROJECT_MEMORY.md)、[业务任务与断点](../../TASK_BACKLOG.md)。
+- [项目约束](../../AGENTS.md)、[MCP 工具与 SDK 说明](../../docs/current/AI_REVERSE_TOOLS.md)、当前项目记忆、业务任务与断点。
 - [任务索引与独占领取](../task-index/README.md)、[索引工作边界](../task-index/AGENTS.md)、[三版共同项](../task-index/ABC-三版共同项/README.md)。
-- [依赖筛除](../../DEPENDENCY_FILTERING.md)、[已有加速方案](../../NATIVE_RECONSTRUCTION_ACCELERATION_PLAN.md)、[已有快速路线](../../NATIVE_RECONSTRUCTION_FAST_ROUTE.md)。
+- [依赖筛除](../../docs/current/DEPENDENCY_FILTERING.md)、已有加速方案、已有快速路线。
 - [native-rust-reconstruction](/Users/yuluo/.codex/skills/native-rust-reconstruction/SKILL.md)。
 - [native-evidence-pack](/Users/yuluo/.codex/skills/native-evidence-pack/SKILL.md)。
 - [native-tool-batch](/Users/yuluo/.codex/skills/native-tool-batch/SKILL.md)。

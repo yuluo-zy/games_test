@@ -1,0 +1,90 @@
+{
+  "status": "Historical completed-frame recovery passed its listed tests but did not close admission: V4 reproduced Timeout at world frame 969.",
+  "scope": "capacity recovery only, nonblocking poll on full registry; no hot-path check added; in-flight leases retained",
+  "binary": "optimized-v2-build.json",
+  "tests": {
+    "frame_imports": 4,
+    "transfers": 10,
+    "gpu_timing": 4
+  },
+  "logs": [
+    {
+      "path": "tg-import-admission-before.log",
+      "sha256": "44353a5d72f733785bfb79b6b717bbe2510d8a2279e530c2fb50638419d5e6ff"
+    },
+    {
+      "path": "tg-import-admission-after.log",
+      "sha256": "cfb6739e21abdcd5e63a80b847a0034a323d65bec7b3da049d90f393e80b7284"
+    },
+    {
+      "path": "tg-import-admission-gpu-regression.log",
+      "sha256": "fc43a6b99d0bf2c0faae5e5b4ade0387644109f5f31fb69bea76c788e2326c94"
+    },
+    {
+      "path": "tg-import-admission-release.log",
+      "sha256": "035662a0953fb3a95990400e8ca78e9575a039b93ce61959a88d3cd29ea2776e"
+    }
+  ],
+  "window_runs": [
+    {
+      "run": "import-admission-v2/loading_switch-parallel/loading_switch-parallel-round1/run.json",
+      "exit_code": 0,
+      "measured_frames": 1000
+    },
+    {
+      "run": "import-admission-v2/loading_switch-parallel/loading_switch-parallel-round2/run.json",
+      "exit_code": 0,
+      "measured_frames": 1000
+    },
+    {
+      "run": "import-admission-v2/loading_switch-parallel/loading_switch-parallel-round3/run.json",
+      "exit_code": 0,
+      "measured_frames": 1000
+    },
+    {
+      "run": "import-admission-v2/local_edit-serial/local_edit-serial-round3/run.json",
+      "exit_code": 0,
+      "measured_frames": 1000
+    },
+    {
+      "run": "import-admission-v2/local_edit-serial/local_edit-serial-round2/run.json",
+      "exit_code": 0,
+      "measured_frames": 1000
+    },
+    {
+      "run": "import-admission-v2/local_edit-serial/local_edit-serial-round1/run.json",
+      "exit_code": 0,
+      "measured_frames": 1000
+    }
+  ],
+  "sources": {
+    "crates/rhapsody/src/rg/vulkan.rs": "e1734d257955c01d86e459bea76b1bfb9e3a933fde7b571ada6223e3878965d8",
+    "crates/rhapsody/tests/frame_imports.rs": "fadbdce0b9c31ae2e6f044834ebf7f731aa1f387ae341c7da4360c8ba9226e7b"
+  },
+  "recording_lifetime_followup": {
+    "status": "V6 actual window cycle passed: 181 world frames, six GPU captures, one exactly-once shutdown cancellation, five asset GPU ACK classes; final performance matrix pending.",
+    "mechanism": "Release consumed non-exported declarations after recording; preserve exported bindings for receipt consumers until retirement. GPU command owners remain independently retained. Capacity unchanged, no GPU wait or new hot-path validation. Projection invalidation once per collection.",
+    "failure": "production-v4/static-serial/static-serial-round2/runtime.log",
+    "gpu_log": "tg-recorded-imports-gpu.log",
+    "cpu_log": "tg-recorded-imports-lib.log",
+    "imports_log": "tg-recorded-imports-imports.log",
+    "host_log": "tg-recorded-imports-host-retry.log",
+    "check_log": "tg-recorded-imports-check-retry4.log",
+    "sources": {
+      "crates/rhapsody/src/rg/frame_imports.rs": "a7a870d639172483279c7dabcec03b675274d528a56cec8af683eb76152e7aed",
+      "crates/rhapsody/src/rg/vulkan.rs": "7579817f38ab8c578d394ef2121e492d811b76a87c411b8c9250772245a4e1c0",
+      "crates/rhapsody/tests/frame_imports.rs": "65767dcf478005f04b7f3a1de2d572da0f41e44684503ab230ccc8d4890b3f61"
+    },
+    "thread_regression": "27 passed, /tmp/tg-recorded-imports-thread.log",
+    "window_failure": "production-v5-window-cycle.log",
+    "exports_gpu_log": "tg-recorded-imports-gpu-exports.log",
+    "original_capture_log": "tg-recorded-imports-capture.log",
+    "window_success": "production-v6-window-cycle.json",
+    "binary": "production-v6-build.json",
+    "long_run_followup": {
+      "status": "not accepted: V6 sync-1 and sync-0 round1 each completed 1000 measured frames with abnormal long intervals; sync-0 round2 failed after world1034 with UninitializedRead resource54 pass21",
+      "failure": "driver-submission-v6/synchronous-0/static-serial-round2/runtime.log",
+      "scope": "Do not infer driver setting benefit or complete performance acceptance from these interrupted comparisons."
+    }
+  }
+}

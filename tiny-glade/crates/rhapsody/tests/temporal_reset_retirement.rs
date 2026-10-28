@@ -2,13 +2,9 @@
 mod gpu_test_support;
 
 use ash::vk::{self, Handle};
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::{buffer::BufferDesc, semaphore::TimelineSemaphore},
-    rg::{
-        AccessTable, BuiltGraph, GpuResource, PassContext, VulkanGraphBackend, VulkanGraphSession,
-    },
-};
+use rhapsody::{device::{Device, DeviceConfig}, rg::{AccessTable, BuiltGraph, GpuResource, PassContext, VulkanGraphBackend, VulkanGraphSession}};
+use rhapsody::resource::buffer::BufferDesc;
+use rhapsody::device::semaphore::TimelineSemaphore;
 use std::sync::{Arc, Weak};
 
 const TIMEOUT: u64 = 10_000_000_000;

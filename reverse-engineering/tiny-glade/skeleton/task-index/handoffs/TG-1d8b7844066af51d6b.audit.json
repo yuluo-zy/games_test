@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "semantic_acceptance": false,
+  "identity_scope": "artifact hashes are ledger declarations with format checks, not binary-file rehashes",
+  "module": "crates/utils/src/lib.rs",
+  "target_version": "C",
+  "errors": [],
+  "warnings": [],
+  "ledger_sha256": "c03020a447b38df50bb93cc9a1b760f6326e4bfd26ceb6fb00a78954f27f155d",
+  "auditor_sha256": "0bd23f0749abe4957699d738beda4f7cec7d9d9f6475ed39b59c8de755d236b6",
+  "fact_count": 6,
+  "link_count": 4,
+  "unresolved_links": [
+    {
+      "name": "metadata_and_source_navigation",
+      "status": "evidence_ready",
+      "gaps": [
+        "metadata ownership and signatures still need native contracts"
+      ]
+    },
+    {
+      "name": "authoritative_input_and_abi",
+      "status": "unknown",
+      "gaps": [
+        "recover actual inputs, units, fields and ABI; do not use void() placeholder"
+      ]
+    },
+    {
+      "name": "candidate_rust_and_consumers",
+      "status": "unknown",
+      "gaps": [
+        "inspect existing reconstruction; deliver actual callers/outputs and library API boundaries"
+      ]
+    },
+    {
+      "name": "edit_removal_history_and_acceptance",
+      "status": "unknown",
+      "gaps": [
+        "stateful owners require update/removal/history; pure helpers require original consumer checks",
+        "business validation is a separate authorized phase"
+      ]
+    }
+  ],
+  "rust_sha256": {
+    "skeleton/A/crates/utils/src/lib.rs": "984068b4b18d657a39861f7190681d79d78d93febf656bb6a294f652eb70d74f",
+    "skeleton/B/crates/utils/src/lib.rs": "251533ac3bb3985193aef0dea4d138d4b403ac3596fd2e1adee8b900ba5aa962",
+    "skeleton/C/crates/utils/src/lib.rs": "5d3dab499056ef0f56fbf90375df97ce7fcb3a1d13b1c2e47735c708237cfc5c"
+  },
+  "dependencies": [
+    "skeleton/A/crates/utils/src/lib.rs.dependencies.json",
+    "skeleton/B/crates/utils/src/lib.rs.dependencies.json",
+    "skeleton/C/crates/utils/src/lib.rs.dependencies.json"
+  ]
+}

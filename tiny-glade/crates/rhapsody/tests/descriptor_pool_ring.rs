@@ -2,13 +2,8 @@
 //! transient whole-pool reuse and persistent per-set reuse.
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::descriptor_set::{
-        DescriptorPoolRing, DescriptorPoolRingConfig, LayoutBinding, LayoutPlan,
-        VulkanDescriptorSetLayout,
-    },
-};
+use rhapsody::device::{Device, DeviceConfig};
+use rhapsody::command::descriptor_set::{DescriptorPoolRing, DescriptorPoolRingConfig, LayoutBinding, LayoutPlan, VulkanDescriptorSetLayout};
 use std::sync::Arc;
 
 fn device() -> Option<Arc<Device>> {
@@ -48,19 +43,19 @@ fn transient_ring_grows_on_exhaustion_and_reuses_reset_pools() {
     )
     .unwrap();
     let sets: Vec<_> = (0..5)
-        .map(|_| ring.allocate(layout.clone()).unwrap())
+        .map(|_| ring.allocate(&layout).unwrap())
         .collect();
     assert_eq!(ring.stats().pools, 3);
-    let sixth = ring.allocate(layout.clone()).unwrap();
+    let sixth = ring.allocate(&layout).unwrap();
     assert!(matches!(
-        ring.allocate(layout.clone()),
+        ring.allocate(&layout),
         Err(rhapsody::Error::Exhausted(_))
     ));
     drop(sets);
     drop(sixth);
     // Dropped sets free whole pools lazily; no new pool is created.
     for _ in 0..6 {
-        std::mem::forget(ring.allocate(layout.clone()).unwrap());
+        std::mem::forget(ring.allocate(&layout).unwrap());
     }
     let stats = ring.stats();
     assert_eq!(stats.pools, 3);
@@ -84,13 +79,13 @@ fn persistent_ring_reuses_space_of_individually_freed_sets() {
         },
     )
     .unwrap();
-    let first = ring.allocate(layout.clone()).unwrap();
-    let _second = ring.allocate(layout.clone()).unwrap();
+    let first = ring.allocate(&layout).unwrap();
+    let _second = ring.allocate(&layout).unwrap();
     assert!(matches!(
-        ring.allocate(layout.clone()),
+        ring.allocate(&layout),
         Err(rhapsody::Error::Exhausted(_))
     ));
     drop(first);
-    let _third = ring.allocate(layout).unwrap();
+    let _third = ring.allocate(&layout).unwrap();
     assert_eq!(ring.stats().pools, 1);
 }

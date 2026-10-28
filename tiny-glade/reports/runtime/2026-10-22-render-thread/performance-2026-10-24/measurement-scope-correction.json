@@ -1,0 +1,9 @@
+{
+  "recorded_utc": "2026-10-24T09:33:34.050733+00:00",
+  "finding": "The harness=false original_loading_present executable had no global_allocator. Enabling the Cargo mimalloc feature does not by itself install the allocator. All frozen baseline/V1/V2/V3 binaries therefore used the system allocator.",
+  "retained_scope": "GPU correctness, actual WSI, capacity-wait counters and same-fixture AB comparisons remain valid in that configuration; not shipped-binary CPU/performance acceptance.",
+  "correction": "Fixture now selects the same cfg(feature=mimalloc) global allocator as both shipped entry binaries. Final matrix uses production-v4; optional CPU profiler compiled but disabled during formal timings.",
+  "partial_v3_matrix": "Stopped intentionally; incomplete runs marked interrupted and excluded.",
+  "additional_cleanup": "Removed three unused synchronous frame_present_complete wrappers from ProductionRenderer, threaded wrapper and GameLoop. Published frame_observation and actual native-present counters remain the current consumers.",
+  "diagnostics": "Existing optional host pprof sampler moved into frame_counters and reused by WSI fixture; 997 Hz, opt-in TG_PROFILE_OUT, filename/line attached to collapsed stacks. Normal runs clear all TG_PROFILE_ variables."
+}

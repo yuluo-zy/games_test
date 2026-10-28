@@ -6,11 +6,9 @@
 //! 没有 Vulkan 设备时跳过。
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::raw::{
-    buffer::{Buffer, BufferDesc},
-    init::create_headless_device,
-    texture::TextureDesc,
-};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::texture::TextureDesc;
+use rhapsody::device::selection::create_headless_device;
 use rhapsody::rg::{
     executor::PassContext,
     vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},

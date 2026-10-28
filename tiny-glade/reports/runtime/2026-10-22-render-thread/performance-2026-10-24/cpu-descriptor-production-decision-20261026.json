@@ -1,0 +1,58 @@
+{
+  "measurement": "cpu-descriptor-awake-measurements-20261026.json",
+  "warmup": 600,
+  "measured_frames_each": 1000,
+  "rounds": 3,
+  "semantic_inputs_equal": true,
+  "normal_scheduling_verified": true,
+  "result": {
+    "static": {
+      "render_cpu_ms": {
+        "emit": [
+          9.96621052631579,
+          9.311913669064749,
+          11.508182194616978
+        ],
+        "deduplicate": [
+          10.774665975103735,
+          9.611269311064717,
+          10.421289473684212
+        ]
+      },
+      "mean": {
+        "emit": 10.262102129999173,
+        "deduplicate": 10.269074919950889
+      },
+      "paired_deduplicate_minus_emit_ms": [
+        0.8084554487879458,
+        0.2993556419999681,
+        -1.0868927209327666
+      ]
+    },
+    "many_draws": {
+      "render_cpu_ms": {
+        "emit": [
+          42.32728426395939,
+          46.23165991902834,
+          44.83913192346425
+        ],
+        "deduplicate": [
+          43.66739898477157,
+          43.17408088978766,
+          47.93827586206896
+        ]
+      },
+      "mean": {
+        "emit": 44.46602536881733,
+        "deduplicate": 44.92658524554273
+      },
+      "paired_deduplicate_minus_emit_ms": [
+        1.3401147208121813,
+        -3.057579029240678,
+        3.099143938604712
+      ]
+    }
+  },
+  "decision": "Remove descriptor deduplication state and invalidation API from production. No repeatable benefit; mixed paired directions do not prove a causal regression. V28 policy switch exists only in frozen measurement sources.",
+  "scope": "User+kernel scheduled render-thread CPU means. GPU execution/sleep excluded; not CPU frame p95 or total parallel critical path."
+}

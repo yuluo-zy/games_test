@@ -9,7 +9,7 @@
   `crates/systems/{glade-border,tree-tool,critters}/src/**` 逐语句对照；逐条过
   `planning/2026-10-16-logic-verify-protocol.md` 的 **分歧检查表 8 条**。
 - **未改 src。**
-- 证据：`evidence/`（fresh 反编译 35 份、常量实读 `consts.json`、3 组反汇编 JSON）。
+- 证据：`evidence/`（fresh 反编译 35 份、常量实读 `consts.json`、3 组反汇编 JSON；MCP job/result 转录与原始 disasm 分组见同目录 `job-*.json`、`result-*.json`、`disasm-*.json/txt`）。原 `work/reviewer-B-eco/` 的独有转录已并入本目录，工作目录已删除（2026-10-24）。
 - 时间线注意：`reviewer-B-ecstate` 的 8 项复验报告写于 2026-10-17 23:32；其点名的
   `shared.rs`/`butterfly.rs`/`replay_tree.rs`/`process_tree_cmds.rs` 在 **23:33–23:36** 又被
   restorer 修改（mtime 实证）。本报告针对**当前源码**，因此多处闭合了 B-ecstate 报告的旧 FIX

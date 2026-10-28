@@ -2,29 +2,14 @@
 #![allow(dead_code)]
 use crate::draw_support::{self, Rig};
 use ash::vk::{self, Handle};
-use rhapsody::{
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-        device::Device,
-        init::{
-            GraphicsInstance, GraphicsInstanceLayerAllowlist,
-            GraphicsInstanceLayerAllowlistEntry,
-        },
-        instance::{InstanceBuilder, KHRONOS_VALIDATION_LAYER, ValidationMessenger},
-        shader::{
-            DynamicRenderingFormats, PipelineCache, PipelineLayout, RasterPipelineDesc,
-            RasterPipelineOpts, ShaderModule, VulkanPipeline,
-        },
-    },
-    rg::{
-        executor::{PassContext, PassPgoDuration, PassPgoNameId},
-        parallel::ParallelRecording,
-        vulkan::{
-            AccessTable, GpuResource, SessionFrameReceipt, VulkanGraphBackend, VulkanGraphSession,
-        },
-    },
-};
+use rhapsody::rg::{executor::{PassContext, PassPgoDuration, PassPgoNameId}, parallel::ParallelRecording, vulkan::{AccessTable, GpuResource, SessionFrameReceipt, VulkanGraphBackend, VulkanGraphSession}};
+use rhapsody::command::command_buffer::VulkanCommandPool;
+use rhapsody::device::Device;
+use rhapsody::pipeline::shader::{DynamicRenderingFormats, PipelineCache, PipelineLayout, RasterPipelineDesc, RasterPipelineOpts, ShaderModule, VulkanPipeline};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::native::instance::{InstanceBuilder, KHRONOS_VALIDATION_LAYER, ValidationMessenger};
+use rhapsody::device::selection::GraphicsInstance;
+use rhapsody::native::instance_layers::{GraphicsInstanceLayerAllowlist, GraphicsInstanceLayerAllowlistEntry};
 use std::sync::Arc;
 
 pub struct ValidatedEnv {
@@ -64,7 +49,7 @@ pub fn validated_env_configured(config: &rhapsody::device::QueueConfig) -> Optio
     )?;
     let device = initialize(
         "validated logical device",
-        Device::new(graphics.instance.clone(), None, &rhapsody::device::DeviceConfig {
+        Device::new(&graphics.instance, None, &rhapsody::device::DeviceConfig {
             queues: *config,
             ..rhapsody::device::DeviceConfig::headless()
         }),

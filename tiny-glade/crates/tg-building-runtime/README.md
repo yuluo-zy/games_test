@@ -147,6 +147,6 @@ cargo run -p tg-building-runtime --bin nani-probe < roof-lines.txt
 
 集成测试覆盖墙发布与地形更新、屋顶关联/编辑/删除、历史回放、装饰洞口、结构/砖块、台阶/Rapier 及 Nani 注册。碰撞 JSON 默认来自仓库内 `tests/assets`；`TG_B_ASSETS` 可覆盖目录。测试不会自动读取原作安装位置。
 
-历史来源见 [building-audit.json](../../provenance/building-audit.json)。当前源码审查、修复和验证记录见 [源码审查报告](../../reports/building-foundation-review-2026-10-18/README.md)。
+历史来源见 [building-audit.json](../../provenance/building-audit.json)。当前源码审查、修复和验证记录见 [源码审查报告](../../reports/building/2026-10-18-building-foundation-review/README.md)。
 
-支持能力、必需输入与后端边界的逐项说明见 [功能完整性矩阵](../../reports/building-foundation-review-2026-10-18/FEATURE_MATRIX.md)。
+支持能力、必需输入与后端边界的逐项说明见 [功能完整性矩阵](../../reports/building/2026-10-18-building-foundation-review/FEATURE_MATRIX.md)。

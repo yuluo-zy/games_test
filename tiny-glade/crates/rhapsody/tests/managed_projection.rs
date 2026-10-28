@@ -1,17 +1,8 @@
 //! Production managed projection reuse, immutable external snapshots and bounds.
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::buffer::{Buffer, BufferDesc},
-    rg::{
-        executor::ExecutionBackend,
-        graph::{BuiltGraph, RenderGraph},
-        pass_bindings::ManagedProjectionConfig,
-        resource::ResourceHandle,
-        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::{device::{Device, DeviceConfig}, rg::{executor::ExecutionBackend, graph::{BuiltGraph, RenderGraph}, pass_bindings::ManagedProjectionConfig, resource::ResourceHandle, vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession}}};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
 use std::sync::{
     Arc,
     atomic::{AtomicUsize, Ordering},
@@ -222,7 +213,7 @@ fn imported_shape(
     session: &mut VulkanGraphSession,
     buffers: &[Arc<Buffer>; 3],
     wide: bool,
-) -> [rhapsody::raw::managed::resources::ManagedKey<Buffer>; 2] {
+) -> [rhapsody::resource::managed::resources::ManagedKey<Buffer>; 2] {
     let mut graph = session.begin_frame().unwrap();
     let source = usize::from(!wide);
     let input = session.import_frame_buffer(&mut graph, buffers[source].clone(), HOST).unwrap();
@@ -253,8 +244,8 @@ fn imported_shape(
     let mut actual = [0; SIZE as usize];
     buffers[2].read_bytes(0, &mut actual).unwrap();
     assert_eq!(actual, [source as u8 + 1; SIZE as usize]);
-    let result = keys.lock().unwrap();
-    result
+    
+    keys.lock().unwrap()
 }
 
 fn release_named_fixture_imports(session: &mut VulkanGraphSession) {

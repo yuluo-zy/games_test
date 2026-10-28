@@ -2,9 +2,10 @@
 
 ## 开始任务时
 
-- 先看当前任务的状态/验收文件，再看目标代码与最近报告。当前模块总览见 [`tiny-glade/reports/module-recovery-2026-10-23/STATUS.md`](../../tiny-glade/reports/module-recovery-2026-10-23/STATUS.md)；该文件是活跃任务状态，不是全项目完成声明。
-- 只从 [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) 和 [`TASK_BACKLOG.md`](TASK_BACKLOG.md) 搜索本任务相关条目；它们是历史记录，不要整篇加载。优先级冲突时，以用户最新要求、当前源码和最新绑定源码/二进制指纹的证据为准。
-- 工具细节按需查 [`AI_REVERSE_TOOLS.md`](AI_REVERSE_TOOLS.md) 与具体后端 schema；不要加载完整工具目录或无关版本/模块材料。
+- 目录入口：[`README.md`](README.md) 的“按任务直达”和“渐进式披露”；本文件只记规则，不重复目录地图。
+- 先看当前任务的状态/验收文件，再看目标代码与最近报告。当前模块总览见 [`tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md`](../../tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md)；该文件是活跃任务状态，不是全项目完成声明。
+- 不加载整篇历史日志或旧报告；按模块名、任务 ID 或地址用 `rg` 在 `evidence/` 与 `skeleton/task-index/work/` 中定位。优先级冲突时，以用户最新要求、当前源码和最新绑定源码/二进制指纹的证据为准。
+- 工具细节按需查 [`AI_REVERSE_TOOLS.md`](docs/current/AI_REVERSE_TOOLS.md) 与具体后端 schema；不要加载完整工具目录或无关版本/模块材料。
 
 ## 实现与证据
 
@@ -17,6 +18,7 @@
 - 源码阶段优先；场景和 GPU 按当前模块验收条件执行。只因源码、依赖、输入或语义变化重跑受影响差分；报告注明命令、输入/二进制身份、日志和验证边界。
 - 进度明确区分：原证定位、实现、真实生产接线、candidate/本地链测试、原侧行为差分、模块/整游戏验收。局部测试、编译、case 数或报告一致不代表整链完成；证据不足列为未决。
 - rhapsody 沿用当前重构架构，只修当前 API 的具体缺口；涉及其恢复时先读 [`WORKFLOW_RESET.md`](evidence/render-recovery/WORKFLOW_RESET.md)。
+- 共享基础模块（utils / asset / asset-pipe 等）任务只做库内实现与校验，不代替上层游戏模块接线；上层接线按业务流单独验收。
 
 ## Token 与磁盘
 

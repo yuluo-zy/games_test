@@ -2,14 +2,9 @@
 mod gpu_test_support;
 
 use ash::vk;
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::{command_buffer::VulkanCommandPool, semaphore::TimelineSemaphore},
-    rg::{
-        parallel::ParallelRecording,
-        vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::{device::{Device, DeviceConfig}, rg::{parallel::ParallelRecording, vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession}}};
+use rhapsody::command::command_buffer::VulkanCommandPool;
+use rhapsody::device::semaphore::TimelineSemaphore;
 use std::sync::{
     Arc,
     atomic::{AtomicUsize, Ordering},
@@ -28,8 +23,8 @@ impl Drop for Owner {
         self.0.fetch_add(1, Ordering::Relaxed);
     }
 }
-impl rhapsody::resource::GpuUse for Owner {
-    fn visit_uses(&self, _: &mut rhapsody::resource::UseVisitor<'_>) -> rhapsody::Result<()> {
+impl rhapsody::tracking::GpuUse for Owner {
+    fn visit_uses(&self, _: &mut rhapsody::tracking::UseVisitor<'_>) -> rhapsody::Result<()> {
         Ok(())
     }
 }
@@ -110,7 +105,7 @@ fn dropped_pending_commands_do_not_allow_early_whole_pool_reset() {
     let mut command = pool.allocate().unwrap();
     command.begin().unwrap();
     command.end().unwrap();
-    let queue = rhapsody::raw::device::DeviceQueue {
+    let queue = rhapsody::device::DeviceQueue {
         handle: device.primary_queue(),
         family: device.queue_family_index(),
         index: 0,

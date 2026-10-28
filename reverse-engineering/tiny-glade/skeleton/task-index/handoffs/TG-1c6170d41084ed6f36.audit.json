@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "semantic_acceptance": false,
+  "identity_scope": "artifact hashes are ledger declarations with format checks, not binary-file rehashes",
+  "module": "crates/systems/tree-tool/src/lib.rs",
+  "target_version": "C",
+  "errors": [],
+  "warnings": [],
+  "ledger_sha256": "2ca10b56fbaa9fb1be12616252e64e5cd6eb0c455473f0d656139b24a5901f39",
+  "auditor_sha256": "0bd23f0749abe4957699d738beda4f7cec7d9d9f6475ed39b59c8de755d236b6",
+  "fact_count": 6,
+  "link_count": 4,
+  "unresolved_links": [
+    {
+      "name": "metadata_and_source_navigation",
+      "status": "evidence_ready",
+      "gaps": [
+        "metadata ownership and signatures still need native contracts"
+      ]
+    },
+    {
+      "name": "authoritative_input_and_abi",
+      "status": "unknown",
+      "gaps": [
+        "recover actual inputs, units, fields and ABI; do not use void() placeholder"
+      ]
+    },
+    {
+      "name": "candidate_rust_and_consumers",
+      "status": "unknown",
+      "gaps": [
+        "inspect existing reconstruction; deliver actual callers/outputs and library API boundaries"
+      ]
+    },
+    {
+      "name": "edit_removal_history_and_acceptance",
+      "status": "unknown",
+      "gaps": [
+        "stateful owners require update/removal/history; pure helpers require original consumer checks",
+        "business validation is a separate authorized phase"
+      ]
+    }
+  ],
+  "rust_sha256": {
+    "skeleton/A/crates/systems/tree-tool/src/lib.rs": "45d2868d5375b2904ea1854af72db98a65b95b1015735279a79031495db31944",
+    "skeleton/B/crates/systems/tree-tool/src/lib.rs": "22245195eaa76bb2a5233a63fadd6129d2bb584602d0c4c9ef7ba7a5f029a6f1",
+    "skeleton/C/crates/systems/tree-tool/src/lib.rs": "74bf5fd139124be3dfdb89784db9ae7361369cbcc50a496a1043180ddcbf4918"
+  },
+  "dependencies": [
+    "skeleton/A/crates/systems/tree-tool/src/lib.rs.dependencies.json",
+    "skeleton/B/crates/systems/tree-tool/src/lib.rs.dependencies.json",
+    "skeleton/C/crates/systems/tree-tool/src/lib.rs.dependencies.json"
+  ]
+}

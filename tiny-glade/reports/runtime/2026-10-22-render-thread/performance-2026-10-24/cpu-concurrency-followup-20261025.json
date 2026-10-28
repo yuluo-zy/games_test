@@ -1,0 +1,27 @@
+{
+  "updated_utc": "2026-10-25T11:28:23.832022+00:00",
+  "status": "Functional regression passed; V22 optimized CPU acceptance in progress",
+  "verification": "cpu-concurrency-verification-20261025.json",
+  "final_tests_passed": 68,
+  "excluded_failed_attempt": "146b-host-gpu:27passed/2failed stale per-lease budget assumptions; corrected146b2 has29passed. Do not sum duplicate passes.",
+  "fixes": [
+    "Keep HostFlushQueue dirty during native flush: serialize freeing memory and another submit with the same existing page lock; failures preserve dirty ranges",
+    "Frame-local upload failure check now uses slots -> local, same as buffer creation; controlled lock-order regression passed, no production game deadlock reproduced",
+    "Deferred TextureHost release captures tables only; cancelled capacity retry no longer retains its own boundary",
+    "Four custom cursor writes use existing owned upload writer; accepted ranges clear, capacity/timeout preserve pending words and retry each frame without a new input event",
+    "Raster parameter chunks use canonical per-chunk allocator with one callback lock and a budgeted TempList admitted outside dynamic lock"
+  ],
+  "remaining": [
+    "Parameter builder per-draw HostState reserve/release still present; callback credit proposed, not implemented",
+    "Duplicate-slot write cache growth before error needs migration with credit bound",
+    "IndexedCountAdapter bare-heap compatibility constructor/Option pages remains to remove",
+    "Unconditional PrevTransform publication and normal screenshot GPU waiting found; not yet modified",
+    "OOM retirement fallback can wait for real completion; no safe early-free replacement implemented",
+    "F-127 ordered-submission API type seal and F-032/F-201/F-192 remain open",
+    "No assertion of whole-chain deadlock freedom; full long-run/hardware/scene-control acceptance remains open"
+  ],
+  "measurement_limits": [
+    "CPU means are actual user+kernel thread clock; no GPU execution/sleep wait counted; busy spin included",
+    "Benchmark many_draws takes first32ECS candidates and has no stable source-content signature; clone/draw counts only confirm scale, not input identity"
+  ]
+}

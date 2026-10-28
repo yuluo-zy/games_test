@@ -2,7 +2,7 @@
 
 D1–D3 已修复：按钮边沿复用 Bevy ButtonInput，宿主使用标准 press/release/clear；右键释放帧计入拖动距离；回退选择跳过末尾空同步点；捕获状态和 OS 命令通过统一入口更新，播放结束、Stop 或错误时释放，晚到的实时请求不能覆盖本帧回放策略。
 
-验证：17 个输入流水线测试、2121 个核心单元测试全部通过。新增回归还验证了停止后恢复实时捕获。具体兼容性、验证边界和日志见 [输入边界修复报告](../../../../reports/input-edge-fixes-2026-10-18/README.md)。
+验证：17 个输入流水线测试、2121 个核心单元测试全部通过。新增回归还验证了停止后恢复实时捕获。具体兼容性、验证边界和日志见 [输入边界修复报告](../../../../reports/ui-input/2026-10-18-input-edge-fixes/README.md)。
 
 ---
 
@@ -10,7 +10,7 @@ D1–D3 已修复：按钮边沿复用 Bevy ButtonInput，宿主使用标准 pre
 
 结论：**changes_required**。当前 12 个输入流水线回归通过，但三个新探针已复现：D1 真实宿主的释放标记清零了右键拖动距离，拖动松开误发点击；D2 末尾空同步点遮住已有帧，合法保存文件的默认加载/回放失败；D3 回放改写捕获资源时未同步操作系统捕获及显隐命令。
 
-精确位置、实际事件序列、运行证据和验证边界见 [再次诊断报告](../../../../reports/input-diagnosis-2026-10-18/README.md)。本轮仅诊断并更新记录，没有修改业务代码。
+精确位置、实际事件序列、运行证据和验证边界见 [再次诊断报告](../../../../reports/ui-input/2026-10-18-input-diagnosis/README.md)。本轮仅诊断并更新记录，没有修改业务代码。
 
 ---
 
@@ -18,7 +18,7 @@ D1–D3 已修复：按钮边沿复用 Bevy ButtonInput，宿主使用标准 pre
 
 下列复审的 R1–R5 已修复：使用实际 Toolbar/AppMode 快照和模式通知；Clock 阶段在命令后完整更新时间；窗口游标限幅并保留捕获锚点；Derive 明确早于 Consume；文件校验累计时间，运行时溢出安全停止并屏蔽当前帧。
 
-核心验证通过：2105 个单元测试、12 个输入流水线测试；附加 Clippy/工具栏验证被工作区其他依赖与锁文件变更阻断。完整变更、兼容性及验证边界见 [五项修复报告](../../../../reports/input-fixes-2026-10-18/README.md)。
+核心验证通过：2105 个单元测试、12 个输入流水线测试；附加 Clippy/工具栏验证被工作区其他依赖与锁文件变更阻断。完整变更、兼容性及验证边界见 [五项修复报告](../../../../reports/ui-input/2026-10-18-input-fixes/README.md)。
 
 ---
 
@@ -26,7 +26,7 @@ D1–D3 已修复：按钮边沿复用 Bevy ButtonInput，宿主使用标准 pre
 
 该轮结论：**changes_required**。重新检查当时调用链发现：同步点没有恢复实际 `Toolbar`/`AppMode`；回放控制与完整时钟更新缺少顺序约束；光标使用原始增量导致越过窗口边界；Consume 内派生输入更新与游戏消费者无序；异常录制的累计时间仍可导致时钟 panic。
 
-位置、反例和建议见 [本轮完整审查](../../../../reports/input-rereview-2026-10-18/README.md)。本轮探针编译被磁盘空间不足阻断，未运行成功。以下为上一轮修复记录，不能解释为当前完整消费链已通过审查。
+位置、反例和建议见 [本轮完整审查](../../../../reports/ui-input/2026-10-18-input-rereview/README.md)。本轮探针编译被磁盘空间不足阻断，未运行成功。以下为上一轮修复记录，不能解释为当前完整消费链已通过审查。
 
 ---
 
@@ -41,7 +41,7 @@ D1–D3 已修复：按钮边沿复用 Bevy ButtonInput，宿主使用标准 pre
 | F3 动作丢失/无实际消费者 | InputFrame 直接保存固定动作状态；回放覆盖现有 ActionSetStates 和 ActionSetValues；禁用输入同样作用于真实动作 |
 | F4 调度无顺序 | 明确 Prepare → Control → Translate → Resolve → RecordReplay → Consume → Finish；消费后推进索引 |
 
-新增回归与工程边界见 [重构报告](../../../../reports/input-refactor-2026-10-18/README.md)。本轮设计不再声明与旧原生布局/文件格式等价；旧缓存缺口探针只验证修复前快照，不可用于验收新源码。
+新增回归与工程边界见 [重构报告](../../../../reports/ui-input/2026-10-18-input-refactor/README.md)。本轮设计不再声明与旧原生布局/文件格式等价；旧缓存缺口探针只验证修复前快照，不可用于验收新源码。
 
 ---
 
@@ -120,10 +120,10 @@ D1–D3 已修复：按钮边沿复用 Bevy ButtonInput，宿主使用标准 pre
 
 复用 2026-10-15 算法文档、2026-10-17 的原反编译与重建记录，独立阅读了裁剪释放逻辑及其消费者。没有新开 MCP worker，没有修改数据库或发行文件，没有执行原版 runtime oracle。历史文件中的占位 `void()` 不作为真实 ABI 依据。
 
-- `cargo test -p country-core --lib input:: --offline --locked`：46 passed，0 failed，0 ignored；覆盖本目录及 backend 输入测试。日志见 [input-tests.log](../../../../reports/input-review-2026-10-18/input-tests.log)。
-- [probes.rs](../../../../reports/input-review-2026-10-18/probes.rs)：针对 F1–F4 的审查探针。首轮可执行探针复现 F1–F3，F4 的探针误读构建后已转移的 graph.systems；改用公开 Schedule::systems。最新 Cargo 重建被目录外 `render/sparse_instance_buffer.rs:425` 的 E0502 阻断，见 [probes.log](../../../../reports/input-review-2026-10-18/probes.log)；此前另一次构建曾被 descriptor_table.rs 的 E0502 阻断。没有修改这些文件。
-- 最终改用已编译缓存，通过 Cargo fingerprint 选择相同的直接依赖，以 `rustc --test` 编译探针：**4 passed，0 failed**，见 [cached-probes.log](../../../../reports/input-review-2026-10-18/cached-probes.log) 和 [产物身份](../../../../reports/input-review-2026-10-18/cached-artifacts.json)。这证明该编译快照中的四项缺口；不是最新完整源码的重建通过，也不是原版 oracle。**探针通过表示缺口被复现，不表示问题已修复**；它们不加入默认回归套件。
-- 新鲜源码复现命令：在 workspace 根运行 `python3 reports/input-review-2026-10-18/run_probes.py`。脚本独占创建临时 Cargo test target，结束后移除。原缓存复现用 `run_cached_probes.py`，先检查产物 SHA；缓存改变则拒绝运行。两种方式均不修改业务源码。
-- 审查源码、依赖和原证据指纹见 [verification.json](../../../../reports/input-review-2026-10-18/verification.json)。结论仅适用于该快照；源码变化后应重核受影响结论。
+- `cargo test -p country-core --lib input:: --offline --locked`：46 passed，0 failed，0 ignored；覆盖本目录及 backend 输入测试。日志见 [input-tests.log](../../../../reports/ui-input/2026-10-18-input-review/input-tests.log)。
+- [probes.rs](../../../../reports/ui-input/2026-10-18-input-review/probes.rs)：针对 F1–F4 的审查探针。首轮可执行探针复现 F1–F3，F4 的探针误读构建后已转移的 graph.systems；改用公开 Schedule::systems。最新 Cargo 重建被目录外 `render/sparse_instance_buffer.rs:425` 的 E0502 阻断，见 [probes.log](../../../../reports/ui-input/2026-10-18-input-review/probes.log)；此前另一次构建曾被 descriptor_table.rs 的 E0502 阻断。没有修改这些文件。
+- 最终改用已编译缓存，通过 Cargo fingerprint 选择相同的直接依赖，以 `rustc --test` 编译探针：**4 passed，0 failed**，见 [cached-probes.log](../../../../reports/ui-input/2026-10-18-input-review/cached-probes.log) 和 [产物身份](../../../../reports/ui-input/2026-10-18-input-review/cached-artifacts.json)。这证明该编译快照中的四项缺口；不是最新完整源码的重建通过，也不是原版 oracle。**探针通过表示缺口被复现，不表示问题已修复**；它们不加入默认回归套件。
+- 新鲜源码复现命令：在 workspace 根运行 `python3 reports/ui-input/2026-10-18-input-review/run_probes.py`。脚本独占创建临时 Cargo test target，结束后移除。原缓存复现用 `run_cached_probes.py`，先检查产物 SHA；缓存改变则拒绝运行。两种方式均不修改业务源码。
+- 审查源码、依赖和原证据指纹见 [verification.json](../../../../reports/ui-input/2026-10-18-input-review/verification.json)。结论仅适用于该快照；源码变化后应重核受影响结论。
 
 本轮未做修复，也没有将历史 `implemented_unverified` 升级为 `verified`。后续优先闭合工具栏快照所有权，再完成加载器/帧映射和真实动作消费接线，最后以有明确顺序的完整输入帧验证。

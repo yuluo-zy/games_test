@@ -102,4 +102,4 @@ cargo run -p tabloid --release --example review_publication_cost
 
 生产者与消费者的游戏系统接线由使用方负责。历史恢复来源见 [foundation-audit.json](../../provenance/foundation-audit.json) 和 [原始调查报告](../../../reverse-engineering/tiny-glade/evidence/foundation-plt-2026-10-13/SUMMARY.md)；它们不代替当前源码的接口约定。
 
-本轮源码复审、工程化改造及验证边界见 [复审报告](../../reports/building-foundation-review-2026-10-18/README.md)。
+本轮源码复审、工程化改造及验证边界见 [复审报告](../../reports/building/2026-10-18-building-foundation-review/README.md)。

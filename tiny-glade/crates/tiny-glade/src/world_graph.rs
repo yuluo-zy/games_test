@@ -95,6 +95,9 @@ pub fn build_world(
     if world_dims.contains(&0) {
         return Err(rhapsody::Error::invalid_usage("original world dimensions must be nonzero"));
     }
+    // W5 publishes a terrain-only table; later full refreshes still validate
+    // every current owner, while sharing this declaration's unchanged wrappers.
+    let _vao_wrappers = frame.raster_resources().preserve_vao_wrappers();
     // The original ActiveSession read precedes previous-depth creation and W1.
     let glade = world.get_resource::<ActiveSession>().ok_or_else(|| missing("ActiveSession"))?.meta.glade;
     let previous_depth = world_lighting::begin_depth_history(frame, depth)?;

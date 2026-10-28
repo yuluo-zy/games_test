@@ -82,9 +82,7 @@ use bevy_ecs::resource::Resource;
 use clap::Parser;
 use country_core::game_config::GameConfig;
 use country_core::input::panic_repro_state::PanicReproState;
-use rhapsody::{
-    interop::GraphicsInstanceLayerAllowlist, interop::GraphicsInstanceLayerAllowlistEntry,
-};
+use rhapsody::native::{GraphicsInstanceLayerAllowlist, GraphicsInstanceLayerAllowlistEntry};
 
 /// `settings.ron`（`.rdata 0x1429c3860`，len 0xc）。
 pub const SETTINGS_FILE: &str = "settings.ron";

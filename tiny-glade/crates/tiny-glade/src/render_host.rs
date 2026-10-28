@@ -98,6 +98,20 @@ impl FrameBufferSnapshot {
     pub fn buffer_count(&self) -> usize { self.0.buffers.len() }
 }
 
+#[doc(hidden)]
+#[derive(Debug, Clone, Copy)]
+pub struct BufferFixtureReferences {
+    pub frame_bound: bool,
+    pub active_read_lease: bool,
+    pub version_strong: usize,
+    pub version_weak: usize,
+    pub snapshot_pins: usize,
+    pub physical_strong: usize,
+    pub physical_weak: usize,
+    pub known_queue_history_weak: usize,
+    pub known_cow_retired_weak: usize,
+}
+
 const COW_MAX_RETIRED_BYTES: u64 = 256 << 20;
 const COW_MAX_RETIRED_BUFFERS: usize = 64;
 struct RetiredBuffer {
@@ -146,6 +160,68 @@ struct BufferUploads {
     epoch: u64,
     /// Bytes accepted since the last flush.
     queued_bytes: u64,
+    #[cfg(feature = "cpu-probe")]
+    observation: Option<BufferUploadObservation>,
+}
+
+/// Bounded correctness-only target observation. Task status retains CPU credit,
+/// so this must never be reported as a clean CPU or native-memory plateau run.
+/// The entry backing and Task references drop before its storage credit.
+/// Structural validity alone does not prove submission/completion: the caller
+/// must require Submitted status, a reached point, and separate output pixels.
+#[cfg(feature = "cpu-probe")]
+pub struct BufferUploadObservation {
+    entries: Vec<ObservedBufferUpload>,
+    memory: rhapsody::accounting::CpuStorageReservation,
+    target: Buffer,
+    valid: bool,
+    rejected_admissions: u64,
+}
+#[cfg(feature = "cpu-probe")]
+pub struct ObservedBufferUpload {
+    pub logical: Buffer,
+    pub payload_blake3: [u8; 32],
+    pub submission: rhapsody::transfer::QueuedUploadObservation,
+}
+#[cfg(feature = "cpu-probe")]
+impl BufferUploadObservation {
+    pub const CAPACITY: usize = 16;
+    pub fn valid(&self) -> bool { self.valid }
+    pub fn target(&self) -> Buffer { self.target }
+    pub fn entries(&self) -> &[ObservedBufferUpload] { &self.entries }
+    pub fn storage_bytes(&self) -> u64 { self.memory.bytes() }
+    pub fn rejected_admissions(&self) -> u64 { self.rejected_admissions }
+    fn matches(&self, buffer: &Buffer) -> bool {
+        self.target.id == buffer.id && self.target.generation == buffer.generation
+    }
+}
+#[cfg(feature = "cpu-probe")]
+impl BufferUploads {
+    fn observation_digest(&self, buffer: &Buffer, bytes: &[u8]) -> Option<[u8; 32]> {
+        self.observation.as_ref().filter(|probe| probe.matches(buffer))
+            .map(|_| *blake3::hash(bytes).as_bytes())
+    }
+    fn observe_accepted(&mut self, buffer: &Buffer,
+        ticket: &rhapsody::transfer::QueuedUploadTicket, digest: Option<[u8; 32]>) {
+        let Some(probe) = self.observation.as_mut().filter(|probe| probe.matches(buffer)) else { return; };
+        let Some(digest) = digest else { probe.valid = false; return; };
+        if probe.entries.len() == BufferUploadObservation::CAPACITY
+            || ticket.options.key.0 != buffer.id
+            || ticket.offset.checked_add(ticket.bytes).is_none_or(|end| end > buffer.byte_size) {
+            // A diagnostic may not change a successfully accepted real upload.
+            // Invalidate the witness and retain the bounded original prefix.
+            probe.valid = false;
+            return;
+        }
+        probe.entries.push(ObservedBufferUpload { logical: *buffer, payload_blake3: digest,
+            submission: ticket.observe() });
+    }
+    fn observe_rejected(&mut self, buffer: &Buffer) {
+        if let Some(probe) = self.observation.as_mut().filter(|probe| probe.matches(buffer)) {
+            probe.valid = false;
+            probe.rejected_admissions = probe.rejected_admissions.saturating_add(1);
+        }
+    }
 }
 
 struct MappedHostWriter {
@@ -275,6 +351,8 @@ mod frame_buffer_tests {
                 rhapsody::transfer::TransferConfig::default(),
                 rhapsody::transfer::UploadQueueConfig { max_jobs: 1, ..Default::default() }).unwrap(),
             epoch: 0, queued_bytes: 0,
+            #[cfg(feature = "cpu-probe")]
+            observation: None,
         });
         let data = vec![37u8; UPLOAD_CHUNK_BYTES as usize * 3];
         let handle = host.create_buffer(&BufferDesc::new(data.len(),
@@ -291,7 +369,7 @@ mod frame_buffer_tests {
             "a capacity retry must never submit the accepted prefix twice");
         let mut transfers = rhapsody::transfer::TransferManager::new(device.clone(),
             rhapsody::transfer::TransferConfig::default()).unwrap();
-        let ticket = transfers.read_buffer(host.managed_buffer(&handle).unwrap().shared(), 0, data.len()).unwrap();
+        let ticket = transfers.read_buffer(&host.managed_buffer(&handle).unwrap().shared(), 0, data.len()).unwrap();
         ticket.wait(10_000_000_000).unwrap();
         let mut actual = vec![0; data.len()];
         assert_eq!(ticket.try_read(&mut actual).unwrap(), Some(data.len()));
@@ -302,6 +380,8 @@ mod frame_buffer_tests {
                 rhapsody::transfer::TransferConfig::default(),
                 rhapsody::transfer::UploadQueueConfig { max_jobs: 1, ..Default::default() }).unwrap(),
             epoch: 0, queued_bytes: 0,
+            #[cfg(feature = "cpu-probe")]
+            observation: None,
         });
         let handle = cancel_host.create_buffer(&BufferDesc::new(data.len(),
             vk::BufferUsageFlags::TRANSFER_DST.as_raw(), 1), "cancel owned upload", None).unwrap();
@@ -331,7 +411,7 @@ mod frame_buffer_tests {
             "repaired transactions restore the normal constant-time fast path");
         let mut transfer = rhapsody::transfer::TransferManager::new(device,
             rhapsody::transfer::TransferConfig::default()).unwrap();
-        let ticket = transfer.read_buffer(host.managed_buffer(&handle).unwrap().shared(), 0, 16).unwrap();
+        let ticket = transfer.read_buffer(&host.managed_buffer(&handle).unwrap().shared(), 0, 16).unwrap();
         ticket.wait(10_000_000_000).unwrap();
         let mut bytes = [0; 16];
         assert_eq!(ticket.try_read(&mut bytes).unwrap(), Some(16));
@@ -352,7 +432,7 @@ mod frame_buffer_tests {
     fn gpu_bytes(device: &Arc<Device>, buffer: ManagedBuffer) -> Vec<u8> {
         let mut transfer = rhapsody::transfer::TransferManager::new(
             device.clone(), rhapsody::transfer::TransferConfig::default()).unwrap();
-        let ticket = transfer.read_buffer(buffer.shared(), 0, 16).unwrap();
+        let ticket = transfer.read_buffer(&buffer.shared(), 0, 16).unwrap();
         ticket.wait(10_000_000_000).unwrap();
         let mut bytes = vec![0; 16];
         assert_eq!(ticket.try_read(&mut bytes).unwrap(), Some(16));
@@ -501,7 +581,7 @@ mod frame_buffer_tests {
         let read_all = |buffer: ManagedBuffer| {
             let mut transfers = rhapsody::transfer::TransferManager::new(device.clone(),
                 rhapsody::transfer::TransferConfig::default()).unwrap();
-            let read = transfers.read_buffer(buffer.shared(), 0, buffer.size as usize).unwrap();
+            let read = transfers.read_buffer(&buffer.shared(), 0, buffer.size as usize).unwrap();
             read.wait(10_000_000_000).unwrap();
             let mut bytes = vec![0; buffer.size as usize];
             assert_eq!(read.try_read(&mut bytes).unwrap(), Some(bytes.len()));
@@ -608,7 +688,7 @@ mod stable_frame_buffer_tests {
             assert!(Arc::ptr_eq(&old.shared(), &host.managed_buffer(&addressable).unwrap().shared()));
             let mut transfer = rhapsody::transfer::TransferManager::new(
                 device.clone(), rhapsody::transfer::TransferConfig::default()).unwrap();
-            let ticket = transfer.read_buffer(old.shared(), 0, 16).unwrap();
+            let ticket = transfer.read_buffer(&old.shared(), 0, 16).unwrap();
             ticket.wait(10_000_000_000).unwrap();
             assert_eq!(ticket.try_read(&mut observed).unwrap(), Some(16));
             assert_eq!(observed, [10; 16]);
@@ -625,6 +705,7 @@ mod mapped_raster_gpu_tests {
     use country_core::{render::ssbo::{MappedStorageBuffer, StorageElement, MAPPED_MEMORY_READBACK},
         resources::{world_raster::{DirtyTilePublisher, WorldRaster}, world_raster_defs::PathRasterStagingSsbo}};
     use rhapsody::command::VulkanCommandPool;
+    use rhapsody::device::semaphore::TimelineSemaphore;
     use std::{sync::mpsc, time::Duration};
 
     // The fixture adds TRANSFER_SRC to the actual original staging allocation
@@ -651,23 +732,38 @@ mod mapped_raster_gpu_tests {
         const BUFFER_LEN: usize = 512 * 512;
         const MAPPED_MEMORY: u8 = MAPPED_MEMORY_READBACK;
     }
-    struct SignalOnDrop(Arc<Device>, vk::Event, bool);
+    struct SignalOnDrop {
+        semaphore: Arc<TimelineSemaphore>,
+        armed: bool,
+    }
     impl SignalOnDrop {
-        fn release(&mut self) {
-            if self.2 {
-                let result = unsafe { self.0.raw_device().set_event(self.1) };
-                self.2 = false;
-                result.unwrap();
+        fn try_release(&mut self) -> std::result::Result<(), vk::Result> {
+            if !self.armed { return Ok(()); }
+            let device = self.semaphore.device();
+            // A timeline wait may legally be pending when the host supplies
+            // its future value. This fixture is the sole signaler of value 1.
+            let result = unsafe {
+                device.raw_device().signal_semaphore(&vk::SemaphoreSignalInfo::default()
+                    .semaphore(self.semaphore.raw_handle()).value(1))
+            };
+            if result.is_ok() || result == Err(vk::Result::ERROR_DEVICE_LOST) {
+                self.armed = false;
             }
+            if result == Err(vk::Result::ERROR_DEVICE_LOST) {
+                device.timelines().mark_device_lost();
+            }
+            result
+        }
+        fn release(&mut self) {
+            self.try_release().expect("host timeline gate signal failed");
         }
     }
     impl Drop for SignalOnDrop {
         fn drop(&mut self) {
-            self.release();
-            // Native interop object: retain it through actual GPU completion,
-            // including assertion unwinding before the explicit pending wait.
-            let _ = self.0.wait_idle();
-            unsafe { self.0.raw_device().destroy_event(self.1, None); }
+            // Also unblock during assertion unwinding. The submitted receipt
+            // and semaphore SyncCell retain native lifetime through completion;
+            // this test never manually destroys a pending synchronization object.
+            let _ = self.try_release();
         }
     }
 
@@ -696,17 +792,15 @@ mod mapped_raster_gpu_tests {
         assert_eq!(first[0], 11);
 
         let pool = VulkanCommandPool::new(device.clone()).unwrap();
-        let gate = unsafe { device.raw_device().create_event(&vk::EventCreateInfo::default(), None) }.unwrap();
-        let mut release = SignalOnDrop(device.clone(), gate, true);
+        let gate = TimelineSemaphore::new(device.clone(), 0).unwrap();
+        let mut release = SignalOnDrop { semaphore: gate.clone(), armed: true };
         let mut command = pool.allocate().unwrap();
         unsafe {
-            command.retain_opaque_buffer_range(source.shared(), 0, source.size).unwrap();
-            command.retain_opaque_buffer_range(output.shared(), 0, output.size).unwrap();
+            command.retain_opaque_buffer_range(&source.shared(), 0, source.size).unwrap();
+            command.retain_opaque_buffer_range(&output.shared(), 0, output.size).unwrap();
         }
         command.begin().unwrap();
         unsafe {
-            device.raw_device().cmd_wait_events(command.raw_handle(), &[gate],
-                vk::PipelineStageFlags::HOST, vk::PipelineStageFlags::TRANSFER, &[], &[], &[]);
             device.raw_device().cmd_pipeline_barrier(command.raw_handle(), vk::PipelineStageFlags::HOST,
                 vk::PipelineStageFlags::TRANSFER, vk::DependencyFlags::empty(), &[],
                 &[vk::BufferMemoryBarrier::default().src_access_mask(vk::AccessFlags::HOST_WRITE)
@@ -723,7 +817,9 @@ mod mapped_raster_gpu_tests {
                     .size(output.size)], &[]);
         }
         command.end().unwrap();
-        let pending = command.submit().unwrap();
+        let pending = command.submit_to(rhapsody::device::DeviceQueue {
+            handle: device.primary_queue(), family: device.queue_family_index(), index: 0,
+        }, &[(gate, 1, vk::PipelineStageFlags::ALL_COMMANDS)], &[]).unwrap();
         assert!(!pending.is_complete().unwrap());
         let mut inspected = false;
         assert_eq!(readback.try_cpu_read(|_| { inspected = true; }).unwrap(), None);
@@ -748,6 +844,8 @@ mod mapped_raster_gpu_tests {
         assert_eq!(staging.cpu_contents()[0].0, 22);
         // Its bytes travel as a GPU copy ordered after the pending read.
         host.0.finish_test_uploads().unwrap();
+        assert!(!pending.is_complete().unwrap(),
+            "producer and upload admission must return before the gated GPU read completes");
         release.release();
         pending.wait(10_000_000_000).unwrap();
         assert_eq!(readback.try_cpu_read(|mapped| mapped[0].0).unwrap(), Some(11));
@@ -946,6 +1044,8 @@ impl BufferHost {
                 )?,
                 epoch: 0,
                 queued_bytes: 0,
+                #[cfg(feature = "cpu-probe")]
+                observation: None,
             });
         }
         Ok(uploads.as_mut().expect("initialized bounded upload service"))
@@ -983,6 +1083,8 @@ impl BufferHost {
                 let mut payload = Vec::new();
                 payload.try_reserve_exact(bytes).map_err(|_| rhapsody::Error::OutOfHostMemory)?;
                 payload.extend_from_slice(slice);
+                #[cfg(feature = "cpu-probe")]
+                let observed_digest = service.observation_digest(buffer, slice);
                 let accepted = service.manager.enqueue_upload_owned(
                     managed.shared(),
                     at,
@@ -990,8 +1092,17 @@ impl BufferHost {
                     options_at(service.epoch),
                     rhapsody::transfer::UploadMode::OrderedDelta,
                 );
-                if let Err(rejected) = accepted {
-                    return Err(rejected.error);
+                match accepted {
+                    Ok(ticket) => {
+                        #[cfg(feature = "cpu-probe")]
+                        service.observe_accepted(buffer, &ticket, observed_digest);
+                        drop(ticket);
+                    }
+                    Err(rejected) => {
+                        #[cfg(feature = "cpu-probe")]
+                        service.observe_rejected(buffer);
+                        return Err(rejected.error);
+                    }
                 }
                 service.queued_bytes += bytes as u64;
                 cursor += bytes;
@@ -1031,10 +1142,22 @@ impl BufferHost {
             epoch,
             priority: rhapsody::transfer::UploadPriority::High,
         };
+        #[cfg(feature = "cpu-probe")]
+        let observed_digest = service.observation_digest(buffer, payload);
         match service.manager.enqueue_upload_owned(managed.shared(), at as u64, std::mem::take(payload),
             options_at(service.epoch), rhapsody::transfer::UploadMode::OrderedDelta) {
-            Ok(_) => { service.queued_bytes += bytes; Ok(()) }
-            Err(rejected) => { *payload = rejected.payload; Err(rejected.error) },
+            Ok(ticket) => {
+                #[cfg(feature = "cpu-probe")]
+                service.observe_accepted(buffer, &ticket, observed_digest);
+                drop(ticket);
+                service.queued_bytes += bytes;
+                Ok(())
+            }
+            Err(rejected) => {
+                #[cfg(feature = "cpu-probe")]
+                service.observe_rejected(buffer);
+                *payload = rejected.payload; Err(rejected.error)
+            },
         }
     }
 
@@ -1096,6 +1219,28 @@ impl BufferHost {
             slot.stable_address = true;
             slot.cpu_authoritative = false;
         }
+    }
+
+    #[doc(hidden)]
+    pub fn fixture_reference_state(&self, target: &Buffer) -> Result<BufferFixtureReferences, BackendError> {
+        let _serial = self.publication.lock();
+        let version = self.current_version(target).ok_or_else(|| BackendError::invalid_usage("fixture target is stale/foreign"))?;
+        let raw = version.buffer.shared();
+        let known_queue_history_weak = self.uploads.lock().as_ref().map_or(0,
+            |service| service.manager.fixture_buffer_weak_history_count(&raw));
+        let known_cow_retired_weak = self.cow_budget.lock().retired.iter()
+            .filter(|entry| entry.owner.as_ptr() == Arc::as_ptr(&raw)).count();
+        Ok(BufferFixtureReferences {
+            frame_bound: self.frame.is_some(),
+            active_read_lease: self.boundary().fixture_has_active_reader(),
+            version_strong: Arc::strong_count(&version) - 1,
+            version_weak: Arc::weak_count(&version),
+            snapshot_pins: version.pins.load(Ordering::Acquire),
+            physical_strong: Arc::strong_count(&raw) - 1,
+            physical_weak: Arc::weak_count(&raw),
+            known_queue_history_weak,
+            known_cow_retired_weak,
+        })
     }
 
     /// Resolve a retained core buffer only while its slot generation is live.
@@ -1170,6 +1315,47 @@ impl BufferHost {
     /// Return the real description only while the host handle is live.
     pub fn description(&self, handle: &Buffer) -> Option<RhBufferDesc> {
         Some(self.lookup(handle)?.desc)
+    }
+
+    /// Activate one correctness-only logical allocation watch. It observes each
+    /// accepted ticket's actual physical owner, including COW versions. There
+    /// is no edit-id/latest-frame guess: callers use a drained, sequential scope.
+    #[cfg(feature = "cpu-probe")]
+    pub fn begin_buffer_upload_observation(&self, target: &Buffer) -> rhapsody::Result<()> {
+        let _publication = self.publication.lock();
+        self.current_version(target).ok_or_else(|| BackendError::invalid_usage("observed buffer is stale/foreign"))?;
+        let memory = self.device.allocator_stats().reserve_cpu_storage(
+            (BufferUploadObservation::CAPACITY * std::mem::size_of::<ObservedBufferUpload>()) as u64)?;
+        let mut probe = BufferUploadObservation { entries: Vec::new(), memory, target: *target,
+            valid: true, rejected_admissions: 0 };
+        probe.entries.try_reserve_exact(BufferUploadObservation::CAPACITY).map_err(|_| BackendError::OutOfHostMemory)?;
+        probe.memory.resize((probe.entries.capacity() * std::mem::size_of::<ObservedBufferUpload>()) as u64)?;
+        let mut uploads = self.uploads.lock();
+        let service = self.upload_service(&mut uploads)?;
+        if service.observation.is_some() { return Err(BackendError::invalid_usage("buffer observation already active")); }
+        service.observation = Some(probe);
+        Ok(())
+    }
+    /// Transfer the pre-reserved witness outside the uploads lock. Reading task
+    /// status takes only the task's existing state mutex. Drop after export.
+    #[cfg(feature = "cpu-probe")]
+    pub fn take_buffer_upload_observation(&self) -> rhapsody::Result<BufferUploadObservation> {
+        self.uploads.lock().as_mut().and_then(|service| service.observation.take())
+            .ok_or_else(|| BackendError::invalid_usage("no active buffer observation"))
+    }
+
+    /// (manager identity, submitted jobs, submitted payload bytes), cumulative.
+    /// Excludes texture/setup, mapped writes, and graph copies. The private
+    /// service only changes None -> Some once; all frame/detached hosts retain
+    /// the same uploads Arc, with no take/replace/reset. Identity 0 is reserved
+    /// for that lazy, empty initial state; later identities are process-local
+    /// tokens, never workload signatures to compare across binaries. Readers
+    /// must reject a manager change, decreasing counters, or an error.
+    #[cfg(feature = "cpu-probe")]
+    pub fn probe_upload_submissions(&self) -> rhapsody::Result<(u64, u64, u64)> {
+        self.uploads.lock().as_ref().map_or(Ok((0, 0, 0)), |service| {
+            service.manager.upload_submitted_snapshot()
+        })
     }
 
     /// Diagnostics for the actual bounded device-local sparse update service.
@@ -1470,8 +1656,11 @@ pub struct TextureHost {
     view_variants: Arc<
         Mutex<
             std::collections::HashMap<
-                (u64, country_core::rhapsody_types::TextureViewDesc),
-                rhapsody::resource::ManagedTextureView,
+                u64,
+                std::collections::HashMap<
+                    country_core::rhapsody_types::TextureViewDesc,
+                    rhapsody::resource::ManagedTextureView,
+                >,
             >,
         >,
     >,
@@ -1479,6 +1668,20 @@ pub struct TextureHost {
     /// 读回像素的宿主/测试在这里统一加上。原版 `TextureDesc.usage` 是完整位集，此项是宿主策略，不是原版行为）。
     extra_usage: vk::ImageUsageFlags,
     read_boundary: Arc<crate::render_upload_boundary::UploadBoundary>,
+}
+
+/// Payload actually copied by the direct-region helper's validated RGBA8,
+/// single-layer 2D contract. Row pitch, buffer offsets, and allocation padding
+/// are staging address spans, not image payload. Each recorded region counts
+/// once, even when two regions happen to overlap.
+#[cfg(feature = "cpu-probe")]
+fn rgba8_region_payload_bytes(regions: &[vk::BufferImageCopy]) -> Option<u64> {
+    regions.iter().try_fold(0u64, |sum, region| {
+        u64::from(region.image_extent.width)
+            .checked_mul(u64::from(region.image_extent.height))
+            .and_then(|size| size.checked_mul(4))
+            .and_then(|size| sum.checked_add(size))
+    })
 }
 
 impl TextureHost {
@@ -1509,11 +1712,15 @@ impl TextureHost {
                         bytes.len() as u64, vk::BufferUsageFlags::TRANSFER_SRC))?);
                 staging.write_bytes_unsynchronized(0, &bytes)?;
                 let queue = device.queue(rhapsody::device::QueueClass::Graphics)?;
-                rhapsody::resource::with_setup_command(&device, &[], |command| unsafe {
+                rhapsody::transfer::with_setup_command(&device, &[], |command| unsafe {
                     rhapsody::command::record_texture_regions(command, queue,
-                        texture.clone(), staging, &regions,
+                        &texture.clone(), &staging, &regions,
                         vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
                 })?.into_value();
+                #[cfg(feature = "cpu-probe")]
+                device.record_texture_upload_submission(
+                    rhapsody::device::TextureUploadProbeKind::HostDirectRegions,
+                    rgba8_region_payload_bytes(&regions));
                 Ok(())
             })();
             result.map_err(|error| match error {
@@ -1558,23 +1765,9 @@ impl TextureHost {
         Ok(out)
     }
 
-    /// 默认全范围视图的原生句柄（首次创建后缓存）。
+    /// Default full-range native view, retained by this live host generation.
     pub fn default_view(&self, id: u64) -> rhapsody::Result<u64> {
-        if self.device.is_device_lost() {
-            return Err(rhapsody::Error::DeviceLost);
-        }
-        let texture = self
-            .get_by_id(id)
-            .ok_or_else(|| rhapsody::Error::invalid_usage("texture host handle is not live"))?;
-        let mut views = self.views.lock();
-        if let Some(view) = views.get(&id) {
-            return Ok(ash::vk::Handle::as_raw(view.raw()));
-        }
-        let desc = rhapsody::resource::TextureViewDesc::new(&texture.desc)?;
-        let view = self.device.get_vk_image_view(&texture, &desc)?;
-        let raw = ash::vk::Handle::as_raw(view.raw());
-        views.insert(id, view);
-        Ok(raw)
+        self.cached_view(id, None)
     }
 
     /// Select the native disk texture subresource with the recovered descriptor.
@@ -1583,18 +1776,81 @@ impl TextureHost {
         id: u64,
         desc: &country_core::rhapsody_types::TextureViewDesc,
     ) -> rhapsody::Result<u64> {
-        let texture = self
-            .get_by_id(id)
-            .ok_or_else(|| rhapsody::Error::invalid_usage("texture host handle is not live"))?;
-        let mut variants = self.view_variants.lock();
-        if let Some(view) = variants.get(&(id, *desc)) {
-            return Ok(ash::vk::Handle::as_raw(view.raw()));
-        }
-        let native = rh_view_desc(&texture, desc)?;
-        let view = self.device.get_vk_image_view(&texture, &native)?;
-        let raw = ash::vk::Handle::as_raw(view.raw());
-        variants.insert((id, *desc), view);
-        Ok(raw)
+        self.cached_view(id, Some(*desc))
+    }
+
+    fn live_texture(slots: &[TextureSlot], id: u64) -> Option<&ManagedTexture> {
+        if id & (TEXTURE_ID_TAG | BUFFER_TOKEN_TAG) != TEXTURE_ID_TAG { return None; }
+        let slot = slots.get(((id & 0xffff_ffff) as usize).checked_sub(1)?)?;
+        let generation = (id >> 32) & 0x7fff_ffff;
+        slot.texture.as_ref().filter(|_| slot.generation == generation)
+    }
+
+    fn cached_view(
+        &self,
+        id: u64,
+        explicit: Option<country_core::rhapsody_types::TextureViewDesc>,
+    ) -> rhapsody::Result<u64> {
+        if self.device.is_device_lost() { return Err(rhapsody::Error::DeviceLost); }
+        // Always take slots before a view cache. A cache hit and its live
+        // generation check are one short publication transaction.
+        let texture = {
+            let slots = self.slots.lock();
+            let texture = Self::live_texture(&slots, id).ok_or_else(||
+                rhapsody::Error::invalid_usage("texture host handle is not live"))?;
+            let cached = match explicit {
+                None => self.views.lock().get(&id).map(|view| ash::vk::Handle::as_raw(view.raw())),
+                Some(desc) => self.view_variants.lock().get(&id)
+                    .and_then(|views| views.get(&desc))
+                    .map(|view| ash::vk::Handle::as_raw(view.raw())),
+            };
+            if let Some(raw) = cached { return Ok(raw); }
+            texture.clone()
+        };
+        // The captured owner keeps native creation safe even if release runs
+        // now. No host-table lock spans descriptor conversion or driver work.
+        let native = match explicit {
+            None => rhapsody::resource::TextureViewDesc::new(&texture.desc)?,
+            Some(desc) => rh_view_desc(&texture, &desc)?,
+        };
+        let created = self.device.get_vk_image_view(&texture, &native)?;
+        self.publish_cached_view(id, &texture, explicit, created)
+    }
+
+    fn publish_cached_view(
+        &self,
+        id: u64,
+        texture: &ManagedTexture,
+        explicit: Option<country_core::rhapsody_types::TextureViewDesc>,
+        created: rhapsody::resource::ManagedTextureView,
+    ) -> rhapsody::Result<u64> {
+        let mut candidate = Some(created);
+        let result = {
+            let slots = self.slots.lock();
+            if !Self::live_texture(&slots, id).is_some_and(|live|
+                Arc::ptr_eq(&live.shared(), &texture.shared())) {
+                Err(rhapsody::Error::invalid_usage("texture host handle is not live"))
+            } else {
+                let raw = match explicit {
+                    None => {
+                        let mut views = self.views.lock();
+                        let view = views.entry(id).or_insert_with(|| candidate.take().unwrap());
+                        ash::vk::Handle::as_raw(view.raw())
+                    }
+                    Some(desc) => {
+                        let mut variants = self.view_variants.lock();
+                        let view = variants.entry(id).or_default().entry(desc)
+                            .or_insert_with(|| candidate.take().unwrap());
+                        ash::vk::Handle::as_raw(view.raw())
+                    }
+                };
+                Ok(raw)
+            }
+        };
+        // A lost creation race or released generation drops its native owner
+        // after both slots and the selected cache have been unlocked.
+        drop(candidate);
+        result
     }
 
     pub(crate) fn owned_view(
@@ -1609,9 +1865,10 @@ impl TextureHost {
         }
         self.view_variants
             .lock()
-            .iter()
-            .find(|((owner, _), view)| *owner == id && ash::vk::Handle::as_raw(view.raw()) == raw)
-            .map(|(_, view)| view.view.clone())
+            .get(&id)
+            .and_then(|views| views.values()
+                .find(|view| ash::vk::Handle::as_raw(view.raw()) == raw))
+            .map(|view| view.view.clone())
             .ok_or_else(|| {
                 rhapsody::Error::invalid_usage("external texture view is not owned by this host")
             })
@@ -1678,9 +1935,10 @@ impl TextureHost {
                 slot.texture.take()
             };
             let view = views.lock().remove(&texture.id);
-            view_variants.lock().retain(|(id, _), _| *id != texture.id);
-            // Final texture ownership retires after every host-table lock ends.
-            drop((view, removed));
+            let variants = view_variants.lock().remove(&texture.id);
+            // Move the whole texture-owned group without allocation or a scan
+            // over other textures. Destructors run after every table lock ends.
+            drop((variants, view, removed));
             Ok(())
         }) {
             log::error!(target: "tiny_glade::upload", "earlier deferred texture write failed: {error}");
@@ -1864,7 +2122,7 @@ impl country_core::asset_libraries::texture_library::TextureLibraryDevice for Te
             let regions: Vec<_> = (0..layer_count)
                 .map(|layer| {
                     let start = layer as usize * bytes_per_layer;
-                    rhapsody::resource::TextureUpdateRegion {
+                    rhapsody::command::TextureUpdateRegion {
                         data: &data[start..start + bytes_per_layer],
                         extent,
                         mip_level,
@@ -1872,7 +2130,7 @@ impl country_core::asset_libraries::texture_library::TextureLibraryDevice for Te
                     }
                 })
                 .collect();
-            rhapsody::resource::update_texture_regions(&device, &managed, &regions)
+            rhapsody::transfer::update_texture_regions(&device, &managed, &regions)
                 .map_err(crate::render_upload_boundary::job_error)
         }).map_err(crate::render_upload_boundary::backend_error)
     }
@@ -1891,6 +2149,116 @@ impl TextureGeneration for Texture {
 #[cfg(test)]
 mod texture_release_tests {
     use super::*;
+
+    fn device_for_view_publication() -> Option<Arc<Device>> {
+        match Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
+            Ok(device) => Some(device),
+            Err(error) => {
+                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"), "{error}");
+                None
+            }
+        }
+    }
+
+    #[test]
+    fn late_view_creation_cannot_republish_a_released_or_reused_generation() {
+        let Some(device) = device_for_view_publication() else { return };
+        for explicit in [None, Some(country_core::rhapsody_types::TextureViewDesc::new())] {
+            let host = TextureHost::new(device.clone());
+            let desc = TextureDesc::new_2d([4, 4], 0x2b).sampled();
+            let first = host.create_texture("first", &desc, &[]).unwrap();
+            let captured = host.get_by_id(first.id).unwrap();
+            let native = rhapsody::resource::TextureViewDesc::new(&captured.desc).unwrap();
+            let created = device.get_vk_image_view(&captured, &native).unwrap();
+            let weak = Arc::downgrade(&created.view);
+            assert!(host.release(&first));
+            let next = host.create_texture("next", &desc, &[]).unwrap();
+            assert_eq!(first.id as u32, next.id as u32);
+            assert_ne!(first.id, next.id);
+            let next_owner = host.get_by_id(next.id).unwrap();
+            assert!(!Arc::ptr_eq(&captured.shared(), &next_owner.shared()));
+            // Full live id alone is insufficient: a candidate made from the
+            // previous physical owner must also fail publication under next.id.
+            let wrong_owner = device.get_vk_image_view(&captured, &native).unwrap();
+            let owners_before = weak.strong_count();
+            assert!(host.publish_cached_view(next.id, &captured, explicit, wrong_owner).is_err());
+            assert_eq!(weak.strong_count(), owners_before - 1);
+            let owners_before = weak.strong_count();
+            assert!(host.publish_cached_view(first.id, &captured, explicit, created).is_err());
+            assert_eq!(weak.strong_count(), owners_before - 1,
+                "rejected host publication must return its view reference");
+            assert!(weak.upgrade().is_some(), "captured managed owner retains its bounded view cache");
+            for id in [first.id, next.id] {
+                assert!(!host.views.lock().contains_key(&id));
+                assert!(!host.view_variants.lock().contains_key(&id));
+            }
+            drop(captured);
+            assert!(weak.upgrade().is_none(), "no rejected candidate may retain the old owner");
+            assert!(host.get_by_id(next.id).is_some());
+            assert!(host.release(&next));
+        }
+    }
+
+    #[test]
+    fn competing_view_creation_keeps_one_published_owner() {
+        let Some(device) = device_for_view_publication() else { return };
+        for explicit in [None, Some(country_core::rhapsody_types::TextureViewDesc::new())] {
+            let host = TextureHost::new(device.clone());
+            let desc = TextureDesc::new_2d([4, 4], 0x2b).sampled();
+            let first = host.create_texture("first", &desc, &[]).unwrap();
+            let captured = host.get_by_id(first.id).unwrap();
+            let native = rhapsody::resource::TextureViewDesc::new(&captured.desc).unwrap();
+            let a = device.get_vk_image_view(&captured, &native).unwrap();
+            let b = device.get_vk_image_view(&captured, &native).unwrap();
+            let weak_b = Arc::downgrade(&b.view);
+            let raw_a = host.publish_cached_view(first.id, &captured, explicit, a).unwrap();
+            let owners_before = weak_b.strong_count();
+            assert_eq!(host.publish_cached_view(first.id, &captured, explicit, b).unwrap(), raw_a);
+            assert_eq!(weak_b.strong_count(), owners_before - 1,
+                "losing host candidate returns its reference even when the native cache shares the view");
+            let external = host.owned_view(first.id, raw_a).unwrap();
+            assert!(Arc::ptr_eq(&external, &weak_b.upgrade().unwrap()));
+            assert!(host.release(&first));
+            assert!(host.owned_view(first.id, raw_a).is_err());
+            drop(captured);
+            assert!(weak_b.upgrade().is_some(), "external Arc keeps the actual view alive after host/cache release");
+            drop(external);
+            assert!(weak_b.upgrade().is_none(), "no losing publication retains a hidden owner");
+        }
+    }
+    #[test]
+    fn explicit_view_group_release_preserves_external_owners_and_other_textures() {
+        let device = match Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"), "{error}");
+                return;
+            }
+        };
+        let host = TextureHost::new(device.clone());
+        let desc = TextureDesc::new_2d([4, 4], 0x2b).sampled();
+        let first = host.create_texture("first", &desc, &[]).unwrap();
+        let second = host.create_texture("second", &desc, &[]).unwrap();
+        let all = country_core::rhapsody_types::TextureViewDesc::new();
+        let color = all.aspect_mask(vk::ImageAspectFlags::COLOR.as_raw());
+        let raw = host.explicit_view(first.id, &all).unwrap();
+        host.explicit_view(first.id, &color).unwrap();
+        let other = host.explicit_view(second.id, &all).unwrap();
+        let owner = host.owned_view(first.id, raw).unwrap();
+        let weak = Arc::downgrade(&owner);
+        assert_eq!(host.view_variants.lock().get(&first.id).unwrap().len(), 2);
+        assert!(host.release(&first));
+        assert!(!host.view_variants.lock().contains_key(&first.id));
+        assert!(host.owned_view(first.id, raw).is_err());
+        assert!(host.explicit_view(first.id, &all).is_err());
+        assert_eq!(host.explicit_view(second.id, &all).unwrap(), other);
+        assert!(weak.upgrade().is_some(), "external view owns the native lifetime");
+        drop(owner);
+        device.wait_idle_and_collect().unwrap();
+        assert!(weak.upgrade().is_none());
+        assert!(host.release(&second));
+        assert!(host.view_variants.lock().is_empty());
+    }
 
     #[test]
     fn cancelled_capacity_retry_does_not_pin_the_texture_host_boundary() {
@@ -1937,7 +2305,7 @@ use country_core::render::shader::boundary::{
     CompiledShaderPipeline as CoreCompiled, ComputePipeline, ComputePipelineDesc,
     Error as ShaderError, RasterPipeline, RasterPipelineDesc, RasterPipelineKey, ShaderBackend,
 };
-use rhapsody::bindless::BindlessShaderAbi as BindlessAbi;
+use rhapsody::pipeline::BindlessShaderAbi as BindlessAbi;
 use rhapsody::bindless::{
     BindlessConfig, BindlessHeap, BindlessLease, BindlessParameters, BindlessResource,
     BindlessShaderPackage,
@@ -2124,7 +2492,7 @@ impl RenderPassHost {
         for attachment in &key.attachments {
             let format = vk::Format::from_raw(attachment.format);
             if attachment.depth_stencil {
-                let aspects = rhapsody::resource::vk_format_valid_aspect_flags(format);
+                let aspects = rhapsody::format::vk_format_valid_aspect_flags(format);
                 if aspects.contains(vk::ImageAspectFlags::DEPTH) {
                     formats.depth = format;
                 }
@@ -2775,8 +3143,10 @@ impl ShaderBindings {
     }
     /// 全局纹理表（set 2/b0）本帧快照的视图；无帧全局时为空。
     pub fn frame_sampled_table(&self) -> Vec<Arc<rhapsody::resource::TextureView>> {
-        self.frame_globals
-            .lock()
+        // Own the immutable frame snapshot before cloning the sampled table.
+        // Allocation and traversal do not need the publication lock.
+        let globals = { self.frame_globals.lock().clone() };
+        globals
             .as_ref()
             .map(|globals| {
                 globals
@@ -2788,7 +3158,8 @@ impl ShaderBindings {
             .unwrap_or_default()
     }
     pub fn snapshot(&self) -> ShaderBindingSnapshot {
-        self.snapshot_with_globals(self.frame_globals.lock().clone())
+        let globals = { self.frame_globals.lock().clone() };
+        self.snapshot_with_globals(globals)
     }
     pub fn snapshot_with_globals(
         &self,
@@ -2953,7 +3324,9 @@ impl ShaderHost {
     }
     pub fn set_frame_globals(&self, globals: Arc<crate::frame_setup::FrameGlobals>) {
         self.pages.advance_frame();
-        *self.frame_globals.lock() = Some(globals);
+        let previous = self.frame_globals.lock().replace(globals);
+        // Final descriptor/page/texture owners may retire here.
+        drop(previous);
     }
     /// Tickets that were requested and not yet observed ready by `poll_preparation`.
     /// Registered at request time so a warm frame scans nothing.
@@ -3812,6 +4185,10 @@ impl CorePassGraph for GraphPasses {
                 error: None,
             };
             render(&mut host);
+            #[cfg(feature = "cpu-probe")]
+            if host.error.is_none() {
+                ctx.record_command_workload(host.api.take_command_workload());
+            }
             host.error.map_or(Ok(()), Err)
         });
     }
@@ -3911,6 +4288,8 @@ impl CorePassGraph for GraphPasses {
             let managed = ctx
                 .managed
                 .ok_or_else(|| rhapsody::Error::invalid_usage("staging copy has no resources"))?;
+            #[cfg(feature = "cpu-probe")]
+            let mut copy_workload = rhapsody::profile::CommandWorkload::default();
             for &(source, target, src_offset, dst_offset, size) in &declared {
                 let source = managed.buffer_for(source.raw()).map_err(|error| {
                     rhapsody::Error::invalid_usage_with("staging source", error)
@@ -3930,7 +4309,11 @@ impl CorePassGraph for GraphPasses {
                         }],
                     );
                 }
+                #[cfg(feature = "cpu-probe")]
+                copy_workload.merge(recorded_copy_workload(CopyWorkload::StagingH2d, size));
             }
+            #[cfg(feature = "cpu-probe")]
+            ctx.record_command_workload(copy_workload);
             Ok(())
         });
         Ok(())
@@ -4058,6 +4441,9 @@ impl CorePassGraph for GraphPasses {
                                 }],
                             );
                         }
+                        #[cfg(feature = "cpu-probe")]
+                        ctx.record_command_workload(recorded_copy_workload(
+                            CopyWorkload::ImmutableProducerH2d, size));
                         Ok(())
                     });
                     scope.output(output, AccessRange::Whole, 0x34)
@@ -4098,12 +4484,32 @@ impl CorePassGraph for GraphPasses {
                         }],
                     );
                 }
+                #[cfg(feature = "cpu-probe")]
+                ctx.record_command_workload(recorded_copy_workload(CopyWorkload::CachedD2d, size));
                 Ok(())
             });
             scope.output(target, AccessRange::Buffer { offset: 0, size }, 0x34)
         })?;
         Ok(true)
     }
+}
+
+/// Only explicitly identified graph copies are covered. These are payload
+/// bytes recorded by real native commands, not CPU writes or logical dirtiness.
+/// Complete-success execution receipts establish their submission scope.
+#[cfg(feature = "cpu-probe")]
+#[derive(Clone, Copy)]
+enum CopyWorkload { StagingH2d, ImmutableProducerH2d, CachedD2d }
+
+#[cfg(feature = "cpu-probe")]
+fn recorded_copy_workload(kind: CopyWorkload, bytes: u64) -> rhapsody::profile::CommandWorkload {
+    let mut workload = rhapsody::profile::CommandWorkload::default();
+    match kind {
+        CopyWorkload::StagingH2d => workload.staging_h2d_copy_recorded_bytes = bytes,
+        CopyWorkload::ImmutableProducerH2d => workload.immutable_producer_h2d_copy_recorded_bytes = bytes,
+        CopyWorkload::CachedD2d => workload.cached_d2d_copy_recorded_bytes = bytes,
+    }
+    workload
 }
 
 struct PassApiHost<'a, B: CommandBackend> {
@@ -4176,7 +4582,7 @@ fn project_view_desc(
     if let Some(v) = view.aspect_mask {
         out.aspect = vk::ImageAspectFlags::from_raw(v);
     } else if out.aspect == (vk::ImageAspectFlags::DEPTH | vk::ImageAspectFlags::STENCIL) {
-        // O rhapsody::raw::managed::texture::create_vk_image_view 0x140bdcba0 @140bdcc8d..9d:
+        // O rhapsody::resource::managed::texture::create_vk_image_view 0x140bdcba0 @140bdcc8d..9d:
         // an unspecified aspect is `vk_format_valid_aspect_flags(format)`, and DEPTH|STENCIL (6)
         // becomes DEPTH (2) alone (a sampled view may not carry both: VUID-01976).
         out.aspect = vk::ImageAspectFlags::DEPTH;
@@ -4258,7 +4664,7 @@ pub(crate) fn compute_view_range(
     };
     let range = AccessRange::Texture {
         aspect_mask: view.aspect_mask.unwrap_or_else(|| {
-            rhapsody::resource::vk_format_valid_aspect_flags(vk::Format::from_raw(
+            rhapsody::format::vk_format_valid_aspect_flags(vk::Format::from_raw(
                 image.words_at_00_through_18[2] as i32,
             ))
             .as_raw()
@@ -4401,10 +4807,10 @@ pub(crate) fn clamp_storage_binding_range(device: &rhapsody::device::Device, siz
     size.min(u64::from(device.limits().max_storage_buffer_range))
 }
 
-pub(crate) fn upsert_shader_resource(
-    resources: &mut Vec<(u32, BindlessResource)>,
+pub(crate) fn upsert_shader_resource<T>(
+    resources: &mut Vec<(u32, T)>,
     binding: u32,
-    resource: BindlessResource,
+    resource: T,
 ) -> rhapsody::Result<()> {
     if let Some((_, old)) = resources.iter_mut().find(|(index, _)| *index == binding) {
         *old = resource;
@@ -4471,6 +4877,28 @@ struct ComputeExecHost<'a> {
     managed: &'a ManagedPassResources,
     bind_parameters: &'a mut dyn FnMut(&[u8]) -> rhapsody::Result<()>,
     parameters: ComputeParameterState,
+    #[cfg(feature = "cpu-probe")]
+    command_workload: rhapsody::profile::CommandWorkload,
+}
+
+/// Executes the same admission checks as the native path. The closure returns
+/// None when an indirect source could not be resolved; neither that case nor a
+/// rejected parameter state records a native dispatch. No GPU is needed to test
+/// this boundary. Only the probe build contains this counting adapter.
+#[cfg(feature = "cpu-probe")]
+fn issue_counted_compute_dispatch(
+    parameters: &mut ComputeParameterState,
+    workload: &mut rhapsody::profile::CommandWorkload,
+    indirect: bool,
+    issue: impl FnOnce() -> Option<()>,
+) -> Option<()> {
+    if !parameters.can_dispatch() { return Some(()); }
+    issue()?;
+    let mut issued = rhapsody::profile::CommandWorkload::default();
+    if indirect { issued.indirect_dispatch_api_calls = 1; }
+    else { issued.direct_dispatch_api_calls = 1; }
+    workload.merge(issued);
+    Some(())
 }
 
 impl ComputeExec for ComputeExecHost<'_> {
@@ -4481,20 +4909,41 @@ impl ComputeExec for ComputeExecHost<'_> {
     fn issue_full_pipeline_barrier(&mut self) {}
     fn count_dispatch(&mut self) {}
     fn cmd_dispatch(&mut self, x: u32, y: u32, z: u32) {
+        #[cfg(feature = "cpu-probe")]
+        {
+            let (device, command) = (self.device, self.command);
+            let _ = issue_counted_compute_dispatch(&mut self.parameters, &mut self.command_workload, false, || {
+                unsafe { device.cmd_dispatch(command, x, y, z) };
+                Some(())
+            });
+        }
+        #[cfg(not(feature = "cpu-probe"))]
         if self.parameters.can_dispatch() {
             unsafe { self.device.cmd_dispatch(self.command, x, y, z) };
         }
     }
     fn cmd_dispatch_indirect(&mut self, buffer: u32, offset: u64) -> Option<()> {
-        if !self.parameters.can_dispatch() {
-            return Some(());
+        #[cfg(feature = "cpu-probe")]
+        {
+            let (device, command, managed) = (self.device, self.command, self.managed);
+            issue_counted_compute_dispatch(&mut self.parameters, &mut self.command_workload, true, || {
+                let buffer = managed.buffer_for(buffer).ok()?;
+                unsafe { device.cmd_dispatch_indirect(command, buffer.raw_handle(), offset) };
+                Some(())
+            })
         }
-        let buffer = self.managed.buffer_for(buffer).ok()?;
-        unsafe {
-            self.device
-                .cmd_dispatch_indirect(self.command, buffer.raw_handle(), offset)
-        };
-        Some(())
+        #[cfg(not(feature = "cpu-probe"))]
+        {
+            if !self.parameters.can_dispatch() {
+                return Some(());
+            }
+            let buffer = self.managed.buffer_for(buffer).ok()?;
+            unsafe {
+                self.device
+                    .cmd_dispatch_indirect(self.command, buffer.raw_handle(), offset)
+            };
+            Some(())
+        }
     }
     fn local_size(&self) -> [u32; 3] {
         self.local_size
@@ -4860,7 +5309,7 @@ impl GraphPasses {
                 contents_unused = inactive_texture_bindings.contains(&(index as u32));
                 allow_undefined = undefined_texture_bindings.contains(&(index as u32));
                 if allow_undefined
-                    && (contents_unused || rhapsody::command::is_write(access.access))
+                    && (contents_unused || rhapsody::native::is_write(access.access))
                 {
                     return Err(rhapsody::Error::invalid_usage(
                         "undefined texture read metadata conflicts with its actual access",
@@ -4910,7 +5359,7 @@ impl GraphPasses {
                             | CorePassBinding::Buffer { resource }
                                 if !used_image_views[index]
                                     && *resource == access.resource
-                                    && !rhapsody::command::is_write(access.access) =>
+                                    && !rhapsody::native::is_write(access.access) =>
                             {
                                 Some(index)
                             }
@@ -4941,12 +5390,12 @@ impl GraphPasses {
         declared.on_queue(rhapsody::device::QueueClass::Compute);
         for (a, range, contents_unused, allow_undefined, preserves_texture) in &declared_accesses {
             let resource = declared.resource_handle(a.resource)?;
-            if *contents_unused && !rhapsody::command::is_write(a.access) {
+            if *contents_unused && !rhapsody::native::is_write(a.access) {
                 declared.add_inactive_resource_read_range(resource, a.access, a.group, *range)?;
-            } else if *allow_undefined && !rhapsody::command::is_write(a.access) {
+            } else if *allow_undefined && !rhapsody::native::is_write(a.access) {
                 declared.add_undefined_content_read_range(resource, a.access, a.group, *range)?;
             } else if (*preserves_texture || preserving_buffers.contains(&a.resource))
-                && rhapsody::command::is_write(a.access)
+                && rhapsody::native::is_write(a.access)
             {
                 declared
                     .add_preserving_resource_access_range(resource, a.access, a.group, *range)?;
@@ -5148,7 +5597,7 @@ impl GraphPasses {
                     )
                     .inspect_err(|error| diagnose("parameters.complete_group", error))?;
                 // 原访问范围与上传角色已在同一组内保留；迁页后不使用旧数值下标。
-                unsafe { next.bind_pass(&ctx, pipeline.clone())? };
+                unsafe { next.bind_pass(&ctx, &pipeline.clone())? };
                 parameters = Some(next);
                 Ok(())
             };
@@ -5164,6 +5613,8 @@ impl GraphPasses {
                 managed,
                 bind_parameters: &mut bind_parameters,
                 parameters: parameter_state,
+                #[cfg(feature = "cpu-probe")]
+                command_workload: Default::default(),
             };
             // An explicit initial payload is already bound. Otherwise the first
             // callback push must bind a valid payload before either dispatch kind.
@@ -5172,22 +5623,26 @@ impl GraphPasses {
                 dispatch,
             }
             .execute(&mut exec);
+            #[cfg(feature = "cpu-probe")]
+            if exec.parameters.error.is_none() {
+                ctx.record_command_workload(exec.command_workload);
+            }
             exec.parameters.error.map_or(Ok(()), Err)
         });
         Ok(())
     }
 }
 
-impl rhapsody::resource::GpuUse for RasterEntry {
-    fn visit_uses(&self, visit: &mut rhapsody::resource::UseVisitor<'_>) -> rhapsody::Result<()> {
+impl rhapsody::tracking::GpuUse for RasterEntry {
+    fn visit_uses(&self, visit: &mut rhapsody::tracking::UseVisitor<'_>) -> rhapsody::Result<()> {
         if let Ok(pipeline) = self.pipeline.try_get() {
             pipeline.visit_uses(visit)?;
         }
         Ok(())
     }
 }
-impl rhapsody::resource::GpuUse for ComputeEntry {
-    fn visit_uses(&self, visit: &mut rhapsody::resource::UseVisitor<'_>) -> rhapsody::Result<()> {
+impl rhapsody::tracking::GpuUse for ComputeEntry {
+    fn visit_uses(&self, visit: &mut rhapsody::tracking::UseVisitor<'_>) -> rhapsody::Result<()> {
         if let Ok(pipeline) = self.pipeline.try_get() {
             pipeline.visit_uses(visit)?;
         }
@@ -5257,6 +5712,95 @@ mod buffer_description_tests {
             .unwrap();
             assert_eq!(usize::from(converted.alignment), alignment);
         }
+    }
+}
+
+#[cfg(all(test, feature = "cpu-probe"))]
+mod command_workload_probe_tests {
+    use super::{ComputeParameterState, CopyWorkload, issue_counted_compute_dispatch, recorded_copy_workload};
+    use rhapsody::profile::CommandWorkload;
+
+    #[test]
+    fn rejected_or_unresolved_dispatch_never_records_a_native_command() {
+        for indirect in [false, true] {
+            let mut parameters = ComputeParameterState::new(20, &[], &mut |_| Ok(())).unwrap();
+            let mut workload = CommandWorkload::default();
+            assert_eq!(issue_counted_compute_dispatch(&mut parameters, &mut workload, indirect,
+                || panic!("rejected parameters must not reach the native issue closure")), Some(()));
+            assert_eq!(workload.direct_dispatch_api_calls, 0);
+            assert_eq!(workload.indirect_dispatch_api_calls, 0);
+            assert!(workload.valid);
+        }
+        let mut parameters = ComputeParameterState::new(0, &[], &mut |_| Ok(())).unwrap();
+        let mut workload = CommandWorkload::default();
+        assert_eq!(issue_counted_compute_dispatch(&mut parameters, &mut workload, true, || None), None);
+        assert_eq!(workload.indirect_dispatch_api_calls, 0);
+        assert!(workload.valid);
+    }
+
+    #[test]
+    fn successful_native_dispatches_fold_once_and_overflow_is_sticky() {
+        let mut parameters = ComputeParameterState::new(0, &[], &mut |_| Ok(())).unwrap();
+        let mut workload = CommandWorkload::default();
+        let mut actual_issues = 0;
+        for indirect in [false, true, false] {
+            assert_eq!(issue_counted_compute_dispatch(&mut parameters, &mut workload, indirect,
+                || { actual_issues += 1; Some(()) }), Some(()));
+        }
+        assert_eq!(actual_issues, 3);
+        assert_eq!(workload.direct_dispatch_api_calls, 2);
+        assert_eq!(workload.indirect_dispatch_api_calls, 1);
+        assert!(workload.valid);
+        workload.direct_dispatch_api_calls = u64::MAX;
+        let _ = issue_counted_compute_dispatch(&mut parameters, &mut workload, false, || Some(()));
+        assert!(!workload.valid);
+        let _ = issue_counted_compute_dispatch(&mut parameters, &mut workload, true, || Some(()));
+        assert!(!workload.valid, "a later successful issue must not repair counter overflow");
+    }
+
+    #[test]
+    fn direct_region_payload_omits_pitch_offsets_and_reports_overflow() {
+        use ash::vk;
+        let region = vk::BufferImageCopy {
+            buffer_offset: 1024,
+            buffer_row_length: 512,
+            buffer_image_height: 64,
+            image_extent: vk::Extent3D { width: 3, height: 2, depth: 1 },
+            ..Default::default()
+        };
+        assert_eq!(super::rgba8_region_payload_bytes(&[]), Some(0));
+        assert_eq!(super::rgba8_region_payload_bytes(&[region, region]), Some(48));
+        let huge = vk::BufferImageCopy {
+            image_extent: vk::Extent3D { width: u32::MAX, height: u32::MAX, depth: 1 },
+            ..Default::default()
+        };
+        assert_eq!(super::rgba8_region_payload_bytes(&[huge]), None);
+    }
+
+    #[test]
+    fn graph_copy_categories_remain_disjoint_and_use_native_payload_sizes() {
+        let staging = recorded_copy_workload(CopyWorkload::StagingH2d, 64);
+        assert_eq!(staging.staging_h2d_copy_recorded_bytes, 64);
+        assert_eq!(staging.immutable_producer_h2d_copy_recorded_bytes, 0);
+        assert_eq!(staging.cached_d2d_copy_recorded_bytes, 0);
+        let producer = recorded_copy_workload(CopyWorkload::ImmutableProducerH2d, 128);
+        assert_eq!(producer.staging_h2d_copy_recorded_bytes, 0);
+        assert_eq!(producer.immutable_producer_h2d_copy_recorded_bytes, 128);
+        assert_eq!(producer.cached_d2d_copy_recorded_bytes, 0);
+        let cached = recorded_copy_workload(CopyWorkload::CachedD2d, 256);
+        assert_eq!(cached.staging_h2d_copy_recorded_bytes, 0);
+        assert_eq!(cached.immutable_producer_h2d_copy_recorded_bytes, 0);
+        assert_eq!(cached.cached_d2d_copy_recorded_bytes, 256);
+        let mut folded = CommandWorkload::default();
+        for part in [staging, producer, cached] { folded.merge(part); }
+        assert_eq!(folded.staging_h2d_copy_recorded_bytes, 64);
+        assert_eq!(folded.immutable_producer_h2d_copy_recorded_bytes, 128);
+        assert_eq!(folded.cached_d2d_copy_recorded_bytes, 256);
+        assert_eq!(folded.direct_draw_api_calls, 0);
+        assert_eq!(folded.direct_dispatch_api_calls, 0);
+        assert!(folded.valid);
+        folded.merge(recorded_copy_workload(CopyWorkload::StagingH2d, u64::MAX));
+        assert!(!folded.valid);
     }
 }
 
@@ -5525,6 +6069,38 @@ mod sampler_catalog_tests {
         let mut pending = actual(pages, heap, bindings);
         extras(&mut pending).unwrap();
         pending.commit();
+    }
+
+    #[test]
+    fn reused_snapshot_owner_prepares_real_new_pages_and_observes_sampler_epoch_invalidation() {
+        let Some(device)=device() else { return };
+        let pages=Arc::new(SamplerPages::default());
+        let requested=binding(&device,"cursor-epoch","sampler_nnc");
+        pages.register(std::slice::from_ref(&requested));
+        let entry=Arc::new(());
+        let mut cursor=crate::raster_host::BindingSnapshotCursor::new();
+        let first=heap(&device,4);
+        let second=first.new_page().unwrap();
+        {
+            let (snapshot,hit)=cursor.get_or_insert_with(&entry,||pages.clone());
+            assert!(!hit);
+            commit(snapshot,&first,std::slice::from_ref(&requested));
+        }
+        {
+            let (snapshot,hit)=cursor.get_or_insert_with(&entry,||panic!("same owner must reuse immutable snapshot"));
+            assert!(hit);
+            assert_eq!(snapshot.prepare(&second,std::slice::from_ref(&requested)).unwrap().missing(),1,
+                "snapshot reuse cannot reuse descriptors from another physical page");
+            commit(snapshot,&second,std::slice::from_ref(&requested));
+        }
+        pages.invalidate("cursor-epoch");
+        let (snapshot,hit)=cursor.get_or_insert_with(&entry,||panic!("epoch is dynamic, not a new layout snapshot"));
+        assert!(hit);
+        for page in [&first,&second] {
+            assert_eq!(snapshot.prepare(page,std::slice::from_ref(&requested)).unwrap().missing(),1,
+                "captured sampler owner must observe dynamic page epoch invalidation");
+            commit(snapshot,page,std::slice::from_ref(&requested));
+        }
     }
 
     #[test]
@@ -5823,5 +6399,62 @@ mod sampler_catalog_tests {
         ] {
             assert!(!optional_sampler_budget_error(&error));
         }
+    }
+}
+
+#[cfg(all(test, feature = "cpu-probe"))]
+mod target_upload_observation_tests {
+    use super::*;
+    fn device() -> Arc<Device> {
+        Device::new_headless(&rhapsody::device::DeviceConfig::headless())
+            .expect("target upload observation tests require actual Vulkan")
+    }
+    #[test]
+    fn observed_logical_allocation_tracks_its_real_cow_owner() {
+        let device=device();let host=BufferHost::new(device.clone());
+        let data=[1u8;16];
+        let target=host.create_buffer(&BufferDesc::new(16,
+            vk::BufferUsageFlags::STORAGE_BUFFER.as_raw()|vk::BufferUsageFlags::TRANSFER_DST.as_raw(),1),
+            "observed CPU-authoritative COW",Some(&data)).unwrap();
+        // SAFETY: this test owns the full reconstructible CPU array; no mapping,
+        // device address or native handle escapes, and no GPU writer exists.
+        unsafe {host.register_cpu_authoritative_buffer(&target);}
+        upload_test_wait::until_ready(||host.poll_pending_uploads()).unwrap();
+        device.wait_idle_and_collect().unwrap();
+        let old=host.managed_buffer(&target).unwrap();let snapshot=host.freeze_frame_resources();
+        host.begin_buffer_upload_observation(&target).unwrap();
+        host.update_cpu_buffer_bytes(&target,&[2;16],&[0..16]).unwrap();
+        let next=host.managed_buffer(&target).unwrap();
+        assert!(!Arc::ptr_eq(&old.shared(),&next.shared()));
+        upload_test_wait::until_ready(||host.poll_pending_uploads()).unwrap();
+        let observed=host.take_buffer_upload_observation().unwrap();
+        assert!(observed.valid());assert_eq!(observed.entries().len(),1);
+        let entry=&observed.entries()[0];assert_eq!(entry.logical,target);
+        assert!(entry.submission.same_owner(&next.shared()));
+        assert!(!entry.submission.same_owner(&old.shared()));
+        match entry.submission.status() {
+            rhapsody::transfer::UploadStatus::Submitted(point)=>device.wait(&rhapsody::sync::SyncSet::from_point(point),10_000_000_000).unwrap(),
+            state=>panic!("missing actual COW submission: {state:?}"),
+        }
+        drop(observed);drop(snapshot);drop(old);drop(next);
+        assert!(host.release(&target));device.wait_idle_and_collect().unwrap();
+    }
+    #[test]
+    fn stale_targets_and_overflow_are_rejected_without_changing_real_uploads() {
+        let device=device();let host=BufferHost::new(device.clone());
+        let target=host.create_buffer(&BufferDesc::new(16,
+            (vk::BufferUsageFlags::STORAGE_BUFFER|vk::BufferUsageFlags::TRANSFER_DST).as_raw(),2),
+            "bounded target diagnostic",Some(&[0;16])).unwrap();
+        upload_test_wait::until_ready(||host.poll_pending_uploads()).unwrap();device.wait_idle_and_collect().unwrap();
+        let stale=Buffer{generation:target.generation+1,..target};
+        assert!(host.begin_buffer_upload_observation(&stale).is_err());
+        host.begin_buffer_upload_observation(&target).unwrap();
+        for value in 1u32..=17 {host.update_buffer_bytes(&target,&value.to_ne_bytes(),&[0..4],0).unwrap();}
+        let observed=host.take_buffer_upload_observation().unwrap();
+        assert!(!observed.valid());assert_eq!(observed.entries().len(),BufferUploadObservation::CAPACITY);
+        // Overflow invalidates only the witness: every real queued job survives.
+        assert_eq!(host.queued_upload_stats().unwrap().queued_jobs,17);
+        drop(observed);upload_test_wait::until_ready(||host.poll_pending_uploads()).unwrap();
+        device.wait_idle_and_collect().unwrap();assert!(host.release(&target));
     }
 }

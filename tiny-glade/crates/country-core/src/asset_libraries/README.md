@@ -1,6 +1,6 @@
 # asset_libraries：资产身份、发布与生命周期
 
-本模块持有游戏资产并把变更发布给渲染、prefab 和音频消费者。当前实现以功能正确性为先，已经整理为工程接口，不再保留反汇编中的对象偏移、指令顺序或错误副作用。原作来源继续保存在项目 evidence；本次行为变化和验证见 [重构报告](../../../../reports/asset-libraries-refactor-2026-10-18/README.md)。
+本模块持有游戏资产并把变更发布给渲染、prefab 和音频消费者。当前实现以功能正确性为先，已经整理为工程接口，不再保留反汇编中的对象偏移、指令顺序或错误副作用。原作来源继续保存在项目 evidence；本次行为变化和验证见 [重构报告](../../../../reports/foundation/2026-10-18-asset-libraries-refactor/README.md)。
 
 ## 业务结构
 
@@ -98,8 +98,8 @@ cargo check -p tiny-glade --all-targets --locked --offline
 RHAPSODY_REQUIRE_VULKAN=1 cargo test -p tiny-glade --test asset_libraries_gpu --locked --offline -- --nocapture
 ```
 
-CPU 回归包含原有业务测试及生产 ECS 调度、并发分配、描述符失败重试、完整描述保留、文件半写入与回收链。GPU 回归使用真实宿主验证更新/清零后像素回读以及真实描述符租约。最终结果和保留的失败尝试见 [重构报告](../../../../reports/asset-libraries-refactor-2026-10-18/README.md)。
+CPU 回归包含原有业务测试及生产 ECS 调度、并发分配、描述符失败重试、完整描述保留、文件半写入与回收链。GPU 回归使用真实宿主验证更新/清零后像素回读以及真实描述符租约。最终结果和保留的失败尝试见 [重构报告](../../../../reports/foundation/2026-10-18-asset-libraries-refactor/README.md)。
 
 本轮调整了原行为，不沿用旧原作逐位等价结论；不宣称完成了整游戏、全部着色器消费者或原进程验收。[历史审查](REVIEW.md) 保留问题来源，以最新修复报告为准。
 
-第二轮审查及修复见 [复审报告](../../../../reports/asset-libraries-rereview-2026-10-18/README.md)，其验证针对复审后的当前源码。
+第二轮审查及修复见 [复审报告](../../../../reports/foundation/2026-10-18-asset-libraries-rereview/README.md)，其验证针对复审后的当前源码。

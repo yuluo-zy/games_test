@@ -19,6 +19,7 @@
 | `loop_range`、`wall_space`、`comparative_space` | 环形索引、借用视图、墙坐标与最短周期位移 |
 | `angle_range`、`circular_f32`、`threshold_range`、`subtractive_1d_boolean` | 角度夹取、环形插值、连续阈值分段、保留几何端点的区间裁剪 |
 | `float_grid`、`index_condenser` | 双线性采样、稠密索引与句柄缓存修复 |
+| `scalar`、`bytes` | 标量插值/钳制与显式端序字节读写；min/max 采用 std 语义 |
 | `easing_functions`、`timer` | 缓动与四样本时间过滤 |
 | `rgb9e5`、`halver`、`swizzlers`、`name_hash`、`rng` | 紧凑颜色、半精度、坐标投影、名称哈希与确定性随机种子 |
 | `selective_deserialize` | 选择性读取嵌套字段；有意保留完成的局部结果并忽略后续解析错误，不用于完整文件校验 |

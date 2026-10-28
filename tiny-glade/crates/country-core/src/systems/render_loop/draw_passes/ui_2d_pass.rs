@@ -274,15 +274,17 @@ pub fn ui_2d_pass(
         DepthSpec::None,
         *target,
     );
-    for e in sorted {
-        let state = pass.host.default_raster_state();
+    super::d_main_support::collect_draw_pages(&mut pass, &sorted,
+        |host, e| super::d_main_support::draw_constant_bytes(host, if e.icon.is_some() { button.0.0 } else { ui.0.0 }, 0),
+        |local, sorted| { for e in sorted {
+        let state = local.host.default_raster_state();
         let shader = if e.icon.is_some() {
             button.clone()
         } else {
             ui.clone()
         };
         let packet = DrawPacket::new(shader, [1, 0], state);
-        let mut b = DrawBuilder::new(&mut pass, packet, 0)
+        let mut b = DrawBuilder::new(local, packet, 0)
             .uniform(U_POS_A, Vec2Uniform(Vec2::new(e.extent[0], e.extent[1])))
             .uniform(U_POS_B, Vec2Uniform(Vec2::new(e.extent[2], e.extent[3])))
             .uniform(U_WINDOW, Vec2Uniform(win));
@@ -293,17 +295,20 @@ pub fn ui_2d_pass(
                 .uniform(U_BUTTON_FLAG, e.interaction.flag),
         };
         finish_draw(bind_image(b, &e.image));
-    }
-    for e in ws_elements {
-        let state = pass.host.default_raster_state();
+    } }, |_| {});
+    // All screen draws commit before the original unsorted world-space tail.
+    super::d_main_support::collect_draw_pages(&mut pass, ws_elements,
+        |host, _| super::d_main_support::draw_constant_bytes(host, ws.0.0, 0),
+        |local, ws_elements| { for e in ws_elements {
+        let state = local.host.default_raster_state();
         let packet = DrawPacket::new(ws.clone(), [1, 0], state);
-        let b = DrawBuilder::new(&mut pass, packet, 0)
+        let b = DrawBuilder::new(local, packet, 0)
             .uniform(U_WS_FLAG, 1u32)
             .uniform(U_POS_A, Vec3Uniform(e.position))
             .uniform(U_POS_B, Vec2Uniform(e.extent))
             .uniform(U_WINDOW, Vec2Uniform(win));
         finish_draw(bind_image(b, &e.image));
-    }
+    } }, |_| {});
     pass.render();
 }
 

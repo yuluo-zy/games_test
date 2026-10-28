@@ -2,7 +2,7 @@
 
 状态：记录有交付，本机缺失。完整模块验收：未通过。
 
-B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../INTERFACE_PROGRESS.md)。
+B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../docs/current/INTERFACE_PROGRESS.md)。
 
 定义归属：private_game_source。
 
@@ -29,7 +29,7 @@ B原二进制+404shader静态分析；没有整帧GPU验收。
 ## 证据
 
 - [evidence/render-passes/INDEX.md](../../evidence/render-passes/INDEX.md)
-- [PROJECT_MEMORY.md](../../PROJECT_MEMORY.md)
+- PROJECT_MEMORY.md
 
 ## 原作文件逐项覆盖
 

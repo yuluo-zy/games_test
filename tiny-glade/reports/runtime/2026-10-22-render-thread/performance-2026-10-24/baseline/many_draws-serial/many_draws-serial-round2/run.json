@@ -1,0 +1,75 @@
+{
+  "pid": 59754,
+  "binary": "/private/tmp/tg-render-perf-baseline",
+  "binary_sha256": "b67555b3313a9cd76638ae094d91cccefae4c382b621186e1acf90a5509356f5",
+  "scenario": "many_draws",
+  "mode": "serial",
+  "warmup": 200,
+  "frames": 1000,
+  "stack_sampling": false,
+  "gpu_timestamps": false,
+  "stage_timing": false,
+  "started_utc": "2026-10-24T07:12:00.241605+00:00",
+  "source_sha256_at_start": {
+    "Cargo.lock": "01a907050c717083c7659d84232a4c4b049971b8b74d7ead375773f902ac13c0",
+    "crates/tiny-glade/tests/original_loading_present.rs": "8dba1039f98d29bb31a142c2f8cdf91045ca283b713d6ff7e5228e53810e0177",
+    "crates/tiny-glade/src/production_renderer.rs": "2e6f719e7bbdcc5d91b277495547109def74a836adf5ef473ebf234702e62c00"
+  },
+  "environment": {
+    "VK_ICD_FILENAMES": "/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json",
+    "VK_LAYER_PATH": "/opt/homebrew/share/vulkan/explicit_layer.d",
+    "DYLD_FALLBACK_LIBRARY_PATH": "/opt/homebrew/lib",
+    "RHAPSODY_REQUIRE_VULKAN": "1",
+    "TG_INSTALL_ROOT": "/Users/yuluo/Desktop/game/B\u7248\u672c\u5185\u5bb9",
+    "TG_VALIDATE_GAMEPLAY_WSI": "1",
+    "TG_VALIDATE_WORLD_FRAMES": "1200",
+    "TG_VALIDATE_TIMEOUT_SECONDS": "900",
+    "TG_PERF_SCENARIO": "many_draws",
+    "TG_FRAME_TIMING": "0",
+    "TG_FRAME_TIMING_EVERY": "1",
+    "TG_DRAW_COLLECT": "serial",
+    "TG_DRAW_COLLECT_CHUNK": "64",
+    "TG_REQUIRE_CROSS_PASS": "1"
+  },
+  "exit_code": 0,
+  "elapsed_s": 112.81402008305304,
+  "log_sha256": "e66c4f906e965e5057dec3135a0c55d0447bfccdadd2a1783f8cc0faa5e67b4e",
+  "cpu": {
+    "average_process_cpu_percent": 66.51329393745402,
+    "sampled_cpu_ms_per_observed_frame": 59.82670744138634,
+    "peak_rss_kib": 417904,
+    "observed_frame_range": [
+      209,
+      1190
+    ],
+    "scope": "1-second process snapshots; 100% is one CPU core; sampled subrange excludes startup/warmup, not exact full-frame CPU attribution."
+  },
+  "measurement": {
+    "frames": 1000,
+    "warmup": 200,
+    "observed_fps": 11.122390765190376,
+    "metrics": {
+      "observed_native_frame_interval_ms": {
+        "n": 1000,
+        "p50": 79.642792,
+        "p95": 132.759291,
+        "p99": 141.8765
+      }
+    },
+    "render_stage_rows": 0,
+    "collect_totals_all_gameplay": null,
+    "startup_line": "PERF_WORLD_FIRST scenario=many_draws wall_ms=3993.474 world=WorldId(0)",
+    "scope": "Real desktop loop and native WSI; render-feedback intervals measure throughput, not GPU completion or photon latency. Stage wall times overlap CPU/GPU work and must not be summed. Missing timing rows/counters mean instrumentation was disabled."
+  },
+  "cpu_summary_original": {
+    "average_process_cpu_percent": 66.51329393745402,
+    "peak_rss_kib": 417904,
+    "observed_frame_range": [
+      209,
+      1190
+    ],
+    "scope": "1-second process snapshots; 100% is one CPU core; sampled subrange excludes startup/warmup, not exact full-frame CPU attribution."
+  },
+  "cpu_summary_revision": "exclude macOS exited-child zero-RSS samples; include sampled CPU ms/frame",
+  "allocator": "system allocator: historical WSI fixture; does not match shipped mimalloc binaries"
+}

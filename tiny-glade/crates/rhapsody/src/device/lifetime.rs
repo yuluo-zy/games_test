@@ -5,12 +5,12 @@
 //! popped first and destroyed with no lock held, so destruction may take
 //! memory (allocator) locks freely.
 use super::Device;
-use crate::raw::graveyard::{DeferredMemory, Doomed, RetirementStats};
+use crate::device::graveyard::{DeferredMemory, Doomed, RetirementStats};
 use crate::sync::{CompletedValues, SyncSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 pub(crate) struct Lifetime {
-    pub(crate) retirement: crate::sync::retire::Retirement<Doomed>,
+    pub(crate) retirement: crate::retire::Retirement<Doomed>,
     pub(crate) reclamation: crate::device::ReclamationConfig,
     pub(crate) idle_waits: AtomicU64,
 }
@@ -25,20 +25,61 @@ impl Lifetime {
     }
 }
 
+pub(crate) type RetireTicket = crate::retire::RetirementTicket<Doomed>;
+
+/// Already-admitted CPU storage transferred with a newly bound raw resource.
+/// The object and synchronization cell then keep their credits independently.
+pub(crate) struct ResourceStorage {
+    pub retirement: RetireTicket,
+    pub object: crate::accounting::CpuMemoryReservation,
+    pub synchronization: crate::tracking::tracked::SyncCellStorage,
+}
+
 impl Device {
+    pub(crate) fn reserve_retirement(&self) -> crate::Result<RetireTicket> {
+        RetireTicket::reserve(&self.memory.stats)
+    }
+    pub(crate) fn retire_reserved(&self, after: SyncSet, doomed: Doomed, ticket: RetireTicket) {
+        if after.is_empty() {
+            match self.destroy_now(doomed) {
+                Ok(()) => drop(ticket),
+                Err(doomed) => self
+                    .lifetime
+                    .retirement
+                    .enqueue_reserved(after, doomed, ticket),
+            }
+        } else {
+            self.lifetime
+                .retirement
+                .enqueue_reserved(after, doomed, ticket);
+        }
+    }
     /// Never-submitted objects are destroyed immediately. Submitted objects
     /// stay queued until a maintenance tick or explicit completed-object drain.
     /// If the queue cannot grow (host OOM) the object's dependencies are
     /// waited for and it is destroyed synchronously instead of aborting.
     pub fn retire(&self, after: SyncSet, doomed: Doomed) {
-        if after.is_empty() {
-            self.destroy_now(doomed);
-            return;
-        }
+        let doomed = if after.is_empty() {
+            match self.destroy_now(doomed) {
+                Ok(()) => return,
+                Err(doomed) => doomed,
+            }
+        } else {
+            doomed
+        };
         if let Err(doomed) = self.lifetime.retirement.try_enqueue(after, doomed) {
-            log::error!("retirement queue is out of host memory; waiting synchronously");
+            // Legacy raw-handle callers have no pre-reserved storage. Internal
+            // resource Drop never calls this compatibility admission path.
+            log::error!("unreserved raw retirement is out of host memory; waiting synchronously");
             match self.queues.timelines.wait(&after, u64::MAX) {
-                Ok(()) | Err(crate::Error::DeviceLost) => self.destroy_now(doomed),
+                Ok(()) | Err(crate::Error::DeviceLost) => {
+                    if let Err(doomed) = self.destroy_now(doomed) {
+                        log::error!(
+                            "native host owner remains busy; leaking unreserved raw object"
+                        );
+                        std::mem::forget(doomed);
+                    }
+                }
                 Err(error) => {
                     log::error!("cannot confirm GPU completion ({error}); leaking object");
                     std::mem::forget(doomed);
@@ -65,14 +106,19 @@ impl Device {
         if let Err(error) = self.refresh_memory_budget_if_due() {
             log::warn!("memory budget refresh failed: {error}");
         }
-        let budget = self
-            .lifetime
-            .reclamation
-            .budget(self.memory.stats.budget_action());
+        let action = self.memory.stats.budget_action();
+        if action != crate::accounting::BudgetAction::None {
+            // This O(1) empty-queue check releases only idle CPU backing.
+            // It neither polls again nor spends/refreshes the native retirement
+            // scan/destroy quota. The return value below still counts native
+            // retirement entries, even when this releases nonzero CPU credit.
+            self.extensions.trim_under_pressure();
+        }
+        let budget = self.lifetime.reclamation.budget(action);
         let count = self
             .lifetime
             .retirement
-            .collect_limited(
+            .collect_limited_retry(
                 &completed,
                 budget.max_scans,
                 budget.max_destroys,
@@ -92,10 +138,32 @@ impl Device {
         Ok(count)
     }
     pub(crate) fn collect_completed_snapshot(&self, completed: &CompletedValues) -> usize {
-        let count = self.lifetime.retirement
-            .collect_limited(completed, usize::MAX, usize::MAX, |doomed| self.destroy_now(doomed))
-            .destroyed;
-        count
+        
+        self
+            .lifetime
+            .retirement
+            .collect_limited_retry(completed, usize::MAX, usize::MAX, |doomed| {
+                self.destroy_now(doomed)
+            })
+            .destroyed
+    }
+    pub(crate) fn pressure_reclamation_budget(&self) -> crate::device::ReclamationBudget {
+        self.lifetime.reclamation.pressure
+    }
+    pub(crate) fn collect_pressure_snapshot(
+        &self,
+        completed: &CompletedValues,
+        remaining: &mut crate::device::ReclamationBudget,
+    ) -> usize {
+        let progress = self.lifetime.retirement.collect_limited_retry(
+            completed,
+            remaining.max_scans,
+            remaining.max_destroys,
+            |doomed| self.destroy_now(doomed),
+        );
+        remaining.max_scans -= progress.scanned;
+        remaining.max_destroys -= progress.destroyed;
+        progress.destroyed
     }
     fn reclamation_completed(&self) -> crate::Result<CompletedValues> {
         match self.poll() {
@@ -109,7 +177,7 @@ impl Device {
     }
     fn trim_unused_allocations(&self) {
         #[cfg(feature = "suballocation")]
-        if self.memory.stats.budget_action() == crate::device::BudgetAction::EvictCache
+        if self.memory.stats.budget_action() == crate::accounting::BudgetAction::EvictCache
             && let Some(suballocator) = &self.memory.suballocator
         {
             suballocator.trim_unused();
@@ -146,7 +214,7 @@ impl Device {
             log::warn!("vkDeviceWaitIdle during device drop failed: {error}");
         }
         while !self.lifetime.retirement.is_empty() {
-            self.lifetime.retirement.collect_limited(
+            self.lifetime.retirement.collect_limited_retry(
                 &CompletedValues::all(),
                 usize::MAX,
                 usize::MAX,
@@ -154,7 +222,7 @@ impl Device {
             );
         }
     }
-    fn destroy_now(&self, doomed: Doomed) {
+    fn destroy_now(&self, doomed: Doomed) -> Result<(), Doomed> {
         unsafe {
             match doomed {
                 Doomed::Buffer(handle, memory) => {
@@ -178,10 +246,15 @@ impl Device {
                 }
                 Doomed::DescriptorPool(pool) => drop(pool),
                 Doomed::DescriptorSet(handle, pool) => pool.free(handle),
-                Doomed::CommandBuffer(handle, pool) => pool.free(handle),
+                Doomed::CommandBuffer(handle, pool, mut waiting) => {
+                    if !pool.try_free(handle, &mut waiting) {
+                        return Err(Doomed::CommandBuffer(handle, pool, waiting));
+                    }
+                }
                 Doomed::Owners(owners) => drop(owners),
             }
         }
+        Ok(())
     }
     unsafe fn free_deferred(&self, memory: DeferredMemory) {
         let accounting_id = match memory {

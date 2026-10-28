@@ -229,7 +229,8 @@ fn core_render_graph_imports_and_exports_land_in_the_rhapsody_graph() {
     core.export(b, 3);
     drop(core);
     let built = Rc::try_unwrap(graph).ok().unwrap().into_inner().build();
-    let (declaration, _, _) = built.into_parts();
+    let (declaration, _, _, declaration_error) = built.into_parts();
+    assert!(declaration_error.is_none());
     assert_eq!(declaration.resources.len(), 2);
     assert_eq!(declaration.exports.len(), 1);
     assert_eq!(declaration.resources[0].descriptor.kind_code(), 1);
@@ -956,12 +957,12 @@ fn device_local_sparse_updates_use_the_owned_queue_and_publish_real_completion_p
         },
     )
     .unwrap();
-    let read = reads.read_buffer(raw.clone(), 0, capacity).unwrap();
+    let read = reads.read_buffer(&raw.clone(), 0, capacity).unwrap();
     read.wait(5_000_000_000).unwrap();
     let completed = device.poll().unwrap();
     let mut count = 0;
     let mut reached = true;
-    rhapsody::resource::GpuUse::visit_uses(raw.as_ref(), &mut |cell| {
+    rhapsody::tracking::GpuUse::visit_uses(raw.as_ref(), &mut |cell| {
         count += 1;
         reached &= cell.snapshot().is_reached(&completed);
         Ok(())
@@ -1041,7 +1042,7 @@ fn queued_device_local_updates_coalesce_in_call_order_and_submit_on_flush_withou
         TransferConfig { slots: 1, chunk_bytes: capacity as u64, max_bytes: 8 << 20 },
     )
     .unwrap();
-    let read = reads.read_buffer(raw.clone(), 0, capacity).unwrap();
+    let read = reads.read_buffer(&raw.clone(), 0, capacity).unwrap();
     read.wait(5_000_000_000).unwrap();
     let mut actual = vec![0; capacity];
     read.try_read(&mut actual).unwrap().unwrap();
@@ -1094,7 +1095,7 @@ fn queue_pressure_flush_in_the_middle_of_a_frame_never_cancels_earlier_writes() 
     .unwrap();
     for (index, buffer) in buffers.iter().enumerate() {
         let raw = host.get_by_id(buffer.id).unwrap().shared();
-        let read = reads.read_buffer(raw, 0, 256).unwrap();
+        let read = reads.read_buffer(&raw, 0, 256).unwrap();
         read.wait(5_000_000_000).unwrap();
         let mut actual = [0u8; 256];
         read.try_read(&mut actual).unwrap().unwrap();
@@ -1111,11 +1112,8 @@ fn versioned_country_upload_uses_real_session_subgraph_and_result_caches() {
     use country_core::render::rg_helpers::{
         rg_boundary::UploadContentVersion, rg_buffer_copy_from_slice_u32,
     };
-    use rhapsody::{
-        resource::Buffer as RawBuffer, resource::BufferDesc as RawDesc, rg::AccessTable,
-        rg::CacheReason, rg::GpuResource, rg::ResourceSpec, rg::VulkanGraphBackend,
-        rg::VulkanGraphSession,
-    };
+    use rhapsody::{resource::Buffer as RawBuffer, resource::BufferDesc as RawDesc, rg::AccessTable, rg::GpuResource, rg::ResourceSpec, rg::VulkanGraphBackend, rg::VulkanGraphSession};
+    use rhapsody::collections::CacheReason;
     use std::{cell::RefCell, rc::Rc, sync::Arc};
     use tiny_glade::render_host::GraphPasses;
     let Some(device) = graphics_device() else {
@@ -1357,12 +1355,10 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
         },
         rhapsody_contract::ManagedHandle,
     };
-    use rhapsody::{
-        command::buffer_access, command::image_access, resource::AccessScope,
-        resource::Buffer as RawBuffer, resource::BufferDesc as RawBufferDesc,
-        resource::OwnershipRange, resource::with_setup_command, rg::AccessRange, rg::AccessTable,
-        rg::VulkanGraphBackend, rg::VulkanGraphSession,
-    };
+    use rhapsody::{command::buffer_access, command::image_access, resource::Buffer as RawBuffer, resource::BufferDesc as RawBufferDesc, rg::AccessRange, rg::AccessTable, rg::VulkanGraphBackend, rg::VulkanGraphSession};
+    use rhapsody::tracking::OwnershipRange;
+    use rhapsody::transfer::with_setup_command;
+    use rhapsody::native::AccessScope;
     use shader_pipeline::{
         compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
         pipeline_desc::ComputePipelineDesc as FileDesc, reflection::Binding,
@@ -1580,7 +1576,7 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
     with_setup_command(&device, &[], |command| unsafe {
         image_access(
             command,
-            target_owner.clone(),
+            &target_owner.clone(),
             queue,
             OwnershipRange::Image {
                 aspects: vk::ImageAspectFlags::COLOR.as_raw(),
@@ -1598,7 +1594,7 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
         )?;
         buffer_access(
             command,
-            readback.clone(),
+            &readback.clone(),
             queue,
             0,
             64,
@@ -1627,7 +1623,7 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
         );
         buffer_access(
             command,
-            readback.clone(),
+            &readback.clone(),
             queue,
             0,
             64,
@@ -1638,7 +1634,7 @@ fn external_compute_sampled_and_storage_images_have_declared_views_and_real_pixe
             },
         )
     })
-    .and_then(|setup| setup.wait(rhapsody::resource::SETUP_WAIT_TIMEOUT_NS))
+    .and_then(|setup| setup.wait(rhapsody::transfer::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut actual = vec![0; 64];
     readback.read_bytes(0, &mut actual).unwrap();
@@ -1660,12 +1656,8 @@ fn inactive_compute_views_keep_active_mips_with_interleaved_buffer_binding() {
         },
         shader::boundary::ShaderBackend,
     };
-    use rhapsody::{
-        resource::OwnershipRange, rg::AccessRange, rg::AccessTable, rg::BufferDesc, rg::BuildError,
-        rg::Descriptor, rg::GraphDefinition, rg::OriginSource, rg::PlanContext, rg::RenderGraph,
-        rg::ResourceContractError, rg::ResourceOrigin, rg::ResourceSpec, rg::check_plan,
-        rg::compile_definition, rg::validate_contracts,
-    };
+    use rhapsody::{rg::AccessRange, rg::AccessTable, rg::BufferDesc, rg::BuildError, rg::Descriptor, rg::GraphDefinition, rg::OriginSource, rg::PlanContext, rg::RenderGraph, rg::ResourceContractError, rg::ResourceOrigin, rg::ResourceSpec, rg::check_plan, rg::compile_definition, rg::validate_contracts};
+    use rhapsody::tracking::OwnershipRange;
     use shader_pipeline::{
         compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
         reflection::Binding, reflection::BindingArray, reflection::BindingKind,
@@ -1862,12 +1854,13 @@ fn inactive_compute_views_keep_active_mips_with_interleaved_buffer_binding() {
                 .unwrap();
             drop(passes);
             graph.borrow_mut().export(output, 0x26).unwrap();
-            let (declaration, _, _) = Rc::try_unwrap(graph)
+            let (declaration, _, _, declaration_error) = Rc::try_unwrap(graph)
                 .ok()
                 .unwrap()
                 .into_inner()
                 .build()
                 .into_parts();
+            assert!(declaration_error.is_none());
             let compute_index = usize::from(initialize_active);
             let accesses = &declaration.passes[compute_index].accesses;
             assert_eq!(accesses.len(), 3);
@@ -1885,7 +1878,7 @@ fn inactive_compute_views_keep_active_mips_with_interleaved_buffer_binding() {
             assert!(!accesses[1].contents_unused);
             if !initialize_active {
                 assert!(
-                    matches!(validate_contracts(&declaration, rhapsody::command::is_write),
+                    matches!(validate_contracts(&declaration, rhapsody::native::is_write),
                     Err(BuildError::Contract(ResourceContractError::UninitializedRead { resource, pass }))
                     if resource == history.raw() && pass == 0)
                 );
@@ -1893,7 +1886,7 @@ fn inactive_compute_views_keep_active_mips_with_interleaved_buffer_binding() {
             }
             let definition = GraphDefinition::from_declaration(
                 &declaration,
-                &mut AccessTable::original(),
+                &AccessTable::original(),
                 PlanContext::default(),
             )
             .unwrap();
@@ -1944,12 +1937,8 @@ fn device_address_chunks_keep_same_page_ranges_until_cancel_or_real_completion()
         },
         shader::boundary::ShaderBackend,
     };
-    use rhapsody::{
-        resource::DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES as PAGE, resource::DynamicConstants,
-        resource::DynamicConstantsConfig, resource::GpuUse, rg::AccessRange as NativeRange,
-        rg::AccessTable, rg::RenderGraph as NativeGraph, rg::VulkanGraphBackend,
-        rg::VulkanGraphSession,
-    };
+    use rhapsody::{resource::DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES as PAGE, resource::DynamicConstants, resource::DynamicConstantsConfig, rg::AccessRange as NativeRange, rg::AccessTable, rg::RenderGraph as NativeGraph, rg::VulkanGraphBackend, rg::VulkanGraphSession};
+    use rhapsody::tracking::GpuUse;
     use shader_pipeline::{
         compiled::CompiledShaderPipeline, compiled::CompiledShaderStage, compiled::ShaderStage,
         pipeline_desc::ComputePipelineDesc as FileDesc, reflection::Binding,

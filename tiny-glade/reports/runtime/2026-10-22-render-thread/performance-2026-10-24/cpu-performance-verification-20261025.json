@@ -1,0 +1,88 @@
+[
+  {
+    "name": "135a-strict-bindless",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "rhapsody",
+      "--test",
+      "bindless",
+      "--test",
+      "bindless_shader_abi",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1",
+      "--nocapture"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 42.398470791988075,
+    "log": "/tmp/tg-perf135a-strict-bindless.log",
+    "log_sha256": "51edd03c912525bde68fb6ba4da41206d07b794a5a0025af1c67be85a8ac2a00",
+    "passed_tests": 12,
+    "ignored_tests": 1
+  },
+  {
+    "name": "135b-host-budget",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "rhapsody",
+      "--lib",
+      "raw::allocator::tests",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 30.597888791002333,
+    "log": "/tmp/tg-perf135b-host-budget.log",
+    "log_sha256": "46c108bb1f0fa3a0bf1e7292d9bec70f176ad3e7bb2d462f5665836bfd9266ec",
+    "acceptance": "invalid_empty_filter; superseded by 135d"
+  },
+  {
+    "name": "135c-app-check",
+    "command": [
+      "cargo",
+      "check",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--lib",
+      "--bins",
+      "--features",
+      "profile",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 170.2031990000978,
+    "log": "/tmp/tg-perf135c-app-check.log",
+    "log_sha256": "6b27e4456e008c06a1cf677a4aa5ac93810dd546646b38ca83186fe8da1f3bb8"
+  },
+  {
+    "name": "135d-host-budget",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "rhapsody",
+      "--lib",
+      "raw::allocator::",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "passed_tests": 11,
+    "log": "/tmp/tg-perf135d-host-budget.log",
+    "log_sha256": "b89bdf5287084798e8e1e0b37f26f7163bad7b974ebee20a806ae3be92671992"
+  }
+]

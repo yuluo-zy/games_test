@@ -2,7 +2,7 @@
 
 状态：记录有交付，本机缺失。完整模块验收：未通过。
 
-B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../INTERFACE_PROGRESS.md)。
+B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../docs/current/INTERFACE_PROGRESS.md)。
 
 定义归属：private_game_source。
 
@@ -29,7 +29,7 @@ pass_builder、SSBO/Shadowed/SparseBuffer、Mesh/Shader、nani GPU-world/atlas/�
 
 ## 证据
 
-- [PROJECT_MEMORY.md](../../PROJECT_MEMORY.md)
+- PROJECT_MEMORY.md
 - [reconstruction/country-core-render/_integration/INTEGRATION_REPORT.md](../../reconstruction/country-core-render/_integration/INTEGRATION_REPORT.md)
 
 ## 原作文件逐项覆盖

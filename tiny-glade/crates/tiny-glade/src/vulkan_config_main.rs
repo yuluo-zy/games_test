@@ -1,7 +1,7 @@
 //! `tiny_glade::vulkan_config_main` — Vulkan layer configuration entry point.
 //!
 //! B `run_vulkan_configuration_app` (`0x1403e74b0`) call list:
-//! `rhapsody::interop::GraphicsInstanceLoader::{new, implicit_layers}`,
+//! `rhapsody::native::GraphicsInstanceLoader::{new, implicit_layers}`,
 //! `ash::vk::LayerProperties`, `tg_gpu_selector::run_vulkan_configuration_gui`,
 //! `app_config::write_game_config_to_disk`, and a winit `EventLoop` for the GUI.
 //!
@@ -42,7 +42,7 @@ pub trait VulkanConfigGui {
 /// 4. On acceptance write the game config to disk.
 pub fn run_vulkan_configuration_app(gui: &mut dyn VulkanConfigGui) -> Result<()> {
     let loader =
-        rhapsody::interop::GraphicsInstanceLoader::new().context("Failed to load Vulkan")?;
+        rhapsody::native::GraphicsInstanceLoader::new().context("Failed to load Vulkan")?;
     let layers = loader
         .implicit_layers()
         .unwrap_or_default()

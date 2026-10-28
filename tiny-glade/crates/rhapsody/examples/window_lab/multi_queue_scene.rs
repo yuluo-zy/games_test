@@ -6,10 +6,8 @@ use super::{
     scene::{RasterScene, RenderingChoice, SceneKind, SceneReport},
 };
 use ash::vk::Handle;
-use rhapsody::{
-    device::QueueClass, resource::Buffer, resource::QueueFamilies, resource::ResourceSharing,
-    resource::Texture, rg::BuiltGraph, rg::FrameLoop, rg::OriginSource,
-};
+use rhapsody::{device::QueueClass, resource::Buffer, resource::Texture, rg::BuiltGraph, rg::FrameLoop, rg::OriginSource};
+use rhapsody::tracking::{QueueFamilies, ResourceSharing};
 use serde::Serialize;
 use std::{collections::BTreeSet, path::Path, sync::Arc};
 #[derive(Clone, Copy, Debug, Default, Serialize)]

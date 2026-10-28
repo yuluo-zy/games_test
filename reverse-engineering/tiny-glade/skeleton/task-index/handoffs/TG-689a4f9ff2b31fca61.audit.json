@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "semantic_acceptance": false,
+  "identity_scope": "artifact hashes are ledger declarations with format checks, not binary-file rehashes",
+  "module": "crates/systems/water/src/lib.rs",
+  "target_version": "C",
+  "errors": [],
+  "warnings": [],
+  "ledger_sha256": "7da875f33ab51a5919554ed0f60ba96468ff2116bde5ca3a1133888189ec6e07",
+  "auditor_sha256": "0bd23f0749abe4957699d738beda4f7cec7d9d9f6475ed39b59c8de755d236b6",
+  "fact_count": 6,
+  "link_count": 4,
+  "unresolved_links": [
+    {
+      "name": "metadata_and_source_navigation",
+      "status": "evidence_ready",
+      "gaps": [
+        "metadata ownership and signatures still need native contracts"
+      ]
+    },
+    {
+      "name": "authoritative_input_and_abi",
+      "status": "unknown",
+      "gaps": [
+        "recover actual inputs, units, fields and ABI; do not use void() placeholder"
+      ]
+    },
+    {
+      "name": "candidate_rust_and_consumers",
+      "status": "unknown",
+      "gaps": [
+        "inspect existing reconstruction; deliver actual callers/outputs and library API boundaries"
+      ]
+    },
+    {
+      "name": "edit_removal_history_and_acceptance",
+      "status": "unknown",
+      "gaps": [
+        "stateful owners require update/removal/history; pure helpers require original consumer checks",
+        "business validation is a separate authorized phase"
+      ]
+    }
+  ],
+  "rust_sha256": {
+    "skeleton/A/crates/systems/water/src/lib.rs": "aaba03d1bb5a1961ea403395918fa8ed958d2edd62b0185960334a082006780b",
+    "skeleton/B/crates/systems/water/src/lib.rs": "b1a3a8fd280519755642ad6f67f7fa1ca83b2234a95a2fb6e61eea6c557452e5",
+    "skeleton/C/crates/systems/water/src/lib.rs": "7bedf656f03e28b231507816bccd450156b6de62348d8ee4de02be7e483914b5"
+  },
+  "dependencies": [
+    "skeleton/A/crates/systems/water/src/lib.rs.dependencies.json",
+    "skeleton/B/crates/systems/water/src/lib.rs.dependencies.json",
+    "skeleton/C/crates/systems/water/src/lib.rs.dependencies.json"
+  ]
+}

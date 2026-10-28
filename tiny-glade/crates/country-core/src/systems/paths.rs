@@ -943,7 +943,7 @@ mod native_preview_cardinality_tests {
     use bevy_ecs::prelude::*;
     #[test]
     fn complete_original64_cardinality_mode_and_float_cases() {
-        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../reverse-engineering/tiny-glade/evidence/round12/brush-startup/native-path-preview-fixtures.json"))).unwrap();
+        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/tests/fixtures/original/round12/brush-startup/native-path-preview-fixtures.json"))).unwrap();
         for case in fixtures.as_array().unwrap() {
             let mut world = World::new();
             let mode = match case["mode"].as_u64().unwrap() {

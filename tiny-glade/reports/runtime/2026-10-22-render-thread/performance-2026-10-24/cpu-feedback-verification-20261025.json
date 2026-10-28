@@ -1,0 +1,89 @@
+[
+  {
+    "name": "143a-feedback-cpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--lib",
+      "--features",
+      "profile",
+      "render_extract::tests",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 82.73854887485504,
+    "log": "/tmp/tg-perf143a-feedback-cpu.log",
+    "log_sha256": "db32532751fa3aab541b87c10925eb3a6f81e21ff3f1ac6e261f5f842310b1c6"
+  },
+  {
+    "name": "143b-exchange-cpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--lib",
+      "--features",
+      "profile",
+      "render_thread::",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 0.9574227090924978,
+    "log": "/tmp/tg-perf143b-exchange-cpu.log",
+    "log_sha256": "a3b0fcc8ca777528eb483b28a772098ed0f2e3ea660d6d316b6a6bb5ffb77c94"
+  },
+  {
+    "name": "143c-snapshots",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--features",
+      "profile",
+      "--test",
+      "render_snapshots",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 53.104131625033915,
+    "log": "/tmp/tg-perf143c-snapshots.log",
+    "log_sha256": "47793df308312b0e5023190cb0e70ac7ad95c69527b576c76ed7bf6309fea596"
+  },
+  {
+    "name": "143d-app-check",
+    "command": [
+      "cargo",
+      "check",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--lib",
+      "--bins",
+      "--tests",
+      "--features",
+      "profile",
+      "--locked",
+      "--offline"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 165.80997112486511,
+    "log": "/tmp/tg-perf143d-app-check.log",
+    "log_sha256": "aac2d1a6aef4e0054b7775aa79a05680c848faadfeba80c8b51054a1ced24743"
+  }
+]

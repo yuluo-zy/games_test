@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "semantic_acceptance": false,
+  "identity_scope": "artifact hashes are ledger declarations with format checks, not binary-file rehashes",
+  "module": "crates/systems/color/src/replay_color.rs",
+  "target_version": "C",
+  "errors": [],
+  "warnings": [],
+  "ledger_sha256": "c88c1bca7be093283e4b3f7b371dc002d1bfd529bd5dc56aab1793d0db250906",
+  "auditor_sha256": "0bd23f0749abe4957699d738beda4f7cec7d9d9f6475ed39b59c8de755d236b6",
+  "fact_count": 6,
+  "link_count": 4,
+  "unresolved_links": [
+    {
+      "name": "metadata_and_source_navigation",
+      "status": "evidence_ready",
+      "gaps": [
+        "metadata ownership and signatures still need native contracts"
+      ]
+    },
+    {
+      "name": "authoritative_input_and_abi",
+      "status": "unknown",
+      "gaps": [
+        "recover actual inputs, units, fields and ABI; do not use void() placeholder"
+      ]
+    },
+    {
+      "name": "candidate_rust_and_consumers",
+      "status": "unknown",
+      "gaps": [
+        "inspect existing reconstruction; deliver actual callers/outputs and library API boundaries"
+      ]
+    },
+    {
+      "name": "edit_removal_history_and_acceptance",
+      "status": "unknown",
+      "gaps": [
+        "stateful owners require update/removal/history; pure helpers require original consumer checks",
+        "business validation is a separate authorized phase"
+      ]
+    }
+  ],
+  "rust_sha256": {
+    "skeleton/A/crates/systems/color/src/replay_color.rs": "52ff3330385c6a6324286f27dea01e1d99fe618370c36638ff1dea5aec0d56d1",
+    "skeleton/B/crates/systems/color/src/replay_color.rs": "15abc4a00dad5533b506f5ed748af672fb440d76bdfc614c18d002efd3e9eb0d",
+    "skeleton/C/crates/systems/color/src/replay_color.rs": "2f71691fc4d0079405e3f211b94aea55885682b89f2504fce7653ed788dddf5e"
+  },
+  "dependencies": [
+    "skeleton/A/crates/systems/color/src/replay_color.rs.dependencies.json",
+    "skeleton/B/crates/systems/color/src/replay_color.rs.dependencies.json",
+    "skeleton/C/crates/systems/color/src/replay_color.rs.dependencies.json"
+  ]
+}

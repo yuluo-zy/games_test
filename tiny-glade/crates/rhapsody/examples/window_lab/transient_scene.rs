@@ -3,10 +3,8 @@
 //! next copy already depends on the previous copy's destination.
 use super::fixture::{HEIGHT, WIDTH};
 use ash::vk::{self, Handle};
-use rhapsody::{
-    device::Device, resource::Buffer, resource::Texture, resource::TextureDesc, rg::BuiltGraph,
-    rg::FrameLoop, rg::PassContext, rg::ResourceSpec, rg::TransientBackingCounters,
-};
+use rhapsody::{device::Device, resource::Buffer, resource::Texture, resource::TextureDesc, rg::BuiltGraph, rg::FrameLoop, rg::PassContext, rg::ResourceSpec};
+use rhapsody::device::TransientBackingCounters;
 use serde::Serialize;
 use std::sync::Arc;
 

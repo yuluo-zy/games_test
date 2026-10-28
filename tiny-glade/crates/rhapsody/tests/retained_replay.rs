@@ -1,11 +1,7 @@
 //! Replaying a plan into a `RenderGraph` (resources in plan order + adopted
 //! passes) must declare exactly what normal declaration code declared.
-use rhapsody::rg::{
-    graph::{BufferDesc, Descriptor, OriginSource, RenderCallback, RenderGraph},
-    plan::{GraphDefinition, PlanContext, compile_definition},
-    resource::ResourceOrigin,
-    vulkan::AccessTable,
-};
+use rhapsody::rg::{graph::{Descriptor, OriginSource, RenderCallback, RenderGraph}, plan::{GraphDefinition, PlanContext, compile_definition}, resource::ResourceOrigin, vulkan::AccessTable};
+use rhapsody::rg::resource_registry::BufferDesc;
 
 const READ: u8 = 0x26;
 const WRITE: u8 = 0x34;
@@ -50,7 +46,7 @@ fn normal(token: u64) -> RenderGraph {
 fn definition(graph: &RenderGraph) -> GraphDefinition {
     GraphDefinition::from_declaration(
         graph.declaration(),
-        &mut AccessTable::original(),
+        &AccessTable::original(),
         PlanContext::default(),
     )
     .unwrap()
@@ -89,9 +85,13 @@ fn replayed_graph_declares_what_the_normal_path_declared() {
         .export(replay.resource_handle(0).unwrap(), READ)
         .unwrap();
     assert_eq!(created.raw(), 1);
+    assert_eq!(replay.buffer_id(created).unwrap().version(), 1);
+    assert_eq!(replay.buffer_id(replay.resource_handle(0).unwrap()).unwrap().version(), 0);
 
-    let (got, got_callbacks, _) = replay.build().into_parts();
-    let (want, want_callbacks, _) = expected.build().into_parts();
+    let (got, got_callbacks, _, declaration_error) = replay.build().into_parts();
+    assert!(declaration_error.is_none());
+    let (want, want_callbacks, _, declaration_error) = expected.build().into_parts();
+    assert!(declaration_error.is_none());
     assert_eq!(got.resources, want.resources);
     assert_eq!(got.exports, want.exports);
     assert_eq!(got.passes.len(), want.passes.len());
@@ -101,7 +101,7 @@ fn replayed_graph_declares_what_the_normal_path_declared() {
         compile_definition(
             GraphDefinition::from_declaration(
                 &got,
-                &mut AccessTable::original(),
+                &AccessTable::original(),
                 PlanContext::default()
             )
             .unwrap()

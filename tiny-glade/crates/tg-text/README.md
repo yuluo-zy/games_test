@@ -77,7 +77,7 @@ assert!(!batch.primitives.is_empty());
 
 ## Vulkan 适配器
 
-启用 `gpu` 后，`GpuTextRenderer` 接收设备、已编译 text shader 和 blue-noise 纹理；可创建独立 bindless heap 或通过 `new_with_heap` 复用宿主的 heap。构造时预热管线，ticket 等待设置五秒超时；compiler 释放时会等待正在进行的驱动编译，因此该超时不等于构造函数的墙钟上限。帧内轮询已有管线。`render_batch_offscreen` 自动使用批次上传，`render_offscreen` 允许显式传入上传 slices。
+启用 `gpu` 后，`GpuTextRenderer` 接收设备、已编译 text shader 和 blue-noise 纹理；可创建独立 bindless pages 或通过 `new_with_pages` 复用宿主的同一页池。构造时预热管线，ticket 等待设置五秒超时；compiler 释放时会等待正在进行的驱动编译，因此该超时不等于构造函数的墙钟上限。帧内轮询已有管线。`render_batch_offscreen` 自动使用批次上传，`render_offscreen` 允许显式传入上传 slices。
 
 提交前验证几何、shape 引用、图片、图集代际、上传边界、设备限额与 `RenderLimits`。默认限制：目标 256 MiB、图集 64 MiB、100 万 primitive、100 万 shape words、64 MiB 上传、16,384 个上传区域和 400 万次非精确字形覆盖比较。重复 shape packet 只解析一次，累计解析 words 也受 shape words 预算约束；完整 glyph 上传使用快速精确查找，子矩形覆盖检查受工作量预算约束。超过预算返回错误。
 
@@ -112,4 +112,4 @@ TG_TEXT_REQUIRE_GPU=1 TG_TEXT_ORIGINAL_ROOT="<游戏资源目录>" \
 
 2026-10-18 验证：18 项 CPU 测试、README 示例编译、完整 feature 的严格 Clippy 与格式检查通过。严格 MoltenVK 测试 2/2 通过，9 帧与既有像素基准一致，另有 2 帧验证非白色文字与半透明选区，验证层及同步验证零错误。新示例的两帧像素一致，上传区域从 24 降为 0，传输 buffer 稳定为 2。
 
-本轮写法与注释标准复核见 [整理报告](../../reports/gpu-text-style-2026-10-18/README.md)。初轮源码审查、修复和实际验证结果见 [审查报告](../../reports/gpu-text-refactor-2026-10-18/README.md)。历史 shader 消费基准见 [bindless 报告](../rhapsody/reports/refactor/2026-10-17-v9-text-bindless/README.md)。本模块源自行为恢复工程，本轮仅审查现有 Rust 源码并进行工程重构。
+本轮写法与注释标准复核见 [整理报告](../../reports/ui-input/2026-10-18-gpu-text-style/README.md)。初轮源码审查、修复和实际验证结果见 [审查报告](../../reports/ui-input/2026-10-18-gpu-text-refactor/README.md)。历史 shader 消费基准见 [bindless 报告](../rhapsody/reports/refactor/2026-10-17-v9-text-bindless/README.md)。本模块源自行为恢复工程，本轮仅审查现有 Rust 源码并进行工程重构。

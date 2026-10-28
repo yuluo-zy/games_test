@@ -1,15 +1,11 @@
 //! Actual native view ownership, bounded cache admission and in-flight eviction.
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::{
-        command_buffer::VulkanCommandPool,
-        managed::texture::MAX_CACHED_TEXTURE_VIEWS,
-        semaphore::TimelineSemaphore,
-        texture::{TextureDesc, TextureViewDesc},
-    },
-};
+use rhapsody::device::{Device, DeviceConfig};
+use rhapsody::command::command_buffer::VulkanCommandPool;
+use rhapsody::resource::managed::texture::MAX_CACHED_TEXTURE_VIEWS;
+use rhapsody::resource::texture::{TextureDesc, TextureViewDesc};
+use rhapsody::device::semaphore::TimelineSemaphore;
 use std::sync::Arc;
 fn device() -> Option<Arc<Device>> {
     gpu_test_support::initialize(
@@ -89,7 +85,7 @@ fn view_cache_rejects_held_and_pending_views_then_reuses_completed_capacity() {
     command.end().unwrap();
     let pending = command
         .submit_to(
-            rhapsody::raw::device::DeviceQueue {
+            rhapsody::device::DeviceQueue {
                 handle: device.primary_queue(),
                 family: device.queue_family_index(),
                 index: 0,

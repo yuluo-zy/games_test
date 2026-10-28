@@ -1,7 +1,9 @@
 # Tiny Glade 逆向工具链
 
+2026-10-24：修复 Ghidra 共享进程查询故障、默认结果路径和语义健康检查，补全 ReVa 工具分页与有实际除法数据流的 P-code 样例。现场结果见 [修复复验记录](../reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/tool-repair-2026-10-24.json)；下面 2026-10-11 的数量是历史范围，不能替代本轮复验或游戏业务验收。
+
 2026-10-11重新实测后，默认MCP为Ghidra和ReVa；REA、radare2、RE-MCP保留为按需SDK工具。
-完整报告：`games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/summary.json`。
+完整报告：`reverse-engineering/tiny-glade/evidence/toolchain-revalidation/summary.json`。
 
 | 工具 | 当前作用和实测 |
 |---|---|
@@ -14,12 +16,12 @@
 
 ## Agent直接使用
 
-先读 [AI_REVERSE_TOOLS.md](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/AI_REVERSE_TOOLS.md)。其中有完整绝对路径命令、六份可执行 JSON job、各工具参数快照、并行 worker 与失败处理。
+先读 [AI_REVERSE_TOOLS.md](/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/docs/current/AI_REVERSE_TOOLS.md)。其中有完整绝对路径命令、六份可执行 JSON job、各工具参数快照、并行 worker 与失败处理。
 
-机器可读入口：[manifest.json](/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/manifest.json)。按需读取对应 backend 的 schema，不要加载整个上游工具目录。
+机器可读入口：[manifest.json](/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/manifest.json)。按需读取对应 backend 的 schema，不要加载整个上游工具目录。
 
 ```sh
-/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/bin/python /Users/yuluo/.codex/mcp-tools/reverse-operator.py ghidra /Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/ghidra-read.json --worker shared
+/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/bin/python /Users/yuluo/.codex/mcp-tools/reverse-operator.py ghidra /Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/ghidra-read.json --worker shared
 ```
 
 ## 目标和持久性

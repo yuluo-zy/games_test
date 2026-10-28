@@ -2,6 +2,8 @@ internal_mod!(
     access_ledger,
     attachments,
     binding,
+    bindless_binding,
+    transfer_import,
     compiled,
     executor,
     frame,
@@ -37,9 +39,11 @@ internal_mod!(
     indirect_count,
 );
 
+/// Correctness-only original-format copies; absent from production builds.
+#[cfg(feature = "test-support")]
+pub mod test_image_copy;
+
 // Curated render-graph surface; the submodules are implementation detail.
-pub use crate::collections::cache::{CacheReason, CacheStats};
-pub use crate::raw::transient_backing::TransientBackingCounters;
 pub use attachments::{
     Attachment, AttachmentCache, PreparedAttachments, RenderingPolicy,
     contract::{
@@ -53,7 +57,7 @@ pub use executor::{
 };
 pub use frame_loop::{FrameLoop, FrameOutcome, FrameStatus};
 pub use graph::{
-    BufferDesc, BuildError, BuiltGraph, Descriptor, GraphDeclaration, OriginSource,
+    BuildError, BuiltGraph, Descriptor, GraphDeclaration, OriginSource,
     PassDeclaration, Pool, RenderGraph, ResourceBackend, ResourceDeclaration, Snapshot,
 };
 pub use indirect_count::{IndexedCountAdapter, IndexedCountRequest};
@@ -63,17 +67,18 @@ pub use pass_bindings::ManagedPassResources;
 pub use pass_builder::PassBuilder;
 pub use plan::{GraphDefinition, PlanContext, compile_definition};
 pub use plan_check::check_plan;
-pub use profiling::{GpuCommandTiming, GpuTimingConfig, GpuTimingStats};
+pub use profiling::{GpuCommandTiming, GpuPassStatistics, GpuTimingConfig, GpuTimingStats};
 pub use recorder::Outcome;
 pub use resource::{AccessRange, GraphId, ResourceContractError, ResourceHandle, ResourceOrigin};
 pub use resource_contracts::validate_contracts;
+pub use resource_registry::BufferDesc;
 pub use result_cache::{
     ContentDependency, DependencyId, ResultDependencies, ResultNodeId, ResultRequest,
 };
 pub use temporal::{NamedBuffer, NamedTexture, TemporalTexturePair};
 pub use vulkan::{
     AccessTable, CompletedNamedResources, DisplayFrameId, GpuResource, PreparedSessionFrame,
-    PresentPolicy, PresentTarget, ResourceSpec, SessionFrameReceipt, SwapchainContents,
+    PresentTarget, ResourceSpec, SessionFrameReceipt, SwapchainContents,
     VulkanGraphBackend, VulkanGraphSession,
 };
 

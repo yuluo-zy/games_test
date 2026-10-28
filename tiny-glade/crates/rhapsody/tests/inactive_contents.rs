@@ -11,7 +11,7 @@ use rhapsody::rg::{
 const READ: u8 = 0x19;
 const WRITE: u8 = 0x34;
 fn descriptor() -> Descriptor {
-    ResourceSpec::Image(rhapsody::raw::texture::TextureDesc::new_2d(
+    ResourceSpec::Image(rhapsody::resource::texture::TextureDesc::new_2d(
         16,
         16,
         vk::Format::R32_SFLOAT,
@@ -19,7 +19,7 @@ fn descriptor() -> Descriptor {
     .descriptor()
 }
 fn definition(graph: &GraphDeclaration) -> rhapsody::Result<GraphDefinition> {
-    GraphDefinition::from_declaration(graph, &mut AccessTable::original(), PlanContext::default())
+    GraphDefinition::from_declaration(graph, &AccessTable::original(), PlanContext::default())
 }
 fn fixture(initial: u8, unused: bool, later_read: bool) -> GraphDeclaration {
     let mut graph = RenderGraph::new();
@@ -69,7 +69,7 @@ fn inactive_binding_is_not_initialization_or_an_exemption_for_active_reads() {
     let mut exported = raw;
     exported
         .exports
-        .push(rhapsody::rg::graph::ExportDeclaration {
+        .push(rhapsody::rg::resource_info::ExportDeclaration {
             tag: 0,
             resource_index: 0,
             access_code: READ,

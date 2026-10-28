@@ -67,7 +67,7 @@ GPU 验证口径：本机以 lavapipe 重跑 17 个探针中的 14 个并通过�
 
 ## 2026-10-13 缺失函数补全
 
-对照 `skeleton-enriched/B/crates/rhapsody` 骨架函数清单（rg/raw/managed），按用户授权按清单顺序补全缺失函数约 200 个；新增候选接口已接入真实类型，不另开 candidate crate。交付证据见 [missing-functions-completion-2026-10-13.json](evidence/missing-functions-completion-2026-10-13.json)。
+对照 `skeleton/B/crates/rhapsody` 骨架函数清单（rg/raw/managed），按用户授权按清单顺序补全缺失函数约 200 个；新增候选接口已接入真实类型，不另开 candidate crate。交付证据见 [missing-functions-completion-2026-10-13.json](evidence/missing-functions-completion-2026-10-13.json)。
 
 - **rg**：RenderPassApi draw/dispatch 9 命令 + 调用计数（此前判定最大功能缺口）；PGO 全套（PassPgoNameId/Duration/Stats）；ExportedRenderGraphResources/ExecutedRenderGraph；Handle/ExportableResource/create_resource_handle；ResourceInfo extract_* 拆出；Parity/Temporal；RenderGraphRecorder/PassResourceRef/ensure_active_cb；VulkanGraphSession wait_submits_done/帧时长/顶层时间戳。
 - **raw**：GraphicsDevice 候选包装（资源创建/屏障下发/扩展支持/内置采样器）+ create_raw_device/Queue；RasterPipelineOpts 29 setter/getter+checked；Buffer 持久映射 mapped_slice_mut；SubmitInfo/SubmissionEngine；instance 黑名单系列；descriptor/barrier/binding/command_buffer 若干。

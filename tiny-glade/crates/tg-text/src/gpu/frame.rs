@@ -228,7 +228,7 @@ impl GpuTextRenderer {
             // Clear untouched texels before partial updates so linear filtering
             // at a glyph boundary never reads uninitialized atlas contents.
             unsafe {
-                record_texture_zero_fill(command, frame.atlas.clone(), queue)?;
+                record_texture_zero_fill(command, &frame.atlas, queue)?;
             }
         }
 
@@ -239,8 +239,8 @@ impl GpuTextRenderer {
                 record_texture_regions(
                     command,
                     queue,
-                    frame.atlas.clone(),
-                    staging,
+                    &frame.atlas,
+                    &staging,
                     &uploads.regions,
                     vk::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
                 )?;
@@ -258,7 +258,7 @@ impl GpuTextRenderer {
             {
                 image_access(
                     command,
-                    image.clone(),
+                    &image,
                     queue,
                     texture_range(image)?,
                     sampled,
@@ -266,11 +266,11 @@ impl GpuTextRenderer {
                 )?;
             }
             for buffer in [&frame.globals, &frame.primitives, &frame.shapes] {
-                buffer_access(command, buffer.clone(), queue, 0, buffer.size, sampled)?;
+                buffer_access(command, &buffer, queue, 0, buffer.size, sampled)?;
             }
             image_access(
                 command,
-                frame.target.clone(),
+                &frame.target,
                 queue,
                 texture_range(&frame.target)?,
                 AccessScope {
@@ -306,7 +306,7 @@ impl PreparedFrame {
             unsafe {
                 self.pipeline.bind_pipeline(command.raw_handle());
                 self.parameters
-                    .bind_command(command, self.pipeline.clone())?;
+                    .bind_command(command, &self.pipeline)?;
                 device
                     .raw_device()
                     .cmd_draw(command.raw_handle(), vertex_count, 1, 0, 0);
@@ -325,7 +325,7 @@ impl PreparedFrame {
         unsafe {
             image_access(
                 command,
-                self.target.clone(),
+                &self.target,
                 queue,
                 texture_range(&self.target)?,
                 AccessScope {
@@ -337,7 +337,7 @@ impl PreparedFrame {
             )?;
             buffer_access(
                 command,
-                self.readback.clone(),
+                &self.readback,
                 queue,
                 0,
                 length,
@@ -362,7 +362,7 @@ impl PreparedFrame {
             );
             buffer_access(
                 command,
-                self.readback.clone(),
+                &self.readback,
                 queue,
                 0,
                 length,

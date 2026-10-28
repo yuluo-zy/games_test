@@ -14,10 +14,9 @@ use country_core::{
     },
     render::ssbo::rhapsody_boundary::{BackendError, Buffer, BufferDesc, GraphicsDevice},
 };
-use rhapsody::{
-    command::buffer_access, resource::AccessScope, resource::Buffer as NativeBuffer,
-    resource::BufferDesc as NativeBufferDesc, resource::with_setup_command,
-};
+use rhapsody::{command::buffer_access, resource::Buffer as NativeBuffer, resource::BufferDesc as NativeBufferDesc};
+use rhapsody::transfer::with_setup_command;
+use rhapsody::native::AccessScope;
 use std::{ops::Range, sync::Arc};
 use tiny_glade::render_host::{BufferHost, TextureHost};
 
@@ -72,7 +71,7 @@ fn read_prefix(
     with_setup_command(device, &[], |command| unsafe {
         buffer_access(
             command,
-            source.shared(),
+            &source.shared(),
             queue,
             0,
             size as u64,
@@ -84,7 +83,7 @@ fn read_prefix(
         )?;
         buffer_access(
             command,
-            output.clone(),
+            &output.clone(),
             queue,
             0,
             size as u64,
@@ -102,7 +101,7 @@ fn read_prefix(
         );
         buffer_access(
             command,
-            output.clone(),
+            &output.clone(),
             queue,
             0,
             size as u64,
@@ -113,7 +112,7 @@ fn read_prefix(
             },
         )
     })
-    .and_then(|setup| setup.wait(rhapsody::resource::SETUP_WAIT_TIMEOUT_NS))
+    .and_then(|setup| setup.wait(rhapsody::transfer::SETUP_WAIT_TIMEOUT_NS))
     .unwrap();
     let mut bytes = vec![0; size];
     output.read_bytes(0, &mut bytes).unwrap();

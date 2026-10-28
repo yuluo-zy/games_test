@@ -26,7 +26,7 @@ fn layer(layer: u32) -> AccessRange {
     }
 }
 fn definition(raw: &GraphDeclaration) -> rhapsody::Result<GraphDefinition> {
-    GraphDefinition::from_declaration(raw, &mut AccessTable::original(), PlanContext::default())
+    GraphDefinition::from_declaration(raw, &AccessTable::original(), PlanContext::default())
 }
 fn fixture(preserve: bool, preserving_first: bool, scoped: bool) -> GraphDeclaration {
     let mut graph = RenderGraph::new();

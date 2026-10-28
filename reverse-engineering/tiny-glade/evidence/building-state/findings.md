@@ -2,7 +2,7 @@
 
 # 建筑业务恢复增量：2026-10-11
 
-本轮按用户要求执行 [依赖排除指导](../../DEPENDENCY_FILTERING.md)。业务实现限定于 B，A/C用于依赖来源和构造器布局对比；所有原指令差分绑定 B RNE SHA256 f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03。Ghidra原函数读取复用已登记的patched EXE数据库，只读、无自动重分析：[focused/report.json](B-focused/report.json)。
+本轮按用户要求执行 [依赖排除指导](../../docs/current/DEPENDENCY_FILTERING.md)。业务实现限定于 B，A/C用于依赖来源和构造器布局对比；所有原指令差分绑定 B RNE SHA256 f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03。Ghidra原函数读取复用已登记的patched EXE数据库，只读、无自动重分析：[focused/report.json](B-focused/report.json)。
 
 ## 三版筛除依赖
 

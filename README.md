@@ -1,49 +1,56 @@
-# Tiny Garden
+# game 工作区索引
 
-Rust + Bevy 的原创自由建造微缩庭院项目，先开发 Windows 桌面鼠标版，手机/触摸后续移植。首版聚焦多层建筑外观、自动立面、屋顶、退台与编辑闭环，不做室内、宠物或手柄。
+本目录有两套东西：**正式 Rust 实现**和**逆向证据/验证工程**。先按任务选一个入口，不要从顶层遍历。
 
-当前为开发中的桌面编辑原型，不是已完成游戏。工程包含独立领域/编辑核心、异步布局和 Mesh 生成、桌面镜头，以及选择/拖拽建造、移动、尺寸与历史工具。首批 Blender 门窗、烟囱和四套表面贴图已接入；全量正式资产、连续画面动画、道路关系和存档尚未完成。具体操作与限制见工程 README。
+## 按任务选入口
 
-## 运行与检查
+| 任务 | 首先打开 |
+|---|---|
+| 改正式实现、编译、测试、看当前状态 | [`tiny-glade/README.md`](tiny-glade/README.md) |
+| 查原版行为、PDB、地址、差分证据 | [`reverse-engineering/tiny-glade/README.md`](reverse-engineering/tiny-glade/README.md) |
+| 查 reconstruction 与正式工程的差异/移植清单 | [`PORTING-CHECKLIST.md`](reverse-engineering/tiny-glade/reconstruction/PORTING-CHECKLIST.md) |
+| 查主题证据与报告索引 | [`evidence/README.md`](reverse-engineering/tiny-glade/evidence/README.md) |
+| 查可编译的逆向验证工程 | [`reconstruction/README.md`](reverse-engineering/tiny-glade/reconstruction/README.md) |
+| 查原作安装与原始数据 | `A版本内容/`、`B版本内容/`、`C 版本内容最新/` |
+| 查 Blender 素材库 | [`美术资源 Blender 版本/README.md`](美术资源%20Blender%20版本/README.md) |
+| 查本地逆向工具 | [`tools/README.md`](tools/README.md)、`.agents/skills/` |
 
-Rust ≥ 1.95。Bevy 固定 0.19.1，依赖解析记录在 Cargo.lock。
+## 渐进式披露
 
-```powershell
-cd tiny-garden
-cargo run -p garden-presentation --features desktop --bin tiny-garden --locked
-cargo test --workspace --all-targets --all-features --locked
-cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
-./scripts/check-boundaries.ps1
+按层读取，不要一次加载整个工作区：
+
+| 层 | 内容 | 何时读 |
+|---|---|---|
+| **L0** | 本文件 + [`AGENTS.md`](AGENTS.md) | 每次开始任务 |
+| **L1** | 正式工程或逆向域的 `README.md` | 选定任务方向后只读一个 |
+| **L2** | `docs/README.md`、`evidence/README.md`、`skeleton/README.md`、`tracking/README.md` 等子索引 | 需要该领域细节时 |
+| **L3** | 具体 `REPORT.md`、证据目录、单个源码文件 | 用 `rg` 定位后再读 |
+
+## 不要先读
+
+- `_pdb/*.jsonl.gz`、`_assembly`、`skeleton/task-index/work/**` 的原始 JSON/汇编
+- `target/`、二进制、`*.pdb`
+- 大日志和整份历史报告
+
+先用 `rg` 限定目录和关键词，再读命中片段。
+
+## 目录速览
+
+```text
+game/
+├── tiny-glade/                 正式 Rust workspace（生产实现）
+├── reverse-engineering/
+│   └── tiny-glade/             逆向证据域（读它的 README 进入）
+├── A版本内容/ B版本内容/ C 版本内容最新/   原作发行文件
+├── 美术资源 Blender 版本/       Blender 素材库
+├── tools/                      逆向工具与 SDK
+└── .agents/skills/             工作区技能
 ```
 
-桌面运行需要兼容的图形设备/驱动；默认纯核心测试不需要 GPU，使用 `cargo test --workspace --all-targets --locked`。平台范围不等于已发布兼容性保证。
+## Git 提交范围
 
-## 文档入口
+2026-10-25 在当前工作区建立新的 Git 仓库，保存正式 Rust 实现、逆向验证源码、分析结论、相关文档和脚本；历史提交号仅作来源记录，不代表本仓库拥有旧历史。
 
-- [工程说明与代码阅读顺序](tiny-garden/README.md)
-- [当前桌面开发计划](tiny-garden/docs/桌面版开发计划.md)
-- [模块架构](tiny-garden/docs/模块架构.md)
-- [验证记录与未完成项](tiny-garden/docs/验证记录.md)
-- [美术资产制作计划](tiny-garden/docs/美术资产制作计划.md)
-- [Tiny Glade 本地资源盘点与 Excel](tiny-garden/docs/research/README.md)
-- [产品架构](TinyGlade_类手游_产品架构.md)
-- [开发需求](TinyGlade_类手游_开发需求文档.md)
-- [建筑变化与资产扩展](TinyGlade_类手游_建筑变化与资产扩展设计.md)
-- [美术架构](TinyGlade_类手游_美术架构.md)
-- [原实现计划与桌面优先修订](TinyGlade_类手游_实现计划.md)
+A/B/C 原版发行文件不提交。生成的 A/B/C 符号骨架、PDB/汇编导出、SQLite 索引、编译产物、原始性能日志、本机工具运行时和数据库、编辑器配置及 Blender 素材库保留在本地，具体排除规则见 `.gitignore`。分析文档中的本地证据引用仍可能依赖这些文件。
 
-文件名中的“手游”保留为历史链接；当前执行基线是桌面计划。美术概念图与引擎截图已区分，planned 模型清单不代表获批生产资产。仓库不包含编译产物或原始游戏发行文件。
-
-## 工作区成果
-
-除 Tiny Garden 外，仓库还归档 Tiny Glade 逆向研究、还原出的 Rust 源码、可编辑 Blender 素材库和自写工具脚本。上传范围和本地排除项见 [工作区成果归档](WORKSPACE_CONTENTS.md)。
-
-- [逆向研究与源码还原](reverse-engineering/tiny-glade/SOURCE_RECOVERY.md)
-- [Blender 可编辑素材库](TinyGlade_Blender_Library/README.md)
-- [逆向工具链说明](tools/README.md)
-- [Blender 工具链说明](tools/blender/README.md)
-
-
-## Tiny Glade 报告与云平台功能范围调整
-
-2026-10-14 按用户要求删除 `tiny-glade/crates/tg-integrity-report`、`tiny-glade/crates/crash-reporter-gui`、`tiny-glade/crates/feedback-reporter` 和 `tiny-glade/crates/geforcenow`，不再逆向还原这些功能。安装完整性报告窗口、崩溃报告对话框、反馈文件收集/ZIP 打包/HTTP 提交，以及 GeForce NOW 云平台集成均排除在当前工程范围之外；历史源码和证据保留。删除原因、功能影响和验证入口见 [Tiny Glade README](tiny-glade/README.md#已删除的报告与云平台功能)。
+本次整理执行了 `python3 tiny-glade/tools/verify_inventory.py`，检查未通过：现有源码包含外部证据引用、尚未恢复的占位实现，且当前依赖锁存在不在 B 版锁中的依赖身份。本次仅保存当前状态，未修改游戏业务代码，也不将此提交视为编译或业务验收通过。

@@ -2,16 +2,11 @@
 //! 纯函数部分不需要设备；GPU 部分上传已知数据后经 `vkCmdCopyImageToBuffer` 读回逐字节比对（lavapipe 可跑）。
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::raw::{
-    device::Device,
-    init::create_headless_device,
-    setup::TextureInitialData,
-    texture::TextureDesc,
-    texture_upload::{
-        MipChainIter, MipLevelItem, TextureUpdateRegion, linear_regions, per_mip_regions,
-        plan_texture_copies,
-    },
-};
+use rhapsody::device::Device;
+use rhapsody::resource::texture::TextureDesc;
+use rhapsody::transfer::setup::TextureInitialData;
+use rhapsody::command::texture_copy::{MipChainIter, MipLevelItem, TextureUpdateRegion, linear_regions, per_mip_regions, plan_texture_copies};
+use rhapsody::device::selection::create_headless_device;
 use std::sync::Arc;
 
 fn device() -> Option<Arc<Device>> {
@@ -225,20 +220,17 @@ fn copy_plan_packs_tightly_and_asserts_alignment_and_nonzero_total() {
 /// 把（mip, layer）的子资源读回成连续字节：屏障 → `vkCmdCopyImageToBuffer` → 读缓冲。
 fn read_back(
     gd: &Arc<Device>,
-    texture: Arc<rhapsody::raw::texture::Texture>,
+    texture: Arc<rhapsody::resource::texture::Texture>,
     mip: u32,
     layer: u32,
     extent: [u32; 3],
     bytes: u64,
 ) -> Vec<u8> {
-    use rhapsody::{
-        raw::{
-            buffer::{Buffer, BufferDesc},
-            resource_access::{buffer_access, image_access},
-            setup::with_setup_command,
-        },
-        resource::{OwnershipRange, range_state::AccessScope},
-    };
+    use rhapsody::tracking::OwnershipRange;
+    use rhapsody::command::resource_access::{buffer_access, image_access};
+    use rhapsody::resource::buffer::{Buffer, BufferDesc};
+    use rhapsody::transfer::setup::with_setup_command;
+    use rhapsody::native::AccessScope;
     let buffer = Arc::new(
         Buffer::new(
             gd.clone(),
@@ -257,7 +249,7 @@ fn read_back(
     with_setup_command(gd, &[], |command| unsafe {
         image_access(
             command,
-            texture.clone(),
+            &texture,
             queue,
             range,
             AccessScope {
@@ -269,7 +261,7 @@ fn read_back(
         )?;
         buffer_access(
             command,
-            buffer.clone(),
+            &buffer,
             queue,
             0,
             bytes,
@@ -304,7 +296,7 @@ fn read_back(
         // protocol that subsequent updates consume.
         image_access(
             command,
-            texture.clone(),
+            &texture,
             queue,
             range,
             AccessScope {
@@ -316,7 +308,7 @@ fn read_back(
         )?;
         buffer_access(
             command,
-            buffer.clone(),
+            &buffer,
             queue,
             0,
             bytes,
@@ -328,7 +320,7 @@ fn read_back(
         )
     })
     .unwrap()
-    .wait(rhapsody::raw::setup::SETUP_WAIT_TIMEOUT_NS)
+    .wait(rhapsody::transfer::setup::SETUP_WAIT_TIMEOUT_NS)
     .unwrap();
     let mut out = vec![0u8; bytes as usize];
     buffer.read_bytes(0, &mut out).unwrap();
@@ -495,7 +487,7 @@ fn gpu_update_texture_regions_overwrites_only_the_given_mip_and_layer() {
     let base = pattern(2 * (64 + 16), 1);
     let t = gd.create_texture(&desc, "upd", &base[..]).unwrap();
     let patch = pattern(16, 200);
-    rhapsody::raw::setup::update_texture_regions(
+    rhapsody::transfer::setup::update_texture_regions(
         &gd,
         &t,
         &[TextureUpdateRegion {
@@ -527,10 +519,8 @@ fn gpu_update_texture_regions_overwrites_only_the_given_mip_and_layer() {
 
 #[test]
 fn gpu_transfer_manager_batches_textures_in_one_submit_and_never_waits() {
-    use rhapsody::{
-        raw::texture::Texture,
-        transfer::{TextureUpload, TransferConfig, TransferManager},
-    };
+    use rhapsody::transfer::{TextureUpload, TransferConfig, TransferManager};
+    use rhapsody::resource::texture::Texture;
     let Some(gd) = device() else { return };
     let mut manager = TransferManager::new(
         gd.clone(),

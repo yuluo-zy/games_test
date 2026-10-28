@@ -4,17 +4,9 @@
 mod allocation_counter;
 use allocation_counter::{Sample, measured};
 use ash::vk::{self, Handle};
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        instance::{InstanceBuilder, ValidationMessenger},
-    },
-    rg::{
-        graph::{self, RenderGraph},
-        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::{device::{Device, DeviceConfig}, rg::{graph::{self, RenderGraph}, vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession}}};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::native::instance::{InstanceBuilder, ValidationMessenger};
 use std::sync::{
     Arc,
     atomic::{AtomicU64, Ordering},
@@ -115,7 +107,7 @@ fn real_vulkan_session_reports_framework_execution_allocations() {
         .layers
         .push(std::ffi::CString::new("VK_LAYER_KHRONOS_validation").unwrap());
     let device = Device::new(
-        instance.build().unwrap(),
+        &instance.build().unwrap(),
         None,
         &DeviceConfig {
             validation: true,
@@ -253,7 +245,7 @@ fn real_vulkan_session_reports_framework_execution_allocations() {
     // callback and before any queue call, then permit a normal retry.
     session
         .backend
-        .configure_owner_storage(rhapsody::raw::temp_list_pool::TempListPoolConfig {
+        .configure_owner_storage(rhapsody::collections::temp_list_pool::TempListPoolConfig {
             max_items: 1,
             ..Default::default()
         })

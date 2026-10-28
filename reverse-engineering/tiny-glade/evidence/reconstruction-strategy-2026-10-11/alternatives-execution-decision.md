@@ -4,7 +4,7 @@
 
 推荐先采用 **消费者拉动的按需证据 + 双循环恢复 + 最小合同批次**。把常驻worker、SQLite和Native reader降为由实际阻塞触发的工具升级，不把它们列为业务开工的必经M1/M2。统一方案的大方向可保留，但最先改善的是下一问题的选择、原有证据的复用和共享写入的交接，而非索引覆盖量。
 
-依据：[统一方案](../../NATIVE_RECONSTRUCTION_ACCELERATION_PLAN.md)、[自动化方案](automation-pipeline.md)、[并行计划](parallel-execution-plan.md)、[PDB能力审计](pdb-capability-audit.md)，以及实际[Gate/Fence](../../tracking/parallel-implementation-conflicts/gates.md)、[碰撞/DirtyTiles](../../tracking/parallel-implementation-conflicts/collision.md)、[编辑/附着](../../tracking/parallel-implementation-conflicts/rectangle-history.md)交付。示例中的历史失误只用于解释决策风险，不宣称重新验证了当前源码。
+依据：统一方案、[自动化方案](automation-pipeline.md)、[并行计划](parallel-execution-plan.md)、[PDB能力审计](pdb-capability-audit.md)，以及实际[Gate/Fence](../../tracking/parallel-implementation-conflicts/gates.md)、[碰撞/DirtyTiles](../../tracking/parallel-implementation-conflicts/collision.md)、[编辑/附着](../../tracking/parallel-implementation-conflicts/rectangle-history.md)交付。示例中的历史失误只用于解释决策风险，不宣称重新验证了当前源码。
 
 ## 1. 先固定目标，不能通过缩小目标制造“更快”
 

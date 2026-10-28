@@ -1,0 +1,94 @@
+{
+  "id": "TG-4aa312414cba876f8c",
+  "source_path": "crates/tg-integrity-report/src/lib.rs",
+  "category": "business",
+  "target_version": "C",
+  "versions": [
+    "A",
+    "B",
+    "C"
+  ],
+  "priority_score": 16,
+  "family": "other_game_or_owner_review",
+  "claim_mode": "candidate_reconstruction",
+  "cross_version_pairs": [
+    {
+      "versions": [
+        "A",
+        "B"
+      ],
+      "same_file_source_checksum_set": true,
+      "shared_source_checksums": [
+        "e44eec0b391eb7103a3dd22c1cd3571e409ee694066ba0f86b698515a51a647e"
+      ],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "A",
+        "C"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    },
+    {
+      "versions": [
+        "B",
+        "C"
+      ],
+      "same_file_source_checksum_set": false,
+      "shared_source_checksums": [],
+      "source_scope": "entire source-file checksum, not isolated function text",
+      "behavior_equivalence": "unverified"
+    }
+  ],
+  "function_ids": [
+    "1229c7410e0859a371",
+    "24a97659235275bfee",
+    "1d31b7eb74317377e3"
+  ],
+  "related_callee_tasks": [
+    "TG-dfa118ac0fef07f238",
+    "TG-13d6e53978a8d2f6f4",
+    "TG-aabe0a6d05976bb384"
+  ],
+  "related_caller_tasks": [
+    "TG-7b281633ac9256cad6"
+  ],
+  "source_inputs": {
+    "A": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/A/crates/tg-integrity-report/src/lib.rs",
+      "sha256": "a29d4554abbc22d7cc3c20534a9de2ed24325f6c93c77f5352c60b229773807b",
+      "binary_sha256": "76c998d48a2404b105b431d6d881290969e786e993dd7ae824b6bedab95fd708",
+      "pdb_sha256": "d5d4001583e31abf20b1563bbfdd9e4853629065aa2e461fe5809b205db908a5"
+    },
+    "B": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/B/crates/tg-integrity-report/src/lib.rs",
+      "sha256": "9dcdded560363c3bc0265e0fec811dabd4b6866d68c3985e5047e8fe97280713",
+      "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911"
+    },
+    "C": {
+      "path": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton/C/crates/tg-integrity-report/src/lib.rs",
+      "sha256": "35253da99120d86bc3c890417be55cb39ee6148599780703fe5959351fc59184",
+      "binary_sha256": "d8f9261b1a4cb677fe91b8f5017bcff63b1312228b3f3264a2071ca7d3ad80a9",
+      "pdb_sha256": "df472d8e6ae642baed96127151b18685291468518ea8dc71557bce4508c78902"
+    }
+  },
+  "assignment_unit": "one source-file family across A/B/C; one owner to prevent overlapping file edits",
+  "deliverable": "independent candidate Rust + ABI/field/dependency contracts + producer/consumer and removal/history boundaries + evidence handoff",
+  "implementation_status": "not_assessed; existing Rust must be checked before duplicate work",
+  "semantic_acceptance": false,
+  "existing_reconstruction_candidates": [],
+  "known_B_evidence_function_ids": [],
+  "data_structure_metadata": {
+    "A": "skeleton/A/crates/tg-integrity-report/src/lib.rs.structures.json.gz",
+    "B": "skeleton/B/crates/tg-integrity-report/src/lib.rs.structures.json.gz",
+    "C": "skeleton/C/crates/tg-integrity-report/src/lib.rs.structures.json.gz"
+  },
+  "handoff": "task-index/handoffs/TG-4aa312414cba876f8c.json",
+  "handoff_audit": "task-index/handoffs/TG-4aa312414cba876f8c.audit.json"
+}

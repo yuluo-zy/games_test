@@ -150,5 +150,5 @@ cargo fmt -p motomoto -- --check
 模块合同以上述文档与当前源码为准。历史恢复和审查资料仅描述各自快照：
 
 - [BUSINESS_RULES.md](BUSINESS_RULES.md)：历史行为快照，不作为当前错误处理合同的依据。
-- [来源台账](../../provenance/foundation-audit.json)与[原恢复入口](../../../reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/motomoto/)。
-- [源码审查报告](../../reports/source-review-2026-10-17/README.md)、[重构报告](../../reports/foundation-refactor-2026-10-17/README.md)与[复审报告](../../reports/foundation-rereview-2026-10-17/README.md)。
+- [来源台账](../../provenance/foundation-audit.json)与[原恢复入口](../../../reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/motomoto)。
+- [源码审查报告](../../reports/foundation/2026-10-17-source-review/README.md)、[重构报告](../../reports/foundation/2026-10-17-foundation-refactor/README.md)与[复审报告](../../reports/foundation/2026-10-17-foundation-rereview/README.md)。

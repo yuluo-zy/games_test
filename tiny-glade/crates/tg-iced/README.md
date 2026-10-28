@@ -163,8 +163,8 @@ cargo run --offline --locked -p tg-iced --features native-gui --example tg_iced_
 
 ## 相关文档
 
-- [B 版目录、类型和功能覆盖对照](../../reports/iced-history-b-comparison-2026-10-18/README.md)：当前接口和测试不代表原运行选项、默认配置、回调与文本样式均已等价恢复。
-- [本轮源码审查、接口迁移与验证](../../reports/iced-history-refactor-2026-10-18/README.md)
+- [B 版目录、类型和功能覆盖对照](../../reports/ui-input/2026-10-18-iced-history-b-comparison/README.md)：当前接口和测试不代表原运行选项、默认配置、回调与文本样式均已等价恢复。
+- [本轮源码审查、接口迁移与验证](../../reports/ui-input/2026-10-18-iced-history-refactor/README.md)
 - [GPU 选择与 Vulkan 配置消费模块](../tg-gpu-selector/README.md)
-- [重构与接口迁移记录](../../reports/theme-ui-refactor-2026-10-17/README.md)
-- [源码复审与修复记录](../../reports/theme-ui-rereview-2026-10-17/README.md)
+- [重构与接口迁移记录](../../reports/ui-input/2026-10-17-theme-ui-refactor/README.md)
+- [源码复审与修复记录](../../reports/ui-input/2026-10-17-theme-ui-rereview/README.md)

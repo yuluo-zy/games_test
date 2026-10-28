@@ -64,7 +64,7 @@ mod tests {
     use crate::resources::history::replay_cmd_buffer::ReplayBucket;
     #[test]
     fn actual_schedule_matches90_native_full_function_cases() {
-        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../reverse-engineering/tiny-glade/evidence/round12/brush-runtime-full/native-signifier-replay-fixtures.json"))).unwrap();
+        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/tests/fixtures/original/round12/brush-runtime-full/native-signifier-replay-fixtures.json"))).unwrap();
         for case in fixtures.as_array().unwrap() {
             let input = &case["input"];
             let native = &case["native"];

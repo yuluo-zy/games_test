@@ -1,0 +1,56 @@
+{
+  "pid": 9002,
+  "binary": "/tmp/tg-render-perf-production-v6",
+  "binary_sha256": "a80134fd193bf5aa31dd95a80a0975483f174063fe11fcbf3fcf8018348d3452",
+  "scenario": "static",
+  "mode": "serial",
+  "warmup": 200,
+  "frames": 1000,
+  "stack_sampling": false,
+  "gpu_timestamps": false,
+  "stage_timing": false,
+  "cpu_sampling": false,
+  "started_utc": "2026-10-24T11:03:55.381983+00:00",
+  "source_sha256_at_start": {
+    "Cargo.lock": "fa00a6d4615d9e970bf10fde1483fe8bf1cf6acd46b5a1b93c8881c71eb4de0b",
+    "crates/tiny-glade/tests/original_loading_present.rs": "15298c2fa902911d4fd0d54c727f9fc0ea4240c6615ba7a47d9ecae8b32c3a0c",
+    "crates/tiny-glade/src/production_renderer.rs": "a58ef7088e644a42b0c2585f5b25734f54f18df6f3407ce1598e298bbb60946d"
+  },
+  "environment": {
+    "MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS": "0",
+    "VK_ICD_FILENAMES": "/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json",
+    "VK_LAYER_PATH": "/opt/homebrew/share/vulkan/explicit_layer.d",
+    "DYLD_FALLBACK_LIBRARY_PATH": "/opt/homebrew/lib",
+    "RHAPSODY_REQUIRE_VULKAN": "1",
+    "MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS": "1",
+    "TG_INSTALL_ROOT": "/Users/yuluo/Desktop/game/B\u7248\u672c\u5185\u5bb9",
+    "TG_VALIDATE_GAMEPLAY_WSI": "1",
+    "TG_VALIDATE_WORLD_FRAMES": "1200",
+    "TG_VALIDATE_TIMEOUT_SECONDS": "900",
+    "TG_PERF_SCENARIO": "static",
+    "TG_FRAME_TIMING": "0",
+    "TG_FRAME_TIMING_EVERY": "1",
+    "TG_DRAW_COLLECT": "serial",
+    "TG_DRAW_COLLECT_CHUNK": "64",
+    "TG_REQUIRE_CROSS_PASS": "1"
+  },
+  "exit_code": 1,
+  "elapsed_s": 131.35718058305793,
+  "log_sha256": "4146d7cb9d8c89f96c465447ea9c9b44238a43a15b8edaaa4fdcfc596871eb0f",
+  "cpu": {
+    "average_process_cpu_percent": 50.90507124230348,
+    "sampled_cpu_ms_per_observed_frame": 65.26506024096386,
+    "peak_rss_kib": 659856,
+    "observed_frame_range": [
+      204,
+      1034
+    ],
+    "scope": "1-second process snapshots; 100% is one CPU core; sampled subrange excludes startup/warmup, not exact full-frame CPU attribution."
+  },
+  "external_stack_sampling": {
+    "file": "stacks-external.txt",
+    "reason": "diagnose unexpected long frames",
+    "sampled_pid": 9002,
+    "exclude_from_formal_performance_comparison": true
+  }
+}

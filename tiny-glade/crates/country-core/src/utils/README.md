@@ -2,7 +2,7 @@
 
 本目录服务编辑、世界栅格、资产加载、调试绘制和音频。通用数学与容器复用 glam、Serde、Bevy、标准库及 [共享 utils](../../../utils/README.md)，不再按反汇编逐条表达业务。
 
-2026-10-18 重构以功能正确性为准，允许修正逆向解释。变更和验证见 [REVIEW.md](REVIEW.md) 与 [重构报告](../../../../reports/country-core-utils-refactor-2026-10-18/README.md)。旧原版差分报告不覆盖本次行为变更。
+2026-10-18 重构以功能正确性为准，允许修正逆向解释。变更和验证见 [REVIEW.md](REVIEW.md) 与 [重构报告](../../../../reports/foundation/2026-10-18-country-core-utils-refactor/README.md)。旧原版差分报告不覆盖本次行为变更。
 
 ## 文件职责
 

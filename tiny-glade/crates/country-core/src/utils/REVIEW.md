@@ -1,8 +1,8 @@
 # utils 修复与重构复核
 
-**再次审查发现的 3 项问题已修复。** 虚线创建和绘制共用 ECS 组件身份；射线外推拒绝相机背后的透视分支；创建和删除共享逐帧活动集合，且按固定顺序提交命令。新增真实绘制回调、滑块投影及多帧 World 生命周期回归，当前全量单元测试 2106 项通过。详见 [本次修复报告](../../../../reports/country-core-utils-review-fixes-2026-10-18/README.md)。[再次审查报告](../../../../reports/country-core-utils-rereview-2026-10-18/README.md) 保留修复前反例，不作为当前未修复清单。
+**再次审查发现的 3 项问题已修复。** 虚线创建和绘制共用 ECS 组件身份；射线外推拒绝相机背后的透视分支；创建和删除共享逐帧活动集合，且按固定顺序提交命令。新增真实绘制回调、滑块投影及多帧 World 生命周期回归，当前全量单元测试 2106 项通过。详见 [本次修复报告](../../../../reports/foundation/2026-10-18-country-core-utils-review-fixes/README.md)。[再次审查报告](../../../../reports/foundation/2026-10-18-country-core-utils-rereview/README.md) 保留修复前反例，不作为当前未修复清单。
 
-2026-10-18 按用户要求，以功能正确性、可维护性和有界性能优先。历史发现保存在 [前次审查](../../../../reports/country-core-utils-refactor-2026-10-18/previous-REVIEW.md)，本文件描述当前实现。
+2026-10-18 按用户要求，以功能正确性、可维护性和有界性能优先。历史发现保存在 [前次审查](../../../../reports/foundation/2026-10-18-country-core-utils-refactor/previous-REVIEW.md)，本文件描述当前实现。
 
 | 项目 | 当前处理 | 回归检查 |
 |---|---|---|
@@ -20,4 +20,4 @@
 
 变量名和注释改为业务合同，去除生产代码里的地址、偏移及逐指令叙述。共享采样/索引/Transform、标准库、Serde 和 glam 继续复用。旧差分和指纹不作为当前源码验收结果。
 
-实际命令、测试、源码快照及构建限制见 [验证报告](../../../../reports/country-core-utils-refactor-2026-10-18/README.md)。球/矩形新增绘制 API、其他调用方的原生构建器和实际 GPU/FMOD 设备运行不在本轮实现范围。
+实际命令、测试、源码快照及构建限制见 [验证报告](../../../../reports/foundation/2026-10-18-country-core-utils-refactor/README.md)。球/矩形新增绘制 API、其他调用方的原生构建器和实际 GPU/FMOD 设备运行不在本轮实现范围。

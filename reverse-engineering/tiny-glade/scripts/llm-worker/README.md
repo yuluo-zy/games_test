@@ -2,6 +2,8 @@
 
 用途：把证据已准备好、输入输出边界清楚的重复静态分析委派给内网模型。主 agent 负责选边界、补证、复核和集成。分析结果不是原版行为验收，不直接提高游戏还原进度。
 
+> 当前 Mac 检出路径：`/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/scripts/llm-worker/`。以下 `D:/` 命令仅适用于 Windows 主机。
+
 ## 调用
 
 Node.js 内置 fetch，无额外 npm 依赖。密钥只从进程环境 `TG_LLM_API_KEY` 读取；禁止写入仓库、job、证据包或日志。可选环境 `TG_LLM_BASE_URL`（默认内网 `/v1/` 地址）、`TG_LLM_MODEL`（默认实测的 `deepseek-ai/DeepSeek-V4.1-Flash`）。

@@ -1,23 +1,12 @@
 //! Native byte/subresource synchronization through the production graph session.
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::{
-    device::{Device, DeviceConfig, QueueClass, QueueConfig, QueuePreference},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        instance::{InstanceBuilder, ValidationMessenger},
-        texture::{Texture, TextureDesc, TextureKind},
-    },
-    resource::{OwnershipRange, range_state::RangeOwner},
-    rg::{
-        executor::{ExecutionBackend, PassContext},
-        graph::RenderGraph,
-        parallel::ParallelRecording,
-        resource::{AccessRange, ResourceHandle},
-        sync_plan::{BarrierKind, BarrierPhase, DependencyRef},
-        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::{device::{Device, DeviceConfig, QueueClass, QueueConfig, QueuePreference}, rg::{executor::{ExecutionBackend, PassContext}, graph::RenderGraph, parallel::ParallelRecording, resource::{AccessRange, ResourceHandle}, sync_plan::{BarrierKind, BarrierPhase, DependencyRef}, vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession}}};
+use rhapsody::tracking::OwnershipRange;
+use rhapsody::tracking::range_state::RangeOwner;
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::texture::{Texture, TextureDesc, TextureKind};
+use rhapsody::native::instance::{InstanceBuilder, ValidationMessenger};
 use std::sync::Arc;
 
 const WRITE: u8 = 0x34;
@@ -41,7 +30,7 @@ impl Fixture {
         let context = self.session.backend.plan_context();
         let definition = rhapsody::rg::plan::GraphDefinition::from_declaration(
             &built.declaration,
-            &mut self.session.backend.accesses,
+            &self.session.backend.accesses,
             context,
         )
         .unwrap();
@@ -67,7 +56,7 @@ impl Fixture {
                     .layers
                     .push(c"VK_LAYER_KHRONOS_validation".to_owned());
                 let device = Device::new(
-                    builder.build()?,
+                    &builder.build()?,
                     None,
                     &DeviceConfig {
                         validation: true,

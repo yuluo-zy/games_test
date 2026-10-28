@@ -2,7 +2,7 @@
 
 状态：依赖/归属边界。完整模块验收：未通过。
 
-B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../INTERFACE_PROGRESS.md)。
+B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../docs/current/INTERFACE_PROGRESS.md)。
 
 定义归属：dependency_or_unresolved_local_ownership。
 
@@ -26,7 +26,7 @@ B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../IN
 
 ## 证据
 
-- [DEPENDENCY_FILTERING.md](../../DEPENDENCY_FILTERING.md)
+- [DEPENDENCY_FILTERING.md](../../docs/current/DEPENDENCY_FILTERING.md)
 
 ## 原作文件逐项覆盖
 

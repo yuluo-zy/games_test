@@ -1,8 +1,6 @@
 //! GPU 故障数据解析使用原字数/标签合同，不触发真实设备故障。
 use ash::vk;
-use rhapsody::raw::crash::{
-    GpuCrashDiagnostics, has_any_gpu_assertion_failed, parse_gpu_debug_info,
-};
+use rhapsody::command::crash::{GpuCrashDiagnostics, has_any_gpu_assertion_failed, parse_gpu_debug_info};
 use std::collections::BTreeMap;
 #[test]
 fn count_is_second_word_and_payload_is_bounded() {

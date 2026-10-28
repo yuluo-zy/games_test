@@ -3,13 +3,13 @@ from pathlib import Path
 import json
 from datetime import datetime, timezone
 
-root = Path('D:/game/reverse-engineering/tiny-glade')
+root = Path(__file__).resolve().parents[1]
 tracking = root/'tracking'
 tracking.mkdir(exist_ok=True)
 project_file = tracking/'project.json'
 if not project_file.exists():
     rows = [
-      ('M00','原作身份与研究输入','complete',[],['RNE/PDB 匹配身份；副本哈希一致；EXE 差异登记'],['evidence/binary/baseline.json','workspace/input/identity.json']),
+      ('M00','原作身份与研究输入','complete',[],['RNE/PDB 匹配身份；副本哈希一致；EXE 差异登记'],['evidence/binary/baseline.json']),
       ('M01','可构建 Rust 工程与证据追踪','in_progress',['M00'],['Cargo 锁定构建成功；每个已验收算法对应原作地址/报告；追踪工具可复现'],['reconstruction/Cargo.toml']),
       ('M02','已定位 Roof 状态函数','complete',['M00'],['Roof::new/ty/is_gable 的观察输出通过机器码差分；浮点/内存边界登记'],['reconstruction/roof/roof_state.rs','evidence/native/roof-state-verification.json']),
       ('M03','屋顶曲面核心','in_progress',['M00','M01'],['原作实际曲面类型及参数来源确定；曲面/导数/法线 Rust 可运行；各原作分支差分通过'],[]),
@@ -25,7 +25,7 @@ if not project_file.exists():
       ('M13','生态/天气/音频/UI/相机','not_started',['M07','M11','M12'],['观察到的外围系统行为/参数/资源依赖逐项实现并验证'],[]),
       ('M14','完整 Rust 游戏集成验收','not_started',['M06','M07','M08','M09','M10','M11','M12','M13'],['可运行交互游戏；全部确认的原作功能清单关闭；历史、场景、视觉、性能及异常恢复回归通过'],[]),
     ]
-    project = {'schema_version':1,'target':'D:/game/ljxsj_92385/Tiny Glade',
+    project = {'schema_version':1,'target':'/Users/yuluo/Desktop/game/B版本内容',
       'source_sha256':'f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03',
       'objective':'完成一个 Rust 项目，完整复现当前原作构建的游戏实现与行为',
       'overall_completion_percent':None,

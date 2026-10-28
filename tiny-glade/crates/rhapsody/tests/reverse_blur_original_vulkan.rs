@@ -2,21 +2,9 @@
 //! graph, descriptor heap and real GPU. No country-core/application dependency.
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::{
-    bindless::{
-        BindlessConfig, BindlessHeap, BindlessResource, BindlessShaderPackage,
-    },
-    device::{Device, DeviceConfig},
-    pipeline::{AsyncPipelineCompiler, CompilerConfig, PipelineCache},
-    raw::instance::{InstanceBuilder, ValidationMessenger},
-    resource::{
-        Buffer, BufferDesc, DynamicConstants, Texture, TextureDesc, TextureViewDesc,
-        init_texture_data,
-    },
-    rg::{
-        AccessRange, AccessTable, PassContext, ResourceSpec, VulkanGraphBackend, VulkanGraphSession,
-    },
-};
+use rhapsody::{bindless::{BindlessConfig, BindlessHeap, BindlessResource, BindlessShaderPackage}, device::{Device, DeviceConfig}, pipeline::{AsyncPipelineCompiler, CompilerConfig, PipelineCache}, resource::{Buffer, BufferDesc, DynamicConstants, Texture, TextureDesc, TextureViewDesc}, rg::{AccessRange, AccessTable, PassContext, ResourceSpec, VulkanGraphBackend, VulkanGraphSession}};
+use rhapsody::transfer::init_texture_data;
+use rhapsody::native::instance::{InstanceBuilder, ValidationMessenger};
 use shader_pipeline::{
     compiled::{CompiledShaderPipeline, ShaderStage},
     reflection::BindingLocation,
@@ -128,7 +116,7 @@ fn run_original_reverse(levels: u32) {
         // Start collecting before logical device/pipeline/resource creation.
         let validation = ValidationMessenger::new(&instance)?;
         let device = Device::new(
-            instance,
+            &instance,
             None,
             &DeviceConfig {
                 validation: true,
@@ -342,7 +330,7 @@ fn run_original_reverse(levels: u32) {
             let command = vk::CommandBuffer::from_raw(ctx.command.handle());
             unsafe {
                 pipeline.bind_pipeline(command);
-                prepared.bind_pass(&ctx, pipeline.clone())?;
+                prepared.bind_pass(&ctx, &pipeline)?;
                 device
                     .raw_device()
                     .cmd_dispatch(command, extent / 8, extent / 8, 1);

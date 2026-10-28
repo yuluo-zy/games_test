@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Extract essential facts from draw_shaders skeleton-enriched files (read-only)."""
+"""Extract essential facts from draw_shaders skeleton/B files (read-only)."""
 import json, gzip, re, sys
 from pathlib import Path
 
-DIR = Path("/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/skeleton-enriched/B/crates/country-core/src/systems/render_loop/draw_passes/draw_shaders")
+DIR = Path("/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/skeleton/B/crates/country-core/src/systems/render_loop/draw_passes/draw_shaders")
 
 mods = [
     "billboard_forest.rs", "clearing_shaders.rs", "clouds.rs", "common_includes.rs",

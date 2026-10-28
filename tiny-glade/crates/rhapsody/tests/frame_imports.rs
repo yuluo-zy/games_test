@@ -1,15 +1,8 @@
 //! Actual frame imports are scoped declarations, including cancelled graphs.
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::buffer::{Buffer, BufferDesc},
-    rg::{
-        frame_imports::FrameImportConfig,
-        resource::AccessRange,
-        vulkan::{AccessTable, GpuResource, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::{device::{Device, DeviceConfig}, rg::{frame_imports::FrameImportConfig, resource::AccessRange, vulkan::{AccessTable, GpuResource, VulkanGraphBackend, VulkanGraphSession}}};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
 use std::sync::Arc;
 const TIMEOUT: u64 = 10_000_000_000;
 
@@ -85,7 +78,7 @@ fn exercise_import_lifetime(export_target: bool) {
     if export_target {
         graph.export(output, 0x26).unwrap();
     }
-    struct Unblock(Arc<rhapsody::raw::semaphore::TimelineSemaphore>);
+    struct Unblock(Arc<rhapsody::device::semaphore::TimelineSemaphore>);
     impl Drop for Unblock {
         fn drop(&mut self) {
             unsafe {
@@ -101,7 +94,7 @@ fn exercise_import_lifetime(export_target: bool) {
             }
         }
     }
-    let gate = rhapsody::raw::semaphore::TimelineSemaphore::new(device.clone(), 0).unwrap();
+    let gate = rhapsody::device::semaphore::TimelineSemaphore::new(device.clone(), 0).unwrap();
     let unblock = Unblock(gate.clone());
     session
         .backend
@@ -381,7 +374,7 @@ fn declared_frame_sources_copy_real_bytes_and_failed_recording_does_not_leak_bin
 
 #[test]
 fn frame_texture_import_deduplicates_and_releases_cancelled_declarations() {
-    use rhapsody::raw::texture::{Texture, TextureDesc};
+    use rhapsody::resource::texture::{Texture, TextureDesc};
     let Some(device) = gpu_test_support::initialize(
         "frame texture import lifetime",
         Device::new_headless(&DeviceConfig::headless()),

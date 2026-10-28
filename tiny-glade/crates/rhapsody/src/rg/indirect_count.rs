@@ -2,20 +2,10 @@
 //! DrawIndirectCount. This is a platform capability adapter, not game logic.
 //! The caller declares scratch through its existing graph/session and uses its
 //! existing bindless heap, pipeline compiler and dynamic-constants pool.
-use crate::{
-    Error, Result,
-    bindless::{
-        BindlessParameters, BindlessResource, BindlessShaderAbi,
-        BindlessShaderPackage,
-    },
-    device::{Device, Feature},
-    pipeline::{AsyncPipelineCompiler, PipelineTicket},
-    raw::{buffer::BufferDesc, dynamic_constants::DynamicConstants},
-    rg::{
-        graph::{Descriptor, RenderGraph},
-        resource::{AccessRange, ResourceHandle},
-    },
-};
+use crate::{Error, Result, bindless::{BindlessParameters, BindlessResource, BindlessShaderPackage}, device::{Device, Feature}, pipeline::{AsyncPipelineCompiler, PipelineTicket}, rg::{graph::{Descriptor, RenderGraph}, resource::{AccessRange, ResourceHandle}}};
+use crate::resource::buffer::BufferDesc;
+use crate::resource::dynamic_constants::DynamicConstants;
+use crate::pipeline::shader::BindlessShaderAbi;
 use ash::vk::{self, Handle};
 use parking_lot::Mutex;
 use shader_pipeline::{
@@ -116,7 +106,7 @@ impl IndexedCountAdapter {
             source_dependencies: vec![],
             trailing_bytes: vec![],
         };
-        let package = BindlessShaderPackage::new(&heap, &input, 1)?;
+        let package = BindlessShaderPackage::new(heap, &input, 1)?;
         let pipeline = compiler.defer_compute_spirv(
             package.stages[0].spirv_bytes(),
             c"main".into(),
@@ -297,7 +287,7 @@ impl IndexedCountAdapter {
             unsafe {
                 let command = vk::CommandBuffer::from_raw(ctx.command.handle());
                 pipeline.bind_pipeline(command);
-                prepared.bind_pass(&ctx, pipeline)?;
+                prepared.bind_pass(&ctx, &pipeline)?;
                 adapter.device.core.device.cmd_dispatch(
                     command,
                     request.maximum_draws.div_ceil(64),
@@ -305,6 +295,11 @@ impl IndexedCountAdapter {
                     1,
                 );
             }
+            #[cfg(feature = "cpu-probe")]
+            ctx.record_command_workload(crate::profile::CommandWorkload {
+                direct_dispatch_api_calls: 1,
+                ..Default::default()
+            });
             Ok(())
         });
         Ok(())

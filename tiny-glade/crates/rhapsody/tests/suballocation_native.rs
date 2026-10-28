@@ -2,10 +2,8 @@
 #![cfg(feature = "suballocation")]
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    device::{AllocationStrategy, Device, DeviceConfig},
-    raw::allocator::MemoryBlock,
-};
+use rhapsody::device::{AllocationStrategy, Device, DeviceConfig};
+use rhapsody::device::allocator::MemoryBlock;
 use std::sync::Arc;
 const MIB: u64 = 1024 * 1024;
 fn device(budget: u64) -> Option<Arc<Device>> {
@@ -34,7 +32,7 @@ fn allocate(device: &Arc<Device>, size: u64) -> rhapsody::Result<MemoryBlock> {
 }
 /// GPU phases exclude the independently charged host metadata; both remain
 /// admitted by the same total device budget.
-fn gpu_usage(device: &Device) -> rhapsody::device::BudgetUsage {
+fn gpu_usage(device: &Device) -> rhapsody::accounting::BudgetUsage {
     let mut usage = device.allocator_stats().budget_usage();
     let cpu = device.allocator_stats().cpu_memory_usage();
     usage.live -= cpu.live;
@@ -167,7 +165,7 @@ fn heap_budget_below_a_native_block_uses_an_exact_dedicated_allocation() {
         return;
     };
     let bits = u32::MAX >> (32 - device.memory_properties().memory_type_count);
-    let memory_type = rhapsody::raw::allocator::choose_memory_type(
+    let memory_type = rhapsody::device::allocator::choose_memory_type(
         device.memory_properties(),
         bits,
         vk::MemoryPropertyFlags::DEVICE_LOCAL,

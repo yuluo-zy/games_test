@@ -1,0 +1,96 @@
+{
+  "scope": "Explanation of the pre-fix unfilled symbol metric; exact line-table source path evidence",
+  "C_pre_fix_distinct_missing_names": 779,
+  "C_source_causes": {
+    "excluded_generated_source": 198,
+    "existing_skeleton_path_missed_by_mapping": 19,
+    "excluded_registry_source": 26,
+    "excluded_git_dependency_source": 536
+  },
+  "cross_version_source_changes": {
+    "rhapsody": {
+      "A_private_source_files": 59,
+      "B_private_source_files": 69,
+      "C_private_source_files": 0,
+      "C_git_checkout_source_paths": 85,
+      "C_repository": "PounceLight/rhapsody2",
+      "C_revision": "48efa87114d22e484592a0e9efe866faafa6a876"
+    },
+    "generated_private_source_paths": {
+      "A": 0,
+      "B": 0,
+      "C": 8
+    },
+    "bevy_family": {
+      "B": "0.16.0",
+      "C": "0.17.3"
+    },
+    "rustc": {
+      "B": "1.86.0",
+      "C": "1.95.0"
+    }
+  },
+  "mapping_bug": {
+    "cause": "bisect_right chose only the last equal-start line block; preceding file blocks with the same code start were skipped",
+    "affected_missing_distinct_names": {
+      "A": 1,
+      "B": 1,
+      "C": 19
+    },
+    "fix": "Visit all line blocks that overlap the physical procedure, including equal-start and preceding overlapping blocks",
+    "status": "fixed_and_rematerialized"
+  },
+  "metric_issue": "Private/local namespaces pooled across versions, but C source ownership moved to Git dependencies; the old metric was not a count of missing game business functions",
+  "pdb_quality": "All module and TPI/IPI record kind counts matched the independent audit; full Rust parameter/return/local information is absent in all three versions",
+  "post_fix_audit": [
+    {
+      "version": "A",
+      "remaining_distinct_names": 12,
+      "reasons": {
+        "excluded_registry_source": 4,
+        "other_source_path": 8,
+        "existing_skeleton_path_missed_by_mapping": 0
+      },
+      "corrected": 1
+    },
+    {
+      "version": "B",
+      "remaining_distinct_names": 14,
+      "reasons": {
+        "existing_skeleton_path_missed_by_mapping": 0,
+        "other_source_path": 10,
+        "excluded_registry_source": 4
+      },
+      "corrected": 1
+    },
+    {
+      "version": "C",
+      "remaining_distinct_names": 755,
+      "reasons": {
+        "excluded_generated_source": 198,
+        "existing_skeleton_path_missed_by_mapping": 0,
+        "excluded_registry_source": 26,
+        "excluded_git_dependency_source": 531
+      },
+      "corrected": 19
+    }
+  ],
+  "rhapsody2_metadata_extension": {
+    "status": "complete",
+    "folder": "C/rhapsody2",
+    "source_files": 91,
+    "function_symbol_type_pairs": 2329,
+    "remaining_C_unwritten_distinct_names": 224,
+    "remaining_git_dependency_names": 0,
+    "verification": "C/rhapsody2/_metadata/verification.json"
+  },
+  "remaining_shabriri_metadata_extension": {
+    "status": "complete",
+    "folder": "C/_generated",
+    "source_files": 2,
+    "function_symbol_type_pairs": 483,
+    "remaining_C_unwritten_distinct_names": 26,
+    "remaining_generated_names": 0,
+    "verification": "C/_generated/_metadata/verification.json"
+  }
+}

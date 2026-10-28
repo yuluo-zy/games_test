@@ -2,22 +2,14 @@
 //! driver failures or fabricated device completion points are injected.
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    Error, ErrorKind,
-    device::{Device, DeviceConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        command_buffer::VulkanCommandPool,
-        descriptor_set::{
-            LayoutBinding, LayoutPlan, VulkanDescriptorPool, VulkanDescriptorSetLayout,
-        },
-        instance::{InstanceBuilder, ValidationMessenger},
-        sampler::Sampler,
-        semaphore::TimelineSemaphore,
-    },
-    resource::{GpuUse, SyncCell, UseVisitor},
-    sync::QueueId,
-};
+use rhapsody::{Error, ErrorKind, device::{Device, DeviceConfig}, sync::QueueId};
+use rhapsody::tracking::{GpuUse, SyncCell, UseVisitor};
+use rhapsody::command::command_buffer::VulkanCommandPool;
+use rhapsody::command::descriptor_set::{LayoutBinding, LayoutPlan, VulkanDescriptorPool, VulkanDescriptorSetLayout};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::sampler::Sampler;
+use rhapsody::native::instance::{InstanceBuilder, ValidationMessenger};
+use rhapsody::device::semaphore::TimelineSemaphore;
 use std::sync::{
     Arc,
     atomic::{AtomicUsize, Ordering},
@@ -32,7 +24,7 @@ fn fixture() -> Option<(Arc<Device>, ValidationMessenger)> {
                 .layers
                 .push(c"VK_LAYER_KHRONOS_validation".to_owned());
             let device = Device::new(
-                instance.build()?,
+                &instance.build()?,
                 None,
                 &DeviceConfig {
                     validation: true,
@@ -288,7 +280,7 @@ fn ignored_invalid_native_range_cannot_end_or_publish_a_submission() {
     let submitted = device.timelines().submitted(queue).unwrap();
     // SAFETY: no native memory operation is recorded. The deliberately invalid
     // retention request must poison recording even if its error is ignored.
-    let _ignored = unsafe { command.retain_opaque_buffer_range(buffer, 31, 2) };
+    let _ignored = unsafe { command.retain_opaque_buffer_range(&buffer, 31, 2) };
     assert_eq!(command.end().unwrap_err().kind(), ErrorKind::InvalidUsage);
     assert_eq!(device.timelines().submitted(queue).unwrap(), submitted);
     command.reset().unwrap();
@@ -325,7 +317,7 @@ fn nine_external_waits_and_signals_keep_last_owners_and_charge_actual_spill() {
     let before = device.allocator_stats().cpu_memory_usage().total();
     let pending = command
         .submit_to(
-            rhapsody::raw::device::DeviceQueue {
+            rhapsody::device::DeviceQueue {
                 handle: device.primary_queue(),
                 family: device.queue_family_index(),
                 index: 0,
@@ -382,7 +374,7 @@ fn external_owner_and_nested_array_oom_each_leave_real_queue_and_semaphores_unch
             .set_host_budget(before + spare)
             .unwrap();
         let result = command.submit_to(
-            rhapsody::raw::device::DeviceQueue {
+            rhapsody::device::DeviceQueue {
                 handle: device.primary_queue(),
                 family: device.queue_family_index(),
                 index: 0,
@@ -408,7 +400,7 @@ fn external_owner_and_nested_array_oom_each_leave_real_queue_and_semaphores_unch
 
 #[test]
 fn descriptor_owner_row_oom_precedes_native_update_and_preserves_retry() {
-    use rhapsody::raw::binding::DescriptorSetBinding;
+    use rhapsody::command::binding::DescriptorSetBinding;
     let Some((device, messages)) = fixture() else {
         return;
     };

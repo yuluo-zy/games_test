@@ -1,20 +1,9 @@
 //! No-driver adapter for the production range planner and state table. Faults
 //! are injected by the caller before `publish`, just like a failed queue call.
-use rhapsody::{
-    Error, Result,
-    raw::allocator::AllocatorStats,
-    resource::{
-        OwnershipRange,
-        range_state::{RangeOwner, RangeStateTable, StatePatch},
-    },
-    rg::{
-        graph::{AccessDependency, FrameInstance},
-        queue_schedule::QueueDomain,
-        sync_plan::{SynchronizationConfig, SynchronizationPlanner, initial_native_state},
-        vulkan::AccessTable,
-    },
-    sync::SyncPoint,
-};
+use rhapsody::{Error, Result, rg::{graph::{AccessDependency, FrameInstance}, queue_schedule::QueueDomain, sync_plan::{SynchronizationConfig, SynchronizationPlanner, initial_native_state}, vulkan::AccessTable}, sync::SyncPoint};
+use rhapsody::tracking::OwnershipRange;
+use rhapsody::tracking::range_state::{RangeOwner, RangeStateTable, StatePatch};
+use rhapsody::accounting::AllocatorStats;
 use std::{collections::BTreeMap, sync::Arc};
 
 pub struct CpuRanges {

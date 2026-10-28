@@ -1,0 +1,2808 @@
+{
+  "source_commit": "6957077f905ab1ef1bb9d16ca3521ce555fa488e",
+  "branch": "codex/perf-windows-20261026",
+  "implementation_status": "engineering_fa98f8d; native_checkpoint_f39_Rhapsody_typechecks_and_heap2_passed; pending9_Tiny_compiler_OOM; tools135_44_94_passed; EffectsHost_fix_native_pending; old_failures_retained; strict_pixels_and_formal_CPU_acceptance_open",
+  "hardware": {
+    "cpu": "Intel Core i7-9700",
+    "gpu": "Intel UHD Graphics 630",
+    "driver": "31.0.101.2141",
+    "vulkan_api": "1.3.215",
+    "swapchain_maintenance1": false,
+    "present_wait": false,
+    "present_id": false
+  },
+  "checks": {
+    "current_default_workspace_all_targets": "Not rerun at c98be8e after latest diagnostic additions; historical prior result: passed .perf/workload-probe-workspace-default-check.log (2m45s)",
+    "current_cpu_probe_workspace_all_targets": "Not rerun at c98be8e after latest diagnostic additions; historical prior result: passed .perf/workload-probe-workspace-enabled-check.log (2m39s)",
+    "current_targeted_unit_and_gpu_tests": "new Rhapsody473+2ignored zeroVUID; consumers27+1; Collect8; draw-passes264(no test-support); fixture8; Tinyhost4. Previous Tinyfull remains306pass/1preexistingfloatfail/5ignored.",
+    "current_candidate_frozen_release": "Baseline common 000e7cc Release frozen/imported; current candidate Release build/freeze pending. Rich c98be8e freeze is debug and requested-target-only.",
+    "measurement_fixture_source": "committed29095eb",
+    "measurement_tools_source": "prospective policy a2a8fce100tests; paddingc81975c15; portable3e3b29c24pass0skip; previousc5a6125 archive76 retained",
+    "frozen_requested_integration_test_targets_completed": true,
+    "entire_frozen_cargo_invocations_passed": false,
+    "current_owner_cpu_crosscheck": "Not available in latest47bdd14 no-ETW round. Historicala2a8fce owner1.2780% quality remains in measurement_closure.",
+    "current_process_cpu_crosscheck": "Not available in latest47bdd14 no-ETW round. Historicala2a8fce precise policy/raw flags and old strict failures remain unchanged.",
+    "current_measurement_round_valid": false,
+    "probe_feature_off_overhead_at_most_one_percent": "not accepted",
+    "production_window_run": "previous failure: strict swapchainMaintenance1 requirement; user deferred compatibility work",
+    "macos_compile_and_runtime": "unverified",
+    "latest_python_tool_tests_passed": 24,
+    "latest_python_tool_tests_skipped": 0,
+    "current_rhapsody_library_ignored_not_passed": 2,
+    "current_new_cpu_storage_bytes_scratch_tests_passed": 8,
+    "current_tiny_constant_default_tests": "9 passed,0failed,0ignored",
+    "current_rhapsody_library_validation_gate_passed": true,
+    "current_rhapsody_library_test_count_scope": "latest corrected fixture strict rerun: 458 passed, 0 failed, 2 ignored; ignored not counted as passed",
+    "current_rhapsody_library_logical_tests_passed": 458,
+    "current_measurement_round_scope": "Latest47bdd14 short debug workload smoke: session/actual-workload valid, runner invalid without ETW; historicala2a8fce600/600 quality remains separately valid and unmodified.",
+    "latest_python_tool_test_scope": "Most recent portable24 only; policy100/padding15/archive76 are separate checked groups, not one combined total",
+    "latest_actual_workload_runtime": "47bdd14 debug60warm/30samples: session and actual_workload valid;31 raw rows,720 joined tasks/630 waves,90 cross-pass tasks are a subset; no CPU acceptance.",
+    "latest_separate_gpu_diagnostic": "47bdd14 debug: run/session/workload/GPU valid;91 frames720 timestamps;zero skips/pending/retained and zeroVUID;diagnostic only.",
+    "latest_surface_full_constants_pair": "0c6bc69: both children1pass/0ignored/0VUID; all1060u32 and recorded inputs equal for30frames per season; strict RGBA water/ice comparison FAILED.",
+    "binding_experiment_gain": "30-frame bill event reductions observed, but series invalid: direct dispatch357/355 and row18 recording chunks8/7; no whole-frame CPU gain"
+  },
+  "unverified": [
+    "Release600/3000 valid ETW measurement and feature-off<=1% probe overhead; latest short workload smoke has no ETW",
+    "Representative four-scene Windows baseline/candidate AB/BA/AB, same semantic/GPU workload and cost-shift review",
+    "All four scenes every-run render CPU p95<=16ms and no>5%p95/p99 regression",
+    "Strict water/ice pixels: full1060u32 FrameConstants match yet latest0c6bc69 RGBA still differs; complete GPU inputs/history and same-mode source of drift unresolved",
+    "Binding scratch/snapshot experiment is a candidate without verified whole-frame CPU gain; preserve actual owner/order/budget semantics",
+    "Complete upload/indirect-draw argument evidence and prospective source-reviewed series capabilities; no fake all-upload total",
+    "Preexisting rollercoaster float oracle mismatch remains open; full tiny suite failed, assertion unchanged",
+    "Full pressure/fault and three30-minute/10000-frame stability runs; production WSI user-deferred; macOS unverified"
+  ],
+  "evidence": [
+    {
+      "path": ".perf/stage0-check.log",
+      "sha256": "64783ae32c20c4fdd727f20f08e06830f3fe64f78e4d18a0f776143285f8eaf0"
+    },
+    {
+      "path": ".perf/stage1-probe-tests.log",
+      "sha256": "f652ad4ea26f25ef04dd5bdf0b5266d51199e8e3018e516ee0e312c709980e4e"
+    },
+    {
+      "path": ".perf/final-source-check.log",
+      "sha256": "00873fd678b1d7df492c4bca734c5cda4c857d08d71a4eef788f69a4c38750cd"
+    },
+    {
+      "path": ".perf/window-smoke-build.log",
+      "sha256": "8d1f85f61fba48ad7f7c1f46cd0c25e7b42205b638401bec57e8eb91fc87045a"
+    },
+    {
+      "path": ".perf/window-smoke-run.log",
+      "sha256": "462786646468cde52bbffe8959c66631c473f0625bdb453b08059211f233ef1b"
+    },
+    {
+      "path": ".perf/clock-calibration.json",
+      "sha256": "97db81338f91207b5dc6459998221145f52642cf7dc73c3b57d12faf5b998df8"
+    },
+    {
+      "path": ".perf/hardware-vulkan-summary.txt",
+      "sha256": "ed1ca01e0abedeb0e501091c03909d8f72198043dd361970ed05c70c56db8a8f"
+    },
+    {
+      "path": ".perf/hardware-capability-check.txt",
+      "sha256": "307c0fbe71dc91a159f46171a32e00b2c05656f993d4fa0320f44fbbd7f0d269"
+    },
+    {
+      "path": ".perf/etw-accounting-validation/result-independent-check.json",
+      "sha256": "82bbd64e12953316e278ecc3c0eec03cf9ea22d899117800795aa4a02c949cbe"
+    },
+    {
+      "path": ".perf/builds/win-baseline-v1/build.stderr.log",
+      "sha256": "85ec1bc2c451015f6680421d0cf9b4e1b2410b83d3267644688a2341c6dd5bd1"
+    },
+    {
+      "path": ".perf/retirement-lib-tests-final.log",
+      "sha256": "54db939aeb83ef97de884acadc030ee3649bea0329f9d90578c0dc32c8a6b230"
+    },
+    {
+      "path": ".perf/retirement-gpu-tests-final.log",
+      "sha256": "4768a79a0485dacdf3fbb8a6eed8fcb58a21904efb9cfa7f53c207b328a4929a"
+    },
+    {
+      "path": ".perf/retirement-validation-layer-tests.log",
+      "sha256": "ef95f256890091abfcc77fcfd1ea6cd1eb79f93a7909113a87604724821b0d48"
+    },
+    {
+      "path": ".perf/candidate-raster-gpu-tests.log",
+      "sha256": "5b54fc2f4209a06a835b50f0436f9eebbb64a2177e5844ff132edf8137dede85"
+    },
+    {
+      "path": ".perf/candidate-workspace-check.log",
+      "sha256": "5a8008c457f445f70a05c439b35d8ee1aaa30025038c02cecdb941143ae7f3db"
+    },
+    {
+      "path": ".perf/candidate-default-workspace-check.log",
+      "sha256": "f96940b214a1c17837b9fc6849610c15849173f0d8372d615a6f8199a330065c"
+    },
+    {
+      "path": ".perf/version-index-tests.log",
+      "sha256": "b379aafcb435f0d7cf4c3ed77f11be513bea03dd255c448942c7506ee668cf33"
+    },
+    {
+      "path": ".perf/collect-unit-tests-rerun.log",
+      "sha256": "9fc60928a0b90f59e1462893f49f9d2997245fda4b607227dd3930e7169dc94d"
+    },
+    {
+      "path": ".perf/candidate-headless-gameplay.log",
+      "sha256": "c4dd60318df64269ca28f62b4cf35bc58c4405b911b9403142d15e262d0318b2"
+    },
+    {
+      "path": ".perf/candidate-headless-gameplay-j1.log",
+      "sha256": "05ff299aed3f7b3f778da83fdabddbe1b8bfb2a9778ac1553f1f2fb2a65c9e4b"
+    },
+    {
+      "path": ".perf/candidate-headless-gameplay-receipts.log",
+      "sha256": "320b5e6ef7a92847a4b87198739f6f4f8508b452767ae8826a6973b15e5d4c4e"
+    },
+    {
+      "path": ".perf/headless-builds/closure-feature-pair.json",
+      "sha256": "a7559512d089f6905218964f51bd339d6b39ac3f0aa1eac54c1cbc0421224694"
+    },
+    {
+      "path": ".perf/headless-builds/closure-base-on/build.json",
+      "sha256": "37e506b376a2b8443457588055664312c182d1f5f16eedc6e61a037b9d400e05"
+    },
+    {
+      "path": ".perf/headless-builds/closure-base-off/build.json",
+      "sha256": "b0488766f3e71771f01c63256cccdc5009bfc3f6c454c5e0a20cf539efc986d9"
+    },
+    {
+      "path": ".perf/headless-runs/closure-etw-smoke/run.json",
+      "sha256": "2f86ebe099bf1a57657ff6319aaf9c0e70038b324031db98547cce08685a6513"
+    },
+    {
+      "path": ".perf/headless-runs/closure-static-long-1/run.json",
+      "sha256": "61272362573e3edf4cfaa302651e5837bb15a2f34b6f726bfe39ae969df15368"
+    },
+    {
+      "path": ".perf/headless-runs/closure-static-long-1/session.json",
+      "sha256": "248eba23958f9054639c7f98f450e4839c6c56336dc86a581949a99c6f234b43"
+    },
+    {
+      "path": ".perf/headless-runs/closure-static-long-1/cpu.json",
+      "sha256": "82ef94917183feb3a74213a9b7b2fff54965c46eb10d4cbcc2d5f43460069768"
+    },
+    {
+      "path": ".perf/closure-debug-smoke.log",
+      "sha256": "817903a402d58194e053e4cd9faa5ee3b6f070db672645495c83b89f8512f119"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check.log",
+      "sha256": "f6cadb69617a0a5b0e8e5c38ddff82050b43191eaebf9da9847f23317e89219a"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check-2.log",
+      "sha256": "89af041bc70616e4fac20eb375ffaa273d52653c78a20de600c85d28f15b6da0"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check-3.log",
+      "sha256": "2f88899384efb3700c6513015d27af545505e82c7eddfc971ea934669160aa17"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check-4.log",
+      "sha256": "04ec1267ade76fc002343f266ad784197011ff94fb3d0ded4ee5403fe3d9a192"
+    },
+    {
+      "path": ".perf/candidate-ownership-probe-check.log",
+      "sha256": "be0277d2e97610b79a592dbebb078d04335a1a714771e18a3cb65d91919925d7"
+    },
+    {
+      "path": ".perf/tool-integration-20261026-tests-full.log",
+      "sha256": "a8931857a2b40f642321b93f58da556a90acdd0d0bdcb7c66c52289915f2fbce"
+    },
+    {
+      "path": ".perf/tool-integration-20261026-tests.log",
+      "sha256": "66c22c1aa31d9fc417f2ab5c466d9abacf4c459d835ce71cdf25706cd7922d0a"
+    },
+    {
+      "path": ".perf/tool-integration-20261026.json",
+      "sha256": "f160c39346b37e10eed2b6a813a5e4f12a218de8d37f088c8fa6ee46811edd30"
+    },
+    {
+      "path": ".perf/candidate-ownership-rhapsody-lib.log",
+      "sha256": "7dde92430bca0684258c9f50eca04ca3cf6c72de8e0aee8016408309637fcbd0"
+    },
+    {
+      "path": ".perf/candidate-ownership-constant-default.log",
+      "sha256": "82e7a75e800633c913f81485ee890a7b23148bf980960dc6b5a65fe675d86a03"
+    },
+    {
+      "path": ".perf/candidate-unit-draw_template_cache__scope_tests__.log",
+      "sha256": "4ddcc8416af5aa7cd831a1d21702385e2478b1599eeb5863253663c3387ccdce"
+    },
+    {
+      "path": ".perf/candidate-unit-raster_host__vao_handle_resolution_tests__.log",
+      "sha256": "47110b594479abadd32d0ec7f07c5cb156e71e0533d73a60cd1f21473bd262a2"
+    },
+    {
+      "path": ".perf/candidate-unit-raster_host__constant_batch_gpu_tests__.log",
+      "sha256": "ce353dbf6625f7aad80b761b059b884e60ec0df9fc1f09b80227ec98412e527e"
+    },
+    {
+      "path": ".perf/candidate-unit-render_host__texture_release_tests__.log",
+      "sha256": "cb7d41f5b3f3513e0317d40b3b73a6babbbbf61f500e1875d828f705e9388d8e"
+    },
+    {
+      "path": ".perf/candidate-ownership-original_raster_gpu.log",
+      "sha256": "ed2fb816f0f6de411653a385bce272d6b2dd8b81e605d6f388edd8671a2d2c41"
+    },
+    {
+      "path": ".perf/candidate-ownership-vao_scope.log",
+      "sha256": "0f174bfe4451febbbdf6a36bc12be46d3c86f1ee52c5b1106ac4a3527519d9f8"
+    },
+    {
+      "path": ".perf/candidate-ownership-raster-gpu.log",
+      "sha256": "19a81c1027d6c377d5f59f2d14386a911d63a8c889100a29a1f17cbb2b7a2940"
+    },
+    {
+      "path": ".perf/candidate-budget-error-diagnostic.log",
+      "sha256": "0778baadd0798543e5c8956ef4f4155f7846106396781d2ed8304abdbbed8358"
+    },
+    {
+      "path": ".perf/declaration-rejection-workspace-check.log",
+      "sha256": "b53848ca5924303432f38806d1f471d62cca994126d92a5014a0f4135ff30bb2"
+    },
+    {
+      "path": ".perf/trace-archive-tools-20261026.json",
+      "sha256": "b6a8d4dcf8586102ff1e9c79df1e64118e1a78bcf861b8811b43d63f7e65b734"
+    },
+    {
+      "path": ".perf/trace-archive-tools-tests.log",
+      "sha256": "2ee59ffc026634e8ed2b2a1d2207b64138d1182bc764e3bcd0b5166671ca92ed"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-game-w600-n600-1/capture.json",
+      "sha256": "5005b4a13aa78bb2a6496ce1adc1748a3171fdd46a283a4219cdf72343b11097"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-game-w600-n600-1/native-counters.json",
+      "sha256": "16dc29bd7c2f0f6bb9624659095838d470fb0b401386cce81bc826817d3e459d"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-game-w600-n600-1/thread-cpu.json",
+      "sha256": "1d52ba40e47782c01e3c4e55970210264ace09368b41ee29defc6f8989ae1396"
+    },
+    {
+      "path": ".perf/thread-cpu-calibrations/thread-clock-quick-1/summary.json",
+      "sha256": "6bb02f1b07ead2c20b6e57bd5a73113df13f137e8c89b929e8ad676cd0f1661f"
+    },
+    {
+      "path": "C:\\Users\\liyu\\.codex\\visualizations\\2026\\10\\26\\01a17714-b237-7ed3-8e87-7aeaa53c4a51\\thread-diagnostic\\actual-results-20261026.md",
+      "sha256": "a51eef1acbafcc85ad1ac9fdd3abc075c427e38cd441cde250deffd7afff781f",
+      "scope": "staged actual clock evidence; no clean performance acceptance"
+    },
+    {
+      "path": "C:\\Users\\liyu\\.codex\\visualizations\\2026\\10\\26\\01a17714-b237-7ed3-8e87-7aeaa53c4a51\\thread-diagnostic\\README.md",
+      "sha256": "01d258454153df36a2a8ad44c796b252c81962f64362d5fad89a12a4c3ac8315",
+      "scope": "staged actual clock evidence; no clean performance acceptance"
+    },
+    {
+      "path": ".perf/declaration-rejection-core-raster.log",
+      "sha256": "4d30660ff131178456ee7d966d1909e3f3664553a7a05c72016dc0ef594886bd"
+    },
+    {
+      "path": ".perf/declaration-rejection-five-strict.log",
+      "sha256": "1eb1e73a9d96f2b5f7b4b6d0b49c4da27322b9ab69e398025fed9582ede54018"
+    },
+    {
+      "path": ".perf/declaration-rejection-rhapsody-lib.log",
+      "sha256": "a4b14b8d238064565c9c6af570478f1eff6cc22ce0c28e4c4a7e1bcfc666c14c"
+    },
+    {
+      "path": ".perf/thread-cpu-calibrations/thread-clock-4w-long-1/summary.json",
+      "sha256": "3054073e0a3bb15e039d9d8cddf3b347770f44039462d76dc961cb026c97ee10"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-4w-long-1-1-continuous/thread-cpu.json",
+      "sha256": "75d0037a973824a187d24dd0877898c49c5b1a1934ebab13e1d98a8a0e2a2398"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-4w-long-1-1-burst/thread-cpu.json",
+      "sha256": "a7c8cd139a938c5d40062b281371385050fea8dab9866332b7571e879208c749"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-4w-long-1-2-burst/thread-cpu.json",
+      "sha256": "9896a563d7f212d37b7d9c1a10dc3d4e098af572c00cc0c608a602345016550c"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-4w-long-1-2-continuous/thread-cpu.json",
+      "sha256": "6e6cb2858d1efd72e5aef88763bc3d3f0be1727d809dd56a875db1fdb4644c63"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-4w-long-1-3-continuous/thread-cpu.json",
+      "sha256": "379b0cfd626d98fb483b242878634583c2a5fbe3a2a392523b4c511ab73f5266"
+    },
+    {
+      "path": ".perf/thread-cpu-diagnostics/thread-clock-4w-long-1-3-burst/thread-cpu.json",
+      "sha256": "f7472d649027a60f43e3a808375d33110013454fc7ded5f0c24595ee1054d14e"
+    },
+    {
+      "path": ".perf/rhapsody-validation-fixtures-fixed.log",
+      "sha256": "ce64f57cc14738ffaaa0ec412ff217cd7335799748da15f61f81f20a6f41db66"
+    },
+    {
+      "path": ".perf/rhapsody-validation-fixtures-fixed-2.log",
+      "sha256": "8711d037f5a39ee88f6be52938abb01d9aca0c441c9e8696d09b36568eeb276e"
+    },
+    {
+      "path": ".perf/declaration-rejection-probe-check.log",
+      "sha256": "48f617e7c3b598fa45e26d2c41778907f86811e92fa6365c9490689716f34390"
+    },
+    {
+      "path": ".perf/candidate-country-pass-builder.log",
+      "sha256": "c933dce1865ff0a1e5a4fa351fd6f7bca61c03dfc3a980407858c14be94ff8fb"
+    },
+    {
+      "path": ".perf/candidate-country-1.log",
+      "sha256": "21929188e210336cfe311b91616582677dd21750134eb8d1a96918719a8971f1"
+    },
+    {
+      "path": ".perf/candidate-country-262.log",
+      "sha256": "cf9d7b8542561e9d1944496f089a15951aa7bcdff29646993affdf2cc7f33d53"
+    },
+    {
+      "path": ".perf/headless-runs/calibrated-clock-smoke-a2a8fce-1/run.json",
+      "sha256": "e934795708a6362442730d03fca15438383959b8bf308cabfca3734856db702e"
+    },
+    {
+      "path": ".perf/headless-runs/ownership-bill-alloc-on-1/diagnostic.json",
+      "sha256": "1445a68551948b511dedd35690e240d90eb3ab038cc47aececa6aceaf57b18e1"
+    },
+    {
+      "path": ".perf/headless-runs/ownership-bill-alloc-off-1/diagnostic.json",
+      "sha256": "fc75218411d48fe54baa9c1389f6b98850694d8ea7ba1af10b0357b831c54d6e"
+    },
+    {
+      "path": ".perf/constant-demand-tiny-lib-probe-strict.log",
+      "sha256": "37738fbec4f48f0dcd7155918ed8163fb8b2ca09a941947de199946e857b6a8a"
+    },
+    {
+      "path": ".perf/rollercoaster-old-probe-exact.log",
+      "sha256": "dc662cd7e9ff2088061382f11b83ef5df956bb049e0c7d408c156a3fec986911"
+    },
+    {
+      "path": ".perf/constant-demand-country-pass-builder.log",
+      "sha256": "511cfd13056cbb38788f55151dbf762f62fa135553f4b70a95ea8c11c9c66908"
+    },
+    {
+      "path": ".perf/constant-demand-country-pass-builder-fixed.log",
+      "sha256": "dabfc52c6db1d78d5e1c965dd2993649880c0a73d36726b0ab442d3dc2f7c52f"
+    },
+    {
+      "path": ".perf/constant-demand-country-draw-passes.log",
+      "sha256": "de3661e44f8e2fc8264f24e9d0a89776fffd00d5cccb4a9e8a224caab5e8d416"
+    },
+    {
+      "path": ".perf/texture-view-usage-strict.log",
+      "sha256": "ae5457fb91c9e5923c3fd249cb7f386af8ea8fe31441a0f034887b2a5c70b93d"
+    },
+    {
+      "path": ".perf/texture-view-usage-rhapsody-lib-strict.log",
+      "sha256": "1754a713de76301a8568063cad3ddc8024320b444c2625b66e70f311b36b62dd"
+    },
+    {
+      "path": ".perf/texture-view-range-strict.log",
+      "sha256": "18bff67c6c638ab4c2e65ae0d3a8b58525b960c350ec63e4ce28f97b281519f9"
+    },
+    {
+      "path": ".perf/surface-padding-tools-tests.log",
+      "sha256": "1b8d3c9fe2d3b5ababbad705dc6a64545f546a7440d7a70734744ff574e33e1a"
+    },
+    {
+      "path": ".perf/surface-runs/lake-correctness-a2a8fce-1/pair.json",
+      "sha256": "b1b9971db81819dee03b609c1b10636ec41825ae586e48ef7440c262c23af9f6"
+    },
+    {
+      "path": ".perf/constant-demand-cross-pass-fixed.log",
+      "sha256": "1e87ba0d09562f084e9904c5eddac98703186dd8ba6a918a3085bb303de2d2dd"
+    },
+    {
+      "path": ".perf/constant-demand-country-draw-passes-fixed.log",
+      "sha256": "bff6e354dd1bb0e9575f6e07a075b7821fe45d07a8914dab114fb8cf4d9f86f9"
+    },
+    {
+      "path": ".perf/mapped-raster-timeline-strict.log",
+      "sha256": "2eb6544832dee1d361d0416be79f5803c5eeebb6d5c871521dbc12d4e3fd761d"
+    },
+    {
+      "path": ".perf/constant-demand-tiny-lib-probe-strict-after-timeline.log",
+      "sha256": "7ba1625cf135af3b1a39d54c490ef1eb815ee7010f7e2f35156889a5e813109d"
+    },
+    {
+      "path": ".perf/headless-runs/workload-clean-smoke-47bdd14-1/run.json",
+      "sha256": "bab62211809aec897d7d483c40e9012b64fb4c9eafb99c4cefc1833d01331462"
+    },
+    {
+      "path": ".perf/headless-runs/workload-clean-smoke-47bdd14-1/session.json",
+      "sha256": "1d861f010b477b012c56d88271ba2d1362e2a6abd4d3a092d4ffd23f1fcadca4"
+    },
+    {
+      "path": ".perf/headless-runs/workload-clean-smoke-47bdd14-1/fixture.log",
+      "sha256": "843561ccfb4be8f2506d27f235ac1595c1dcc4ef816e430f870bc0326dd7f751"
+    },
+    {
+      "path": ".perf/gpu-diagnostics/workload-probe-47bdd14-1/run.json",
+      "sha256": "4519590595d8a1caf34c231560d829317aae6a50949f1e77cbeb7005468c227d"
+    },
+    {
+      "path": ".perf/gpu-diagnostics/workload-probe-47bdd14-1/session.json",
+      "sha256": "877fcc51bb86eb1a3aa50f384db4169382ee472301d154a8291a936de0753a18"
+    },
+    {
+      "path": ".perf/gpu-diagnostics/workload-probe-47bdd14-1/fixture.log",
+      "sha256": "63bd8472b09dfb5793f5b14a8a3a30905f6d86aad4c87ddb841bab463f75966d"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/pair.json",
+      "sha256": "b54042797709f617a720beebcddf6a75af723fdc4cea62165bf6e5e5ced4c420"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/water-compare.json",
+      "sha256": "157d86801152248c50c945c531c5273685d16e3c097bc679cb663ba49a2d02e6"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/ice-compare.json",
+      "sha256": "6b5f6957bbf9aca57f1ad33ed7fd3a1860551d0fcb7a6e07d21c9e6696a19ef9"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/process.log",
+      "sha256": "3139198ca02b8044f14ac6cbf0829260d116566ecaf52d2c2512fcbdd395f386"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/process.log",
+      "sha256": "141cf62bad694cf8b80558d3b57d2afb7ec2c659aeaac46806b937866b1cf822"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/artifacts.sha256.json",
+      "sha256": "7a3c9646e57ea91de5adb9f371b9b4ba14618d251711a4ed79bde741e151a948"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/artifacts.sha256.json",
+      "sha256": "805ab5be85b1eb59442eb19d5fff15fb2daa835227f03621956c3e185a104399"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/water/frame-20.rgba",
+      "sha256": "59e931bd9a6ffb8c0b4e489d5d2e046c23e029d3a8be4ad8653a5c8d86219aa9"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/water/frame-20.rgba",
+      "sha256": "a1f47c860e79d0d89ce9b4224d5d290b3374d47452b6d6a6bbb764f4064fc6ba"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/water/frame-30.rgba",
+      "sha256": "4ff4e9524abcae36dbdabe7e99c1b8e41895781ebfa3af1dbfb3517e0a146bc2"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/water/frame-30.rgba",
+      "sha256": "d354fa9c0daf8c5c9ca86195ea14a5a6e767803b4101dbd4933bfe36b2f11d2a"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/water/manifest.json",
+      "sha256": "7f33541e2572959d849ec33b8d1d17cfea2ddc77953b1ea2c8083852f0531f6e"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/water/manifest.json",
+      "sha256": "8d7d6632c88f6b9448a12b64fc41c3bc048fa88f0b8f28e6756e33dfc79a7450"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/ice/frame-20.rgba",
+      "sha256": "b21fbe622eb0b6243f81f63f6040a538f22daa4ec9cc9104c303045a57d35bdc"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/ice/frame-20.rgba",
+      "sha256": "ba5293a73eda1b9b534bd3ae1b7e138bf907066361a1614bcd657544f7255e0b"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/ice/frame-30.rgba",
+      "sha256": "d0ce58243e9f5656c4d161d818e6fc2721b139143106e6d7e4d5121e60ebb952"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/ice/frame-30.rgba",
+      "sha256": "73cffa2117a5c6d8bcc7efff72c7a40d60d742bfb334270fadc359630f002e03"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/inline/ice/manifest.json",
+      "sha256": "cc1ac7ca219740fd2577360f8c4fed2c5a5d50685a586d2ff209b2bf5e9c9a66"
+    },
+    {
+      "path": ".perf/surface-runs/lake-full-constants-0c6bc69-1/collect/ice/manifest.json",
+      "sha256": "0183c944a93669f339c76a1d3488204673c3af877e048b3884083692b8dac772"
+    },
+    {
+      "path": ".perf/headless-runs/binding-scope-debug-5767a40-static-1-off/run.json",
+      "sha256": "a65405e2cd1a7ded86fa52af8de9dd33c1d18a287c37a8e430f47742ebdc9dd6"
+    },
+    {
+      "path": ".perf/headless-runs/binding-scope-debug-5767a40-static-1-off/session.json",
+      "sha256": "d56996d4c5238635bfd8776d1f808ee5d25f1864358b9a4e5f0649c84c0c50a0"
+    },
+    {
+      "path": ".perf/headless-runs/binding-scope-debug-5767a40-static-1-off/fixture.log",
+      "sha256": "715aab570b3ca54da51c6716cf35ecd4ec0ed9e4bddc6a90b12c0c927fcf01c8"
+    },
+    {
+      "path": ".perf/headless-runs/binding-scope-debug-5767a40-static-1-on/run.json",
+      "sha256": "994a842e8b6725efe0f87dd6427af3e1d2708f9e994038cadbeb39d9df86a981"
+    },
+    {
+      "path": ".perf/headless-runs/binding-scope-debug-5767a40-static-1-on/session.json",
+      "sha256": "100f8c0c57d3d6abe327a4a57be9719c24d201c526083b8f253ea8fc2d66e5aa"
+    },
+    {
+      "path": ".perf/headless-runs/binding-scope-debug-5767a40-static-1-on/fixture.log",
+      "sha256": "7a9576be48b297ca640f79cdaa35cfe023d72905e8e918948fa567bfac78998c"
+    },
+    {
+      "path": ".perf/binding-scope-diagnostics/binding-scope-debug-5767a40-static-1/summary.json",
+      "sha256": "1eca078f98fc6d6ff14218223c3df1ecf13ff31887cba1b8d7f63bd3e5075c9e"
+    },
+    {
+      "path": ".perf/stage5-pressure-reclaim-strict.log",
+      "sha256": "192af72d84758e67444df1bd12c3af95eb29eff42baa991c1cf29579878857d6"
+    },
+    {
+      "path": ".perf/stage5-retirement-reservation-strict.log",
+      "sha256": "dc2764a524fb349bf2448285780f44375e0866b6b31545e9bdd4ba16f3ba2d43"
+    },
+    {
+      "path": ".perf/binding-stage5-surface-workspace-default-check.log",
+      "sha256": "c67469b6a24d5d01105a8010f6c537dc538ed6470c85def4e19489052599c98c"
+    },
+    {
+      "path": ".perf/binding-stage5-surface-workspace-enabled-check.log",
+      "sha256": "c4bdbe06586f64c584603bb3e6a81f57997b5cd513724a85b485462d1d33f81f"
+    },
+    {
+      "path": ".perf/surface-comparator-v3-tests.log",
+      "sha256": "80b6232ad5e8fdd68ec8ed7689aaf3856c98a77ff3ef45e9028a3f2c360dccc6"
+    }
+  ],
+  "source_candidate_commit": "5767a4073d0adbb8c9bd2daee93f6e7930a25ca4",
+  "candidate_commits": {
+    "ownership_short_locks": "b792e4c",
+    "graph_version_index": "50d8885",
+    "shared_bounded_reclaim": "c5171f3",
+    "collect_convergence": "1da8d40",
+    "reserved_retirement_owners": "67ddafa",
+    "device_lost_fixture": "53e9bb1",
+    "headless_receipt_fixture": "53bbbef",
+    "measurement_fixture": "29095eb",
+    "etw_accounting_and_target_freeze": "27f77c5",
+    "measurement_identity_and_clock_diagnostics": "a84ad66",
+    "exclusive_cpu_storage_owners": "44956f8",
+    "collect_reflection_scope": "b79443e",
+    "typed_entity_vao_lookup": "cca55ad",
+    "scoped_vao_wrapper_reuse": "6ecdb2f",
+    "view_publication_generation_and_globals": "19c52eb",
+    "verified_trace_csv_archive": "c5a6125",
+    "task_batched_constants": "709d717",
+    "bounded_device_owned_commit_scratch": "a36fbd3",
+    "first_declaration_error_retention": "6a85ec8",
+    "native_safe_synthetic_transfer_fixtures": "f4e3e04",
+    "scoped_surface_reference_and_worker_order": "fb778bd",
+    "management_modes_and_cpu_read_brackets": "e38ae7f",
+    "original_lake_production_graph_capture": "fa90e4a",
+    "progress_evidence": "6b93b83",
+    "constant_backing_diagnostics": "9b44c69",
+    "exact_surface_compare_tools": "6ff4b47",
+    "physical_allocation_bill_export": "85226ab",
+    "prospective_clock_policy": "a2a8fce",
+    "capture_padding_contract": "c81975c",
+    "explicit_native_view_usage": "f734239",
+    "portable_clock_sources": "3e3b29c",
+    "demand_prepared_mixed_constant_inventory": "7c42f3a",
+    "legal_host_signaled_timeline_fixture": "370f795"
+  },
+  "headless_diagnostic": {
+    "profile": "debug",
+    "validation_layer": true,
+    "stage_logging": true,
+    "frames": 30,
+    "resolution": [
+      1280,
+      720
+    ],
+    "collect_jobs": 720,
+    "cross_pass_jobs": 90,
+    "drained_descriptor_owners_actual": [
+      2,
+      0,
+      1,
+      18
+    ],
+    "drained_descriptor_owners_expected": [
+      2,
+      0,
+      1,
+      18
+    ],
+    "receipt_pacing_fix_commit": "53bbbef",
+    "frame_cpu_p95_acceptance": false,
+    "binary_identity": [
+      {
+        "path": "target/debug/deps/original_gameplay_chain-fe3723ef539e956d.exe",
+        "sha256": "d5e5c7b18f7e031e17bc88cc2d985769ac47d4d08682690f880295dc94ad31df"
+      },
+      {
+        "path": "target/debug/deps/original_gameplay_chain-fe3723ef539e956d.pdb",
+        "sha256": "8bb9797334ce2295f0296e0afb8d825adf83fe5b0cd6ebdf1179526782747b35"
+      }
+    ],
+    "source_commit": "53bbbef87fd2ce63906e478dc0ea2b109c14a398",
+    "scope": "Historical53bbbef debug correctness run; not the currently modified source or WSI performance acceptance."
+  },
+  "diagnostic_failures_retained": [
+    {
+      "path": ".perf/retirement-reservation-diagnostic.log",
+      "reason": "initial 64-byte Drop allocation; fixed and rerun"
+    },
+    {
+      "path": ".perf/candidate-headless-gameplay.log",
+      "reason": "parallel compilation allocation failures; rerun with -j1"
+    },
+    {
+      "path": ".perf/candidate-headless-gameplay-j1.log",
+      "reason": "fixture receipt FIFO out of sync with session collection; fixed without weakening assertions and rerun"
+    },
+    {
+      "path": ".perf/closure-debug-smoke.log",
+      "reason": "old endpoint-equality assertion rejected three moving sheep and six accessories; retained as failed diagnostic"
+    },
+    {
+      "path": ".perf/headless-runs/closure-etw-smoke/run.json",
+      "reason": "owner/process OS cumulative discrepancies exceeded2%; round remains invalid"
+    },
+    {
+      "path": ".perf/headless-runs/closure-static-long-1/run.json",
+      "reason": "owner0.53423% passes but process4.75882% fails; whole600/3000 round invalid"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check.log",
+      "reason": "first current combined-source compilation failure; retained, not counted passed"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check-2.log",
+      "reason": "second current combined-source compilation failure; retained, not counted passed"
+    },
+    {
+      "path": ".perf/candidate-ownership-default-check-3.log",
+      "reason": "third current combined-source compilation failure; corrected before check4 success; original log retained"
+    },
+    {
+      "path": ".perf/candidate-ownership-raster-gpu.log",
+      "reason": "core16 overall failed14passed/2failed; expected original budget errors were masked"
+    },
+    {
+      "path": ".perf/candidate-budget-error-diagnostic.log",
+      "reason": "focused run failed0passed/1failed; original OOM surfaced as graph UninitializedRead"
+    },
+    {
+      "path": ".perf/declaration-rejection-rhapsody-lib.log",
+      "reason": "458 logical successes/2 ignored but forced validation emits buffer-09095 VUID; whole gate failed; synthetic family fixture corrected but not rerun"
+    },
+    {
+      "path": ".perf/rhapsody-validation-fixtures-fixed.log",
+      "reason": "Intermediate synthetic queue-family fixture attempt failed; retained before corrected strict rerun"
+    },
+    {
+      "path": ".perf/constant-demand-tiny-lib-probe-strict.log",
+      "reason": "Full tiny failed306/1/5ignored; preexisting rollercoaster and old VkEvent VUID remain gates"
+    },
+    {
+      "path": ".perf/rollercoaster-old-probe-exact.log",
+      "reason": "Old executable reproduces exact case4327 mismatch; not a pass"
+    },
+    {
+      "path": ".perf/constant-demand-country-pass-builder.log",
+      "reason": "Initial E0507 fixture borrow compile failure, retained after clone correction"
+    },
+    {
+      "path": ".perf/constant-demand-country-draw-passes.log",
+      "reason": "264pass/1fail cross-pass tagged-slice demand test; suite fails"
+    },
+    {
+      "path": ".perf/surface-runs/lake-correctness-a2a8fce-1/pair.json",
+      "reason": "Inline test returned0 but validation invalidated gate; no Collect/pair comparison"
+    },
+    {
+      "path": ".perf/constant-demand-tiny-lib-probe-strict-after-timeline.log",
+      "reason": "Latest full probe direct-EXE306/1oldrollercoaster/5ignored, zero actual VUID; suite remains failed, wrapper broad-match false positive separately noted"
+    }
+  ],
+  "stage_progress": {
+    "0": "source/tooling and29095eb frozen Release integration-test pair exist; full Cargo invocations and production WSI not accepted",
+    "1": "Historicala2a8fce debug600/600 clock-quality valid unchanged. New47bdd14 short debug workload records valid but noETW runner invalid. Release600/3000 and probe-off1% remain open.",
+    "2": "Isolated measurement-only baseline ef5568b prepared; no valid representative four-scene Release baseline/candidate series. New short47bdd14 workload/GPU smokes are not a substitute.",
+    "3": "Input-matched demand diagnostic backing0/scans/locks retained; new workload counters have real short debug evidence. Binding scratch/snapshot remains experimental; no comparable clean CPU gain accepted.",
+    "4": "Latest0c6bc69 real lake inline/Collect children passed tests withoutVUID; complete recorded inputs and1060u32 constants match30frames/season, but water/ice raw pixels strictly FAIL. Older invalid and same-mode drift evidence retained.",
+    "5": "reserved nodes and bounded reclaim source previously validated; complete sustained-pressure/fault/stability acceptance still open; legacy raw retire fallback remains",
+    "6": "Final release freezing/AB/16ms/long-run/macOS incomplete, no push"
+  },
+  "local_diagnostics_not_frame_gains": {
+    "graph_version_query_100000_debug_ns": {
+      "scan": 3793447200,
+      "index": 5302500,
+      "committed_passes": 877
+    },
+    "zero_allocations_proven_for": [
+      "pending_receipt_drop_full_host_budget",
+      "busy_command_pool_collection",
+      "statistics_release",
+      "unused_dedicated_buffer_drop"
+    ],
+    "whole_frame_improvement_percent": null,
+    "evidence_scope": "Historical targeted source diagnostics; current combined candidate still requires rerun. No whole-frame speedup is accepted.",
+    "historical_debug_management_bill": {
+      "source": ".perf/closure-debug-smoke/session.json",
+      "scope": "Historical30-frame debug difference counters; not exclusive CPU costs or current-source gains",
+      "per_frame_deltas": {
+        "reflection_queries": 777,
+        "reflection_hits": 777,
+        "constant_block_takes": 384,
+        "collected_uniform_write_bytes": 19636,
+        "binding_resource_inputs": 1301,
+        "prepared_bindless_draws": 361,
+        "vao_full_refreshes": 2,
+        "vao_list_entries": 344,
+        "vao_queried_entities": 190,
+        "vao_unique_visits": 128,
+        "vao_publications": 3,
+        "vao_snapshot_allocations": 63
+      },
+      "end_cache_stock_not_per_frame_unique_variants": 118,
+      "whole_frame_distinct_physical_owner_or_vao_count": null
+    }
+  },
+  "html_audit": {
+    "path": "C:/Users/liyu/.codex/visualizations/2026/10/26/01a17788-ae30-7cc2-b9aa-d5ce9dd05608/static-frame-cpu-report.html",
+    "executed_game_or_benchmarks": false,
+    "source_hashes_matching_at_agent_review": "21/22; profiling.rs changed with retirement work",
+    "result": "source candidates confirmed; no static frame counts/bytes/CPU/FPS measurements"
+  },
+  "remaining_task_list": "docs/performance/remaining-tasks-20261026.md",
+  "schema": "windows-perf-progress-v2",
+  "updated_local_date": "2026-10-27",
+  "source_candidate_worktree_dirty": true,
+  "source_candidate_identity_note": "Latest independently checked frozen experimental source5767a40 is debug binding diagnostic only; source47bdd14 workload and0c6bc69 surface evidence each retain their separate frozen identity. No frozen Release candidate or clean CPU benefit is accepted.",
+  "historical_validation": {
+    "source_commit": "53bbbef87fd2ce63906e478dc0ea2b109c14a398",
+    "scope": "Earlier source through53bbbef; none of these successes verifies the current combined ownership/Collect candidate.",
+    "checks": {
+      "default_workspace_all_targets": "passed",
+      "cpu_probe_unit_tests": 10,
+      "etw_accounting_unit_tests": 5,
+      "cpu_probe_workspace_all_targets": "passed",
+      "debug_window_build": "passed",
+      "production_window_run": "failed: strict presentation shutdown requires swapchainMaintenance1",
+      "release_build": "failed: country-core rustc allocation failure, j2; no frozen binary",
+      "coarse_clock_min_positive_ns": 15625000,
+      "etw_official_crosscheck_relative_error": 8.554622141460925e-05,
+      "coarse_os_counter_relative_error": 0.07283719565091142,
+      "candidate_default_workspace_all_targets": "passed; CARGO_INCREMENTAL=0, -j1, --locked --offline",
+      "candidate_cpu_probe_workspace_all_targets": "passed; CARGO_INCREMENTAL=0, -j1, --locked --offline",
+      "rhapsody_library_tests_passed": 445,
+      "rhapsody_library_diagnostics_ignored_not_passed": 2,
+      "rhapsody_integration_tests_passed": 55,
+      "rhapsody_explicit_validation_layer_integration_tests_passed": 55,
+      "retirement_reservation_tests_passed": 6,
+      "candidate_raster_gpu_tests_passed": 15,
+      "draw_pass_tests_passed": 260,
+      "headless_original_gameplay_30frames_1280x720": "passed; correctness diagnostic, not WSI performance acceptance"
+    },
+    "ignored_tests_count_as_passed": false
+  },
+  "current_applied_candidates": [
+    {
+      "area": "reflection",
+      "implementation": "immutable Collect-scope(shader,variant) reflection Arc map with32MiB retention bound, real capacity/rehash-peak CPU reservation; fixed single draws keep resolver fallback",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "gain": null
+    },
+    {
+      "area": "vao",
+      "implementation": "typed entity VAO lookup plus unresolved legacy scan; same-frame full/subset/full wrapper reuse with actual generation/native-owner revalidation and budgeted table backing; both consumers retained",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "gain": null
+    },
+    {
+      "area": "constants",
+      "implementation": "opaque non-Clone-budgeted CpuBytes, task block stock/batch returns, bounded64-item owner native-range allocation then writes outside allocator lock; failure retains original CPU lease",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "gain": null
+    },
+    {
+      "area": "commit_scratch",
+      "implementation": "exclusive device-budgeted leases over existing bounded CpuPool;8 leases/8MiB total/1MiB cached,1MiB per lease; reset graph-local state on return",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "gain": null
+    },
+    {
+      "area": "view_generation",
+      "implementation": "lock-free-of-native-creation miss; short slots-before-cache publish with complete generation and physical-owner recheck; rejected/duplicate native candidate dropped outside locks",
+      "classification": "correctness_fix_with_unmeasured_cost",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "gain": null
+    },
+    {
+      "area": "frame_globals",
+      "implementation": "clone/replace immutable Arc under mutex, clone sampled table/drop old owners outside mutex",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "gain": null
+    },
+    {
+      "area": "collect_acceptance",
+      "implementation": "test-support genuine inline/worker surface reference, unique-VAO ordering, transparent pixels, completed-Collect/unsubmitted-graph cancellation, CPU/native constant and write-error recovery test code; real rocky-lake Autumn/Winter raw-capture fixture",
+      "validation": "Targeted tests, new default/probe, core16/graph5 and corrected strict full-library rerun passed; representative lake pixels/four-scene performance remain open",
+      "mid_worker_cancellation_supported": false,
+      "gain": null
+    }
+  ],
+  "remaining_ownership_candidates": [
+    "binding templates/static draw-description reuse: require exact physical identities and measured repeat rate",
+    "upload payload preparation outside uploads lock with original FIFO, capacity and partial-acceptance protocol",
+    "COW budget lease with outstanding reservations and partially uploaded-owner lifetime",
+    "lazy binding requirements and compatible native bind dedup: require measurement before default-path implementation"
+  ],
+  "frozen_release_pair": {
+    "scope": "Actual29095eb release integration-test EXE/PDB pair only; not later ownership source or production-window acceptance",
+    "metadata_path": ".perf/headless-builds/closure-feature-pair.json",
+    "valid_same_source_build_config": true,
+    "source_unchanged_after_both_builds": true,
+    "requested_test_targets_completed": true,
+    "entire_cargo_builds_passed": false,
+    "on": {
+      "label": "closure-base-on",
+      "executable": "C:\\game\\.perf\\headless-builds\\closure-base-on\\original_gameplay_chain-00f90e0721e8c60b.exe",
+      "executable_sha256": "7113e4960d6e972a8e9f258699eb29a043a1a8b718d5d488d390e22ac523fdeb",
+      "files": {
+        "original_gameplay_chain-00f90e0721e8c60b.exe": "7113e4960d6e972a8e9f258699eb29a043a1a8b718d5d488d390e22ac523fdeb",
+        "original_gameplay_chain-00f90e0721e8c60b.pdb": "e26076fe3f8938e0b0a72f4869a4f73cdb1f4b529a2f5d1dd6f4498dcd58bee9",
+        "fmod.dll": "d563ad96042c096985735b0d1fdab80fe5c7f27663171ff1550ac8ebf4c7eba6",
+        "fmodstudio.dll": "dc61fae2e70ec3a16fa78b678a0fc9ff1852491077a21c2b9c11bf4d160207ff"
+      },
+      "source_commit": "29095eb143a029eb32edef56176bc1b6e3577c77",
+      "source_content_sha256": "f7468a9e3df20837c620e6a4b00751d5c40389efb9c2c11fa9f4790eb7860590",
+      "dirty": false,
+      "profile": "release",
+      "features": [
+        "default(mimalloc)",
+        "cpu-probe"
+      ],
+      "cpu_probe_feature": true,
+      "allocator": "mimalloc",
+      "incremental": false,
+      "jobs": 1,
+      "build_environment_sha256": "75ad81a2ed761327f3f04438c064bd7c77a833f67575e08cd5ec70c76d74556e",
+      "cargo_lock_sha256": "61808d35effd5095a81591fa326e63adc5c3a2439f459fc3656742bdc87ede36",
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+      "requested_test_target_completed": true,
+      "entire_cargo_build_passed": false,
+      "source_verified_after_freeze": true,
+      "metadata_path": ".perf/headless-builds/closure-base-on/build.json",
+      "artifact_sizes": {
+        "original_gameplay_chain-00f90e0721e8c60b.exe": 38108672,
+        "original_gameplay_chain-00f90e0721e8c60b.pdb": 148484096,
+        "fmod.dll": 1852416,
+        "fmodstudio.dll": 1519104
+      }
+    },
+    "off": {
+      "label": "closure-base-off",
+      "executable": "C:\\game\\.perf\\headless-builds\\closure-base-off\\original_gameplay_chain-9002b51216012401.exe",
+      "executable_sha256": "a98475d2d8ae27a7f68a96372be8ff1eeb82f253f49758e3c1bcff34dac717c6",
+      "files": {
+        "original_gameplay_chain-9002b51216012401.exe": "a98475d2d8ae27a7f68a96372be8ff1eeb82f253f49758e3c1bcff34dac717c6",
+        "original_gameplay_chain-9002b51216012401.pdb": "a90ad7c334ee71e8e9a4cbac554b5c7262b87259cc004c2e8bc0a4f30e1b0bf9",
+        "fmod.dll": "d563ad96042c096985735b0d1fdab80fe5c7f27663171ff1550ac8ebf4c7eba6",
+        "fmodstudio.dll": "dc61fae2e70ec3a16fa78b678a0fc9ff1852491077a21c2b9c11bf4d160207ff"
+      },
+      "source_commit": "29095eb143a029eb32edef56176bc1b6e3577c77",
+      "source_content_sha256": "f7468a9e3df20837c620e6a4b00751d5c40389efb9c2c11fa9f4790eb7860590",
+      "dirty": false,
+      "profile": "release",
+      "features": [
+        "default(mimalloc)"
+      ],
+      "cpu_probe_feature": false,
+      "allocator": "mimalloc",
+      "incremental": false,
+      "jobs": 1,
+      "build_environment_sha256": "75ad81a2ed761327f3f04438c064bd7c77a833f67575e08cd5ec70c76d74556e",
+      "cargo_lock_sha256": "61808d35effd5095a81591fa326e63adc5c3a2439f459fc3656742bdc87ede36",
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+      "requested_test_target_completed": true,
+      "entire_cargo_build_passed": false,
+      "source_verified_after_freeze": true,
+      "metadata_path": ".perf/headless-builds/closure-base-off/build.json",
+      "artifact_sizes": {
+        "original_gameplay_chain-9002b51216012401.exe": 38066176,
+        "original_gameplay_chain-9002b51216012401.pdb": 148336640,
+        "fmod.dll": 1852416,
+        "fmodstudio.dll": 1519104
+      }
+    },
+    "overhead_acceptance": false
+  },
+  "measurement_closure": {
+    "status": "prospective_debug_quality_valid_only",
+    "source_commit": "a2a8fcec486747b1c8b4c827e9b3e509bf126635",
+    "run_path": ".perf/headless-runs/calibrated-clock-smoke-a2a8fce-1/run.json",
+    "round_valid": true,
+    "debug": true,
+    "warmup_frames": 600,
+    "samples": 600,
+    "executed_frames": 601,
+    "clock_policy": {
+      "id": "windows-etw-qpc-calibrated-v1",
+      "definition_sha256": "e17a3a41ec2020d6964827d77d71c4d282cc31ff4d070571aa9c0c3ed6e2de81",
+      "calibration_sha256": "6a3274f4d8753d30b04348a701804bf4a796788c5ab11b11cbd140ce467330ae",
+      "hardware_sha256": "3aec5a177c83fde9b04efa0181f4eaa998ec153bed35da8c17007d1f1a0c9280"
+    },
+    "owner_os_relative_error": 0.012780145554035567,
+    "process_os_relative_error": 0.003694274669972236,
+    "official_process_relative_error": 1.060260011916033e-05,
+    "lifecycle_tids": 16,
+    "lifecycle_complete": true,
+    "raw_counters_corrected": false,
+    "trace_csv_archive": {
+      "schema": "lossless-trace-csv-archive-v1",
+      "path": "C:\\game\\.perf\\headless-runs\\calibrated-clock-smoke-a2a8fce-1\\schedule.csv.gz",
+      "codec": "gzip",
+      "raw_path": "C:\\game\\.perf\\headless-runs\\calibrated-clock-smoke-a2a8fce-1\\schedule.csv",
+      "raw_sha256": "db3ac74da6de1d7c4c7a1c09593671d7a3e6e6478bec507bb57b2f5499867e8e",
+      "compressed_sha256": "5957defa0026a398a5e6b66db88c7089a667c4ec84572449f0793367aa77b848",
+      "raw_bytes": 2010015522,
+      "compressed_bytes": 246037246,
+      "roundtrip_verified": true,
+      "raw_removed": true,
+      "etl_retained": true
+    },
+    "clean_release_candidate": false,
+    "production_16ms_acceptance": false,
+    "probe_overhead_acceptance": false,
+    "old_strict_runs_reclassified": false
+  },
+  "remote_delivery": {
+    "authorized_after_requested_work_completed": true,
+    "pushed": false,
+    "remote": "git@github.com:yuluo-zy/games_test.git",
+    "source_branch": "codex/render-cpu-cleanup-20261026",
+    "intended_new_branch": "codex/perf-windows-20261026",
+    "audited_remote_tip": "8fd2a3c2c90d4f241332bee1a595e7f038a76546",
+    "real_source_commit": "6957077f905ab1ef1bb9d16ca3521ce555fa488e",
+    "real_source_parent_equals_remote_tip": true,
+    "local_import_root_not_publication_parent": "b91d512",
+    "project_path_mapping": "Cgame/<path> -> upstream/tiny-glade/<path>",
+    "import_source_eol_only_differences": [
+      "crates/systems/critters/src/bird_spots.rs",
+      "crates/systems/critters/src/startup_sheep.rs",
+      "tests/fixtures/native/photo-tree-demo.txt",
+      "tests/fixtures/native/photo-tree-full.txt"
+    ],
+    "source695_import_semantic_differences": [],
+    "preserve_upstream_history_and_omitted_RE_assets_reports": true,
+    "remote_project_archive_report_paths_absent_from_copy": 11417,
+    "strategy": "Start separate publication branch from real695 descendant of8fd, explicitly record four-file import-byte normalization, replay only post-b91d512 stage commits under tiny-glade/, verify final mapped source identity and recheck remote; do not force-push independent import root."
+  },
+  "evidence_identity_scope": "Historical identities/failures remain unchanged. Latest47bdd14/0c6bc69 small JSON/logs and eight original RGBA files were independently checked and hashed; no new runtime, compile or benchmark was started. Latest5767a40 binding raw sessions/run references and stage5 strict logs were independently checked; no new execution was started.",
+  "current_compile_validation": {
+    "scope": "Checked working-tree snapshots only; current targeted/GPU verification and later source changes are not implied passes.",
+    "default": {
+      "passed": true,
+      "log": ".perf/candidate-ownership-default-check-4.log",
+      "elapsed": "2m33s"
+    },
+    "cpu_probe": {
+      "passed": true,
+      "log": ".perf/candidate-ownership-probe-check.log",
+      "elapsed": "38.64s"
+    },
+    "followup_source_fix": "6a85ec8 first declaration error and into_parts consumers; new default/probe/core16/graph5 passed; f4e3e04 native-safe fixture strict library rerun passed",
+    "prior_compilation_failures_retained": 3,
+    "declaration_rejection_default": {
+      "passed": true,
+      "elapsed": "2m40s",
+      "log": ".perf/declaration-rejection-workspace-check.log"
+    },
+    "latest_probe_api_check": {
+      "passed": true,
+      "elapsed": "2m36s",
+      "log": ".perf/declaration-rejection-probe-check.log"
+    },
+    "latest_demand_source_check": {
+      "default": "running/pending",
+      "probe": "running/pending",
+      "default_log": ".perf/constant-demand-workspace-default-check.log",
+      "probe_log": ".perf/constant-demand-workspace-probe-check.log",
+      "earlier_graph_API_passes_do_not_verify_new_source": true
+    }
+  },
+  "latest_tool_validation": {
+    "commit": "3e3b29c",
+    "passed": 24,
+    "skipped": 0,
+    "scope": "portable source/path/declaration tests only; original17+new7, independent copy rerun passed; not a combined139-test suite or renderer performance",
+    "other_verified_groups": {
+      "policy100": "a2a8fce",
+      "padding15": "c81975c",
+      "archive76_historical": "c5a6125"
+    }
+  },
+  "current_runtime_validation": {
+    "source_scope": "Code committed through370f795; Country targeted and mapped strict pass. Complete tiny direct-EXE rerun zero VUID but failed306/1/5ignored due unchanged rollercoaster; workspace checks running; no performance acceptance",
+    "rhapsody_library": {
+      "passed": 458,
+      "failed": 0,
+      "ignored_not_passed": 2,
+      "validation_gate_passed": true,
+      "vuid_observed": false,
+      "source_commit": "f734239",
+      "log": ".perf/texture-view-usage-rhapsody-lib-strict.log",
+      "scope": "checked view-fix snapshot, not newer tiny fixture/demand whole-source gate"
+    },
+    "new_cpu_storage_bytes_scratch_subset": {
+      "passed": 8,
+      "failed": 0,
+      "included_in_library_total": true
+    },
+    "tiny_constant_default": {
+      "passed": 9,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-ownership-constant-default.log"
+    },
+    "remaining_gpu_correctness_and_performance": "pending",
+    "reflection_scope": {
+      "passed": 6,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-unit-draw_template_cache__scope_tests__.log"
+    },
+    "typed_vao": {
+      "passed": 3,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-unit-raster_host__vao_handle_resolution_tests__.log"
+    },
+    "native_constant": {
+      "passed": 3,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-unit-raster_host__constant_batch_gpu_tests__.log"
+    },
+    "texture_lifetime": {
+      "passed": 4,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-unit-render_host__texture_release_tests__.log"
+    },
+    "original_shader_gpu": {
+      "passed": 2,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-ownership-original_raster_gpu.log"
+    },
+    "vao_scope": {
+      "passed": 4,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-ownership-vao_scope.log"
+    },
+    "strict_gpu_scope": "Actual strict core16/graph5 and latest corrected full library have no VUID/Validation Error; earlier full-library VUID failure retained separately",
+    "core_raster_draw": {
+      "passed": 16,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "suite_passed": true,
+      "validation_gate_passed": true,
+      "vuid_observed": false,
+      "elapsed_seconds": 3.24,
+      "log": ".perf/declaration-rejection-core-raster.log"
+    },
+    "previous_rhapsody_library_snapshot": {
+      "passed": 453,
+      "failed": 0,
+      "ignored_not_passed": 2,
+      "elapsed_seconds": 8.21,
+      "log": ".perf/candidate-ownership-rhapsody-lib.log"
+    },
+    "previous_core_raster_draw_failure": {
+      "passed": 14,
+      "failed": 2,
+      "ignored_not_passed": 0,
+      "suite_passed": false,
+      "log": ".perf/candidate-ownership-raster-gpu.log",
+      "failure": "Expected original OutOfHostMemory masked by graph UninitializedRead",
+      "diagnostic_log": ".perf/candidate-budget-error-diagnostic.log",
+      "corrected_graph5_and_core16_retry": "pending"
+    },
+    "graph_first_error": {
+      "passed": 5,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "suite_passed": true,
+      "validation_gate_passed": true,
+      "vuid_observed": false,
+      "elapsed_seconds": 0.39,
+      "log": ".perf/declaration-rejection-five-strict.log"
+    },
+    "previous_rhapsody_library_validation_failure": {
+      "passed": 458,
+      "failed": 0,
+      "ignored_not_passed": 2,
+      "elapsed_seconds": 8.78,
+      "logical_test_result_ok": true,
+      "validation_gate_passed": false,
+      "validation_error": "VUID-VkBufferMemoryBarrier2-buffer-09095",
+      "log": ".perf/declaration-rejection-rhapsody-lib.log",
+      "cause": "Synthetic fake family 1-to-0 transfer submitted to actual single-family GPU",
+      "corrected_fixtures": [
+        "crates/rhapsody/src/device/pending_acquire.rs",
+        "crates/rhapsody/src/transfer.rs"
+      ],
+      "corrected_fixtures_rerun": "pending",
+      "real_distinct_family_hardware": "unverified"
+    },
+    "country_pass_builder": {
+      "passed": 166,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-country-pass-builder.log"
+    },
+    "country_lease": {
+      "passed": 1,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-country-1.log"
+    },
+    "country_draw_passes": {
+      "passed": 262,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/candidate-country-262.log"
+    },
+    "representative_water_ice_fixture": {
+      "actual_inline_run": true,
+      "inline_test_returncode": 0,
+      "inline_gate_valid": false,
+      "collect_started": false,
+      "gpu_pixel_acceptance": false,
+      "pair_path": ".perf/surface-runs/lake-correctness-a2a8fce-1/pair.json",
+      "reason": "packed sampling view validation VUID",
+      "representative_ROI_visible": true,
+      "targeted_native_view_fix_passes_do_not_replace_real_rerun": true
+    },
+    "rhapsody_library_before_view_fix": {
+      "passed": 458,
+      "failed": 0,
+      "ignored_not_passed": 2,
+      "elapsed_seconds": 8.18,
+      "logical_test_result_ok": true,
+      "validation_gate_passed": true,
+      "vuid_observed": false,
+      "validation_error_observed": false,
+      "log": ".perf/rhapsody-validation-fixtures-fixed-2.log",
+      "fixture_fix_commit": "f4e3e04",
+      "real_distinct_family_hardware": "unverified"
+    },
+    "native_view_usage": {
+      "passed": 3,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "vuid_observed": false,
+      "log": ".perf/texture-view-usage-strict.log"
+    },
+    "texture_view_range": {
+      "passed": 1,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/texture-view-range-strict.log"
+    },
+    "tiny_full_probe_demand": {
+      "passed": 306,
+      "failed": 1,
+      "ignored_not_passed": 5,
+      "suite_passed": false,
+      "strict_gate_passed": false,
+      "validation_errors": [],
+      "vuid_observed": false,
+      "log": ".perf/constant-demand-tiny-lib-probe-strict-after-timeline.log",
+      "test_failure": "unchanged preexisting rollercoaster case4327",
+      "validation_error_regex": "VUID-|Validation Error:|\\bVALIDATION_ERROR\\b",
+      "wrapper_exception": "Broad VALIDATION_ERROR substring matched ordinary producer_validation_error test name; actual regex validation error count0; full suite still fails"
+    },
+    "country_demand_pass_builder": {
+      "passed": 168,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/constant-demand-country-pass-builder-fixed.log",
+      "initial_E0507_retained": ".perf/constant-demand-country-pass-builder.log"
+    },
+    "country_demand_draw_passes": {
+      "passed": 265,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "suite_passed": true,
+      "log": ".perf/constant-demand-country-draw-passes-fixed.log",
+      "fixture_correction": "bind_common preset0x11/0x12 matches existing Rig; production/assertions unchanged",
+      "scope": "targeted consumer tests, not tiny full or all-target acceptance"
+    },
+    "previous_country_demand_draw_passes_failure": {
+      "passed": 264,
+      "failed": 1,
+      "ignored_not_passed": 0,
+      "suite_passed": false,
+      "log": ".perf/constant-demand-country-draw-passes.log",
+      "failure": "cross_pass_constant_plans_preserve_tagged_slices_across_job_and_wave_boundaries",
+      "fixture_correction": "New test lacked bind_common preset0x11/0x12; setup corrected following existing Rig, production/assertions unchanged",
+      "latest_retry_status": "compiling/pending; earlier264pass1fail is retained failure, not current retry result",
+      "latest_retry_logs": [
+        ".perf/constant-demand-cross-pass-fixed.log",
+        ".perf/constant-demand-country-draw-passes-fixed.log"
+      ]
+    },
+    "country_demand_cross_pass": {
+      "passed": 1,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "log": ".perf/constant-demand-cross-pass-fixed.log"
+    },
+    "previous_tiny_full_probe_before_timeline": {
+      "passed": 306,
+      "failed": 1,
+      "ignored_not_passed": 5,
+      "suite_passed": false,
+      "strict_gate_passed": false,
+      "log": ".perf/constant-demand-tiny-lib-probe-strict.log",
+      "test_failure": "rollercoaster case4327 preexisting float mismatch reproduced in old EXE; unchanged assertion",
+      "validation_errors": [
+        "VUID-vkCmdWaitEvents-srcStageMask-01158",
+        "VUID-vkSetEvent-event-09543"
+      ],
+      "validation_fixture_correction": "cfg(test) legal timeline fix applied, production bytes outside test module unchanged, no actual rerun yet"
+    },
+    "mapped_raster_timeline_strict": {
+      "passed": 1,
+      "failed": 0,
+      "ignored_not_passed": 0,
+      "vuid_observed": false,
+      "log": ".perf/mapped-raster-timeline-strict.log",
+      "source_commit": "370f795",
+      "source_scope": "cfg(test) only; production outside test module byte-identical"
+    },
+    "latest_workload_probe_smokes": {
+      "actual_workload": {
+        "source_commit": "47bdd144bd786f9cc3d25fb7cd607a7ca02cc135",
+        "profile": "debug",
+        "executable_sha256": "9a0b5c5e1b35abcd54d65c24f0a69f0311fefd10ad8040413ef95c7450c5c568",
+        "warmup_frames": 60,
+        "valid_observation_frames": 30,
+        "raw_rows_including_seed": 31,
+        "session_valid": true,
+        "actual_workload_valid": true,
+        "actual_workload_errors": [],
+        "collect_joined_tasks_in_30_observations": 720,
+        "collect_joined_waves_in_30_observations": 630,
+        "cross_pass_tasks_subset_in_30_observations": 90,
+        "etw": false,
+        "runner_valid": false,
+        "invalid_reasons": [
+          "No scheduling trace: diagnostic only; coarse CPU cannot establish frame percentiles"
+        ],
+        "clean_cpu_acceptance": false,
+        "production_16ms_acceptance": false
+      },
+      "separate_gpu_diagnostic": {
+        "source_commit": "47bdd144bd786f9cc3d25fb7cd607a7ca02cc135",
+        "profile": "debug",
+        "executable_sha256": "9a0b5c5e1b35abcd54d65c24f0a69f0311fefd10ad8040413ef95c7450c5c568",
+        "run_valid": true,
+        "session_valid": true,
+        "actual_workload_valid": true,
+        "gpu_diagnostic_valid": true,
+        "warmup_frames": 60,
+        "samples": 30,
+        "frames_including_warmup_and_seed": 91,
+        "timestamp_samples": 720,
+        "expected_command_sum": 720,
+        "per_frame_timestamp_count_equals_expected_commands": true,
+        "ring_stats": {
+          "capacity_skips": 0,
+          "completed": 720,
+          "peak_pending": 16,
+          "pending": 0,
+          "retained_samples": 0
+        },
+        "log_tests_passed": 1,
+        "log_tests_ignored": 0,
+        "vuid_observed": false,
+        "command_span_sum_or_max_is_whole_frame_latency": false,
+        "clean_cpu_acceptance_eligible": false,
+        "production_16ms_acceptance": false
+      },
+      "not_final_or_release_acceptance": true
+    },
+    "latest_surface_full_constants": {
+      "source_commit": "0c6bc6956993292a03a6e216cab1f402ad48a16a",
+      "executable_sha256": "3dd4530adf390523157c84eaae3678af2280df984018056ac862f31e213325e5",
+      "child_tests_passed": 2,
+      "child_tests_ignored": 0,
+      "vuid_observed": false,
+      "pair_passes": false,
+      "per_season": {
+        "water": {
+          "recorded_input_equal_all_frames": true,
+          "full_frame_constant_words_per_frame": 1060,
+          "compared_frames": 30,
+          "pass_call_counts_equal_all_frames": true,
+          "pixels": [
+            {
+              "frame": 20,
+              "changed_pixels": 89205,
+              "max_channel_abs": 3
+            },
+            {
+              "frame": 30,
+              "changed_pixels": 169503,
+              "max_channel_abs": 7
+            }
+          ],
+          "exact_pixels_equal": false,
+          "strict_gate_passed": false,
+          "comparator_valid_same_input": false,
+          "comparator_input_mismatches": [
+            "frame_20_fixture_digest_declarations_differ",
+            "frame_30_fixture_digest_declarations_differ"
+          ]
+        },
+        "ice": {
+          "recorded_input_equal_all_frames": true,
+          "full_frame_constant_words_per_frame": 1060,
+          "compared_frames": 30,
+          "pass_call_counts_equal_all_frames": true,
+          "pixels": [
+            {
+              "frame": 20,
+              "changed_pixels": 6958,
+              "max_channel_abs": 3
+            },
+            {
+              "frame": 30,
+              "changed_pixels": 10890,
+              "max_channel_abs": 5
+            }
+          ],
+          "exact_pixels_equal": false,
+          "strict_gate_passed": false,
+          "comparator_valid_same_input": false,
+          "comparator_input_mismatches": [
+            "frame_20_fixture_digest_declarations_differ",
+            "frame_30_fixture_digest_declarations_differ"
+          ]
+        }
+      },
+      "interpretation": "All recorded CPU input dictionaries, full1060u32 FrameConstants and pass-call counts match; RGBA differs. The comparator mismatch labels name output fixture digest declarations, not newly differing CPU inputs. Unobserved GPU inputs/history are not proven equal."
+    },
+    "latest_binding_diagnostic": {
+      "schema": "binding-scope-diagnostic-series-v1",
+      "path": ".perf/binding-scope-diagnostics/binding-scope-debug-5767a40-static-1/summary.json",
+      "series_valid": false,
+      "diagnostic_only": true,
+      "cpu_performance_evidence": false,
+      "production_16ms_acceptance": false,
+      "source_commit": "5767a4073d0adbb8c9bd2daee93f6e7930a25ca4",
+      "executable_sha256": "4fdccdc45faeaffb53f1ebacb3ae1796ddaf3bdb432387b99c30f81332320397",
+      "warmup": 60,
+      "samples": 30,
+      "sessions_valid": true,
+      "same_before_after_inputs_across_pair": true,
+      "cpu_rounds_valid": false,
+      "workload_mismatch": {
+        "direct_dispatch_api_calls_all31rows": {
+          "off": 357,
+          "on": 355
+        },
+        "row18_graph_recording_chunks": {
+          "off": 8,
+          "on": 7
+        }
+      },
+      "bill_delta_excluding_baseline": {
+        "off": {
+          "callbacks": 840,
+          "failed_callbacks": 0,
+          "shape_fallback_callbacks": 0,
+          "snapshot_builds": 10830,
+          "snapshot_hits": 0,
+          "vec_capacity_bytes_after_growth_sum": 3115200,
+          "vec_capacity_growths": 13530
+        },
+        "on": {
+          "callbacks": 840,
+          "failed_callbacks": 0,
+          "shape_fallback_callbacks": 0,
+          "snapshot_builds": 7080,
+          "snapshot_hits": 3750,
+          "vec_capacity_bytes_after_growth_sum": 249600,
+          "vec_capacity_growths": 720
+        }
+      },
+      "whole_frame_cpu_gain": null,
+      "interpretation": "Fewer scratch growth/snapshot-build events observed; unmatched actual workload, debug diagnostic and no ETW prohibit performance attribution. Capacity-after-growth sums are neither allocation bytes nor peak memory."
+    },
+    "latest_pressure_tests": [
+      {
+        "path": ".perf/stage5-pressure-reclaim-strict.log",
+        "sha256": "192af72d84758e67444df1bd12c3af95eb29eff42baa991c1cf29579878857d6",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0,
+        "vuid_in_log": 0
+      },
+      {
+        "path": ".perf/stage5-retirement-reservation-strict.log",
+        "sha256": "dc2764a524fb349bf2448285780f44375e0866b6b31545e9bdd4ba16f3ba2d43",
+        "passed": 7,
+        "failed": 0,
+        "ignored": 0,
+        "vuid_in_log": 0
+      }
+    ]
+  },
+  "historical_tool_validations": [
+    {
+      "full_suite": {
+        "passed": 63,
+        "skipped": 0,
+        "TG_BUILD_JOB_SMOKE": "1",
+        "log": ".perf/tool-integration-20261026-tests-full.log"
+      },
+      "tool_sha256": {
+        "perf_headless.py": "fa6a44934d5ea5a152e80bc0ebe5b0a15d7092bcd2ec8c96e53a3660e91287ad",
+        "perf_headless_account.py": "ddbdaf38fe5844f692874994773eda0ab55a1b814373fec3dcb2b2680a95eb32",
+        "perf_etw.py": "bfbd5ab2db32e634171a78d31119b6efde14c670d13b4a72a57ff301b079ed2a",
+        "perf_build_target.py": "7fdd373b73872490d52a4e1ce8a41832dbfc2d997c45688b6c1c7dd8dfb02b88",
+        "test_perf_etw.py": "c0ea9bcae61a6da3d466ae49cf0987907850864101429d35e3a5f607c3697d10",
+        "test_perf_headless.py": "13935a7f5bf51bf5b1c28fe17b8063b7dc51d88f663dcc9e568fc86f9b7f48f1",
+        "test_perf_boundary.py": "01ca69d85c2657a5f9e489688c9fd97e4942939409763780dffbae4f137230ad"
+      },
+      "scope": "Python/accounting/Job ownership tools only; does not validate Rust rendering or close real OS-counter discrepancy",
+      "commit": "a84ad66",
+      "current_manifest": ".perf/tool-integration-20261026.json",
+      "current_manifest_result": {
+        "passed": 63,
+        "skipped": []
+      },
+      "initial_log_result": {
+        "passed": 62,
+        "skipped": 1,
+        "log": ".perf/tool-integration-20261026-tests.log"
+      }
+    }
+  ],
+  "external_thread_clock_diagnostic": {
+    "diagnostic_only": true,
+    "clean_AB": false,
+    "production_16ms_acceptance": false,
+    "source_commit": "29095eb143a029eb32edef56176bc1b6e3577c77",
+    "helper_tests_passed": 17,
+    "helper_test_evidence": "Primary agent reported17 passes; helper source and actual capture identities retained in staged diagnostic/capture metadata",
+    "quick_pair": {
+      "matched_workload": true,
+      "pairs": 1,
+      "workers": 1,
+      "bytes_per_pattern": 268435456,
+      "continuous_worker_os_ms": 953.125,
+      "continuous_worker_etw_ms": 947.9598,
+      "continuous_worker_relative_error_percent": 0.5419,
+      "burst_worker_os_ms": 1453.125,
+      "burst_worker_etw_ms": 993.6653,
+      "burst_os_minus_etw_ms": 459.4597,
+      "burst_relative_error_percent": 31.6187,
+      "burst_direction": "OS overcounts; not undercounts",
+      "within_existing_flags": false
+    },
+    "game": {
+      "warmup": 600,
+      "samples": 600,
+      "external_window_seconds": 86.3495494,
+      "inner_executed_frames": 601,
+      "external_scope": "ready/go to complete process exit; includes post-envelope manifests/drain/shutdown. Not the Rust frame envelope or a clean performance run.",
+      "retained_threads": 21,
+      "coverage_complete": true,
+      "thread_os_sum_ms": 26796.875,
+      "process_os_delta_sandwich_ms": [
+        26796.875,
+        26796.875
+      ],
+      "before": {
+        "os_cpu_ms": 26796.875,
+        "os_kernel_ms": 2593.75,
+        "os_user_ms": 24203.125,
+        "etw_nominal_cpu_ms": 27222.4667,
+        "etw_read_window_lower_ms": 27222.4667,
+        "etw_read_window_upper_ms": 27222.4667,
+        "read_window_width_ms": 0.0,
+        "os_minus_etw_ms": -425.59170000000086,
+        "nominal_relative_error": 0.015633840411677345,
+        "within_existing_2pct": true,
+        "begin_api_wall_ms": 0.006200000000000001,
+        "end_api_wall_ms": 0.0025,
+        "begin_qpc": [
+          2654599280669,
+          2654599280731
+        ],
+        "end_qpc": [
+          2655462776163,
+          2655462776188
+        ],
+        "acceptance_adjusted": false
+      },
+      "after": {
+        "os_cpu_ms": 26796.875,
+        "os_kernel_ms": 2593.75,
+        "os_user_ms": 24203.125,
+        "etw_nominal_cpu_ms": 27220.3017,
+        "etw_read_window_lower_ms": 27220.3017,
+        "etw_read_window_upper_ms": 27220.3017,
+        "read_window_width_ms": 0.0,
+        "os_minus_etw_ms": -423.4267,
+        "nominal_relative_error": 0.015555547644793371,
+        "within_existing_2pct": true,
+        "begin_api_wall_ms": 0.003,
+        "end_api_wall_ms": 0.006200000000000001,
+        "begin_qpc": [
+          2654599694962,
+          2654599694992
+        ],
+        "end_qpc": [
+          2655462774514,
+          2655462774576
+        ],
+        "acceptance_adjusted": false
+      },
+      "offsetting_thread_errors": true,
+      "compute0_os_minus_etw_ms": 591.1493,
+      "unnamed_os_minus_etw_ms": -818.4044,
+      "bvh_os_minus_etw_ms": -666.8491,
+      "aggregate_approximately_1_56_percent_is_not_full_closure": true,
+      "microsoft_same_trace_crosscheck": {
+        "cpu_ms": 27222.731,
+        "relative_error": 9.708798136340968e-06,
+        "within_existing_2pct": true,
+        "input_trace_shared": true
+      }
+    },
+    "next": "Formal prospective policy committed a2a8fce and new debug quality run valid; old raw diagnostics stay unchanged. Next fresh Release/probe/four-scene measurements remain open.",
+    "acceptance_gate_changed": false,
+    "old_invalid_runs_stay_invalid": true,
+    "report": "C:\\Users\\liyu\\.codex\\visualizations\\2026\\10\\26\\01a17714-b237-7ed3-8e87-7aeaa53c4a51\\thread-diagnostic\\actual-results-20261026.md",
+    "game_path": ".perf/thread-cpu-diagnostics/thread-clock-game-w600-n600-1/thread-cpu.json",
+    "quick_summary": ".perf/thread-cpu-calibrations/thread-clock-quick-1/summary.json",
+    "long_predeclared_series": {
+      "summary": ".perf/thread-cpu-calibrations/thread-clock-4w-long-1/summary.json",
+      "pairs": 3,
+      "order": "AB,BA,AB; A continuous, B burst",
+      "completed_runs": 6,
+      "workers": 4,
+      "chunks_per_worker": 4096,
+      "chunk_bytes": 1048576,
+      "burst_wait_ms": 10,
+      "same_workload": true,
+      "all_runs_within_existing_2pct": false,
+      "acceptance_gate_changed": false,
+      "runs": [
+        {
+          "directory": "C:\\game\\.perf\\thread-cpu-diagnostics\\thread-clock-4w-long-1-1-continuous",
+          "pattern": "continuous",
+          "coverage_complete": true,
+          "workload_sha256": "bfbaae1eb6959dc93c97e5672cc8e2a186d3ca27968e175293d0bf84bf3534be",
+          "os_cpu_ms": 68000.0,
+          "etw_cpu_ms": 67805.6161,
+          "os_minus_etw_ms": 194.38390000000072,
+          "signed_relative_error": 0.002858586764705893,
+          "process_within_existing_2pct": true,
+          "all_primary_workers_within_existing_2pct": true
+        },
+        {
+          "directory": "C:\\game\\.perf\\thread-cpu-diagnostics\\thread-clock-4w-long-1-1-burst",
+          "pattern": "burst",
+          "coverage_complete": true,
+          "workload_sha256": "bfbaae1eb6959dc93c97e5672cc8e2a186d3ca27968e175293d0bf84bf3534be",
+          "os_cpu_ms": 65125.0,
+          "etw_cpu_ms": 73515.2785,
+          "os_minus_etw_ms": -8390.2785,
+          "signed_relative_error": -0.11412972474830521,
+          "process_within_existing_2pct": false,
+          "all_primary_workers_within_existing_2pct": false
+        },
+        {
+          "directory": "C:\\game\\.perf\\thread-cpu-diagnostics\\thread-clock-4w-long-1-2-burst",
+          "pattern": "burst",
+          "coverage_complete": true,
+          "workload_sha256": "bfbaae1eb6959dc93c97e5672cc8e2a186d3ca27968e175293d0bf84bf3534be",
+          "os_cpu_ms": 63406.25,
+          "etw_cpu_ms": 73504.3007,
+          "os_minus_etw_ms": -10098.050700000007,
+          "signed_relative_error": -0.13738040636852158,
+          "process_within_existing_2pct": false,
+          "all_primary_workers_within_existing_2pct": false
+        },
+        {
+          "directory": "C:\\game\\.perf\\thread-cpu-diagnostics\\thread-clock-4w-long-1-2-continuous",
+          "pattern": "continuous",
+          "coverage_complete": true,
+          "workload_sha256": "bfbaae1eb6959dc93c97e5672cc8e2a186d3ca27968e175293d0bf84bf3534be",
+          "os_cpu_ms": 68125.0,
+          "etw_cpu_ms": 67764.0904,
+          "os_minus_etw_ms": 360.90959999999905,
+          "signed_relative_error": 0.0052977555963302616,
+          "process_within_existing_2pct": true,
+          "all_primary_workers_within_existing_2pct": true
+        },
+        {
+          "directory": "C:\\game\\.perf\\thread-cpu-diagnostics\\thread-clock-4w-long-1-3-continuous",
+          "pattern": "continuous",
+          "coverage_complete": true,
+          "workload_sha256": "bfbaae1eb6959dc93c97e5672cc8e2a186d3ca27968e175293d0bf84bf3534be",
+          "os_cpu_ms": 66390.625,
+          "etw_cpu_ms": 66265.6266,
+          "os_minus_etw_ms": 124.99839999999676,
+          "signed_relative_error": 0.001882771852200469,
+          "process_within_existing_2pct": true,
+          "all_primary_workers_within_existing_2pct": true
+        },
+        {
+          "directory": "C:\\game\\.perf\\thread-cpu-diagnostics\\thread-clock-4w-long-1-3-burst",
+          "pattern": "burst",
+          "coverage_complete": true,
+          "workload_sha256": "bfbaae1eb6959dc93c97e5672cc8e2a186d3ca27968e175293d0bf84bf3534be",
+          "os_cpu_ms": 59109.375,
+          "etw_cpu_ms": 72744.6982,
+          "os_minus_etw_ms": -13635.323199999999,
+          "signed_relative_error": -0.1874407831414991,
+          "process_within_existing_2pct": false,
+          "all_primary_workers_within_existing_2pct": false
+        }
+      ],
+      "conclusion": "Continuous meets existing 2%; all burst runs fail with OS undercount, opposite quick one-worker burst direction. No universal correction or real-game closure acceptance.",
+      "historical_strict_coarse_policy_passed": false
+    },
+    "prospective_policy_staging": {
+      "superseded_by_committed": "a2a8fce",
+      "tests_passed": 100,
+      "skipped": 0,
+      "formal_evidence_sha256": "6a3274f4d8753d30b04348a701804bf4a796788c5ab11b11cbd140ce467330ae",
+      "new_debug_quality_round_valid": true,
+      "old_rounds_reclassified": false
+    }
+  },
+  "progress_document_freeze_boundary": "This latest evidence update exists only as a staging patch; no actual docs/source write or new run was performed. Root may review/apply before the next freeze.",
+  "previous_measurement_closure_strict": {
+    "status": "invalid_process_OS_cumulative_crosscheck",
+    "source_commit": "29095eb143a029eb32edef56176bc1b6e3577c77",
+    "long_round_path": ".perf/headless-runs/closure-static-long-1/run.json",
+    "warmup_frames": 600,
+    "valid_observation_samples_requested": 3000,
+    "envelope_executed_frames": 3001,
+    "envelope_wall_ms": 474606.775,
+    "owner_etw_cpu_ms": 38263.2384,
+    "owner_os_cpu_ms": 38468.75,
+    "owner_os_relative_error": 0.0053422999187652314,
+    "owner_gate_passed": true,
+    "process_etw_cpu_ms": 147930.3571,
+    "process_os_cpu_ms": 140890.625,
+    "process_os_relative_error": 0.04758815051897147,
+    "process_gate_passed": false,
+    "official_process_cpu_ms": 147929.839,
+    "own_vs_official_process_relative_error_percent": 0.0003502,
+    "official_process_nonzero_threads": 20,
+    "independent_ETW_integration_does_not_override_OS_failure": true,
+    "round_valid": false,
+    "production_16ms_acceptance": false,
+    "short_round_path": ".perf/headless-runs/closure-etw-smoke/run.json",
+    "short_round_valid": false,
+    "short_owner_os_relative_error": 0.04236004765957447,
+    "short_process_os_relative_error": 0.040580423108999814,
+    "same_input_performance_AB": false,
+    "next_steps": [
+      "External per-TID/bracket diagnostics completed but do not close the inner failed round",
+      "Three predeclared long pairs completed; continuous passes and all burst runs fail; prospective clock policy unaccepted",
+      "Review policy before any fresh clean capture",
+      "Repeat complete closure and feature-off<=1% without rewriting old failures"
+    ],
+    "investigation": "docs/performance/windows-clock-accounting-20261026.md",
+    "new_fixture_source": {
+      "commit": "e38ae7f",
+      "management_mode_identity": true,
+      "constant_scratch_bill": true,
+      "cumulative_cpu_api_qpc_brackets": true,
+      "raw_cpu_values_adjusted": false,
+      "old_frozen_artifact_contains_change": false,
+      "old_invalid_runs_reclassified": false
+    }
+  },
+  "matched_constant_batch_diagnostic": {
+    "source_commit": "a2a8fce",
+    "diagnostic_only": true,
+    "whole_frame_gain": null,
+    "paired_input_identity_matches": true,
+    "strict_immutable_scene": false,
+    "on": {
+      "input_sha256": "3581acb812ff507d1d371b9d578eab2d2e065d097ee9221e9db691681f965e50",
+      "input_unchanged": false,
+      "samples": 30,
+      "management_mean_per_frame": {
+        "reflection_queries": 246.0,
+        "reflection_hits": 246.0,
+        "constant_block_takes": 384.0,
+        "collected_uniform_write_bytes": 19636.0,
+        "binding_resource_inputs": 1301.0,
+        "prepared_bindless_draws": 361.0,
+        "vao_full_refreshes": 2.0,
+        "vao_list_entries": 344.0,
+        "vao_queried_entities": 128.0,
+        "vao_unique_visits": 128.0,
+        "vao_publications": 3.0,
+        "vao_snapshot_allocations": 0.0
+      },
+      "cache_stock": {
+        "baseline": 118,
+        "last": 118,
+        "maximum": 118
+      },
+      "deltas": {
+        "physical_allocations": 7503,
+        "physical_allocated_bytes": 419244,
+        "lock_acquisitions": 12296,
+        "scanned_idle_entries": 2311395
+      },
+      "end_idle_blocks": 1024,
+      "allocation_scope": "successful_nonempty_cpu_bytes_through_constant_pool_not_malloc_calls"
+    },
+    "off": {
+      "input_sha256": "3581acb812ff507d1d371b9d578eab2d2e065d097ee9221e9db691681f965e50",
+      "input_unchanged": false,
+      "samples": 30,
+      "management_mean_per_frame": {
+        "reflection_queries": 246.0,
+        "reflection_hits": 246.0,
+        "constant_block_takes": 384.0,
+        "collected_uniform_write_bytes": 19636.0,
+        "binding_resource_inputs": 1301.0,
+        "prepared_bindless_draws": 361.0,
+        "vao_full_refreshes": 2.0,
+        "vao_list_entries": 344.0,
+        "vao_queried_entities": 128.0,
+        "vao_unique_visits": 128.0,
+        "vao_publications": 3.0,
+        "vao_snapshot_allocations": 0.0
+      },
+      "cache_stock": {
+        "baseline": 118,
+        "last": 118,
+        "maximum": 118
+      },
+      "deltas": {
+        "physical_allocations": 0,
+        "physical_allocated_bytes": 0,
+        "lock_acquisitions": 23040,
+        "scanned_idle_entries": 777150
+      },
+      "end_idle_blocks": 248,
+      "allocation_scope": "successful_nonempty_cpu_bytes_through_constant_pool_not_malloc_calls"
+    },
+    "interpretation": "Batch ON reduces lock entries but increases backing creation/scans. Physical count scope is successful nonempty CPU bytes through pool, not malloc/Vulkan calls. New demand fix pending correctness/performance."
+  },
+  "new_tool_validations": {
+    "policy": {
+      "commit": "a2a8fce",
+      "passed": 100,
+      "skipped": 0
+    },
+    "padding": {
+      "commit": "c81975c",
+      "passed": 15,
+      "skipped": 0,
+      "log": ".perf/surface-padding-tools-tests.log"
+    },
+    "portable": {
+      "commit": "3e3b29c",
+      "passed": 24,
+      "skipped": 0,
+      "independent_review": "staging/agents/workloads/portable-clock-independent-review/result.json"
+    }
+  },
+  "isolated_baseline_preparation": {
+    "commit": "24369d5c",
+    "path": "C:\\Users\\liyu\\.codex\\visualizations\\2026\\10\\26\\01a17714-b237-7ed3-8e87-7aeaa53c4a51\\windows-baseline-29095eb-brackets",
+    "production_exact_source": "29095eb",
+    "measurement_only_changes": "QPC brackets and7tools",
+    "built": false,
+    "performance_accepted": false
+  },
+  "current_evidence_summary": "docs/performance/evidence-update-workload-probe-20261026.md",
+  "latest_tool_validation_historical_archive": {
+    "commit": "c5a6125",
+    "passed": 76,
+    "skipped": 0,
+    "owned_job_smoke": true,
+    "manifest": ".perf/trace-archive-tools-20261026.json",
+    "log": ".perf/trace-archive-tools-tests.log",
+    "tool_sha256": {
+      "perf_headless.py": "e0c74891d058a03952046fbe1314c1d0bf902ed2d7d1019813a2a648dd4d5e7f",
+      "perf_headless_account.py": "27e6cb6081843421141af914e1acc6483dc02c66488cd358d3297d0443a8c0c8",
+      "perf_etw.py": "abdfd9165cd49d3814b48cca3ca882315ef1467dad683b1b72f20e3c79ccb97d",
+      "perf_trace_archive.py": "90062b4a1982e41344adfc8cdf3a7b008bfd36410c3d51eea0de30bbe8c27702",
+      "test_perf_trace_archive.py": "7e4fa84eaffbed5531096aa21d3d432f038ff159f9bf1feee45387477393cf56"
+    },
+    "old_runs_modified": false,
+    "acceptance_gates_changed": false,
+    "scope": "Lossless archive, metadata identity, accounting and Job tools only; not performance acceptance"
+  },
+  "source_candidate_dirty_scope": "Frozen5767a40 binding EXE identity was verified in its run references; this does not validate later working-tree edits or imply a clean performance comparison.",
+  "latest_all_target_check_update": {
+    "source_commit": "370f795",
+    "default": {
+      "passed": true,
+      "elapsed_seconds": 162,
+      "log": ".perf/constant-demand-workspace-default-check.log"
+    },
+    "cpu_probe": {
+      "passed": true,
+      "elapsed_seconds": 36.39,
+      "log": ".perf/constant-demand-workspace-probe-check.log"
+    },
+    "runtime_or_performance_acceptance": false
+  },
+  "latest_implementation_commit": "5767a4073d0adbb8c9bd2daee93f6e7930a25ca4",
+  "latest_workload_probe_followup": {
+    "source": "20de20d",
+    "frame_constant_observer_source": "c7f4dc7",
+    "baseline_instrumentation_commit": "ef5568b7c81b7b67529eb80fa8c856f34c63f90b",
+    "constant_bill_evidence": "docs/performance/constant-demand-592f655.json",
+    "surface_pair": "latest0c6bc69 complete constants/recorded inputs equal, both tests pass/zeroVUID, strict water/ice RGBA fails; older failures and same-mode drift preserved",
+    "real_new_probe_runtime": "completed short47bdd14 debug workload smoke and separate GPU diagnostic; noETW CPU smoke remains invalid for timing acceptance",
+    "release_AB": "pending",
+    "probe_overhead": "pending",
+    "pushed": false,
+    "summary": "docs/performance/evidence-update-workload-probe-20261026.md",
+    "latest_runtime_workload_source": "47bdd144bd786f9cc3d25fb7cd607a7ca02cc135",
+    "latest_surface_source": "0c6bc6956993292a03a6e216cab1f402ad48a16a",
+    "binding_candidate": "experimental; no validated clean CPU benefit"
+  },
+  "historical_status_updates": [
+    {
+      "scope": "Previous current-state fields preserved before latest47bdd14/0c6bc69 runtime evidence update; old failures remain in original arrays/artifacts.",
+      "previous": {
+        "implementation_status": "workload_probe_committed_compiled_and_targeted_tests_passed; demand_backing_zero_on_input_matched_diagnostic; cold_surface_pixels_not_accepted; release_performance_open",
+        "source_candidate_commit": "370f7959e0a9a47d15f84477760f4a01147680fb",
+        "source_candidate_identity_note": "Code committed through370f795 (demand7c42f3a, test-only timeline370f795). This progress-doc batch awaits root commit; no new frozen performance candidate. Default/probe all-target checks running.",
+        "updated_local_date": "2026-10-26",
+        "current_evidence_summary": "docs/performance/evidence-update-3e3b29c-20261026.md",
+        "stage_progress": {
+          "0": "source/tooling and29095eb frozen Release integration-test pair exist; full Cargo invocations and production WSI not accepted",
+          "1": "Prospective debug600/600 clock-quality round valid; old strict invalid unchanged. Release600/3000 and probe-off1% remain open",
+          "2": "Isolated24369d5c exact-production29095eb+measurement brackets baseline prepared but unbuilt; valid four-scene baseline absent",
+          "3": "7c42f3a demand plan committed, targeted Country passes; current default/probe all-target checks pending. Fresh demand on/off bills/performance still absent",
+          "4": "Real lake inline ran but VUID invalid; Collect never started/no pair; targeted view fix passed, actual rerun pending",
+          "5": "reserved nodes and bounded reclaim source previously validated; complete sustained-pressure/fault/stability acceptance still open; legacy raw retire fallback remains",
+          "6": "Final release freezing/AB/16ms/long-run/macOS incomplete, no push"
+        },
+        "unverified": [
+          "New committed demand source default/probe workspace all-target checks running; full tiny remains failed solely by preexisting rollercoaster assertion in latest zero-VUID rerun",
+          "Preexisting rollercoaster float oracle mismatch remains open; full tiny suite failed, assertion unchanged",
+          "Release600/3000 measurement closure and complete feature-off<=1% overhead",
+          "Valid original water/ice strict inline/Collect pixel pair after view fix",
+          "Representative four-scene Windows baseline and stable CPU benefits",
+          "All four scenes every-run render CPU p95<=16ms and no>5%p95/p99 regression",
+          "Full pressure/fault/30-minute10000-frame stability; WSI deferred; macOS unverified"
+        ],
+        "latest_workload_probe_followup": {
+          "source": "20de20d",
+          "frame_constant_observer_source": "c7f4dc7",
+          "baseline_instrumentation_commit": "ef5568b7c81b7b67529eb80fa8c856f34c63f90b",
+          "constant_bill_evidence": "docs/performance/constant-demand-592f655.json",
+          "surface_pair": "failed strict input/pixels; zeroVUID children, same-mode drift reproduced",
+          "real_new_probe_runtime": "pending",
+          "release_AB": "pending",
+          "probe_overhead": "pending",
+          "pushed": false,
+          "summary": "docs/performance/evidence-update-workload-probe-20261026.md"
+        },
+        "latest_implementation_commit": "c7f4dc738a618d3469b4ea12114bb0ce3e49bd54",
+        "source_candidate_dirty_scope": "progress documents before root commit; demand-plan and timeline source commits complete",
+        "evidence_identity_scope": "Old evidence identities retained. New small reports/logs hashed; no large trace re-read. Each test result is limited to its checked source; Country latest retries pass, tiny/strict mapped fixture remain open."
+      },
+      "previous_latest_cpu_round_flags": {
+        "current_measurement_round_valid": true,
+        "current_measurement_round_scope": "a2a8fce debug quality smoke only; new workload-probe native runtime pending",
+        "current_owner_cpu_crosscheck": "new debug quality round passed1.2780%; old strict long owner0.53423% retained separately",
+        "current_process_cpu_crosscheck": "new debug quality raw process difference0.3694%; mandatory Microsoft process same-stream difference0.0010603%; old strict long process4.75882% failed"
+      }
+    }
+  ],
+  "latest_workload_runtime": {
+    "source_commit": "47bdd144bd786f9cc3d25fb7cd607a7ca02cc135",
+    "profile": "debug",
+    "executable_sha256": "9a0b5c5e1b35abcd54d65c24f0a69f0311fefd10ad8040413ef95c7450c5c568",
+    "warmup_frames": 60,
+    "valid_observation_frames": 30,
+    "raw_rows_including_seed": 31,
+    "session_valid": true,
+    "actual_workload_valid": true,
+    "actual_workload_errors": [],
+    "collect_joined_tasks_in_30_observations": 720,
+    "collect_joined_waves_in_30_observations": 630,
+    "cross_pass_tasks_subset_in_30_observations": 90,
+    "etw": false,
+    "runner_valid": false,
+    "invalid_reasons": [
+      "No scheduling trace: diagnostic only; coarse CPU cannot establish frame percentiles"
+    ],
+    "clean_cpu_acceptance": false,
+    "production_16ms_acceptance": false
+  },
+  "latest_gpu_command_diagnostic_runtime": {
+    "source_commit": "47bdd144bd786f9cc3d25fb7cd607a7ca02cc135",
+    "profile": "debug",
+    "executable_sha256": "9a0b5c5e1b35abcd54d65c24f0a69f0311fefd10ad8040413ef95c7450c5c568",
+    "run_valid": true,
+    "session_valid": true,
+    "actual_workload_valid": true,
+    "gpu_diagnostic_valid": true,
+    "warmup_frames": 60,
+    "samples": 30,
+    "frames_including_warmup_and_seed": 91,
+    "timestamp_samples": 720,
+    "expected_command_sum": 720,
+    "per_frame_timestamp_count_equals_expected_commands": true,
+    "ring_stats": {
+      "capacity_skips": 0,
+      "completed": 720,
+      "peak_pending": 16,
+      "pending": 0,
+      "retained_samples": 0
+    },
+    "log_tests_passed": 1,
+    "log_tests_ignored": 0,
+    "vuid_observed": false,
+    "command_span_sum_or_max_is_whole_frame_latency": false,
+    "clean_cpu_acceptance_eligible": false,
+    "production_16ms_acceptance": false
+  },
+  "latest_surface_full_constants_runtime": {
+    "source_commit": "0c6bc6956993292a03a6e216cab1f402ad48a16a",
+    "executable_sha256": "3dd4530adf390523157c84eaae3678af2280df984018056ac862f31e213325e5",
+    "child_tests_passed": 2,
+    "child_tests_ignored": 0,
+    "vuid_observed": false,
+    "pair_passes": false,
+    "per_season": {
+      "water": {
+        "recorded_input_equal_all_frames": true,
+        "full_frame_constant_words_per_frame": 1060,
+        "compared_frames": 30,
+        "pass_call_counts_equal_all_frames": true,
+        "pixels": [
+          {
+            "frame": 20,
+            "changed_pixels": 89205,
+            "max_channel_abs": 3
+          },
+          {
+            "frame": 30,
+            "changed_pixels": 169503,
+            "max_channel_abs": 7
+          }
+        ],
+        "exact_pixels_equal": false,
+        "strict_gate_passed": false,
+        "comparator_valid_same_input": false,
+        "comparator_input_mismatches": [
+          "frame_20_fixture_digest_declarations_differ",
+          "frame_30_fixture_digest_declarations_differ"
+        ]
+      },
+      "ice": {
+        "recorded_input_equal_all_frames": true,
+        "full_frame_constant_words_per_frame": 1060,
+        "compared_frames": 30,
+        "pass_call_counts_equal_all_frames": true,
+        "pixels": [
+          {
+            "frame": 20,
+            "changed_pixels": 6958,
+            "max_channel_abs": 3
+          },
+          {
+            "frame": 30,
+            "changed_pixels": 10890,
+            "max_channel_abs": 5
+          }
+        ],
+        "exact_pixels_equal": false,
+        "strict_gate_passed": false,
+        "comparator_valid_same_input": false,
+        "comparator_input_mismatches": [
+          "frame_20_fixture_digest_declarations_differ",
+          "frame_30_fixture_digest_declarations_differ"
+        ]
+      }
+    },
+    "interpretation": "All recorded CPU input dictionaries, full1060u32 FrameConstants and pass-call counts match; RGBA differs. The comparator mismatch labels name output fixture digest declarations, not newly differing CPU inputs. Unobserved GPU inputs/history are not proven equal."
+  },
+  "binding_experiment": {
+    "schema": "binding-scope-diagnostic-series-v1",
+    "path": ".perf/binding-scope-diagnostics/binding-scope-debug-5767a40-static-1/summary.json",
+    "series_valid": false,
+    "diagnostic_only": true,
+    "cpu_performance_evidence": false,
+    "production_16ms_acceptance": false,
+    "source_commit": "5767a4073d0adbb8c9bd2daee93f6e7930a25ca4",
+    "executable_sha256": "4fdccdc45faeaffb53f1ebacb3ae1796ddaf3bdb432387b99c30f81332320397",
+    "warmup": 60,
+    "samples": 30,
+    "sessions_valid": true,
+    "same_before_after_inputs_across_pair": true,
+    "cpu_rounds_valid": false,
+    "workload_mismatch": {
+      "direct_dispatch_api_calls_all31rows": {
+        "off": 357,
+        "on": 355
+      },
+      "row18_graph_recording_chunks": {
+        "off": 8,
+        "on": 7
+      }
+    },
+    "bill_delta_excluding_baseline": {
+      "off": {
+        "callbacks": 840,
+        "failed_callbacks": 0,
+        "shape_fallback_callbacks": 0,
+        "snapshot_builds": 10830,
+        "snapshot_hits": 0,
+        "vec_capacity_bytes_after_growth_sum": 3115200,
+        "vec_capacity_growths": 13530
+      },
+      "on": {
+        "callbacks": 840,
+        "failed_callbacks": 0,
+        "shape_fallback_callbacks": 0,
+        "snapshot_builds": 7080,
+        "snapshot_hits": 3750,
+        "vec_capacity_bytes_after_growth_sum": 249600,
+        "vec_capacity_growths": 720
+      }
+    },
+    "whole_frame_cpu_gain": null,
+    "interpretation": "Fewer scratch growth/snapshot-build events observed; unmatched actual workload, debug diagnostic and no ETW prohibit performance attribution. Capacity-after-growth sums are neither allocation bytes nor peak memory."
+  },
+  "latest_pressure_tests": [
+    {
+      "path": ".perf/stage5-pressure-reclaim-strict.log",
+      "sha256": "192af72d84758e67444df1bd12c3af95eb29eff42baa991c1cf29579878857d6",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "vuid_in_log": 0
+    },
+    {
+      "path": ".perf/stage5-retirement-reservation-strict.log",
+      "sha256": "dc2764a524fb349bf2448285780f44375e0866b6b31545e9bdd4ba16f3ba2d43",
+      "passed": 7,
+      "failed": 0,
+      "ignored": 0,
+      "vuid_in_log": 0
+    }
+  ],
+  "latest_engineering_checkpoint": {
+    "head_commit": "366311c",
+    "binding_commit": "5767a40",
+    "pressure_test_commit": "54120b6",
+    "publication_policy_commit": "366311c",
+    "log_evidence": [
+      {
+        "path": ".perf/binding-stage5-surface-workspace-default-check.log",
+        "sha256": "c67469b6a24d5d01105a8010f6c537dc538ed6470c85def4e19489052599c98c",
+        "finished_dev_profile": true,
+        "elapsed": "2m 43s"
+      },
+      {
+        "path": ".perf/binding-stage5-surface-workspace-enabled-check.log",
+        "sha256": "c4bdbe06586f64c584603bb3e6a81f57997b5cd513724a85b485462d1d33f81f",
+        "finished_dev_profile": true,
+        "elapsed": "2m 41s"
+      },
+      {
+        "path": ".perf/surface-comparator-v3-tests.log",
+        "sha256": "80b6232ad5e8fdd68ec8ed7689aaf3856c98a77ff3ef45e9028a3f2c360dccc6",
+        "passed": 20,
+        "skipped": 0
+      }
+    ],
+    "root_reported_command_scope": "workspace --all-targets, default and cpu-probe; raw logs independently confirm both dev-profile completions",
+    "surface_comparator_v3": "20 Python tests passed; source wiring compiled; new GPU run pending",
+    "workload_consistency_fix_and_per_pass_diagnostics": "in_progress",
+    "acceptance_boundary": "Compilation and comparator tests do not supersede strict pixel failures or establish CPU benefit."
+  },
+  "latest_progress_20261027": {
+    "checkpoint_commit": "c98be8eafd524c6a66215b91603cd7fd1f349be1",
+    "scope": "Latest targeted diagnostics and native recovery only; all historical raw failures remain unchanged.",
+    "native_collect_recovery": {
+      "path": ".perf/native-collect-exact-validation-3/result.json",
+      "valid": true,
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "seconds": 0.87,
+      "vuid_in_test_log": 0,
+      "source_unchanged": true,
+      "test_source_sha256": "b872baddc9db36a1be84fde46a9213c9f05b6379c4aaf038ab29f043314f7ed3",
+      "coverage": "579 real worker draws / 12 tasks / 2 waves; submitted A physically pending, unsubmitted B cancelled, real nonzero CPU-budget refusal before workers, full reference pixel recovery.",
+      "boundary": "This synthetic native fixture does not accept shipped grass/UI/water/ice scene pixels or CPU performance."
+    },
+    "new_targeted_tests": {
+      "rust_trace": 6,
+      "rust_wall_source": 3,
+      "rust_nani_observer": 3,
+      "python_trace_parser": 8,
+      "python_trace_source_controller": 9,
+      "scope": "Separate executed groups, zero ignored; Rust Nani tests did not run the surface GPU fixture."
+    },
+    "rich_debug_freeze": {
+      "label": "rich-workload-debug-c98be8e",
+      "source_commit": "c98be8eafd524c6a66215b91603cd7fd1f349be1",
+      "source_content_sha256": "3ba1628503802a31bc83e90850aa9729d80a8d8b43491d430fd58f71e8f5d855",
+      "executable_sha256": "064462bf22ced894f19848bf7dffc81f726cde663e9fb8f5207847450141092a",
+      "files": {
+        "original_gameplay_chain-2654367002312a69.exe": "064462bf22ced894f19848bf7dffc81f726cde663e9fb8f5207847450141092a",
+        "original_gameplay_chain-2654367002312a69.pdb": "b35671b6d6c92c53651119102ac1aa23559909971ad1f4931b5cdc4513772f8f",
+        "fmod.dll": "d563ad96042c096985735b0d1fdab80fe5c7f27663171ff1550ac8ebf4c7eba6",
+        "fmodstudio.dll": "dc61fae2e70ec3a16fa78b678a0fc9ff1852491077a21c2b9c11bf4d160207ff"
+      },
+      "profile": "debug",
+      "requested_test_target_completed": true,
+      "entire_cargo_build_passed": false
+    },
+    "trace_source_investigation": {
+      "series": "rich-workload-debug-c98be8e-trace-1",
+      "state": "diagnostic_completed_with_real_workload_and_source_differences",
+      "diagnostic_structure_valid": true,
+      "both_raw_runs_valid_for_cpu": false,
+      "both_recording_traces_valid": true,
+      "observation_count": 31,
+      "off_direct_dispatch_calls_each_row": 355,
+      "on_direct_dispatch_calls_each_row": 357,
+      "normalized_actual_workload_equal": false,
+      "wall_source_equal": false,
+      "native_differences": 31,
+      "full_actual_differences": 59,
+      "wall_source_differences": 1333,
+      "scope": "Static 60 warmup / 30 samples, same frozen EXE OFF/ON; record/source diagnostic only, no ETW or CPU acceptance.",
+      "causality_boundary": "Direction is reversed from the old 357/355 pair; source differences are findings, not proof binding reuse caused native differences or CPU changes. No receipt mapping exists for recording scopes.",
+      "original_binding_comparison_reclassified": false
+    },
+    "release_preparation": {
+      "baseline": {
+        "label": "formal-base-common-000e7cc-on",
+        "source_commit": "000e7cc8abd332d7508480c1d6384a3d64b9e6a9",
+        "source_content_sha256": "9e4834e2c064ba0d9f68efe7b5f3eb66d45ee23b0ffc85d21765fab87ed3cc74",
+        "executable_sha256": "483998fb7ef50b0a4d5e1563f8cb97a02c1ee5e25556ec8eb343d7b99f52ec9d",
+        "files": {
+          "original_gameplay_chain-b649166bcb42df52.exe": "483998fb7ef50b0a4d5e1563f8cb97a02c1ee5e25556ec8eb343d7b99f52ec9d",
+          "original_gameplay_chain-b649166bcb42df52.pdb": "a73b2d8dd4e797d6bf3ac85fb680eed4931dfe663d89cb9c99c3a90c2c4696d4",
+          "fmod.dll": "d563ad96042c096985735b0d1fdab80fe5c7f27663171ff1550ac8ebf4c7eba6",
+          "fmodstudio.dll": "dc61fae2e70ec3a16fa78b678a0fc9ff1852491077a21c2b9c11bf4d160207ff"
+        },
+        "profile": "release",
+        "requested_test_target_completed": true,
+        "entire_cargo_build_passed": false
+      },
+      "baseline_bundle_imported": true,
+      "candidate_release": "pending_build_and_freeze",
+      "shared_workload_helper_sha256": "3890c544d3f79c2d8a542acf064d70ef66cdae351a5b33d297d6bd2b6359eae4",
+      "shared_helper_source_commits": {
+        "original_patch": "4107fbf",
+        "baseline": "000e7cc",
+        "candidate_common": "6612"
+      },
+      "importer_portable_tests": 26,
+      "series_import_binding_tests": 88,
+      "boundary": "Frozen/imported artifact identity is not a valid performance round or an entire Cargo invocation passing."
+    },
+    "latest_diagnostic_all_target_checks": "Not rerun after 3460876/e6c11d5/c98be8e diagnostic/test/tool additions. Prior all-target checks remain historical at their exact sources.",
+    "acceptance": {
+      "cpu_gain_verified": false,
+      "four_scene_16ms_accepted": false,
+      "probe_overhead_at_most_one_percent_accepted": false,
+      "strict_water_ice_pixels_accepted": false,
+      "long_runs_complete": false,
+      "remote_pushed": false
+    },
+    "evidence": [
+      {
+        "path": ".perf/native-collect-exact-validation-3/result.json",
+        "sha256": "69ecd28dbeb189e4c11b853524d0297469e23324e0520c65d233ff15a7349151"
+      },
+      {
+        "path": ".perf/native-collect-exact-validation-3/test.stdout.log",
+        "sha256": "451141b3ef2596fe91c5e9b6038c554e9bb5f1a3dfc16cf75afc47756ae4c000"
+      },
+      {
+        "path": ".perf/native-pass-trace-rust-tests.log",
+        "sha256": "618dbb924bbcafae6dfd7d377a7af910a3ec69030aa132b47b70b9ceacc39282"
+      },
+      {
+        "path": ".perf/wall-source-rust-tests.log",
+        "sha256": "6a893c013fdd2d1f850451dfe1c1a79581b006bd86e095440a3a729a427fd26c"
+      },
+      {
+        "path": ".perf/surface-nani-rust-tests.log",
+        "sha256": "40cc0ae4c32408e95db76d661bdb28a7ddc3e087b4a046add5621d5bb4b017f6"
+      },
+      {
+        "path": ".perf/native-pass-trace-parser-tests.log",
+        "sha256": "86cb777ab29cb4c128a8ba4fb7b1266dc73123f01fc8340bbf673bceac91d1dc"
+      },
+      {
+        "path": ".perf/binding-trace-source-tests.log",
+        "sha256": "bd966bd268baa636b878026b764803b5cd4252270098f7b36df3b01f76e59393"
+      },
+      {
+        "path": ".perf/frozen-bundle-importer-tests-portable.log",
+        "sha256": "a9c54998506592cd3eced37a607ab6b965e810adad479405869d702b757a1a7a"
+      },
+      {
+        "path": ".perf/headless-series-import-binding-tests.log",
+        "sha256": "4fad104d0580c527e6c22781f88da20ea42555b553ba48e0cba79445dcc9f35e"
+      },
+      {
+        "path": ".perf/formal-baseline-import-000e7cc-execute.log",
+        "sha256": "86109df1f3db96653b5e73a038e81e08382557bb9bd8166fb30c41a48b45b724"
+      },
+      {
+        "path": ".perf/headless-builds/rich-workload-debug-c98be8e/build.json",
+        "sha256": "19da973efd7caeb873805d9b60631493be265017332c88a70e8ead1095685ad2"
+      },
+      {
+        "path": ".perf/headless-builds/formal-base-common-000e7cc-on/build.json",
+        "sha256": "a58d5bfefd788cd128e16fbc193a5e058626a5ba3f7dcdc45697dcb8ff8c5e9e"
+      },
+      {
+        "path": ".perf/binding-trace-source/rich-workload-debug-c98be8e-trace-1/summary.json",
+        "sha256": "4384d58f4506d06853f5a3013203a8330525055fab7e08d3e9a716ac48d31725"
+      }
+    ]
+  },
+  "active_checkpoint": "latest_progress_20261027_f39dc61",
+  "latest_progress_20261027_f39dc61": {
+    "source_commit": "f39dc61eef85edebda2f491b4d31d9ff9e85c144",
+    "source_state": "f39 is the clean native verification checkpoint, not the current engineering HEAD",
+    "engineering_head": "fa98f8d4367cc6ce24fd5d7a5e03cc82b36008d7",
+    "engineering_worktree_scope": "tracked source clean at fa98f8d; two root-copied OOM design documents untracked before this documentation delivery",
+    "applied_commits": {
+      "a688644": "exclusive pending-acquire reservation and W2 idle-pressure maintenance",
+      "5e198a0": "same-prefix original-format surface fixture, including static-lifetime typecheck fix",
+      "d014743": "default-suballocation Drop heap diagnostic",
+      "f39dc61": "optional owner-preserving canonical layout preparation and read-only getters",
+      "b0c7a3d": "canonical input contracts and optional trace diagnostic tools; Python-only validation",
+      "c1dd0b3": "EffectsHost reused flags match history-valid=1; lifecycle native test added but not run",
+      "fa98f8d": "surface local freeze tools after narrow LF fixture policy correction; Python-only validation"
+    },
+    "previous_implementation_status": "native_Collect_exact_recovery_passed; trace_Wall_Nani_targeted_tests_passed; rich_debug_c98_frozen_requested_target_only; trace_OFF_ON_completed_with_Wall_source_and_actual_workload_differences; baseline_Release_imported_candidate_Release_pending; CPU_gain16ms_and_strict_surface_pixels_open",
+    "scoped_passes": {
+      "rhapsody_weak_upload_observers": {
+        "source_commit": "6d1cf8a73333541bfcabaa32b96fadfe6923b8c2",
+        "source_manifest_sha256": "c2ad8e89517542a30f98d1a9394ef37932b4e64ef8e381e4880862e3b2243a30",
+        "tests_passed": 2,
+        "ignored": 0,
+        "artifact_reused_fresh_true": true,
+        "private_job_valid": true,
+        "scope": "only the named two observer regressions; not W2 or final f39"
+      },
+      "rhapsody_all_targets_checks": {
+        "cpu_probe_seconds": 30.87,
+        "default_seconds": 29.91,
+        "scope": "integrated W2/local-R2/suballocation source before f39 canonical read-only getter changes; not workspace-wide or final-f39 coverage"
+      },
+      "f39_rhapsody_all_targets_checks": {
+        "source_commit": "f39dc61eef85edebda2f491b4d31d9ff9e85c144",
+        "cpu_probe_seconds": 31.52,
+        "default_seconds": 31.0,
+        "scope": "Rhapsody all-target typechecks on final f39, including canonical getters; not Tiny/country-core/workspace checks or native execution"
+      },
+      "python": {
+        "tests_passed": 63,
+        "seconds": 13.846,
+        "scope": "Python comparators/controllers; no native Rust or GPU acceptance"
+      },
+      "f39_heap_diagnostic_round2": {
+        "source_commit": "f39dc61eef85edebda2f491b4d31d9ff9e85c144",
+        "tests_passed": 2,
+        "ignored": 0,
+        "test_seconds": 0.6,
+        "result_elapsed_seconds": 5.188000000023749,
+        "valid": true,
+        "private_job_naturally_empty": true,
+        "artifact_reused_fresh_true": true,
+        "scope": "calling-thread Rust heap diagnostics on actual default suballocation versus dedicated control; not no-allocation or CPU-ms acceptance"
+      },
+      "integrated_tools": {
+        "canonical_tests": 135,
+        "canonical_seconds": 57.513,
+        "binding_tests": 44,
+        "binding_seconds": 0.264,
+        "surface_lf_fixed_tests": 94,
+        "surface_lf_fixed_seconds": 15.139,
+        "scope": "stdlib Python tool regressions, not new binary/GPU/isolated-common4-baseline acceptance",
+        "root_verified": "14 surface payload SHA values, 7 qualified frozen tool byte identities and legacy importer preserved; old 2cbf frozen identity cold-read valid, metadata 75ea unchanged"
+      }
+    },
+    "retained_failures": {
+      "original_observer_job": "two assertions passed, overall valid=false because owned Job did not drain within its deadline; not relabelled",
+      "tiny_observer_build": {
+        "compiler_allocation_failed_bytes": 14942224,
+        "tests_executed": false,
+        "gpu_executed": false
+      },
+      "tiny_cpu_surface_metadata_check": {
+        "compiler_allocation_failed_bytes": 262144,
+        "crate": "country-core",
+        "final_typecheck_passed": false,
+        "tests_executed": false,
+        "gpu_executed": false
+      },
+      "initial_rhapsody_probe_check": "E0521 static-lifetime error retained; fixed source has a separate successful -2 check log"
+    },
+    "native_pending": {
+      "canonical_layout_tests": 5,
+      "same_prefix_local_surface_rust_tests": 6,
+      "pending_acquire_storage_and_maintenance_tests": 9,
+      "suballocation_drop_heap_diagnostics": 0,
+      "tiny_target_observer_tests": 2,
+      "effects_host_lifecycle_tests": 1
+    },
+    "effects_history_correctness": {
+      "commit": "c1dd0b3",
+      "reused_flag_fix": "both ==0 comparisons changed to !=0 for actual history-valid=1",
+      "new_test_steps": 8,
+      "new_test_requires_nonzero_first_readback": true,
+      "validation": "source review and syntax parse only; no new Tiny typecheck or native GPU execution",
+      "production_recovery_completed": false,
+      "still_open": [
+        "Painterly Ready/progress",
+        "menu/LUT transaction recovery",
+        "fatal-OOM policy",
+        "automatic retry"
+      ]
+    },
+    "latest_native_attempts": {
+      "pending9": {
+        "valid": false,
+        "compiler_allocation_failed_bytes": 2097152,
+        "compile_exit": 101,
+        "cargo_seconds": 38.23399999999674,
+        "round_seconds": 42.57800000003772,
+        "artifact": null,
+        "test_exit": null,
+        "tests_executed": false,
+        "gpu_executed": false,
+        "private_job_naturally_empty": true
+      },
+      "heap_round1": {
+        "valid": false,
+        "tests_passed": 2,
+        "ignored": 0,
+        "compile_exit": 0,
+        "test_exit": 0,
+        "failure": "private Job active at 30s drain deadline; cleanup then empty",
+        "observed_owned_pid": 7388,
+        "observed_image": "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.38.33130/bin/Hostx64/x64/vctip.exe",
+        "identity_scope": "membership and image observed from an opened handle in this heap round only; does not explain old W1 failure"
+      },
+      "heap_round2": {
+        "valid": true,
+        "tests_passed": 2,
+        "ignored": 0,
+        "job_natural_drain_empty": true,
+        "errors": []
+      },
+      "source_before_after_sha256_all_three_rounds": "ae152138529ac892763168e7bab919a1ad46a97f3398e9eddb3a078e4c07ca17",
+      "exe_sha256_both_heap_rounds": "3bfc2c738bdd0a9ae56a452689a97a75a807152e8e75bfdf4fb1dfe6c3dbc488",
+      "pdb_sha256_both_heap_rounds": "70103ad0dd22d29a007803d1b85283dbb9bf363ad7888d4f1eb3b771a1e56820",
+      "all_sealed_file_sha256_verified": {
+        "pending9": 9,
+        "heap_round1": 15,
+        "heap_round2": 15
+      },
+      "six_raw_records_equal_between_rounds": true,
+      "heap_records": [
+        {
+          "case": "actual_default_suballocated",
+          "phase": "completed_submission_drop_enqueues_reserved_payloads",
+          "rust_allocation_calls": 0,
+          "rust_requested_bytes": 0,
+          "collected_native_items": null
+        },
+        {
+          "case": "actual_default_suballocated",
+          "phase": "fragmented_completed_reclaim_with_live_anchors",
+          "rust_allocation_calls": 33,
+          "rust_requested_bytes": 2640,
+          "collected_native_items": 33
+        },
+        {
+          "case": "dedicated_control",
+          "phase": "completed_submission_drop_enqueues_reserved_payloads",
+          "rust_allocation_calls": 0,
+          "rust_requested_bytes": 0,
+          "collected_native_items": null
+        },
+        {
+          "case": "dedicated_control",
+          "phase": "fragmented_completed_reclaim_with_live_anchors",
+          "rust_allocation_calls": 0,
+          "rust_requested_bytes": 0,
+          "collected_native_items": 33
+        },
+        {
+          "case": "actual_default_suballocated",
+          "phase": "unused_drop_with_live_anchor",
+          "rust_allocation_calls": 1,
+          "rust_requested_bytes": 64,
+          "collected_native_items": null
+        },
+        {
+          "case": "dedicated_control",
+          "phase": "unused_drop_with_live_anchor",
+          "rust_allocation_calls": 0,
+          "rust_requested_bytes": 0,
+          "collected_native_items": null
+        }
+      ],
+      "heap_not_measured": [
+        "C/driver heap",
+        "other-thread allocations",
+        "deallocation calls",
+        "peak/live Rust heap",
+        "thread CPU",
+        "frame CPU",
+        "production mimalloc overhead"
+      ]
+    },
+    "c98_surface": {
+      "source_commit": "c98be8eafd524c6a66215b91603cd7fd1f349be1",
+      "strict_pixels_passed": false,
+      "children": "each 1 passed / 0 ignored / zero VUID",
+      "declared_inputs_and_retained_order_equal": true,
+      "nani_gpu_bytes_observed": false,
+      "nani_reason": "Unavailable: retained owners DEVICE_LOCAL and not HOST_VISIBLE",
+      "whole_gpu_input_equivalence_proven": false
+    },
+    "c98_trace": {
+      "wall_bricks_each": 502,
+      "off_ranges": 3,
+      "on_ranges": 4,
+      "observed_direct_dispatch_off_on": [
+        355,
+        357
+      ],
+      "two_wall_scopes_each_role": 92,
+      "full_trace_direct_dispatch_delta": 184,
+      "other_pass_name_distributions_equal": 111,
+      "nani_unchanged": true,
+      "changed_graph_command_rows": 14,
+      "changed_graph_chunk_rows": 14,
+      "raw_cpu_runs_valid": false,
+      "receipt_join_available": false,
+      "payload_or_pixel_equality_proven": false,
+      "old_failed_pair_reclassified": false
+    },
+    "resource_constraint": {
+      "scope": "controlling-session observations; historical samples retained separately, not compiler peaks",
+      "ram_gib": 32,
+      "pagefile_enabled": false,
+      "available_commit_gib_approx_historical": [
+        1.4,
+        1.8
+      ],
+      "manual_memory_release_question": "awaiting user response: manually close unused high-memory programs to free about 8GB of commit headroom; no pagefile change requested or applied",
+      "earlier_root_read_only_sample": {
+        "api": "GlobalMemoryStatusEx",
+        "utc_approx": "2026-10-26 18:30",
+        "available_commit_bytes": 4824317952,
+        "available_physical_bytes": 6015111168
+      },
+      "latest_read_only_reader": {
+        "available_commit_bytes": 1208508416,
+        "available_physical_bytes": 3220877312,
+        "immediate_job_flags": 10240,
+        "configured_process_memory_limit": null,
+        "configured_job_memory_limit": null,
+        "scope": "current diagnostic reader and its accessible immediate Job only; not ancestor limits or failed compiler peak"
+      },
+      "further_native_or_heavy_tiny_attempts": "stopped until more memory is available",
+      "unrelated_apps_terminated": false,
+      "settings_changed": false
+    },
+    "open_boundaries": {
+      "final_f39_tiny_or_workspace_typecheck_passed": false,
+      "final_f39_rhapsody_checks_passed": true,
+      "latest_engineering_tiny_typecheck_passed": false,
+      "common4_isolated_baseline_active": false,
+      "oom_fatal_policy_applied": false,
+      "automatic_retry_applied": false,
+      "stage5_fully_bounded_accepted": false,
+      "formal_cpu_gain_accepted": false,
+      "render_p95_16ms_accepted": false,
+      "strict_water_ice_pixels_accepted": false,
+      "pressure_and_long_runs_accepted": false,
+      "wsi": "user deferred",
+      "macos": "pending",
+      "push_occurred": false
+    },
+    "evidence": {
+      "rhapsody_observers_valid": {
+        "path": "C:/game/.perf/w1-rhapsody-observers-jobdiag-6d1cf8a-1/result.json",
+        "sha256": "1445d944d3de971d8bc1510132057773f384ee147655dc5782a0f3b69f09cd82",
+        "bytes": 8497
+      },
+      "rhapsody_observers_test_log": {
+        "path": "C:/game/.perf/w1-rhapsody-observers-jobdiag-6d1cf8a-1/test.stdout.log",
+        "sha256": "2251f3ab9dc2730e62972ead8b63e5c2b2b446400d69d8d96fb7a7f52d4c490c",
+        "bytes": 336
+      },
+      "rhapsody_observers_source_before": {
+        "path": "C:/game/.perf/w1-rhapsody-observers-jobdiag-6d1cf8a-1/source-before.json",
+        "sha256": "039a390410d4cdef5c6acf4a949fcb1a6e9498de9fa459430135b8b912d9e22a",
+        "bytes": 359237
+      },
+      "rhapsody_observers_source_after": {
+        "path": "C:/game/.perf/w1-rhapsody-observers-jobdiag-6d1cf8a-1/source-after.json",
+        "sha256": "039a390410d4cdef5c6acf4a949fcb1a6e9498de9fa459430135b8b912d9e22a",
+        "bytes": 359237
+      },
+      "rhapsody_observers_original_job_failure": {
+        "path": "C:/game/.perf/w1-rhapsody-observers-6d1cf8a/result.json",
+        "sha256": "f146592295dfd518ecf87b3f395363610357d7e830f101c6cbf9ac0d2c8f7a5d",
+        "bytes": 8005
+      },
+      "tiny_observers_build_failure": {
+        "path": "C:/game/.perf/w1-tiny-target-observers-jobdiag-6d1cf8a-1/result.json",
+        "sha256": "f644c18493c01ad6838a6721e773fb2184c799c92e0d5fa8dfe55a8a35c3e7da",
+        "bytes": 4262
+      },
+      "tiny_observers_compiler_log": {
+        "path": "C:/game/.perf/w1-tiny-target-observers-jobdiag-6d1cf8a-1/cargo.stderr.log",
+        "sha256": "1a22271846dcc688b14a6465cd13afb0e0637e19e2fdad3bfcbb3277106ae422",
+        "bytes": 31788
+      },
+      "rhapsody_probe_initial_type_error": {
+        "path": "C:/game/.perf/pending-surface-suballoc-rhapsody-probe-check.log",
+        "sha256": "43d4506b9817479fb00539ac775bade7175efc19c1d569dcaaa952694651b856",
+        "bytes": 902
+      },
+      "rhapsody_probe_typecheck_after_fix": {
+        "path": "C:/game/.perf/pending-surface-suballoc-rhapsody-probe-check-2.log",
+        "sha256": "546a2e90ba21add9a38d8fd259f93fe8e989899f899601aabdbcbc4cacf48d9c",
+        "bytes": 1788
+      },
+      "rhapsody_default_typecheck": {
+        "path": "C:/game/.perf/pending-surface-suballoc-rhapsody-default-check.log",
+        "sha256": "812091c86d46654bd72e5965327169fbd880a3d8ccea1ac8dae57f4bc3f0ad7e",
+        "bytes": 1788
+      },
+      "f39_rhapsody_probe_all_targets": {
+        "path": "C:/game/.perf/f39-rhapsody-probe-all-targets-check.log",
+        "sha256": "0955dff4feaad7d98fda9c3cf72dc4805f6dce99a5f0469826b7439733ccf71f",
+        "bytes": 1788
+      },
+      "f39_rhapsody_default_all_targets": {
+        "path": "C:/game/.perf/f39-rhapsody-default-all-targets-check.log",
+        "sha256": "da3abe6b88110ab34fd4775a7e767ee79e8b97a3e6ba5a416d3eb24a50697945",
+        "bytes": 1788
+      },
+      "python_63": {
+        "path": "C:/game/.perf/surface-integrated-python-tests.log",
+        "sha256": "55589a121583d9048584930b8707e6ab884b2aa93c7f01cf4c24040973b923d2",
+        "bytes": 9199
+      },
+      "tiny_canonical_typecheck_oom": {
+        "path": "C:/game/.perf/integrated-surface-canonical-tiny-typecheck.log",
+        "sha256": "bce186ef47a8065af6ddd62e1ab6e9c8eedfdbfb454689e568b842e002e5a2d6",
+        "bytes": 14369
+      },
+      "c98_surface_audit": {
+        "path": "C:/Users/liyu/.codex/visualizations/2026/10/26/01a17714-b237-7ed3-8e87-7aeaa53c4a51/surface-c98-update/audit.json",
+        "sha256": "c8b5ddfa7792d4a7dbef02d4ab28ead8e85f5f971247f74944b0c2d67040ec73",
+        "bytes": 19636
+      },
+      "c98_surface_summary": {
+        "path": "C:/Users/liyu/.codex/visualizations/2026/10/26/01a17714-b237-7ed3-8e87-7aeaa53c4a51/surface-c98-update/summary.md",
+        "sha256": "9aa11a1676d37161886c55844c38ca19f91f5075867cd64b50a645b9ddae1552",
+        "bytes": 3397
+      },
+      "c98_trace_summary": {
+        "path": "C:/game/.perf/binding-trace-source/rich-workload-debug-c98be8e-trace-1/summary.json",
+        "sha256": "4384d58f4506d06853f5a3013203a8330525055fab7e08d3e9a716ac48d31725",
+        "bytes": 177822
+      },
+      "tools_canonical_135": {
+        "path": "C:/game/.perf/canonical-cold-tools-integrated-regressions.log",
+        "sha256": "8611a4bfc715dbd7675073a25e604e72994da045a3b31321a67f8790494b6148",
+        "bytes": 241
+      },
+      "tools_binding_44": {
+        "path": "C:/game/.perf/binding-canonical-integrated-regressions.log",
+        "sha256": "0f06c5028e5fce9fda358d45326390b985066fc4518b2bbdca423eb665edebdf",
+        "bytes": 148
+      },
+      "tools_surface_original_91_errors2": {
+        "path": "C:/game/.perf/surface-local-freeze-integrated-regressions.log",
+        "sha256": "d9c1bc3a471a062aa4c3e1716081b94aa095fdf4cfdfa1ff6858b9380737af0b",
+        "bytes": 3458
+      },
+      "tools_surface_lf_fixed_94": {
+        "path": "C:/game/.perf/surface-local-freeze-integrated-regressions-lf-fixed.log",
+        "sha256": "4eb97fa29c0dac788c44ac8ebd4d6f2d6683ca751cb28a2f64262cc152b4ca39",
+        "bytes": 199
+      },
+      "effects_host_latest_source": {
+        "path": "C:/game/crates/tiny-glade/src/effects_host.rs",
+        "sha256": "e55ecbf7e02331a5e3b0c9b93c4b0e8e26b078aaa50a80bd8c50d32f648bed7c",
+        "bytes": 14531
+      },
+      "effects_host_native_test_source": {
+        "path": "C:/game/crates/tiny-glade/tests/original_scene_compute_gpu.rs",
+        "sha256": "c2ddf26803539382e3b7e06ea9f6d607112515e4b4c258e426f914cb7602b850",
+        "bytes": 99695
+      },
+      "memory_latest_read_only": {
+        "path": "C:/Users/liyu/.codex/visualizations/2026/10/26/01a17714-b237-7ed3-8e87-7aeaa53c4a51/w1-memory-and-future-guard/current-reader-memory-2.json",
+        "sha256": "7515932266e85b77e213740ee3386d3a41a0979f64389feccd23843254dcb9d8",
+        "bytes": 1707
+      },
+      "recoverable_oom_design_only": {
+        "path": "C:/game/docs/performance/recoverable-compile-oom-design-20261027.txt",
+        "sha256": "74fae5c396309bb86a99b39f1e204721f25277be2231339b4054e049ab072aee",
+        "bytes": 18275
+      },
+      "recoverable_oom_design_source_anchors": {
+        "path": "C:/game/docs/performance/recoverable-compile-oom-source-anchors-20261027.json",
+        "sha256": "631ca91fa84c8bc022ceaae8d28c738fca70141a30d903fd0a58c5cf95ed450d",
+        "bytes": 4410
+      },
+      "pending9_result.json": {
+        "path": "C:/game/.perf/rhap-pending-acquire-storage-f39dc61-bounded-1/result.json",
+        "sha256": "853b967b1ab9c20a0146e74da0e0afdd9a47abcbe7fd06158886f07691bab0d6",
+        "bytes": 5736
+      },
+      "pending9_source-before.json": {
+        "path": "C:/game/.perf/rhap-pending-acquire-storage-f39dc61-bounded-1/source-before.json",
+        "sha256": "ae152138529ac892763168e7bab919a1ad46a97f3398e9eddb3a078e4c07ca17",
+        "bytes": 360105
+      },
+      "pending9_source-after.json": {
+        "path": "C:/game/.perf/rhap-pending-acquire-storage-f39dc61-bounded-1/source-after.json",
+        "sha256": "ae152138529ac892763168e7bab919a1ad46a97f3398e9eddb3a078e4c07ca17",
+        "bytes": 360105
+      },
+      "pending9_owned-job-observations.jsonl": {
+        "path": "C:/game/.perf/rhap-pending-acquire-storage-f39dc61-bounded-1/owned-job-observations.jsonl",
+        "sha256": "a5819453fff8c12c2b321306dfd8c16f3c87250eb444ffa023b0d78c29edc9dc",
+        "bytes": 1857
+      },
+      "pending9_cargo.stderr.log": {
+        "path": "C:/game/.perf/rhap-pending-acquire-storage-f39dc61-bounded-1/cargo.stderr.log",
+        "sha256": "b12c9d963de03b2fb8af3eb9a20801610b344c78df5ae9577c8b9e1521cf8f01",
+        "bytes": 5074
+      },
+      "heap_round1_result.json": {
+        "path": "C:/game/.perf/rhap-suballocation-drop-heap-f39dc61-bounded-1/result.json",
+        "sha256": "5bd9a0e08e90ad96d62f54d393106be2c134635f55ed6ea69e0d063edeb4d367",
+        "bytes": 21359
+      },
+      "heap_round1_source-before.json": {
+        "path": "C:/game/.perf/rhap-suballocation-drop-heap-f39dc61-bounded-1/source-before.json",
+        "sha256": "ae152138529ac892763168e7bab919a1ad46a97f3398e9eddb3a078e4c07ca17",
+        "bytes": 360105
+      },
+      "heap_round1_source-after.json": {
+        "path": "C:/game/.perf/rhap-suballocation-drop-heap-f39dc61-bounded-1/source-after.json",
+        "sha256": "ae152138529ac892763168e7bab919a1ad46a97f3398e9eddb3a078e4c07ca17",
+        "bytes": 360105
+      },
+      "heap_round1_owned-job-observations.jsonl": {
+        "path": "C:/game/.perf/rhap-suballocation-drop-heap-f39dc61-bounded-1/owned-job-observations.jsonl",
+        "sha256": "403d6a9f2fd25fc32eb8446bb40c2ebf93157f1e4bec71a557d92cc758c69e04",
+        "bytes": 40088
+      },
+      "heap_round1_test.stdout.log": {
+        "path": "C:/game/.perf/rhap-suballocation-drop-heap-f39dc61-bounded-1/test.stdout.log",
+        "sha256": "64290375ab9d08f75409f1df98ec8bc6d830550abc452c43dc7053ba0bc46e08",
+        "bytes": 8707
+      },
+      "heap_round1_test.stderr.log": {
+        "path": "C:/game/.perf/rhap-suballocation-drop-heap-f39dc61-bounded-1/test.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "heap_round2_result.json": {
+        "path": "C:/game/.perf/rhap-suballocation-drop-heap-f39dc61-bounded-2/result.json",
+        "sha256": "3bb8b732c6463ac3b162c0b28391d9194adfa7a23b9a778edeb5eed9bf7a32ad",
+        "bytes": 21240
+      },
+      "heap_round2_source-before.json": {
+        "path": "C:/game/.perf/rhap-suballocation-drop-heap-f39dc61-bounded-2/source-before.json",
+        "sha256": "ae152138529ac892763168e7bab919a1ad46a97f3398e9eddb3a078e4c07ca17",
+        "bytes": 360105
+      },
+      "heap_round2_source-after.json": {
+        "path": "C:/game/.perf/rhap-suballocation-drop-heap-f39dc61-bounded-2/source-after.json",
+        "sha256": "ae152138529ac892763168e7bab919a1ad46a97f3398e9eddb3a078e4c07ca17",
+        "bytes": 360105
+      },
+      "heap_round2_owned-job-observations.jsonl": {
+        "path": "C:/game/.perf/rhap-suballocation-drop-heap-f39dc61-bounded-2/owned-job-observations.jsonl",
+        "sha256": "280f6a16b76d9c87e730b6b6f71e054210cae6c53492fc2e64b50a626bd1de44",
+        "bytes": 1829
+      },
+      "heap_round2_test.stdout.log": {
+        "path": "C:/game/.perf/rhap-suballocation-drop-heap-f39dc61-bounded-2/test.stdout.log",
+        "sha256": "8b9e1835977db2bfdf00d838c8305b0e187060f99bc6c1c38f7bcafd2b335eaa",
+        "bytes": 8707
+      },
+      "heap_round2_test.stderr.log": {
+        "path": "C:/game/.perf/rhap-suballocation-drop-heap-f39dc61-bounded-2/test.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    }
+  },
+  "current_wip_publication_20261027": {
+    "publication_authorization": "Explicit user request to commit and push current modifications and unfinished work; supersedes final-acceptance-before-push condition",
+    "remote": "git@github.com:yuluo-zy/games_test.git",
+    "target_branch": "codex/perf-windows-20261026",
+    "acceptance_complete": false,
+    "measured_source_commit": "bd7e1098284028d8d38eed92ea7b1415269d3a09",
+    "report": "current-version-p95-20261027.md",
+    "static_owner_scope_valid": true,
+    "static_original_global_capture_valid": false,
+    "static_render_phase_cpu_ms": {
+      "n": 3000,
+      "mean_ms": 9.574786366666666,
+      "p50_ms": 9.1484,
+      "p95_ms": 12.612,
+      "p99_ms": 14.7553
+    },
+    "static_whole_owner_cpu_ms": {
+      "n": 3000,
+      "mean_ms": 12.5272311,
+      "p50_ms": 12.0889,
+      "p95_ms": 15.7644,
+      "p99_ms": 18.211
+    },
+    "remaining_current_scenes": [
+      "many_draws",
+      "local_edit",
+      "continuous_edit"
+    ],
+    "relative_speedup_established": false,
+    "production_render_thread_measured": false,
+    "workspace_probe_surface_all_targets_typecheck_passed": true,
+    "typecheck_sha256": "08ae802d880a7fe5df1723d2538a81e1b896911c4d30cf039e24309773d499d2",
+    "unfinished_tasks": [
+      "1. 大量绘制、局部编辑、连续编辑：尚未启动本次当前版本采样；分别预热 600 / 采样 3,000 帧。",
+      "2. 静态全进程校验：保留原失败，修正并验证线程 T-End 后同一代 kernel cleanup 再次调度的识别；不能将现有 owner 派生结果升级为全进程通过。",
+      "3. 最新默认 workspace 全目标检查，以及 canonical 5 / local surface 6 / pending-acquire 9 / Tiny observer 2 / EffectsHost lifecycle 1 的实际执行仍待补齐；探针+surface workspace 类型检查已通过，不替代原生执行。",
+      "4. 水/冰严格像素、实际 GPU 输入闭环、Collect 代表性取消/预算耗尽恢复和四场景回归仍待完成。",
+      "5. 探针开销 ≤1%、正式多轮性能验收、完整压力回收及稳定负载/效果切换/resize 各 30 分钟且 10,000 帧仍待验。",
+      "6. 默认 suballocation 的 Drop/回收仍有 Rust 堆分配；Painterly Ready/progress、一次性 LUT 与 capture 发布事务的 OOM 恢复方案尚未实现。",
+      "7. 真实窗口 WSI 兼容按此前指示暂缓，macOS 待验。只测当前版本不能计算相对优化前的提升百分比。"
+    ]
+  }
+}

@@ -1,0 +1,319 @@
+{
+  "title": "Tiny Glade · 模块恢复进度",
+  "generated_at": "2026-10-18T23:43:43+08:00",
+  "scope": "以 country-core/systems 与 resources 为中心，包含已涉及的上层消费者；不代表全仓完整验收。",
+  "target": "B 发行 RNE / 匹配 PDB",
+  "status_labels": {
+    "partial": "局部回归通过",
+    "active": "正在恢复",
+    "review": "待整模块复核"
+  },
+  "core_inventory": {
+    "systems_rs": 338,
+    "resources_rs": 174,
+    "note": "当前文件盘点；数量不是恢复完成率。"
+  },
+  "latest_core_test": {
+    "run": "snapshot-batch-r1",
+    "passed": 2454,
+    "failed": 0,
+    "editing_graph_passed": 1,
+    "source_drift_total": 1,
+    "core_scoped_drift": 1,
+    "post_run_drift": "其他owner后续增量另验",
+    "scope": "仅gpu_generate_draw_lists.rs在run中漂移；保存批次无漂移，不接受该GPU新源/完整最新宿主。"
+  },
+  "rules": [
+    "保留当前手工重构，增量补功能和修算法。",
+    "局部验证不外推为模块完成。",
+    "候选冻结不等于生产整合。",
+    "原二进制取证、Rust 回归和真实宿主验收分开。"
+  ],
+  "rows": [
+    {
+      "id": "wall",
+      "group": "核心编辑",
+      "title": "墙体 / 栅栏",
+      "status": "partial",
+      "done": "新墙 / 栅栏、端点续画 / 反向、false 完成、Pending 历史与首输入录制已整合回归。",
+      "remaining": "复杂吸附 / 合墙仍待恢复；实际宿主工具交互、signifier 与 full draw 原侧动态验证待完成。",
+      "paths": [
+        "crates/country-core/src/systems/wall",
+        "crates/country-core/src/resources/walls"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/ordinary-wall-r1-result.json",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/ordinary-wall-r1.log"
+      ]
+    },
+    {
+      "id": "history",
+      "group": "核心编辑",
+      "title": "历史 / 撤销 / 重做",
+      "status": "partial",
+      "done": "录制 / Sync、树 / 地形 / 墙历史已验证；共享 pending 快照 ID、判定方向与真实 pop counter 已修复。",
+      "remaining": "完整真实编辑 → 保存 → 加载 → 回放、其余 EditType 与非空辅助 diff 仍需逐链验收。",
+      "paths": [
+        "crates/country-core/src/systems/history",
+        "crates/country-core/src/resources/history"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/core-native-r7-result.json",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/tree-history-r1-result.json"
+      ]
+    },
+    {
+      "id": "terrain",
+      "group": "核心编辑",
+      "title": "地形绘制 / 编辑",
+      "status": "partial",
+      "done": "曲线 / RDP、采样高度、拖动、typed 历史、回放及真实事件消费者已整合并分批验证。",
+      "remaining": "真实宿主工具入口、GPU mapped 创建 / 提交 / 同步，以及渲染和实体出生全链仍有缺口。",
+      "paths": [
+        "crates/country-core/src/systems/terrain",
+        "crates/country-core/src/resources/terrain_editing.rs",
+        "crates/systems/terrain"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/README.md",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/core-native-r7-result.json"
+      ]
+    },
+    {
+      "id": "save",
+      "group": "核心编辑",
+      "title": "保存 / 加载 / 快照",
+      "status": "partial",
+      "done": "14 域元数据、屋顶 / 装饰分桶、真实 ID 及 Motomoto / Deflate 文件编码已通过库回归。",
+      "remaining": "真实域采集 → 后台落盘 / hash → History，以及 State / Roof 解码和文件加载恢复仍未闭合。",
+      "paths": [
+        "crates/country-core/src/systems/save",
+        "crates/country-core/src/resources/save_file.rs"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/README.md",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/tree-history-r1-result.json"
+      ]
+    },
+    {
+      "id": "trees",
+      "group": "世界内容",
+      "title": "树工具 / 树历史",
+      "status": "partial",
+      "done": "墙旁 / 区域隐藏、路径清树、完整 placement、Move → Insert → Delete、六向回放已通过。",
+      "remaining": "预置树转换其余过滤、树弯曲 / 地形更新、上层 prefab 出生及实际场景 GPU 效果待补。",
+      "paths": [
+        "crates/systems/tree-tool",
+        "crates/country-core/src/resources/tree_storage.rs"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/tree-history-r1-result.json",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/tree-history-r1.log"
+      ]
+    },
+    {
+      "id": "critters",
+      "group": "世界内容",
+      "title": "动物 / 羊",
+      "status": "partial",
+      "done": "统一真实 ECS 组件；羊运动、快照捕获 / 应用、冻结与实时保存已完成有界验证。",
+      "remaining": "出生、完整物种生命周期、完整查询遍历与 RNG，以及场景行为尚未全部验收。",
+      "paths": [
+        "crates/country-core/src/resources/critters",
+        "crates/systems/critters"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/core-native-r7-result.json",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/README.md"
+      ]
+    },
+    {
+      "id": "clutter",
+      "group": "世界内容",
+      "title": "植被 / 花园 / 杂物",
+      "status": "partial",
+      "done": "Bush canonical mapped 9601 行、原位排序 / 归一 hash / dirty、真实类型库消费者与注册已修；8 项专项通过。",
+      "remaining": "populate 内另一 BushGrid 及未使用的下游参数仍待接通；真实 GPU 完成 / 同步、其他杂物分支尚未全审。",
+      "paths": [
+        "crates/country-core/src/systems/ui_clutter",
+        "crates/country-core/src/systems/garden",
+        "crates/systems/clutter"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/bush-clutter-r1-result.json",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/PENDING_RESOURCE_PRODUCERS.md"
+      ]
+    },
+    {
+      "id": "building",
+      "group": "世界内容",
+      "title": "建筑构造 / 屋顶 / 楼梯 / 常春藤",
+      "status": "review",
+      "done": "保留已有构造 / 屋顶 / 楼梯 / 常春藤；屋顶 7 字段、样式和圆旋转保存格式已修并回归。",
+      "remaining": "屋顶 Deserialize 正在恢复；完整几何 / 构造 / 楼梯 / 常春藤仍待逐链复核，不算整模块完成。",
+      "paths": [
+        "crates/country-core/src/resources/roofs",
+        "crates/country-core/src/resources/stairs",
+        "crates/country-core/src/resources/ivy",
+        "crates/systems/wall-constructor"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/README.md"
+      ]
+    },
+    {
+      "id": "color",
+      "group": "交互与反馈",
+      "title": "颜色 / 材质命令",
+      "status": "partial",
+      "done": "完整 u64 WallID、三个 reader 的查找 / 边界顺序已修复；避免每帧清空颜色表；专项 8 项通过。",
+      "remaining": "全部颜色 UI、材质发布与 GPU 上传 / 场景效果尚未整体验收。",
+      "paths": [
+        "crates/systems/color",
+        "crates/country-core/src/resources/color_id.rs"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/color-wall-r1-assessment.json",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/color-wall-r1.log"
+      ]
+    },
+    {
+      "id": "ui",
+      "group": "交互与反馈",
+      "title": "输入 / 模式 / UI / Arrow",
+      "status": "partial",
+      "done": "光标位移 / 聚焦、模式调度、Arrow 动画、续画 Sphere 与公开 bulldoze gate 已修。",
+      "remaining": "实际宿主输入 / modifier / 相机正在由对应 owner 接通；其他焦点、Arrow 出生与完整 UI 仍待验收。",
+      "paths": [
+        "crates/country-core/src/systems/mode_manager",
+        "crates/country-core/src/systems/ui",
+        "crates/country-core/src/systems/arrow_gizmo_animation.rs"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/core-native-r7-result.json",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/README.md"
+      ]
+    },
+    {
+      "id": "onboarding",
+      "group": "交互与反馈",
+      "title": "教学 / 提示",
+      "status": "partial",
+      "done": "三个地形 hint 消费者、实际 hover 标签、profile 与 completion 已接 CPU 配置；33 项专项通过。",
+      "remaining": "完整宿主尚未确认调用该新增配置入口；不能据 CPU 验证称游戏教学已可用。",
+      "paths": [
+        "crates/systems/onboarding",
+        "crates/country-core/src/resources/onboarding.rs"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/onboarding-native-r2-result.json",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/README.md"
+      ]
+    },
+    {
+      "id": "audio",
+      "group": "交互与反馈",
+      "title": "音频生命周期",
+      "status": "partial",
+      "done": "初始化保留现有状态；19 个实时 stop 调用传入实际时钟，避免常量零导致无法停止。",
+      "remaining": "全局声源出生 / 停止、所有业务音频分支与原全局调度仍未整体验收。",
+      "paths": [
+        "crates/country-core/src/systems/audio",
+        "crates/country-core/src/resources/audio_resources.rs"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/core-native-r7-result.json",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/README.md"
+      ]
+    },
+    {
+      "id": "collision",
+      "group": "资源与运行",
+      "title": "碰撞 / 射线 / 空间查询",
+      "status": "partial",
+      "done": "最近命中、TOI / miss 位模式、地形 sphere 投影、姿态与回调停止规则已按锁定 Rapier 修复。",
+      "remaining": "全局句柄归属、完整装饰物谓词及所有真实场景查询组合尚未验收。",
+      "paths": [
+        "crates/country-core/src/systems/collision"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/core-native-r7-result.json",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/README.md"
+      ]
+    },
+    {
+      "id": "prefab",
+      "group": "资源与运行",
+      "title": "预制体 / 资产消费者",
+      "status": "partial",
+      "done": "完整 48B placement 保留；Prefab Part / audio bounds 增量已接，主链真实资产初始化已通过有界 GPU 验证。",
+      "remaining": "其余 prefab 查询 / 过滤及所有实体出生 / 场景渲染仍待验收；不以资产初始化代表可玩世界。",
+      "paths": [
+        "crates/country-core/src/systems/prefab.rs",
+        "crates/country-core/src/resources/prefab.rs",
+        "crates/country-core/src/asset_libraries"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/core-native-r7-result.json",
+        "reports/foundation/2026-10-18-asset-libraries-rereview/README.md"
+      ]
+    },
+    {
+      "id": "masks",
+      "group": "资源与运行",
+      "title": "GPU 资源 / Mask / SSBO",
+      "status": "partial",
+      "done": "Mask / Bush / Dormer / Counter / Lantern / Grounded / Rocky 构造与类型已修；72 producer 主链有界验证通过。",
+      "remaining": "Rocky 全启动 / W4-W5、各 readback 完成 / CPU 接受与所有下游消费者仍需完整场景验收。",
+      "paths": [
+        "crates/country-core/src/resources/terrain_rock_mask.rs",
+        "crates/country-core/src/resources/water_mask.rs",
+        "crates/country-core/src/resources/garden_mask.rs"
+      ],
+      "evidence": [
+        "reports/systems/2026-10-18-core-systems-resources-recovery/producers-r1-result.json",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/producers-r1-assessment.json",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/PENDING_RESOURCE_PRODUCERS.md"
+      ]
+    },
+    {
+      "id": "host",
+      "group": "资源与运行",
+      "title": "渲染循环 / 实际宿主",
+      "status": "active",
+      "done": "主链已验证窗口 / loading / present、真实资产初始化、W3 和多个后处理 GPU pass；编辑图通过。",
+      "remaining": "完整生产世界图 / warmup、场景几何与工具交互 / 保存加载闭环尚未完成，仍非完整可玩验收。",
+      "paths": [
+        "crates/country-core/src/systems/render_loop",
+        "crates/tiny-glade",
+        "crates/rhapsody"
+      ],
+      "evidence": [
+        "reports/runtime/2026-10-18-main-chain-recovery/RENDERER.md",
+        "reports/runtime/2026-10-18-main-chain-recovery/MAIN-GRAPH-CONSUMERS.md",
+        "reports/systems/2026-10-18-core-systems-resources-recovery/README.md"
+      ]
+    }
+  ],
+  "other_scope": "camera_rig、backend、steam、debug、weather/time、photo/timelapse、forest/water/toolbar 等其他模块已有实现；本轮尚无完整业务清单及逐链验收结论。",
+  "project_crates": [
+    "asset",
+    "asset-pipe",
+    "country-core",
+    "lang-lib",
+    "motomoto",
+    "paths",
+    "rhapsody",
+    "systems",
+    "tabloid",
+    "tg-building-runtime",
+    "tg-gpu-selector",
+    "tg-history",
+    "tg-iced",
+    "tg-package-integrity",
+    "tg-text",
+    "tg-theme",
+    "tiny-glade",
+    "utils"
+  ]
+}

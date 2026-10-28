@@ -202,7 +202,7 @@ impl p::PassHost for EffectsHost<'_, '_, '_> {
     fn temporal_texture(&mut self, name: &str, desc: p::TextureDesc) -> Result<p::TemporalTexture, p::HostError> {
         let desc = texture_desc(desc);
         let result = self.compute(|env| env.try_temporal_texture(name, desc));
-        result.map(|t| p::TemporalTexture { tex: self.register_texture(t.texture), reused: t.flag == 0 })
+        result.map(|t| p::TemporalTexture { tex: self.register_texture(t.texture), reused: t.flag != 0 })
             .map_err(|e| p::HostError(e.to_string()))
     }
     fn temporal_buffer(&mut self, name: &str, desc: p::BufferDesc) -> Result<p::TemporalBuffer, p::HostError> {
@@ -213,7 +213,7 @@ impl p::PassHost for EffectsHost<'_, '_, '_> {
             frame.get_or_create_temporal_buffer(name, &desc).map_err(|e|
                 rhapsody::Error::invalid_usage(format!("effect temporal buffer: {e}")))
         });
-        result.map(|b| p::TemporalBuffer { buf: p::BufRef(b.buffer.resource), reused: b.flag == 0 })
+        result.map(|b| p::TemporalBuffer { buf: p::BufRef(b.buffer.resource), reused: b.flag != 0 })
             .map_err(|e| p::HostError(e.to_string()))
     }
     fn create_raw_texture(&mut self, name: &str, desc: p::TextureDesc) -> p::TexRef {

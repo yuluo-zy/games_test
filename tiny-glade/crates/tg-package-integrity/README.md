@@ -111,4 +111,4 @@ cargo run -p tg-package-integrity --example inspect_package -- /path/to/package
 
 模块只负责包内校验，启动流程、崩溃报告接线及包发布生成由调用方负责。历史来源见 [foundation-audit.json](../../provenance/foundation-audit.json) 与 [原始调查报告](../../../reverse-engineering/tiny-glade/evidence/small-libs-batch-02-2026-10-13/tg-package-integrity/BUSINESS_RULES.md)。历史 Windows 别名和静默扫描 fixture 保存用于调查参考，不作为保留错误行为的要求。
 
-本轮源码复审、工程化改造及验证边界见 [复审报告](../../reports/building-foundation-review-2026-10-18/README.md)。
+本轮源码复审、工程化改造及验证边界见 [复审报告](../../reports/building/2026-10-18-building-foundation-review/README.md)。

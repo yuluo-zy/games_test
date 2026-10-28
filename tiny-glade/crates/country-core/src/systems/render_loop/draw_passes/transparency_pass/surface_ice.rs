@@ -137,7 +137,7 @@ pub fn raster_ice_surface(ctx: &mut DrawPassCtx<'_>, prepared: &IceSurfacePrepar
             &colors,
             i.depth,
             i.lists.list(SURFACE_LIST),
-            &|b| {
+            &|e, b| {
                 let b = d_uniform_bool(e, b, names::BOOL_RENDER_SHADOWS, true);
                 let b = d_preset(e, b, PRESET_SHADOW_MAP, names::SHADOW_MAP);
                 let b = d_sampled(e, b, i.half_depth, names::HALF_DEPTH_TEX);

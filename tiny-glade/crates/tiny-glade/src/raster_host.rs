@@ -282,7 +282,8 @@ pub struct AssetTables {
     /// Writers copy only while an earlier scope still retains its snapshot.
     pub collect: Arc<CollectAssets>,
     /// VAO refreshes do not copy the independent Collect query snapshot.
-    vaos: IdMap<Arc<VaoSnapshot>>,
+    vaos: Option<Arc<VaoSnapshotTable>>,
+    wrapper_reuse: Option<Arc<VaoSnapshotTable>>,
 }
 
 #[derive(Clone, Default)]
@@ -387,6 +388,46 @@ struct VaoScopeState {
     table_revision: u64,
 }
 
+/// One physical owner for the publication's actual map capacity and Arc data.
+/// Reuse guards clone this owner without constructing another map.
+struct VaoSnapshotTable {
+    entries: IdMap<Arc<VaoSnapshot>>,
+    // Storage is freed before budget credit is returned.
+    _memory: rhapsody::accounting::CpuStorageReservation,
+}
+
+impl VaoSnapshotTable {
+    fn metadata_bytes() -> u64 {
+        let (layout, _) = std::alloc::Layout::new::<[usize; 2]>()
+            .extend(std::alloc::Layout::new::<Self>()).expect("VAO table Arc layout");
+        layout.pad_to_align().size() as u64
+    }
+
+    fn map_bytes(capacity: usize) -> u64 {
+        if capacity == 0 { return 0; }
+        capacity.saturating_add(1).checked_next_power_of_two().unwrap_or(usize::MAX)
+            .saturating_mul(std::mem::size_of::<(u64, Arc<VaoSnapshot>)>() + 1)
+            .saturating_add(16) as u64
+    }
+}
+
+/// A synchronous world declaration may temporarily publish a terrain subset.
+/// This guard keeps its preceding full wrappers available as *candidates* only:
+/// every candidate still needs current typed and physical-owner validation.
+pub struct VaoWrapperReuseScope {
+    shared: Arc<RasterShared>,
+    active: bool,
+    _owner: std::marker::PhantomData<Rc<()>>,
+}
+impl Drop for VaoWrapperReuseScope {
+    fn drop(&mut self) {
+        if self.active {
+            let previous = self.shared.assets.lock().wrapper_reuse.take();
+            drop(previous);
+        }
+    }
+}
+
 /// Closes the reuse window opened by [`RasterShared::begin_vao_scope`] on drop.
 pub struct VaoScope(Arc<RasterShared>);
 impl Drop for VaoScope {
@@ -406,12 +447,25 @@ pub struct RasterShared {
     programs: Arc<AssetShaderLibrary>,
     reflections: Mutex<crate::draw_template_cache::ReflectionCache>,
     constant_pool: Arc<crate::draw_constant_pool::ConstantPool>,
+    commit_scratch: country_core::render::pass_builder::draw_commit_scratch::DrawCommitScratchPool,
+    #[cfg(test)]
+    fail_constant_write: std::sync::atomic::AtomicUsize,
     zero_vertex: ZeroVertexBuffer,
     collect_chunk_draws: usize,
     vao_refresh_timing: Mutex<VaoRefreshTiming>,
     /// Bumped every time the VAO snapshot table is replaced.
     vao_table_revision: std::sync::atomic::AtomicU64,
     vao_snapshot_allocations: std::sync::atomic::AtomicU64,
+    #[cfg(feature = "cpu-probe")]
+    management_counts: [std::sync::atomic::AtomicU64; 6],
+    #[cfg(feature = "cpu-probe")]
+    binding_scope_counts: [std::sync::atomic::AtomicU64; 7],
+    #[cfg(feature = "cpu-probe")]
+    binding_scope_invalid: std::sync::atomic::AtomicBool,
+    #[cfg(feature = "cpu-probe")]
+    binding_scope_reuse: bool,
+    #[cfg(feature = "cpu-probe")]
+    management_modes: [bool; 3],
     /// The global texture table's (resource, range) reads for the graph being
     /// declared. Every raster pass of one graph reads the same table, so it is
     /// imported and range-declared once per graph instead of once per pass.
@@ -468,6 +522,119 @@ impl Drop for VaoRefreshMeasurement<'_> {
     }
 }
 
+/// Resolve actual typed handles once per unique VAO, using the entity already
+/// carried by the list builder. Legacy explicit lists keep the original scan
+/// fallback; native host/generation validation still happens after this step.
+fn draw_vao_handles(
+    world: &mut bevy_ecs::world::World,
+    lists: &country_core::systems::render_loop::draw_passes::draw_lists::DrawLists,
+    typed_lookup: bool,
+    mut timing: Option<&mut VaoRefreshTiming>,
+) -> rhapsody::Result<Vec<country_core::asset_libraries::Handle<country_core::render::vao::Vao>>> {
+    use country_core::asset_libraries::Handle as AssetHandle;
+    use country_core::render::vao::Vao;
+    #[cfg(not(feature = "cpu-probe"))]
+    let typed_lookup = { let _ = typed_lookup; true };
+    let mut wanted = std::collections::BTreeSet::new();
+    let mut handles = HashMap::new();
+    for index in 0..country_core::systems::render_loop::draw_passes::draw_lists::DRAW_LIST_COUNT {
+        for (item, _) in lists.list(index) {
+            if let Some(counts) = timing.as_mut() { counts.list_entries += 1; }
+            if wanted.insert(item.vao) && typed_lookup {
+                if let Some(counts) = timing.as_mut() { counts.queried_entities += 1; }
+                if let Some(handle) = world.get::<AssetHandle<Vao>>(item.params.entity)
+                    && handle.id().raw() == item.vao {
+                    handles.insert(item.vao, *handle);
+                }
+            }
+        }
+    }
+    if let Some(counts) = timing.as_mut() { counts.unique_vaos = wanted.len() as u64; }
+    if handles.len() != wanted.len() {
+        let mut query = world.query::<&AssetHandle<Vao>>();
+        for handle in query.iter(world) {
+            if let Some(counts) = timing.as_mut() { counts.queried_entities += 1; }
+            if wanted.contains(&handle.id().raw()) {
+                handles.entry(handle.id().raw()).or_insert(*handle);
+            }
+        }
+    }
+    wanted.into_iter().map(|id| handles.get(&id).copied().ok_or_else(||
+        rhapsody::Error::invalid_usage("draw-list VAO has no matching typed ECS handle")
+    )).collect()
+}
+
+#[cfg(test)]
+mod vao_handle_resolution_tests {
+    use super::*;
+    use bevy_ecs::world::World;
+    use country_core::{
+        asset_libraries::Handle as AssetHandle,
+        render::{vao::Vao, pass_builder::{draw_builder::DrawBuilder, draw_list::EntityDrawParams}},
+        systems::render_loop::draw_passes::draw_lists::{DrawItem, DrawLists, DRAW_LIST_COUNT},
+    };
+
+    fn unused(_: DrawBuilder<'_>, _: &EntityDrawParams, _: &World) {}
+
+    #[test]
+    fn production_entities_resolve_unique_vaos_without_scanning_unrelated_entities() {
+        let mut world = World::new();
+        for _ in 0..1000 { world.spawn(AssetHandle::<Vao>::new()); }
+        let handle = AssetHandle::<Vao>::new();
+        let entity = world.spawn(handle).id();
+        let mut lists = DrawLists::new();
+        for list in 0..DRAW_LIST_COUNT {
+            for _ in 0..64 {
+                let mut item = DrawItem::new(1, 0);
+                item.vao = handle.id().raw();
+                item.params.entity = entity;
+                lists.list_mut(list).push((item, unused));
+            }
+        }
+        let mut counts = VaoRefreshTiming::default();
+        assert_eq!(draw_vao_handles(&mut world, &lists, true, Some(&mut counts)).unwrap(), [handle]);
+        assert_eq!(counts.list_entries, (DRAW_LIST_COUNT * 64) as u64);
+        assert_eq!(counts.unique_vaos, 1);
+        assert_eq!(counts.queried_entities, 1, "one typed lookup rather than 1001-row ECS scan");
+    }
+
+    #[test]
+    fn explicit_lists_keep_scan_fallback_and_missing_typed_handles_stay_errors() {
+        let mut world = World::new();
+        let handle = AssetHandle::<Vao>::new();
+        world.spawn(handle);
+        let mut lists = DrawLists::new();
+        let mut item = DrawItem::new(1, 0);
+        item.vao = handle.id().raw();
+        lists.list_mut(0).push((item, unused));
+        let mut counts = VaoRefreshTiming::default();
+        assert_eq!(draw_vao_handles(&mut world, &lists, true, Some(&mut counts)).unwrap(), [handle]);
+        assert_eq!(counts.queried_entities, 2, "failed entity lookup plus legacy scan");
+        let invalid = AssetHandle::<Vao>::new();
+        lists.list_mut(0)[0].0.vao = invalid.id().raw();
+        assert!(draw_vao_handles(&mut world, &lists, true, None).is_err());
+    }
+
+    #[test]
+    fn stale_entity_does_not_alias_a_different_live_vao_and_results_stay_sorted() {
+        let mut world = World::new();
+        let first = AssetHandle::<Vao>::new();
+        let second = AssetHandle::<Vao>::new();
+        world.spawn(first);
+        let second_entity = world.spawn(second).id();
+        let mut lists = DrawLists::new();
+        for handle in [second, first, second] {
+            let mut item = DrawItem::new(1, 0);
+            item.vao = handle.id().raw();
+            item.params.entity = second_entity;
+            lists.list_mut(0).push((item, unused));
+        }
+        assert_eq!(draw_vao_handles(&mut world, &lists, true, None).unwrap(), [first, second]);
+        world.despawn(second_entity);
+        assert!(draw_vao_handles(&mut world, &lists, true, None).is_err());
+    }
+}
+
 impl RasterShared {
     pub(crate) fn set_frame_buffers(&self, buffers: Option<Arc<BufferHost>>) {
         *self.frame_buffers.lock() = buffers;
@@ -476,9 +643,109 @@ impl RasterShared {
     fn buffer_host(&self) -> Arc<BufferHost> {
         self.frame_buffers.lock().as_ref().unwrap_or(&self.buffers).clone()
     }
+    #[inline]
+    fn management_mode(&self, index: usize) -> bool {
+        #[cfg(feature = "cpu-probe")]
+        { self.management_modes[index] }
+        #[cfg(not(feature = "cpu-probe"))]
+        { let _ = index; true }
+    }
+    /// Constructor-frozen diagnostic modes: reflection scope, typed VAO lookup,
+    /// scoped VAO wrapper reuse. Does not change the original 13 counter fields.
+    pub fn draw_management_modes(&self) -> [bool; 3] {
+        [self.management_mode(0), self.management_mode(1), self.management_mode(2)]
+    }
+
+    #[cfg(feature = "cpu-probe")]
+    pub fn draw_scratch_bill(&self) -> serde_json::Value {
+        let bill = self.commit_scratch.stats();
+        serde_json::json!({
+            "checked_out": bill.checked_out, "cached": bill.cached,
+            "live_bytes": bill.live_bytes, "cached_bytes": bill.cached_bytes,
+            "metadata_bytes": bill.metadata_bytes, "high_water_bytes": bill.high_water_bytes,
+            "checkouts_high_water": bill.checkouts_high_water, "creations": bill.creations,
+            "capacity_growths": bill.capacity_growths, "pool_capacity_stalls": bill.pool_capacity_stalls,
+            "checkouts": bill.checkouts,
+            "pool_capacity_stalls_scope": "pool_slots_or_local_capacity_only",
+            "global_host_budget_refusals_included": false,
+        })
+    }
+
+    pub fn constant_batch_enabled(&self) -> bool { self.constant_pool.batch_enabled() }
+
+    #[cfg(feature = "cpu-probe")]
+    pub fn constant_pool_bill(&self) -> serde_json::Value {
+        let bill = self.constant_pool.bill();
+        serde_json::json!({
+            "batch_constants": bill.batch_constants, "lock_acquisitions": bill.lock_acquisitions,
+            "scanned_idle_entries": bill.scanned_idle_entries, "batch_checkouts": bill.batch_checkouts,
+            "batch_returns": bill.batch_returns, "idle_blocks": bill.idle_blocks,
+            "planned_tasks": bill.planned_tasks, "unplanned_tasks": bill.unplanned_tasks,
+            "planned_cache_misses": bill.planned_cache_misses,
+            "unused_stock_blocks_returned": bill.unused_stock_blocks_returned,
+            "unused_stock_bytes_returned": bill.unused_stock_bytes_returned,
+            "idle_bytes": bill.idle_bytes, "metadata_bytes": bill.metadata_bytes,
+            "physical_allocations": bill.physical_allocations,
+            "physical_allocated_bytes": bill.physical_allocated_bytes,
+            "physical_allocation_scope": "successful_nonempty_cpu_bytes_through_constant_pool_not_malloc_calls",
+            "duration_estimates": false,
+        })
+    }
+
+    fn write_collected_constants(&self, chunk: &DynamicConstantsChunk, bytes: &[u8]) -> rhapsody::Result<()> {
+        #[cfg(test)] {
+            let prior = self.fail_constant_write.fetch_update(
+                std::sync::atomic::Ordering::Relaxed, std::sync::atomic::Ordering::Relaxed,
+                |value| value.checked_sub(1));
+            if matches!(prior, Ok(1)) { return Err(rhapsody::Error::OutOfHostMemory); }
+        }
+        chunk.write_bytes(bytes)
+    }
+
+    #[inline]
+    fn binding_scope_reuse_enabled(&self) -> bool {
+        #[cfg(feature = "cpu-probe")]
+        { self.binding_scope_reuse }
+        #[cfg(not(feature = "cpu-probe"))]
+        { true }
+    }
+    /// Cumulative attempted callback work, including failed callbacks. These
+    /// diagnostic counts are separate from successful receipt workload proof.
+    #[cfg(feature = "cpu-probe")]
+    pub fn binding_scope_probe_counts(&self) -> BindingScopeProbeCounts {
+        use std::sync::atomic::Ordering::Relaxed;
+        let values=self.binding_scope_counts.each_ref().map(|value| value.load(Relaxed));
+        BindingScopeProbeCounts { valid:!self.binding_scope_invalid.load(Relaxed),
+            algorithm_enabled:self.binding_scope_reuse, callbacks:values[0], vec_capacity_growths:values[1],
+            vec_capacity_bytes_after_growth_sum:values[2], snapshot_builds:values[3], snapshot_hits:values[4],
+            shape_fallback_callbacks:values[5], failed_callbacks:values[6] }
+    }
+    fn count_management(&self, index: usize, amount: u64) {
+        #[cfg(feature = "cpu-probe")]
+        if crate::render_cpu_probe::management_enabled() {
+            self.management_counts[index].fetch_add(amount, std::sync::atomic::Ordering::Relaxed);
+        }
+        #[cfg(not(feature = "cpu-probe"))]
+        let _ = (index, amount);
+    }
+    /// App-owned cumulative counts. Diagnostic-only; serialization stays outside frames.
+    #[cfg(feature = "cpu-probe")]
+    pub fn draw_management_counts(&self) -> [u64; 13] {
+        let mut result = [0; 13];
+        for (index, counter) in self.management_counts.iter().enumerate() {
+            result[index] = counter.load(std::sync::atomic::Ordering::Relaxed);
+        }
+        let vao = self.vao_refresh_timing();
+        result[6] = vao.calls; result[7] = vao.list_entries;
+        result[8] = vao.queried_entities; result[9] = vao.unique_vaos;
+        result[10] = self.vao_table_revision(); result[11] = self.vao_snapshot_allocations();
+        result[12] = self.reflections.lock().diagnostic_len() as u64;
+        result
+    }
     fn reflection(&self, shader: u64, variant: u8) -> Option<Arc<CoreReflection>> {
+        self.count_management(0, 1);
         let key = (shader, variant);
-        if let Some(hit) = self.reflections.lock().get(&key) { return Some(hit); }
+        if let Some(hit) = self.reflections.lock().get(&key) { self.count_management(1, 1); return Some(hit); }
         let reflection = core_reflection(self.programs.get_raster_by_id(shader)?, variant)?;
         self.reflections.lock().insert(key, reflection.clone());
         Some(reflection)
@@ -497,45 +764,16 @@ impl RasterShared {
         world: &mut bevy_ecs::world::World,
         lists: &country_core::systems::render_loop::draw_passes::draw_lists::DrawLists,
     ) -> rhapsody::Result<()> {
-        use country_core::asset_libraries::{Handle as AssetHandle, vao_library::AssetVAOLibrary};
-        use country_core::render::vao::Vao;
-        let mut timing = crate::game_loop::frame_timing_enabled().then(|| VaoRefreshMeasurement {
+        let timing_enabled = crate::game_loop::frame_timing_enabled();
+        #[cfg(feature = "cpu-probe")]
+        let timing_enabled = timing_enabled || crate::render_cpu_probe::management_enabled();
+        let mut timing = timing_enabled.then(|| VaoRefreshMeasurement {
             totals: &self.vao_refresh_timing,
             started: std::time::Instant::now(),
             counts: VaoRefreshTiming::default(),
         });
-        let wanted = (0
-            ..country_core::systems::render_loop::draw_passes::draw_lists::DRAW_LIST_COUNT)
-            .flat_map(|index| lists.list(index))
-            .map(|entry| {
-                if let Some(timing) = timing.as_mut() {
-                    timing.counts.list_entries += 1;
-                }
-                entry.0.vao
-            })
-            .collect::<std::collections::BTreeSet<_>>();
-        if let Some(timing) = timing.as_mut() {
-            timing.counts.unique_vaos = wanted.len() as u64;
-        }
-        let mut query = world.query::<&AssetHandle<Vao>>();
-        let handles = query
-            .iter(world)
-            .inspect(|_| {
-                if let Some(timing) = timing.as_mut() {
-                    timing.counts.queried_entities += 1;
-                }
-            })
-            .filter(|handle| wanted.contains(&handle.id().raw()))
-            .map(|handle| (handle.id().raw(), *handle))
-            .collect::<HashMap<_, _>>();
-        let handles = wanted
-            .into_iter()
-            .map(|id| {
-                handles.get(&id).copied().ok_or_else(|| {
-                    rhapsody::Error::invalid_usage("draw-list VAO has no matching typed ECS handle")
-                })
-            })
-            .collect::<rhapsody::Result<Vec<_>>>()?;
+        let handles = draw_vao_handles(world, lists, self.management_mode(1),
+            timing.as_mut().map(|measurement| &mut measurement.counts))?;
         self.refresh_vao_handles(world, &handles)
     }
 
@@ -550,7 +788,32 @@ impl RasterShared {
         let vaos = world.get_resource::<AssetVAOLibrary>().ok_or_else(|| {
             rhapsody::Error::invalid_usage("AssetVAOLibrary producer has not run")
         })?;
+        // Reserve the conservative growth bound before allocating the map.
+        // Duplicated handles can only reduce its actual unique entry count.
+        let predicted = if handles.is_empty() { 0 } else { handles.len().saturating_mul(2).max(3) };
+        let reserve = || self.device.allocator_stats().reserve_cpu_storage(
+            VaoSnapshotTable::metadata_bytes().saturating_add(VaoSnapshotTable::map_bytes(predicted)));
+        let mut table_memory = match reserve() {
+            Ok(memory) => memory,
+            Err(error) => {
+                // Optional wrapper reuse must not require a third table's
+                // permanent headroom. Release only our saved cache owner,
+                // outside the lock, before one ordinary admission retry.
+                // No local backup Arc has been taken at this point.
+                let backup = self.assets.lock().wrapper_reuse.take();
+                if backup.is_none() { return Err(error); }
+                drop(backup);
+                reserve()?
+            }
+        };
         let mut snapshots = IdMap::default();
+        snapshots.try_reserve(handles.len()).map_err(|_| rhapsody::Error::OutOfHostMemory)?;
+        table_memory.resize(VaoSnapshotTable::metadata_bytes()
+            .saturating_add(VaoSnapshotTable::map_bytes(snapshots.capacity())))?;
+        let (current_table, reusable) = {
+            let assets = self.assets.lock();
+            (assets.vaos.clone(), assets.wrapper_reuse.clone())
+        };
         for handle in handles {
             let id = handle.id().raw();
             let entry = vaos.shared_by_handle(*handle).ok_or_else(|| {
@@ -575,8 +838,12 @@ impl RasterShared {
             // A published VAO entry is immutable. Reuse the complete native
             // view, while still checking live host generations: an externally
             // released buffer must not silently become valid through the cache.
-            let cached = self.assets.lock().vaos.get(&id).filter(|snapshot|
-                Arc::ptr_eq(&snapshot.source, entry) && Arc::ptr_eq(&snapshot.index, &index)).cloned();
+            let matches = |snapshot: &&Arc<VaoSnapshot>|
+                Arc::ptr_eq(&snapshot.source, entry) && Arc::ptr_eq(&snapshot.index, &index);
+            let cached = current_table.as_ref()
+                .and_then(|table| table.entries.get(&id)).filter(matches).cloned()
+                .or_else(|| reusable.as_ref()
+                    .and_then(|table| table.entries.get(&id)).filter(matches).cloned());
             if let Some(cached) = cached {
                 let mut same_versions = cached.bindings.len() == entry.vao.bindings.len();
                 for (binding, (_, owner)) in entry.vao.bindings.iter().zip(&cached.bindings) {
@@ -616,10 +883,28 @@ impl RasterShared {
                 }),
             );
         }
-        self.assets.lock().vaos = snapshots;
+        // Move old owners out before releasing them: final leases may retire
+        // native objects and must not extend the asset-table critical section.
+        let table = Arc::new(VaoSnapshotTable { entries: snapshots, _memory: table_memory });
+        let previous = std::mem::replace(&mut self.assets.lock().vaos, Some(table));
+        drop(previous);
         self.vao_table_revision
             .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
         Ok(())
+    }
+
+    /// Keep only this declaration's preceding full wrappers across a temporary
+    /// terrain publication. Never bypasses actual physical identity checks.
+    /// The guard must not outlive one synchronous world-graph declaration.
+    pub fn preserve_vao_wrappers(self: &Arc<Self>) -> Option<VaoWrapperReuseScope> {
+        #[cfg(feature = "cpu-probe")]
+        if !self.management_mode(2) { return None; }
+        let mut assets = self.assets.lock();
+        // A nested guard never replaces or extends the outer owner. Dropping
+        // guards out of order can only stop reuse early, never retain old data.
+        let active = assets.wrapper_reuse.is_none() && assets.vaos.is_some();
+        if active { assets.wrapper_reuse = assets.vaos.clone(); }
+        Some(VaoWrapperReuseScope { shared: self.clone(), active, _owner: std::marker::PhantomData })
     }
 
     /// Number of times the VAO snapshot table was replaced (diagnostics/tests).
@@ -714,6 +999,14 @@ impl RasterShared {
         shaders: Arc<ShaderHost>,
         library: Arc<AssetShaderLibrary>,
     ) -> Result<Arc<Self>, rhapsody::Error> {
+        let commit_scratch = country_core::render::pass_builder::draw_commit_scratch::DrawCommitScratchPool::new(
+            device.allocator_stats().clone(), 8, 8 << 20, 1 << 20,
+        )?;
+        #[cfg(feature = "cpu-probe")]
+        commit_scratch.set_billing(crate::render_cpu_probe::management_enabled());
+        let constant_pool = crate::draw_constant_pool::ConstantPool::new(device.allocator_stats().clone())?;
+        let evictable: Arc<dyn rhapsody::accounting::Evictable> = constant_pool.clone();
+        device.register_evictable(Arc::downgrade(&evictable), rhapsody::accounting::EvictionPriority::Transient);
         Ok(Arc::new(Self {
             attachments: Mutex::new(AttachmentCache::new(device.clone())?),
             dynamic: Arc::new(Mutex::new(DynamicConstants::new(device.clone())?)),
@@ -724,13 +1017,27 @@ impl RasterShared {
             shaders,
             programs: library,
             reflections: Mutex::new(Default::default()),
-            constant_pool: Arc::new(Default::default()),
+            constant_pool,
+            commit_scratch,
+            #[cfg(test)]
+            fail_constant_write: Default::default(),
             zero_vertex: ZeroVertexBuffer::default(),
             collect_chunk_draws: std::env::var("TG_DRAW_COLLECT_CHUNK").ok()
                 .and_then(|value| value.parse::<usize>().ok()).unwrap_or(64).clamp(1, 4096),
             vao_refresh_timing: Mutex::new(VaoRefreshTiming::default()),
             vao_table_revision: std::sync::atomic::AtomicU64::new(0),
             vao_snapshot_allocations: std::sync::atomic::AtomicU64::new(0),
+            #[cfg(feature = "cpu-probe")]
+            management_counts: [const { std::sync::atomic::AtomicU64::new(0) }; 6],
+            #[cfg(feature = "cpu-probe")]
+            binding_scope_counts: [const { std::sync::atomic::AtomicU64::new(0) }; 7],
+            #[cfg(feature = "cpu-probe")]
+            binding_scope_invalid: std::sync::atomic::AtomicBool::new(false),
+            #[cfg(feature = "cpu-probe")]
+            binding_scope_reuse: std::env::var_os("TG_BINDING_SCOPE_REUSE").is_none_or(|value| value != "0"),
+            #[cfg(feature = "cpu-probe")]
+            management_modes: ["TG_REFLECTION_SCOPE", "TG_VAO_TYPED_LOOKUP", "TG_VAO_WRAPPER_REUSE"]
+                .map(|name| std::env::var(name).ok().is_none_or(|value| value != "0")),
             table_reads: Mutex::new(None),
             frame_constants: Mutex::new(None),
             vao_scope: Mutex::new(None),
@@ -758,6 +1065,7 @@ impl RasterShared {
             }),
             graph,
             cache: HbMap::new(),
+            scope_reflections: RefCell::new(None),
             constants_error: None,
             resource_graph_factory: None,
         }
@@ -830,6 +1138,7 @@ pub struct RasterPassHost {
     /// 设备级 `HashMap<RenderPassDesc, RenderPass>` 缓存（`+0x188`）的每 pass 视图：去重由
     /// [`RenderPassHost::create_from_desc`] 的键表保证，所以不同 pass 拿到的是同一个通道句柄。
     cache: HbMap<RasterRenderPassDesc, ManagedHandle>,
+    scope_reflections: RefCell<Option<Arc<crate::draw_template_cache::ReflectionScope>>>,
     constants_error: Option<rhapsody::Error>,
     resource_graph_factory: Option<Rc<dyn Fn() -> country_core::rhapsody_types::RenderGraph>>,
 }
@@ -840,9 +1149,17 @@ impl RasterPassHost {
     pub fn prepare_draw_collection(&self) -> Arc<dyn Fn() -> Box<dyn PassHost> + Send + Sync> {
         let shared = self.shared.clone();
         let assets = shared.assets.lock().collect.clone();
-        Arc::new(move || Box::new(RasterCollectHost {
-            shared: shared.clone(), assets: assets.clone(), deferred: RefCell::new(Vec::new()),
-        }))
+        let reflections = self.scope_reflections.borrow().clone();
+        Arc::new(move || {
+            let (constants, collect_error) = match shared.constant_pool.task() {
+                Ok(task) => (Some(task), None),
+                Err(error) => (None, Some(error)),
+            };
+            Box::new(RasterCollectHost {
+                shared: shared.clone(), assets: assets.clone(), reflections: reflections.clone(),
+                constants, collect_error, deferred: RefCell::new(Vec::new()),
+            })
+        })
     }
     pub fn with_resource_graph_factory(
         mut self,
@@ -863,6 +1180,194 @@ impl RasterPassHost {
     }
 }
 
+
+const BINDING_SCOPE_MAX_INPUTS: usize = 256;
+const BINDING_SCOPE_MAX_BYTES: usize = 64 << 10;
+
+/// Callback-exclusive capacity; no resource/graph identity survives a draw.
+/// Values/backing drop before the physical capacity credit is returned.
+struct BindingResourceScratch<T> {
+    values: Vec<(u32, T)>,
+    memory: rhapsody::accounting::CpuStorageReservation,
+    shape: usize,
+}
+impl<T> BindingResourceScratch<T> {
+    fn supports(shape: usize) -> bool {
+        shape <= BINDING_SCOPE_MAX_INPUTS && shape.checked_mul(std::mem::size_of::<(u32,T)>())
+            .is_some_and(|bytes| bytes <= BINDING_SCOPE_MAX_BYTES)
+    }
+    fn try_new(stats: &Arc<rhapsody::accounting::AllocatorStats>, shape: usize,
+        #[cfg(feature = "cpu-probe")] probe: &BindingLocalProbe,
+    ) -> rhapsody::Result<Option<Self>> {
+        // Shape fallback is decided before budget admission or allocation.
+        if !Self::supports(shape) { return Ok(None); }
+        let mut result = Self { values: Vec::new(), memory: stats.reserve_cpu_storage(0)?, shape: 0 };
+        result.reserve_shape(shape, #[cfg(feature = "cpu-probe")] probe)?;
+        Ok(Some(result))
+    }
+    fn reserve_shape(&mut self, shape: usize,
+        #[cfg(feature = "cpu-probe")] probe: &BindingLocalProbe,
+    ) -> rhapsody::Result<()> {
+        if !Self::supports(shape) { return Err(rhapsody::Error::exhausted("binding scratch shape exceeds its bound")); }
+        if shape <= self.values.capacity() { self.shape = shape; return Ok(()); }
+        let old_bytes = self.memory.bytes();
+        let bytes = shape.checked_mul(std::mem::size_of::<(u32,T)>()).ok_or(rhapsody::Error::OutOfHostMemory)? as u64;
+        // New storage coexists with the old allocation until all values move.
+        self.memory.resize(old_bytes.checked_add(bytes).ok_or(rhapsody::Error::OutOfHostMemory)?)?;
+        let mut next = Vec::new();
+        if next.try_reserve_exact(shape).is_err() {
+            self.memory.resize(old_bytes).expect("return unallocated binding capacity");
+            return Err(rhapsody::Error::OutOfHostMemory);
+        }
+        let actual = next.capacity().checked_mul(std::mem::size_of::<(u32,T)>())
+            .ok_or(rhapsody::Error::OutOfHostMemory)?;
+        #[cfg(feature = "cpu-probe")]
+        probe.capacity_growth(Some(actual));
+        if actual > BINDING_SCOPE_MAX_BYTES {
+            drop(next);
+            self.memory.resize(old_bytes).expect("return oversized binding capacity");
+            return Err(rhapsody::Error::exhausted("binding scratch physical capacity exceeds its bound"));
+        }
+        if let Err(error) = self.memory.resize(old_bytes.checked_add(actual as u64).ok_or(rhapsody::Error::OutOfHostMemory)?) {
+            drop(next);
+            self.memory.resize(old_bytes).expect("return refused binding capacity");
+            return Err(error);
+        }
+        next.append(&mut self.values);
+        let old = std::mem::replace(&mut self.values, next);
+        drop(old);
+        self.memory.resize(actual as u64).expect("return freed old binding capacity");
+        self.shape = shape;
+        Ok(())
+    }
+}
+
+/// Clear on every normal/error/panic exit. Mutable Vec access is not exposed;
+/// scoped storage may never grow beyond its admitted shape during a draw.
+struct BindingDrawInputs<'a, T> {
+    values: &'a mut Vec<(u32,T)>,
+    shape: Option<usize>,
+    #[cfg(feature = "cpu-probe")]
+    probe: &'a BindingLocalProbe,
+}
+impl<'a,T> BindingDrawInputs<'a,T> {
+    fn new(values: &'a mut Vec<(u32,T)>, shape: Option<usize>,
+        #[cfg(feature = "cpu-probe")] probe: &'a BindingLocalProbe,
+    ) -> Self {
+        values.clear();
+        Self { values, shape, #[cfg(feature = "cpu-probe")] probe }
+    }
+    fn upsert(&mut self, binding: u32, value: T) -> rhapsody::Result<()> {
+        if self.shape.is_some_and(|bound| self.values.len() >= bound)
+            && !self.values.iter().any(|(old,_)| *old == binding) {
+            return Err(rhapsody::Error::invalid_usage("binding input exceeded its admitted shape"));
+        }
+        #[cfg(feature = "cpu-probe")]
+        let before = self.values.capacity();
+        upsert_shader_resource(self.values, binding, value)?;
+        #[cfg(feature = "cpu-probe")]
+        if self.values.capacity() > before {
+            self.probe.capacity_growth(self.values.capacity().checked_mul(std::mem::size_of::<(u32,T)>()));
+        }
+        Ok(())
+    }
+    fn iter(&self) -> std::slice::Iter<'_,(u32,T)> { self.values.iter() }
+}
+impl<T> Drop for BindingDrawInputs<'_,T> {
+    fn drop(&mut self) { self.values.clear(); }
+}
+
+/// At most one immutable snapshot. Keys are borrowed live Arc owners, never
+/// numeric native handles. All dynamic page preparation still happens per draw.
+pub(crate) struct BindingSnapshotCursor<'p,K,S> { current: Option<(&'p Arc<K>,S)> }
+impl<'p,K,S> BindingSnapshotCursor<'p,K,S> {
+    pub(crate) fn new() -> Self { Self { current: None } }
+    pub(crate) fn get_or_insert_with(&mut self, entry: &'p Arc<K>, make: impl FnOnce() -> S) -> (&S,bool) {
+        let hit = self.current.as_ref().is_some_and(|(old,_)| Arc::ptr_eq(old,entry));
+        if !hit { self.current = Some((entry,make())); }
+        (&self.current.as_ref().expect("snapshot initialized").1,hit)
+    }
+}
+
+fn binding_input_shape(draws: &[PreparedDraw]) -> Option<usize> {
+    binding_shape_upper_bound(draws.iter().map(|draw| {
+        let uniforms = draw.packet.bindings.values().filter(|owned|
+            owned.state == country_core::render::pass_builder::draw_stream::GpuOwned::STATE_OWNED
+            && matches!(owned.binding, CoreBinding::UniformBuffer { .. })).count();
+        (uniforms,draw.external.as_slice().len(),draw.packet.accesses.len())
+    }))
+}
+fn binding_shape_upper_bound(mut shapes: impl Iterator<Item=(usize,usize,usize)>) -> Option<usize> {
+    shapes.try_fold(0usize, |largest,(uniforms,external,accesses)| {
+        uniforms.checked_add(external)?.checked_add(accesses).map(|shape| largest.max(shape))
+    })
+}
+
+#[cfg(feature = "cpu-probe")]
+#[derive(Clone,Copy,Debug,serde::Serialize)]
+pub struct BindingScopeProbeCounts {
+    pub valid: bool,
+    pub algorithm_enabled: bool,
+    pub callbacks: u64,
+    pub vec_capacity_growths: u64,
+    pub vec_capacity_bytes_after_growth_sum: u64,
+    pub snapshot_builds: u64,
+    pub snapshot_hits: u64,
+    pub shape_fallback_callbacks: u64,
+    pub failed_callbacks: u64,
+}
+#[cfg(feature = "cpu-probe")]
+struct BindingLocalProbe {
+    enabled: bool,
+    counts: std::cell::Cell<[u64;7]>,
+    valid: std::cell::Cell<bool>,
+}
+#[cfg(feature = "cpu-probe")]
+impl BindingLocalProbe {
+    fn new(enabled: bool) -> Self { Self { enabled, counts: std::cell::Cell::new([0;7]), valid: std::cell::Cell::new(true) } }
+    fn add(&self,index:usize,amount:u64) {
+        if !self.enabled { return; }
+        let mut counts=self.counts.get();
+        match counts[index].checked_add(amount) { Some(value)=>counts[index]=value, None=>self.valid.set(false) }
+        self.counts.set(counts);
+    }
+    // A successful capacity increase need not allocate a new physical block:
+    // the allocator may grow an existing allocation in place. Bytes are the
+    // sum of each resulting Vec capacity, not a delta, peak or allocator size.
+    fn capacity_growth(&self,bytes:Option<usize>) {
+        if !self.enabled { return; }
+        match bytes.and_then(|bytes| u64::try_from(bytes).ok()) {
+            Some(0) => {},
+            Some(bytes) => { self.add(1,1); self.add(2,bytes); },
+            None => self.valid.set(false),
+        }
+    }
+}
+#[cfg(feature = "cpu-probe")]
+struct BindingCallbackProbe<'a> { shared: &'a RasterShared, local: BindingLocalProbe, success: std::cell::Cell<bool> }
+#[cfg(feature = "cpu-probe")]
+impl<'a> BindingCallbackProbe<'a> {
+    fn new(shared:&'a RasterShared) -> Self {
+        let local=BindingLocalProbe::new(crate::render_cpu_probe::management_enabled());
+        local.add(0,1);
+        Self { shared, local, success:std::cell::Cell::new(false) }
+    }
+}
+#[cfg(feature = "cpu-probe")]
+impl Drop for BindingCallbackProbe<'_> {
+    fn drop(&mut self) {
+        if !self.local.enabled { return; }
+        if !self.success.get() { self.local.add(6,1); }
+        use std::sync::atomic::Ordering::Relaxed;
+        if !self.local.valid.get() { self.shared.binding_scope_invalid.store(true,Relaxed); }
+        for (counter,amount) in self.shared.binding_scope_counts.iter().zip(self.local.counts.get()) {
+            if amount!=0 && counter.fetch_update(Relaxed,Relaxed,|old| old.checked_add(amount)).is_err() {
+                self.shared.binding_scope_invalid.store(true,Relaxed);
+            }
+        }
+    }
+}
+
 /// 一个 draw 在声明期解析好的东西：包 + 管线条目。
 /// O `RasterPipelineOpts::default()` 0x140be6750.
 pub(crate) const ORIGINAL_DEFAULT_RASTER_STATE: u32 = 0x1ffc_00d0;
@@ -873,7 +1378,7 @@ struct PreparedDraw {
     index: Option<ResourceHandle>,
     index_count: Option<u32>,
     vertices: smallvec::SmallVec<[(u32, ResourceHandle, u64); 4]>,
-    external: rhapsody::resource::TempList<ExternalDrawBinding>,
+    external: rhapsody::collections::temp_list::TempList<ExternalDrawBinding>,
     /// Graph owner and range of the FrameConstants block behind set 1/b1 (see `import_frame_constants`).
     frame_constants: Option<(ResourceHandle, rhapsody::rg::AccessRange)>,
 }
@@ -891,6 +1396,9 @@ struct ExternalDrawBinding {
 struct RasterCollectHost {
     shared: Arc<RasterShared>,
     assets: Arc<CollectAssets>,
+    reflections: Option<Arc<crate::draw_template_cache::ReflectionScope>>,
+    constants: Option<crate::draw_constant_pool::ConstantTask>,
+    collect_error: Option<rhapsody::Error>,
     deferred: RefCell<Vec<country_core::render::pass_builder::draw_stream::DeferredBuffer>>,
 }
 
@@ -902,7 +1410,8 @@ impl PassHost for RasterCollectHost {
         shader: &Handle<RasterShaderProgram>,
         variant: u8,
     ) -> Option<Arc<CoreReflection>> {
-        self.shared.reflection(shader.0.0, variant)
+        self.reflections.as_ref().and_then(|scope| scope.get(&(shader.0.0, variant)))
+            .or_else(|| self.shared.reflection(shader.0.0, variant))
     }
 
     fn ssbo_instance_count(&self, rg_buffer_hash: u64) -> Option<u32> {
@@ -982,29 +1491,46 @@ impl PassHost for RasterCollectHost {
         // would reject every fragment of draws that enable the stencil test.
         RasterState(ORIGINAL_DEFAULT_RASTER_STATE)
     }
+    fn prepare_collect_constants(&mut self, sizes: &[u32]) {
+        if self.collect_error.is_some() { return; }
+        if let Some(task) = self.constants.as_mut() {
+            if let Err(error) = task.prepare_demand(sizes) {
+                self.collect_error.get_or_insert(error);
+            }
+        }
+    }
+
     fn allocate_dynamic_constants(&mut self, reflection: &CoreReflection) -> Option<DynamicConstantsBinding> {
+        self.shared.count_management(2, 1);
+        if self.collect_error.is_some() { return None; }
+        let data = match self.constants.as_mut()?.take(reflection.uniform_block_size as usize) {
+            Ok(data) => data,
+            Err(error) => { self.collect_error = Some(error); return None; }
+        };
         Some(DynamicConstantsBinding {
-            data: self.shared.constant_pool.take(reflection.uniform_block_size as usize),
-            binding_index: reflection.uniform_block_binding,
-            keepalive: ManagedHandle(0),
-            lease: None,
+            data, binding_index: reflection.uniform_block_binding,
+            keepalive: ManagedHandle(0), lease: None,
         })
     }
     fn finish_dynamic_constants(&mut self, constants: DynamicConstantsBinding, packet: &mut DrawPacket) {
-        // A material can overwrite the uniform binding. Preserve that operation.
         if let Some(binding) = packet.bindings.get_mut(&constants.binding_index) {
             if let CoreBinding::UniformBuffer { keepalive, lease, .. } = &mut binding.binding {
                 if keepalive.0 == 0 && lease.is_none() {
-                    *lease = Some(ResourceLease::new(Arc::new(self.shared.constant_pool.own(constants.data))));
+                    let task = self.constants.as_mut().expect("admitted CPU constants task");
+                    match task.own(constants.data) {
+                        Ok(owner) => { *lease = Some(ResourceLease::new(Arc::new(owner))); }
+                        Err((error, data)) => { self.collect_error.get_or_insert(error); task.recycle(data); }
+                    }
                     return;
                 }
             }
         }
-        self.shared.constant_pool.recycle(constants.data);
+        self.constants.as_mut().expect("admitted CPU constants task").recycle(constants.data);
     }
     fn discard_dynamic_constants(&mut self, constants: DynamicConstantsBinding) {
-        self.shared.constant_pool.recycle(constants.data);
+        self.constants.as_mut().expect("admitted CPU constants task").recycle(constants.data);
     }
+    fn take_collect_error(&mut self) -> Option<rhapsody::Error> { self.collect_error.take() }
     fn rg_buffer_resource(&self, hash: u64) -> Option<u32> {
         let assets = &self.assets;
         let id = assets.rg_buffers.get(&hash).copied()?;
@@ -1046,6 +1572,34 @@ impl PassHost for RasterCollectHost {
 }
 
 impl PassHost for RasterPassHost {
+    fn collect_constant_plan_enabled(&self) -> bool {
+        self.shared.constant_pool.batch_enabled()
+    }
+
+    fn reject_failed_declaration(&mut self) -> bool {
+        let Some(error) = self.constants_error.take() else { return false; };
+        self.graph.borrow_mut().reject(error);
+        true
+    }
+
+    fn begin_collect_scope(&self) {
+        #[cfg(feature = "cpu-probe")]
+        if !self.shared.management_mode(0) {
+            *self.scope_reflections.borrow_mut() = None;
+            return;
+        }
+        *self.scope_reflections.borrow_mut() = crate::draw_template_cache::ReflectionScope::try_new(
+            self.shared.device.allocator_stats()).ok().map(Arc::new);
+    }
+
+    fn checkout_draw_scratch(&self) -> rhapsody::Result<country_core::render::pass_builder::draw_commit_scratch::DrawCommitScratchLease> {
+        self.shared.commit_scratch.checkout()
+    }
+
+    fn record_collect_error(&mut self, error: rhapsody::Error) {
+        self.constants_error.get_or_insert(error);
+    }
+
     fn collect_factory(&self) -> Arc<dyn Fn() -> Box<dyn PassHost> + Send + Sync> {
         self.prepare_draw_collection()
     }
@@ -1054,13 +1608,79 @@ impl PassHost for RasterPassHost {
         self.shared.collect_chunk_draws
     }
 
+    fn commit_collected_draws(&mut self, packets: &mut [DrawPacket]) {
+        #[cfg(feature = "cpu-probe")]
+        if !self.shared.constant_pool.batch_enabled() {
+            for packet in packets { self.commit_collected_draw(packet); }
+            return;
+        }
+        const LIMIT: usize = 64;
+        // All temporary indices/chunks/return owners stay inline and bounded. The
+        // page's host budget is not silently charged by an unbounded scratch spill.
+        for page in packets.chunks_mut(LIMIT) {
+            let mut keys = smallvec::SmallVec::<[(usize, u32); LIMIT]>::new();
+            let mut overflow = false;
+            'scan: for (draw_index, packet) in page.iter().enumerate() {
+                for (&binding_index, binding) in &packet.bindings {
+                    let CoreBinding::UniformBuffer { lease, .. } = &binding.binding else { continue };
+                    if lease.as_ref().and_then(ResourceLease::downcast_ref::<CollectedConstants>).is_none() { continue; }
+                    if keys.len() == LIMIT { overflow = true; break 'scan; }
+                    keys.push((draw_index, binding_index));
+                }
+            }
+            if overflow {
+                for packet in page { self.commit_collected_draw(packet); }
+                continue;
+            }
+            if keys.is_empty() { continue; }
+            let mut chunks = smallvec::SmallVec::<[(usize, u32, rhapsody::Result<DynamicConstantsChunk>); LIMIT]>::new();
+            {
+                let mut allocator = self.shared.dynamic.lock();
+                for (draw_index, binding_index) in keys {
+                    let CoreBinding::UniformBuffer { lease, .. } = &page[draw_index].bindings[&binding_index].binding
+                        else { unreachable!("collected constants binding changed without a host call") };
+                    let bytes = lease.as_ref().and_then(ResourceLease::downcast_ref::<CollectedConstants>)
+                        .expect("collected CPU constant owner changed");
+                    chunks.push((draw_index, binding_index, allocator.allocate(bytes.bytes.len() as u64)));
+                }
+            }
+            let mut returned = smallvec::SmallVec::<[rhapsody::resource::CpuBytes; LIMIT]>::new();
+            for (draw_index, binding_index, allocation) in chunks {
+                let chunk = match allocation {
+                    Ok(chunk) => chunk,
+                    Err(error) => { self.constants_error.get_or_insert(error); continue; }
+                };
+                let CoreBinding::UniformBuffer { keepalive, lease, .. } = &mut page[draw_index]
+                    .bindings.get_mut(&binding_index).expect("collected binding disappeared").binding
+                    else { unreachable!("collected uniform binding changed") };
+                let bytes = lease.as_ref().and_then(ResourceLease::downcast_ref::<CollectedConstants>)
+                    .expect("collected CPU constant owner disappeared");
+                if let Err(error) = self.shared.write_collected_constants(&chunk, &bytes.bytes) {
+                    self.constants_error.get_or_insert(error);
+                    continue; // Keep the original CPU lease; retry/error semantics unchanged.
+                }
+                self.shared.count_management(3, bytes.bytes.len() as u64);
+                *keepalive = ManagedHandle(ash::vk::Handle::as_raw(chunk.buffer.raw_handle()));
+                let old = lease.replace(ResourceLease::new(Arc::new(chunk)))
+                    .expect("CPU constant lease exists until its successful replacement");
+                // Shared CPU owners can escape Commit. They keep their exact old
+                // lifetime; only an exclusive owner returns storage immediately.
+                if let Ok(mut constants) = old.try_unwrap::<CollectedConstants>() {
+                    returned.push(std::mem::take(&mut constants.bytes));
+                }
+            }
+            self.shared.constant_pool.recycle_batch(returned);
+        }
+    }
+
     fn commit_collected_draw(&mut self, packet: &mut DrawPacket) {
         for binding in packet.bindings.values_mut() {
             let CoreBinding::UniformBuffer { keepalive, lease, .. } = &mut binding.binding else { continue };
             let Some(bytes) = lease.as_ref().and_then(ResourceLease::downcast_ref::<CollectedConstants>) else { continue };
-            let result = self.shared.dynamic.lock().allocate(bytes.bytes.len() as u64)
-                .and_then(|chunk| {
-                    chunk.write_bytes(&bytes.bytes)?;
+            let allocation = { self.shared.dynamic.lock().allocate(bytes.bytes.len() as u64) };
+            let result = allocation.and_then(|chunk| {
+                    self.shared.write_collected_constants(&chunk, &bytes.bytes)?;
+                    self.shared.count_management(3, bytes.bytes.len() as u64);
                     Ok(Arc::new(chunk))
                 });
             match result {
@@ -1078,7 +1698,17 @@ impl PassHost for RasterPassHost {
         shader: &Handle<RasterShaderProgram>,
         variant: u8,
     ) -> Option<Arc<CoreReflection>> {
-        self.shared.reflection(shader.0.0, variant)
+        let key = (shader.0.0, variant);
+        {
+            let scopes = self.scope_reflections.borrow();
+            let Some(scope) = scopes.as_ref() else { return self.shared.reflection(key.0, key.1); };
+            if let Some(hit) = scope.get(&key) { return Some(hit); }
+        }
+        let reflection = self.shared.reflection(key.0, key.1)?;
+        if let Some(scope) = self.scope_reflections.borrow_mut().as_mut() {
+            if let Some(scope) = Arc::get_mut(scope) { scope.insert(key, reflection.clone()); }
+        }
+        Some(reflection)
     }
 
     /// 在常量页里为该管线的 uniform 块分配一块；字节在 [`PassHost::flush_dynamic_constants`] 写入。
@@ -1087,20 +1717,18 @@ impl PassHost for RasterPassHost {
         reflection: &CoreReflection,
     ) -> Option<DynamicConstantsBinding> {
         let size = u64::from(reflection.uniform_block_size);
-        let chunk = match self.shared.dynamic.lock().allocate(size) {
+        let allocation = { self.shared.dynamic.lock().allocate(size) };
+        let chunk = match allocation {
             Ok(chunk) => Arc::new(chunk),
             Err(error) => {
                 self.constants_error.get_or_insert(error);
                 return None;
             }
         };
-        let mut data = Vec::new();
-        if data.try_reserve_exact(size as usize).is_err() {
-            self.constants_error
-                .get_or_insert(rhapsody::Error::OutOfHostMemory);
-            return None;
-        }
-        data.resize(size as usize, 0);
+        let data = match rhapsody::resource::CpuBytes::new(self.shared.device.allocator_stats(), size as usize) {
+            Ok(data) => data,
+            Err(error) => { self.constants_error.get_or_insert(error); return None; }
+        };
         Some(DynamicConstantsBinding {
             data,
             binding_index: reflection.uniform_block_binding,
@@ -1273,6 +1901,8 @@ impl PassHost for RasterPassHost {
     }
 
     fn submit_raster_pass(&mut self, submission: RasterPassSubmission) {
+        #[cfg(feature = "surface-compare-test")]
+        crate::world_surface::comparison::record_raster_submission(&submission);
         let constants_error = self.constants_error.take();
         let shared = self.shared.clone();
         let RasterPassSubmission {
@@ -1335,7 +1965,7 @@ impl PassHost for RasterPassHost {
                     index_count: None,
                     vertices: smallvec::SmallVec::new(),
                     frame_constants: None,
-                    external: rhapsody::resource::TempList::new(
+                    external: rhapsody::collections::temp_list::TempList::new(
                         external_limit,
                         shared.device.allocator_stats().clone(),
                     )?,
@@ -1349,9 +1979,7 @@ impl PassHost for RasterPassHost {
             (None, Ok(prepared)) => prepared,
             (Some(error), _) | (_, Err(error)) => {
                 log::error!("raster declaration failed: pass={name}, error={error}");
-                let mut declared = graph.add_pass(name);
-                declared.side_effect();
-                declared.render_with_result_context(move |_| Err(error));
+                graph.reject(error);
                 return;
             }
         };
@@ -1531,7 +2159,8 @@ impl PassHost for RasterPassHost {
                         .assets
                         .lock()
                         .vaos
-                        .get(&draw.packet.head[1])
+                        .as_ref()
+                        .and_then(|table| table.entries.get(&draw.packet.head[1]))
                         .cloned()
                         .ok_or_else(|| {
                             rhapsody::Error::invalid_usage(
@@ -1635,9 +2264,7 @@ impl PassHost for RasterPassHost {
         let stage_started = country_core::render::declare_probe::start();
         if let Err(error) = index_imports {
             log::error!("raster declaration failed: pass={name}, error={error}");
-            let mut declared = graph.add_pass(name);
-            declared.side_effect();
-            declared.render_with_result_context(move |_| Err(error));
+            graph.reject(error);
             return;
         }
         let (preserving_buffers, read_contents) = match raster_content_intents(
@@ -1661,9 +2288,7 @@ impl PassHost for RasterPassHost {
             Ok(intents) => intents,
             Err(error) => {
                 log::error!("raster declaration failed: pass={name}, error={error}");
-                let mut declared = graph.add_pass(name);
-                declared.side_effect();
-                declared.render_with_result_context(move |_| Err(error));
+                graph.reject(error);
                 return;
             }
         };
@@ -1674,9 +2299,7 @@ impl PassHost for RasterPassHost {
             Ok(attachments) => attachments,
             Err(error) => {
                 log::error!("raster declaration failed: pass={name}, error={error}");
-                let mut declared = graph.add_pass(name);
-                declared.side_effect();
-                declared.render_with_result_context(move |_| Err(error));
+                graph.reject(error);
                 return;
             }
         };
@@ -1693,9 +2316,7 @@ impl PassHost for RasterPassHost {
             Ok(ranges) => ranges,
             Err(error) => {
                 log::error!("raster declaration failed: pass={name}, error={error}");
-                let mut declared = graph.add_pass(name);
-                declared.side_effect();
-                declared.render_with_result_context(move |_| Err(error));
+                graph.reject(error);
                 return;
             }
         };
@@ -1718,9 +2339,7 @@ impl PassHost for RasterPassHost {
                 Ok(range) => access_ranges[index] = (range, None),
                 Err(error) => {
                     log::error!("raster declaration failed: pass={name}, error={error}");
-                    let mut declared = graph.add_pass(name);
-                    declared.side_effect();
-                    declared.render_with_result_context(move |_| Err(error));
+                    graph.reject(error);
                     return;
                 }
             }
@@ -1734,7 +2353,7 @@ impl PassHost for RasterPassHost {
             .enumerate()
             .map(|(index, attachment)| {
                 attachment.load
-                    && rhapsody::command::is_write(attachment.access)
+                    && rhapsody::native::is_write(attachment.access)
                     && raster_has_previous_contents(
                         &graph,
                         attachment.resource,
@@ -1802,9 +2421,7 @@ impl PassHost for RasterPassHost {
             Ok(reads) => reads,
             Err(error) => {
                 log::error!("raster declaration failed: pass={name}, error={error}");
-                let mut declared = graph.add_pass(name);
-                declared.side_effect();
-                declared.render_with_result_context(move |_| Err(error));
+                graph.reject(error);
                 return;
             }
         };
@@ -1813,8 +2430,7 @@ impl PassHost for RasterPassHost {
         let table_started = country_core::render::declare_probe::start();
         for (resource, range) in table_reads.iter() {
             if let Err(error) = declared.add_resource_access_range(*resource, 0x1d, 0, *range) {
-                declared.side_effect();
-                declared.render_with_result_context(move |_| Err(error.into()));
+                declared.rg_mut().reject(error.into());
                 return;
             }
         }
@@ -1849,8 +2465,7 @@ impl PassHost for RasterPassHost {
             if !frame_constants_declared && let Some((resource, range)) = draw.frame_constants {
                 frame_constants_declared = true;
                 if let Err(error) = declared.add_resource_access_range(resource, 0x1f, 0, range) {
-                    declared.side_effect();
-                    declared.render_with_result_context(move |_| Err(error.into()));
+                    declared.rg_mut().reject(error.into());
                     return;
                 }
             }
@@ -1861,8 +2476,7 @@ impl PassHost for RasterPassHost {
                     0,
                     binding.range,
                 ) {
-                    declared.side_effect();
-                    declared.render_with_result_context(move |_| Err(error.into()));
+                    declared.rg_mut().reject(error.into());
                     return;
                 }
             }
@@ -1923,6 +2537,8 @@ impl PassHost for RasterPassHost {
         }
         country_core::render::declare_probe::draw_access(draw_access_started);
         declared.render_with_context(move |ctx| {
+            #[cfg(feature = "cpu-probe")]
+            let binding_probe = BindingCallbackProbe::new(&shared);
             let managed = ctx
                 .managed
                 .expect("pass callback without managed resources");
@@ -2053,6 +2669,23 @@ impl PassHost for RasterPassHost {
                 Ok(chunks) => chunks,
                 Err(error) => { ctx.report_error(error); return false; }
             };
+            let reuse_bindings = shared.binding_scope_reuse_enabled();
+            let mut binding_scratch = if reuse_bindings {
+                match binding_input_shape(&prepared) {
+                    Some(shape) => match BindingResourceScratch::<rhapsody::bindless::BindlessResource>::try_new(
+                        shared.device.allocator_stats(), shape,
+                        #[cfg(feature = "cpu-probe")] &binding_probe.local,
+                    ) {
+                        Ok(scratch) => scratch,
+                        Err(error) => { ctx.report_error(error); return false; }
+                    },
+                    None => None,
+                }
+            } else { None };
+            #[cfg(feature = "cpu-probe")]
+            if reuse_bindings && binding_scratch.is_none() { binding_probe.local.add(5,1); }
+            let reuse_bindings = reuse_bindings && binding_scratch.is_some();
+            let mut binding_snapshots = BindingSnapshotCursor::new();
             for ((draw, pipeline), parameter_chunk) in prepared.iter().zip(&pipelines).zip(parameter_chunks.as_slice()) {
                 country_core::render::declare_probe::rec_draw();
                 let probe = country_core::render::declare_probe::start();
@@ -2068,16 +2701,42 @@ impl PassHost for RasterPassHost {
                     bound_pipeline = Some(pipeline.raw_handle());
                 }
                 country_core::render::declare_probe::rec_pipeline(probe);
-                let parameters = match bindless_parameters(
+                let parameters = {
+                    let mut legacy_inputs = Vec::new();
+                    let fresh;
+                    let snapshot = if reuse_bindings {
+                        let (snapshot,hit) = binding_snapshots.get_or_insert_with(&draw.entry, ||
+                            draw.entry.bindings.snapshot_with_globals(frozen_globals.clone()));
+                        #[cfg(feature = "cpu-probe")]
+                        binding_probe.local.add(if hit {4} else {3},1);
+                        #[cfg(not(feature = "cpu-probe"))]
+                        let _ = hit;
+                        snapshot
+                    } else {
+                        fresh=draw.entry.bindings.snapshot_with_globals(frozen_globals.clone());
+                        #[cfg(feature = "cpu-probe")]
+                        binding_probe.local.add(3,1);
+                        &fresh
+                    };
+                    let (values,shape) = match binding_scratch.as_mut() {
+                        Some(scratch) => (&mut scratch.values,Some(scratch.shape)),
+                        None => (&mut legacy_inputs,None),
+                    };
+                    let mut inputs=BindingDrawInputs::new(values,shape,
+                        #[cfg(feature = "cpu-probe")] &binding_probe.local);
+                    bindless_parameters(
                     &shared,
                     &ctx,
                     draw,
                     &bindings,
                     managed,
                     &mut page_cursor,
-                    frozen_globals.clone(),
                     parameter_chunk,
-                ) {
+                    &mut inputs,
+                    snapshot,
+                    )
+                };
+                let parameters = match parameters {
                     Ok(parameters) => parameters,
                     Err(error) => {
                         ctx.report_error(error);
@@ -2086,7 +2745,7 @@ impl PassHost for RasterPassHost {
                 };
                 let probe_bind = country_core::render::declare_probe::start();
                 // SAFETY: the original pass bindings and graph accesses describe these resources.
-                if let Err(error) = unsafe { parameters.bind_pass(&ctx, pipeline.clone()) } {
+                if let Err(error) = unsafe { parameters.bind_pass(&ctx, &pipeline.clone()) } {
                     ctx.report_error(error);
                     return false;
                 }
@@ -2112,6 +2771,10 @@ impl PassHost for RasterPassHost {
                 country_core::render::declare_probe::rec_draw_call(probe_draw);
             }
             api.end_render_pass();
+            #[cfg(feature = "cpu-probe")]
+            ctx.record_command_workload(api.take_command_workload());
+            #[cfg(feature = "cpu-probe")]
+            binding_probe.success.set(true);
             true
         });
     }
@@ -2554,8 +3217,8 @@ fn import_draw_bindings(
 fn reserve_parameter_chunks(
     shared: &RasterShared,
     draws: &[PreparedDraw],
-) -> rhapsody::Result<rhapsody::resource::TempList<DynamicConstantsChunk>> {
-    let mut chunks = rhapsody::resource::TempList::new(
+) -> rhapsody::Result<rhapsody::collections::temp_list::TempList<DynamicConstantsChunk>> {
+    let mut chunks = rhapsody::collections::temp_list::TempList::new(
         draws.len().max(1), shared.device.allocator_stats().clone(),
     )?;
     chunks.reserve(draws.len())?;
@@ -2573,11 +3236,12 @@ fn bindless_parameters(
     pass_bindings: &[RenderPassBinding],
     managed: &ManagedPassResources,
     cursor: &mut rhapsody::bindless::BindlessPageCursor,
-    globals: Option<Arc<crate::frame_setup::FrameGlobals>>,
     parameter_chunk: &rhapsody::resource::DynamicConstantsChunk,
+    resources: &mut BindingDrawInputs<'_,rhapsody::bindless::BindlessResource>,
+    snapshot: &crate::render_host::ShaderBindingSnapshot,
 ) -> rhapsody::Result<rhapsody::bindless::PreparedBindlessParameters> {
+    shared.count_management(5, 1);
     let probe_resources = country_core::render::declare_probe::start();
-    let mut resources = Vec::new();
     for (binding, owned) in &draw.packet.bindings {
         if owned.state != country_core::render::pass_builder::draw_stream::GpuOwned::STATE_OWNED {
             continue;
@@ -2611,7 +3275,8 @@ fn bindless_parameters(
                 }
             }
         };
-        upsert_shader_resource(&mut resources, *binding, value)?;
+        shared.count_management(4, 1);
+        resources.upsert(*binding, value)?;
     }
     for binding in draw.external.as_slice() {
         let value = if let Some(desc) = &binding.view {
@@ -2635,7 +3300,8 @@ fn bindless_parameters(
                 size: crate::render_host::clamp_storage_binding_range(&shared.device, size),
             }
         };
-        upsert_shader_resource(&mut resources, binding.binding, value)?;
+        shared.count_management(4, 1);
+        resources.upsert(binding.binding, value)?;
     }
     for access in &draw.packet.accesses {
         let binding = pass_bindings
@@ -2670,14 +3336,14 @@ fn bindless_parameters(
                 ),
             }
         };
-        upsert_shader_resource(&mut resources, access.binding_index, resource)?;
+        shared.count_management(4, 1);
+        resources.upsert(access.binding_index, resource)?;
     }
     // B EguiBackend::draw 0x1400def7e..0x1400defd0 stores the 8-byte
     // screen-size push payload in DrawPacket's byte Vec. Other shaders may use
     // an empty push block; ABI validation retains that distinction.
     country_core::render::declare_probe::rec_resources(probe_resources);
     let probe_prepare = country_core::render::declare_probe::start();
-    let snapshot = draw.entry.bindings.snapshot_with_globals(globals);
     let prepared = snapshot.prepare(
         cursor,
         &draw.packet.unknown_bytes,
@@ -2867,7 +3533,7 @@ fn raster_has_previous_contents(
         || graph.declaration().passes.iter().any(|pass| {
             pass.accesses.iter().any(|access| {
                 access.resource_index == resource
-                    && rhapsody::command::is_write(access.access_code)
+                    && rhapsody::native::is_write(access.access_code)
                     && access.range.overlaps(range)
             })
         })
@@ -3207,7 +3873,7 @@ mod undefined_raster_content_tests {
                     let strict = first.max(second) == RasterReadContents::DefinedRequired;
                     let key = GraphDefinition::from_declaration(
                         &raw,
-                        &mut AccessTable::original(),
+                        &AccessTable::original(),
                         PlanContext::default(),
                     );
                     assert_eq!(key.is_err(), strict);
@@ -3238,7 +3904,7 @@ mod undefined_raster_content_tests {
                         assert!(
                             GraphDefinition::from_declaration(
                                 &later,
-                                &mut AccessTable::original(),
+                                &AccessTable::original(),
                                 PlanContext::default()
                             )
                             .is_err(),
@@ -3409,7 +4075,7 @@ mod raster_binding_range_tests {
             reader.render(|_| true);
             GraphDefinition::from_declaration(
                 &graph.build().declaration,
-                &mut AccessTable::original(),
+                &AccessTable::original(),
                 PlanContext::default(),
             )
         };
@@ -3563,7 +4229,7 @@ mod raster_attachment_range_tests {
         load.render(|_| true);
         let definition = GraphDefinition::from_declaration(
             &graph.build().declaration,
-            &mut AccessTable::original(),
+            &AccessTable::original(),
             PlanContext::default(),
         )
         .unwrap();
@@ -3588,11 +4254,361 @@ mod raster_attachment_range_tests {
         assert!(
             GraphDefinition::from_declaration(
                 &wrong.build().declaration,
-                &mut AccessTable::original(),
+                &AccessTable::original(),
                 PlanContext::default()
             )
             .is_err()
         );
         assert!(compute_view_range(depth_desc(), &plans[0].view.base_layer(3)).is_err());
+    }
+}
+
+// Append as a cfg(test) child module of raster_host.rs after strict host
+// integration. The host owner agent applies it; this file is not compiled here.
+#[cfg(test)]
+mod constant_batch_gpu_tests {
+    use super::*;
+    use country_core::render::pass_builder::draw_stream::GpuOwned;
+
+    fn shared() -> Option<Arc<RasterShared>> {
+        let device = match rhapsody::device::Device::new_headless(
+            &rhapsody::device::DeviceConfig::headless(),
+        ) {
+            Ok(device) => device,
+            Err(error) => {
+                assert!(
+                    !std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v| v == "1"),
+                    "strict constants batch GPU initialization failed: {error}"
+                );
+                eprintln!("SKIP constants batch GPU initialization: {error}");
+                return None;
+            }
+        };
+        let buffers = Arc::new(BufferHost::new(device.clone()));
+        let textures = Arc::new(TextureHost::new(device.clone()));
+        let shaders = Arc::new(ShaderHost::new(device.clone(), std::env::temp_dir()).unwrap());
+        Some(
+            RasterShared::new_with_shader_library(
+                device,
+                buffers,
+                textures,
+                shaders,
+                Arc::new(AssetShaderLibrary::new()),
+            )
+            .unwrap(),
+        )
+    }
+    fn packet(shared: &Arc<RasterShared>, size: usize, marker: u8) -> DrawPacket {
+        let mut task = shared.constant_pool.task().unwrap();
+        let mut bytes = task.take(size).unwrap();
+        bytes.fill(marker);
+        let owner = task.own(bytes).ok().unwrap();
+        let mut packet = DrawPacket::new(Handle::gap_new(), [0, 0], RasterState(0));
+        packet.bindings.insert(
+            0,
+            GpuOwned::new(CoreBinding::UniformBuffer {
+                size: size as u32,
+                keepalive: ManagedHandle(0),
+                lease: Some(ResourceLease::new(Arc::new(owner))),
+            }),
+        );
+        packet
+    }
+    fn cpu(packet: &DrawPacket) -> Option<&CollectedConstants> {
+        let CoreBinding::UniformBuffer { lease, .. } = &packet.bindings[&0].binding else {
+            return None;
+        };
+        lease.as_ref()?.downcast_ref()
+    }
+    fn gpu(packet: &DrawPacket) -> Option<&DynamicConstantsChunk> {
+        let CoreBinding::UniformBuffer { lease, .. } = &packet.bindings[&0].binding else {
+            return None;
+        };
+        lease.as_ref()?.downcast_ref()
+    }
+    #[test]
+    fn mid_batch_chunk_admission_error_preserves_original_cpu_owner_and_next_owner_recovers() {
+        let Some(shared) = shared() else {
+            return;
+        };
+        let invalid = rhapsody::resource::DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES as usize + 1;
+        let mut packets = [packet(&shared, 16, 0xab), packet(&shared, invalid, 0xcd)];
+        let pointer = cpu(&packets[1]).unwrap().bytes.as_ptr();
+        let capacity = cpu(&packets[1]).unwrap().bytes.capacity();
+        let mut host = shared.pass_host(Rc::new(RefCell::new(RhGraph::new())), None);
+        host.commit_collected_draws(&mut packets);
+        assert_eq!(
+            gpu(&packets[0]).expect("first allocation published").size,
+            16
+        );
+        let retained = cpu(&packets[1]).expect("rejected allocation retains CPU owner");
+        assert_eq!(pointer, retained.bytes.as_ptr());
+        assert_eq!(retained.bytes.accounted_bytes(), capacity as u64);
+        assert!(retained.bytes.iter().all(|v| *v == 0xcd));
+        assert!(host.constants_error.is_some());
+        drop(packets);
+        drop(host);
+        let mut recovered = shared.pass_host(Rc::new(RefCell::new(RhGraph::new())), None);
+        let mut packets = [packet(&shared, 16, 0xef)];
+        recovered.commit_collected_draws(&mut packets);
+        assert!(recovered.constants_error.is_none());
+        assert_eq!(gpu(&packets[0]).expect("same allocator recovers").size, 16);
+        drop(packets);
+        drop(recovered);
+        shared.device.wait_idle_and_collect().unwrap();
+    }
+
+    #[test]
+    fn escaped_cpu_constant_owner_is_not_stolen_by_successful_commit() {
+        let Some(shared) = shared() else {
+            return;
+        };
+        let mut packets = [packet(&shared, 16, 0xa5)];
+        let CoreBinding::UniformBuffer {
+            lease: Some(escaped),
+            ..
+        } = &packets[0].bindings[&0].binding
+        else {
+            unreachable!()
+        };
+        let escaped = escaped.clone();
+        let pointer = escaped
+            .downcast_ref::<CollectedConstants>()
+            .unwrap()
+            .bytes
+            .as_ptr();
+        let mut host = shared.pass_host(Rc::new(RefCell::new(RhGraph::new())), None);
+        host.commit_collected_draws(&mut packets);
+        assert!(host.constants_error.is_none());
+        assert_eq!(gpu(&packets[0]).unwrap().size, 16);
+        let original = escaped.downcast_ref::<CollectedConstants>().unwrap();
+        assert_eq!(pointer, original.bytes.as_ptr());
+        assert!(original.bytes.iter().all(|v| *v == 0xa5));
+        assert_eq!(
+            original.bytes.accounted_bytes(),
+            original.bytes.capacity() as u64
+        );
+        drop(escaped);
+        drop(packets);
+        drop(host);
+        shared.device.wait_idle_and_collect().unwrap();
+    }
+
+    #[test]
+    fn mid_batch_write_refusal_preserves_cpu_credit_and_next_owner_recovers() {
+        let Some(shared) = shared() else {
+            return;
+        };
+        let mut packets = [packet(&shared, 16, 0x51), packet(&shared, 16, 0x62)];
+        let pointer = cpu(&packets[1]).unwrap().bytes.as_ptr();
+        let credit = cpu(&packets[1]).unwrap().bytes.accounted_bytes();
+        shared
+            .fail_constant_write
+            .store(2, std::sync::atomic::Ordering::Relaxed);
+        let mut host = shared.pass_host(Rc::new(RefCell::new(RhGraph::new())), None);
+        host.commit_collected_draws(&mut packets);
+        assert_eq!(gpu(&packets[0]).expect("first write completed").size, 16);
+        let retained = cpu(&packets[1]).expect("write refusal keeps original CPU bytes");
+        assert_eq!(pointer, retained.bytes.as_ptr());
+        assert_eq!(credit, retained.bytes.accounted_bytes());
+        assert!(retained.bytes.iter().all(|v| *v == 0x62));
+        assert!(matches!(
+            host.constants_error,
+            Some(rhapsody::Error::OutOfHostMemory)
+        ));
+        drop(packets);
+        drop(host);
+        let mut recovered = shared.pass_host(Rc::new(RefCell::new(RhGraph::new())), None);
+        let mut packets = [packet(&shared, 16, 0x73)];
+        recovered.commit_collected_draws(&mut packets);
+        assert!(recovered.constants_error.is_none());
+        assert_eq!(
+            gpu(&packets[0])
+                .expect("same allocator recovers after write refusal")
+                .size,
+            16
+        );
+        drop(packets);
+        drop(recovered);
+        shared.device.wait_idle_and_collect().unwrap();
+    }
+
+    #[test]
+    fn cold_constant_plan_budget_error_rejects_before_native_pass_cache_and_recovers() {
+        use country_core::render::pass_builder::{
+            draw_commit_scratch::prepare_constant_plan, draw_stream::RasterPass,
+        };
+        let Some(shared) = shared() else { return; };
+        let graph = Rc::new(RefCell::new(RhGraph::new()));
+        let mut owner = shared.pass_host(graph.clone(), None);
+        assert!(owner.cache.is_empty());
+        assert_eq!(shared.shaders.passes().len(), 0, "native pass cache must start cold");
+        let submitted = shared.device.retirement_stats().submitted;
+        let mut scratch = owner.checkout_draw_scratch().unwrap();
+        let stats = shared.device.allocator_stats();
+        let usage = stats.cpu_memory_usage().total();
+        stats.set_host_budget(usage).unwrap();
+        let error = prepare_constant_plan(&mut scratch, 4096).unwrap_err();
+        assert!(matches!(error, rhapsody::Error::OutOfHostMemory), "{error:?}");
+        assert_eq!(stats.cpu_memory_usage().total(), usage, "failed plan retains no extra CPU storage credit");
+        owner.record_collect_error(error);
+        // A cold cache would otherwise enter native render-pass creation before
+        // submit_raster_pass can forward the already-known declaration error.
+        RasterPass::collector(Box::new(owner), [16, 16]).render();
+        assert_eq!(shared.shaders.passes().len(), 0, "rejected declaration creates no native pass");
+        assert_eq!(shared.device.retirement_stats().submitted, submitted);
+        let (declaration, callbacks, retire, declaration_error) = graph.replace(RhGraph::new()).build().into_parts();
+        assert!(declaration.passes.is_empty());
+        assert!(callbacks.is_empty());
+        assert!(retire.is_empty());
+        assert!(matches!(declaration_error, Some(rhapsody::Error::OutOfHostMemory)), "{declaration_error:?}");
+        stats.set_host_budget(0).unwrap();
+        drop(scratch);
+        let mut recovered = shared.pass_host(graph, None);
+        let mut packets = [packet(&shared, 16, 0x84)];
+        recovered.commit_collected_draws(&mut packets);
+        assert!(recovered.constants_error.is_none());
+        assert_eq!(gpu(&packets[0]).expect("same shared allocator recovers").size, 16);
+        drop(packets);
+        drop(recovered);
+        shared.device.wait_idle_and_collect().unwrap();
+    }
+}
+
+#[cfg(test)]
+mod binding_scope_tests {
+    use super::*;
+    fn stats() -> Arc<rhapsody::accounting::AllocatorStats> { Arc::new(Default::default()) }
+    #[test]
+    fn upsert_keeps_first_position_last_value_and_draw_scope_releases_owners() {
+        let stats=stats();
+        #[cfg(feature = "cpu-probe")] let probe=BindingLocalProbe::new(true);
+        let mut scratch=BindingResourceScratch::<Arc<u32>>::try_new(&stats,2,
+            #[cfg(feature = "cpu-probe")] &probe).unwrap().unwrap();
+        let a=Arc::new(1); let b=Arc::new(2); let c=Arc::new(3);
+        let (wa,wb,wc)=(Arc::downgrade(&a),Arc::downgrade(&b),Arc::downgrade(&c));
+        {
+            let mut draw=BindingDrawInputs::new(&mut scratch.values,Some(2),
+                #[cfg(feature = "cpu-probe")] &probe);
+            draw.upsert(7,a).unwrap(); draw.upsert(9,b).unwrap(); draw.upsert(7,c).unwrap();
+            assert_eq!(draw.iter().map(|(key,value)| (*key,**value)).collect::<Vec<_>>(),[(7,3),(9,2)]);
+            assert!(wa.upgrade().is_none());
+            assert!(wb.upgrade().is_some() && wc.upgrade().is_some());
+            assert!(draw.upsert(11,Arc::new(4)).is_err());
+        }
+        assert!(scratch.values.is_empty());
+        assert!(wb.upgrade().is_none() && wc.upgrade().is_none());
+        assert_eq!(stats.cpu_memory_usage().total(),scratch.memory.bytes());
+        drop(scratch); assert_eq!(stats.cpu_memory_usage().total(),0);
+    }
+    #[test]
+    fn panic_and_error_clear_draw_values_but_external_arc_keeps_its_owner() {
+        let stats=stats();
+        #[cfg(feature = "cpu-probe")] let probe=BindingLocalProbe::new(true);
+        let mut scratch=BindingResourceScratch::<Arc<u32>>::try_new(&stats,1,
+            #[cfg(feature = "cpu-probe")] &probe).unwrap().unwrap();
+        let owner=Arc::new(5); let weak=Arc::downgrade(&owner);
+        let external=owner.clone();
+        let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let mut draw=BindingDrawInputs::new(&mut scratch.values,Some(1),
+                #[cfg(feature = "cpu-probe")] &probe);
+            draw.upsert(0,owner).unwrap(); panic!("cancel callback");
+        }));
+        assert!(result.is_err() && scratch.values.is_empty());
+        assert_eq!(Arc::strong_count(&external),1);
+        drop(external); assert!(weak.upgrade().is_none());
+        let owner=Arc::new(6); let weak=Arc::downgrade(&owner);
+        let failed: rhapsody::Result<()>=(|| {
+            let mut draw=BindingDrawInputs::new(&mut scratch.values,Some(1),
+                #[cfg(feature = "cpu-probe")] &probe);
+            draw.upsert(0,owner)?;
+            Err(rhapsody::Error::invalid_usage("failed preparation"))
+        })();
+        assert!(failed.is_err() && weak.upgrade().is_none() && scratch.values.is_empty());
+    }
+    #[test]
+    fn scratch_refusal_preserves_old_owner_and_both_allocation_peak_then_recovers() {
+        let stats=stats();
+        #[cfg(feature = "cpu-probe")] let probe=BindingLocalProbe::new(true);
+        stats.set_host_budget(1).unwrap();
+        assert!(BindingResourceScratch::<Arc<u32>>::try_new(&stats,2,
+            #[cfg(feature = "cpu-probe")] &probe).is_err());
+        assert_eq!(stats.cpu_memory_usage().total(),0);
+        stats.set_host_budget(1<<20).unwrap();
+        let mut scratch=BindingResourceScratch::<Arc<u32>>::try_new(&stats,2,
+            #[cfg(feature = "cpu-probe")] &probe).unwrap().unwrap();
+        let owner=Arc::new(8); let weak=Arc::downgrade(&owner);
+        scratch.values.push((0,owner));
+        let old=scratch.memory.bytes();
+        let target=scratch.values.capacity()+1;
+        let new=(target*std::mem::size_of::<(u32,Arc<u32>)>()) as u64;
+        stats.set_host_budget(old+new-1).unwrap();
+        assert!(scratch.reserve_shape(target,#[cfg(feature = "cpu-probe")] &probe).is_err());
+        assert_eq!(scratch.memory.bytes(),old); assert!(weak.upgrade().is_some());
+        stats.set_host_budget(old+new).unwrap();
+        scratch.reserve_shape(target,#[cfg(feature = "cpu-probe")] &probe).unwrap();
+        assert_eq!(*scratch.values[0].1,8);
+        assert_eq!(stats.cpu_memory_usage().total(),scratch.memory.bytes());
+        drop(scratch); assert!(weak.upgrade().is_none()); assert_eq!(stats.cpu_memory_usage().total(),0);
+    }
+    #[test]
+    fn oversized_shape_falls_back_before_budget_and_never_scales_by_draw_total() {
+        let stats=stats(); stats.set_host_budget(1).unwrap();
+        #[cfg(feature = "cpu-probe")] let probe=BindingLocalProbe::new(true);
+        assert!(BindingResourceScratch::<Arc<u32>>::try_new(&stats,257,
+            #[cfg(feature = "cpu-probe")] &probe).unwrap().is_none());
+        assert!(!BindingResourceScratch::<[u8;1024]>::supports(65));
+        assert_eq!(stats.cpu_memory_usage().total(),0);
+        assert_eq!(binding_shape_upper_bound(std::iter::repeat((1,2,3)).take(4096)),Some(6));
+        assert_eq!(binding_shape_upper_bound([(1,2,3),(5,3,1)].into_iter()),Some(9));
+        assert_eq!(binding_shape_upper_bound([(usize::MAX,1,0)].into_iter()),None);
+    }
+    #[test]
+    fn cursor_aaba_builds_three_times_and_uses_live_arc_identity() {
+        let (a,b,a_alias)=(Arc::new(7),Arc::new(8),Arc::new(7));
+        let frozen=Arc::new(99); let newer=Arc::new(100);
+        let mut cursor=BindingSnapshotCursor::new(); let mut builds=0; let mut hits=0;
+        for key in [&a,&a,&b,&a] {
+            let (snapshot,hit)=cursor.get_or_insert_with(key,|| {builds+=1; frozen.clone()});
+            hits+=usize::from(hit); assert!(Arc::ptr_eq(snapshot,&frozen));
+        }
+        assert_eq!((builds,hits),(3,1));
+        let (_,hit)=cursor.get_or_insert_with(&a_alias,|| {builds+=1; frozen.clone()});
+        assert!(!hit); assert_eq!(builds,4);
+        drop(cursor);
+        let mut next_callback=BindingSnapshotCursor::new();
+        let (snapshot,hit)=next_callback.get_or_insert_with(&a,||newer.clone());
+        assert!(!hit && Arc::ptr_eq(snapshot,&newer));
+    }
+    #[cfg(feature = "cpu-probe")]
+    #[test]
+    fn probe_counts_capacity_growth_and_capacity_sum_with_checked_overflow() {
+        let stats=stats(); let probe=BindingLocalProbe::new(true);
+        let mut scratch=BindingResourceScratch::<Arc<u32>>::try_new(&stats,4,&probe).unwrap().unwrap();
+        for _ in 0..3 {
+            let mut draw=BindingDrawInputs::new(&mut scratch.values,Some(4),&probe);
+            for key in 0..4 { draw.upsert(key,Arc::new(key)).unwrap(); }
+        }
+        assert_eq!(probe.counts.get()[1],1);
+        let before=probe.counts.get()[1];
+        let mut expected_capacity_sum=(scratch.values.capacity()*std::mem::size_of::<(u32,Arc<u32>)>()) as u64;
+        for _ in 0..3 {
+            let mut values=Vec::new();
+            let mut draw=BindingDrawInputs::new(&mut values,None,&probe);
+            for key in 0..4 { draw.upsert(key,Arc::new(key)).unwrap(); }
+            drop(draw);
+            expected_capacity_sum+=(values.capacity()*std::mem::size_of::<(u32,Arc<u32>)>()) as u64;
+        }
+        assert_eq!(probe.counts.get()[1]-before,3);
+        assert_eq!(probe.counts.get()[2],expected_capacity_sum);
+        let overflow=BindingLocalProbe::new(true);
+        overflow.add(2,u64::MAX-1);
+        overflow.capacity_growth(Some(2));
+        assert!(!overflow.valid.get());
+        assert_eq!(overflow.counts.get()[2],u64::MAX-1,"overflow must not saturate the byte sum");
+        let invalid_size=BindingLocalProbe::new(true);
+        invalid_size.capacity_growth(None);
+        assert!(!invalid_size.valid.get());
+        probe.add(3,u64::MAX); probe.add(3,1); assert!(!probe.valid.get());
     }
 }

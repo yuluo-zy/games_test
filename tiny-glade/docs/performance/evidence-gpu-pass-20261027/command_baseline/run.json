@@ -1,0 +1,75 @@
+{
+  "schema": "headless-gpu-diagnostic-run-v1",
+  "valid": true,
+  "clean_cpu_acceptance_eligible": false,
+  "production_16ms_acceptance": false,
+  "scope": "separate command-span timestamp experiment; no ETW CPU result or whole-frame GPU latency",
+  "controller": {
+    "path": "C:\\game\\tiny-glade\\tools\\perf_gpu_diagnostic.py",
+    "sha256": "faa6f3a070559ce3076d249e7f756cb110b4a1baa6e7277f76809170ba1d7b22"
+  },
+  "frozen_build": {
+    "build_json_sha256": "32a57a3ace5fe0b7e67ea7e4922d2ae24a1f279a8dfa94d1722c1562efcc86f7",
+    "source_json_sha256": "01cb340b0e5584c9ac44334500ab95ccc3cf21fcb386680e322c8e431e5c7a02",
+    "source_content_sha256": "03319bc8f2eeab48ad5886c2475a8a84531d564e964602a7c258961604e6d76d",
+    "files": {
+      "original_gameplay_chain-440e56a8fc5e4d6e.exe": "8a7741a797392f1645fe52a392c259c05f89bf903d850623a5b9e08b32521277",
+      "original_gameplay_chain-440e56a8fc5e4d6e.pdb": "19eb6b3d81298c415a7dbc8d0ce808bf88f16a158c77a30903a6a5d187f56925",
+      "fmod.dll": "d563ad96042c096985735b0d1fdab80fe5c7f27663171ff1550ac8ebf4c7eba6",
+      "fmodstudio.dll": "dc61fae2e70ec3a16fa78b678a0fc9ff1852491077a21c2b9c11bf4d160207ff"
+    },
+    "build_acceptance_scope": {
+      "policy": "requested-target-private-job-reviewed-freezer-v1",
+      "requested_test_target_completed": true,
+      "entire_cargo_build_passed": false,
+      "remaining_targets_are_not_accepted": true,
+      "files": {
+        "requested-target-artifact.json": "ab7a1351a19ae51e18600af4f448f60dd5b6807b5e84a723282327ba8d8987c0",
+        "build.jsonl": "ca626781c9249983ed0cdd65870f3e137853c37e030681f92e293fb7ac399ec7",
+        "build.stderr.log": "411ea2ca5cb9758d736a5fe2883834d3e7768a50f454446cda38685b911d94db",
+        "cargo-lifecycle.json": "52cff2793d0402bf4fb38dfee3f335729416404588f1535ce7dc895bcc5b52c8",
+        "build-job-spec.json": "7a0a0010b5e668db8967cdecba7f70dbc11693bfdda02239f9625d82ac1b84dc",
+        "build-job-assigned.go": "2ebb9294801961cd320305d8d688146c6f47ac28094a2d4cd1a68083d5a03968"
+      },
+      "reviewed_freezer_sources": {
+        "tools/perf_headless.py": "770a08d7c31a442ba087a78525dc6951ff42a09d1ad67e63c0adf329db100ed8",
+        "tools/perf_build_target.py": "7fdd373b73872490d52a4e1ce8a41832dbfc2d997c45688b6c1c7dd8dfb02b88"
+      },
+      "source_before_after_guard": "hash-whitelisted freezer publishes only after inventory equality; later current-worktree edits do not alter the frozen EXE"
+    }
+  },
+  "build_json": "C:\\game\\tiny-glade\\.perf\\headless-builds\\ea9e7dac6-gpu-diagnostic-r2\\build.json",
+  "settings": {
+    "scene": "many_draws",
+    "warmup": 200,
+    "samples": 120,
+    "capture_capacity": 41088,
+    "ring_pending_capacity": 4096,
+    "ring_retained_capacity": 4096,
+    "pass_spans": false,
+    "dimensions": "1280x720",
+    "process_priority": "NORMAL_PRIORITY_CLASS"
+  },
+  "artifacts": {
+    "session.json": "ada3231339dcef8fc8db51f16cc234ab418d30d6b8b3b5214dedc70290c678bb",
+    "fixture.log": "7cf503ad52710e69d1a1178ad180c9a89d575927315f4090b10fb63e35f36a75",
+    "session.ready": "b24d6d33736ecd5604a4b17bc9c6481039fac362bb7df044ef1c10a2bfd21db6",
+    "session.go": "4cd0e21a9a0795a14ec9aa5f0e7d1abff0492565770e43eafdf1e3e8afed1f33"
+  },
+  "started_utc": "2026-10-27T10:51:12Z",
+  "command": [
+    "C:\\game\\tiny-glade\\.perf\\headless-builds\\ea9e7dac6-gpu-diagnostic-r2\\original_gameplay_chain-440e56a8fc5e4d6e.exe",
+    "cpu_measurement::profile_shipped_session_cpu",
+    "--exact",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "runtime_vulkan_environment": {
+    "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
+    "VK_SDK_PATH": "C:\\VulkanSDK\\1.4.363.0",
+    "VULKAN_SDK": "C:\\VulkanSDK\\1.4.363.0"
+  },
+  "process_id": 20336,
+  "exit_code": 0
+}

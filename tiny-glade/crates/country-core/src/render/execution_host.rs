@@ -57,7 +57,8 @@ impl RhapsodyExecutionHost {
 
 /// 构图入口（WIRING §2.7）：`rg::graph::RenderGraph::new()`。调用方随后
 /// `create_raw_resource`/`add_pass(name).add_resource_access(..).render_with_context(..)`/`export(..)`/
-/// `batch_per_pass(..)` → `build()` → `into_parts()` 得到 `(GraphDeclaration, callbacks, retire)`。
+/// `batch_per_pass(..)` → `build()` → `into_parts()` 得到 `(GraphDeclaration, callbacks, retire, declaration_error)`。
+/// 直接拆包的执行方须先处理 `declaration_error`，拒绝时仍执行全部退役动作。
 pub fn new_render_graph() -> rhapsody::rg::RenderGraph {
     rhapsody::rg::RenderGraph::new()
 }

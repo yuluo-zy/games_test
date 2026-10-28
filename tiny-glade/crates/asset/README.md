@@ -224,6 +224,6 @@ cargo test --offline -p asset --all-targets
 
 ## 来源与审查记录
 
-- [源码审查记录](../../reports/foundation-rereview-2026-10-17/README.md)。
+- [源码审查记录](../../reports/foundation/2026-10-17-foundation-rereview/README.md)。
 - [导入来源与哈希记录](../../provenance/foundation-audit.json)。
-- [原恢复源码](../../../reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/asset/)与[业务合同来源](../../../reverse-engineering/tiny-glade/FOUNDATION_BUSINESS_COMPARISON.md)。
+- [原恢复源码](../../../reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/asset)与[业务合同来源](../../../reverse-engineering/tiny-glade/docs/reference/FOUNDATION_BUSINESS_COMPARISON.md)。

@@ -3,11 +3,10 @@
 //! MoltenVK 不能由本测试认证“图像耗尽后的实际 timeout”路径，该部分仍未验证。
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::raw::{
-    device::Device,
-    instance::{GraphicsInstanceLoader, InstanceBuilder},
-    swapchain::{Surface, Swapchain, SwapchainPolicy},
-};
+use rhapsody::device::Device;
+use rhapsody::present::swapchain::{Swapchain, SwapchainPolicy};
+use rhapsody::native::surface::Surface;
+use rhapsody::native::instance::{GraphicsInstanceLoader, InstanceBuilder};
 use rhapsody::rg::{
     frame_loop::{FrameLoop, FrameStatus},
     graph::{BuiltGraph, RenderGraph},
@@ -38,7 +37,7 @@ fn headless_with(optional: &[&str]) -> Option<(Arc<Device>, Arc<Surface>)> {
 }
 
 fn create_headless_surface(
-    instance: &Arc<rhapsody::raw::instance::VulkanInstance>,
+    instance: &Arc<rhapsody::native::instance::VulkanInstance>,
 ) -> Arc<Surface> {
     let loader =
         ash::ext::headless_surface::Instance::new(&instance.entry, instance.raw_instance());
@@ -54,7 +53,7 @@ fn headless_parts(
 ) -> Option<(
     Arc<Device>,
     Arc<Surface>,
-    Arc<rhapsody::raw::instance::VulkanInstance>,
+    Arc<rhapsody::native::instance::VulkanInstance>,
 )> {
     let loader =
         gpu_test_support::initialize("headless surface loader", GraphicsInstanceLoader::new())?;
@@ -93,7 +92,7 @@ fn headless_parts(
     let surface = Arc::new(unsafe { Surface::from_raw(instance.clone(), handle, true) });
     let device = gpu_test_support::initialize(
         "headless present logical device",
-        Device::new(instance.clone(), Some(&surface), &rhapsody::device::DeviceConfig::default()),
+        Device::new(&instance, Some(&surface), &rhapsody::device::DeviceConfig::default()),
     )?;
     Some((device, surface, instance))
 }
@@ -235,12 +234,12 @@ const USAGE: vk::ImageUsageFlags = vk::ImageUsageFlags::from_raw(
 const TRANSFER_WRITE: u8 = 0x34;
 
 /// A strict FrameLoop on a headless surface; None when unsupported.
-fn strict_frame_loop() -> Option<(FrameLoop, Arc<rhapsody::raw::instance::VulkanInstance>)> {
+fn strict_frame_loop() -> Option<(FrameLoop, Arc<rhapsody::native::instance::VulkanInstance>)> {
     strict_frame_loop_with(USAGE)
 }
 fn strict_frame_loop_with(
     usage: vk::ImageUsageFlags,
-) -> Option<(FrameLoop, Arc<rhapsody::raw::instance::VulkanInstance>)> {
+) -> Option<(FrameLoop, Arc<rhapsody::native::instance::VulkanInstance>)> {
     let (device, surface, instance) = headless_parts(&[
         "VK_KHR_get_surface_capabilities2",
         "VK_EXT_surface_maintenance1",
@@ -778,9 +777,9 @@ fn read_back_image(frame_loop: &mut FrameLoop, wanted: u32) -> [u8; 4] {
             continue;
         }
         let readback = Arc::new(
-            rhapsody::raw::buffer::Buffer::new(
+            rhapsody::resource::buffer::Buffer::new(
                 device.clone(),
-                &rhapsody::raw::buffer::BufferDesc::new_gpu_to_cpu(
+                &rhapsody::resource::buffer::BufferDesc::new_gpu_to_cpu(
                     256,
                     vk::BufferUsageFlags::TRANSFER_DST,
                 ),
@@ -904,11 +903,11 @@ fn partial_failure_presents_the_configured_clear_colour() {
     };
     let color = [0.25, 0.5, 0.75, 1.0];
     frame_loop
-        .set_on_failure(rhapsody::rg::PresentPolicy::ClearTo(color))
+        .set_on_failure(rhapsody::present::PresentPolicy::ClearTo(color))
         .unwrap();
     assert_eq!(
         frame_loop.on_failure(),
-        rhapsody::rg::PresentPolicy::ClearTo(color)
+        rhapsody::present::PresentPolicy::ClearTo(color)
     );
     let mut abandoned = None;
     fail_after_first_batch(&mut frame_loop, &mut abandoned);
@@ -940,7 +939,7 @@ fn skip_present_never_presents_undefined_content_and_next_frames_present() {
     };
     assert_eq!(
         frame_loop.on_failure(),
-        rhapsody::rg::PresentPolicy::SkipPresent
+        rhapsody::present::PresentPolicy::SkipPresent
     );
     let releasable = frame_loop.swapchain().can_release_images();
     let mut abandoned = None;
@@ -961,7 +960,7 @@ fn skip_present_never_presents_undefined_content_and_next_frames_present() {
         fail_after_first_batch(&mut frame_loop, &mut abandoned);
         near(
             read_back_image(&mut frame_loop, abandoned.expect("image index")),
-            rhapsody::rg::PresentPolicy::FALLBACK_COLOR,
+            rhapsody::present::PresentPolicy::FALLBACK_COLOR,
         );
     }
     frame_loop.wait_idle(TIMEOUT).unwrap();
@@ -977,15 +976,15 @@ fn previous_frame_policy_is_unsupported() {
         return;
     };
     let error = frame_loop
-        .set_on_failure(rhapsody::rg::PresentPolicy::PreviousFrame)
+        .set_on_failure(rhapsody::present::PresentPolicy::PreviousFrame)
         .unwrap_err();
     assert_eq!(error.kind(), rhapsody::ErrorKind::Unsupported, "{error}");
     assert_eq!(
         frame_loop.on_failure(),
-        rhapsody::rg::PresentPolicy::SkipPresent
+        rhapsody::present::PresentPolicy::SkipPresent
     );
     let error = frame_loop
-        .set_on_failure(rhapsody::rg::PresentPolicy::ClearTo([
+        .set_on_failure(rhapsody::present::PresentPolicy::ClearTo([
             f32::NAN,
             0.0,
             0.0,
@@ -1010,7 +1009,7 @@ fn clear_policy_without_transfer_dst_degrades_to_skip_present() {
         return;
     }
     frame_loop
-        .set_on_failure(rhapsody::rg::PresentPolicy::ClearTo([1.0; 4]))
+        .set_on_failure(rhapsody::present::PresentPolicy::ClearTo([1.0; 4]))
         .unwrap();
     let retired = std::sync::Arc::new(RetireCount::new(0));
     for _ in 0..6 {

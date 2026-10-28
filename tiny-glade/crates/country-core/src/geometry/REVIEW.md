@@ -1,6 +1,6 @@
 # geometry 审查与修复状态
 
-2026-10-18：按功能正确优先重构，原审查入口保存在 [历史报告](../../../../reports/geometry-review-2026-10-18/README.md)。当前实现与验证见 [重构报告](../../../../reports/geometry-refactor-2026-10-18/README.md)。
+2026-10-18：按功能正确优先重构，原审查入口保存在 [历史报告](../../../../reports/building/2026-10-18-geometry-review/README.md)。当前实现与验证见 [重构报告](../../../../reports/building/2026-10-18-geometry-refactor/README.md)。
 
 | 原问题 | 当前处理 | 回归证据 |
 |---|---|---|
@@ -18,6 +18,6 @@
 
 ## 重构后再次复审
 
-复审发现 **R1 / P1：资产库或稀疏存储销毁后，没有释放仍存活 BufferHost 中的 192 MiB 砖缓冲**。删除墙只回收 chunk，未闭合物理缓冲拥有者销毁；原 GPU 测试手动 release 掩盖了该路径。当时的源码证据、修复建议与磁盘空间阻塞记录见 [复审报告](../../../../reports/geometry-rereview-2026-10-18/README.md)。
+复审发现 **R1 / P1：资产库或稀疏存储销毁后，没有释放仍存活 BufferHost 中的 192 MiB 砖缓冲**。删除墙只回收 chunk，未闭合物理缓冲拥有者销毁；原 GPU 测试手动 release 掩盖了该路径。当时的源码证据、修复建议与磁盘空间阻塞记录见 [复审报告](../../../../reports/building/2026-10-18-geometry-rereview/README.md)。
 
-后续修复已关闭生产墙砖路径的 R1：`try_new_owned` 持有创建设备及代际句柄，存储析构自动归还宿主，runtime 先销毁也安全。CPU 回归覆盖库先销毁、设备保活、World 销毁和晚释放分配；真实 GPU 测试不再手动释放，确认库销毁使旧句柄失效、槽位复用时更新代际，以及 World 销毁自动释放。37 项几何测试、2102 项 country-core 全库测试及 1 项严格 GPU 测试均通过，详见 [生命周期修复报告](../../../../reports/geometry-lifecycle-fix-2026-10-18/README.md)。借用设备的兼容构造仍要求调用方管理释放，不将本轮结果推广为全部旧 SSBO 接口的自动拥有权。
+后续修复已关闭生产墙砖路径的 R1：`try_new_owned` 持有创建设备及代际句柄，存储析构自动归还宿主，runtime 先销毁也安全。CPU 回归覆盖库先销毁、设备保活、World 销毁和晚释放分配；真实 GPU 测试不再手动释放，确认库销毁使旧句柄失效、槽位复用时更新代际，以及 World 销毁自动释放。37 项几何测试、2102 项 country-core 全库测试及 1 项严格 GPU 测试均通过，详见 [生命周期修复报告](../../../../reports/building/2026-10-18-geometry-lifecycle-fix/README.md)。借用设备的兼容构造仍要求调用方管理释放，不将本轮结果推广为全部旧 SSBO 接口的自动拥有权。

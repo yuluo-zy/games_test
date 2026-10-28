@@ -123,6 +123,6 @@ let stream = load_recording(path)?;
 
 ## 验证与历史审查
 
-[REVIEW.md](REVIEW.md) 保留原四项问题及本轮修复状态。回归覆盖完整保存/加载/播放、实际消费者、失败保留、工具栏所有权、禁用输入、最近队列边界、文件格式与无效数据。最新运行结果和指纹见 [重构报告](../../../../reports/input-refactor-2026-10-18/README.md)。本次复审修复与新回归见 [五项修复报告](../../../../reports/input-fixes-2026-10-18/README.md)。原有逆向报告仅作历史事实，不用作新设计的正确性验收。
+[REVIEW.md](REVIEW.md) 保留原四项问题及本轮修复状态。回归覆盖完整保存/加载/播放、实际消费者、失败保留、工具栏所有权、禁用输入、最近队列边界、文件格式与无效数据。最新运行结果和指纹见 [重构报告](../../../../reports/ui-input/2026-10-18-input-refactor/README.md)。本次复审修复与新回归见 [五项修复报告](../../../../reports/ui-input/2026-10-18-input-fixes/README.md)。原有逆向报告仅作历史事实，不用作新设计的正确性验收。
 
-最新边沿、末尾同步点和 OS 捕获链修复见 [输入边界修复报告](../../../../reports/input-edge-fixes-2026-10-18/README.md)。
+最新边沿、末尾同步点和 OS 捕获链修复见 [输入边界修复报告](../../../../reports/ui-input/2026-10-18-input-edge-fixes/README.md)。

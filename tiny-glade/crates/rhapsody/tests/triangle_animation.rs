@@ -10,7 +10,7 @@
 //! 没有 Vulkan 设备时跳过。
 mod draw_support;
 use draw_support::*;
-use rhapsody::raw::command_buffer::PendingCommand;
+use rhapsody::command::command_buffer::PendingCommand;
 
 const FRAMES: usize = 48;
 const IN_FLIGHT: usize = 2;

@@ -1,6 +1,6 @@
 //! BufferDesc 构造与 memory_location 内存属性映射。
 use ash::vk;
-use rhapsody::raw::buffer::BufferDesc;
+use rhapsody::resource::buffer::BufferDesc;
 
 #[test]
 fn constructors_map_to_expected_memory_properties() {

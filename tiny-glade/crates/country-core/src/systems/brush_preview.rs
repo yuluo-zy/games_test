@@ -215,7 +215,7 @@ mod native_runtime_tests {
     #[test]
     fn actual_schedule_matches80_full_original_native_cases_including_deferred_identity_insertion()
     {
-        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../reverse-engineering/tiny-glade/evidence/round12/brush-startup/native-brush-runtime-fixtures.json"))).unwrap();
+        let fixtures:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/tests/fixtures/original/round12/brush-startup/native-brush-runtime-fixtures.json"))).unwrap();
         for case in fixtures.as_array().unwrap() {
             let input = &case["input"];
             let native = &case["native"];

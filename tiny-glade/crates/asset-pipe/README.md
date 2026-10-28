@@ -207,4 +207,4 @@ cargo run --offline -p asset-pipe --example benchmark_pipeline
 
 - [asset 模块文档](../asset/README.md)：源目录、配置继承与 `.texture` 归档定义。
 - [源码来源审计](../../provenance/foundation-audit.json)：导入来源及历史快照。
-- [重构报告](../../reports/foundation-refactor-2026-10-17/README.md)、[完整复审报告](../../reports/foundation-rereview-2026-10-17/README.md)：变更历史、验证日志和性能观测。
+- [重构报告](../../reports/foundation/2026-10-17-foundation-refactor/README.md)、[完整复审报告](../../reports/foundation/2026-10-17-foundation-rereview/README.md)：变更历史、验证日志和性能观测。

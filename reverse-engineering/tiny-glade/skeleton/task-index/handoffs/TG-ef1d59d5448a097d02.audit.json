@@ -1,0 +1,54 @@
+{
+  "ok": true,
+  "semantic_acceptance": false,
+  "identity_scope": "artifact hashes are ledger declarations with format checks, not binary-file rehashes",
+  "module": "crates/country-core/src/lib.rs",
+  "target_version": "C",
+  "errors": [],
+  "warnings": [],
+  "ledger_sha256": "98dcd16526ef2cce9676fe3b2e1a42b81676d3dd541c30c41685ef5d1218647c",
+  "auditor_sha256": "0bd23f0749abe4957699d738beda4f7cec7d9d9f6475ed39b59c8de755d236b6",
+  "fact_count": 6,
+  "link_count": 4,
+  "unresolved_links": [
+    {
+      "name": "metadata_and_source_navigation",
+      "status": "evidence_ready",
+      "gaps": [
+        "metadata ownership and signatures still need native contracts"
+      ]
+    },
+    {
+      "name": "authoritative_input_and_abi",
+      "status": "unknown",
+      "gaps": [
+        "recover actual inputs, units, fields and ABI; do not use void() placeholder"
+      ]
+    },
+    {
+      "name": "candidate_rust_and_consumers",
+      "status": "unknown",
+      "gaps": [
+        "inspect existing reconstruction; deliver actual callers/outputs and library API boundaries"
+      ]
+    },
+    {
+      "name": "edit_removal_history_and_acceptance",
+      "status": "unknown",
+      "gaps": [
+        "stateful owners require update/removal/history; pure helpers require original consumer checks",
+        "business validation is a separate authorized phase"
+      ]
+    }
+  ],
+  "rust_sha256": {
+    "skeleton/A/crates/country-core/src/lib.rs": "f33a894eb4ca1ff870aa9f49c7ae7a21b3d46b75eee6022046eca8922582430b",
+    "skeleton/B/crates/country-core/src/lib.rs": "ab86c50bb51c6dd57ea7be3cca2692c5cfbd26e76ad1838d8e834c3d917741f2",
+    "skeleton/C/crates/country-core/src/lib.rs": "a8cb70bdc63b91823977cfbe433873dd1f665caf8c9656119ec43a139de6bdab"
+  },
+  "dependencies": [
+    "skeleton/A/crates/country-core/src/lib.rs.dependencies.json",
+    "skeleton/B/crates/country-core/src/lib.rs.dependencies.json",
+    "skeleton/C/crates/country-core/src/lib.rs.dependencies.json"
+  ]
+}

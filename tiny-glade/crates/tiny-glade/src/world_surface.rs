@@ -2,6 +2,9 @@
 //! Compute preparation/finish release their read-only WorldAccess before the
 //! actual list callbacks receive &mut World. No graph, cache or owner is copied.
 use std::cell::RefCell;
+#[cfg(feature = "surface-compare-test")]
+#[path = "surface_comparison.rs"]
+pub mod comparison;
 use bevy_ecs::world::World;
 use country_core::{
     render::{
@@ -64,7 +67,11 @@ pub fn build_world_surface(
             history_valid: u8::from(lighting.history.fresh),
             refraction: &refraction, reprojection: &lighting.reprojection, lists,
         };
-        match transparency_pass::select_water_surface(controls.glade) {
+        #[cfg(feature = "surface-compare-test")]
+        let compared = comparison::run_if_armed(frame, world, &inputs, controls.glade)?;
+        #[cfg(not(feature = "surface-compare-test"))]
+        let compared = false;
+        if !compared { match transparency_pass::select_water_surface(controls.glade) {
             transparency_pass::WaterSurfaceKind::Water => {
                 let prepared = with_surface_env(frame, world, |env| Ok(prepare_water_surface(env, &inputs)))?;
                 with_draw_context(frame, world, |ctx| raster_water_surface(ctx, &prepared, &inputs))?;
@@ -75,7 +82,7 @@ pub fn build_world_surface(
                 with_draw_context(frame, world, |ctx| raster_ice_surface(ctx, &prepared, &inputs))?;
                 with_surface_env(frame, world, |env| finish_ice_surface(env, prepared, &inputs))?;
             }
-        }
+        } }
     }
     SceneRasterHost::new(frame, world, lists)?.pre_taa_transparency_pass(
         &attachment(color), &attachment(depth), &attachment(half), &attachment(lighting.history.previous),

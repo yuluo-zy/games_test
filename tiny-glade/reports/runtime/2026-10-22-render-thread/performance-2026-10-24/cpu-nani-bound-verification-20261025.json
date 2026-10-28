@@ -1,0 +1,86 @@
+[
+  {
+    "name": "157a-nani-bound-cpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "country-core",
+      "--lib",
+      "render::nani::draw_ext::tests",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 124.25364366616122,
+    "log": "/tmp/tg-perf157a-nani-bound-cpu.log",
+    "log_sha256": "1a487bfafd1a4138e3b0060776ea0f24e1d69057ffc44e23be617f1ce6c18620"
+  },
+  {
+    "name": "157b-nani-bound-gpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--test",
+      "original_nani_gpu",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 101,
+    "elapsed_s": 169.7476279588882,
+    "log": "/tmp/tg-perf157b-nani-bound-gpu.log",
+    "log_sha256": "388e3664e1773577dc9a9c7d8f61d4e795f04265a0f8a059389c8a7fbaa679db"
+  },
+  {
+    "name": "157b2-nani-bound-gpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--test",
+      "original_nani_gpu",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 46.48377124988474,
+    "log": "/tmp/tg-perf157b2-nani-bound-gpu.log",
+    "log_sha256": "c1431cfdfc8f0d1b5110f9f2c84a7a6848bba0c8253a7c10c3cbf8443bae660a"
+  },
+  {
+    "name": "157c-count-raster-gpu",
+    "command": [
+      "cargo",
+      "test",
+      "-j",
+      "2",
+      "-p",
+      "tiny-glade",
+      "--test",
+      "original_raster_gpu",
+      "--locked",
+      "--offline",
+      "--",
+      "--test-threads=1"
+    ],
+    "exit_code": 0,
+    "elapsed_s": 45.777489041909575,
+    "log": "/tmp/tg-perf157c-count-raster-gpu.log",
+    "log_sha256": "fb7d4cc6f47ada4ff2fc044c2717f6d7d1ce5e790ceb9f8f4f34942441c1ffef"
+  }
+]

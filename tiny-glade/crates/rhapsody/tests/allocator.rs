@@ -1,9 +1,7 @@
 //! 私有包装的峰值/错误/快照规则；公开分配器的池算法不在这里复制。
 use ash::vk;
-use rhapsody::raw::allocator::{
-    AllocationBackend, AllocationRequest, AllocationTotals, AllocatorReport, AllocatorStats,
-    GpuAllocator, MemoryLocation,
-};
+use rhapsody::device::allocator::{AllocationBackend, AllocationRequest, GpuAllocator, MemoryLocation};
+use rhapsody::accounting::{AllocationTotals, AllocatorReport, AllocatorStats};
 use rhapsody::{Error, Result};
 use std::collections::VecDeque;
 
@@ -154,7 +152,7 @@ fn wrapper_disabled_peak_and_counter_overflow_are_explicit() {
 #[test]
 fn lazy_peak_snapshot_matches_state_at_the_moment_of_peak() {
     use ash::vk;
-    use rhapsody::raw::allocator::AllocatorStats;
+    use rhapsody::accounting::AllocatorStats;
     let stats = AllocatorStats::default();
     let reg = |size| {
         stats

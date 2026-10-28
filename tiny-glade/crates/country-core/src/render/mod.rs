@@ -19,6 +19,7 @@ pub mod pass_builder {
     pub mod draw_builder;
     pub mod draw_list;
     pub mod draw_stream;
+    pub mod draw_commit_scratch;
     pub mod framebuffer_binding;
     pub mod pass_resource_access;
     pub mod pass_resources;

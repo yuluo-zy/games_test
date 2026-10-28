@@ -33,6 +33,7 @@ harness = false
 [dependencies]
 pprof = { version = "0.14", optional = true, default-features = false }
 mimalloc = { version = "0.1", default-features = false, optional = true }
+blake3 = { workspace = true, optional = true }
 glam.workspace = true
 dolly = "=0.6.0"
 fastrand.workspace = true
@@ -114,7 +115,9 @@ profile = ["dep:pprof", "cpu-probe"]
 # and its unit tests build on any host without pprof's transitive deps; the
 # actual CLOCK_THREAD_CPUTIME_ID read inside the module is macOS-only. Off by
 # default: a normal build carries no recorder type and no clock overhead.
-cpu-probe = []
+cpu-probe = ["dep:blake3", "country-core/cpu-probe", "rhapsody/cpu-probe"]
+# Original-format, same-prefix surface correctness diagnostic. Absent by default.
+surface-compare-test = ["country-core/surface-compare-test", "rhapsody/test-support"]
 # mimalloc as the process-wide allocator of the shipped binaries. The default
 # system allocator (the Windows heap in particular) serializes the many small
 # per-frame allocations of the ECS, declaration and recording paths. Library
@@ -141,7 +144,7 @@ country-core = { workspace = true, features = ["native-audio"] }
 
 # B `icc.rs` 使用 winapi 0.3.9 的 wingdi（original-Cargo.lock）。
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "=0.3.9", features = ["wingdi", "winuser", "winbase", "winnt"] }
+winapi = { version = "=0.3.9", features = ["wingdi", "winuser", "winbase", "winnt", "processthreadsapi", "profileapi"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "=0.2.170"

@@ -1,25 +1,20 @@
 //! rg 缺陷修复的 CPU 回归：导出但未访问的 Create 资源、失败路径的资源归还、temporal 记录的放弃/确认、
 //! pass 数上限的构图期错误。不需要 Vulkan 设备。
 use ash::vk;
-use rhapsody::rg::{
-    executor::{Error, ExecutionBackend, ExecutionChain},
-    graph::{
-        self, AccessDependency, BackendFailure, BufferDesc, BuildError, Descriptor, EventBackend,
-        OriginSource, Pool, RenderGraph, ResourceBackend,
-    },
-    resource::ResourceOrigin,
-};
-use rhapsody::{command::recording, raw::submit};
+use rhapsody::rg::{executor::{Error, ExecutionBackend, ExecutionChain}, graph::{self, AccessDependency, BackendFailure, BuildError, Descriptor, EventBackend, OriginSource, Pool, RenderGraph, ResourceBackend}, resource::ResourceOrigin};
+use rhapsody::rg::resource_registry::BufferDesc;
+use rhapsody::command::recording;
+use rhapsody::native::submit;
 mod cpu_graph_support;
 
 const WRITE: u8 = 0x34;
 /// 测试用访问掩码：缓冲 → STORAGE_BUFFER(0x20)。
 struct Dependency;
 impl AccessDependency for Dependency {
-    fn access_mask(&mut self, _code: u8) -> ash::vk::AccessFlags {
+    fn access_mask(&self, _code: u8) -> ash::vk::AccessFlags {
         ash::vk::AccessFlags::SHADER_READ
     }
-    fn is_write(&mut self, code: u8) -> bool {
+    fn is_write(&self, code: u8) -> bool {
         code == WRITE
     }
 }
@@ -31,11 +26,11 @@ fn buffer() -> Descriptor {
         bytes_at_0c_through_0e: [0; 3],
     })
 }
-fn pooled_buffer(handle: u64) -> graph::Buffer<u64> {
+fn pooled_buffer(handle: u64) -> rhapsody::rg::resource_registry::Buffer<u64> {
     let Descriptor::Buffer(desc) = buffer().with_usage(0x20) else {
         unreachable!()
     };
-    graph::Buffer { handle, desc }
+    rhapsody::rg::resource_registry::Buffer { handle, desc }
 }
 fn create(graph: &mut RenderGraph, name: &str) -> rhapsody::rg::resource::ResourceHandle {
     graph
@@ -215,12 +210,13 @@ fn result_callbacks_preserve_device_errors_across_parallel_chunk_strategies() {
                         rhapsody::Error::OutOfDeviceMemory
                     })
                 });
-            let (declaration, mut callbacks, _) = graph.build().into_parts();
+            let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+            assert!(declaration_error.is_none());
             let error = chain
                 .execute_graph_with_context(
                     declaration,
                     &mut Pool::default(),
-                    &mut Dependency,
+                    &Dependency,
                     &mut backend,
                     &mut callbacks,
                 )
@@ -264,12 +260,13 @@ fn reported_callback_errors_cannot_be_ignored_by_returning_true() {
             .add_pass("sibling")
             .with_side_effect()
             .render(|_| true);
-        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+        assert!(declaration_error.is_none());
         let error = chain
             .execute_graph_with_context(
                 declaration,
                 &mut Pool::default(),
-                &mut Dependency,
+                &Dependency,
                 &mut backend,
                 &mut callbacks,
             )
@@ -296,12 +293,13 @@ fn result_callback_error_after_a_successful_batch_keeps_the_partial_transaction(
         .add_pass("second batch")
         .with_side_effect()
         .render_with_result_context(|_| Err(rhapsody::Error::OutOfDeviceMemory));
-    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     let error = chain
         .execute_graph_with_context(
             declaration,
             &mut Pool::default(),
-            &mut Dependency,
+            &Dependency,
             &mut backend,
             &mut callbacks,
         )
@@ -357,12 +355,13 @@ fn cached_plans_cull_dead_callbacks_and_rebind_each_frames_imports() {
                 true
             });
         graph.export(output, 0x25).unwrap();
-        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+        assert!(declaration_error.is_none());
         let execution = chain
             .execute_graph_with_context(
                 declaration,
                 &mut pool,
-                &mut Dependency,
+                &Dependency,
                 &mut backend,
                 &mut callbacks,
             )
@@ -389,17 +388,17 @@ fn cached_plans_cull_dead_callbacks_and_rebind_each_frames_imports() {
             first_plan = Some(execution.compiled.plan.clone());
         }
     }
-    assert_eq!(
-        *calls.lock().unwrap(),
-        [
-            (0, "output"),
-            (0, "effect"),
-            (1, "output"),
-            (1, "effect"),
-            (2, "output"),
-            (2, "effect")
-        ]
-    );
+    let calls = calls.lock().unwrap();
+    assert_eq!(calls.len(), 6, "exactly two retained callbacks per frame");
+    for (frame, frame_calls) in calls.chunks_exact(2).enumerate() {
+        assert!(frame_calls.iter().all(|&(observed_frame, _)| observed_frame == frame as u64),
+            "callbacks must remain grouped in frame execution order");
+        // These passes share no dependency. Only their per-frame membership,
+        // not the worker callbacks' arrival order, is part of this test.
+        let mut names = [frame_calls[0].1, frame_calls[1].1];
+        names.sort_unstable();
+        assert_eq!(names, ["effect", "output"]);
+    }
     assert_eq!(chain.plan_cache_stats().hits, 2);
     assert!(chain.plan_cache_bytes() <= 16 * 1024 * 1024);
 }
@@ -451,12 +450,13 @@ fn stable_subgraph_analysis_is_reused_on_the_real_executor_whole_plan_miss_path(
             })
             .unwrap();
         graph.export(output, 0x25).unwrap();
-        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+        assert!(declaration_error.is_none());
         let execution = chain
             .execute_graph_with_context(
                 declaration,
                 &mut pool,
-                &mut Dependency,
+                &Dependency,
                 &mut backend,
                 &mut callbacks,
             )
@@ -512,7 +512,9 @@ fn three_buffer_graph(callback_ok: bool) -> graph::GraphDeclaration {
         pass.add_resource_access(handle, WRITE, 0).unwrap();
     }
     pass.render(move |_| callback_ok);
-    graph.build().into_parts().0
+    let (declaration, _, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    declaration
 }
 
 fn run(
@@ -525,7 +527,71 @@ fn run(
     let mut callbacks = (0..declaration.passes.len())
         .map(|_| move |_: u64| ok)
         .collect::<Vec<_>>();
-    chain.execute_graph(declaration, pool, &mut Dependency, backend, &mut callbacks)
+    chain.execute_graph(declaration, pool, &Dependency, backend, &mut callbacks)
+}
+
+#[test]
+fn native_recording_errors_propagate_directly_and_do_not_poison_the_next_frame() {
+    for fail_begin in [true, false] {
+        let mut backend = Mock { fail_begin, fail_end_at: (!fail_begin).then_some(1), ..Default::default() };
+        let mut chain = chain();
+        let mut pool = Pool::default();
+        let error = run(&mut chain, three_buffer_graph(true), &mut pool, &mut backend, true).unwrap_err();
+        assert!(if fail_begin {
+            matches!(error, Error::Validation(rhapsody::Error::OutOfHostMemory))
+        } else {
+            matches!(error, Error::Validation(rhapsody::Error::DeviceLost))
+        });
+        assert_eq!(backend.submit_attempts, 0);
+        assert_eq!(chain.recording_command_count(), 0);
+        backend.fail_begin = false;
+        backend.fail_end_at = None;
+        run(&mut chain, three_buffer_graph(true), &mut pool, &mut backend, true).unwrap();
+        assert_eq!(backend.submit_attempts, 1);
+    }
+}
+
+#[test]
+fn an_end_error_after_submission_keeps_the_original_error_and_gpu_receipt() {
+    let mut backend = Mock { fail_end_at: Some(2), ..Default::default() };
+    let mut graph = RenderGraph::new();
+    graph.batch_per_pass(true);
+    for name in ["first", "second"] {
+        graph.add_pass(name).with_side_effect().render(|_| true);
+    }
+    let mut chain = chain();
+    let (declaration, _, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    let error = run(&mut chain, declaration, &mut Pool::default(), &mut backend, true).unwrap_err();
+    let Error::PartialSubmission { original, execution } = error else { panic!("successful prefix must remain owned") };
+    assert!(matches!(*original, Error::Validation(rhapsody::Error::DeviceLost)));
+    assert_eq!(execution.transaction.receipts().len(), 1);
+    assert_eq!(chain.pending_command_count(), 1);
+    assert_eq!(chain.recording_command_count(), 0);
+    assert_eq!(backend.abandoned, [1002]);
+}
+
+#[test]
+fn cached_execution_rejects_aliased_imports_at_the_single_declaration_boundary() {
+    let mut graph = RenderGraph::new();
+    let first = graph.import_unowned("first import", buffer(), 77, 0x25).unwrap();
+    let second = graph.import_unowned("second import", buffer(), 88, 0x25).unwrap();
+    let mut pass = graph.add_pass("read both").with_side_effect();
+    pass.add_resource_access(first, 0x25, 0).unwrap();
+    pass.add_resource_access(second, 0x25, 0).unwrap();
+    pass.render(|_| true);
+    let (mut declaration, _, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    let mut chain = chain();
+    let mut backend = Mock::default();
+    let mut pool = Pool::default();
+    run(&mut chain, declaration.clone(), &mut pool, &mut backend, true).unwrap();
+    let submitted = backend.submit_attempts;
+    declaration.resources[1].source = declaration.resources[0].source;
+    let error = run(&mut chain, declaration, &mut pool, &mut backend, true).unwrap_err();
+    assert_eq!(rhapsody::Error::from(error).kind(), rhapsody::ErrorKind::InvalidUsage);
+    assert_eq!(backend.submit_attempts, submitted);
+    assert_eq!(backend.creations, 0);
 }
 
 #[test]
@@ -600,13 +666,14 @@ fn an_exported_but_unaccessed_create_resource_is_rejected_before_allocation() {
     pass.add_resource_access(touched, WRITE, 0).unwrap();
     pass.render(|_| true);
     graph.export(exported, 0x26).unwrap();
-    let declaration = graph.build().into_parts().0;
+    let (declaration, _, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     let mut backend = EventBackend::default();
     let error = graph::compile_graph(
         declaration,
         &mut Pool::default(),
         &mut backend,
-        &mut Dependency,
+        &Dependency,
     )
     .err()
     .expect("uninitialized exports must be rejected");
@@ -626,7 +693,8 @@ fn executing_an_uninitialized_export_records_and_allocates_nothing() {
     pass.add_resource_access(touched, WRITE, 0).unwrap();
     pass.render(|_| true);
     graph.export(exported, 0x26).unwrap();
-    let declaration = graph.build().into_parts().0;
+    let (declaration, _, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     let mut backend = Mock::default();
     let mut pool = Pool::default();
     let error = run(&mut chain(), declaration, &mut pool, &mut backend, true)
@@ -762,7 +830,8 @@ fn exceeding_the_pass_packing_domain_is_a_build_error() {
 
 #[test]
 fn malformed_declarations_fail_before_creating_resources() {
-    use rhapsody::rg::graph::{AccessDeclaration, ExportDeclaration, PassDeclaration};
+    use rhapsody::rg::graph::PassDeclaration;
+    use rhapsody::rg::resource_info::{AccessDeclaration, ExportDeclaration};
     let invalid_access = graph::GraphDeclaration {
         passes: vec![PassDeclaration {
             queue_class: rhapsody::device::QueueClass::Graphics,
@@ -793,7 +862,7 @@ fn malformed_declarations_fail_before_creating_resources() {
             declaration,
             &mut graph::Pool::default(),
             &mut backend,
-            &mut rhapsody::rg::vulkan::AccessTable::original(),
+            &rhapsody::rg::vulkan::AccessTable::original(),
         )
         .err()
         .unwrap();
@@ -886,12 +955,13 @@ fn partial_submit_failure_defers_published_points_and_abandons_the_rest() {
         pass.add_resource_access(resource, WRITE, 0).unwrap();
         pass.render(|_| true);
     }
-    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     let error = chain
         .execute_graph_with_context(
             declaration,
             &mut pool,
-            &mut Dependency,
+            &Dependency,
             &mut backend,
             &mut callbacks,
         )
@@ -953,13 +1023,14 @@ fn queue_domains_do_not_share_command_completion() {
         pass.add_resource_access(resource, WRITE, 0).unwrap();
         pass.render(|_| true);
     }
-    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     assert!(
         chain
             .execute_graph_with_context(
                 declaration,
                 &mut pool,
-                &mut Dependency,
+                &Dependency,
                 &mut backend,
                 &mut callbacks
             )
@@ -985,12 +1056,13 @@ fn partial_submit_retains_in_flight_resources_and_original_failure() {
         pass.add_resource_access(resource, WRITE, 0).unwrap();
         pass.render(|_| true);
     }
-    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     let error = chain
         .execute_graph_with_context(
             declaration,
             &mut pool,
-            &mut Dependency,
+            &Dependency,
             &mut backend,
             &mut callbacks,
         )
@@ -1040,11 +1112,12 @@ fn transaction_keeps_partial_import_state_and_does_not_publish_failed_exports() 
             pass.render(|_| true);
         }
         graph.export(resource, 0x26).unwrap();
-        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+        assert!(declaration_error.is_none());
         let result = chain().execute_graph_with_context(
             declaration,
             &mut Pool::default(),
-            &mut Dependency,
+            &Dependency,
             &mut backend,
             &mut callbacks,
         );
@@ -1106,7 +1179,8 @@ fn duplicate_imports_are_rejected_before_recording_or_allocation() {
     graph
         .import_unowned("other logical name", buffer(), 77, 0x25)
         .unwrap();
-    let (declaration, mut callbacks, _) = graph.build().into_parts();
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     assert!(matches!(
         declaration.validate(),
         Err(BuildError::AliasedImport(77))
@@ -1116,7 +1190,7 @@ fn duplicate_imports_are_rejected_before_recording_or_allocation() {
         .execute_graph_with_context(
             declaration,
             &mut Pool::default(),
-            &mut Dependency,
+            &Dependency,
             &mut backend,
             &mut callbacks,
         )
@@ -1143,11 +1217,12 @@ fn parallel_chunks_record_only_through_their_own_pool_leases() {
         for name in ["a", "b", "c"] {
             graph.add_pass(name).with_side_effect().render(|_| true);
         }
-        let (declaration, mut callbacks, _) = graph.build().into_parts();
+        let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+        assert!(declaration_error.is_none());
         let result = chain.execute_graph_with_context(
             declaration,
             &mut Pool::default(),
-            &mut Dependency,
+            &Dependency,
             &mut backend,
             &mut callbacks,
         );
@@ -1161,4 +1236,129 @@ fn parallel_chunks_record_only_through_their_own_pool_leases() {
         leased.dedup();
         assert_eq!(leased.len(), chunks as usize);
     }
+}
+#[cfg(feature = "cpu-probe")]
+#[test]
+fn native_command_workload_joins_callback_cells_once_across_real_executor_workers() {
+    use rhapsody::rg::{CommandBackend, RenderPassApi};
+    use rhapsody::profile::CommandWorkload;
+    struct NativeCapture;
+    impl CommandBackend for NativeCapture {
+        fn dispatch(&mut self, _: vk::CommandBuffer, _: rhapsody::rg::pass_api::Command<'_>) {}
+    }
+    let mut backend = Mock::default();
+    let mut chain = chain();
+    // Cell aggregation across real workers needs several concurrent chunks.
+    chain.parallel = rhapsody::rg::parallel::ParallelRecording::ALWAYS_PARALLEL;
+    let mut graph = RenderGraph::new();
+    for index in 0..32u64 {
+        graph.add_pass(format!("measured-{index}")).with_side_effect().render_with_context(move |ctx| {
+            let mut native = NativeCapture;
+            let mut first = RenderPassApi::new(&mut native, vk::CommandBuffer::null(), 0, false);
+            for _ in 0..=index { first.draw(3, 1000, 0, 0); }
+            ctx.record_command_workload(first.take_command_workload());
+            ctx.record_command_workload(first.take_command_workload()); // already consumed
+            drop(first);
+            let mut second = RenderPassApi::new(&mut native, vk::CommandBuffer::null(), 0, false);
+            second.draw_indexed(6, 2000, 0, 0, 0);
+            second.dispatch_threads_3d(16, 16, 16,
+                std::num::NonZeroU32::new(8).unwrap(), std::num::NonZeroU32::new(8).unwrap(),
+                std::num::NonZeroU32::new(8).unwrap());
+            ctx.record_command_workload(second.take_command_workload());
+            ctx.record_command_workload(CommandWorkload {
+                staging_h2d_copy_recorded_bytes: index + 1, ..Default::default()
+            });
+            true
+        });
+    }
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    let execution = chain.execute_graph_with_context(declaration, &mut Pool::default(),
+        &Dependency, &mut backend, &mut callbacks).unwrap();
+    assert!(execution.stats.chunks > 1, "exercise real worker chunk aggregation");
+    assert_eq!(execution.stats.command_workload, CommandWorkload {
+        direct_draw_api_calls: 528, indexed_draw_api_calls: 32, direct_dispatch_api_calls: 32,
+        staging_h2d_copy_recorded_bytes: 528, ..Default::default()
+    });
+}
+
+#[cfg(feature = "cpu-probe")]
+#[test]
+fn native_command_workload_partial_callback_or_submit_failure_is_explicitly_invalid() {
+    use rhapsody::profile::CommandWorkload;
+    for failure_mode in 0..4 {
+        let mut backend = Mock { fail_submit_at: (failure_mode == 3).then_some(2), ..Default::default() };
+        let mut chain = chain();
+        let mut graph = RenderGraph::new();
+        graph.batch_per_pass(true);
+        let ordering = graph.import_unowned("prefix completion", buffer(), 77, 0x25).unwrap();
+        let mut prefix = graph.add_pass("successful prefix").with_side_effect();
+        prefix.add_resource_access(ordering, WRITE, 0).unwrap();
+        prefix.render_with_context(|ctx| {
+            ctx.record_command_workload(CommandWorkload { direct_draw_api_calls: 1, ..Default::default() });
+            true
+        });
+        let mut suffix = graph.add_pass("failed suffix").with_side_effect();
+        suffix.add_resource_access(ordering, 0x25, 0).unwrap();
+        suffix.render_with_context(move |ctx| {
+            ctx.record_command_workload(CommandWorkload { direct_draw_api_calls: 99, ..Default::default() });
+            match failure_mode {
+                0 => false,
+                1 => { ctx.report_error(rhapsody::Error::OutOfHostMemory); true }
+                2 => panic!("injected callback panic after recorded calls"),
+                _ => true,
+            }
+        });
+        let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+        assert!(declaration_error.is_none());
+        let error = chain.execute_graph_with_context(declaration, &mut Pool::default(),
+            &Dependency, &mut backend, &mut callbacks).unwrap_err();
+        let Error::PartialSubmission { execution, .. } = error else { panic!("prefix receipt retained"); };
+        assert!(!execution.stats.command_workload.valid, "partial work cannot become valid zero/full-frame evidence");
+        assert_eq!(execution.transaction.receipts().len(), 1);
+        assert_eq!(execution.stats.command_workload.direct_draw_api_calls,
+            if failure_mode < 3 { 1 } else { 100 }, "failed callback excluded; recorded but failed submit stays explicitly invalid");
+    }
+}
+
+#[cfg(feature = "cpu-probe")]
+#[test]
+fn native_command_workload_overflow_invalidates_evidence_without_rejecting_execution() {
+    use rhapsody::profile::CommandWorkload;
+    let mut backend = Mock::default();
+    let mut chain = chain();
+    let mut graph = RenderGraph::new();
+    graph.add_pass("overflow diagnostic").with_side_effect().render_with_context(|ctx| {
+        ctx.record_command_workload(CommandWorkload { cached_d2d_copy_recorded_bytes: u64::MAX, ..Default::default() });
+        ctx.record_command_workload(CommandWorkload { cached_d2d_copy_recorded_bytes: 1, ..Default::default() });
+        true
+    });
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    let execution = chain.execute_graph_with_context(declaration, &mut Pool::default(),
+        &Dependency, &mut backend, &mut callbacks).unwrap();
+    assert!(!execution.stats.command_workload.valid);
+    assert_eq!(execution.stats.command_workload.cached_d2d_copy_recorded_bytes, u64::MAX);
+    assert_eq!(execution.transaction.receipts().len(), 1, "probe overflow never rejects real submission");
+}
+
+#[cfg(feature = "cpu-probe")]
+#[test]
+fn native_command_workload_preparation_is_invalid_but_successful_zero_native_graph_is_valid() {
+    let mut backend = Mock::default();
+    let mut chain = chain();
+    let mut graph = RenderGraph::new();
+    graph.add_pass("prepare only").with_side_effect().render_with_context(|_| true);
+    let (declaration, callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    let prepared = chain.compile_graph(declaration, &mut Pool::default(), &Dependency,
+        &mut backend, callbacks.len()).unwrap();
+    assert!(!prepared.stats.command_workload.valid);
+    drop(prepared);
+    let graph = RenderGraph::new();
+    let (declaration, mut callbacks, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
+    let execution = chain.execute_graph_with_context(declaration, &mut Pool::default(),
+        &Dependency, &mut backend, &mut callbacks).unwrap();
+    assert_eq!(execution.stats.command_workload, rhapsody::profile::CommandWorkload::default());
 }

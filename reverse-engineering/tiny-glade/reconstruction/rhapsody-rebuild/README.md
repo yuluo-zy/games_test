@@ -13,7 +13,7 @@
 | [perf/README.md](perf/README.md) | 性能基准与门禁（`cargo bench --bench perf`） |
 | [AGENTS.md](AGENTS.md) | 本目录的工作约定 |
 
-原作取证（本目录之外）：[并行录制](../../evidence/render-recovery/parallel-recording/FINDINGS.md)、[setup 命令缓冲/纹理上传](../../evidence/render-recovery/p4-sync-setup-cb/FINDINGS.md)、[多队列与跨队列屏障](../../evidence/render-recovery/multi-queue/FINDINGS.md)、[机制差异表](../../MECHANISM_DIFF.md)。
+原作取证（本目录之外）：[并行录制](../../evidence/render-recovery/parallel-recording/FINDINGS.md)、[setup 命令缓冲/纹理上传](../../evidence/render-recovery/p4-sync-setup-cb/FINDINGS.md)、[多队列与跨队列屏障](../../evidence/render-recovery/multi-queue/FINDINGS.md)、[机制差异表](../../docs/reference/MECHANISM_DIFF.md)。
 
 ## 当前已实际运行的链路
 

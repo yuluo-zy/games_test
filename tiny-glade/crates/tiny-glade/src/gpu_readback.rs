@@ -265,7 +265,7 @@ impl ReadbackPublisher {
                 continue;
             }
             let frame = self.frame;
-            let result = self.transfer().and_then(|transfer| transfer.read_buffer(managed.shared(), 0, bytes));
+            let result = self.transfer().and_then(|transfer| transfer.read_buffer(&managed.shared(), 0, bytes));
             match result {
                 Ok(ticket) => {
                     self.pending.push_back(Pending { ty: source_desc.ty, ticket, source, frame });
@@ -314,7 +314,7 @@ mod tests {
             4, ash::vk::BufferUsageFlags::TRANSFER_SRC, rhapsody::resource::MemoryLocation::CpuToGpu),
             "asset acknowledgment proof", Some(&[0u8; 4][..])).unwrap();
         let mut transfer = TransferManager::new(device.clone(), TransferConfig::default()).unwrap();
-        let proof = transfer.read_buffer(buffer.shared(), 0, 4).unwrap();
+        let proof = transfer.read_buffer(&buffer.shared(), 0, 4).unwrap();
         let points = rhapsody::sync::SyncSet::from_point(proof.completion());
         let (mut game, mut render) = (World::new(), World::new());
         render.insert_resource(crate::render_thread::ExtractedAt {
@@ -365,7 +365,7 @@ mod tests {
         storage.mapped[7].0 = 0xdead_beef;
         let native = host.managed_buffer(&storage.buffer).unwrap();
         let mut transfer = TransferManager::new(device.clone(), TransferConfig::default()).unwrap();
-        let proof = transfer.read_buffer(native.shared(), 0, 4).unwrap();
+        let proof = transfer.read_buffer(&native.shared(), 0, 4).unwrap();
         let submitted = rhapsody::sync::SyncSet::from_point(proof.completion());
         let library = AssetSsboLibrary::new();
         library.register::<TerrainRockMaskSsbo>(storage);

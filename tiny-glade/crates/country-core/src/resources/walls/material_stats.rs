@@ -140,7 +140,7 @@ mod tests {
     fn original_native_material_stats_calls_match_all_bits_and_selectors() {
         let fixture: serde_json::Value = serde_json::from_str(include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../../reverse-engineering/tiny-glade/evidence/round12/wall-gpu/material-stats-native-cases.json"
+            "/tests/fixtures/original/round12/wall-gpu/material-stats-native-cases.json"
         ))).unwrap();
         for (i, case) in fixture["cases"].as_array().unwrap().iter().enumerate() {
             let source = |key: &str| {

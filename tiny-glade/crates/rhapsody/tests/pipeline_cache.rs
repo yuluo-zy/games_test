@@ -1,11 +1,9 @@
 //! 管线缓存的并发性质：同键并发只创建一次（去重），不同键并行创建且全部成功。
 //! 无 Vulkan 设备时跳过；本机可用 lavapipe。
 mod gpu_test_support;
-use rhapsody::raw::{
-    device::Device,
-    init::create_headless_device,
-    shader::{ComputePipelineDesc, PipelineCache, PipelineLayout, ShaderModule, VulkanPipeline},
-};
+use rhapsody::device::Device;
+use rhapsody::pipeline::shader::{ComputePipelineDesc, PipelineCache, PipelineLayout, ShaderModule, VulkanPipeline};
+use rhapsody::device::selection::create_headless_device;
 use std::sync::{Arc, Barrier};
 
 /// SPIR-V 1.0 空 compute main（local size 1）。

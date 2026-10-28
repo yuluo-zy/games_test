@@ -2,6 +2,8 @@
 
 最终目标是完整复现给定发行构建的游戏行为和画面。当前工程只包含已由原作证据恢复的模块，不能称为完整游戏。
 
+与正式工程 `game/tiny-glade` 的逐文件差异与移植清单见 [PORTING-CHECKLIST.md](PORTING-CHECKLIST.md)。
+
 建筑计划第一批已接真实 Bevy：原碰撞资产与普通/半窗/门定位、墙高度命令、Roof 参数/类型切换、五类屋顶历史和计时回放、原 row 洞候选与 resolved proposal → 96B 墙砖实例。当前 33 个 workspace 测试通过；原 rows → proposal/noise/context 生产边、结构家族、快照/C迁移/原调度与GPU仍待恢复。完整范围见[实施证据](../evidence/building-integrate/findings.md)。
 
 ```sh
@@ -10,9 +12,9 @@ cargo run --release --locked -p tg-building-runtime --bin building-run -- crates
 
 这个 14 帧场景使用项目现有 B 发行 assets 的显式路径，包含真实资源放置、计时撤销/重做、平斜切换、门窗移动/删除与宿主清理；不是原游戏交互/画面验收。
 
-当前工作优先逆向源码。已核查发行目录/PDB嵌入源，目前未取得作者原始Rust文本；这里是按原作机器码恢复并验证的可编译实现源码。GPU与场景回放后置。[源码恢复状态](../SOURCE_RECOVERY.md)列出每个原函数族、对应源文件、已恢复内容和边界。
+当前工作优先逆向源码。已核查发行目录/PDB嵌入源，目前未取得作者原始Rust文本；这里是按原作机器码恢复并验证的可编译实现源码。GPU与场景回放后置。每个原函数族的骨架与证据见 [`../skeleton/README.md`](../skeleton/README.md) 与 `../evidence/`。
 
-研究输入为 A/B/C 三个发行版本，身份见 [baselines.json](../tracking/baselines.json)。当前机器码实现以 B 为参照，最终目标版本按 [三版本计划](../THREE_VERSION_RUST_PLAN.md)登记。Rust 工程与发行目录分离；没有读取或改动用户之前的 demo。
+研究输入为 A/B/C 三个发行版本，身份见 [baselines.json](../tracking/baselines.json)。当前机器码实现以 B 为参照，最终目标版本按 [三版本计划](../docs/current/THREE_VERSION_RUST_PLAN.md)登记。Rust 工程与发行目录分离；没有读取或改动用户之前的 demo。
 
 ```sh
 cargo build --release --workspace --locked
@@ -26,7 +28,7 @@ cargo run --release --locked --bin tg-reconstruction -- roof-profile 0.5 6.0 0.1
 
 `roof_pipeline::assemble_roof_tiles_observed`组合完整矩形/圆形CPU瓦片生成。矩形依次调用四边条瓦、脊瓦、面瓦/补片，保留同一RNG/seed序列。CLI `roof-tiles <roof88hex> <rectangle24hex或-> <mode0/1> [输出文件]`可以独立生成64字节瓦片记录；无需原游戏进程或渲染环境。
 
-机器码差分脚本位于 `../scripts`，报告位于 `../evidence`。准确的里程碑、覆盖范围与下一步见 [项目进度](../PROJECT_PROGRESS.md)及 [机器可读追踪](../tracking/project.json)。
+机器码差分脚本位于 `../scripts`，报告位于 `../evidence`。当前覆盖范围与下一步见 [STATUS](../../../tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md) 及 [机器可读追踪](../tracking/project.json)。
 
 新增 `crates/tg-history`，可以独立解析三个版本的打包历史，保留未知命令与大整数ID。`roof/parameters.rs` 恢复 B 参数布局与檐口计算；`roof/replay.rs` 恢复 VisualEdit 插值、创建/删除/方向/样式事件生产者。创建 payload 暂以观察字节接口保留，未确认的缺失字段不补默认值。
 
@@ -61,7 +63,7 @@ python scripts/update-progress.py
 ./target/release/tg-reconstruction building-roof-update <wall672hex> <roof88hex> <related48hex> <wall-id-hex> <entity-hex>
 ```
 
-输入布局限定B，`wall672hex`是672字节原墙状态投影，初始化Roof/related padding由调用者保留；未确认字段不构造默认值。接口不替代实体注册或完整场景。新差分入口为 `verify_building_state.py`、`verify_roof_creation.py`、`verify_building_chain.py`（同在 `scripts/multi-version`），分别2659/848/512例通过。见 [建筑发现](../evidence/building-state/findings.md)。每次选取新业务实现前执行 [依赖归属指导](../DEPENDENCY_FILTERING.md)。
+输入布局限定B，`wall672hex`是672字节原墙状态投影，初始化Roof/related padding由调用者保留；未确认字段不构造默认值。接口不替代实体注册或完整场景。新差分入口为 `verify_building_state.py`、`verify_roof_creation.py`、`verify_building_chain.py`（同在 `scripts/multi-version`），分别2659/848/512例通过。见 [建筑发现](../evidence/building-state/findings.md)。每次选取新业务实现前执行 [依赖归属指导](../docs/current/DEPENDENCY_FILTERING.md)。
 
 生命周期新增 `building/wall_publication.rs`、`roof_associations.rs`、`roof_components.rs`、`roof_deletion.rs`、`roof_lifecycle.rs`。公开库API `ResolvedRoofLifecycle::prepare/consume_delete_requests/deletion_mark_committed/advance`连接创建、删除意图、已提交标记、动画和移除意图；engine entity由调用者提供，不自行生成或重写Bevy调度。`RoofAssociations::rebuild`用标准HashMap处理已解析rows及presence变化，缺失墙按原清理规则处理。
 

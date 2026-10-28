@@ -3,15 +3,10 @@
 // 区间参数刻意传单元素切片与反向区间，用来覆盖原版的区间校验。
 #![allow(clippy::single_range_in_vec_init, clippy::reversed_empty_ranges)]
 use ash::vk;
-use rhapsody::raw::{
-    buffer::{BufferDesc, BufferRegion, MemoryLocation, buffer_alignment, plan_buffer_update},
-    device::Device,
-    init::create_headless_device,
-    texture::{
-        TextureDesc, TextureKind, TextureViewDesc, get_image_create_info_with_data,
-        image_aspect_mask_from_format,
-    },
-};
+use rhapsody::device::Device;
+use rhapsody::resource::buffer::{BufferDesc, BufferRegion, MemoryLocation, buffer_alignment, plan_buffer_update};
+use rhapsody::resource::texture::{TextureDesc, TextureKind, TextureViewDesc, get_image_create_info_with_data, image_aspect_mask_from_format};
+use rhapsody::device::selection::create_headless_device;
 
 fn device() -> Option<std::sync::Arc<Device>> {
     create_headless_device().ok()
@@ -79,7 +74,7 @@ fn sparse_update_plan_preserves_destinations_and_rejects_invalid_ranges() {
 
 #[test]
 fn texture_view_ranges_check_exact_remainders_zero_and_overflow() {
-    let texture = TextureDesc::new_2d_array(8, 8, 4, vk::Format::R8G8B8A8_UNORM).mip_levels(3);
+    let texture = TextureDesc::new_2d_array(8, 8, 4, vk::Format::R8G8B8A8_UNORM).mip_levels(3).sampled();
     let full = TextureViewDesc::new(&texture).unwrap();
     assert!(full.validate(&texture).is_ok());
     let mut view = full;
@@ -203,7 +198,7 @@ fn malformed_public_layer_fields_are_rejected_by_every_descriptor_entry() {
         desc.array_layers().unwrap_err(),
         desc.validate().unwrap_err(),
         get_image_create_info_with_data(&desc, false).unwrap_err(),
-        rhapsody::raw::texture::TextureViewDesc::new(&desc).unwrap_err(),
+        rhapsody::resource::texture::TextureViewDesc::new(&desc).unwrap_err(),
     ] {
         assert_eq!(error.kind(), rhapsody::ErrorKind::InvalidUsage);
     }

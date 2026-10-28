@@ -74,7 +74,7 @@ impl Playlist {
                 let size = std::fs::metadata(&path)?.len();
                 total_bytes = total_bytes.checked_add(size).ok_or("asset size overflow")?;
                 if total_bytes > 64 * 1024 * 1024 {
-                    return Err("playlist images exceed the V0 64 MiB input budget".into());
+                    return Err("playlist images exceed the 64 MiB input budget".into());
                 }
                 let bytes = std::fs::read(path)?;
                 fingerprint = fingerprint.rotate_left(7) ^ hash(&bytes);

@@ -1,0 +1,49 @@
+{
+  "updated_utc": "2026-10-25T12:52:44.737340+00:00",
+  "status": "64 effective affected tests + all-target check passed; V23 optimized build/CPU measurement pending",
+  "verification": "cpu-credit-verification-20261025.json",
+  "effective_test_counts": {
+    "153a2-credit-cpu": 4,
+    "153b3-targets-check": 0,
+    "153c-transform-cpu": 5,
+    "153d3-screenshot-gpu": 17,
+    "153e-abi-gpu": 5,
+    "153f-host-gpu": 29,
+    "153g-blur-gpu": 2,
+    "153h-text-gpu": 2
+  },
+  "source_sha256_after_runs": {
+    "crates/rhapsody/src/bindless_parameter_cpu.rs": "490265026cce34349eccc7117d7f426e533570a1649e36557b3d09ec8b62defc",
+    "crates/rhapsody/src/bindless_parameters.rs": "ec5fd441165eaace8bff1af971143ac0bd388d3e8d9d8990aa97b5ac6f87d041",
+    "crates/rhapsody/src/bindless.rs": "cd20bdf1ea3abec14cdc4fddabc059c492c34c316664b9ea7c9b48af7cb399d9",
+    "crates/rhapsody/src/rg/indirect_count.rs": "7bf16e88944ead29b4e3771d7cc1020efe6b204d7c4851a00d8e0896e55793ae",
+    "crates/rhapsody/examples/window_lab/scene.rs": "a16624a2d004332c145a5230e7ae4ba5e4d0fca0107221026897fbfb6a93b011",
+    "crates/rhapsody/tests/bindless_shader_abi.rs": "210d98bc3e4037aeec64f1d40e7b7f4f898770cba8cbe79441ab859189938784",
+    "crates/rhapsody/tests/reverse_blur_original_vulkan.rs": "2d837673bde754933e49680125c6671305e2338d5a360e27a29de152956a6003",
+    "crates/tg-text/src/gpu.rs": "73c4159a3a1e56fad19a1d569b1056de1ca601f7d7e65be85d7a1cf2de8f2465",
+    "crates/tg-text/src/gpu/frame.rs": "6eec587b608a3cd11d41f659f2bcd156642e4639d4e4a2ddc6f2b2873f27cffd",
+    "crates/tg-text/tests/gpu_pipeline.rs": "8d83a28695291e041245d426a6fad6037b1e52d9c2efa5a0474314c6df052d4e",
+    "crates/tiny-glade/Cargo.toml": "cb3fa1a053a5794ac22c3d37a27916245b71c13a7f02f5c3d5b49d7a62c06ff1",
+    "crates/tiny-glade/src/screenshot_capture.rs": "5cef89f418320b2e7451b0ad118f8f177658e7962ab100479bac7eb04a8274cf",
+    "crates/tiny-glade/src/render_host.rs": "e20fe51e3ecff566be6975b9595911591d410189b13c3340066d8e3d4ff69b1f",
+    "crates/country-core/src/components/drawable.rs": "05cb50fd548d37177fa6a15431cc3145247e4e4bb39dfb69dff0876c9527335c"
+  },
+  "fixes": [
+    "Sole GroupReservation parameter factory; removed bare heap constructors, Option<pages> and old Prepared::with_push entry; all consumers migrated together",
+    "ParameterCpuPool bounded callback credit; actual immutable ABI upper bound admitted once; per draw reuses callback-local credit",
+    "Reject duplicate binding before cache mutation or descriptor allocation; actual GPU ABI regression repeats duplicate attempts",
+    "Stationary PrevTransform does not publish component journal entries; moving then stationary converges",
+    "Normal screenshot reuses admitted destination and polls real GPU buffer with zero timeout; hurry retains explicit completion semantics"
+  ],
+  "excluded_attempts": [
+    "153d2-screenshot-gpu:wrong filter matched0tests; corrected153d3 ran17, including real GPU pending/retry/exactly-once pixel delivery",
+    "153d ENOSPC interrupted compile; retained log; explicit completed cache cleanup recorded",
+    "153b/b2 uncovered two genuine all-target compile errors; corrected in final153b3"
+  ],
+  "remaining": [
+    "Measure frozen V23 vs V22 CPU clocks; do not claim gains from correctness tests",
+    "Projection graph alternation reuses wrong slot and normal frame-import retirement clears physical owner cache; audited, not implemented",
+    "Submit merged SyncCell scratch still spills each submit and redundantly checks sorted lists",
+    "Full 3-round/four-scenario and control/long-run hardware acceptance outstanding"
+  ]
+}

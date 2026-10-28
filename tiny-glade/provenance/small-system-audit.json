@@ -142,8 +142,8 @@
   ],
   "files": [
     {
-      "path": "crates/country-core/src/recovered_systems/tree.rs",
-      "sha256": "3d865737092ba3f37758a3b0212f5dcd49a57dc114bb60cc0b1d296755b98e7a",
+      "path": "crates/systems/tree-tool/src/process_tree_cmds.rs",
+      "sha256": "d894459741b8c1de1f46fb2d03fb72443679b9c86a12d52e09862310fd2d3db9",
       "source_path": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-tree/src/despawn.rs",
       "additional_source_paths": [],
       "source_sha256": "1d7de7d1d22abff4a1cefe9ccedd13ee48e5242c2adbbf0c5ff8817a31f26495",
@@ -155,11 +155,18 @@
       ],
       "transformations": [
         "Project Bevy Query/EventWriter into should_despawn_tree(marker, animation_value); no lifecycle/event payload ABI assumed."
-      ]
+      ],
+      "migrated_to": "crates/systems/tree-tool/src/process_tree_cmds.rs",
+      "original_path": "crates/country-core/src/recovered_systems/tree.rs",
+      "original_sha256": "3d865737092ba3f37758a3b0212f5dcd49a57dc114bb60cc0b1d296755b98e7a",
+      "migration_note": "module-migration-2026-10-18.json",
+      "source_status": "current",
+      "path_status": "moved",
+      "current_path": "crates/systems/tree-tool/src/process_tree_cmds.rs"
     },
     {
-      "path": "crates/country-core/src/recovered_systems/water.rs",
-      "sha256": "6da5dff28de575e6b59bdc4c94ab086fce1d0b40892c6e2fc8d52f2cd894f740",
+      "path": "crates/systems/water/src/water_audio_grid/bit_projection.rs",
+      "sha256": "7f725cdfc10d355fcc6d88b2a7f31e7326156a3a2cc3c0c2a526cd7b11d0293b",
       "source_path": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/water/audio_grid.rs",
       "additional_source_paths": [
         "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/water/stroke.rs"
@@ -179,11 +186,18 @@
         "Flatten mask/counters from WaterAudioGridCell into explicit scalar inputs; present supplied by real caller.",
         "coverage becomes unsigned u32: no guessed negative clamp.",
         "Illegal mode is reported as None by pure projection; original entry panics."
-      ]
+      ],
+      "migrated_to": "crates/systems/water/src/water_audio_grid/bit_projection.rs",
+      "original_path": "crates/country-core/src/recovered_systems/water.rs",
+      "original_sha256": "6da5dff28de575e6b59bdc4c94ab086fce1d0b40892c6e2fc8d52f2cd894f740",
+      "migration_note": "module-migration-2026-10-18.json",
+      "source_status": "current",
+      "path_status": "moved",
+      "current_path": "crates/systems/water/src/water_audio_grid/bit_projection.rs"
     },
     {
-      "path": "crates/country-core/src/recovered_systems/critters.rs",
-      "sha256": "f9ba6338a25e6c1e0bda19fdfa986d6462ca1668649cbf5b20f3c7ec3f89065a",
+      "path": "crates/systems/critters/src/components.rs",
+      "sha256": "d0e56058cda338d4223c9765f90abbe1119d3085927026880035b12d30f67338",
       "source_path": "reverse-engineering/tiny-glade/reconstruction/standalone/tg-critters-water/src/critters/components.rs",
       "additional_source_paths": [],
       "source_sha256": "5e830e6e8b4744525f35d416e92eaa12b5e6d037bf3ed4a83155463f22fce4c4",
@@ -197,11 +211,18 @@
       ],
       "transformations": [
         "Only raw u32 input/predicates selected; remove Bevy component/bundle and speculative species/default producers."
-      ]
+      ],
+      "migrated_to": "crates/systems/critters/src/components.rs",
+      "original_path": "crates/country-core/src/recovered_systems/critters.rs",
+      "original_sha256": "f9ba6338a25e6c1e0bda19fdfa986d6462ca1668649cbf5b20f3c7ec3f89065a",
+      "migration_note": "module-migration-2026-10-18.json",
+      "source_status": "current",
+      "path_status": "moved",
+      "current_path": "crates/systems/critters/src/components.rs"
     },
     {
-      "path": "crates/country-core/src/recovered_systems/audio.rs",
-      "sha256": "983123a37daf2ef32ebd549bf357cb5c5c3b5aa4b9cab7a6258e625f08460244",
+      "path": "crates/country-core/src/systems/audio/wall_kinds.rs",
+      "sha256": "1d13a1bbef26b3241fa7ce43df12600c3153f59a1a77d17fa0217f0af4a3643e",
       "source_path": "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/audio/wall_kinds.rs",
       "additional_source_paths": [
         "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/audio/music.rs"
@@ -219,11 +240,18 @@
       "transformations": [
         "Select only enum/table/getter before placeholder FMOD helpers.",
         "NewGladeTime state+0x1c8 projected into mutable f32 accumulator; name advance_new_glade_time."
-      ]
+      ],
+      "migrated_to": "crates/country-core/src/systems/audio/wall_kinds.rs",
+      "original_path": "crates/country-core/src/recovered_systems/audio.rs",
+      "original_sha256": "983123a37daf2ef32ebd549bf357cb5c5c3b5aa4b9cab7a6258e625f08460244",
+      "migration_note": "module-migration-2026-10-18.json",
+      "source_status": "current",
+      "path_status": "moved",
+      "current_path": "crates/country-core/src/systems/audio/wall_kinds.rs"
     },
     {
-      "path": "crates/country-core/src/recovered_systems/clutter.rs",
-      "sha256": "be30b9433ca8aec2de191d922bc9841c8da466f7e243082a52d00c52df127669",
+      "path": "crates/country-core/src/resources/history/auto_clutter_edit.rs",
+      "sha256": "786c5336214a927df1aa42ba1f26a9567dc745132e3c13de75e8e1625f495d05",
       "source_path": "reverse-engineering/tiny-glade/reconstruction/clutter-audio/crates/tg-clutter-audio/src/clutter/auto_clutter_edit.rs",
       "additional_source_paths": [],
       "source_sha256": "f0de6bb3e439d91cec459fa201eea0be133dd9f5cb36c378de2507cc435cb00d",
@@ -234,17 +262,32 @@
       ],
       "transformations": [
         "Select Delete{id:u64} schema only; serde derived, not counted as hand-written decoder."
-      ]
+      ],
+      "migrated_to": "crates/country-core/src/resources/history/auto_clutter_edit.rs",
+      "original_path": "crates/country-core/src/recovered_systems/clutter.rs",
+      "original_sha256": "be30b9433ca8aec2de191d922bc9841c8da466f7e243082a52d00c52df127669",
+      "migration_note": "module-migration-2026-10-18.json",
+      "source_status": "current",
+      "path_status": "moved",
+      "current_path": "crates/country-core/src/resources/history/auto_clutter_edit.rs"
     },
     {
       "path": "crates/country-core/src/recovered_systems/mod.rs",
       "sha256": "dd5f9ea9a08ace5517942b7eb7696c3ab29eea941bbde60bf41f35f19e158dfd",
-      "kind": "integration_glue"
+      "kind": "integration_glue",
+      "original_path": "crates/country-core/src/recovered_systems/mod.rs",
+      "removal_reason": "no current path or unique basename",
+      "path_status": "removed",
+      "current_path": null
     },
     {
       "path": "crates/country-core/src/recovered_systems/README.md",
       "sha256": "9ff0fd25b3c4dcc2ea580f003bbc6614650af47af7af86aacbc621c2315ad3e3",
-      "kind": "integration_glue"
+      "kind": "integration_glue",
+      "original_path": "crates/country-core/src/recovered_systems/README.md",
+      "removal_reason": "no current path or unique basename",
+      "path_status": "removed",
+      "current_path": null
     }
   ],
   "excluded": [
@@ -298,5 +341,12 @@
       "ignored": 0
     },
     "complete_systems_accepted": false
+  },
+  "snapshot_note": "Updated 2026-10-24: path/current_path and sha256 reflect the current tree; original_path/original_sha256 retain the audited state. path_status/audit_status are separate.",
+  "ledger_updated": "2026-10-24",
+  "ledger_state": "current paths and hashes; audited original_path/original_sha256 retained",
+  "path_loss_summary": {
+    "moved": 5,
+    "removed": 2
   }
 }

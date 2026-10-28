@@ -20,7 +20,7 @@ fn mip(base: u32, count: u32) -> AccessRange {
 }
 
 fn definition(raw: &GraphDeclaration) -> rhapsody::Result<GraphDefinition> {
-    GraphDefinition::from_declaration(raw, &mut AccessTable::original(), PlanContext::default())
+    GraphDefinition::from_declaration(raw, &AccessTable::original(), PlanContext::default())
 }
 
 fn alias_fixture(

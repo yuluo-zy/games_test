@@ -1,13 +1,9 @@
 //! Known terminal loss must stop native object creation before touching Vulkan.
 mod gpu_test_support;
 use ash::vk;
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        texture::{Texture, TextureDesc, TextureViewDesc},
-    },
-};
+use rhapsody::device::{Device, DeviceConfig};
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::resource::texture::{Texture, TextureDesc, TextureViewDesc};
 use std::sync::Arc;
 #[test]
 fn known_loss_rejects_buffer_image_and_view_creation_without_new_allocations() {
@@ -22,6 +18,7 @@ fn known_loss_rejects_buffer_image_and_view_creation_without_new_allocations() {
     let image = Arc::new(Texture::new(device.clone(), &desc).unwrap());
     let managed = device
         .resources()
+        .unwrap()
         .textures
         .allocate_shared(image.clone())
         .unwrap();
@@ -57,15 +54,11 @@ fn known_loss_rejects_buffer_image_and_view_creation_without_new_allocations() {
 
 #[test]
 fn known_loss_rejects_raw_pools_descriptors_and_host_access() {
-    use rhapsody::raw::{
-        binding::DescriptorSetBinding,
-        command_buffer::VulkanCommandPool,
-        descriptor_set::{
-            LayoutBinding, LayoutPlan, VulkanDescriptorPool, VulkanDescriptorSetLayout,
-        },
-        sampler::Sampler,
-        semaphore::TimelineSemaphore,
-    };
+    use rhapsody::command::binding::DescriptorSetBinding;
+    use rhapsody::command::command_buffer::VulkanCommandPool;
+    use rhapsody::command::descriptor_set::{LayoutBinding, LayoutPlan, VulkanDescriptorPool, VulkanDescriptorSetLayout};
+    use rhapsody::resource::sampler::Sampler;
+    use rhapsody::device::semaphore::TimelineSemaphore;
     fn lost<T>(result: rhapsody::Result<T>) {
         assert!(matches!(result, Err(rhapsody::Error::DeviceLost)));
     }
@@ -145,7 +138,7 @@ fn known_loss_rejects_raw_pools_descriptors_and_host_access() {
 
 #[test]
 fn unsupported_descriptor_layout_is_rejected_before_native_creation() {
-    use rhapsody::raw::descriptor_set::{LayoutBinding, LayoutPlan, VulkanDescriptorSetLayout};
+    use rhapsody::command::descriptor_set::{LayoutBinding, LayoutPlan, VulkanDescriptorSetLayout};
     let Some(device) = gpu_test_support::initialize(
         "descriptor layout support",
         Device::new_headless(&DeviceConfig::headless()),

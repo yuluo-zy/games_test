@@ -1,9 +1,7 @@
 //! wave2：内置采样器规格与创建、描述符更新计数。
 use ash::vk;
-use rhapsody::raw::{
-    init::create_headless_device,
-    sampler::{BUILTIN_SAMPLER_NAMES, BUILTIN_SAMPLER_SPECS, builtin_sampler_spec},
-};
+use rhapsody::resource::sampler::{BUILTIN_SAMPLER_NAMES, BUILTIN_SAMPLER_SPECS, builtin_sampler_spec};
+use rhapsody::device::selection::create_headless_device;
 use std::sync::Arc;
 
 /// 内置采样器的创建/索引顺序。

@@ -165,5 +165,5 @@ cargo run --offline --locked -p tg-theme --example replay_schedule -- <events-re
 
 ## 相关文档
 
-- [重构与旧包迁移记录](../../reports/theme-ui-refactor-2026-10-17/README.md)
-- [源码复审与修复记录](../../reports/theme-ui-rereview-2026-10-17/README.md)
+- [重构与旧包迁移记录](../../reports/ui-input/2026-10-17-theme-ui-refactor/README.md)
+- [源码复审与修复记录](../../reports/ui-input/2026-10-17-theme-ui-rereview/README.md)

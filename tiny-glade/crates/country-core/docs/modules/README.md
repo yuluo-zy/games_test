@@ -326,7 +326,7 @@
 | [sheep](../../src/resources/critters/sheep.rs) | B Sheep's recovered movement state, stored in the utils `Transform` translation slot (O: capture 0x1412f03f0 / apply 0x1416f24f0). | `CmdCheckForSheepInsideBuilding`、`SheepMoveState`、`Sheep`、`to_translation`、`from_translation`、`being_petted` |
 
 <a id="resources-critters-sheep"></a>
-| [critters](../../../../systems/critters/src/components.rs) | system-critters raw locomotion predicates from B collision consumers. Species names and original enum layout remain unknown; this is a CPU input projection, not a replacement Bevy component or an eight-byte ABI claim. | `CritterLocomotion`、`samples_rock_mask`、`skips_water_sample`、`skips_public_walls`、`wall_hash_only` |
+| [critters](../../../systems/critters/src/components.rs) | system-critters raw locomotion predicates from B collision consumers. Species names and original enum layout remain unknown; this is a CPU input projection, not a replacement Bevy component or an eight-byte ABI claim. | `CritterLocomotion`、`samples_rock_mask`、`skips_water_sample`、`skips_public_walls`、`wall_hash_only` |
 
 
 ## resources/critters/sheep
@@ -581,7 +581,7 @@
 
 <a id="systems-audio-music"></a>
 | [audio](../../src/systems/audio/wall_kinds.rs) | country-core systems/audio：wall_audio_fmod 的 PlayWallAudio kind 0–23 逐条表（B 主基线，反汇编级证据草稿） | `WallKind`、`wall_kind`、`snap_off_boundaries`、`advance_new_glade_time` |
-| [water](../../../../systems/water/src/water_audio_grid/bit_projection.rs) | system-water CPU leaves: rolling audio bits and resolved raster-write callbacks. No world-raster constructor, guessed sampling grid, raycast or zeno replacement. | `WriteMode`、`frame_bit`、`apply_audio_bit`、`select_write_mode`、`coverage_to_alpha`、`brush_fixed`、`apply_write` |
+| [water](../../../systems/water/src/water_audio_grid/bit_projection.rs) | system-water CPU leaves: rolling audio bits and resolved raster-write callbacks. No world-raster constructor, guessed sampling grid, raycast or zeno replacement. | `WriteMode`、`frame_bit`、`apply_audio_bit`、`select_write_mode`、`coverage_to_alpha`、`brush_fixed`、`apply_write` |
 
 
 ## systems/audio/music
@@ -1425,7 +1425,7 @@
 
 | 源码模块 | 用途线索（来自源码） | 主要类型 / 接口 |
 |---|---|---|
-| [tree](../../../../systems/tree-tool/src/process_tree_cmds.rs) | system-tree::despawn_trees, B 0x1422686d0: the resolved deletion predicate. The caller supplies the original marker/query result and animation field. | `should_despawn_tree` |
+| [tree](../../../systems/tree-tool/src/process_tree_cmds.rs) | system-tree::despawn_trees, B 0x1422686d0: the resolved deletion predicate. The caller supplies the original marker/query result and animation field. | `should_despawn_tree` |
 
 
 ## resources/world_raster

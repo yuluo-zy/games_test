@@ -164,7 +164,7 @@ pub mod rhapsody_boundary {
         }
     }
 
-    /// `rhapsody::raw::bytes::slice_as_bytes<T>`.
+    /// `rhapsody::resource::bytes::slice_as_bytes<T>`.
     ///
     /// Kept as a `Copy` boundary helper: callers include `StorageElement` types
     /// that do not implement `bytemuck::NoUninit`; see the dependency audit.

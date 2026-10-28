@@ -90,7 +90,7 @@
 
 为避免与其他任务争用build锁，utils验证使用独立的 `/tmp` target目录，仍通过原生workspace清单执行。早期曾因其他包离线依赖缺失使用隔离清单排查，最终结论不依赖该替代清单。尚未在workspace最低声明Rust 1.88上复验。
 
-[验证记录、源文件SHA256与可重跑性能探针](../../reports/utils-refactor-2026-10-17/)随仓库保存。性能探针可从workspace根使用 `rustc -O reports/utils-refactor-2026-10-17/<probe>.rs -o /tmp/<probe>` 后运行；interval探针直接引用当前源码，offset探针比较两个独立读取内核。
+[验证记录、源文件SHA256与可重跑性能探针](../../reports/foundation/2026-10-17-utils-refactor)随仓库保存。性能探针可从workspace根使用 `rustc -O reports/foundation/2026-10-17-utils-refactor/<probe>.rs -o /tmp/<probe>` 后运行；interval探针直接引用当前源码，offset探针比较两个独立读取内核。
 
 ## 本次复杂测试与验证
 
@@ -116,7 +116,7 @@
 | `country-core` 消费者编译 | 通过；14项既有警告 |
 | 当前区间源码分配探针 | 预热后20,000次固定裁剪，0 alloc/realloc |
 
-最新结果与源文件/测试 SHA256 保存于 [本次验证目录](../../reports/utils-correctness-2026-10-18/)。新版本的性能结论仅限可验证的结构：三角形固定容量无分配；裁剪复用缓冲；RDP 跳过间距为零时的额外端点距离计算。更完整的 RDP 细分可能保留更多点，最坏时间仍为二次；f64 几何计算提高稳健性，未声称整体运行更快。
+最新结果与源文件/测试 SHA256 保存于 [本次验证目录](../../reports/foundation/2026-10-18-utils-correctness)。新版本的性能结论仅限可验证的结构：三角形固定容量无分配；裁剪复用缓冲；RDP 跳过间距为零时的额外端点距离计算。更完整的 RDP 细分可能保留更多点，最坏时间仍为二次；f64 几何计算提高稳健性，未声称整体运行更快。
 
 ## 独立复审
 

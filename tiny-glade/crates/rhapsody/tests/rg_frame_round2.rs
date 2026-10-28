@@ -34,12 +34,13 @@ fn production_compilation_and_observations_share_the_interned_declaration_name()
         .add_pass(name.clone())
         .with_side_effect()
         .render(|_| true);
-    let (declaration, _, _) = graph.build().into_parts();
+    let (declaration, _, _, declaration_error) = graph.build().into_parts();
+    assert!(declaration_error.is_none());
     let interned = declaration.passes[0].name;
     assert_eq!(interned, "shared producer");
     let definition = GraphDefinition::from_declaration(
         &declaration,
-        &mut AccessTable::original(),
+        &AccessTable::original(),
         PlanContext::default(),
     )
     .unwrap();
@@ -65,7 +66,8 @@ fn production_compilation_and_observations_share_the_interned_declaration_name()
         .add_pass("shared producer")
         .with_side_effect()
         .render(|_| true);
-    let (second, _, _) = again.build().into_parts();
+    let (second, _, _, declaration_error) = again.build().into_parts();
+    assert!(declaration_error.is_none());
     assert!(std::ptr::eq(
         interned.as_str(),
         second.passes[0].name.as_str()
@@ -96,7 +98,7 @@ fn pgo_lookup_and_frame_swap_keep_final_duration_and_total_observations() {
 /// 空图在 lavapipe 上走完 begin → execute → end：账本记到提交，GPU 时间戳时长只在 < 1s 时给出。
 #[test]
 fn session_ledger_counts_the_submission_and_gpu_duration_is_option() {
-    use rhapsody::raw::init::create_headless_device;
+    use rhapsody::device::selection::create_headless_device;
     use rhapsody::rg::vulkan::{AccessTable, VulkanGraphBackend, VulkanGraphSession};
     let Some(device) = gpu_test_support::initialize("PGO session ledger", create_headless_device())
     else {

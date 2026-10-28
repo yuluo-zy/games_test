@@ -162,4 +162,4 @@ cargo fmt -p paths -- --check
 
 ## 来源与审查记录
 
-源码来源与文件身份见 [foundation-audit.json](../../provenance/foundation-audit.json)，审查记录见 [foundation-rereview](../../reports/foundation-rereview-2026-10-17/README.md)。
+源码来源与文件身份见 [foundation-audit.json](../../provenance/foundation-audit.json)，审查记录见 [foundation-rereview](../../reports/foundation/2026-10-17-foundation-rereview/README.md)。

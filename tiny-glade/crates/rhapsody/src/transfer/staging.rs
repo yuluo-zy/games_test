@@ -1,11 +1,8 @@
 //! Persistently mapped staging slots of a transfer manager. Idle slots can be
 //! released under device memory pressure and are recreated on demand.
-use crate::{
-    Error, Result,
-    device::{Device, Evictable},
-    raw::buffer::{Buffer, BufferDesc},
-    sync::{CompletedValues, QueueId, SyncPoint, SyncSet},
-};
+use crate::{Error, Result, device::Device, sync::{CompletedValues, QueueId, SyncPoint, SyncSet}};
+use crate::resource::buffer::{Buffer, BufferDesc};
+use crate::accounting::Evictable;
 use ash::vk;
 use std::sync::Arc;
 
@@ -44,7 +41,7 @@ pub(super) struct ReadbackLease {
     pub buffer: Arc<Buffer>,
     pub point: SyncPoint,
     pub bytes: usize,
-    _memory: crate::raw::allocator::CpuMemoryReservation,
+    _memory: crate::accounting::CpuMemoryReservation,
 }
 impl ReadbackSlot {
     /// Not referenced by a ticket.
@@ -70,7 +67,7 @@ pub(super) struct Staging {
     pub committed_bytes: u64,
     clock: u64,
     pub evicted_slots: u64,
-    _slots_memory: crate::raw::allocator::CpuMemoryReservation,
+    _slots_memory: crate::accounting::CpuMemoryReservation,
 }
 
 impl Staging {
@@ -84,7 +81,7 @@ impl Staging {
     ) -> Result<Self> {
         let mut slots_memory = device.memory.stats.reserve_cpu_bytes(
             u64::from(slots) * (size_of::<UploadSlot>() + size_of::<ReadbackSlot>()) as u64,
-            crate::device::BudgetCategory::Live,
+            crate::accounting::BudgetCategory::Live,
         )?;
         let mut uploads = Vec::new();
         let mut readbacks = Vec::new();
@@ -192,8 +189,8 @@ impl Staging {
             vk::BufferUsageFlags::TRANSFER_DST,
         ))?;
         let memory = self.device.memory.stats.reserve_cpu_bytes(
-            crate::raw::allocator::shared_cpu_bytes::<ReadbackLease>()?,
-            crate::device::BudgetCategory::Live,
+            crate::accounting::shared_cpu_bytes::<ReadbackLease>()?,
+            crate::accounting::BudgetCategory::Live,
         )?;
         let lease = Arc::new(ReadbackLease {
             buffer: buffer.clone(),

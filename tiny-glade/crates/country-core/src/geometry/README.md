@@ -92,8 +92,8 @@ cargo check -p tiny-glade --test geometry_gpu --locked --offline
 RHAPSODY_REQUIRE_VULKAN=1 cargo test -p tiny-glade --test geometry_gpu --locked --offline -- --nocapture
 ```
 
-最终结果、保留的失败日志和当前源码指纹见 [重构报告](../../../../reports/geometry-refactor-2026-10-18/README.md)。原审查的 G1/G2 状态见 [REVIEW.md](REVIEW.md)。历史报告仅记录当时的实现；本次改变了输入、拥有权和错误处理，不沿用旧原作逐位等价结论。
+最终结果、保留的失败日志和当前源码指纹见 [重构报告](../../../../reports/building/2026-10-18-geometry-refactor/README.md)。原审查的 G1/G2 状态见 [REVIEW.md](REVIEW.md)。历史报告仅记录当时的实现；本次改变了输入、拥有权和错误处理，不沿用旧原作逐位等价结论。
 
-后续缓冲生命周期修复及重新验证见 [生命周期修复报告](../../../../reports/geometry-lifecycle-fix-2026-10-18/README.md)；该报告单独记录先前因磁盘耗尽未执行的 GPU 检查的重跑结果。
+后续缓冲生命周期修复及重新验证见 [生命周期修复报告](../../../../reports/building/2026-10-18-geometry-lifecycle-fix/README.md)；该报告单独记录先前因磁盘耗尽未执行的 GPU 检查的重跑结果。
 
 本模块提供几何与实例缓冲的生产消费入口。全局间接 draw-list/culling、墙代理实体装配、完整游戏场景和最终画面仍属于渲染系统的职责，不能由局部上传或回读测试宣称完成。

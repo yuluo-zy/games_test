@@ -2,7 +2,7 @@
 
 ## 2026-10-18 core / rhapsody 调用接线
 
-新增宿主侧 `tiny_glade::render_bridge::CoreRenderBridge`，共用一个 `VulkanGraphSession`，连接 core 计算/光栅 pass、权威 shader 句柄和真实资源导入，并提供构图失败取消。接口调查、调用方式、验证范围及剩余阻塞见 [接线报告](../../reports/core-rhapsody-bridge-2026-10-18/README.md)。这不代表完整 `WorldAccess`、`FramePasses`、游戏主循环或 GPU 帧已经验收。
+新增宿主侧 `tiny_glade::render_bridge::CoreRenderBridge`，共用一个 `VulkanGraphSession`，连接 core 计算/光栅 pass、权威 shader 句柄和真实资源导入，并提供构图失败取消。接口调查、调用方式、验证范围及剩余阻塞见 [接线报告](../../reports/runtime/2026-10-18-core-rhapsody-bridge/README.md)。这不代表完整 `WorldAccess`、`FramePasses`、游戏主循环或 GPU 帧已经验收。
 
 
 本文描述当前 `src/` 的职责划分、数据所有权和业务流。目标版本为 Tiny Glade B；**有函数、有类型、能够编译，都不等于完整原作业务已经恢复**。文档中的“负责”说明模块职责，不表示该职责所有分支均已实现。更新日期：2026-10-17。

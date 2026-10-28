@@ -6,7 +6,7 @@
 
 ## 1. 当前证据与具体瓶颈
 
-审计依据：[AGENTS](../../AGENTS.md)、[当前保存记录](../../checkpoints/building-parallel-2026-10-11T100110Z/CURRENT_IMPLEMENTATION.md)、[建筑计划](../../BUILDING_SYSTEM_RECOVERY_PLAN.md)、[并行所有权](../../tracking/parallel-implementation-conflicts/README.md)、[父集成缺口](../../tracking/parallel-implementation-conflicts/parent-integration.md)，以及下表列出的实际文件。PROJECT_MEMORY/TASK_BACKLOG 中较早的“下一步”已经多次被后续恢复替代，不能把它们拼成当前未完成清单；以具体源码、最新包状态和对应证据范围为准。
+审计依据：[AGENTS](../../AGENTS.md)、当前保存记录、建筑计划、[并行所有权](../../tracking/parallel-implementation-conflicts/README.md)、[父集成缺口](../../tracking/parallel-implementation-conflicts/parent-integration.md)，以及下表列出的实际文件。PROJECT_MEMORY/TASK_BACKLOG 中较早的“下一步”已经多次被后续恢复替代，不能把它们拼成当前未完成清单；以具体源码、最新包状态和对应证据范围为准。
 
 | 观察 | 含义 | 建议 |
 | --- | --- | --- |

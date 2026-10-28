@@ -8,10 +8,14 @@ publish.workspace = true
 description = "Tiny Glade game rendering declarations and recovered domain rules"
 
 [features]
+# Count-only owner TLS instrumentation; absent from production builds.
+cpu-probe = []
 native-physics = ["dep:rapier3d"]
 native-audio = ["dep:libfmod"]
 # CPU-only placeholder device for downstream crates' tests (see render::test_device).
 test-support = []
+# Correctness-only owned per-draw constant observations; never CPU measurement.
+surface-compare-test = ["test-support"]
 
 [dependencies]
 motomoto = { path = "../motomoto" }

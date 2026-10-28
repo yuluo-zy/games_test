@@ -1,0 +1,51 @@
+{
+  "schema": "surface-local-adapter-policy-v1",
+  "adapter_sha256": "bb04a7a790d8316c2dae5b95342f595c1e5bd8eab8e59e56ab7de6e85e00e591",
+  "job_helper_sha256": "7fdd373b73872490d52a4e1ce8a41832dbfc2d997c45688b6c1c7dd8dfb02b88",
+  "source_guard_helper_sha256": "021fb94acfe1524adf79ff1f67fb04da975664a68742e50d9e03359934b96775",
+  "cargo_command": [
+    "cargo",
+    "build",
+    "-p",
+    "tiny-glade",
+    "--test",
+    "gpu_surface_collect",
+    "--locked",
+    "--offline",
+    "-j1",
+    "--message-format=json-render-diagnostics",
+    "--features",
+    "cpu-probe,surface-compare-test"
+  ],
+  "artifact_features": [
+    "cpu-probe",
+    "default",
+    "mimalloc",
+    "surface-compare-test"
+  ],
+  "metadata_features": [
+    "default",
+    "cpu-probe",
+    "surface-compare-test"
+  ],
+  "fixture_entry": "real_lake_surface_same_prefix_zero_tolerance",
+  "fixture_mode": "same-prefix-local-correctness",
+  "profile": "debug",
+  "allocator": "System (correctness fixture; not a CPU benchmark)",
+  "tg_install_root": "D:\\game\\ljxsj_92385\\Tiny Glade",
+  "asset_scene_relative": "assets/starting-builds/full/05-rocky-lake/history.json",
+  "asset_scene_sha256": "f85cba25b4a193d517402a57df3590323f3d388b4f8181899c4b7fed7272fec3",
+  "fmod_sha256": {
+    "fmod.dll": "d563ad96042c096985735b0d1fdab80fe5c7f27663171ff1550ac8ebf4c7eba6",
+    "fmodstudio.dll": "dc61fae2e70ec3a16fa78b678a0fc9ff1852491077a21c2b9c11bf4d160207ff"
+  },
+  "fixed_environment": {
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_JOBS": "1",
+    "TG_INSTALL_ROOT": "D:\\game\\ljxsj_92385\\Tiny Glade",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "VK_INSTANCE_LAYERS": "VK_LAYER_KHRONOS_validation",
+    "RHAPSODY_REQUIRE_VULKAN": "1"
+  },
+  "acceptance_scope": "Same-prefix original-format GPU correctness only. No CPU, WSI, long-run or prior-run reclassification."
+}

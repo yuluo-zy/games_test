@@ -1,0 +1,36 @@
+{
+  "updated_utc": "2026-10-25T14:21:22.006135+00:00",
+  "status": "V25 descriptor rebind dedup:18effective tests+all-target check passed; performance pending",
+  "verification": "cpu-descriptor-verification-20261025.json",
+  "effective_test_counts": {
+    "160a-descriptor-cpu": 1,
+    "160b-descriptor-abi-gpu": 5,
+    "160c2-descriptor-retention-gpu": 8,
+    "160d-descriptor-raster-gpu": 2,
+    "160e-descriptor-text-gpu": 2,
+    "160f-descriptor-targets": 0
+  },
+  "source_sha256_after_runs": {
+    "crates/rhapsody/src/raw/binding.rs": "02ce4bf0cb216f6d68e2c2db6dd33f8347d44764f656e141e41c2d7be8750840",
+    "crates/rhapsody/src/raw/command_buffer.rs": "055b7a0fef4b721a0cd3c02d3a1ee4cdb61e279969be8a6d38f7c11475a8f613",
+    "crates/rhapsody/src/bindless.rs": "1a12fb8de986ff56002728d0a0ae09a60de53ca2f67a996f3aa32b52a8d81b96",
+    "crates/rhapsody/src/bindless_parameters.rs": "d5b86da73d56ad6c2d025249762733d0dd5ec67c1a1a4ba0ab4592d825413a37",
+    "crates/rhapsody/src/rg/executor.rs": "788c18d32e8673c04947b9923af69c6d692aff447e09304357edde9738fa58ad",
+    "crates/rhapsody/tests/bindless_shader_abi.rs": "40eeb66160aabf7c283b8575304913b341d209f91e70919992b31e2cf4857ed6",
+    "crates/rhapsody/tests/command_retention.rs": "e1a13e10db1e1df6bf6ce9d3bcfff4c47f20227c905f335a3e19fe8e68d746fe"
+  },
+  "changes": [
+    "One private DescriptorBindingState compares actualcommand/bindpoint/layout/set/page and emits only real binding changes",
+    "Existing bind_pass/bind_command APIs remain the only respective graph/native bind routes; same shared emit implementation, no new compatibility constructor or serial fallback",
+    "Retain and actual shader-range checks precede dedup; Prepared parameter index push always remains; begin/reset/callback boundaries clear cache",
+    "Raw descriptor state changes/secondary execution use explicit invalidation; safety contract documented in heap,Prepared and raw helpers",
+    "Actual GPU ABI sequenceA/A-prime/B/A/raw-foreign-set+invalidate+A returns42,43,44,42,42; foreign storage andparameter buffers are valid so omitted restore would yield124"
+  ],
+  "superseded_failure": "160c initially6passed/2failed because old tests expectedTimeout for bounded TempList; changed only assertions to current Exhausted.160c2 all8pass; do not sum repeated runs.",
+  "remaining": [
+    "Measure frozenV25 againstV24 before claiming performance benefit",
+    "CPU16ms remains unmet: latest V24static20.796/many33.226; single-pair only",
+    "Typed ordered submission scratch and projection alternating shape cache remain unimplemented; projection-only eviction/retry zero-report gap must be closed before retaining native owners longer",
+    "CoreAnimation nextDrawable sleep location confirmed, upstream drawable availability cause open; no whole-chain deadlock-freedom claim"
+  ]
+}

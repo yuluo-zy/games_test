@@ -957,6 +957,21 @@ impl GameLoop {
         self.render.native_present_success_count()
     }
 
+    /// One control round-trip at each measurement boundary; no per-frame messages.
+    #[cfg(feature = "cpu-probe")]
+    pub fn start_cpu_probe(&mut self, config: crate::render_cpu_probe::CpuProbeConfig) -> anyhow::Result<()> {
+        self.render.call(move |renderer| {
+            let session = crate::render_cpu_probe::CpuProbeSession::new(config)?;
+            renderer.install_cpu_recorder(session);
+            Ok(())
+        })
+    }
+
+    #[cfg(feature = "cpu-probe")]
+    pub fn finish_cpu_probe(&mut self) -> Option<crate::render_cpu_probe::CpuProbeSession> {
+        self.render.call(|renderer| renderer.take_cpu_recorder())
+    }
+
     pub fn gameplay_preparation_pending(&self) -> bool {
         self.preparation.is_some()
     }

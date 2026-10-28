@@ -1,8 +1,8 @@
 //! Render a text fragment and rounded rectangle into a reusable offscreen target.
 use ash::vk;
 use rhapsody::{
-    interop::create_headless_device, resource::Texture, resource::TextureDesc,
-    resource::init_texture_data,
+    device::create_headless_device, resource::Texture, resource::TextureDesc,
+    transfer::init_texture_data,
 };
 use std::{path::PathBuf, sync::Arc};
 use tg_text::{

@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "validated_on": "2026-10-11",
-  "guide": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/AI_REVERSE_TOOLS.md",
+  "guide": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/docs/current/AI_REVERSE_TOOLS.md",
   "interpreter": "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/bin/python",
   "operator": "/Users/yuluo/.codex/mcp-tools/reverse-operator.py",
   "argv_format": [
@@ -14,7 +14,7 @@
     "worker_name",
     "optional_--write"
   ],
-  "default_result_directory": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain",
+  "default_result_directory": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/evidence/toolchain",
   "job_step_format": {
     "tool": "exact MCP tool name",
     "args": "object using inputSchema",
@@ -27,7 +27,7 @@
       "selectors": {
         "program": "tiny-glade.exe"
       },
-      "schema_snapshot": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/schemas/ghidra.json",
+      "schema_snapshot": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/schemas/ghidra.json",
       "available_snapshot_tools": [
         "list_instances",
         "connect_instance",
@@ -57,7 +57,7 @@
       "selectors": {
         "programPath": "/tiny-glade.exe"
       },
-      "schema_snapshot": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/schemas/reva.json",
+      "schema_snapshot": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/schemas/reva.json",
       "available_snapshot_tools": [
         "get-function-count",
         "set-function-prototype",
@@ -88,7 +88,7 @@
       "selectors": {
         "database": "ai_tools_b"
       },
-      "schema_snapshot": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/schemas/re-mcp.json",
+      "schema_snapshot": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/schemas/re-mcp.json",
       "available_snapshot_tools": [
         "close_database",
         "save_database",
@@ -112,7 +112,7 @@
       "selectors": {
         "target": "one open_binary per stdio session"
       },
-      "schema_snapshot": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/schemas/rea.json",
+      "schema_snapshot": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/schemas/rea.json",
       "available_snapshot_tools": [
         "inspect_native_instruction",
         "procedure_info",
@@ -131,7 +131,7 @@
       "selectors": {
         "target": "one open_file per stdio session"
       },
-      "schema_snapshot": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/schemas/radare2.json",
+      "schema_snapshot": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/schemas/radare2.json",
       "available_snapshot_tools": [
         "open_file",
         "close_file",
@@ -151,16 +151,16 @@
   "targets": {
     "default_persistent": {
       "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
-      "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe"
+      "path": "/Users/yuluo/Desktop/game/B版本内容/tiny-glade.exe"
     },
     "instruction_oracle": {
       "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
-      "path": "/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.rne"
+      "path": "/Users/yuluo/Desktop/game/B版本内容/tiny-glade.rne"
     }
   },
   "examples": [
     {
-      "job": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/ghidra-read.json",
+      "job": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/ghidra-read.json",
       "backend": "ghidra",
       "worker": "shared",
       "write": false,
@@ -168,16 +168,16 @@
         "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/bin/python",
         "/Users/yuluo/.codex/mcp-tools/reverse-operator.py",
         "ghidra",
-        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/ghidra-read.json",
+        "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/ghidra-read.json",
         "--worker",
         "shared"
       ],
       "verification": "executed_successfully",
-      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/ghidra-read-final.json",
+      "report": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/ghidra-read-final.json",
       "job_sha256": "63fbbdd4920449b6e7c26a2bc9ee66038b5cb827d1744fae85e516debaa86f74"
     },
     {
-      "job": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/reva-read.json",
+      "job": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/reva-read.json",
       "backend": "reva",
       "worker": "shared",
       "write": false,
@@ -185,16 +185,16 @@
         "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/bin/python",
         "/Users/yuluo/.codex/mcp-tools/reverse-operator.py",
         "reva",
-        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/reva-read.json",
+        "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/reva-read.json",
         "--worker",
         "shared"
       ],
       "verification": "executed_successfully",
-      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/reva-read.json",
+      "report": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/reva-read.json",
       "job_sha256": "14d91b5c467eb1eafd6387deb3e475bc4781fcbe51379567aaaafc2ac7ae965a"
     },
     {
-      "job": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/reva-pcode.json",
+      "job": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/reva-pcode.json",
       "backend": "reva",
       "worker": "ai-guide-pcode-20261011",
       "write": true,
@@ -202,17 +202,18 @@
         "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/bin/python",
         "/Users/yuluo/.codex/mcp-tools/reverse-operator.py",
         "reva",
-        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/reva-pcode.json",
+        "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/reva-pcode.json",
         "--worker",
         "ai-guide-pcode-20261011",
         "--write"
       ],
-      "verification": "executed_successfully",
-      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/reva-pcode.json",
-      "job_sha256": "468acd88476bb44c9e3c02cdd1b61a8ab0ae123f82fbf2929eb91d9b9738a7bf"
+      "verification": "abi_fix_and_pcode_verified_with_save_reopen_2026_10_24",
+      "report": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/repair-2026-10-24-reva-pcode-reopen.json",
+      "job_sha256": "2d6c7971dc2700b9c4ee4e3375d02382dfe0336d461dfddbed3a5d5452eb4531",
+      "signature_fix_report": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/repair-2026-10-24-reva-pcode-typed.json"
     },
     {
-      "job": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/re-mcp-read.json",
+      "job": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/re-mcp-read.json",
       "backend": "re-mcp",
       "worker": "ai-guide-db-20261011",
       "write": false,
@@ -220,16 +221,16 @@
         "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/bin/python",
         "/Users/yuluo/.codex/mcp-tools/reverse-operator.py",
         "re-mcp",
-        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/re-mcp-read.json",
+        "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/re-mcp-read.json",
         "--worker",
         "ai-guide-db-20261011"
       ],
       "verification": "executed_successfully",
-      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/re-mcp-read.json",
+      "report": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/re-mcp-read.json",
       "job_sha256": "c6ddc0ebe050056b68ec4fc3cf1fcf0af9c5c9fda492add616a6e3491585b4a8"
     },
     {
-      "job": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/rea-identity.json",
+      "job": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/rea-identity.json",
       "backend": "rea",
       "worker": "ai-guide-rea-20261011",
       "write": false,
@@ -237,16 +238,16 @@
         "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/bin/python",
         "/Users/yuluo/.codex/mcp-tools/reverse-operator.py",
         "rea",
-        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/rea-identity.json",
+        "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/rea-identity.json",
         "--worker",
         "ai-guide-rea-20261011"
       ],
       "verification": "executed_successfully",
-      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/rea-identity.json",
+      "report": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/rea-identity.json",
       "job_sha256": "c6729244a42c1b5f757d121dd652a228e38901daab6abfcee9253feda196fd98"
     },
     {
-      "job": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/radare-bytes.json",
+      "job": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/radare-bytes.json",
       "backend": "radare2",
       "worker": "ai-guide-r2-20261011",
       "write": false,
@@ -254,14 +255,19 @@
         "/Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/.venv/bin/python",
         "/Users/yuluo/.codex/mcp-tools/reverse-operator.py",
         "radare2",
-        "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/tool-usage/jobs/radare-bytes.json",
+        "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/tool-usage/jobs/radare-bytes.json",
         "--worker",
         "ai-guide-r2-20261011"
       ],
       "verification": "executed_successfully",
-      "report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/radare-bytes-final.json",
+      "report": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/radare-bytes-final.json",
       "job_sha256": "65aa32f0aaf2b095c360642ca4b95390eb941fd21e4863a5e7ed28ab27a7ff71"
     }
   ],
-  "validation_report": "/Users/yuluo/Desktop/game/games_test/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/summary.json"
+  "validation_report": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/summary.json",
+  "runtime_revalidated_on": "2026-10-24",
+  "runtime_revalidation_report": "/Users/yuluo/Desktop/game/reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/tool-repair-2026-10-24.json",
+  "reva_pcode_sample_policy": "Dedicated write worker; original-instruction-backed float(uint*) signature, require FLOAT_DIV, save/reopen verified.",
+  "last_scope_note": "Historical 2026-10-11 reports retain their measured scope. Current backend smoke and repair results are in runtime_revalidation_report.",
+  "client_reconnection_policy": "Verified same-worker Ghidra state follows authorized backend PID replacement; ReVa uses per-call HTTP sessions without automatic write replay. Already loaded old app clients require rebuilding the client; SDK entry works without app restart."
 }

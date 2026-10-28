@@ -39,7 +39,7 @@ pub struct AppModeView {
     pub flag: u8,
 }
 
-/// 受管 GPU 纹理句柄（`rhapsody::raw::managed` 的 0x38 B 值；字段布局 U，仅持有 id）。
+/// 受管 GPU 纹理句柄（`rhapsody::resource::managed` 的 0x38 B 值；字段布局 U，仅持有 id）。
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ManagedTexture(pub u64);
 

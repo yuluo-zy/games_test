@@ -1,4 +1,4 @@
-> 第二轮复审与新增修复见 [复审报告](../../../../reports/asset-libraries-rereview-2026-10-18/README.md)。
+> 第二轮复审与新增修复见 [复审报告](../../../../reports/foundation/2026-10-18-asset-libraries-rereview/README.md)。
 
 # 修复状态（2026-10-18）
 
@@ -13,7 +13,7 @@
 | 热重载 / VAO 孤儿 | runtime 实际消费者与 PostUpdate 调度 |
 | 瞬态回收孤儿 | 真实宿主初始化 + 每帧回收与物理缓冲释放 |
 
-实现变化、回归结果及剩余边界见 [最新报告](../../../../reports/asset-libraries-refactor-2026-10-18/README.md)。旧报告的源码指纹及差分范围不覆盖本轮改动。
+实现变化、回归结果及剩余边界见 [最新报告](../../../../reports/foundation/2026-10-18-asset-libraries-refactor/README.md)。旧报告的源码指纹及差分范围不覆盖本轮改动。
 
 ---
 
@@ -126,18 +126,18 @@ Drop 只将 handle 入队，真正的 `delete_dropped_transient_meshes` 当前�
 
 ## 8. 验证记录
 
-证据目录：[asset-libraries-review-2026-10-18](../../../../reports/asset-libraries-review-2026-10-18/)。
+证据目录：[asset-libraries-review-2026-10-18](../../../../reports/foundation/2026-10-18-asset-libraries-review)。
 
 | 检查 | 结果与含义 |
 |---|---|
-| `cargo test -p country-core --lib asset_libraries:: --locked --offline` | 157 passed，0 failed，0 ignored；[unit-tests.log](../../../../reports/asset-libraries-review-2026-10-18/unit-tests.log) |
+| `cargo test -p country-core --lib asset_libraries:: --locked --offline` | 157 passed，0 failed，0 ignored；[unit-tests.log](../../../../reports/foundation/2026-10-18-asset-libraries-review/unit-tests.log) |
 | 格式大小反例 | 遍历 25 项预设，预设 10 断言失败，确认现有错误 |
 | mip 保留反例 | 预设 8 断言失败，实际 0、期望 5 |
 | 数组层保留反例 | 预设 0x11 断言失败，实际 0、期望 3 |
 
-三项反例源文件：[probe.rs](../../../../reports/asset-libraries-review-2026-10-18/probe.rs)；最终输出：[probe.log](../../../../reports/asset-libraries-review-2026-10-18/probe.log)。它们是用于确认尚未修复问题的失败断言，不能报告为通过。为避免向默认测试集加入已知失败项，临时 integration test 已从 `tests/` 移除，只保留证据副本。
+三项反例源文件：[probe.rs](../../../../reports/foundation/2026-10-18-asset-libraries-review/probe.rs)；最终输出：[probe.log](../../../../reports/foundation/2026-10-18-asset-libraries-review/probe.log)。它们是用于确认尚未修复问题的失败断言，不能报告为通过。为避免向默认测试集加入已知失败项，临时 integration test 已从 `tests/` 移除，只保留证据副本。
 
-首次探针错误使用了生产 `RenderGraph::default()`，两项导入在缺少后端处提前 panic；该次日志保留为 [probe-first-attempt.log](../../../../reports/asset-libraries-review-2026-10-18/probe-first-attempt.log)，不用于证明描述丢失。最终探针显式注入 `BufferGraphBackend` 后才执行到目标断言。
+首次探针错误使用了生产 `RenderGraph::default()`，两项导入在缺少后端处提前 panic；该次日志保留为 [probe-first-attempt.log](../../../../reports/foundation/2026-10-18-asset-libraries-review/probe-first-attempt.log)，不用于证明描述丢失。最终探针显式注入 `BufferGraphBackend` 后才执行到目标断言。
 
 重跑反例：在 workspace 根目录将证据 `probe.rs` 临时复制到 `crates/country-core/tests/asset_libraries_review_probe_20261018.rs`，执行 `cargo test -p country-core --test asset_libraries_review_probe_20261018 --locked --offline`，完成后移除该临时文件。
 

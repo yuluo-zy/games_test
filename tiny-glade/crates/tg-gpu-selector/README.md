@@ -49,11 +49,11 @@ cargo clippy -p tg-gpu-selector --features native-gui --all-targets --offline --
 
 默认和 `native-gui` 的 all-targets 测试各 7 项通过，两个配置的 Clippy `-D warnings` 和本包格式检查通过。检查在 macOS 离线完成，未启动真实窗口；锁定依赖 `block 0.1.6` 有 Rust future-incompat 提示。
 
-写法、接口注释及借用数据整理记录见 [整理报告](../../reports/gpu-text-style-2026-10-18/README.md)。
+写法、接口注释及借用数据整理记录见 [整理报告](../../reports/ui-input/2026-10-18-gpu-text-style/README.md)。
 
 ## 来源
 
-- 恢复源码：[shared-foundation/tg-gpu-selector](../../../reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/tg-gpu-selector/)，完整源路径为 `reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/tg-gpu-selector/`。
+- 恢复源码：[shared-foundation/tg-gpu-selector](../../../reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/tg-gpu-selector)，完整源路径为 `reverse-engineering/tiny-glade/reconstruction/shared-foundation/crates/tg-gpu-selector/`。
 - 原 B 包/PDB 归属：`crates/tg-gpu-selector/src/`；这是行为恢复源码，不是取得作者原始 Rust 文本。
 - 本次选用提交：`3e0387cd`；每文件完整提交与输入/输出 SHA256 见 [foundation-audit.json](../../provenance/foundation-audit.json)。
 - 逆向/验收报告：[REPORT.md](../../../reverse-engineering/tiny-glade/evidence/foundation-unstarted-2026-10-13/REPORT.md)；[B-SURFACE.md](../../../reverse-engineering/tiny-glade/evidence/closures-2026-10-13/gpu-selector/B-SURFACE.md)。

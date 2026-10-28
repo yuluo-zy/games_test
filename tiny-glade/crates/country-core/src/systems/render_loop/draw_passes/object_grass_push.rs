@@ -80,14 +80,16 @@ pub fn object_grass_push_pass(ctx: &mut DrawPassCtx<'_>, objects: &[Vec4]) {
         DepthSpec::None,
         target,
     );
-    for v in objects {
-        let state = pass.host.default_raster_state();
+    super::d_main_support::collect_draw_pages(&mut pass, objects,
+        |host, _| super::d_main_support::draw_constant_bytes(host, shader.0.0, 0),
+        |local, objects| { for v in objects {
+        let state = local.host.default_raster_state();
         let packet = DrawPacket::new(shader.clone(), [0, 0], state);
-        let mut b = DrawBuilder::new(&mut pass, packet, 0).uniform(PUSH_UNIFORM, Vec4Uniform(*v));
+        let mut b = DrawBuilder::new(local, packet, 0).uniform(PUSH_UNIFORM, Vec4Uniform(*v));
         let p = b.packet_mut();
         p.state = overlay_state(p.state);
         b.draw_no_vao(QUAD_VERTICES);
-    }
+    } }, |_| {});
     pass.render();
 }
 

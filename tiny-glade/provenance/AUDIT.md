@@ -15,10 +15,22 @@ paths/lang-lib/tabloid保留最新产品修复，而不再回滚旧快照。未�
 - [country-core 来源映射](../crates/country-core/render-source-map.json)、[模块 README](../crates/country-core/README.md)及country-source-coverage.json：源码范围、适配原因、未纳入骨架与候选体。
 - [rhapsody 来源映射](../crates/rhapsody/migration-sources.json)、[21工作包归宿](../crates/rhapsody/WORK_PACKAGE_AUDIT.md)、[逐源工作包清单](../crates/rhapsody/work-package-migration.json)。
 - [基础库审计](foundation-audit.json)：14个包、源工作树与Git接受状态、已验证fixture选择、产品差异和原报告。
-- [建筑/历史/屋顶/地形与开发接线](building-audit.json)，[建筑 CPU README](../crates/country-core/src/recovered_building/README.md)。
-- [树/水/小生物/音频/clutter独立函数](small-system-audit.json)、[对应模块 README](../crates/country-core/src/recovered_systems/README.md)。完整草稿含未知生产者，不能整体搬入；完成leaf仍单独保留。
+- [建筑/历史/屋顶/地形与开发接线](building-audit.json)，[建筑 CPU 迁移清单](../crates/country-core/recovery/module-migration-2026-10-18.json)。
+- [树/水/小生物/音频/clutter独立函数](small-system-audit.json)、[对应模块迁移清单](../crates/country-core/recovery/module-migration-2026-10-18.json)。完整草稿含未知生产者，不能整体搬入；完成leaf仍单独保留。
 - [相机审计](camera-audit.json)：45度常量已纳入，矩阵复用已验收utils；其余停止时候选尚无Rust原码闭合证据。
 - [当前源树覆盖表](source-coverage.json)、[统一源码映射/哈希](sources.json)。覆盖分类不是文件数或同名函数等价判定；具体功能范围以专项审计及README为准。
+
+## 台账更新与路径迁移（2026-10-24）
+
+所有 `files` 条目已更新为当前状态，同时保留审计原始值：
+
+- `path` / `current_path` 与 `sha256` 指向当前文件；`original_path` / `original_sha256` 保留审计时值。`content_changed` 表示内容已变，不是台账损坏。
+- `path_status`：`current` / `moved` / `content_changed` / `merged` / `removed` / `source_only`。`moved` 带 `migrated_to`；`merged` 的 `current_path` 指向合并后的目录；`removed` 保留原路径并记录 `removal_reason`。
+- `audit_status` 保留原审计的业务状态（如 recovered-source、shipped fixture），与路径状态分开。
+- 旧游戏路径已归一：`ljxsj_92385/Tiny Glade/...` → `B版本内容/...`，Windows `D:\game\...` → 当前相对路径；原值保存在 `original_source_path` / `original_source`。
+- 逐项迁移与丢失核对见 [PATH-LOSS-2026-10-24.md](PATH-LOSS-2026-10-24.md)。
+- 已扫描全部 provenance 字符串：没有引用本次清理的 `docs/archive/`、`rounds/`、`checkpoints/`、`upper-modules-plan/`、`recovery/`、`skeleton-enriched/` 或 `work/`。表中的 `removed` 均来自上游代码重构或历史 fixture 替换。
+- 当前运行状态仍以 `reports/business/2026-10-23-module-recovery/STATUS.md` 为准；本目录只记录来源与审计。
 
 ## 各 package README
 

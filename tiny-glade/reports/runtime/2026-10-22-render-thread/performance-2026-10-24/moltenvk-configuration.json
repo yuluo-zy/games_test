@@ -1,0 +1,13 @@
+{
+  "result": 0,
+  "header_version": "1.4.2",
+  "size": 184,
+  "synchronousQueueSubmits": 1,
+  "useMetalArgumentBuffers": 1,
+  "prefillMetalCommandBuffers": 0,
+  "local_header": "/opt/homebrew/include/MoltenVK/mvk_private_api.h",
+  "header_sha256": "eb0c20649a3f377723aa8d24ae2de7bf0931d1568d9d16ca152a89bbbf2faa9d",
+  "query_source": "#include <MoltenVK/mvk_private_api.h>\n#include <stdio.h>\nint main(void) {\n MVKConfiguration config = {0}; size_t size = sizeof(config);\n VkResult result = vkGetMoltenVKConfigurationMVK(VK_NULL_HANDLE, &config, &size);\n printf(\"{\\\"result\\\":%d,\\\"header_version\\\":\\\"%s\\\",\\\"size\\\":%zu,\\\"synchronousQueueSubmits\\\":%u,\\\"useMetalArgumentBuffers\\\":%u,\\\"prefillMetalCommandBuffers\\\":%u}\\n\",result,MVK_VERSION_STRING,size,config.synchronousQueueSubmits,config.useMetalArgumentBuffers,config.prefillMetalCommandBuffers);\n return result == VK_SUCCESS ? 0 : 1;\n}\n",
+  "upstream_reference": "https://raw.githubusercontent.com/KhronosGroup/MoltenVK/main/Docs/MoltenVK_Configuration_Parameters.md",
+  "interpretation": "Installed 1.4.2 defaults were read directly: argument buffers already enabled, queue submission synchronous, prefill disabled. Driver submission comparison pending. Prefill is incompatible with the existing UPDATE_AFTER_BIND features and is not enabled."
+}

@@ -1,4 +1,5 @@
 //! Shared actual System allocator instrumentation. Callers choose the counted phase.
+#![allow(dead_code)] // each test binary uses a different subset of the shared helpers
 use std::{
     alloc::{GlobalAlloc, Layout, System},
     cell::{Cell, RefCell},

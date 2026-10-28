@@ -2,7 +2,7 @@
 
 状态：功能作用已评估，逐文件恢复未评估。完整模块验收：未通过。
 
-B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../INTERFACE_PROGRESS.md)。
+B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../docs/current/INTERFACE_PROGRESS.md)。
 
 定义归属：private_source_candidate; ownership_requires_dependency_filter。
 

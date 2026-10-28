@@ -1,20 +1,9 @@
 mod draw_support;
 use ash::vk;
 use draw_support::gpu_test_support;
-use rhapsody::{
-    device::{Device, DeviceConfig},
-    pipeline::{
-        AsyncPipelineCompiler, CompilePriority, CompilerConfig, DiskCacheStatus, HotPipeline,
-        PersistentPipelineCache, RequestOptions,
-    },
-    raw::{
-        command_buffer::VulkanCommandPool,
-        shader::{
-            ComputePipelineDesc, DynamicRenderingFormats, PipelineCache, PipelineLayout,
-            RasterPipelineDesc, ShaderModule,
-        },
-    },
-};
+use rhapsody::{device::{Device, DeviceConfig}, pipeline::{AsyncPipelineCompiler, CompilePriority, CompilerConfig, DiskCacheStatus, HotPipeline, PersistentPipelineCache, RequestOptions}};
+use rhapsody::command::command_buffer::VulkanCommandPool;
+use rhapsody::pipeline::shader::{ComputePipelineDesc, DynamicRenderingFormats, PipelineCache, PipelineLayout, RasterPipelineDesc, ShaderModule};
 use std::{
     sync::{Arc, Barrier},
     time::Duration,
@@ -416,7 +405,7 @@ fn hot_reload_rejects_changed_workgroup_dimensions_for_spirv_and_prebuilt_shader
     for (size, prebuilt) in [([2, 1, 1], false), ([1, 2, 1], true), ([1, 1, 2], false)] {
         let candidate = bytes_with_local_size(size);
         let words = ash::util::read_spv(&mut std::io::Cursor::new(candidate.as_slice())).unwrap();
-        let reflected = rhapsody::raw::shader::reflect_spirv_entries(&words).unwrap();
+        let reflected = rhapsody::pipeline::shader::reflect_spirv_entries(&words).unwrap();
         assert_eq!(reflected[0].local_size, Some(size));
         let ticket = if prebuilt {
             compiler.request_compute(ComputePipelineDesc::new(
@@ -500,7 +489,7 @@ fn known_device_loss_stops_cached_requests_and_hot_publication_without_replacing
     ));
     assert!(matches!(cache.data(), Err(rhapsody::Error::DeviceLost)));
     assert!(matches!(
-        rhapsody::raw::shader::VulkanPipeline::create_compute_pipeline(
+        rhapsody::pipeline::shader::VulkanPipeline::create_compute_pipeline(
             &cache,
             ComputePipelineDesc::new(shader, layout)
         ),
@@ -571,7 +560,7 @@ fn an_observed_failed_request_can_immediately_retry_with_a_new_completion() {
 
 #[test]
 fn valid_shader_edits_that_change_actual_bindings_or_push_ranges_are_rejected_before_vulkan() {
-    use rhapsody::raw::instance::{InstanceBuilder, ValidationMessenger};
+    use rhapsody::native::instance::{InstanceBuilder, ValidationMessenger};
     let mut builder = InstanceBuilder::default();
     let validation = builder.enable_validation().unwrap();
     let Some(instance) = gpu_test_support::initialize("shader-interface instance", builder.build())
@@ -582,7 +571,7 @@ fn valid_shader_edits_that_change_actual_bindings_or_push_ranges_are_rejected_be
     let Some(device) = gpu_test_support::initialize(
         "shader-interface device",
         Device::new(
-            instance,
+            &instance,
             None,
             &DeviceConfig {
                 validation,
@@ -642,7 +631,7 @@ fn valid_shader_edits_that_change_actual_bindings_or_push_ranges_are_rejected_be
     }
     // A matching declared layout, including a nonzero first push offset, must
     // still compile successfully; the guard cannot reject all edited modules.
-    use rhapsody::raw::descriptor_set::{LayoutBinding, LayoutPlan, VulkanDescriptorSetLayout};
+    use rhapsody::command::descriptor_set::{LayoutBinding, LayoutPlan, VulkanDescriptorSetLayout};
     let set = VulkanDescriptorSetLayout::new(
         device.clone(),
         &LayoutPlan {
@@ -709,7 +698,7 @@ fn valid_shader_edits_that_change_actual_bindings_or_push_ranges_are_rejected_be
 
 #[test]
 fn prebuilt_shader_requests_cannot_publish_a_changed_interface_under_the_same_wide_layout() {
-    use rhapsody::raw::descriptor_set::{LayoutBinding, LayoutPlan, VulkanDescriptorSetLayout};
+    use rhapsody::command::descriptor_set::{LayoutBinding, LayoutPlan, VulkanDescriptorSetLayout};
     let Some(device) = device() else {
         return;
     };
@@ -870,9 +859,9 @@ fn low_priority_compilation_defers_under_resource_pressure_but_critical_work_can
     else {
         return;
     };
-    let _live = rhapsody::raw::buffer::Buffer::new(
+    let _live = rhapsody::resource::buffer::Buffer::new(
         device.clone(),
-        &rhapsody::raw::buffer::BufferDesc::new_gpu_only(60000, vk::BufferUsageFlags::TRANSFER_DST),
+        &rhapsody::resource::buffer::BufferDesc::new_gpu_only(60000, vk::BufferUsageFlags::TRANSFER_DST),
     )
     .unwrap();
     let compiler = AsyncPipelineCompiler::new(

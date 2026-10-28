@@ -1,0 +1,83 @@
+{
+  "recorded_utc": "2026-10-25T16:44:09.287244+00:00",
+  "runs": [
+    {
+      "run": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-descriptor-canonical-diagnostics-emit/static-parallel-round1/run.json",
+      "run_sha256": "22478f0620e5b07230c6c97f091bb52476ffd264d844faeb328d760522959524",
+      "binary_sha256": "671ad178482a3bd74956e1104b0a4f49795705ea793e35e16b01d90f87490c24",
+      "input_sha256": {
+        "clock": "7159701358daff076b1732a2f42dfbb986b33c0b5256906d8ec113f4627366e9",
+        "scene": "4f6962b576d1a5c1fc04752d20cda8a984d8b43d75d6ee41490cc3b7b20471a3"
+      },
+      "render_cpu_ms": 36.976309572301425,
+      "main_cpu_ms": 4.57841649694501,
+      "thread_priorities": {
+        "main": [
+          {
+            "priority": 4,
+            "maxpriority": 4,
+            "snapshots": 49
+          },
+          {
+            "priority": 46,
+            "maxpriority": 63,
+            "snapshots": 1
+          }
+        ],
+        "tg-render": [
+          {
+            "priority": 4,
+            "maxpriority": 4,
+            "snapshots": 49
+          },
+          {
+            "priority": 31,
+            "maxpriority": 63,
+            "snapshots": 1
+          }
+        ]
+      },
+      "command": [
+        "/tmp/tg-render-perf-production-v28-performance"
+      ]
+    },
+    {
+      "run": "reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-descriptor-awake-diagnostics-emit/static-parallel-round1/run.json",
+      "run_sha256": "234900b63211c114951f905a784f0b9e0909523778202692810ab9b1ceec560a",
+      "binary_sha256": "671ad178482a3bd74956e1104b0a4f49795705ea793e35e16b01d90f87490c24",
+      "input_sha256": {
+        "clock": "7159701358daff076b1732a2f42dfbb986b33c0b5256906d8ec113f4627366e9",
+        "scene": "4f6962b576d1a5c1fc04752d20cda8a984d8b43d75d6ee41490cc3b7b20471a3"
+      },
+      "render_cpu_ms": 10.930922760041193,
+      "main_cpu_ms": 2.0130453141091658,
+      "thread_priorities": {
+        "main": [
+          {
+            "priority": 46,
+            "maxpriority": 63,
+            "snapshots": 39
+          }
+        ],
+        "tg-render": [
+          {
+            "priority": 31,
+            "maxpriority": 63,
+            "snapshots": 39
+          }
+        ]
+      },
+      "command": [
+        "/tmp/tg-render-perf-production-v28-performance",
+        "-NSAppSleepDisabled",
+        "YES"
+      ]
+    }
+  ],
+  "scope": "Same measurement-only frozen image, identical semantic inputs and stage diagnostics. Per-process Foundation argument changes scheduling conditions. Not an algorithmic descriptor-cache gain or final CPU acceptance. No persistent user/system preferences modified. Old runs lacking scheduling fields cannot be retrospectively assigned App Nap state.",
+  "primary_sources": [
+    "https://developer.apple.com/library/archive/documentation/Performance/Conceptual/power_efficiency_guidelines_osx/AppNap.html",
+    "https://developer.apple.com/library/archive/documentation/Performance/Conceptual/power_efficiency_guidelines_osx/PrioritizeWorkAtTheAppLevel.html"
+  ],
+  "sdk_proc_info": "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/proc_info.h"
+}

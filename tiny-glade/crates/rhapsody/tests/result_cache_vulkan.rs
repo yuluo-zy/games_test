@@ -1,23 +1,11 @@
 //! Actual persistent outputs, asynchronous hits, invalidation and failed frames.
 mod gpu_test_support;
 use ash::vk::{self, Handle};
-use rhapsody::{
-    raw::{
-        buffer::{Buffer, BufferDesc},
-        device::Device,
-        init::create_headless_device,
-        semaphore::TimelineSemaphore,
-    },
-    rg::{
-        graph::RenderGraph,
-        resource::ResourceHandle,
-        result_cache::{
-            ContentDependency, DependencyId, ResultDependencies, ResultLookup, ResultNodeId,
-            ResultRequest,
-        },
-        vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession},
-    },
-};
+use rhapsody::rg::{graph::RenderGraph, resource::ResourceHandle, result_cache::{ContentDependency, DependencyId, ResultDependencies, ResultLookup, ResultNodeId, ResultRequest}, vulkan::{AccessTable, GpuResource, ResourceSpec, VulkanGraphBackend, VulkanGraphSession}};
+use rhapsody::device::Device;
+use rhapsody::resource::buffer::{Buffer, BufferDesc};
+use rhapsody::device::selection::create_headless_device;
+use rhapsody::device::semaphore::TimelineSemaphore;
 use std::sync::{
     Arc,
     atomic::{AtomicUsize, Ordering},

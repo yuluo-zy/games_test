@@ -1,0 +1,97 @@
+{
+  "ok": true,
+  "results": [
+    {
+      "backend": "ghidra",
+      "worker": "tool-repair-20261024",
+      "old_pid": 13257,
+      "new_pid": 13341,
+      "same_stdio_client": true,
+      "metadata_before": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program_name\":\"tiny-glade.exe\",\"executable_path\":\"/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe\",\"architecture\":\"x86\",\"compiler\":\"clangwindows\",\"language\":\"x86:LE:64:default\",\"endian\":\"little\",\"address_size_bits\":64,\"base_address\":\"140000000\",\"memory_blocks\":8,\"total_memory_size\":58486568,\"function_count\":131517,\"symbol_count\":991681}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "metadata_after": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program_name\":\"tiny-glade.exe\",\"executable_path\":\"/Users/yuluo/Desktop/game/ljxsj_92385/Tiny Glade/tiny-glade.exe\",\"architecture\":\"x86\",\"compiler\":\"clangwindows\",\"language\":\"x86:LE:64:default\",\"endian\":\"little\",\"address_size_bits\":64,\"base_address\":\"140000000\",\"memory_blocks\":8,\"total_memory_size\":58486568,\"function_count\":131517,\"symbol_count\":991681}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "query_after_reconnect": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"program\":\"tiny-glade.exe\",\"functions\":{\"0x14090e510\":{\"name\":\"init_walk_camera\",\"size\":473,\"address\":\"14090e510\",\"signature\":\"void __cdecl init_walk_camera(void)\",\"decompiled_code\":\"\\nvoid __cdecl country_core::systems::camera_rig::MainCamera::init_walk_camera(void)\\n\\n{\\n  resources::terrain_height::TerrainHeightsData::\\n  sample_at_world_xz<country_core::resources::terrain_height::TerrainHeightSsbo>();\\n  ::utils::swizzlers::impl$1::xvy();\\n  collision::world::Rapier::raycast_simple();\\n  ::utils::swizzlers::impl$0::x0y();\\n  walk::WalkCamera::teleport();\\n  return;\\n}\\n\\n\",\"revision\":{\"token\":\"1791719479858:3de0cb5e:3\",\"epoch\":\"3de0cb5e\",\"modification_number\":3,\"saved_time\":1791719479858,\"unsaved_changes\":false,\"decompiled\":true}}},\"count\":1,\"requested\":1}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    },
+    {
+      "backend": "reva",
+      "worker": "tool-repair-pcode-20261024",
+      "old_pid": 13371,
+      "new_pid": 13396,
+      "same_stdio_client": true,
+      "metadata_before": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"count\":131077}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "metadata_after": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"count\":131077}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "query_after_reconnect": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"metadata\":{\"callingConvention\":\"__cdecl\",\"isExternal\":\"false\",\"signature\":\"float __cdecl aspect_ratio(uint * size)\",\"parameterCount\":\"1\",\"isThunk\":\"false\",\"returnType\":\"float\"},\"address\":\"0x140949c20\",\"sizeInBytes\":20,\"offset\":1,\"functionName\":\"aspect_ratio\",\"startAddress\":\"0x140949c20\",\"inputAddress\":\"0x140949c20\",\"decompSignature\":\"float __cdecl country_core::resources::window::WindowSize::aspect_ratio(uint *size);\",\"programName\":\"tiny-glade.exe\",\"isUndefinedFunction\":false,\"resolvedFrom\":\"address/symbol\",\"totalLines\":6,\"limit\":10,\"decompilation\":\"   1\\t\\n   2\\tfloat __cdecl country_core::resources::window::WindowSize::aspect_ratio(uint *size)\\n   3\\t\\n   4\\t{\\n   5\\t  return (float)*size / (float)size[1];\\n   6\\t}\\n\",\"parameters\":[{\"dataType\":\"uint *\",\"name\":\"size\",\"ordinal\":\"0\"}],\"endAddress\":\"0x140949c33\"}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ]
+}

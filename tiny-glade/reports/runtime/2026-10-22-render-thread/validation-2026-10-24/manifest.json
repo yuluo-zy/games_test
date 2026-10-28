@@ -1,0 +1,1100 @@
+{
+  "recorded_utc": "2026-10-24T01:58:07.605841+00:00",
+  "status": "Scoped render/input functionality accepted: control combinations, producer journals, per-entry ACK, pass audit, current-v3 full desktop record/save/replay. Latest all-target/core/main/input/GPU regression passed. Remaining: broader legacy helper cleanup, actual window tool editing matrix, and formal four-scenario three-round hardware performance acceptance/optimization.",
+  "hardware": "Apple M3 / macOS / MoltenVK 1.4.2; real Metal-backed Vulkan",
+  "build_mode": "debug, not Release performance acceptance",
+  "gpu_environment": {
+    "VK_ICD_FILENAMES": "/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json",
+    "VK_LAYER_PATH": "/opt/homebrew/share/vulkan/explicit_layer.d",
+    "DYLD_FALLBACK_LIBRARY_PATH": "/opt/homebrew/lib",
+    "RHAPSODY_REQUIRE_VULKAN": "1",
+    "TG_INSTALL_ROOT": "/Users/yuluo/Desktop/game/B版本内容"
+  },
+  "validation_policy": "Production InstanceBuilder.layers stays empty and DeviceConfig.validation false. Validation layers only explicitly requested by GPU test configurations. Upload failure guard uses the existing failure counter fast path; no new per-draw validation layer.",
+  "source_snapshots": [
+    "source-at-final-validation-start.json",
+    "source-after-page-reuse.json",
+    "source-final.json"
+  ],
+  "changes_after_page_snapshot": {
+    "tiny-glade/crates/tiny-glade/src/render_host.rs": {
+      "then": "cdac96ba13d49b0f32dec0ef69e32fca425c78616035fe5d3e4ab439e01885e9",
+      "final": "64ad19b9dd72852f38d87aa70b0f0d781d82d2199c9d7f446eb002735f1925cc"
+    },
+    "tiny-glade/crates/country-core/tests/decorator_extra_native.rs": {
+      "then": "d6d306386e9ccc654f6ed924170dff8d90e1c8a8865f68766bb71a7b18501127",
+      "final": "15eb4d72e58ab0073dd4ef242d2c3d2307d4acc5c3f698b31f09cbcf5edd880a"
+    },
+    "tiny-glade/crates/country-core/tests/signifier_animation_native.rs": {
+      "then": "fe2f39fe4202cba51b6b33d145099b8599dc9fdf69b03cdf4b40c944778a9a77",
+      "final": "ca05d51359141f7c53dd692e7022ad7489b76f7f0433e9d182eeef80e45c8fbc"
+    },
+    "tiny-glade/crates/systems/decorator/tests/audio_integration.rs": {
+      "then": "f468a356c27867a89434125c1fc135f92c97eef3867e4ed79c335872b06aa0de",
+      "final": "4a61a9dd09cd43f71af126c0040ae8a2f8c2321d20ccbba14262d11881492c32"
+    },
+    "tiny-glade/crates/systems/toolbar/tests/tb_i_ui_presentation.rs": {
+      "then": "e3cbb6200ba898d16df7c3f0ead4b2f8f4471266e6c89c943ba5650af2357d07",
+      "final": "615b320e48bd17cadacceb8555cf4c0667a056e2d79d1386ee5694e374c89e75"
+    },
+    "tiny-glade/crates/systems/toolbar/tests/tb_h_undo_lifecycle.rs": {
+      "then": "96c8b5b5ccd11e2187916c35ec6e9befbd67aed01dde30156512f0fb3c393074",
+      "final": "421477b7f96db481b11e51b4fac951b64b29ac5a8443b423cb62cecb7bacc44a"
+    },
+    "tiny-glade/crates/systems/toolbar/src/photomode/setup_photomode_toolbar_tests.rs": {
+      "then": "75f53c2768301d0f5af8ce58c6498a98745bca586e76b9e070802b6520f8a0fc",
+      "final": "f4c8c3f406ed8385fc1cc5806cf5b96c1afbb11f9319f3e85b6f115ef6e9809d"
+    }
+  },
+  "snapshot_limit": "Earlier logs describe incremental source. Do not bind every historical log to final hashes. Final fixture-only and transaction test assertions are separately rerun.",
+  "fixture_provenance": "../../../../tests/fixtures/native/provenance.json",
+  "runs": [
+    {
+      "log": "final-all-targets-current.log",
+      "sha256": "bdc88b55f87177185b6ead64be889da8bb5caa46261d9fa202fbb71df93ab5be",
+      "bytes": 63819,
+      "exit_code": 0,
+      "command": "cargo check --workspace --all-targets --locked --offline",
+      "source_scope": "final source; all workspace targets",
+      "test_summaries": []
+    },
+    {
+      "log": "implement-final-page-production-check.log",
+      "sha256": "d873cc690d0ec8b534c63472b65047e6b3913bc7ed60b2a3d46f6be35de72257",
+      "bytes": 45767,
+      "exit_code": 0,
+      "command": "cargo check --workspace --lib --bins --examples --locked --offline",
+      "source_scope": "production source after page reuse, before fixture/test-only updates",
+      "test_summaries": []
+    },
+    {
+      "log": "implement-final-page-regression.log",
+      "sha256": "1d318a79030a78a6b44a875ba233bf87a63cd31ff44e91d7f829fcbf1790e705",
+      "bytes": 75862,
+      "exit_code": 0,
+      "command": "cargo test -p tiny-glade --lib --test compile_before_submit --test core_raster_draw --test core_render_bridge --test geometry_gpu --test render_host --test render_snapshots --locked --offline -- --test-threads=1",
+      "source_scope": "production source after page reuse; later changes only fixture references and test assertions",
+      "test_summaries": [
+        "test result: ok. 222 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.94s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.12s",
+        "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.77s",
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.25s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.57s",
+        "test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.28s",
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s"
+      ]
+    },
+    {
+      "log": "final-transaction-fast-path.log",
+      "sha256": "833e01976e2e1d0d37e550e24edb0d3ab8c3235e38244b50b8718d809ddfd5a4",
+      "bytes": 45655,
+      "exit_code": 0,
+      "command": "cargo test -p tiny-glade --lib render_host::frame_buffer_tests::partial_upload_rejects_the_graph_until_a_complete_covering_retry --locked --offline -- --exact --test-threads=1",
+      "source_scope": "final source; failure repair resets normal fast path",
+      "test_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 221 filtered out; finished in 4.34s"
+      ]
+    },
+    {
+      "log": "fixture-country.log",
+      "sha256": "ca6345f9c031827be679b6f52fe912b556faa3eca123f3da67214944c2d4e106",
+      "bytes": 332112,
+      "exit_code": 0,
+      "command": "cargo test -p country-core --lib --test decorator_extra_native --test signifier_animation_native --locked --offline -- --test-threads=1",
+      "source_scope": "2843 lib, 1 extra, 2 animation; 1 ignored; TG_INSTALL_ROOT set",
+      "test_summaries": [
+        "test result: ok. 2843 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 31.22s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s"
+      ]
+    },
+    {
+      "log": "fixture-toolbar.log",
+      "sha256": "47ba393e8c8b6c8ad6fecc57990d121544eafa7307388e54c99eb054ffb668ac",
+      "bytes": 25946,
+      "exit_code": 0,
+      "command": "cargo test -p toolbar --test tb_i_ui_presentation --test tb_h_undo_lifecycle --locked --offline -- --test-threads=1",
+      "source_scope": "UI 3 + undo 2",
+      "test_summaries": [
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s"
+      ]
+    },
+    {
+      "log": "fixture-audio-final.log",
+      "sha256": "6536f84ff24142507bcdaab267d3de57c989ab056a0cfb618d4c7a2c700606c8",
+      "bytes": 27054,
+      "exit_code": 0,
+      "command": "cargo test -p system-decorator --test audio_integration --locked --offline -- --test-threads=1",
+      "source_scope": "12; corrected capture address and mute-event fixture init",
+      "test_summaries": [
+        "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    {
+      "log": "fixture-photo-final.log",
+      "sha256": "1d42581c284e699bcd43ff9774d56fe73cdfe740220d17dfaeed4321bad5b32a",
+      "bytes": 24713,
+      "exit_code": 0,
+      "command": "cargo test -p toolbar --lib complete_edition_trees_and_executed_callbacks_match_original_capture --locked --offline -- --test-threads=1",
+      "source_scope": "1 exact fixed capture comparison",
+      "test_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 99 filtered out; finished in 0.00s"
+      ]
+    },
+    {
+      "log": "fixture-rebuild-final.log",
+      "sha256": "d37688d51841aaee4fa1a9274e947ae5ca6ba31d6f7b37666e1bff2475669b59",
+      "bytes": 301,
+      "exit_code": 0,
+      "command": "tools/venv/bin/python tiny-glade/tests/fixtures/native/rebuild.py",
+      "source_scope": "exact fixed seeds and original B RNE instructions, no candidate expected generator",
+      "test_summaries": []
+    },
+    {
+      "log": "implement-page-reuse.log",
+      "sha256": "b9dad15c540829875f9dc2464c535fb2760e4dc004c2bea6bfec14f30313894f",
+      "bytes": 1419,
+      "exit_code": 0,
+      "command": "cargo test -p rhapsody --test bindless_shader_abi --locked --offline -- --test-threads=1",
+      "source_scope": "5; held cursors, original ABI and actual dispatch results",
+      "test_summaries": [
+        "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.48s"
+      ]
+    },
+    {
+      "log": "implement-gameplay-parallel.log",
+      "sha256": "830e957727d7fa4da31e81ec04f239439ca42a93403ef932a420971db457f82c",
+      "bytes": 86056,
+      "exit_code": 0,
+      "command": "cargo test -p tiny-glade --test original_gameplay_chain --locked --offline -- --nocapture --test-threads=1",
+      "source_scope": "incremental source before final window/page reuse fixes; 6 tests, 30 frames; TG_DRAW_COLLECT=parallel, TG_DRAW_COLLECT_CHUNK=1, TG_REQUIRE_CROSS_PASS=1",
+      "test_summaries": [
+        "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 110.69s"
+      ]
+    },
+    {
+      "log": "implement-window-gameplay.log",
+      "sha256": "53c2f3d053bcde41dfe322a83576843657369c580618185ccec91de359bb085b",
+      "bytes": 45585,
+      "exit_code": 0,
+      "command": "cargo test -p tiny-glade --test original_loading_present --locked --offline",
+      "source_scope": "TG_VALIDATE_GAMEPLAY_WSI=1; actual 13 world frames; proxy fix, before deferred resize/page change",
+      "test_summaries": []
+    },
+    {
+      "log": "implement-late-camera.log",
+      "sha256": "cf5a095f46dad6d873936871e2f2efc015bbe5b1c58272ed3aa9d444b1381ad2",
+      "bytes": 67444,
+      "exit_code": 0,
+      "command": "cargo test -p tiny-glade --test original_loading_present --locked --offline",
+      "source_scope": "TG_VALIDATE_WINDOW_LIFECYCLE=late_camera; actual 173 frames/2 previews; before deferred resize/page change",
+      "test_summaries": []
+    },
+    {
+      "log": "implement-loading_close.log",
+      "sha256": "eef081dc325abc114c1431dd7857e3b87e35136e6844b766f12d6123d6fab010",
+      "bytes": 45366,
+      "exit_code": 0,
+      "command": "cargo test -p tiny-glade --test original_loading_present --locked --offline",
+      "source_scope": "TG_VALIDATE_WINDOW_LIFECYCLE=loading_close; before deferred resize/page change",
+      "test_summaries": []
+    },
+    {
+      "log": "implement-suspended_close.log",
+      "sha256": "d29854f64ebdb233bb05de4ba9fe26ff225a747d0a5737729b1ac7e4fd197d44",
+      "bytes": 43918,
+      "exit_code": 0,
+      "command": "cargo test -p tiny-glade --test original_loading_present --locked --offline",
+      "source_scope": "TG_VALIDATE_WINDOW_LIFECYCLE=suspended_close; before deferred resize/page change",
+      "test_summaries": []
+    },
+    {
+      "log": "implement-window-deferred-resize.log",
+      "sha256": "9157742bb88ef238966b68ff7efa6d653e06a9584306a85aa7a6f12ee7b8b7f0",
+      "bytes": 46138,
+      "exit_code": 0,
+      "command": "cargo test -p tiny-glade --test original_loading_present --locked --offline",
+      "source_scope": "TG_VALIDATE_WINDOW_LIFECYCLE=window_cycle; 12 real world frames; after deferred size restore, before page change",
+      "test_summaries": []
+    },
+    {
+      "log": "implement-1060-frame.log",
+      "sha256": "e93c1700d77f544e91738bfe772b868a5b5e87d68c4375073b56073c09128f40",
+      "bytes": 1303263,
+      "exit_code": 101,
+      "command": "cargo test -p tiny-glade --test original_gameplay_chain shipped_session_steady_state_multi_frame --locked --offline -- --nocapture --test-threads=1",
+      "source_scope": "TG_MULTIFRAME_FRAMES=1060; forced actual parallel/cross-pass; FAILED page capacity; before page reuse",
+      "test_summaries": [
+        "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 5 filtered out; finished in 107.47s"
+      ]
+    },
+    {
+      "log": "implement-1060-page-reuse.log",
+      "sha256": "d5ce35b7a3f85eba1a6b6df7800515f6a980020d610fc840c70d29672b5bbd26",
+      "bytes": 1302637,
+      "exit_code": 101,
+      "command": "cargo test -p tiny-glade --test original_gameplay_chain shipped_session_steady_state_multi_frame --locked --offline -- --nocapture --test-threads=1",
+      "source_scope": "TG_MULTIFRAME_FRAMES=1060; forced actual parallel/cross-pass; FAILED capacity at frame383; exact drained owner counts pass",
+      "test_summaries": [
+        "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 5 filtered out; finished in 116.23s"
+      ]
+    },
+    {
+      "log": "implement-window-borderless.log",
+      "sha256": "c137eee4331055d3dc08823eaf8165d2c6b2cbf7bae5fb15a63242852b74226b",
+      "bytes": 131022,
+      "exit_code": 1,
+      "command": "cargo test -p tiny-glade --test original_loading_present --locked --offline",
+      "source_scope": "historical failed window_cycle before deferred resize: native fullscreen return timed out",
+      "test_summaries": []
+    },
+    {
+      "log": "implement-final-all-targets.log",
+      "sha256": "e293eb054428fe49771a1a61b29f931d77fa56f6455a0645009470837f3bb4b5",
+      "bytes": 56112,
+      "exit_code": 101,
+      "command": "cargo check --workspace --all-targets --locked --offline",
+      "source_scope": "historical missing inputs after workspace cleanup; fixed fixtures now in workspace",
+      "test_summaries": []
+    },
+    {
+      "log": "fixture-audio.log",
+      "sha256": "4f57407e4763fc1e080b992b6c6ebfccb45c47910171ee6dac78ec76b8fc3fb6",
+      "bytes": 30956,
+      "exit_code": 101,
+      "command": "cargo test -p system-decorator --test audio_integration --locked --offline -- --test-threads=1",
+      "source_scope": "historical failed first capture address + missing mute event fixture; final12 pass",
+      "test_summaries": [
+        "test result: FAILED. 6 passed; 6 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    },
+    {
+      "log": "implement-final-country.log",
+      "sha256": "61e5592cf8f94f065a8dc71d061f1756e81361aa619497ab37f170475aa6235b",
+      "bytes": 335306,
+      "exit_code": 101,
+      "command": "cargo test -p country-core --lib --locked --offline -- --test-threads=1",
+      "source_scope": "historical invocation omitted TG_INSTALL_ROOT; ten original asset path failures; rerun with canonical root passed",
+      "test_summaries": [
+        "test result: FAILED. 2833 passed; 10 failed; 1 ignored; 0 measured; 0 filtered out; finished in 5.08s"
+      ]
+    }
+  ],
+  "remaining": [
+    "Complete screenshot/resize/App-switch and exact interaction/replay combinations.",
+    "Complete mutable-component producer journals and per-entry asset ACK coverage.",
+    "Measure Raster CPU edit cost and run four real scenarios, >=1000 postwarmup frames, three hardware rounds; retain p95 5% default gate."
+  ],
+  "report_sha256": {
+    "ARCHITECTURE.md": "e980bcbb9971916ec397e8f4034e5014d7107ef8165dbcea8a4c69413487655c",
+    "PARALLEL_REFACTOR.md": "702cd2b22a9557e200fd255da52d96ee7d40a9dd0efa56843b3e086f43c02adc",
+    "RENDER_LOOP_AUDIT.md": "fc1f68e358c0d610c9ad4b1ddc933bb846d944fabe1a0df4594fda231a7ba854"
+  },
+  "diagnostic": {
+    "path": "window-deadlock-thread-sample.txt",
+    "sha256": "c2818f32ec3bfba9f69119bf63f648c4e36d64c4091129f2c49107f8540cb830"
+  },
+  "follow_up": {
+    "recorded_utc": "2026-10-24T02:44:20.766500+00:00",
+    "status": "Superseded by frame_slots_final; source and test boundaries below remain historical",
+    "source_snapshot": "source-follow-up-20261024.json",
+    "evidence": [
+      {
+        "file": "tg-render-frame-banks-1060.log",
+        "sha256": "58eb7aab9dd3d72709a6e784a210f7af9d70208152f0f092e6e5aaee230af41f"
+      },
+      {
+        "file": "tg-render-frame-bank-allocation-1060.log",
+        "sha256": "ed683b60fb77a60a79ae19d173fb27987069a49c32d6eb0b366455debd14360c"
+      },
+      {
+        "file": "tg-render-async-activation-check2.log",
+        "sha256": "ba94ccc8fb5ccdd7f732cc0b9d963baa27c88af294c0dd4ab9ee4c8ac7656de3"
+      },
+      {
+        "file": "tg-render-async-activation-window.log",
+        "sha256": "281f3133db8d48a542e2f645f8af487c23b9f66086b685da4e89179b82b95201"
+      },
+      {
+        "file": "tg-black-border-unit.log",
+        "sha256": "fc72aff92e76eee7ace99aedf39daf08082708a4d3fa03b0c1b28c863010e62e"
+      },
+      {
+        "file": "tg-window-black-border-before.log",
+        "sha256": "17f0d132d3f336f9a17e19f830210ad078cf13331e1a9695635364407c90beb1"
+      },
+      {
+        "file": "tg-window-black-border-fixed.log",
+        "sha256": "4566a743b8cff1ebba174c48665ca070461a849fefe3eebee8d0e8e97de9d14e"
+      },
+      {
+        "file": "tg-window-black-border-fixed2.log",
+        "sha256": "6f931de4884cb409b913810ea75ce973e3bd5f1318fe11e396549a0b65068b3a"
+      },
+      {
+        "file": "tg-window-black-border-capture.log",
+        "sha256": "55e7eb0a1794e7d0117f6b6dc8263b7be97160171e6f07c150d5afc27ae31086"
+      },
+      {
+        "file": "tg-window-black-border-final-scene.log",
+        "sha256": "ce7825111f7efc0d9189b5cf2586e960615b10fe8e2a56f4dadd86bc48dcc79c"
+      },
+      {
+        "file": "tg-raster-producer-ranges-core.log",
+        "sha256": "2bf823a037533e4e9f6bfa0aa99faa9b2f8f2a78577ac2727b38440f2cf4927d"
+      },
+      {
+        "file": "tg-raster-producer-ranges-core-installed.log",
+        "sha256": "d7a3e2740e01d7a32f3f4ef50239f11f882118d3ffcce27bf3b1cd9d82196078"
+      },
+      {
+        "file": "tg-raster-producer-ranges-core-installed-direct.log",
+        "sha256": "0d1ba9d78b459dcb1469e436669d49346e94456ed99673730e5e399aedd856c0"
+      },
+      {
+        "file": "tg-render-followup-all-targets.log",
+        "sha256": "fcc9b3d2d3a128af3bf92e8d9a622e6d18f712a99961ad9ec106707667ef1f80"
+      },
+      {
+        "file": "tg-window-border-fixed-live.png",
+        "sha256": "370c3e21e4e3735d6f8f0b639b2c1c2d5d2501616d1bb6f59fa4b2be65f4db5e"
+      },
+      {
+        "file": "tg-window-border-fixed-gameplay.png",
+        "sha256": "ae30b03a1d80bffd1cd4ec024a9f3e46feffafb0d27708c4e1d2d157e831c75b"
+      },
+      {
+        "file": "tg-window-border-fixed-world-final.png",
+        "sha256": "585de4aed0fec1d4fcd03e5b9c3bfe5b8d068e3d67fba830abde1102a71231d6"
+      }
+    ],
+    "boundaries": [
+      "Window 120/400-frame successful runs use physical-output and resize fix, frame arenas and asynchronous activation; later Raster producer-region changes were not in those window executables.",
+      "country-core 2844 passed/1 ignored with installed root; first invocation without installation root failed 10 asset tests.",
+      "Two frame-arena 1060 runs passed original capacity check but failed unchanged memory steady-state assertion.",
+      "All-target check passed before the final bank-rotation test edit; subsequent focused GPU test is required.",
+      "Window screenshots are real macOS window-ID captures, not GPU source textures; native capture chosen at user request after CUA access failed.",
+      "The 400-frame capture attempt with 180-second watchdog failed at 56 frames during concurrent compilation; later 360-second capture run completed all 400 and shutdown. No performance claim from either run."
+    ]
+  },
+  "frame_slots_final": {
+    "recorded_utc": "2026-10-24T03:34:24.181121+00:00",
+    "source_snapshot": "source-frame-slots-final.json",
+    "executables": {
+      "target/debug/deps/original_gameplay_chain-98f3ec68f6ae98de": {
+        "sha256": "de1dfd18efb5a698dd3d44d144e9861e4c89ea56d465b6a30a4fe95a1ce004fc",
+        "bytes": 213136504
+      },
+      "target/debug/deps/original_loading_present-55d7d6fb265f5bc9": {
+        "sha256": "c0fcdc98eb452aa593f7862120e9ec64c6aca265de7e1b9531de52aaea52f4f9",
+        "bytes": 229200488
+      },
+      "target/debug/deps/tiny_glade-b1b2cef165be3c32": {
+        "sha256": "0c82fc654aa8fb30fb01ecfe30c4693a4d97b4a3ee2281d94e123b83266ce4ed",
+        "bytes": 138880152
+      }
+    },
+    "evidence": [
+      {
+        "file": "tg-render-followup-all-targets.log",
+        "sha256": "fcc9b3d2d3a128af3bf92e8d9a622e6d18f712a99961ad9ec106707667ef1f80"
+      },
+      {
+        "file": "tg-render-followup-1060.log",
+        "sha256": "439e55e21e7ddca9a7c7b4055f1e8e8501a71ed5508cec529525a2ef9feacdba"
+      },
+      {
+        "file": "tg-render-followup-isolated-1060.log",
+        "sha256": "072c5b010b7962dc0e26f1245b0c814c830d4b0e426090234c63554f91ff884c"
+      },
+      {
+        "file": "tg-render-followup-lib-tests.log",
+        "sha256": "160ea647d212d63fafb92548bad1287a205f13d5c0ffa738f41318c716a9a9d3"
+      },
+      {
+        "file": "tg-render-followup-bank-abi.log",
+        "sha256": "7210b73d08aac1e1fb1a26b004ed8576c9873e668d9deb454d853cca34bc4312"
+      },
+      {
+        "file": "tg-render-followup-original-chain.log",
+        "sha256": "ecea5db701c1d40f63d0e6b22d89e3621582ae7551ee8f4fb38e97c81efbe444"
+      },
+      {
+        "file": "tg-render-frame-output-slots-1060.log",
+        "sha256": "2e6da165a1d1ec424a3f98d178c130c90d7caad483c8681cb8ca7586f2ae9c8f"
+      },
+      {
+        "file": "tg-render-frame-output-slots-1060-fixed.log",
+        "sha256": "a4fe5ba3dd1231f406503f76418658b63c626827ef458c44e424e5baa6826cbf"
+      },
+      {
+        "file": "tg-render-frame-output-slots-current-1060.log",
+        "sha256": "969947544f4841827327b084d1b1b83c7703f44f644fcc8799b46abcd82409e1"
+      },
+      {
+        "file": "tg-render-named-explicit-export-unit.log",
+        "sha256": "4c1dd6e94458205b6705eb796f4606327a1dfc9d6ae645cf8dc30703b7e25ab6"
+      },
+      {
+        "file": "tg-render-named-explicit-export-unit-actual.log",
+        "sha256": "53a0b81c508a80069a1f3f606a5e0567df696492f1946bc49e8ccb702ab00b46"
+      },
+      {
+        "file": "tg-render-constant-frame-banks-unit.log",
+        "sha256": "59816131c979e9f57db4ecfb5828f56ff6c2bc88cbbf45f2e946402b7882bb42"
+      },
+      {
+        "file": "tg-render-all-frame-slots-1060.log",
+        "sha256": "01a16219dbe71c739bdcd279a936de819d00ac4cff3efe333d81d166fc4675cc"
+      },
+      {
+        "file": "tg-render-frame-slots-720p-1060.log",
+        "sha256": "d52d43f72a88febdee24b334b58c47559c3672dcf092c28d641ecc024f979d33"
+      },
+      {
+        "file": "tg-window-frame-slots-final.log",
+        "sha256": "21f26bca4091de61bf82cff2688b6addf62c7ee77a0db698f5c2fc9abb067d18"
+      },
+      {
+        "file": "tg-render-frame-slots-all-targets.log",
+        "sha256": "8aea72e3d1c1ba09b084b107ca20d358ac3c0a701f7ea899cf821e9664b65e61"
+      },
+      {
+        "file": "tg-render-frame-slots-original-chain.log",
+        "sha256": "84094fba4d39ea411b5f9517cb5ccddce4c7e8e5e95cf3186e200dfd66afd026"
+      },
+      {
+        "file": "tg-render-frame-slots-lib-tests.log",
+        "sha256": "a4c4dd03d2bfd6a8c0947411672f507761a940131c5da1cbafc8e9093889a71e"
+      },
+      {
+        "file": "tg-window-frame-slots-final.png",
+        "sha256": "21b7b84ba026326925c6c08de25334d51a6538465f90485e0ad29469c50bcba5"
+      },
+      {
+        "file": "tg-render-followup-isolated-allocations-frame05.txt",
+        "sha256": "5aeb1c403f6e2019a662e4845498af4f36504f4b338ea6186ebdf85c20a7d051"
+      },
+      {
+        "file": "tg-render-followup-isolated-allocations-frame1059.txt",
+        "sha256": "3ce3b4ad910c20a27d266716c2904e32b983cb3583d69888cd34e5fcc37b0dc1"
+      },
+      {
+        "file": "tg-render-followup-isolated-allocations-frame12.txt",
+        "sha256": "97dbbbc6268e714ffc07251d8a6a80fc8acddc97845749c199211051e3acb6a7"
+      },
+      {
+        "file": "tg-render-followup-isolated-allocations-frame136.txt",
+        "sha256": "c4589d7735b7bb08ccea53d67f91b80587b4fcc47b61f4f1fe152fb8b1f721c7"
+      },
+      {
+        "file": "tg-render-frame-output-slots-current-allocations-frame05.txt",
+        "sha256": "6fb4835062e92343e5870e5079b682b9fdc9a68f311c4e0f35489b64fbf6279d"
+      },
+      {
+        "file": "tg-render-frame-output-slots-current-allocations-frame1059.txt",
+        "sha256": "a7be4eaf2c160885187061ec82a866118f8c7b531d7f3b1b3a9e454bd4f7b1e3"
+      },
+      {
+        "file": "tg-render-frame-output-slots-current-allocations-frame12.txt",
+        "sha256": "292a7899d6149962fc49958caa2023b7bd3a27716b90e6d73f9d5f5a8b628e5f"
+      },
+      {
+        "file": "tg-render-frame-output-slots-current-allocations-frame31.txt",
+        "sha256": "610cd7b3868bc33ef07a8da86de9e30cbbbc792a13423c91f52b3427d7fa3c3c"
+      },
+      {
+        "file": "tg-render-all-frame-slots-allocations-frame05.txt",
+        "sha256": "856da11042ba95e1c85132fc780092e70ccfe2999d969a1f4e9df4887cc25969"
+      },
+      {
+        "file": "tg-render-all-frame-slots-allocations-frame1059.txt",
+        "sha256": "a7be4eaf2c160885187061ec82a866118f8c7b531d7f3b1b3a9e454bd4f7b1e3"
+      },
+      {
+        "file": "tg-render-all-frame-slots-allocations-frame12.txt",
+        "sha256": "610cd7b3868bc33ef07a8da86de9e30cbbbc792a13423c91f52b3427d7fa3c3c"
+      },
+      {
+        "file": "tg-render-frame-slots-720p-allocations-frame05.txt",
+        "sha256": "bc99c89548d35382c60adb398e7c2a24b96a29041c836fc6aae67369b89148e4"
+      },
+      {
+        "file": "tg-render-frame-slots-720p-allocations-frame1059.txt",
+        "sha256": "b00ba5deff485466762099ed551ea0a1ba8e5618f478319965500d55f4d8a434"
+      },
+      {
+        "file": "tg-render-frame-slots-720p-allocations-frame12.txt",
+        "sha256": "f69a647fd591f5a6e589ae765de508f4c2e4f2008ef33711d4279ef94adfa66b"
+      }
+    ],
+    "runs": [
+      {
+        "command": "cargo check --workspace --all-targets --locked --offline",
+        "log": "tg-render-frame-slots-all-targets.log",
+        "result": "passed"
+      },
+      {
+        "command": "cargo test -p tiny-glade --test original_gameplay_chain shipped_session_steady_state_multi_frame --locked --offline -- --nocapture --test-threads=1",
+        "environment": {
+          "TG_DRAW_COLLECT": "parallel",
+          "TG_DRAW_COLLECT_CHUNK": "1",
+          "TG_REQUIRE_CROSS_PASS": "1",
+          "TG_MULTIFRAME_FRAMES": "1060"
+        },
+        "log": "tg-render-all-frame-slots-1060.log",
+        "result": "passed all original assertions, unchanged",
+        "extent": [
+          480,
+          270
+        ],
+        "memory_frame12": 1094674236,
+        "memory_last": 1094155836,
+        "native_blocks": [
+          109,
+          109
+        ]
+      },
+      {
+        "command": "target/debug/deps/original_gameplay_chain-98f3ec68f6ae98de shipped_session_steady_state_multi_frame --nocapture --test-threads=1",
+        "environment": {
+          "TG_TEST_SIZE": "1280x720",
+          "TG_DRAW_COLLECT": "parallel",
+          "TG_DRAW_COLLECT_CHUNK": "1",
+          "TG_REQUIRE_CROSS_PASS": "1",
+          "TG_MULTIFRAME_FRAMES": "1060"
+        },
+        "log": "tg-render-frame-slots-720p-1060.log",
+        "result": "passed all original assertions, unchanged",
+        "descriptor_capacity": 7266,
+        "descriptor_peak": 4390,
+        "memory_frame12": 1264625980,
+        "memory_last": 1260946960,
+        "native_blocks": [
+          110,
+          110
+        ],
+        "collect_tasks": 19080,
+        "cross_pass_tasks": 14840
+      },
+      {
+        "command": "target/debug/deps/original_loading_present-55d7d6fb265f5bc9",
+        "environment": {
+          "TG_VALIDATE_WINDOW_LIFECYCLE": "window_cycle",
+          "TG_VALIDATE_WORLD_FRAMES": "300",
+          "TG_VALIDATE_TIMEOUT_SECONDS": "240",
+          "TG_STARTUP_VISUAL_TRACE": "1"
+        },
+        "log": "tg-window-frame-slots-final.log",
+        "result": "passed 300 world frames, actual fullscreen/resize/resume/close/save/GPU shutdown"
+      },
+      {
+        "command": "target/debug/deps/original_gameplay_chain-98f3ec68f6ae98de --test-threads=1",
+        "log": "tg-render-frame-slots-original-chain.log",
+        "result": "6 passed"
+      },
+      {
+        "command": "target/debug/deps/tiny_glade-b1b2cef165be3c32 --test-threads=1",
+        "log": "tg-render-frame-slots-lib-tests.log",
+        "result": "223 passed; includes real GPU known-region Raster old/new ordering"
+      },
+      {
+        "command": "target/debug/deps/rhapsody-984907579a4f59a9 rg::temporal::recorder_tests --test-threads=1",
+        "log": "tg-render-named-explicit-export-unit-actual.log",
+        "result": "16 passed"
+      },
+      {
+        "command": "cargo test -p rhapsody --lib raw::dynamic_constants::tests --locked --offline",
+        "log": "tg-render-constant-frame-banks-unit.log",
+        "result": "14 passed"
+      }
+    ],
+    "root_cause": {
+      "initial_isolated_growth_bytes": 1995732,
+      "allocation_delta": {
+        "final_msaa": 2244608,
+        "five_indirect_buffers": 7380,
+        "dynamic_constant_page": 262144,
+        "retired_screenshot": -518400
+      },
+      "output_only_fix_result": "failed original steady-memory assertion; remaining growth exactly one 262144-byte dynamic constant page",
+      "final_fix": "Session named output slots and bounded dynamic-constant arenas rotate with frames-in-flight; GPU SyncSet and CPU/Weak ownership rules remain; named publication preserves explicit whole-export layout"
+    },
+    "window_capture": {
+      "command": "/usr/sbin/screencapture -x -o -l 32835 /tmp/tg-window-frame-slots-final.png",
+      "window_title": "Tiny Glade — original gameplay WSI validation",
+      "owner_pid": 16072,
+      "window_id": 32835,
+      "png": "tg-window-frame-slots-final.png",
+      "dimensions": [
+        514,
+        418
+      ],
+      "method": "Actual macOS window capture at user request; CUA access was unavailable. No permissions were changed."
+    },
+    "limits": [
+      "Debug correctness runs are not four-scenario/three-round performance acceptance.",
+      "Default parallel policy remains opt-in.",
+      "Full interaction/replay matrix and mutable-component producer logs / per-entry ACK coverage are not all complete.",
+      "The broad core 2844-pass/1-ignored result belongs to the earlier known-region Raster stage; rhapsody arena changes do not retroactively rebind that log."
+    ]
+  },
+  "control_combinations": {
+    "result": "passed: screenshot owner replacement cancellation, 16 unit cases, GPU cancelled graph retry, real 180-world-frame window with six GPU captures and one close cancellation exactly once",
+    "runs": [
+      {
+        "log": "tg-control-combinations-build.log",
+        "sha256": "8a48d387f8c9aad135ba28ce9934da83b8a8ba871193ca0959348e8873082185"
+      },
+      {
+        "log": "tg-control-combinations-unit.log",
+        "sha256": "1f3a1010b7153f6a2ff05b5f9ee104979a55a2e95da81d57d05e99df77f1a806"
+      },
+      {
+        "log": "tg-control-combinations-gpu.log",
+        "sha256": "488319591e661ab8f2bb270a59c18183e29dbc7a02806fbbae3b06325959556d"
+      },
+      {
+        "log": "tg-control-combinations-window.log",
+        "sha256": "413429f42c6a47a6be6efad613240f84475d78c72d813e377000844315510f55"
+      }
+    ],
+    "scope": "Window resize/fullscreen actual OS events; suspend/zero/focus injected semantic events. App replacement exercised through production extraction and World replacement. Full interaction and input replay remain separate."
+  },
+  "component_producers": {
+    "result": "implemented and verified",
+    "declarations": 37,
+    "actual_query_write_entries": 81,
+    "direct_write_entries": 20,
+    "runs": [
+      {
+        "log": "tg-component-producers-check.log",
+        "sha256": "52d8401d0c3241fdd197a6d52d954fa58ae3c79d805b7e926e762b2445e2ce13",
+        "result": "passed"
+      },
+      {
+        "log": "tg-component-producers-core-test.log",
+        "sha256": "5e866650bf1137eeb5a2478354c1c53f7d449f48441d7d0937237d7bae853b40",
+        "result": "passed"
+      },
+      {
+        "log": "tg-component-producers-extract-test.log",
+        "sha256": "e0e1d148f72ca7d9af4c72624f685f126e96d0e9c3d4d7d8d4bf9fa745a61ac2",
+        "result": "passed"
+      },
+      {
+        "log": "tg-component-producers-core-full.log",
+        "sha256": "0995eb57dfffc399929d5794649234e59254a942f309b38ed1c272e566319737",
+        "result": "passed"
+      },
+      {
+        "log": "tg-component-producers-libs.log",
+        "sha256": "e8e3d0c52fdfbb95346bab4097e1487f853026e7058003cc2d7bd1b8dcb41d83",
+        "result": "disk-full build failure retained"
+      },
+      {
+        "log": "tg-component-producers-libs-retry.log",
+        "sha256": "ff4151765e0f2f03637e58a2f58ab1fdb2883fa29dfe8111e919b002dded8d55",
+        "result": "passed"
+      },
+      {
+        "log": "tg-component-producers-chain-build.log",
+        "sha256": "2e578c3249100b0ce02d81b4a4be89825bb15f2a9e767bae29718f46df3b02d4",
+        "result": "disk-full build failure retained"
+      },
+      {
+        "log": "tg-component-producers-chain-build-retry.log",
+        "sha256": "9c0f82084194c4afac399806c72afd6cd0915e44cea983528b595d64fe2bfd34",
+        "result": "passed"
+      },
+      {
+        "log": "tg-component-producers-chain-gpu.log",
+        "sha256": "6c017d30c70500ec1eeffd478f65e0ce01d1d8ff2b4cbc0860035a4ef441bd83",
+        "result": "passed"
+      }
+    ],
+    "source_snapshot": "source-component-producers.json",
+    "scope": "Existing production component declarations and current producers migrated. Generic component() remains tick fallback for other callers; bounded journal gaps rebuild. New producer writes must use ComponentWrite or component_mut; ordinary external get_mut is not intercepted."
+  },
+  "entry_ack_and_compatibility_cleanup": {
+    "recorded_utc": "2026-10-24T05:34:27.817851+00:00",
+    "entry_libraries": [
+      "SSBO",
+      "Mesh",
+      "VAO",
+      "Texture",
+      "Placement"
+    ],
+    "window_scope": "180 world frames; six GPU screenshots and one close cancellation; all five actual asset libraries reached receipt-backed GPU-complete. This window run preceded compatibility removal and the CLI input work.",
+    "cleanup_scope": "Placement tables private; removed unjournaled full-copy hook, tick-scanning component API, library-only incremental extractor, synchronous upload rollback mode/writer API, standalone Raster shader namespace and clear-only world fallback. All production callers and fixture callers migrated.",
+    "scoped_passes": {
+      "core_lib": "2847 passed, 1 ignored (three deleted tests exercised the deleted clear-only fallback)",
+      "main_lib": "226 passed before CLI input work",
+      "raster_gpu": 12,
+      "host_gpu": 19,
+      "snapshots": 10,
+      "capture_gpu": 1,
+      "gameplay_gpu": 6,
+      "headless_readbacks": "30 submissions, mouse depth frame 29, 29 publications",
+      "collect_tasks": 90,
+      "cross_pass_tasks": 90
+    },
+    "failures_retained": [
+      "two private Placement test field consumers migrated",
+      "Raster fixture typed-handle projection corrected",
+      "owned upload fixture had a stale synchronous coalescing expectation: current FIFO deltas submit exactly three intervals and merge zero, real pixels/holes/idle-wait assertions retained",
+      "winit AppKit fullscreen failure self-deadlock captured in native thread sample; exact pinned dependency source patched to release mutex before recovery"
+    ],
+    "winit_provenance": "../../../../third_party/winit-d03de0a0.provenance.json",
+    "source_scope": "Logs above are incremental: entry-acks baseline before API cleanup; no-compat runs before CLI input changes. Do not bind those logs to later input source.",
+    "logs": [
+      {
+        "log": "tg-entry-acks-final-window.log",
+        "sha256": "ca579668ef66c2890071446fd2c28e73356056267ab119bf2ecddd922fc7c440",
+        "bytes": 25730
+      },
+      {
+        "log": "tg-entry-acks-window.log",
+        "sha256": "b778ac9a8e578998c21bc066cd153749d007e9443309d4cddc768c4e1c2eae11",
+        "bytes": 1575
+      },
+      {
+        "log": "tg-entry-acks-window-sample.txt",
+        "sha256": "2845e70418161f3db554e0e5e49584e0d0c9fd235643e1c71b0b1c39d00963a7",
+        "bytes": 286396
+      },
+      {
+        "log": "tg-entry-acks-final-core-full.log",
+        "sha256": "4c0bf3cbc108677a1620a86bcfb2f54290fa22ec38d3a712693cbae21bd1fbf5",
+        "bytes": 297626
+      },
+      {
+        "log": "tg-entry-acks-final-main-gpu.log",
+        "sha256": "a0ab1d6ca6a757a230edb28e4817c4e4e4f8b828a24c9135baafee3c0d3a3036",
+        "bytes": 24577
+      },
+      {
+        "log": "tg-entry-acks-final-all-targets.log",
+        "sha256": "c2d13cb6e710c1a4ef69a76e7423cb1f76a58ba7a67d9151b4072c9508884566",
+        "bytes": 127625
+      },
+      {
+        "log": "tg-no-compat-check.log",
+        "sha256": "71b2fa0aee0ada4f660bd99f0dd2fdd744c34a707dceb5714adee3c93cb1fb66",
+        "bytes": 101686
+      },
+      {
+        "log": "tg-no-compat-check-retry.log",
+        "sha256": "cefe8a4143b49bdbc7807fb87293b44c26b5f0788fd46922578a98d2b3321b09",
+        "bytes": 122931
+      },
+      {
+        "log": "tg-no-compat-check-final.log",
+        "sha256": "77371fbf2939105d69a06f17c29058907fc99f3f8ceb4fe1a11ef3d39e4f61d1",
+        "bytes": 132496
+      },
+      {
+        "log": "tg-no-compat-build.log",
+        "sha256": "1698e3cf724ff5a72e544d6bc518a1605c86fcadb6bc2b562854f100ed44a0a7",
+        "bytes": 113742
+      },
+      {
+        "log": "tg-no-compat-build-final.log",
+        "sha256": "fdca3327ecf523246825fb912cecfd1d518e217b35e595fffaaed6ae164818c2",
+        "bytes": 108895
+      },
+      {
+        "log": "tg-no-compat-core-full.log",
+        "sha256": "cab8d0a468cfba6bfdc3f22b2111b0074d10f1e63c5a082279d51765e6f534f2",
+        "bytes": 297328
+      },
+      {
+        "log": "tg-no-compat-gpu-tiny_glade.log",
+        "sha256": "6a5ba9107d6d69020c16aacfa9b60eed46163f4acdc0449acfd787ae106c3ddd",
+        "bytes": 26801
+      },
+      {
+        "log": "tg-no-compat-gpu-core_raster_draw.log",
+        "sha256": "dfd5edcbac169f55fb0d17aa506f27b0aee67f99923cf46b5ef28f50e6d3659d",
+        "bytes": 1840
+      },
+      {
+        "log": "tg-no-compat-gpu-render_host.log",
+        "sha256": "f4792196fb2e8a533cc9f810a1b650c75efbc6d7ab99a68ccf70022bbfeec84c",
+        "bytes": 2113
+      },
+      {
+        "log": "tg-no-compat-final-gpu-render_host.log",
+        "sha256": "3307289a17a440c17180503500c8af0394f51f182421d3637ae5d05ed1d41fef",
+        "bytes": 1645
+      },
+      {
+        "log": "tg-no-compat-final-gpu-render_snapshots.log",
+        "sha256": "0496767cb6a5ce3086adceb7f4ff1bf5803f5adf0ad8583ff726670896a9448a",
+        "bytes": 995
+      },
+      {
+        "log": "tg-no-compat-final-gpu-original_capture_gpu.log",
+        "sha256": "45510d32c28ff4fba3020af7cd1a598dbdf1923a1a574252da2e48f05c6d6a41",
+        "bytes": 190
+      },
+      {
+        "log": "tg-no-compat-final-gpu-original_gameplay_chain.log",
+        "sha256": "95188a2a90bd2fd9425a1dac72577dece0a7adf1e608a7023684c0a5004b2b25",
+        "bytes": 40996
+      },
+      {
+        "log": "tg-input-owner-unit.log",
+        "sha256": "0878a375ec3122134882bedefbb8e588577bfd1a80e24470cff1d9ec04f49e3d",
+        "bytes": 431
+      }
+    ],
+    "remaining": [
+      "latest combined all-target/core/input regression",
+      "real window complete record/save/replay and exact action/time/capture checks",
+      "report reconciliation after final validations",
+      "four-scenario three-round Release measurements and measured optimization"
+    ]
+  },
+  "desktop_input_acceptance": {
+    "recorded_utc": "2026-10-24T05:40:26.441235+00:00",
+    "fixture": "../../../../tests/fixtures/runtime/render-thread-input-v3.json",
+    "record_world_frames": 180,
+    "record_frames": 182,
+    "replay_world_frames": 181,
+    "replay_frames_exact": 182,
+    "owner_unit_tests": 3,
+    "camera_history_tests": 8,
+    "native_format_equivalence": false,
+    "source_scope": "Window binary precedes final removal of the invalid in-memory empty-replay recovery and unused upload helper/counters. Actual accepted replay frames did not enter that branch. Latest unified source regression still running.",
+    "failures_preserved": [
+      "matrix fixture used a nonexistent SettingsMenuState::default; corrected to actual Controls variant",
+      "initial input pipeline expected an obsolete empty Replay recovery, while current native clock correctly panics before consumers; final test now asserts original failure boundary and no live input/consumer side effects",
+      "concurrent Steam fixture API names and two upload-only mock read capabilities blocked latest all-target check; latest consumers corrected, retry running"
+    ],
+    "logs": [
+      {
+        "log": "tg-input-window-record.log",
+        "sha256": "459f7f1cdedc58c9ac1274dc60c339ff8b3e99e64075ce329e7bc1d51186baae",
+        "bytes": 24794
+      },
+      {
+        "log": "tg-input-window-replay.log",
+        "sha256": "44dade35b78f306f9c388089596f420ee9cc0377b60c0b53b72d1f6dbf4ba3b9",
+        "bytes": 24638
+      },
+      {
+        "log": "tg-input-owner-unit.log",
+        "sha256": "0878a375ec3122134882bedefbb8e588577bfd1a80e24470cff1d9ec04f49e3d",
+        "bytes": 431
+      },
+      {
+        "log": "tg-input-matrix-unit.log",
+        "sha256": "47cb0d8046d1acb78924ea1ea393e7e6e93d48a25623fa578ee47098b7651f86",
+        "bytes": 920
+      },
+      {
+        "log": "tg-input-final-core.log",
+        "sha256": "1d7e061abe1e0f797ddce50eb75fec56cb0b0dae039381fa58df7154c6d3c966",
+        "bytes": 297426
+      },
+      {
+        "log": "tg-input-final-pipeline.log",
+        "sha256": "df9fe363c2d5c660a945568506765b1bd53ffdac0ffed1ff27df7137fbe9f03c",
+        "bytes": 1818
+      },
+      {
+        "log": "tg-input-owner-check.log",
+        "sha256": "fd030cc29552c5ba242c4510440ed8a02a833630ac15cedae008b3c9f0a6fd29",
+        "bytes": 121768
+      },
+      {
+        "log": "tg-input-matrix-build.log",
+        "sha256": "17d949c6d2b2624fdc037f2a31e551d03768915b5b4b7dec457cd4abd7163587",
+        "bytes": 107931
+      },
+      {
+        "log": "tg-input-matrix-build-final.log",
+        "sha256": "8ed64e1c22518c4a5cdd9f90c3054e29f48b3b88817d06c20a7c1921c73c0365",
+        "bytes": 107346
+      },
+      {
+        "log": "tg-input-final-check.log",
+        "sha256": "4f4626547e3c323f083e793b95e2333ef23866dcdf350a7dad57a5f60924448b",
+        "bytes": 122564
+      }
+    ]
+  },
+  "unified_followup": {
+    "recorded_utc": "2026-10-24T05:45:30.044981+00:00",
+    "all_targets_check": 0,
+    "country_core": {
+      "passed": 2850,
+      "ignored": 1
+    },
+    "tiny_glade_lib": 230,
+    "input_pipeline": 17,
+    "compile_before_submit_gpu": 1,
+    "core_render_bridge_gpu": 10,
+    "render_host_gpu": 19,
+    "render_snapshots": 10,
+    "original_gameplay_gpu": 6,
+    "actual_collect_tasks": 540,
+    "actual_cross_pass_tasks": 420,
+    "headless_readback_publications": 29,
+    "source_snapshot": "source-after-unified-input.json",
+    "logs": [
+      {
+        "log": "tg-unified-current-check.log",
+        "sha256": "4f015849dab91a8d07571ec9742d060e45acc9e2ee097e463511f882763b0ba7",
+        "bytes": 127822
+      },
+      {
+        "log": "tg-unified-core.log",
+        "sha256": "b06a0d381060ca4ee448b66015afd635c7ba6a5cf20ba78eec4f4c302292f586",
+        "bytes": 297663
+      },
+      {
+        "log": "tg-unified-input-pipeline.log",
+        "sha256": "65a4e89e637ea71764b3bd65e219c4eb8b560e26240c22fdd6d8b320e1ee9541",
+        "bytes": 1399
+      },
+      {
+        "log": "tg-final-unified-build.log",
+        "sha256": "6785e8e56e39f0580a099a20c3748dfb2e1a5bccf65ad08c61ae2c98707f88fc",
+        "bytes": 110491
+      },
+      {
+        "log": "tg-unified-gpu-compile_before_submit.log",
+        "sha256": "3d5c793c8d24ced9ab60374721395f2c3cb2ca6fcb8252612759817a062c59d4",
+        "bytes": 205
+      },
+      {
+        "log": "tg-unified-gpu-render_host.log",
+        "sha256": "3e37e42d39ddb92b842909e989a9501bb099c274b3edd4b7b01cf08365660e70",
+        "bytes": 1645
+      },
+      {
+        "log": "tg-unified-gpu-core_render_bridge.log",
+        "sha256": "7a17bbbc98432fe03db7658dd221e58ceae5aa129ab4a03b235c73a9894ce621",
+        "bytes": 1230
+      },
+      {
+        "log": "tg-unified-gpu-tiny_glade.log",
+        "sha256": "5e849ec5dba9150aa01dcf6dbcb69a9033934d5e390989f2b0925420b3df4122",
+        "bytes": 27231
+      },
+      {
+        "log": "tg-unified-gpu-original_gameplay_chain.log",
+        "sha256": "5287c40bdc85b1de078fb52111dcd41ab1ddf3c72c925cbbfd89312c3f3da1ba",
+        "bytes": 40998
+      },
+      {
+        "log": "tg-unified-gpu-render_snapshots.log",
+        "sha256": "ef9b1747301f0208e2e41fb625ee3eeeaac35bd009afb25d635854f0c447b36f",
+        "bytes": 995
+      }
+    ],
+    "remaining_legacy_audit": [
+      "country-core resources/time_of_day.rs TimeOfDayState alias",
+      "country-core startup/startup_sky_and_sun.rs startup_sky_and_sun_meshes called by the older startup tuple",
+      "country-core systems/save/load_completion_checker.rs pure check_load_completion helper distinct from actual ECS completion observer",
+      "country-core resources/session.rs append_fence_release alias",
+      "Steam/history compatibility projections require owner-consumer review before removal; concurrent toolbar owner edits these modules"
+    ],
+    "scope_limits": [
+      "No new long correctness run after CLI input changes; prior two-resolution 1060 frame runs retain their historical source scopes",
+      "Window record/replay acceptance covers actual normal camera rotation and exact replay inputs; all brush/drag/place/Undo window scenarios are not claimed",
+      "Release four-scenario three-round benchmark not performed"
+    ]
+  },
+  "legacy_entry_cleanup": {
+    "recorded_utc": "2026-10-24T06:41:14.611523+00:00",
+    "status": "cleanup and affected regressions passed; performance work and import-capacity long-run validation ongoing",
+    "implementation": "../performance-2026-10-24/cleanup-implementation.json",
+    "country_core": {
+      "passed": 2847,
+      "ignored": 1,
+      "failed": 0
+    },
+    "toolbar_original_menu_widget": {
+      "passed": 5,
+      "ignored": 1,
+      "failed": 0
+    },
+    "all_target_check": "tg-render-perf-final-check-retry.log passed after current toolbar test migration; predates upload optimization",
+    "logs": [
+      {
+        "log": "tg-perf-cleanup-check.log",
+        "sha256": "e4815ab097d78457f5a22799bfe62b0156d0e9ab22bd7eb7a384dcfb0dde5275",
+        "bytes": 128046
+      },
+      {
+        "log": "tg-render-perf-current-check.log",
+        "sha256": "5fed566951d490a997b5e70250312b6bd3c3586bb786861ae00514ecfce25f5d",
+        "bytes": 128046
+      },
+      {
+        "log": "tg-render-cleanup-core.log",
+        "sha256": "c8e3a62541d52e107ddb35493b08ec60a3632dbd9c7670e65a0eef69417b9ae4",
+        "bytes": 336626
+      },
+      {
+        "log": "tg-render-cleanup-core-current.log",
+        "sha256": "478d088007169c261e1b677118fb60fde95b948d40a869a032d0abb09bc29543",
+        "bytes": 329791
+      },
+      {
+        "log": "tg-render-cleanup-toolbar.log",
+        "sha256": "cc605eb5c4c4756188ed96029a2c97c9c327e4cdcf4ba5722af0257f7ccba1da",
+        "bytes": 26319
+      },
+      {
+        "log": "tg-render-cleanup-session.log",
+        "sha256": "5b7e20453150868abefc922dc8a98ff4dbfadae1463bbca525d9271abd1689a9",
+        "bytes": 108045
+      },
+      {
+        "log": "tg-render-perf-harness-build.log",
+        "sha256": "7429ebd1ba3ea93744bef1cd5f7bab29b0aab01da2320412bede546c30bd540b",
+        "bytes": 107459
+      },
+      {
+        "log": "../performance-2026-10-24/tg-render-perf-final-check-retry.log",
+        "sha256": "de3eb7d38c13eca838def81772ecb45d3442d99aa055777d052c08a2d15bd9d0",
+        "bytes": 128046
+      },
+      {
+        "log": "../performance-2026-10-24/tg-import-admission-before.log",
+        "sha256": "44353a5d72f733785bfb79b6b717bbe2510d8a2279e530c2fb50638419d5e6ff",
+        "bytes": 63939
+      },
+      {
+        "log": "../performance-2026-10-24/tg-import-admission-gpu-regression.log",
+        "sha256": "fc43a6b99d0bf2c0faae5e5b4ade0387644109f5f31fb69bea76c788e2326c94",
+        "bytes": 63878
+      }
+    ],
+    "session_integration": {
+      "original_load_completion": 1,
+      "original_session_control": 1,
+      "failed": 0
+    },
+    "prewarm_failure": {
+      "run": "../performance-2026-10-24/smoke/static-serial-round1/run.json",
+      "log": "../performance-2026-10-24/smoke/static-serial-round1/runtime.log",
+      "stacks": "../performance-2026-10-24/smoke/static-serial-round1/loading-stacks.txt",
+      "scope": "diagnostic only; simultaneous builds; no gameplay measurement frames; warmup timed out at 180s. Pipeline worker inside MoltenVK Metal library compile/XPC wait; loading-render loop continues."
+    }
+  },
+  "performance_followup": {
+    "status": "ongoing; failed runs retained; no default-parallel acceptance",
+    "root": "../performance-2026-10-24",
+    "upload_implementation": "../performance-2026-10-24/upload-optimization-implementation.json",
+    "paired_static": "../performance-2026-10-24/paired-upload",
+    "import_capacity": "18 GPU regressions and six V2 real-window runs passed (6000 measured frames plus 1200 warmup)",
+    "updated_utc": "2026-10-24T08:53:19.718042+00:00",
+    "import_implementation": "../performance-2026-10-24/import-admission-implementation.json"
+  }
+}

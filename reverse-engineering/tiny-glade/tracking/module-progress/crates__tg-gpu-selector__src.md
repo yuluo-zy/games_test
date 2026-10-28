@@ -2,7 +2,7 @@
 
 状态：部分候选实现。完整模块验收：未通过。
 
-B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../INTERFACE_PROGRESS.md)。
+B原接口已观察/已分析/未触及：未盘点。[逐接口进度](../../docs/current/INTERFACE_PROGRESS.md)。
 
 定义归属：private_game_source。
 
@@ -44,7 +44,7 @@ B游戏私有设备选择/driver建议/graphics错误策略及Vulkan allowlist�
 
 ## 证据
 
-- [DEPENDENCY_FILTERING.md](../../DEPENDENCY_FILTERING.md)
+- [DEPENDENCY_FILTERING.md](../../docs/current/DEPENDENCY_FILTERING.md)
 - [evidence/foundation-unstarted-2026-10-13/ui/manifest.json](../../evidence/foundation-unstarted-2026-10-13/ui/manifest.json)
 - [evidence/foundation-unstarted-2026-10-13/ui/validation.json](../../evidence/foundation-unstarted-2026-10-13/ui/validation.json)
 - [evidence/foundation-unstarted-2026-10-13/integration/dependency-validation.json](../../evidence/foundation-unstarted-2026-10-13/integration/dependency-validation.json)
@@ -137,7 +137,7 @@ SHA256：`c8d47d94fa233915c9dae98fa31214cf4a63f88a1f0297583cd32e885833577d`；�
 
 ## 2026-10-14 收口记录
 
-- 本轮针对工作区 `tiny-glade/crates/tg-gpu-selector` 已有候选实现补齐 B 库内规则测试与解释文档；生产策略没有经证据确认的差异，因此没有改动算法。完整记录见 [收口报告](../../evidence/tg-gpu-selector-completion-2026-10-14/REPORT.md) 和 crate [BUSINESS_RULES.md](../../../tiny-glade/crates/tg-gpu-selector/BUSINESS_RULES.md)。
+- 本轮针对工作区 `tiny-glade/crates/tg-gpu-selector` 已有候选实现补齐 B 库内规则测试与解释文档；生产策略没有经证据确认的差异，因此没有改动算法。完整记录见 [收口报告](../../evidence/tg-gpu-selector-completion-2026-10-14/REPORT.md) 和 crate [BUSINESS_RULES.md](../../evidence/tg-gpu-selector-completion-2026-10-14/REPORT.md)。
 - 重新执行发行 RNE 的受控 update 叶案例：56 个输入、92 次原函数调用；输出与此前保留的 `original-message-cases.json` 完全一致。该结果只验证叶分支，不代表完整 GUI 或启动接线。
 - 当前 crate 验证：12 项测试通过；`native-gui` all-targets check、all-targets Clippy `-D warnings` 和格式检查通过。
 - 总体状态仍为部分候选实现。Rhapsody 设备/分类生产者、Apply 到真实 GPU 创建设备的消费链、原始跨依赖 ABI、完整 GUI 差分及 A/C 仍未验收。

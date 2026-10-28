@@ -7,14 +7,14 @@ use ash::vk;
 use input::{Globals, PackedGlyphUploads};
 use rhapsody::{
     bindless::BindlessConfig, bindless::BindlessHeap, bindless::BindlessPagePool,
-    bindless::BindlessResource, bindless::BindlessShaderAbi,
+    bindless::BindlessResource,
     bindless::BindlessShaderPackage, command::VulkanCommandPool, command::buffer_access,
     command::image_access, command::record_texture_regions, command::record_texture_zero_fill,
     device::Device, pipeline::AsyncPipelineCompiler, pipeline::CompilerConfig,
     pipeline::CompilerStats, pipeline::DynamicRenderingFormats, pipeline::PersistentPipelineCache,
     pipeline::PipelineCache, pipeline::PipelineTicket, pipeline::RasterPipelineDesc,
-    pipeline::ShaderModule, pipeline::get_vk_blend_mode, resource::AccessScope, resource::Buffer,
-    resource::BufferDesc, resource::DynamicConstants, resource::OwnershipRange, resource::Sampler,
+    pipeline::ShaderModule, pipeline::BindlessShaderAbi, pipeline::get_vk_blend_mode, native::AccessScope, resource::Buffer,
+    resource::BufferDesc, resource::DynamicConstants, tracking::OwnershipRange, resource::Sampler,
     resource::Texture, resource::TextureDesc, resource::TextureViewDesc, rg::AshCommandBackend,
     rg::Attachment, rg::AttachmentCache, rg::RenderPassApi, rg::RenderingPolicy,
 };
@@ -156,7 +156,7 @@ fn sampled_2d(texture: &Texture) -> bool {
         && TextureViewDesc::new(&texture.desc)
             .is_ok_and(|view| view.view_type == vk::ImageViewType::TYPE_2D)
         && texture.desc.usage.contains(vk::ImageUsageFlags::SAMPLED)
-        && rhapsody::resource::vk_format_info(texture.desc.format)
+        && rhapsody::format::vk_format_info(texture.desc.format)
             .is_some_and(|f| f.aspect == vk::ImageAspectFlags::COLOR)
 }
 impl GpuTextRenderer {
@@ -445,7 +445,7 @@ impl GpuTextRenderer {
 }
 
 fn texture_range(texture: &Texture) -> rhapsody::Result<OwnershipRange> {
-    let aspect = rhapsody::resource::vk_format_info(texture.desc.format)
+    let aspect = rhapsody::format::vk_format_info(texture.desc.format)
         .ok_or_else(|| rhapsody::Error::unsupported("text texture has no native aspect"))?
         .aspect;
     Ok(OwnershipRange::Image {

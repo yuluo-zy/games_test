@@ -41,7 +41,7 @@ mod original_creation_tests {
     };
     #[test]
     fn original_78_hashes_preserve_widget_option_and_utf8_boundaries() {
-        let v:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../reverse-engineering/tiny-glade/evidence/round12/signifier-create-full/native-hash-fixtures.json"))).unwrap();
+        let v:serde_json::Value=serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"),"/tests/fixtures/original/round12/signifier-create-full/native-hash-fixtures.json"))).unwrap();
         for x in v.as_array().unwrap() {
             assert_eq!(
                 record_id(WidgetId(x["widget"].as_u64().unwrap()), x["name"].as_str()),

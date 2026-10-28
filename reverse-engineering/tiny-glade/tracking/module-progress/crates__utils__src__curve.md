@@ -2,7 +2,7 @@
 
 状态：部分候选实现。完整模块验收：未通过。
 
-B原接口已观察/已分析/未触及：115/29/86。[逐接口进度](../../INTERFACE_PROGRESS.md)。
+B原接口已观察/已分析/未触及：115/29/86。[逐接口进度](../../docs/current/INTERFACE_PROGRESS.md)。
 
 定义归属：private_game_source_with_pending_trait_schema_classification。
 
@@ -56,7 +56,7 @@ B原接口台账：115项已观察，29项已有部分业务分析，86项未触
 - [evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json](../../evidence/shared-foundation-2026-10-13/geometry-curves/interface-coverage.json)
 - [tracking/shared-foundation-interfaces.json](../shared-foundation-interfaces.json)
 - [evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/coverage-delta.json](../../evidence/shared-foundation-2026-10-13/geometry-curves/interface-batch-02/coverage-delta.json)
-- [FOUNDATION_BUSINESS_COMPARISON.md](../../FOUNDATION_BUSINESS_COMPARISON.md)
+- [FOUNDATION_BUSINESS_COMPARISON.md](../../docs/reference/FOUNDATION_BUSINESS_COMPARISON.md)
 - [tracking/shared-foundation-business-comparison.json](../shared-foundation-business-comparison.json)
 
 ## 原作文件逐项覆盖
