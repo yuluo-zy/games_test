@@ -64,6 +64,7 @@ pub use pass_builder::PassBuilder;
 pub use plan::{GraphDefinition, PlanContext, compile_definition};
 pub use plan_check::check_plan;
 pub use profiling::{GpuCommandTiming, GpuTimingConfig, GpuTimingStats};
+pub use recorder::Outcome;
 pub use resource::{AccessRange, GraphId, ResourceContractError, ResourceHandle, ResourceOrigin};
 pub use resource_contracts::validate_contracts;
 pub use result_cache::{
