@@ -594,67 +594,6 @@ fn cached_execution_rejects_aliased_imports_at_the_single_declaration_boundary()
     assert_eq!(backend.creations, 0);
 }
 
-#[test]
-fn native_recording_errors_propagate_directly_and_do_not_poison_the_next_frame() {
-    for fail_begin in [true, false] {
-        let mut backend = Mock { fail_begin, fail_end_at: (!fail_begin).then_some(1), ..Default::default() };
-        let mut chain = chain();
-        let mut pool = Pool::default();
-        let error = run(&mut chain, three_buffer_graph(true), &mut pool, &mut backend, true).unwrap_err();
-        assert!(if fail_begin {
-            matches!(error, Error::Validation(rhapsody::Error::OutOfHostMemory))
-        } else {
-            matches!(error, Error::Validation(rhapsody::Error::DeviceLost))
-        });
-        assert_eq!(backend.submit_attempts, 0);
-        assert_eq!(chain.recording_command_count(), 0);
-        backend.fail_begin = false;
-        backend.fail_end_at = None;
-        run(&mut chain, three_buffer_graph(true), &mut pool, &mut backend, true).unwrap();
-        assert_eq!(backend.submit_attempts, 1);
-    }
-}
-
-#[test]
-fn an_end_error_after_submission_keeps_the_original_error_and_gpu_receipt() {
-    let mut backend = Mock { fail_end_at: Some(2), ..Default::default() };
-    let mut graph = RenderGraph::new();
-    graph.batch_per_pass(true);
-    for name in ["first", "second"] {
-        graph.add_pass(name).with_side_effect().render(|_| true);
-    }
-    let mut chain = chain();
-    let error = run(&mut chain, graph.build().into_parts().0, &mut Pool::default(), &mut backend, true).unwrap_err();
-    let Error::PartialSubmission { original, execution } = error else { panic!("successful prefix must remain owned") };
-    assert!(matches!(*original, Error::Validation(rhapsody::Error::DeviceLost)));
-    assert_eq!(execution.transaction.receipts().len(), 1);
-    assert_eq!(chain.pending_command_count(), 1);
-    assert_eq!(chain.recording_command_count(), 0);
-    assert_eq!(backend.abandoned, [1002]);
-}
-
-#[test]
-fn cached_execution_rejects_aliased_imports_at_the_single_declaration_boundary() {
-    let mut graph = RenderGraph::new();
-    let first = graph.import_unowned("first import", buffer(), 77, 0x25).unwrap();
-    let second = graph.import_unowned("second import", buffer(), 88, 0x25).unwrap();
-    let mut pass = graph.add_pass("read both").with_side_effect();
-    pass.add_resource_access(first, 0x25, 0).unwrap();
-    pass.add_resource_access(second, 0x25, 0).unwrap();
-    pass.render(|_| true);
-    let mut declaration = graph.build().into_parts().0;
-    let mut chain = chain();
-    let mut backend = Mock::default();
-    let mut pool = Pool::default();
-    run(&mut chain, declaration.clone(), &mut pool, &mut backend, true).unwrap();
-    let submitted = backend.submit_attempts;
-    declaration.resources[1].source = declaration.resources[0].source;
-    let error = run(&mut chain, declaration, &mut pool, &mut backend, true).unwrap_err();
-    assert_eq!(rhapsody::Error::from(error).kind(), rhapsody::ErrorKind::InvalidUsage);
-    assert_eq!(backend.submit_attempts, submitted);
-    assert_eq!(backend.creations, 0);
-}
-
 // ---------------------------------------------------------------- 1. 导出但从未访问的 Create 资源
 
 #[test]

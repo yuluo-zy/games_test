@@ -450,10 +450,10 @@ pub fn ui_settings_audio(
 /// 原视频页使用启动时枚举的设备以及实际设备、帧配置和显存恢复状态。
 /// 设备初始化状态必须由创建结果提供；不能把未知兼容性当作创建失败。
 pub struct VideoSettingsRuntime<'a> {
-    pub devices: &'a [rhapsody::interop::AvailableGraphicsDevice],
+    pub devices: &'a [rhapsody::device::AvailableGraphicsDevice],
     pub device_init_states: &'a [(
         uuid::Uuid,
-        rhapsody::interop::AvailableGraphicsDeviceInitState,
+        rhapsody::device::AvailableGraphicsDeviceInitState,
     )],
     pub device: &'a rhapsody::device::Device,
     pub frame: &'a mut country_core::render::render_config::FrameRenderConfig,
@@ -812,7 +812,7 @@ fn display_mode_name(mode: &DisplayMode) -> String {
     .to_string()
 }
 
-fn device_menu_name(device: &rhapsody::interop::AvailableGraphicsDevice) -> String {
+fn device_menu_name(device: &rhapsody::device::AvailableGraphicsDevice) -> String {
     if device.name.len() < 26 {
         device.name.clone()
     } else {
@@ -844,10 +844,10 @@ fn ui_settings_video_display(
     hints: &mut toolbar::mei::widgets::tweaker::HintTracker,
     video: &mut country_core::render::render_config::VideoSettings,
     monitors: &country_core::resources::window::AvailableMonitors,
-    devices: &[rhapsody::interop::AvailableGraphicsDevice],
+    devices: &[rhapsody::device::AvailableGraphicsDevice],
     device_init_states: &[(
         uuid::Uuid,
-        rhapsody::interop::AvailableGraphicsDeviceInitState,
+        rhapsody::device::AvailableGraphicsDeviceInitState,
     )],
     active_uuid: [u8; 16],
 ) {

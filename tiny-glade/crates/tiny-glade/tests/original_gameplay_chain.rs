@@ -1088,7 +1088,7 @@ fn run_shipped_session_steady_state_multi_frame() -> Result<()> {
     // ranges), which only works because used pages are sealed and restart at offset 0. Any other miss
     // reason is a new defect.
     {
-        use rhapsody::rg::CacheReason;
+        use rhapsody::collections::cache::CacheReason;
         let diagnostics = bridge.with_session(|session| session.chain.plan_cache_stats().diagnostics);
         for reason in [CacheReason::Disabled, CacheReason::UnknownDependencies, CacheReason::DependencyVersion,
             CacheReason::Parameters, CacheReason::ShaderImplementation, CacheReason::ShaderInterface,
