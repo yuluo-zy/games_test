@@ -83,6 +83,8 @@ pub struct Slider3dState {
     pub origin: Vec3,
     /// 线段方向（世界；O `Ray.direction` @0xc——不是终点）。
     pub direction: Vec3,
+    /// Offset captured when the drag starts (native +0x18).
+    pub grab: f32,
 }
 
 impl Default for Slider3dState {
@@ -90,11 +92,35 @@ impl Default for Slider3dState {
         Self {
             origin: Vec3::ZERO,
             direction: Vec3::X,
+            grab: 0.0,
         }
     }
 }
 
 impl Slider3dState {
+    /// Update the persistent slider ray and project an active drag.
+    pub fn update(&mut self, phase: u8, origin: Vec3, direction: Vec3, dimension: f32,
+        cursor: Vec2, size: [u32; 2], matrices: &Slider3dMatrices, range: [f32; 2]) -> Option<(Vec3, f32)> {
+        match phase.wrapping_sub(2).min(3) {
+            0 => None,
+            1 => {
+                self.origin = origin;
+                self.direction = direction;
+                let point = self.project_cursor_onto_line(cursor, size, matrices);
+                self.grab = point.dot(direction) - dimension;
+                None
+            }
+            _ => {
+                let point = self.project_cursor_onto_line(cursor, size, matrices);
+                assert!(range[0] <= range[1], "invalid slider range");
+                let value = point.dot(self.direction) - self.grab;
+                // MAXSS/MINSS select their second operand for unordered or equal inputs.
+                let low = if range[0] > value { range[0] } else { value };
+                let value = if range[1] < low { range[1] } else { low };
+                Some((self.origin + self.direction * value, value))
+            }
+        }
+    }
     /// `project_cursor_onto_line`（0x140a9bd40，O）：游标（屏幕像素）→
     /// `mouse_ss_to_cs`/`transform_screen_space` → `project_onto_ray`（range ±1e10）。
     ///
@@ -142,5 +168,21 @@ mod tests {
         let base = &m as *const _ as usize;
         assert_eq!(&m.first as *const _ as usize - base, 0x80);
         assert_eq!(&m.second as *const _ as usize - base, 0x00);
+    }
+
+    #[test]
+    fn drag_captures_ray_and_clamps_using_persistent_grab() {
+        let mut slider = Slider3dState::default();
+        let matrices = Slider3dMatrices::default();
+        let cursor = Vec2::splat(50.0);
+        assert!(slider.update(2, Vec3::ZERO, Vec3::Y, 4.0, cursor, [100, 100], &matrices, [2.25, 15.0]).is_none());
+        assert!(slider.update(3, Vec3::ZERO, Vec3::X, 4.0, cursor, [100, 100], &matrices, [2.25, 15.0]).is_none());
+        let (point, value) = slider.update(4, Vec3::Y, Vec3::Y, 4.0, cursor, [100, 100], &matrices, [2.25, 15.0]).unwrap();
+        assert_eq!(value, 4.0);
+        assert_eq!(point, Vec3::X * 4.0);
+        slider.grab = -100.0;
+        assert_eq!(slider.update(4, Vec3::ZERO, Vec3::Y, 4.0, cursor, [100, 100], &matrices, [2.25, 15.0]).unwrap().1, 15.0);
+        slider.grab = 100.0;
+        assert_eq!(slider.update(1, Vec3::ZERO, Vec3::Y, 4.0, cursor, [100, 100], &matrices, [2.25, 15.0]).unwrap().1, 2.25);
     }
 }

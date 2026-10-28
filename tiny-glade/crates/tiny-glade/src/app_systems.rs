@@ -1,7 +1,7 @@
 //! Original Tiny Glade host wall/session lifecycle. The complete unload body
 //! @1402b1cb0 and Reload→Game PostUpdate consumer are recovered below.
-//! Broader normal wall-system/event registration remains a separate unmounted
-//! entry until every original consumer in that tuple is integrated.
+//! The gameplay host calls WallSystems::add_wall_systems for the recovered
+//! wall chain. Individual omitted original consumers are listed below.
 
 /// `<bevy_app::App as tiny_glade::app_systems::WallSystems>`: `add_wall_systems` (0x140493120) and
 /// `add_wall_events` (0x1404936b0, 39KB 事件/资源注册表)。
@@ -28,17 +28,24 @@ impl WallSystems for bevy_app::App {
         use bevy_app::{Startup, Update};
         use bevy_ecs::schedule::IntoScheduleConfigs;
         use country_core::{
-            resources::{history::MaybePendingSnapshotId, walls::decorator_archivist::LiveColliderPayload},
+            resources::{
+                history::MaybePendingSnapshotId, walls::decorator_archivist::LiveColliderPayload,
+            },
             systems::{GameSystemSet, wall},
         };
         use system_wall_constructor as wc;
 
         // 1. 0x14049315b
-        self.add_systems(Update, wc::ui_arch_controls::ui_arch_controls.in_set(GameSystemSet(17)));
+        self.add_systems(
+            Update,
+            wc::ui_arch_controls::ui_arch_controls.in_set(GameSystemSet(17)),
+        );
         // 2. 0x140493177
         self.add_systems(
             Update,
-            system_decorator::restore_archived_decorators::restore_archived_decorators::<LiveColliderPayload>
+            system_decorator::restore_archived_decorators::restore_archived_decorators::<
+                LiveColliderPayload,
+            >
                 .in_set(GameSystemSet(42)),
         );
         // 3. 0x1404932c7：外层 chain_ignore_deferred(chain1, chain2)，set 19。
@@ -89,14 +96,23 @@ impl WallSystems for bevy_app::App {
             wc::init_wall_height_and_arch_segment_height::init_wall_height_and_arch_segment_height,
         )
             .chain_ignore_deferred();
-        self.add_systems(Update, (chain1, chain2).chain_ignore_deferred().in_set(GameSystemSet(19)));
+        self.add_systems(
+            Update,
+            (chain1, chain2)
+                .chain_ignore_deferred()
+                .in_set(GameSystemSet(19)),
+        );
         // 0x1404932eb + 0x1404932f6（Startup）
         self.init_resource::<wc::construct_elevation_supports::OverhangSupportDirtySubscriptions>();
-        self.add_systems(Startup, wc::construct_elevation_supports::overhang_subscribe_to_tabloids);
+        self.add_systems(
+            Startup,
+            wc::construct_elevation_supports::overhang_subscribe_to_tabloids,
+        );
         // set 24 链的可运行成员只有末位 flush_rapier_colliders；其余见上面的未闭合清单。
         self.add_systems(
             Update,
-            country_core::systems::collision::world::flush_rapier_colliders.in_set(GameSystemSet(24)),
+            country_core::systems::collision::world::flush_rapier_colliders
+                .in_set(GameSystemSet(24)),
         );
         // 6. 0x140493414 set 28：gates → fences → (适配 finalize) → construct_walls。
         self.add_systems(
@@ -132,7 +148,10 @@ impl WallSystems for bevy_app::App {
         // 9. 0x1404934db set 44：普通 tuple，非 chain。
         self.add_systems(
             Update,
-            (wall::upload_instanced_wall_ssbo::gpu_flush_brick_buffers, wc::gpu_flush_plank_buffers)
+            (
+                wall::upload_instanced_wall_ssbo::gpu_flush_brick_buffers,
+                wc::gpu_flush_plank_buffers,
+            )
                 .in_set(GameSystemSet(44)),
         );
         // 11. 0x140493574
@@ -204,6 +223,10 @@ impl WallSystems for bevy_app::App {
         self.add_event::<WallBendChangedEvent>();
         self.add_event::<OnWallDeleted>();
         self.add_event::<OnWallChanged>();
+        self.add_event::<country_core::resources::events::OnShapeMoved>();
+        self.add_event::<country_core::resources::events::OnFreehandWallEdited>();
+        self.add_event::<country_core::resources::events::OnCircleRotated>();
+        self.add_event::<country_core::systems::wall::shapes::rectangle::finish_edit_rectangle::OnRectangleEdited>();
         self.add_event::<AdjustWallHeightCmd>();
         self.add_event::<StoneColumnsChanged>();
         self.add_event::<RecalculatePlasterCmd>();

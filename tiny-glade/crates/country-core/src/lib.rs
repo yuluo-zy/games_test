@@ -57,6 +57,8 @@ pub mod systems {
     pub mod ui_raise_shape;
     pub mod ui_focus_mode_shape_height;
     pub mod ui_move_shapes;
+    pub mod ui_move_freehand_walls;
+    pub mod ui_edit_freehand_walls;
     pub mod mode_manager;
     pub mod paths;
     pub mod ui_2d_follow_mouse;

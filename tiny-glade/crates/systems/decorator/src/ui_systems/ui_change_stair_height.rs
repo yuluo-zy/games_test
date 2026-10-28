@@ -97,6 +97,7 @@ impl StairHeightSliderState {
         Slider3dState {
             origin: self.origin,
             direction: self.direction,
+            grab: 0.0,
         }
         .project_cursor_onto_line(cursor, window.as_dims(), &matrices)
     }

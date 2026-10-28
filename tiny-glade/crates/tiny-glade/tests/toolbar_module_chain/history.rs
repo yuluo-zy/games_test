@@ -35,6 +35,7 @@ struct HistoryHarness {
     history: Schedule,
     expected_history: Option<serde_json::Value>,
     expected_wall: Option<serde_json::Value>,
+    expected_circle: Option<serde_json::Value>,
 }
 impl HistoryHarness {
     fn new() -> Self {
@@ -43,6 +44,10 @@ impl HistoryHarness {
         input.world.insert_resource(ReplayBuffer::new(1.0));
         input.world.insert_resource(InnerWalls::new());
         input.world.init_resource::<WallColorIds>();
+        input.world.init_resource::<country_core::resources::walls::decorator::DecoratorIdGen>();
+        input.world.init_resource::<country_core::resources::walls::decorator::DeferredDecoratorOpEvents>();
+        input.world.init_resource::<country_core::resources::walls::decorator_collision::DecoratorPhysicsColliders>();
+        input.world.init_resource::<country_core::systems::collision::world::RaycastWorld>();
         input.world.init_resource::<country_core::meta_commander::MetaCommander>();
         input.world.init_resource::<history_runtime::replay_mode::ReplayModeElapsedTime>();
         input.world.insert_resource(GameTime { delta: 0.05, ran: true, ..Default::default() });
@@ -58,15 +63,17 @@ impl HistoryHarness {
             .after(render_taffy_ui_to_widgets).in_set(InputSystemSet::Consume));
         let mut history = Schedule::default();
         history.add_systems((
+            |mut storage: ResMut<country_core::resources::walls::decorator_storage::DecoratorStorage>| storage.mark_mutable(),
             history_runtime::history_process_system::<MaybePendingSnapshotId>,
             history_runtime::replay_mode::replay_mode,
             replay_wall::replay_wall,
+            history_runtime::replay_decorator::replay_decorator,
             replay_wall::apply_wall_replay_color,
             replay_wall::apply_wall_replay_audio,
             history_runtime::replay_pop_bucket_system,
             history_runtime::finish_replay::finish_replay,
         ).chain());
-        Self { input, history, expected_history: None, expected_wall: None }
+        Self { input, history, expected_history: None, expected_wall: None, expected_circle: None }
     }
     fn frame(&mut self, held: bool, position: Vec2) {
         self.input.frame(held, position);
@@ -89,6 +96,14 @@ impl HistoryHarness {
         // UiHistoryButtonPressed is consumed by translate_input next frame.
         self.frame(false, position);
         for _ in 0..12 { self.frame(false, position); }
+        // MorphPremadeShape has a real replay animation, unlike CreateWall's
+        // instant prerequisite. Wait for its owners, with a bounded failure.
+        for _ in 0..400 {
+            if self.input.world.resource::<ReplayBuffer>().is_empty()
+                && self.input.world.resource::<history_runtime::PendingHistoryCommands>().0.is_empty()
+                && *self.input.world.resource::<AppMode>() != AppMode::Replay { break; }
+            self.frame(false, position);
+        }
         assert!(self.input.world.get::<UiPlaySelectAnimation>(entity).is_none(),
             "production pulse must finish and remove its component");
         assert_ne!(*self.input.world.resource::<AppMode>(), AppMode::Replay);
@@ -123,20 +138,185 @@ impl HistoryHarness {
     }
     fn assert_state(&self, exists: bool, cursor: i32) {
         let world = &self.input.world;
-        assert_eq!(world.resource::<InnerWalls>().contains(WallId(1)), exists);
+        let circle_scene = self.expected_circle.is_some();
+        assert_eq!(world.resource::<InnerWalls>().contains(WallId(1)), circle_scene || exists);
         let history = world.resource::<History>();
         assert_eq!(history.ledger().cursor, cursor);
-        assert_eq!(history.ledger().entries.len(), 1, "replay must not re-record");
+        assert_eq!(history.ledger().entries.len(), if circle_scene { 3 } else { 1 }, "replay must not re-record");
         assert!(!history.is_recording());
         assert_eq!(&self.saved_history_contract(), self.expected_history.as_ref().unwrap(),
             "identity, undo boundary and every serialized edit field must survive replay/load");
-        if exists {
+        if circle_scene || exists {
             let wall = world.resource::<InnerWalls>().get_unwrapped(WallId(1));
             assert_eq!(&wall_authority(wall), self.expected_wall.as_ref().unwrap(),
                 "all authority fields must match the originally committed wall");
             assert_eq!(world.resource::<WallColorIds>().0[1], 7,
                 "the real replay color consumer must update its actual owner");
         }
+        if let Some(expected) = &self.expected_circle {
+            let state = if exists { &expected["after"] } else { &expected["before"] };
+            assert_eq!(wall_authority(world.resource::<InnerWalls>().get_unwrapped(WallId(2))), state["wall"]);
+            use country_core::resources::walls::{decorator::DecoratorId, decorator_storage::{DecoratorStorage, DecoratorStorageAddr}};
+            let info = world.resource::<DecoratorStorage>().get(DecoratorStorageAddr::Wall(WallId(2))).unwrap().get(DecoratorId(101)).unwrap();
+            assert_eq!(serde_json::to_value(country_core::resources::history::decorator_edit::DecoratorHistoryState::from(info)).unwrap(), state["decorator"]);
+            assert_eq!(world.resource::<WallColorIds>().0[2], 9);
+        }
+    }
+    /// Circle creation/decorator placement are explicit prerequisites. Only
+    /// resize is under test: its history must come from the real widget chain.
+    fn record_circle_resize(&mut self) {
+        use country_core::{resources::{walls::{
+            public_walls::{PublicWalls, WallEntities, WallPublicationDirty, WallSpatialHash},
+            wall_trigger_volume::WallTriggerVolume,
+            decorator::{DecoratorId, DecoratorInfo},
+            decorator_storage::{DecoratorStorage, DecoratorStorageAddr, Decorators},
+            decorator_archivist::LiveDecoratorArchivist,
+        }, history::decorator_edit::DecoratorHistoryState}, systems::{
+            wall::{shapes::circle::ui_edit_circle::{self, AnimatedCircleSignifierResource}, valid_enclosure::{Shape, ShapeParameters}},
+            ui::resources::widget_params::WidgetGeometry,
+        }};
+        let world = &mut self.input.world;
+        let wall = WallId(2);
+        let circle = ::utils::geometry::Circle2d::new_rotated(Vec2::new(2., 3.), 2., 0.4);
+        // Original create_circle samples at0.2; UI resize samples at0.5.
+        let authority = WallState::new(country_core::systems::wall::shapes::to_authority_curve(&circle.as_curve2(0.2)), 4., 0, 0, false);
+        let mut snapshot = authority.snapshot().clone();
+        snapshot.source.shape = ShapeParameters::from_shape(Shape::Circle(circle)).to_snapshot();
+        snapshot.source.curve_kind_tag = 0;
+        let authority = WallState::from_snapshot(snapshot, 0);
+        let before_wall = wall_authority(&authority);
+        let create = WallHistoryEdit::Create {
+            wall: country_core::resources::walls::publication_fields::WallId(wall.0), source: authority.snapshot().clone(), color_id: 9,
+            restored_height: 4., restored_elevation: 0.,
+        };
+        world.resource_mut::<InnerWalls>().new_wall_with_id(wall, authority);
+        world.resource_mut::<WallColorIds>().0[2] = 9;
+        world.resource_mut::<History>().start_input_recording(AppMode::Path.native_tag() as u32).unwrap();
+        world.resource_mut::<History>().add(EditType::Wall(Arc::new(WallCompoundHistoryEdit { groups: vec![vec![create]] }))).unwrap();
+        world.resource_mut::<DecoratorStorage>().mark_mutable();
+        world.resource_mut::<LiveDecoratorArchivist>().archive_storage_decorators(0, &Decorators::default(), Some(wall));
+        let mut info = DecoratorInfo::default();
+        let anchor = circle.center + Vec2::X * circle.radius;
+        system_decorator::decorator_on_wall_height_changed::set_anchor_ws(&mut info, glam::Vec3::new(anchor.x, 1.5, anchor.y));
+        system_decorator::decorator_on_wall_height_changed::set_wall_coord(&mut info, ::utils::wall_space::WallSpaceCoord::new_unchecked(0., 1.5));
+        {
+            let mut storage = world.resource_mut::<DecoratorStorage>();
+            storage.get_or_insert_default(DecoratorStorageAddr::Wall(wall)).insert(DecoratorId(101), info);
+            storage.decorator_to_storage.insert(DecoratorId(101), DecoratorStorageAddr::Wall(wall));
+        }
+        let before_decorator = serde_json::to_value(DecoratorHistoryState::from(&info)).unwrap();
+        let mut finish = Schedule::default();
+        finish.add_systems(history_runtime::recording::history_finish_recording_system::<MaybePendingSnapshotId>);
+        world.send_event(history_runtime::recording::FinishInputRecordingCmd);
+        finish.run(world);
+        assert_eq!(world.resource::<History>().ledger().entries.len(), 2);
+        world.resource_mut::<DecoratorStorage>().mark_mutable();
+
+        world.init_resource::<PublicWalls>();
+        world.init_resource::<WallEntities>();
+        let terrain = world.resource::<WallPublicationTerrain>().0.clone();
+        let paths = country_core::systems::wall::wall_state::path_preparation::PathRasters512::from_encoded(std::array::from_fn(|_| Arc::from(vec![0u8; 512 * 512])), true).unwrap();
+        world.resource_scope(|world, mut public: Mut<PublicWalls>| {
+            public.consume_with_paths(&mut world.resource_mut::<InnerWalls>(), &terrain, Some(&paths), &WallPublicationDirty::default(), &WallSpatialHash::default());
+        });
+        let mut trigger = WallTriggerVolume::default();
+        trigger.recompute(world.resource::<PublicWalls>().get(wall).unwrap()).unwrap();
+        let entity = world.spawn(trigger).id();
+        world.resource_mut::<WallEntities>().0.insert(wall, entity);
+        world.insert_resource(country_core::resources::glade_border::GladeBorder(country_core::resources::glade_border::BorderShape::Circle(::utils::geometry::Circle2d::new(Vec2::ZERO, 65.))));
+        world.init_resource::<AnimatedCircleSignifierResource>();
+        world.insert_resource(bevy_time::Time::<()>::default());
+        world.init_resource::<Events<country_core::systems::camera_rig::main_camera::MainCameraMoved>>();
+        world.init_resource::<Events<country_core::resources::glade_border::DisplayOutOfBorder>>();
+        world.init_resource::<Events<country_core::resources::glade_border::FeedbackInputOutOfBorder>>();
+        world.init_resource::<Events<country_core::systems::wall::wall_highlight::HighlightWallCmd>>();
+        world.init_resource::<Events<country_core::resources::onboarding::NotifyHintSystemShapeEditWasPerformed>>();
+        world.init_resource::<Events<country_core::resources::critters::sheep::CmdCheckForSheepInsideBuilding>>();
+        world.init_resource::<Events<country_core::systems::audio::PlayBuildingAudio>>();
+        world.init_resource::<Events<country_core::systems::audio::RequestWallMaterialAudio>>();
+        world.init_resource::<Events<country_core::resources::tree_storage::HideTreesinAreaCmd>>();
+        world.init_resource::<Events<country_core::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>>();
+        world.insert_resource(AppMode::Editing(mode_manager::EditSubject::None));
+        world.insert_resource(UiState::at_startup());
+        world.insert_resource(WindowSize::new(1280, 720));
+        let inverse = glam::Mat4::from_translation(glam::Vec3::new(3., 2., 10.));
+        let mut camera = MainCamera::new(1280. / 720.);
+        camera.write_matrix(0, &glam::Mat4::IDENTITY);
+        camera.write_matrix(0x40, &glam::Mat4::IDENTITY);
+        camera.write_matrix(0x80, &inverse.inverse());
+        camera.write_matrix(0xc0, &inverse);
+        world.insert_resource(camera);
+        world.insert_resource(CursorPositionSS(Vec2::new(640., 360.)));
+        world.insert_resource(MouseDepthValue { view_depth: 100., ..Default::default() });
+        let mut resize = Schedule::default();
+        resize.add_systems(ui_edit_circle::ui_edit_circle::<MaybePendingSnapshotId>);
+        let mut picker = Schedule::default();
+        picker.add_systems((hover_intersection, ui_update).chain_ignore_deferred());
+        let mut start = Schedule::default();
+        start.add_systems(history_runtime::recording::history_start_recording::<MaybePendingSnapshotId>);
+        resize.run(world);
+        let widget = WidgetId::from_name(&format!("edit_circle_wall_{wall}"));
+        assert!(matches!(&world.resource::<UiState>().widget(widget).unwrap().geometry, Some(WidgetGeometry::TriangleMesh(tris)) if !tris.is_empty()));
+        picker.run(world);
+        assert_eq!(world.resource::<UiState>().active_widget(), widget);
+        // ui_update consumes the frame registry. The producer must register
+        // the next frame before the next real input edge, as in the host.
+        resize.run(world);
+        use country_core::input::action_set::DigitalActionPhase;
+        world.resource_mut::<ActionSetStates>().digital[0].phase = DigitalActionPhase::JustPressed;
+        picker.run(world);
+        assert_eq!(world.resource::<UiState>().widget_context(widget).dragged(), 3);
+        start.run(world);
+        assert!(world.resource::<History>().is_recording());
+        resize.run(world);
+        world.resource_mut::<ActionSetStates>().digital[0].phase = DigitalActionPhase::Held;
+        world.resource_mut::<GameTime>().delta = 0.1;
+        world.resource_mut::<CursorPositionSS>().0.x = 1100.;
+        picker.run(world);
+        assert_eq!(world.resource::<UiState>().widget_context(widget).dragged(), 4);
+        resize.run(world);
+        assert_ne!(ShapeParameters::from_snapshot(world.resource::<InnerWalls>().get_unwrapped(wall).get_enclosure_params().unwrap()).as_circle().radius.to_bits(), circle.radius.to_bits());
+        world.resource_scope(|world, mut public: Mut<PublicWalls>| {
+            public.consume_with_paths(&mut world.resource_mut::<InnerWalls>(), &terrain, Some(&paths), &WallPublicationDirty::default(), &WallSpatialHash::default());
+        });
+        world.resource_mut::<ActionSetStates>().digital[0].phase = DigitalActionPhase::JustReleased;
+        picker.run(world);
+        resize.run(world);
+        assert!(world.resource::<History>().pending().unwrap().edits.iter().any(|edit| matches!(edit, EditType::Wall(edit) if matches!(&edit.groups[0][0], WallHistoryEdit::MorphPremadeShape(_)))));
+        finish.run(world);
+        let history = world.resource::<History>();
+        assert_eq!(history.ledger().entries.len(), 3);
+        assert!(!history.is_recording());
+        assert!(history.ledger().entries[2].auxiliary.decorator_diff.as_ref().is_some_and(|diff| !diff.is_empty()));
+        let after_authority = world.resource::<InnerWalls>().get_unwrapped(wall);
+        let direct_after_wall = wall_authority(after_authority);
+        assert_ne!(direct_after_wall["shape"], before_wall["shape"]);
+        let after_shape = ShapeParameters::from_snapshot(after_authority.get_enclosure_params().unwrap());
+        let ui_curve = country_core::systems::wall::shapes::to_authority_curve(&after_shape.as_circle().as_curve2(0.5));
+        assert_eq!(after_authority.source().curve.points, ui_curve.points);
+        assert_eq!(after_authority.source().curve.points_u, ui_curve.points_u);
+        assert_eq!(after_authority.source().curve.length.to_bits(), ui_curve.length.to_bits());
+        // Original Morph replay140ac01ff..21a explicitly samples at0.2
+        // (1429cd068). Its payload records shapes, not the transient UI Vec.
+        // Verify the complete replay authority, preserving every other field.
+        let mut replay_snapshot = after_authority.snapshot().clone();
+        replay_snapshot.source.curve = country_core::systems::wall::shapes::to_authority_curve(&after_shape.as_curve2());
+        let after_wall = wall_authority(&WallState::from_snapshot(replay_snapshot, after_authority.freehand_ty()));
+        let after_info = world.resource::<DecoratorStorage>().get(DecoratorStorageAddr::Wall(wall)).unwrap().get(DecoratorId(101)).unwrap();
+        let after_decorator = serde_json::to_value(DecoratorHistoryState::from(after_info)).unwrap();
+        assert_ne!(after_decorator, before_decorator);
+        self.expected_circle = Some(serde_json::json!({
+            "before": { "wall": before_wall, "decorator": before_decorator },
+            "after": { "wall": after_wall, "decorator": after_decorator },
+            "direct_ui_after": direct_after_wall,
+        }));
+        world.insert_resource(AppMode::Path);
+        world.insert_resource(UiState::at_startup());
+        world.insert_resource(WindowSize::new(960, 540));
+        world.insert_resource(MainCamera::new(1.));
+        world.insert_resource(ActionSetStates::default());
+        world.resource_mut::<GameTime>().delta = 0.05;
+        self.expected_history = Some(self.saved_history_contract());
     }
     fn save(&mut self) {
         let world = &mut self.input.world;
@@ -205,14 +385,19 @@ fn install_save_owner(world: &mut World, session: SessionId) {
 #[test]
 fn real_history_buttons_roundtrip_disk_in_fresh_processes() {
     let root = tempfile::tempdir().unwrap();
-    for phase in ["write", "restore", "restore-applied"] {
+    for scene in ["wall", "circle"] {
+      let scene_root = root.path().join(scene);
+      std::fs::create_dir_all(&scene_root).unwrap();
+      for phase in ["write", "restore", "restore-applied"] {
         let status = std::process::Command::new(std::env::current_exe().unwrap())
             .args(["--exact", "history::history_process_entry", "--nocapture"])
             .env("TG_TOOLBAR_HISTORY_PHASE", phase)
-            .env("TG_TOOLBAR_HISTORY_ROOT", root.path())
+            .env("TG_TOOLBAR_HISTORY_SCENE", scene)
+            .env("TG_TOOLBAR_HISTORY_ROOT", &scene_root)
             .status().unwrap();
-        assert!(status.success(), "fresh history process failed during {phase}");
-        assert!(root.path().join(format!("completed-{phase}")).is_file(), "child must execute its actual phase");
+        assert!(status.success(), "fresh history process failed during {scene}/{phase}");
+        assert!(scene_root.join(format!("completed-{phase}")).is_file(), "child must execute its actual phase");
+      }
     }
 }
 
@@ -222,24 +407,30 @@ fn history_process_entry() {
     let root = std::path::PathBuf::from(std::env::var_os("TG_TOOLBAR_HISTORY_ROOT").unwrap());
     paths::initialize_paths(0, Some(&root)).unwrap();
     let mut h = HistoryHarness::new();
+    let circle_scene = std::env::var("TG_TOOLBAR_HISTORY_SCENE").as_deref() == Ok("circle");
+    let applied_cursor = if circle_scene { 2 } else { 0 };
     let session_file = root.join("session-id.json");
     if phase == "write" {
         let session = SessionId::new();
         install_save_owner(&mut h.input.world, session);
         h.seed_committed_wall();
+        if circle_scene { h.record_circle_resize(); }
         std::fs::write(&session_file, serde_json::to_vec(&serde_json::json!({
             "session": session,
             "history": h.expected_history.as_ref().unwrap(),
             "wall": h.expected_wall.as_ref().unwrap(),
+            "circle": h.expected_circle.as_ref(),
         })).unwrap()).unwrap();
         h.settle();
-        h.assert_state(true, 0);
+        // The real UI producer's0.5 curve was checked before returning above;
+        // all subsequent circle checks follow the original0.2 replay contract.
+        if !circle_scene { h.assert_state(true, applied_cursor); }
         h.click(0);
-        h.assert_state(false, -1);
+        h.assert_state(false, applied_cursor - 1);
         h.click(1);
-        h.assert_state(true, 0);
+        h.assert_state(true, applied_cursor);
         h.click(0);
-        h.assert_state(false, -1);
+        h.assert_state(false, applied_cursor - 1);
         // Save at the undo cursor: the future edit must remain available.
         h.save();
         shutdown_save_thread(&mut h.input.world).unwrap();
@@ -250,6 +441,7 @@ fn history_process_entry() {
         let session: SessionId = serde_json::from_value(expected["session"].clone()).unwrap();
         h.expected_history = Some(expected["history"].clone());
         h.expected_wall = Some(expected["wall"].clone());
+        h.expected_circle = expected.get("circle").filter(|value| !value.is_null()).cloned();
         install_save_owner(&mut h.input.world, session);
         h.input.world.init_resource::<TimeOfDay>();
         h.input.world.init_resource::<GladeSettings>();
@@ -264,18 +456,23 @@ fn history_process_entry() {
         assert_eq!(h.input.world.resource::<LoadGameManager>().state, LoadGameState::Loaded);
         // Loading an applied cursor must replay the real saved CreateWall;
         // loading an undone cursor must retain its future entry for real redo.
-        for _ in 0..24 { h.history.run(&mut h.input.world); }
-        h.assert_state(phase == "restore-applied", if phase == "restore-applied" { 0 } else { -1 });
+        for _ in 0..400 {
+            h.history.run(&mut h.input.world);
+            if h.input.world.resource::<ReplayBuffer>().is_empty()
+                && h.input.world.resource::<history_runtime::PendingHistoryCommands>().0.is_empty()
+                && !matches!(*h.input.world.resource::<AppMode>(), AppMode::LoadGame | AppMode::Replay) { break; }
+        }
+        h.assert_state(phase == "restore-applied", if phase == "restore-applied" { applied_cursor } else { applied_cursor - 1 });
         h.settle();
         assert!(!matches!(*h.input.world.resource::<AppMode>(), AppMode::LoadGame | AppMode::Replay),
             "LoadingGameComplete must reach mode manager and finish_replay");
         if phase == "restore" {
             h.click(1);
-            h.assert_state(true, 0);
+            h.assert_state(true, applied_cursor);
             h.save();
         }
         h.click(0);
-        h.assert_state(false, -1);
+        h.assert_state(false, applied_cursor - 1);
         shutdown_save_thread(&mut h.input.world).unwrap();
     }
     std::fs::write(root.join(format!("completed-{phase}")), b"passed").unwrap();

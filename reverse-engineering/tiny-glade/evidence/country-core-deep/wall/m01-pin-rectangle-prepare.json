@@ -1,0 +1,106 @@
+{
+  "backend": "ghidra",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "m01-analysis-20261028",
+  "pid": 26836,
+  "project": "D:\\game\\tools\\reverse-runtime\\m01-analysis-20261028\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "prepare_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "targets": [
+          {
+            "address": "0x140c9b990",
+            "size": 1015,
+            "bytes_sha256": "3417a1ca0b4ecafde18f808ac175d543c7f0b683dd44a729499ab10bdb393ab6",
+            "range_basis": "Original B PE exception directory RUNTIME_FUNCTION exact BeginAddress/EndAddress"
+          },
+          {
+            "address": "0x1419423f0",
+            "size": 528,
+            "bytes_sha256": "648d59a229213af6bafa804eb23ba0d1dcc9602773bd27f7c37054555d91c5d7",
+            "range_basis": "Original B PE exception directory RUNTIME_FUNCTION exact BeginAddress/EndAddress"
+          }
+        ]
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\country-core-deep\\wall\\m01-pin-rectangle-prepare.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\country-core-deep\\\\\\\\wall\\\\\\\\m01-pin-rectangle-prepare.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 448, \\\"sha256\\\": \\\"e6873782178d8f443532275b947dd10f2c3aaa08aea5c9ea3910cd478c7e95c7\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":98}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.109,
+      "stdout": "{\"prepared\": [{\"address\": \"0x140c9b990\", \"requested_bytes\": 1015, \"body_bytes\": 1003, \"range_basis\": \"Original B PE exception directory RUNTIME_FUNCTION exact BeginAddress/EndAddress\", \"prototype_changed\": false}, {\"address\": \"0x1419423f0\", \"requested_bytes\": 528, \"body_bytes\": 528, \"range_basis\": \"Original B PE exception directory RUNTIME_FUNCTION exact BeginAddress/EndAddress\", \"prototype_changed\": false}], \"no_whole_program_analysis\": true}\n",
+      "passed": true
+    },
+    {
+      "tool": "get_functions",
+      "requested_args": {
+        "program": "tiny-glade.exe",
+        "functions": "0x140c9b990,0x1419423f0",
+        "fields": "signature,decompiled_code",
+        "include_call_context": false
+      },
+      "native_tool": "run-script",
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\country-core-deep\\wall\\m01-pin-rectangle-prepare.artifacts\\001.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\country-core-deep\\\\\\\\wall\\\\\\\\m01-pin-rectangle-prepare.artifacts\\\\\\\\001.stdout.txt\\\", \\\"bytes\\\": 10120, \\\"sha256\\\": \\\"63cda1f58ad05fdfc4b18b322b0bd21ef67dd2e5604ebbc9bd14dbebccaed213\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":387}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.391,
+      "stdout": "{\"functions\": [{\"address\": \"0x140c9b990\", \"name\": \"FUN_140c9b990\", \"signature\": \"undefined FUN_140c9b990(void)\", \"signature_source\": \"DEFAULT\", \"body_bytes\": 1003, \"prototype_is_not_verified_Rust_ABI\": true, \"decompiler_completed\": true, \"decompiled_code\": \"\\r\\n/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */\\r\\n\\r\\nundefined8 FUN_140c9b990(undefined8 *param_1,undefined8 *param_2)\\r\\n\\r\\n{\\r\\n  code *pcVar1;\\r\\n  undefined8 uVar2;\\r\\n  float fVar3;\\r\\n  float fVar4;\\r\\n  float fVar5;\\r\\n  float fVar6;\\r\\n  float fVar7;\\r\\n  float fVar8;\\r\\n  float fVar9;\\r\\n  undefined1 auVar10 [16];\\r\\n  float fVar11;\\r\\n  float fVar12;\\r\\n  float fVar13;\\r\\n  float fVar14;\\r\\n  float fVar15;\\r\\n  uint uStack_15c;\\r\\n  float fStack_158;\\r\\n  float fStack_154;\\r\\n  float fStack_150;\\r\\n  float fStack_14c;\\r\\n  undefined8 uStack_148;\\r\\n  float *pfStack_140;\\r\\n  float fStack_138;\\r\\n  float fStack_134;\\r\\n  float fStack_130;\\r\\n  float fStack_12c;\\r\\n  float fStack_128;\\r\\n  float fStack_124;\\r\\n  float fStack_120;\\r\\n  float fStack_11c;\\r\\n  undefined8 uStack_118;\\r\\n  undefined8 uStack_110;\\r\\n  float *pfStack_108;\\r\\n  float fStack_100;\\r\\n  float fStack_fc;\\r\\n  float fStack_f8;\\r\\n  float fStack_f4;\\r\\n  float fStack_f0;\\r\\n  float fStack_ec;\\r\\n  float fStack_e8;\\r\\n  float fStack_e4;\\r\\n  undefined8 uStack_e0;\\r\\n  undefined8 uStack_d8;\\r\\n  undefined4 uStack_d0;\\r\\n  float fStack_b8;\\r\\n  float fStack_b4;\\r\\n  float fStack_b0;\\r\\n  float fStack_ac;\\r\\n  undefined8 uStack_a8;\\r\\n  \\r\\n  fVar13 = (float)param_1[2];\\r\\n  fVar15 = (float)((ulonglong)param_1[2] >> 0x20);\\r\\n  if (SQRT(fVar15 * fVar15 + fVar13 * fVar13) < 0.0) {\\r\\n    FUN_1428d9430(&UNK_142c1f4f8,0x26,&UNK_142c1f540);\\r\\n  }\\r\\n  else {\\r\\n    fVar3 = (float)*param_2;\\r\\n    fVar4 = (float)((ulonglong)*param_2 >> 0x20);\\r\\n    fVar9 = (float)((ulonglong)param_2[1] >> 0x20);\\r\\n    fVar5 = (float)param_2[1];\\r\\n    fVar11 = (float)param_1[1];\\r\\n    fVar12 = (float)((ulonglong)param_1[1] >> 0x20);\\r\\n    fVar7 = (float)((ulonglong)*param_1 >> 0x20);\\r\\n    fVar8 = (float)*param_1;\\r\\n    fVar14 = fVar8 * fVar8 - (float)((uint)fVar7 ^ _DAT_1429258f0) * fVar7;\\r\\n    auVar10._4_4_ = fVar14;\\r\\n    auVar10._0_4_ = fVar14;\\r\\n    auVar10._8_4_ = fVar14;\\r\\n    auVar10._12_4_ = fVar14;\\r\\n    auVar10 = divps(_DAT_142a901b0,auVar10);\\r\\n    fVar14 = fVar8 * auVar10._0_4_;\\r\\n    fVar6 = fVar7 * auVar10._4_4_;\\r\\n    fVar7 = (float)((uint)fVar7 ^ _DAT_1429258f0) * auVar10._8_4_;\\r\\n    fVar8 = fVar8 * auVar10._12_4_;\\r\\n    fStack_b8 = fVar3 * fVar14 + fVar4 * fVar7;\\r\\n    fStack_b4 = fVar3 * fVar6 + fVar4 * fVar8;\\r\\n    fStack_b0 = (float)((uint)fVar4 ^ _UNK_1429258f8) * fVar14 + fVar3 * fVar7;\\r\\n    fStack_ac = (float)((uint)fVar4 ^ _UNK_1429258f8) * fVar6 + fVar3 * fVar8;\\r\\n    uStack_a8 = CONCAT44((fVar8 * fVar9 + fVar6 * fVar5) - (fVar12 * fVar8 + fVar11 * fVar6),\\r\\n                         (fVar7 * fVar9 + fVar14 * fVar5) - (fVar12 * fVar7 + fVar11 * fVar14));\\r\\n    fStack_128 = (float)param_2[2];\\r\\n    fStack_12c = (float)((ulonglong)param_2[2] >> 0x20);\\r\\n    if (0.0 < fStack_12c * fStack_128) {\\r\\n      fStack_134 = fStack_12c * _DAT_142aa5d60;\\r\\n      fStack_138 = fStack_128 * _UNK_142aa5d64;\\r\\n      fStack_12c = fStack_12c * _UNK_142aa5d68;\\r\\n      fStack_128 = fStack_128 * _UNK_142aa5d6c;\\r\\n      pfStack_140 = &fStack_b8;\\r\\n      uStack_e0 = 0;\\r\\n      uStack_d8 = 4;\\r\\n      uStack_118 = 0;\\r\\n      uStack_110 = 4;\\r\\n      uStack_d0 = 0;\\r\\n      uStack_148 = 4;\\r\\n      fStack_130 = fStack_138;\\r\\n      fStack_124 = fStack_12c;\\r\\n      fStack_120 = fStack_128;\\r\\n      fStack_11c = fStack_134;\\r\\n      pfStack_108 = pfStack_140;\\r\\n      fStack_100 = fStack_138;\\r\\n      fStack_fc = fStack_134;\\r\\n      fStack_f8 = fStack_138;\\r\\n      fStack_f4 = fStack_12c;\\r\\n      fStack_f0 = fStack_128;\\r\\n      fStack_ec = fStack_12c;\\r\\n      fStack_e8 = fStack_128;\\r\\n      fStack_e4 = fStack_134;\\r\\n      FUN_1419423f0(&uStack_15c,&uStack_148);\\r\\n      fVar3 = _DAT_142925904;\\r\\n      if (uStack_15c == 1) {\\r\\n        fVar13 = fVar13 * _DAT_142925870;\\r\\n        fVar15 = fVar15 * _DAT_142925870;\\r\\n        do {\\r\\n          fVar5 = ((fVar13 + 0.0) - fStack_158) / (fStack_150 - fStack_158);\\r\\n          fVar9 = ((0.0 - fVar13) - fStack_158) / (fStack_150 - fStack_158);\\r\\n          fVar4 = fVar9;\\r\\n          if (fVar9 <= fVar5) {\\r\\n            fVar4 = fVar5;\\r\\n          }\\r\\n          fVar6 = ((fVar15 + 0.0) - fStack_154) / (fStack_14c - fStack_154);\\r\\n          fVar7 = ((0.0 - fVar15) - fStack_154) / (fStack_14c - fStack_154);\\r\\n          fVar14 = fVar7;\\r\\n          if (fVar7 <= fVar6) {\\r\\n            fVar14 = fVar6;\\r\\n          }\\r\\n          fVar8 = fVar9;\\r\\n          if (fVar5 <= fVar9) {\\r\\n            fVar8 = fVar5;\\r\\n          }\\r\\n          fVar9 = (float)(~-(uint)NAN(fVar5) & (uint)fVar8 | -(uint)NAN(fVar5) & (uint)fVar9);\\r\\n          fVar5 = fVar7;\\r\\n          if (fVar6 <= fVar7) {\\r\\n            fVar5 = fVar6;\\r\\n          }\\r\\n          fVar5 = (float)(~-(uint)NAN(fVar6) & (uint)fVar5 | -(uint)NAN(fVar6) & (uint)fVar7);\\r\\n          fVar6 = fVar5;\\r\\n          if (fVar5 <= fVar9) {\\r\\n            fVar6 = fVar9;\\r\\n          }\\r\\n          fVar9 = (float)(~-(uint)NAN(fVar9) & (uint)fVar6 | -(uint)NAN(fVar9) & (uint)fVar5);\\r\\n          fVar5 = fVar14;\\r\\n          if (fVar4 <= fVar14) {\\r\\n            fVar5 = fVar4;\\r\\n          }\\r\\n          fVar4 = (float)(~-(uint)NAN(fVar4) & (uint)fVar5 | -(uint)NAN(fVar4) & (uint)fVar14);\\r\\n          if (((fVar9 <= fVar4) && (0.0 <= fVar4)) &&\\r\\n             ((fVar4 <= fVar3 || (fVar9 <= fVar3 && 0.0 <= fVar9)))) {\\r\\n            return 1;\\r\\n          }\\r\\n          FUN_1419423f0(&uStack_15c,&uStack_148);\\r\\n        } while ((uStack_15c & 1) != 0);\\r\\n      }\\r\\n      return 0;\\r\\n    }\\r\\n  }\\r\\n  FUN_1428d9430(&UNK_142b2e66c,0x23,&UNK_142b2e6b8);\\r\\n  pcVar1 = (code *)swi(3);\\r\\n  uVar2 = (*pcVar1)();\\r\\n  return uVar2;\\r\\n}\\r\\n\\r\\n\", \"decompiler_error\": \"\"}, {\"address\": \"0x1419423f0\", \"name\": \"FUN_1419423f0\", \"signature\": \"undefined FUN_1419423f0(void)\", \"signature_source\": \"DEFAULT\", \"body_bytes\": 528, \"prototype_is_not_verified_Rust_ABI\": true, \"decompiler_completed\": true, \"decompiled_code\": \"\\r\\nvoid FUN_1419423f0(undefined4 *param_1,longlong *param_2)\\r\\n\\r\\n{\\r\\n  longlong lVar1;\\r\\n  longlong lVar2;\\r\\n  undefined4 uVar3;\\r\\n  undefined4 uVar4;\\r\\n  ulonglong uVar5;\\r\\n  undefined4 uVar6;\\r\\n  float *pfVar7;\\r\\n  ulonglong uVar8;\\r\\n  float fVar9;\\r\\n  float fVar10;\\r\\n  float fVar11;\\r\\n  byte abStack_7c [4];\\r\\n  undefined4 uStack_78;\\r\\n  undefined4 uStack_74;\\r\\n  longlong alStack_70 [6];\\r\\n  longlong *plStack_40;\\r\\n  undefined4 uStack_38;\\r\\n  undefined8 uStack_34;\\r\\n  \\r\\n  uVar6 = 0;\\r\\n  if (*param_2 == 0) goto LAB_1419425eb;\\r\\n  *param_2 = *param_2 + -1;\\r\\n  lVar1 = param_2[0xd];\\r\\n  if (param_2[0xe] == lVar1) {\\r\\n    alStack_70[5] = 0;\\r\\n    lVar1 = param_2[6];\\r\\n    lVar2 = param_2[7];\\r\\n    uVar8 = 4;\\r\\n    if ((ulonglong)(lVar2 - lVar1) < 4) {\\r\\n      uVar8 = lVar2 - lVar1;\\r\\n    }\\r\\n    if (lVar2 != lVar1) {\\r\\n      if (lVar2 - lVar1 == 1) {\\r\\n        uVar5 = 0;\\r\\n      }\\r\\n      else {\\r\\n        uVar5 = 0;\\r\\n        do {\\r\\n          alStack_70[uVar5] = param_2[lVar1 + uVar5 + 2];\\r\\n          alStack_70[5] = alStack_70[5] + 1;\\r\\n          alStack_70[uVar5 + 1] = param_2[lVar1 + uVar5 + 3];\\r\\n          alStack_70[5] = alStack_70[5] + 1;\\r\\n          uVar5 = uVar5 + 2;\\r\\n        } while (((uint)uVar8 & 6) != uVar5);\\r\\n      }\\r\\n      if ((uVar8 & 1) != 0) {\\r\\n        alStack_70[uVar5] = param_2[lVar1 + uVar5 + 2];\\r\\n        alStack_70[5] = alStack_70[5] + 1;\\r\\n      }\\r\\n    }\\r\\n    alStack_70[4] = 0;\\r\\n    pfVar7 = (float *)param_2[1];\\r\\n    param_2[8] = (longlong)pfVar7;\\r\\n    param_2[0xd] = 0;\\r\\n    param_2[0xe] = alStack_70[5];\\r\\n    param_2[0xb] = alStack_70[2];\\r\\n    param_2[0xc] = alStack_70[3];\\r\\n    param_2[9] = alStack_70[0];\\r\\n    param_2[10] = alStack_70[1];\\r\\n    lVar1 = param_2[0xd];\\r\\n    if (param_2[0xe] == lVar1) goto LAB_1419425eb;\\r\\n    param_2[0xd] = lVar1 + 1;\\r\\n    fVar11 = (float)param_2[lVar1 + 9];\\r\\n    fVar10 = (float)((ulonglong)param_2[lVar1 + 9] >> 0x20);\\r\\n  }\\r\\n  else {\\r\\n    param_2[0xd] = lVar1 + 1;\\r\\n    fVar11 = (float)param_2[lVar1 + 9];\\r\\n    fVar10 = (float)((ulonglong)param_2[lVar1 + 9] >> 0x20);\\r\\n    pfVar7 = (float *)param_2[8];\\r\\n  }\\r\\n  fVar9 = (float)*(undefined8 *)(pfVar7 + 4) + fVar10 * pfVar7[2] + fVar11 * *pfVar7;\\r\\n  fVar11 = (float)((ulonglong)*(undefined8 *)(pfVar7 + 4) >> 0x20) +\\r\\n           fVar10 * pfVar7[3] + fVar11 * pfVar7[1];\\r\\n  if ((int)param_2[0xf] == 1) {\\r\\n    uVar6 = *(undefined4 *)((longlong)param_2 + 0x84);\\r\\n    lVar1 = param_2[0x11];\\r\\n    *(undefined4 *)((longlong)param_2 + 0x7c) = uVar6;\\r\\n    *(int *)(param_2 + 0x10) = (int)lVar1;\\r\\n    *(float *)((longlong)param_2 + 0x84) = fVar9;\\r\\n    *(float *)(param_2 + 0x11) = fVar11;\\r\\n    param_1[1] = uVar6;\\r\\n    param_1[2] = (int)lVar1;\\r\\n    param_1[3] = fVar9;\\r\\n    param_1[4] = fVar11;\\r\\nLAB_141942573:\\r\\n    uVar6 = 1;\\r\\n  }\\r\\n  else {\\r\\n    plStack_40 = param_2 + 1;\\r\\n    uStack_38 = 1;\\r\\n    uStack_34 = CONCAT44(fVar11,fVar9);\\r\\n    FUN_142180290(abStack_7c,&plStack_40);\\r\\n    uVar4 = uStack_74;\\r\\n    uVar3 = uStack_78;\\r\\n    if ((abStack_7c[0] & 1) != 0) {\\r\\n      FUN_142180290(abStack_7c,&plStack_40);\\r\\n      if ((abStack_7c[0] & 1) != 0) {\\r\\n        *(undefined4 *)(param_2 + 0xf) = 1;\\r\\n        *(undefined4 *)((longlong)param_2 + 0x7c) = uVar3;\\r\\n        *(undefined4 *)(param_2 + 0x10) = uVar4;\\r\\n        *(undefined4 *)((longlong)param_2 + 0x84) = uStack_78;\\r\\n        *(undefined4 *)(param_2 + 0x11) = uStack_74;\\r\\n        param_1[1] = uVar3;\\r\\n        param_1[2] = uVar4;\\r\\n        param_1[3] = uStack_78;\\r\\n        param_1[4] = uStack_74;\\r\\n        goto LAB_141942573;\\r\\n      }\\r\\n    }\\r\\n    *(undefined4 *)(param_2 + 0xf) = 0;\\r\\n  }\\r\\nLAB_1419425eb:\\r\\n  *param_1 = uVar6;\\r\\n  return;\\r\\n}\\r\\n\\r\\n\", \"decompiler_error\": \"\"}]}\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 1.266,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":8}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "3c1fb9f675241b00f00f3a01c894a525",
+    "success": true,
+    "was_changed": true,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

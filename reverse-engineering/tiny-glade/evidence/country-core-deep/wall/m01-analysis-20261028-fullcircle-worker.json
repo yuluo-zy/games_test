@@ -1,0 +1,66 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "m01-analysis-20261028",
+  "pid": 26836,
+  "project": "D:\\game\\tools\\reverse-runtime\\m01-analysis-20261028\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "timeoutSeconds": 60,
+        "code": "from ghidra.app.util import PseudoDisassembler\nimport json\np=currentProgram\naf=p.getAddressFactory()\nd=PseudoDisassembler(p)\nfor start,n in [(0x141660b30,752),(0x141660e20,100),(0x14165bd40,115)]:\n a=af.getAddress(hex(start)[2:]);end=start+n\n while a.getOffset()<end:\n  monitor.checkCancelled()\n  i=d.disassemble(a)\n  if i is None: print(hex(a.getOffset())+\" <undecoded>\");break\n  print(hex(a.getOffset())+\" \"+str(i))\n  a=a.add(i.getLength())\n"
+      },
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\country-core-deep\\wall\\m01-analysis-20261028-fullcircle-worker.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\country-core-deep\\\\\\\\wall\\\\\\\\m01-analysis-20261028-fullcircle-worker.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 7461, \\\"sha256\\\": \\\"873ebbe7c765b0a22abd96ca47b823dae4cddc7d5fc33a9f900f162ac6d07af6\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":27}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.047,
+      "stdout": "0x141660b30 PUSH RBP\n0x141660b31 PUSH R15\n0x141660b33 PUSH R14\n0x141660b35 PUSH RSI\n0x141660b36 PUSH RDI\n0x141660b37 PUSH RBX\n0x141660b38 SUB RSP,0x118\n0x141660b3f LEA RBP,[RSP + 0x80]\n0x141660b47 MOVAPS xmmword ptr [RBP + 0x80],XMM6\n0x141660b4e MOV qword ptr [RBP + 0x78],-0x2\n0x141660b56 MOV RBX,R9\n0x141660b59 MOV R14,R8\n0x141660b5c MOV RDI,RDX\n0x141660b5f MOV RSI,RCX\n0x141660b62 MOVZX EAX,byte ptr [0x143634c09]\n0x141660b69 MOV ECX,0x8\n0x141660b6e MOV EDX,0x8\n0x141660b73 CALL 0x140613c10\n0x141660b78 TEST RAX,RAX\n0x141660b7b JZ 0x141660d55\n0x141660b81 MOV R15,RAX\n0x141660b84 MOVSS XMM6,dword ptr [RDI + 0x10]\n0x141660b89 MOVZX EAX,byte ptr [0x143634c09]\n0x141660b90 MOV ECX,0x14\n0x141660b95 MOV EDX,0x4\n0x141660b9a CALL 0x140613c10\n0x141660b9f TEST RAX,RAX\n0x141660ba2 MOV qword ptr [RBP + 0x70],R15\n0x141660ba6 JZ 0x141660d64\n0x141660bac MOVUPS XMM0,xmmword ptr [RDI]\n0x141660baf MOVUPS xmmword ptr [RAX],XMM0\n0x141660bb2 MOVSS dword ptr [RAX + 0x10],XMM6\n0x141660bb7 MOV qword ptr [RBP + 0x48],RAX\n0x141660bbb LEA RAX,[0x142c82528]\n0x141660bc2 MOV qword ptr [RBP + 0x50],RAX\n0x141660bc6 MOV RAX,-0x7ffffffffffffffc\n0x141660bd0 MOV qword ptr [RBP + 0x40],RAX\n0x141660bd4 MOVZX EAX,byte ptr [0x143634c09]\n0x141660bdb MOV ECX,0x13\n0x141660be0 MOV EDX,0x1\n0x141660be5 CALL 0x140613c10\n0x141660bea TEST RAX,RAX\n0x141660bed JZ 0x141660d75\n0x141660bf3 MOV RCX,qword ptr [RBP + 0xf0]\n0x141660bfa MOV EDX,dword ptr [0x142a9949b]\n0x141660c00 MOV dword ptr [RAX + 0xf],EDX\n0x141660c03 MOVUPS XMM0,xmmword ptr [0x142a9948c]\n0x141660c0a MOVUPS xmmword ptr [RAX],XMM0\n0x141660c0d MOVUPS XMM0,xmmword ptr [RBP + 0x40]\n0x141660c11 MOVUPS XMM1,xmmword ptr [RBP + 0x50]\n0x141660c15 MOVUPS XMM2,xmmword ptr [RBP + 0x60]\n0x141660c19 MOVAPS xmmword ptr [RBP + -0x40],XMM0\n0x141660c1d MOVAPS xmmword ptr [RBP + -0x30],XMM1\n0x141660c21 MOVAPS xmmword ptr [RBP + -0x20],XMM2\n0x141660c25 MOV qword ptr [RBP + 0x2c],0x0\n0x141660c2d MOV qword ptr [RBP + 0x31],0x0\n0x141660c35 MOVAPS XMM0,xmmword ptr [0x14293e0c0]\n0x141660c3c MOVAPS xmmword ptr [RBP + -0x50],XMM0\n0x141660c40 MOV word ptr [RBP + -0x10],0x100\n0x141660c46 MOV RDX,0x13f800000\n0x141660c50 MOV qword ptr [RBP + -0xc],RDX\n0x141660c54 MOV dword ptr [RBP],0x0\n0x141660c5b MOV dword ptr [RBP + 0x8],0x0\n0x141660c62 MOV qword ptr [RBP + 0x10],0x13\n0x141660c6a MOV qword ptr [RBP + 0x18],RAX\n0x141660c6e MOV qword ptr [RBP + 0x20],0x13\n0x141660c76 MOV dword ptr [RBP + 0x28],0x0\n0x141660c7d MOV word ptr [RBP + 0x39],0x0\n0x141660c83 MOV qword ptr [RSP + 0x20],RCX\n0x141660c88 LEA RCX,[RBP + 0x40]\n0x141660c8c LEA RDX,[RBP + -0x50]\n0x141660c90 MOV R8,R14\n0x141660c93 MOV R9,RBX\n0x141660c96 CALL 0x14089dd50\n0x141660c9b MOV RBX,qword ptr [RBP + 0x48]\n0x141660c9f TEST RBX,RBX\n0x141660ca2 JNZ 0x141660ca8\n0x141660ca4 MOV RBX,qword ptr [RBP + 0x50]\n0x141660ca8 MOVSS XMM6,dword ptr [RDI + 0x14]\n0x141660cad MOV R14,qword ptr [RBP + 0x60]\n0x141660cb1 MOV RAX,qword ptr [RBX]\n0x141660cb4 MOV RDI,qword ptr [RBX + 0x10]\n0x141660cb8 SUB RAX,RDI\n0x141660cbb CMP RAX,0x27\n0x141660cbf JBE 0x141660d30\n0x141660cc1 MOV RAX,qword ptr [RBX + 0x8]\n0x141660cc5 LEA RCX,[0x1412dc8f0]\n0x141660ccc MOV qword ptr [RAX + RDI*0x1],RCX\n0x141660cd0 MOV qword ptr [RAX + RDI*0x1 + 0x8],R14\n0x141660cd5 MOV dword ptr [RAX + RDI*0x1 + 0x10],0x1\n0x141660cdd MOVSS dword ptr [RAX + RDI*0x1 + 0x14],XMM6\n0x141660ce3 MOV byte ptr [RAX + RDI*0x1 + 0x18],0x0\n0x141660ce8 LEA RCX,[0x141564d30]\n0x141660cef MOV qword ptr [RAX + RDI*0x1 + 0x20],RCX\n0x141660cf4 ADD RDI,0x28\n0x141660cf8 MOV qword ptr [RBX + 0x10],RDI\n0x141660cfc MOV RAX,qword ptr [RBP + 0x70]\n0x141660d00 MOV qword ptr [RAX],R14\n0x141660d03 MOV qword ptr [RSI],0x1\n0x141660d0a MOV qword ptr [RSI + 0x8],RAX\n0x141660d0e MOV qword ptr [RSI + 0x10],0x1\n0x141660d16 MOV RAX,RSI\n0x141660d19 MOVAPS XMM6,xmmword ptr [RBP + 0x80]\n0x141660d20 ADD RSP,0x118\n0x141660d27 POP RBX\n0x141660d28 POP RDI\n0x141660d29 POP RSI\n0x141660d2a POP R14\n0x141660d2c POP R15\n0x141660d2e POP RBP\n0x141660d2f RET\n0x141660d30 MOV qword ptr [RSP + 0x20],0x1\n0x141660d39 MOV R8D,0x28\n0x141660d3f MOV R9D,0x1\n0x141660d45 MOV RCX,RBX\n0x141660d48 MOV RDX,RDI\n0x141660d4b CALL 0x1428a9a60\n0x141660d50 JMP 0x141660cc1\n0x141660d55 MOV ECX,0x8\n0x141660d5a MOV EDX,0x8\n0x141660d5f CALL 0x1428d9000\n0x141660d64 MOV ECX,0x4\n0x141660d69 MOV EDX,0x14\n0x141660d6e CALL 0x1428d9000\n0x141660d73 JMP 0x141660d8b\n0x141660d75 LEA R8,[0x142a98f20]\n0x141660d7c MOV ECX,0x1\n0x141660d81 MOV EDX,0x13\n0x141660d86 CALL 0x1428d8fe3\n0x141660d8b UD2\n0x141660d8d NOP dword ptr [RAX]\n0x141660d90 MOV qword ptr [RSP + 0x10],RDX\n0x141660d95 PUSH RBP\n0x141660d96 PUSH R15\n0x141660d98 PUSH R14\n0x141660d9a PUSH RSI\n0x141660d9b PUSH RDI\n0x141660d9c PUSH RBX\n0x141660d9d SUB RSP,0x38\n0x141660da1 LEA RBP,[RDX + 0x80]\n0x141660da8 MOVAPS xmmword ptr [RSP + 0x20],XMM6\n0x141660dad MOV EDX,0x8\n0x141660db2 MOV R8D,0x8\n0x141660db8 MOV RCX,qword ptr [RBP + 0x70]\n0x141660dbc CALL 0x140613c20\n0x141660dc1 MOVAPS XMM6,xmmword ptr [RSP + 0x20]\n0x141660dc6 ADD RSP,0x38\n0x141660dca POP RBX\n0x141660dcb POP RDI\n0x141660dcc POP RSI\n0x141660dcd POP R14\n0x141660dcf POP R15\n0x141660dd1 POP RBP\n0x141660dd2 RET\n0x141660dd3 NOP dword ptr CS:[RAX + RAX*0x1]\n0x141660de0 MOV qword ptr [RSP + 0x10],RDX\n0x141660de5 PUSH RBP\n0x141660de6 PUSH R15\n0x141660de8 PUSH R14\n0x141660dea PUSH RSI\n0x141660deb PUSH RDI\n0x141660dec PUSH RBX\n0x141660ded SUB RSP,0x38\n0x141660df1 LEA RBP,[RDX + 0x80]\n0x141660df8 MOVAPS xmmword ptr [RSP + 0x20],XMM6\n0x141660dfd LEA RCX,[RBP + 0x40]\n0x141660e01 CALL 0x14089ada0\n0x141660e06 MOVAPS XMM6,xmmword ptr [RSP + 0x20]\n0x141660e0b ADD RSP,0x38\n0x141660e0f POP RBX\n0x141660e10 POP RDI\n0x141660e11 POP RSI\n0x141660e12 POP R14\n0x141660e14 POP R15\n0x141660e16 POP RBP\n0x141660e17 RET\n0x141660e18 INT3\n0x141660e19 INT3\n0x141660e1a INT3\n0x141660e1b INT3\n0x141660e1c INT3\n0x141660e1d INT3\n0x141660e1e INT3\n0x141660e1f INT3\n0x141660e20 SUB RSP,0x38\n0x141660e24 MOV RAX,RDX\n0x141660e27 MOV qword ptr [RSP + 0x30],RCX\n0x141660e2c LEA RCX,[0x142c82688]\n0x141660e33 MOV qword ptr [RSP + 0x20],RCX\n0x141660e38 LEA RDX,[0x142c826a8]\n0x141660e3f LEA R9,[RSP + 0x30]\n0x141660e44 MOV R8D,0x6\n0x141660e4a MOV RCX,RAX\n0x141660e4d CALL 0x140d872d0\n0x141660e52 NOP\n0x141660e53 ADD RSP,0x38\n0x141660e57 RET\n0x141660e58 INT3\n0x141660e59 INT3\n0x141660e5a INT3\n0x141660e5b INT3\n0x141660e5c INT3\n0x141660e5d INT3\n0x141660e5e INT3\n0x141660e5f INT3\n0x141660e60 PUSH R15\n0x141660e62 PUSH R14\n0x141660e64 PUSH R13\n0x141660e66 PUSH R12\n0x141660e68 PUSH RSI\n0x141660e69 PUSH RDI\n0x141660e6a PUSH RBP\n0x141660e6b PUSH RBX\n0x141660e6c SUB RSP,0x68\n0x141660e70 MOV RDI,RDX\n0x141660e73 MOV RSI,RCX\n0x141660e76 CMP dword ptr [RCX],0x1\n0x141660e79 JNZ 0x141660edb\n0x141660e7b MOV RAX,qword ptr [RDI + 0x5a0]\n0x141660e82 MOV qword ptr [RSP + 0x30],RAX\n0x14165bd40 SUB RSP,0x88\n0x14165bd47 MOV RAX,RDX\n0x14165bd4a LEA RDX,[RCX + 0x8]\n0x14165bd4e LEA R8,[RCX + 0xc]\n0x14165bd52 MOV qword ptr [RSP + 0x80],R8\n0x14165bd5a LEA R8,[0x142c820a8]\n0x14165bd61 MOV qword ptr [RSP + 0x70],R8\n0x14165bd66 LEA R8,[RSP + 0x80]\n0x14165bd6e MOV qword ptr [RSP + 0x68],R8\n0x14165bd73 LEA R8,[0x142c820dc]\n0x14165bd7a MOV qword ptr [RSP + 0x58],R8\n0x14165bd7f LEA R8,[0x142c82088]\n0x14165bd86 MOV qword ptr [RSP + 0x50],R8\n0x14165bd8b MOV qword ptr [RSP + 0x48],RDX\n0x14165bd90 LEA RDX,[0x142c820d6]\n0x14165bd97 MOV qword ptr [RSP + 0x38],RDX\n0x14165bd9c LEA RDX,[0x142c82068]\n0x14165bda3 MOV qword ptr [RSP + 0x30],RDX\n0x14165bda8 MOV qword ptr [RSP + 0x28],RCX\n0x14165bdad MOV qword ptr [RSP + 0x60],0x8\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 0.5,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":8}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "13378655e942d074e675c149dbfe0bb3",
+    "success": true,
+    "was_changed": false,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

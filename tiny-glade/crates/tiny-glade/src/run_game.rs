@@ -98,7 +98,9 @@ fn add_original_plugins(app: &mut App) {
     use timberframe::TimberframeSystems;
     // insert_terrain_resources @1409457c0 / add_terrain_events @140945a20 /
     // add_terrain_systems @1409455f0.
-    app.insert_terrain_resources().add_terrain_events().add_terrain_systems();
+    app.insert_terrain_resources()
+        .add_terrain_events()
+        .add_terrain_systems();
     app.add_plugins((
         forest::ForestPlugin,
         system_tree::TreePlugin,
@@ -195,7 +197,9 @@ fn build_game(
     Arc<country_core::asset_libraries::shader_library::AssetShaderLibrary>,
 )> {
     let mut app = run_game_thread(config, &cli, window)?;
-    app.world_mut().insert_resource(country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen(false)); // TEMP
+    app.world_mut().insert_resource(
+        country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen(false),
+    ); // TEMP
     if let Some(policy) = launch_display {
         app.insert_resource(policy);
     }
@@ -219,7 +223,9 @@ fn build_game(
             callback_requests.on_screenshot_requested()
         }));
         app.insert_resource(screenshot_requests);
-        app.world_mut().resource_mut::<country_core::systems::steam::SteamOverlayOpenResources>().client = Some(client);
+        app.world_mut()
+            .resource_mut::<country_core::systems::steam::SteamOverlayOpenResources>()
+            .client = Some(client);
     } else {
         // The explicitly named standalone host has neither GFN nor Steam SDK.
         app.insert_resource(
@@ -277,24 +283,32 @@ pub fn run_game_thread(
     add_original_plugins(&mut app);
     // Complete the original unchained set7 tuple on the existing App.
     // The other three leaves were delivered in brush-startup/runtime-registration.rs.
-    app.add_systems(bevy_app::Update, (
-     country_core::systems::debug::human_scale_ref::human_scale_ref,
-     country_core::systems::ui_2d_follow_mouse::ui_2d_follow_mouse,
-     country_core::systems::mesh_follow_terrain::mesh_follow_terrain,
-    ).in_set(GameSystemSet(7)));
+    app.add_systems(
+        bevy_app::Update,
+        (
+            country_core::systems::debug::human_scale_ref::human_scale_ref,
+            country_core::systems::ui_2d_follow_mouse::ui_2d_follow_mouse,
+            country_core::systems::mesh_follow_terrain::mesh_follow_terrain,
+        )
+            .in_set(GameSystemSet(7)),
+    );
     // No run_if, no chain. Native Query/resource permissions are preserved.
-    
+
     // Integration fragment for the already authoritative App; no replacement owner.
     // B run_game_thread1405a019c/19e => in_set7, immediately add_systems(Update).
     // These three leaves belong to the original unchained six-system tuple.
     app.add_event::<country_core::systems::brush_preview::OverwriteBrushPreview>();
     app.add_event::<country_core::systems::arrow_gizmo_animation::EnableArrowGizmoStretch>();
-    app.add_systems(bevy_app::Update, (
-        country_core::systems::brush_preview::brush_preview,
-        country_core::systems::look_at_camera::look_at_camera,
-        country_core::systems::arrow_gizmo_animation::arrow_gizmo_animation,
-    ).in_set(GameSystemSet(7)));
-    
+    app.add_systems(
+        bevy_app::Update,
+        (
+            country_core::systems::brush_preview::brush_preview,
+            country_core::systems::look_at_camera::look_at_camera,
+            country_core::systems::arrow_gizmo_animation::arrow_gizmo_animation,
+        )
+            .in_set(GameSystemSet(7)),
+    );
+
     #[cfg(any(windows, feature = "native-audio"))]
     app.insert_resource(crate::audio_host::AudioStartupOptions {
         asynchronous: cli.fmod_asynchronous,
@@ -324,19 +338,31 @@ pub fn run_game_thread(
     crate::gameplay_startup::install_disabled_audio(&mut app);
     // B add_save_load_systems1409443b0: set43, exact ActiveSession presence
     // condition only. Runs each frame to publish real history/section changes.
-    app.add_systems(bevy_app::Update,
+    app.add_systems(
+        bevy_app::Update,
         country_core::systems::save::save_game::save_game_system
             .in_set(GameSystemSet(43))
-            .run_if(|active: Option<bevy_ecs::prelude::Res<country_core::resources::session::ActiveSession>>|active.is_some()));
+            .run_if(
+                |active: Option<
+                    bevy_ecs::prelude::Res<country_core::resources::session::ActiveSession>,
+                >| active.is_some(),
+            ),
+    );
     // Original host PostUpdate closure1403bf630: Reload2 -> Game1.
     // Existing OnEnter(Game) consumes the canonical NextSession and real loader.
-    app.add_systems(bevy_app::PostUpdate,
-        |state: bevy_ecs::prelude::Res<bevy_state::state::State<country_core::app_loading_state::AppLoadingState>>,
-         mut next: bevy_ecs::prelude::ResMut<bevy_state::state::NextState<country_core::app_loading_state::AppLoadingState>>| {
-            if *state.get()==country_core::app_loading_state::AppLoadingState::Reload {
+    app.add_systems(
+        bevy_app::PostUpdate,
+        |state: bevy_ecs::prelude::Res<
+            bevy_state::state::State<country_core::app_loading_state::AppLoadingState>,
+        >,
+         mut next: bevy_ecs::prelude::ResMut<
+            bevy_state::state::NextState<country_core::app_loading_state::AppLoadingState>,
+        >| {
+            if *state.get() == country_core::app_loading_state::AppLoadingState::Reload {
                 next.set(country_core::app_loading_state::AppLoadingState::Game);
             }
-        });
+        },
+    );
     // Other domains retain their own OnExit consumers. This is the complete
     // original host wall/unload consumer, not a blanket despawn replacement.
     // Native140b3f550 outer chain: begin precedes the inner unordered pair.
@@ -346,10 +372,13 @@ pub fn run_game_thread(
         (
             country_core::startup::clearing::begin_glade_unload,
             (
-                country_core::startup::clearing::uninit_clearing::<crate::gameplay_startup::GameplayAudioStudio>,
+                country_core::startup::clearing::uninit_clearing::<
+                    crate::gameplay_startup::GameplayAudioStudio,
+                >,
                 country_core::startup::clearing::despawn_glade_entities,
             ),
-        ).chain(),
+        )
+            .chain(),
     );
     app.add_systems(
         bevy_app::PreStartup,
@@ -432,7 +461,10 @@ pub fn run_game_thread(
     app.add_plugins(system_glade_border::GladeBorderPlugin);
     // Original anonymous creator @0x140af2200; its registration schedule is OPEN (Startup here:
     // its Commands are applied before the first Update that reads GladeBorder).
-    app.add_systems(bevy_app::Startup, country_core::resources::glade_border::setup_glade_border);
+    app.add_systems(
+        bevy_app::Startup,
+        country_core::resources::glade_border::setup_glade_border,
+    );
     system_color::ColorSystems::add_color(&mut app);
     app.add_event::<toolbar::ui_interaction::UiDragEvent>();
     app.add_event::<toolbar::ui_interaction::UiJustBecameInFocusEvent>();
@@ -474,11 +506,12 @@ pub fn run_game_thread(
     // 0x1409403c3: TerrainEditingData. Its constructor stores an empty map with fresh
     // RandomState keys, `rasterized = false` at +0x40, and a qword 1 at +0x38 that the
     // recovered struct does not name (OPEN); `Default` reproduces everything else.
-    app.insert_resource(country_core::resources::terrain_editing::TerrainEditingData(
-        Default::default(),
-    ));
+    app.insert_resource(
+        country_core::resources::terrain_editing::TerrainEditingData(Default::default()),
+    );
     // 0x140940882: ActiveRasterStrokesStorage (six empty stroke slots).
-    app.init_resource::<country_core::resources::active_raster_stroke::ActiveRasterStrokesStorage>();
+    app.init_resource::<country_core::resources::active_raster_stroke::ActiveRasterStrokesStorage>(
+    );
     app.insert_resource(country_core::asset_libraries::mesh_library::AssetMeshLibrary::new());
     app.insert_resource(country_core::asset_libraries::vao_library::AssetVAOLibrary::new());
     app.insert_resource(
@@ -496,32 +529,44 @@ pub fn run_game_thread(
     app.insert_resource(country_core::startup::init_photomode_state::PhotomodeState::new(demo));
     // Gameplay can also be constructed by the asynchronous loader, without
     // build_game's platform setup. Every gameplay World owns this UI state.
-    app.init_resource::<country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen>();
+    app.init_resource::<country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen>(
+    );
     app.init_resource::<country_core::resources::gui::PhotomodeScreen>();
     app.add_event::<country_core::resources::photo_mode::PhotoModeCmd>();
     app.add_event::<country_core::systems::backend::photomode::PhotoModeAudioParameter>();
     app.add_event::<toolbar::ui_interaction::UiClickEvent>();
     // Original toolbar::impl1::build @14068dd10..dd96: the photo tuple is
     // chain_ignore_deferred, set8, gated by AppLoadingState::Game.
-    app.add_systems(bevy_app::Update, (
-        country_core::systems::backend::photomode::update_photomode_visibility,
-        country_core::systems::backend::photomode::process_photomode_transitions,
-        toolbar::photomode::timelapse::restore_after_timelapse,
-        country_core::systems::backend::photomode::finish_photomode_frame,
-    ).chain_ignore_deferred().in_set(GameSystemSet(8)).run_if(
-        bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game)));
+    app.add_systems(
+        bevy_app::Update,
+        (
+            country_core::systems::backend::photomode::update_photomode_visibility,
+            country_core::systems::backend::photomode::process_photomode_transitions,
+            toolbar::photomode::timelapse::restore_after_timelapse,
+            country_core::systems::backend::photomode::finish_photomode_frame,
+        )
+            .chain_ignore_deferred()
+            .in_set(GameSystemSet(8))
+            .run_if(bevy_state::condition::in_state(
+                country_core::app_loading_state::AppLoadingState::Game,
+            )),
+    );
     app.init_resource::<EscMenuState>();
     app.init_resource::<country_core::resources::onboarding::WelcomeScreenState>();
     app.init_resource::<NextEscMenuState>();
     app.init_resource::<PrevEscMenuState>();
     app.add_event::<country_core::resources::events::EscapeMenuJustOpened>();
     app.insert_resource(country_core::systems::steam::SteamOverlayOpenResources {
-        open_browser: Some(Arc::new(|url| webbrowser::open(url).map_err(|error| error.to_string()))),
+        open_browser: Some(Arc::new(|url| {
+            webbrowser::open(url).map_err(|error| error.to_string())
+        })),
         ..Default::default()
     });
     app.add_event::<country_core::resources::window::OsWindowCmd>();
-    app.add_systems(bevy_app::Update,
-        country_core::systems::steam::forward_browser_window_commands.after(GameSystemSet(39)));
+    app.add_systems(
+        bevy_app::Update,
+        country_core::systems::steam::forward_browser_window_commands.after(GameSystemSet(39)),
+    );
     // run_game_thread decomp L3503..3517 clears the block covering +0xa.
     app.insert_resource(TimeOfDayScreen {
         visible: false,
@@ -539,7 +584,9 @@ pub fn run_game_thread(
     // active snapshot then main/paused tuple is chained without deferred flush.
     app.init_resource::<country_core::systems::main_camera::CameraSnapshot>();
     app.init_resource::<country_core::resources::read_mouse_depth_value::MouseDepthValue>();
-    app.insert_resource(country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::new());
+    app.insert_resource(
+        country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast::new(),
+    );
     app.insert_resource(country_core::resources::mouse_terrain_raycast::CameraCursorRay::new());
     app.add_event::<country_core::systems::main_camera::MainCameraMoved>();
     app.add_event::<country_core::resources::onboarding::NotifyHintSystemCameraMoved>();
@@ -549,9 +596,11 @@ pub fn run_game_thread(
         country_core::systems::main_camera::reset_camera
             .in_set(GameSystemSet(9))
             .before(country_core::systems::main_camera::camera_snapshot)
-            .run_if(bevy_ecs::schedule::common_conditions::on_event::<
-                country_core::resources::session::NewSessionStartedCmd,
-            >),
+            .run_if(
+                bevy_ecs::schedule::common_conditions::on_event::<
+                    country_core::resources::session::NewSessionStartedCmd,
+                >,
+            ),
     );
     app.add_systems(
         bevy_app::Update,
@@ -559,10 +608,13 @@ pub fn run_game_thread(
             country_core::systems::main_camera::camera_snapshot.run_if(is_gameplay_active),
             (
                 country_core::systems::main_camera::main_camera_update.run_if(is_gameplay_active),
-                country_core::systems::main_camera::paused_main_camera_update
-                    .run_if(bevy_ecs::schedule::common_conditions::not(is_gameplay_active)),
+                country_core::systems::main_camera::paused_main_camera_update.run_if(
+                    bevy_ecs::schedule::common_conditions::not(is_gameplay_active),
+                ),
             ),
-        ).chain_ignore_deferred().in_set(GameSystemSet(9)),
+        )
+            .chain_ignore_deferred()
+            .in_set(GameSystemSet(9)),
     );
     // 原过山车状态机在相机更新后发布摄影提示，并在乘坐期间接管相机。
     crate::rollercoaster::build(&mut app);
@@ -575,7 +627,10 @@ pub fn run_game_thread(
                 country_core::resources::mouse_capture::mouse_capture,
                 country_core::resources::read_mouse_depth_value::read_mouse_depth_value_from_gpu,
             ),
-        ).chain_ignore_deferred().in_set(GameSystemSet(10)).run_if(is_gameplay_active),
+        )
+            .chain_ignore_deferred()
+            .in_set(GameSystemSet(10))
+            .run_if(is_gameplay_active),
     );
     app.add_event::<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorMoved>();
     app.add_event::<country_core::systems::backend::input::translate_input_to_cursor_moved::InputCursorDelta>();
@@ -598,8 +653,11 @@ pub fn run_game_thread(
         bevy_app::Update,
         country_core::game_profile::save_game_profile
             .in_set(GameSystemSet(43))
-            .run_if(bevy_ecs::schedule::common_conditions::on_event::<
-                country_core::game_profile::SaveGameProfileCmd>),
+            .run_if(
+                bevy_ecs::schedule::common_conditions::on_event::<
+                    country_core::game_profile::SaveGameProfileCmd,
+                >,
+            ),
     );
     // Original in_set @0x14168c0e0 chooses GameSystemSet discriminant 3.
     // No on_event guard: its value rotation is an unconditional frame step.
@@ -637,38 +695,42 @@ pub fn run_game_thread(
     // It consumes the same owning session/menu/history resources as Escape39.
     app.add_systems(
         bevy_app::Update,
-        toolbar::menu::load_ui::ui
-            .in_set(GameSystemSet(36))
-            .run_if(bevy_state::condition::in_state(
-                country_core::app_loading_state::AppLoadingState::Game,
-            )),
+        toolbar::menu::load_ui::ui.in_set(GameSystemSet(36)).run_if(
+            bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game),
+        ),
     );
     // Original welcome141ebe130 shares Game/set36 and the canonical MEI,
     // profile and reveal owners. Its own state machine controls visibility.
     app.add_systems(
         bevy_app::Update,
-        toolbar::menu::welcome::ui
-            .in_set(GameSystemSet(36))
-            .run_if(bevy_state::condition::in_state(
-                country_core::app_loading_state::AppLoadingState::Game,
-            )),
+        toolbar::menu::welcome::ui.in_set(GameSystemSet(36)).run_if(
+            bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game),
+        ),
     );
     let mut gui = Schedule::new(bevy_app::Update);
     // This schedule is owned by the exclusive gui system, not by `app`, so the
     // executor policy applied to the App's schedules cannot reach it.
     apply_ecs_executor_policy_to(&mut gui);
     configure_gui_consumers(app.world_mut(), &mut gui);
-    gui.add_systems(crate::gui::gui_debug::show_camera_snapshot_panel
-        .after(country_core::systems::backend::gui::show_debug_controls));
+    gui.add_systems(
+        crate::gui::gui_debug::show_camera_snapshot_panel
+            .after(country_core::systems::backend::gui::show_debug_controls),
+    );
     // Reuse its real systems without replacing the existing Update schedule.
     gui.add_systems(country_core::resources::gui::advance_menu_state_system);
-    gui.add_systems(crate::gui::gui_escape_menu::do_gui_escape_menu
-        .before(country_core::resources::gui::advance_menu_state_system));
-    gui.add_systems(crate::gui::settings::detect_konami_code
-        .before(crate::gui::settings::do_gui_escape_menu_settings));
-    gui.add_systems(crate::gui::settings::do_gui_escape_menu_settings
-        .after(crate::gui::gui_escape_menu::do_gui_escape_menu)
-        .before(country_core::resources::gui::advance_menu_state_system));
+    gui.add_systems(
+        crate::gui::gui_escape_menu::do_gui_escape_menu
+            .before(country_core::resources::gui::advance_menu_state_system),
+    );
+    gui.add_systems(
+        crate::gui::settings::detect_konami_code
+            .before(crate::gui::settings::do_gui_escape_menu_settings),
+    );
+    gui.add_systems(
+        crate::gui::settings::do_gui_escape_menu_settings
+            .after(crate::gui::gui_escape_menu::do_gui_escape_menu)
+            .before(country_core::resources::gui::advance_menu_state_system),
+    );
     // B gui/gui_tod.rs：与其他 GUI 同属 set39，先于 set44 的 MEI 布局提交。
     gui.add_systems(crate::gui::gui_tod::do_time_of_day_screen);
     let gui_system = move |world: &mut World| gui.run(world);
@@ -736,10 +798,9 @@ pub fn run_game_thread(
     app.add_systems(
         bevy_app::Update,
         // convert_preplaced_trees belongs to TreePlugin140650520 (set 0x1b chain).
-        country_core::startup::spawn_preplaced_trees::spawn_preplaced_trees
-            .run_if(bevy_state::condition::in_state(
-                country_core::app_loading_state::AppLoadingState::Game,
-            )),
+        country_core::startup::spawn_preplaced_trees::spawn_preplaced_trees.run_if(
+            bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game),
+        ),
     );
     // Native @1409443de supplies set12 to the original load_game wrapper:
     // helper @14174d040 uses vtable @142cd2d78 (run_unsafe @141749a10),
@@ -754,9 +815,11 @@ pub fn run_game_thread(
     );
     // Original14059fc33 supplies36 to typed in_set helper140524400.
     // No invented on_event/AppState gate: sticky Local retries after replay.
-    app.add_systems(bevy_app::Update,
+    app.add_systems(
+        bevy_app::Update,
         country_core::systems::save::load_completion_checker::check_load_completion_system
-            .in_set(GameSystemSet(36)));
+            .in_set(GameSystemSet(36)),
+    );
     // Original full-game registrations: weather in set36 and the complete
     // fourteen-resource frame writer in set44. ActiveSession comes from the
     // real OnEnter(Game) producer above; loading App has a different schedule.
@@ -765,11 +828,17 @@ pub fn run_game_thread(
         country_core::systems::weather_system::weather_system.in_set(GameSystemSet(36)),
     );
     let time_of_day_without_core = country_core::systems::time_of_day::time_of_day_audio_disabled
-        .in_set(GameSystemSet(36)).run_if(is_gameplay_active);
+        .in_set(GameSystemSet(36))
+        .run_if(is_gameplay_active);
     #[cfg(any(windows, feature = "native-audio"))]
-    let time_of_day_without_core = time_of_day_without_core.run_if(
-        bevy_ecs::schedule::common_conditions::not(bevy_ecs::schedule::common_conditions::resource_exists::<
-            country_core::resources::audio_resources::AudioCore<country_core::resources::native_audio::NativeStudio>>));
+    let time_of_day_without_core =
+        time_of_day_without_core.run_if(bevy_ecs::schedule::common_conditions::not(
+            bevy_ecs::schedule::common_conditions::resource_exists::<
+                country_core::resources::audio_resources::AudioCore<
+                    country_core::resources::native_audio::NativeStudio,
+                >,
+            >,
+        ));
     app.add_systems(bevy_app::Update, time_of_day_without_core);
     app.add_systems(
         bevy_app::Update,
@@ -817,7 +886,9 @@ fn init_ecs_task_pool() {
 /// Ambiguity diagnostics are a startup audit setting.
 fn apply_ecs_executor_policy(app: &mut App) -> anyhow::Result<()> {
     {
-        let mut schedules = app.world_mut().resource_mut::<bevy_ecs::schedule::Schedules>();
+        let mut schedules = app
+            .world_mut()
+            .resource_mut::<bevy_ecs::schedule::Schedules>();
         for (_, schedule) in schedules.iter_mut() {
             apply_ecs_executor_policy_to(schedule);
         }
@@ -844,31 +915,52 @@ fn apply_ecs_executor_policy_to(schedule: &mut Schedule) {
 /// Original device-input slices in the actual gameplay App's numbered sets.
 fn install_gameplay_device_input(app: &mut App) {
     use country_core::systems::backend::input::{
-        calculate_input_delta, input_record_replay, input_replay_for_trailers,
-        mod_key, translate_input, translate_input_to_cursor_moved, update_cursor_position,
+        calculate_input_delta, input_record_replay, input_replay_for_trailers, mod_key,
+        translate_input, translate_input_to_cursor_moved, update_cursor_position,
     };
-    let demo = app.world().resource::<country_core::game_config::GameConfig>().dev.demo;
+    let demo = app
+        .world()
+        .resource::<country_core::game_config::GameConfig>()
+        .dev
+        .demo;
     app.insert_resource(translate_input::DemoModeEnabled(demo));
     // Current retained InputFrame stores derived ActionSetStates. Begin its
     // private capture policy before the original set1 replay controls/time2.
-    app.add_systems(bevy_app::Update,
-        input_record_replay::begin_input_frame.before(GameSystemSet(1)));
-    app.add_systems(bevy_app::Update,
-        (country_core::meta_commander::commander_update_system,
-         (input_record_replay::control_input_replay,
-          input_replay_for_trailers::record_and_replay_input_for_trailers),
-         input_record_replay::advance_input_replay_frame)
-            .chain_ignore_deferred().in_set(GameSystemSet(1)));
+    app.add_systems(
+        bevy_app::Update,
+        input_record_replay::begin_input_frame.before(GameSystemSet(1)),
+    );
+    app.add_systems(
+        bevy_app::Update,
+        (
+            country_core::meta_commander::commander_update_system,
+            (
+                input_record_replay::control_input_replay,
+                input_replay_for_trailers::record_and_replay_input_for_trailers,
+            ),
+            input_record_replay::advance_input_replay_frame,
+        )
+            .chain_ignore_deferred()
+            .in_set(GameSystemSet(1)),
+    );
     // Original set5's raw-value recording precedes derivation. Preserve this
     // host's refactored derived-state recording instead: calculate delta first
     // so recording/replay does not consume stale states from the prior frame.
-    app.add_systems(bevy_app::Update,
-        (translate_input_to_cursor_moved::translate_input_to_cursor_moved,
-         translate_input::translate_input,
-         calculate_input_delta::calculate_input_delta,
-         input_record_replay::input_record_replay,
-         (mod_key::update_mod_key_state, update_cursor_position::update_cursor_position))
-            .chain_ignore_deferred().in_set(GameSystemSet(5)));
+    app.add_systems(
+        bevy_app::Update,
+        (
+            translate_input_to_cursor_moved::translate_input_to_cursor_moved,
+            translate_input::translate_input,
+            calculate_input_delta::calculate_input_delta,
+            input_record_replay::input_record_replay,
+            (
+                mod_key::update_mod_key_state,
+                update_cursor_position::update_cursor_position,
+            ),
+        )
+            .chain_ignore_deferred()
+            .in_set(GameSystemSet(5)),
+    );
 }
 
 /// Original B owners and recovered slices of the global schedule. This is
@@ -908,7 +1000,9 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
         },
     };
     // insert_history_resources @140943e10..f2e; native speed write @3e87.
-    app.insert_resource(History::<country_core::resources::history::MaybePendingSnapshotId>::empty_glade());
+    app.insert_resource(History::<
+        country_core::resources::history::MaybePendingSnapshotId,
+    >::empty_glade());
     app.insert_resource(ReplayBuffer::new(1.0));
     app.init_resource::<history::PendingHistoryCommands>();
     app.init_resource::<history::replay_mode::ReplayModeElapsedTime>();
@@ -925,12 +1019,17 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     app.add_event::<country_core::systems::timelapse_replay::StartTimelapseReplayCmd>();
     app.add_event::<country_core::systems::timelapse_replay::InterruptTimelapse>();
     app.add_event::<country_core::systems::timelapse_replay::TimelapseReplayFinished>();
-    app.add_systems(bevy_app::PostUpdate, country_core::systems::timelapse_replay::cleanup_timelapse);
+    app.add_systems(
+        bevy_app::PostUpdate,
+        country_core::systems::timelapse_replay::cleanup_timelapse,
+    );
     // insert_terrain_resources @1409457c0 (TerrainSystems, add_original_plugins)
     // already created both CPU readback owners; derive the wall-publication view
     // from the actual TerrainHeightSsbo owner.
     let view = WallPublicationTerrain::from_height_data(
-        app.world().resource::<TerrainHeightsData<TerrainHeightSsbo>>());
+        app.world()
+            .resource::<TerrainHeightsData<TerrainHeightSsbo>>(),
+    );
     app.insert_resource(view);
     // PathsPlugin @140b68e40: one Shared Path publisher and its three
     // Secondary cobblestone publishers, not four unrelated unique streams.
@@ -994,8 +1093,10 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     // 窗灯控制与组件由装饰物生产者、逐帧系统和 Nani 玻璃共同使用。
     app.init_resource::<country_core::resources::window_lights::GlobalWindowLightsControl>();
     app.add_event::<country_core::resources::events::LightWindowCmd>();
-    app.add_systems(bevy_app::Update,
-        system_decorator::window_lights::window_lights.in_set(GameSystemSet(36)));
+    app.add_systems(
+        bevy_app::Update,
+        system_decorator::window_lights::window_lights.in_set(GameSystemSet(36)),
+    );
     // 仅安装原卸载函数中窗灯资源的重建片段，不代替其余 owner 的完整清理。
     app.add_systems(
         bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),
@@ -1025,7 +1126,8 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     // it here too makes function-type ordering ambiguous in the real App.
     // Original app-lifetime startup value, inserted beside the photomode state
     // owner; it does not reset across glade reload.
-    app.init_resource::<country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen>();
+    app.init_resource::<country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen>(
+    );
     app.insert_resource(country_core::resources::toolbar::Toolbar::new(demo));
     app.add_event::<history::history_process::NewReplayCommandEvent>();
     app.add_event::<history::history_process::DebugHistoryMsg>();
@@ -1056,7 +1158,10 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
         bevy_app::Update,
         (
             mode_manager::synchronize_mode_manager_ui_context,
-            mode_manager::mode_manager::<country_core::resources::history::EditType, country_core::resources::history::MaybePendingSnapshotId>,
+            mode_manager::mode_manager::<
+                country_core::resources::history::EditType,
+                country_core::resources::history::MaybePendingSnapshotId,
+            >,
             country_core::systems::timelapse_replay::start_timelapse,
             mode_manager::send_mode_just_changed_event.in_set(mode_manager::ModeChangePublication),
         )
@@ -1096,7 +1201,9 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
             history::recording::history_finish_recording_system::<
                 country_core::resources::history::MaybePendingSnapshotId,
             >,
-            history::history_process_system::<country_core::resources::history::MaybePendingSnapshotId>,
+            history::history_process_system::<
+                country_core::resources::history::MaybePendingSnapshotId,
+            >,
             history::history_clear_previous_state,
             history::replay_mode::replay_mode,
             history::finish_replay::finish_replay,
@@ -1120,7 +1227,9 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
             history::replay_pop_bucket_system,
             history::finish_replay::finish_replay,
             country_core::systems::timelapse_replay::finish_timelapse.run_if(
-                bevy_ecs::schedule::common_conditions::resource_exists::<country_core::resources::session::ActiveSession>,
+                bevy_ecs::schedule::common_conditions::resource_exists::<
+                    country_core::resources::session::ActiveSession,
+                >,
             ),
         )
             .chain_ignore_deferred()
@@ -1128,22 +1237,48 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     );
 }
 
-/// toolbar空间/高度反馈需要真实创建和抬升生产链。这里只安装已经恢复并核验的
-/// 原add_wall_shape_ux子链，保持set17内的相对次序；圆形/矩形编辑等其余叶子
-/// 仍属于后续建筑模块，不能将旧raw signifier壳注册后冒称完整26项UX已恢复。
+/// B add_wall_shape_ux: preserve the original nested a/b/c tuple groups.
+/// Registration is independent of the remaining original-side acceptance work.
 fn install_toolbar_shape_dependencies(app: &mut bevy_app::App) {
     use bevy_ecs::schedule::IntoScheduleConfigs;
-    use country_core::{resources, systems::{ui_raise_shape, ui_focus_mode_shape_height, wall::shapes}};
-    app.init_resource::<shapes::ShapePlacement>()
+    use country_core::{
+        resources,
+        systems::{ui_focus_mode_shape_height, ui_raise_shape, wall::shapes},
+    };
+    // History finish freezes decorator storage. Restore write permission at
+    // the next frame prefix, before recording and every editing consumer.
+    // This is the existing recording adapter's required lifecycle ordering.
+    app.add_systems(
+        bevy_app::Update,
+        (|mut storage: bevy_ecs::prelude::ResMut<
+            resources::walls::decorator_storage::DecoratorStorage,
+        >| storage.mark_mutable())
+        .before(GameSystemSet(0))
+        .before(GameSystemSet(14))
+        .before(GameSystemSet(17))
+        .before(GameSystemSet(19)),
+    );
+    app.init_resource::<shapes::rectangle::finish_edit_rectangle::RectangleEditUiState>()
+        .init_resource::<shapes::ShapePlacement>()
         .init_resource::<shapes::SnapMode>()
-        .init_resource::<shapes::PreviewCircle>()
-        .init_resource::<shapes::PreviewRectangle>()
-        .init_resource::<shapes::calc_shape_height::TimberframeConstructionParamsCache>()
-        .init_resource::<shapes::rectangle::ui_create_rectangle::ShapesDragMouseMoved>()
-        .add_event::<shapes::CreateCircleCmd>()
         .add_event::<shapes::CreateRectangleCmd>()
+        .add_event::<shapes::EditRectangleCmd>()
+        .add_event::<shapes::FinishEditRectangleCmd>()
+        .add_event::<shapes::CreateCircleCmd>()
         .add_event::<shapes::DontRecalculateShapePlacement>()
         .add_event::<ui_raise_shape::HandleRaiseShapeUiInteraction>()
+        .add_event::<shapes::rectangle::ui_edit_rectangle_dims::DoUiEditRectangleDims>()
+        .add_event::<shapes::rectangle::ui_edit_rectangle_orientation::DoUiEditRectangleRotate>()
+        .init_resource::<shapes::circle::ui_edit_circle::AnimatedCircleSignifierResource>()
+        .init_resource::<shapes::rectangle::ui_edit_rectangle_dims::UiEditRectangleActiveWidgetResource>()
+        .init_resource::<shapes::PreviewRectangle>()
+        .init_resource::<shapes::PreviewCircle>()
+        .init_resource::<shapes::rectangle::ui_create_rectangle::ShapesDragMouseMoved>()
+        .init_resource::<shapes::calc_shape_height::TimberframeConstructionParamsCache>();
+    // Additional live consumers reuse their existing owners.
+    app.init_resource::<shapes::rectangle::ui_edit_rectangle_orientation::ClosestCornerCache>()
+        .init_resource::<resources::ivy::IvyStorage>()
+        .init_resource::<resources::ivy::IvyLeafStorage>()
         .add_event::<resources::glade_border::MaxDemoElevationReached>()
         .add_event::<resources::events::ConstructTimberframeCmd>()
         .add_event::<resources::tree_storage::HideTreesinAreaCmd>()
@@ -1154,31 +1289,376 @@ fn install_toolbar_shape_dependencies(app: &mut bevy_app::App) {
         .add_event::<country_core::systems::audio::PlayBuildingAudio>()
         .add_event::<country_core::systems::audio::PlayTimberframeSound>()
         .add_event::<country_core::systems::audio::RequestWallMaterialAudio>();
-    // Producer of the AdjustWallHeightUi / InitAdjWallHeightMode / FinishAdjWallHeightMode
-    // events consumed by ui_adjust_wall_height_mode + history_record_adjust_wall_height.
-    // Native home is the shapes set (17), before the wall publish set (19) / history set (34).
-    app.add_systems(
-        bevy_app::Update,
-        country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height::ui_adjust_wall_height
-            .in_set(GameSystemSet(17))
-            .run_if(is_gameplay_active),
-    );
+    type ShapeHistory = country_core::resources::history::MaybePendingSnapshotId;
+    let b = (
+        (
+            shapes::rectangle::ui_edit_rectangle_dims::ui_edit_rectangle_dims,
+            shapes::rectangle::ui_edit_rectangle_orientation::ui_edit_rectangle_orientation,
+            ui_raise_shape::ui_raise_shape,
+            country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height::ui_adjust_wall_height,
+        ),
+        (
+            shapes::rectangle::ui_edit_rectangle_dims::do_ui_edit_rectangle_dims,
+            shapes::rectangle::ui_edit_rectangle_orientation::do_ui_edit_rectangle_rotate,
+        ),
+    ).chain();
     app.add_systems(bevy_app::Update, (
         (
             shapes::shape_placement::shape_placement_params,
             shapes::shape_placement_signifiers::shape_placement_signifiers,
             shapes::calc_shape_height::calc_shape_height,
+            shapes::circle::ui_edit_circle::ui_edit_circle::<ShapeHistory>,
+            shapes::circle::signifiers::edit_arrow::signifier_edit_circle_arrow,
+            shapes::circle::signifiers::edit_line::signifier_edit_circle_line,
+            shapes::circle::ui_rotate_circle::ui_rotate_circle::<ShapeHistory>,
             shapes::circle::ui_create_circle::ui_create_circle,
             shapes::circle::create_circle::create_circle,
         ).chain_ignore_deferred(),
         (
-            ui_raise_shape::ui_raise_shape,
+            country_core::systems::ui_move_shapes::ui_move_shapes::<ShapeHistory>,
+            country_core::systems::ui_move_freehand_walls::ui_move_freehand_walls::<ShapeHistory>,
+            country_core::systems::ui_edit_freehand_walls::ui_edit_freehand_walls::<ShapeHistory>,
+            b,
             ui_focus_mode_shape_height::ui_focus_mode_shape_height,
             ui_raise_shape::impl_raise_shape,
             shapes::rectangle::ui_create_rectangle::ui_create_rectangle,
+            shapes::rectangle::signifier_edit_dims_line::signifier_edit_dims,
             shapes::rectangle::create_rectangle::create_rectangle,
+            shapes::rectangle::edit_rectangle::edit_rectangle,
+            shapes::rectangle::finish_edit_rectangle::finish_edit_rectangle::<ShapeHistory>,
         ).chain_ignore_deferred(),
     ).chain_ignore_deferred().in_set(GameSystemSet(17)).run_if(is_gameplay_active));
+    // Necessary reconstructed ordering: consume the edits after UX and wall
+    // publication, before history extracts decorator differences. The original
+    // decorator registration set has not yet been established by native evidence.
+    // The host installs startup resources only, not add_decorator_systems.
+    app.add_systems(
+        bevy_app::Update,
+        (
+            system_decorator::decorator_on_move_shape::decorator_on_move_shape,
+            system_decorator::decorator_on_freehand_wall_edited::decorator_on_freehand_wall_edited,
+            system_decorator::decorator_on_rectangle_edited::decorator_on_rectangle_edited,
+            country_core::systems::ivy::ivy_pruner::ivy_pruner,
+        )
+            .after(GameSystemSet(17))
+            .after(GameSystemSet(19))
+            .before(
+                country_core::systems::history::recording::history_finish_recording_system::<
+                    ShapeHistory,
+                >,
+            )
+            .before(system_decorator::derive_decorator_subtype::derive_decorator_subtypes)
+            .run_if(is_gameplay_active),
+    );
+    app.add_systems(
+        bevy_app::Update,
+        country_core::systems::ui_clutter::decoclutter_show_pins::decoclutter_show_pins
+            .after(GameSystemSet(19))
+            .run_if(is_gameplay_active)
+            .run_if(
+                bevy_ecs::schedule::common_conditions::resource_exists::<
+                    resources::clutter_meshes::ClutterMeshes,
+                >,
+            ),
+    );
+}
+
+#[cfg(test)]
+mod shape_host_registration_tests {
+    use super::*;
+    use bevy_ecs::system::RunSystemOnce;
+    use bevy_state::app::AppExtStates;
+
+    #[test]
+    fn real_host_shape_tree_edits_nonempty_freehand_and_finishes_history() {
+        let mut app = App::new();
+        app.add_plugins(bevy_state::app::StatesPlugin);
+        app.insert_state(country_core::app_loading_state::AppLoadingState::Game);
+        app.init_resource::<country_core::resources::time::GameTime>();
+        app.init_resource::<country_core::resources::walls::decorator_storage::DecoratorStorage>();
+        for stage in 0..44 {
+            app.configure_sets(
+                bevy_app::Update,
+                GameSystemSet(stage).before(GameSystemSet(stage + 1)),
+            );
+        }
+        install_toolbar_shape_dependencies(&mut app);
+        // No fabricated loaded assets/input are supplied. GameTime.ran is
+        // false; the actual nested schedule must initialize and honor its gate.
+        app.world_mut()
+            .resource_mut::<country_core::resources::time::GameTime>()
+            .ran = false;
+        app.update();
+        use country_core::systems::wall::shapes::{
+            circle::ui_edit_circle::AnimatedCircleSignifierResource,
+            rectangle::finish_edit_rectangle::RectangleEditUiState,
+        };
+        assert_eq!(
+            app.world()
+                .resource::<AnimatedCircleSignifierResource>()
+                .tag,
+            2
+        );
+        assert_eq!(app.world().resource::<RectangleEditUiState>().0, [0; 80]);
+        // Use the same core/input/event constructors as the existing CPU
+        // gameplay/toolbar fixtures, then execute the full host shape tree.
+        // This fixture supplies explicit CPU scene/camera inputs, no graphics
+        // device or fabricated successful asset/raycast backend.
+        country_core::startup::run_game::initialize_core_resources(app.world_mut());
+        startup_event_runtime::install(&mut app);
+        crate::app_systems::WallSystems::add_wall_events(&mut app);
+        use country_core::{resources as res, systems as sys};
+        app.init_resource::<bevy_time::Time>();
+        app.insert_resource(sys::mode_manager::AppMode::Path);
+        app.insert_resource(res::window::WindowSize::new(100, 100));
+        app.insert_resource(sys::camera_rig::main_camera::MainCamera::new(1.0));
+        app.insert_resource(res::mouse_terrain_raycast::CursorPositionSS(
+            glam::Vec2::splat(50.0),
+        ));
+        app.init_resource::<res::mouse_terrain_raycast::CameraCursorRay>();
+        app.init_resource::<sys::collision::world::RaycastWorld>();
+        app.init_resource::<res::walls::decorator_collision::DecoratorPhysicsColliders>();
+        app.init_resource::<res::shape_intersections::ShapeIntersections>();
+        app.init_resource::<country_core::asset_libraries::mesh_library::AssetMeshLibrary>();
+        app.insert_resource(res::glade_border::GladeBorder(
+            res::glade_border::BorderShape::Circle(::utils::geometry::Circle2d::new(
+                glam::Vec2::ZERO,
+                65.0,
+            )),
+        ));
+        app.add_event::<res::onboarding::NotifyHintSystemSnapping>();
+        app.add_event::<res::onboarding::NotifyHintSystemShapeEditWasPerformed>();
+        app.add_event::<res::window::AudioCursorMoved>();
+        app.add_event::<res::window::WindowFocusEvent>();
+        app.add_event::<res::events::EscapeMenuJustOpened>();
+        app.add_event::<res::events::ShutdownGameCmd>();
+        app.add_event::<sys::brush_preview::OverwriteBrushPreview>();
+        app.add_event::<res::mouse_capture::OsCursorVisibilityCmd>();
+        app.add_event::<sys::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>();
+        app.world_mut().resource_mut::<res::time::GameTime>().ran = true;
+        app.update();
+        assert_eq!(
+            app.world()
+                .resource::<AnimatedCircleSignifierResource>()
+                .tag,
+            2
+        );
+        // Publish a synthetic CPU scene through the real authority projection,
+        // then exercise one point with the actual picker and complete host UX.
+        use bevy_ecs::prelude::*;
+        use res::walls::{
+            InnerWalls, WallState,
+            public_walls::{PublicWalls, WallPublicationDirty, WallSpatialHash},
+            publication_source::TerrainHeightGrid512,
+        };
+        let initial = res::roofs::geometry::surface::Curve2::try_new(
+            vec![[0.0, 0.0], [4.0, 0.0], [8.0, 0.0]],
+            false,
+        )
+        .unwrap();
+        let wall = app
+            .world_mut()
+            .resource_mut::<InnerWalls>()
+            .new_wall_from_curve(WallState::new(initial, 4.0, 0, 0, false));
+        app.world_mut()
+            .resource_mut::<InnerWalls>()
+            .mark_as_non_enclosed(wall);
+        let grid = TerrainHeightGrid512 {
+            encoded: vec![0; 512 * 512].into(),
+            minimum_y: 0.0,
+            maximum_y: 0.0,
+            sampling_fix: true,
+        };
+        app.insert_resource(
+            sys::wall::wall_state::publish_public_wall_state::WallPublicationTerrain(grid),
+        );
+        #[derive(Resource)]
+        struct FixturePaths(sys::wall::wall_state::path_preparation::PathRasters512);
+        app.insert_resource(FixturePaths(
+            sys::wall::wall_state::path_preparation::PathRasters512::from_encoded(
+                std::array::from_fn(|_| std::sync::Arc::from(vec![0u8; 512 * 512])),
+                true,
+            )
+            .unwrap(),
+        ));
+        fn publish_cpu_fixture(
+            mut inner: ResMut<InnerWalls>,
+            mut public: ResMut<PublicWalls>,
+            terrain: Res<sys::wall::wall_state::publish_public_wall_state::WallPublicationTerrain>,
+            paths: Res<FixturePaths>,
+            dirty: Res<WallPublicationDirty>,
+            spatial: Res<WallSpatialHash>,
+        ) {
+            public.consume_with_paths(&mut inner, &terrain.0, Some(&paths.0), &dirty, &spatial);
+        }
+        app.add_systems(
+            bevy_app::Update,
+            publish_cpu_fixture.in_set(GameSystemSet(19)),
+        );
+        app.world_mut()
+            .run_system_once(publish_cpu_fixture)
+            .unwrap();
+        let mut decorator = res::walls::decorator::DecoratorInfo::default();
+        system_decorator::decorator_on_wall_height_changed::set_anchor_ws(
+            &mut decorator,
+            glam::Vec3::new(2.0, 3.0, 0.0),
+        );
+        system_decorator::decorator_on_wall_height_changed::set_wall_coord(
+            &mut decorator,
+            ::utils::wall_space::WallSpaceCoord::new_unchecked(2.0, 3.0),
+        );
+        {
+            let mut storage = app
+                .world_mut()
+                .resource_mut::<res::walls::decorator_storage::DecoratorStorage>();
+            storage
+                .get_or_insert_default(res::walls::decorator_storage::DecoratorStorageAddr::Wall(
+                    wall,
+                ))
+                .insert(res::walls::decorator::DecoratorId(9), decorator);
+            storage.decorator_to_storage.insert(
+                res::walls::decorator::DecoratorId(9),
+                res::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
+            );
+        }
+        app.insert_resource(sys::mode_manager::AppMode::Editing(
+            sys::mode_manager::EditSubject::Wall(wall.0),
+        ));
+        let inverse = glam::Mat4::from_translation(glam::Vec3::Z * 10.0);
+        app.insert_resource(res::read_mouse_depth_value::MouseDepthValue {
+            view_depth: 100.0,
+            ..Default::default()
+        });
+        app.world_mut()
+            .resource_mut::<sys::camera_rig::main_camera::MainCamera>()
+            .write_matrix(0, &glam::Mat4::IDENTITY);
+        app.world_mut()
+            .resource_mut::<sys::camera_rig::main_camera::MainCamera>()
+            .write_matrix(0x40, &glam::Mat4::IDENTITY);
+        app.world_mut()
+            .resource_mut::<sys::camera_rig::main_camera::MainCamera>()
+            .write_matrix(0x80, &inverse.inverse());
+        app.world_mut()
+            .resource_mut::<sys::camera_rig::main_camera::MainCamera>()
+            .write_matrix(0xc0, &inverse);
+        app.init_resource::<res::stairs::stairs_state::StairsState>();
+        app.init_resource::<res::stairs::stairs_removed_supports::StairsRemovedSupports>();
+        type H = res::history::MaybePendingSnapshotId;
+        app.add_systems(
+            bevy_app::Update,
+            sys::history::recording::history_start_recording::<H>.in_set(GameSystemSet(14)),
+        );
+        app.add_systems(
+            bevy_app::Update,
+            sys::history::recording::history_finish_recording_system::<H>.in_set(GameSystemSet(35)),
+        );
+        app.update();
+        let widget =
+            sys::ui::resources::ui_state::WidgetId::from_name(&format!("edit_wall_{wall}_0"));
+        let center = app
+            .world()
+            .resource::<sys::ui::resources::ui_state::UiState>()
+            .widget(widget)
+            .expect("host registers the real freehand point")
+            .volume
+            .center;
+        let inverse = glam::Mat4::from_translation(center + glam::Vec3::Z * 10.0);
+        app.world_mut()
+            .resource_mut::<sys::camera_rig::main_camera::MainCamera>()
+            .write_matrix(0x80, &inverse.inverse());
+        app.world_mut()
+            .resource_mut::<sys::camera_rig::main_camera::MainCamera>()
+            .write_matrix(0xc0, &inverse);
+        let mut picker = Schedule::default();
+        picker.add_systems(
+            (
+                sys::ui::hover_intersection::hover_intersection,
+                sys::ui::ui_update::ui_update,
+            )
+                .chain_ignore_deferred(),
+        );
+        picker.run(app.world_mut());
+        assert_eq!(
+            app.world()
+                .resource::<sys::ui::resources::ui_state::UiState>()
+                .active_widget(),
+            widget
+        );
+        app.update();
+        app.world_mut()
+            .resource_mut::<country_core::input::action_set::ActionSetStates>()
+            .digital[0]
+            .phase = country_core::input::action_set::DigitalActionPhase::JustPressed;
+        picker.run(app.world_mut());
+        app.update();
+        app.world_mut()
+            .resource_mut::<country_core::input::action_set::ActionSetStates>()
+            .digital[0]
+            .phase = country_core::input::action_set::DigitalActionPhase::Held;
+        {
+            let mut cursor = app
+                .world_mut()
+                .resource_mut::<res::cursor_terrain_raycast::CursorTerrainRaycast>();
+            cursor.tag = 1;
+            cursor.pos = glam::Vec3::new(1.0, 0.0, 2.0);
+        }
+        picker.run(app.world_mut());
+        app.update();
+        assert_eq!(
+            app.world()
+                .resource::<InnerWalls>()
+                .get(wall)
+                .unwrap()
+                .source()
+                .curve
+                .points[0],
+            [1.0, 2.0]
+        );
+        assert_eq!(
+            app.world()
+                .resource::<PublicWalls>()
+                .get(wall)
+                .unwrap()
+                .simplified_curve_2d()
+                .points[0],
+            [1.0, 2.0]
+        );
+        let storage = app
+            .world()
+            .resource::<res::walls::decorator_storage::DecoratorStorage>();
+        let decorator = storage
+            .get(res::walls::decorator_storage::DecoratorStorageAddr::Wall(
+                wall,
+            ))
+            .unwrap()
+            .decorators()
+            .get(&9)
+            .unwrap();
+        assert_eq!(
+            system_decorator::decorator_on_wall_height_changed::get_anchor_ws(decorator),
+            glam::Vec3::new(2.5, 3.0, 1.0)
+        );
+        app.world_mut()
+            .resource_mut::<country_core::input::action_set::ActionSetStates>()
+            .digital[0]
+            .phase = country_core::input::action_set::DigitalActionPhase::JustReleased;
+        picker.run(app.world_mut());
+        app.update();
+        assert!(
+            app.world()
+                .resource::<res::history::History<H>>()
+                .pending()
+                .is_none()
+        );
+        assert_eq!(
+            app.world()
+                .resource::<res::history::History<H>>()
+                .ledger()
+                .entries
+                .len(),
+            1
+        );
+    }
 }
 
 /// Original country_core::systems::is_gameplay_active @140a90e00,22B.
@@ -1337,8 +1817,10 @@ pub fn make_loading_app(gameplay: &App) -> anyhow::Result<App> {
     // observe a loading-window close before it can stop the preparation worker.
     // Original loading event registration is B1405a4901; this adapter's exact
     // PostUpdate placement is not claimed as the unrecovered native tuple.
-    app.add_systems(bevy_app::PostUpdate,
-        country_core::resources::shutdown::initiate_game_shutdown);
+    app.add_systems(
+        bevy_app::PostUpdate,
+        country_core::resources::shutdown::initiate_game_shutdown,
+    );
     Ok(app)
 }
 
@@ -1364,7 +1846,9 @@ impl std::error::Error for GameplayPreparationCancelled {}
 struct GameplayAppOwner(Option<bevy_app::SubApp>);
 
 impl GameplayAppOwner {
-    fn new(app: bevy_app::SubApp) -> Self { Self(Some(app)) }
+    fn new(app: bevy_app::SubApp) -> Self {
+        Self(Some(app))
+    }
     fn app_mut(&mut self) -> &mut bevy_app::SubApp {
         self.0.as_mut().expect("gameplay SubApp is still owned")
     }
@@ -1372,7 +1856,9 @@ impl GameplayAppOwner {
         self.0.take().expect("gameplay SubApp is still owned")
     }
     fn dispose(&mut self) -> anyhow::Result<()> {
-        let Some(mut app) = self.0.take() else { return Ok(()); };
+        let Some(mut app) = self.0.take() else {
+            return Ok(());
+        };
         country_core::systems::save::save_thread::shutdown_save_thread(app.world_mut())
     }
 }
@@ -1434,7 +1920,9 @@ impl GameplayPreparation {
 
     pub(crate) fn spawn_with_initializer(
         gameplay: bevy_app::SubApp,
-        initialize: impl FnOnce(&mut World, &std::sync::atomic::AtomicBool) -> anyhow::Result<()> + Send + 'static,
+        initialize: impl FnOnce(&mut World, &std::sync::atomic::AtomicBool) -> anyhow::Result<()>
+        + Send
+        + 'static,
         warm_up: impl FnOnce(&mut World) -> anyhow::Result<()> + Send + 'static,
     ) -> anyhow::Result<Self> {
         use std::sync::atomic::{AtomicBool, Ordering};
@@ -1561,7 +2049,9 @@ impl GameplayPreparation {
     }
 
     fn join_worker(&mut self) -> anyhow::Result<()> {
-        let Some(worker) = self.worker.take() else { return Ok(()); };
+        let Some(worker) = self.worker.take() else {
+            return Ok(());
+        };
         worker.join().map_err(|payload| {
             let message = if let Some(message) = payload.downcast_ref::<String>() {
                 message.as_str()
@@ -1578,7 +2068,8 @@ impl GameplayPreparation {
     /// Cancellation is an ordinary exit request; actual load/warmup failures
     /// retain their original error and are still returned to the OS owner.
     pub fn cancel_and_join(&mut self) -> anyhow::Result<()> {
-        self.cancel.store(true, std::sync::atomic::Ordering::Release);
+        self.cancel
+            .store(true, std::sync::atomic::Ordering::Release);
         let joined = self.join_worker();
         // Both received and queued Worlds must stop their save thread before
         // their scene/device owners are dropped and renderer shutdown begins.
@@ -1589,7 +2080,9 @@ impl GameplayPreparation {
             Ok(Err(_)) | Err(_) => Ok(()),
         };
         keep_first_preparation_failure(
-            keep_first_preparation_failure(completion, joined), pending_cleanup)
+            keep_first_preparation_failure(completion, joined),
+            pending_cleanup,
+        )
     }
 
     /// Receive actual worker completion/errors without changing Logo or App
@@ -1607,14 +2100,18 @@ impl GameplayPreparation {
                 }
                 Ok(Err(error)) => {
                     if let Err(secondary) = self.join_worker() {
-                        log::error!("Async gameplay worker also failed while stopping: {secondary:#}");
+                        log::error!(
+                            "Async gameplay worker also failed while stopping: {secondary:#}"
+                        );
                     }
                     return Err(error);
                 }
                 Err(TryRecvError::Empty) => {}
                 Err(TryRecvError::Disconnected) => {
                     self.join_worker()?;
-                    anyhow::bail!("original async gameplay loader stopped before returning its SubApp");
+                    anyhow::bail!(
+                        "original async gameplay loader stopped before returning its SubApp"
+                    );
                 }
             }
         }
@@ -1636,7 +2133,9 @@ impl GameplayPreparation {
                     log::error!("Save shutdown after missing loading LogoAnimation: {secondary:#}");
                 }
             }
-            anyhow::bail!("loading App: mandatory LogoAnimation producer is missing; gameplay handoff refused");
+            anyhow::bail!(
+                "loading App: mandatory LogoAnimation producer is missing; gameplay handoff refused"
+            );
         }
         {
             let mut logo = loading.world_mut().resource_mut::<LogoAnimation>();
@@ -1656,7 +2155,9 @@ impl GameplayPreparation {
     }
 
     pub fn poll(&mut self, loading: &mut App) -> anyhow::Result<bool> {
-        if !self.ready_to_handoff(loading)? { return Ok(false); }
+        if !self.ready_to_handoff(loading)? {
+            return Ok(false);
+        }
         let Some(gameplay) = self.pending.take() else {
             return Ok(false);
         };
@@ -1684,7 +2185,8 @@ impl Drop for GameplayPreparation {
 /// App, async preparation, warmup or Started event on this native path.
 pub(crate) fn finish_skipped_splash(world: &mut World) -> anyhow::Result<()> {
     use country_core::resources::gui::PendingEguiContextResource;
-    let pending = world.remove_resource::<PendingEguiContextResource>()
+    let pending = world
+        .remove_resource::<PendingEguiContextResource>()
         .context("B skipped splash: PendingEguiContextResource missing")?;
     world.insert_resource(pending.into_egui_context_resource());
     world.send_event(country_core::systems::save::load_game::StartupRevealFinished);
@@ -1724,7 +2226,9 @@ fn transfer_loading_resources(from: &mut World, to: &mut World) -> anyhow::Resul
     let vermeer = from
         .remove_resource::<VermeerState>()
         .ok_or_else(|| anyhow::anyhow!("B handoff: VermeerState missing"))?;
-    if let Some(background) = from.remove_resource::<crate::loading_graph::SavedLoadingBackgroundTexture>() {
+    if let Some(background) =
+        from.remove_resource::<crate::loading_graph::SavedLoadingBackgroundTexture>()
+    {
         to.insert_resource(background);
     }
     to.insert_resource(vermeer.into_disable_hold());
@@ -1756,25 +2260,46 @@ pub fn make_temp_window(
 /// fixture must own the production buffers too. No production system is skipped.
 #[cfg(test)]
 fn install_history_gpu_fixture(app: &mut bevy_app::App) {
-    let device = rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless())
-        .expect("production history integration requires a headless Vulkan device");
+    let device =
+        rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless())
+            .expect("production history integration requires a headless Vulkan device");
     let bridge = crate::render_bridge::CoreRenderBridge::new(
-        device, ".", std::sync::Arc::new(country_core::asset_libraries::shader_library::AssetShaderLibrary::new()))
-        .expect("history integration render owners");
-    bridge.install_asset_libraries(app.world_mut()).expect("history asset libraries");
-    app.insert_resource(country_core::asset_libraries::shader_library::SharedAssetShaderLibrary(
-        bridge.shader_library().clone()));
+        device,
+        ".",
+        std::sync::Arc::new(
+            country_core::asset_libraries::shader_library::AssetShaderLibrary::new(),
+        ),
+    )
+    .expect("history integration render owners");
+    bridge
+        .install_asset_libraries(app.world_mut())
+        .expect("history asset libraries");
+    app.insert_resource(
+        country_core::asset_libraries::shader_library::SharedAssetShaderLibrary(
+            bridge.shader_library().clone(),
+        ),
+    );
     let world = app.world();
     country_core::startup::init_populate_ssbo_library::populate_ssbo_library(
         world.resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>(),
-        world.resource::<country_core::render::device::GraphicsDeviceResource>().device());
+        world
+            .resource::<country_core::render::device::GraphicsDeviceResource>()
+            .device(),
+    );
     startup_construction_runtime::install(app);
-    app.add_systems(bevy_app::Startup, system_color::set_wall_color_id::init_color_ids_buffer);
+    app.add_systems(
+        bevy_app::Startup,
+        system_color::set_wall_color_id::init_color_ids_buffer,
+    );
     // This fixture mounts history consumers without the interactive color UI.
     // ColorSystems owns this replay producer in the full gameplay App.
-    app.add_systems(bevy_app::Update,
-        system_color::replay_color::replay_color::<country_core::resources::history::MaybePendingSnapshotId>
-            .in_set(GameSystemSet(40)));
+    app.add_systems(
+        bevy_app::Update,
+        system_color::replay_color::replay_color::<
+            country_core::resources::history::MaybePendingSnapshotId,
+        >
+            .in_set(GameSystemSet(40)),
+    );
     app.world_mut().insert_non_send_resource(bridge);
     app.init_resource::<country_core::resources::gui::DebugGui>();
     app.init_resource::<country_core::resources::mouse_terrain_raycast::CameraCursorRay>();
@@ -1809,8 +2334,11 @@ mod intro_history_integration {
     fn shipped_intro_reaches_the_same_live_wall_authority() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../country-core/tests/fixtures/original-intro-history-b.json");
-        let parsed = country_core::systems::save::load_game::parse_saved_game_data(&path, &country_core::resources::glade_settings::GladeSettings::default())
-            .expect("original intro sections decode");
+        let parsed = country_core::systems::save::load_game::parse_saved_game_data(
+            &path,
+            &country_core::resources::glade_settings::GladeSettings::default(),
+        )
+        .expect("original intro sections decode");
         assert_eq!(parsed.chain_index, 12);
         assert_eq!(parsed.edits.len(), 13);
         use bevy_state::app::AppExtStates;
@@ -1829,21 +2357,28 @@ mod intro_history_integration {
         // canonical terrain readback owner during installation.
         country_core::systems::terrain::TerrainSystems::insert_terrain_resources(&mut app);
         country_core::systems::terrain::register_terrain_events(app.world_mut());
-        app.init_resource::<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>();
+        app.init_resource::<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>(
+        );
         app.init_resource::<country_core::resources::walls::arches::ArchSegments>();
         crate::app_systems::WallSystems::add_wall_events(&mut app);
         app.init_resource::<country_core::systems::camera_rig::MainCamera>();
         app.insert_resource(country_core::resources::window::WindowSize::new(1280, 720));
         app.init_resource::<country_core::asset_libraries::mesh_library::AssetMeshLibrary>();
-        app.insert_resource(country_core::resources::mouse_terrain_raycast::CursorPositionSS(glam::Vec2::ZERO));
+        app.insert_resource(
+            country_core::resources::mouse_terrain_raycast::CursorPositionSS(glam::Vec2::ZERO),
+        );
         app.init_resource::<country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height_mode::AdjWallHeightModeCache>();
         app.add_event::<country_core::resources::window::AudioCursorMoved>();
         app.add_event::<country_core::resources::onboarding::NotifyHintSystemSnapping>();
         app.init_resource::<country_core::resources::editing_highlight::EditingHighlight>();
-        app.add_systems(bevy_app::Startup, country_core::resources::glade_border::setup_glade_border);
+        app.add_systems(
+            bevy_app::Startup,
+            country_core::resources::glade_border::setup_glade_border,
+        );
         app.insert_resource(country_core::resources::session::ActiveSession::new(
             country_core::resources::session::SessionId::new(),
-            country_core::resources::session::SessionMeta::default()));
+            country_core::resources::session::SessionMeta::default(),
+        ));
         app.add_plugins(system_tree::TreePlugin);
         system_roof::RoofSystems::add_roof_events_and_resources(&mut app);
         system_roof::RoofSystems::add_roof_systems(&mut app);
@@ -1862,7 +2397,9 @@ mod intro_history_integration {
             ran: true,
             ..Default::default()
         });
-        app.insert_resource(History::<country_core::resources::history::MaybePendingSnapshotId>::from_observed(ObservedHistoryLedger {
+        app.insert_resource(History::<
+            country_core::resources::history::MaybePendingSnapshotId,
+        >::from_observed(ObservedHistoryLedger {
             entries: parsed.edits,
             cursor: -1,
             undo_anchor: parsed.history_start.max(0),
@@ -1916,14 +2453,24 @@ mod startup_handoff_integration {
     use super::*;
     use country_core::{
         input::ActiveInputModeTracker,
-        render::{adaptive_render_state::AdaptiveRenderState, render_config::{FrameRenderConfig, MonitorMatch, VideoMode}},
-        resources::{gui::{EguiContextResource, PendingEguiContextResource}, logo_animation::LogoAnimation,
-            window::{AvailableMonitor, AvailableMonitors}},
-        systems::{render_loop::vermeer::{VermeerState, VermeerPhase}, save::load_game::{StartupRevealStarted, StartupRevealFinished}},
+        render::{
+            adaptive_render_state::AdaptiveRenderState,
+            render_config::{FrameRenderConfig, MonitorMatch, VideoMode},
+        },
+        resources::{
+            gui::{EguiContextResource, PendingEguiContextResource},
+            logo_animation::LogoAnimation,
+            window::{AvailableMonitor, AvailableMonitors},
+        },
+        systems::{
+            render_loop::vermeer::{VermeerPhase, VermeerState},
+            save::load_game::{StartupRevealFinished, StartupRevealStarted},
+        },
     };
 
     fn events(app: &mut App) {
-        app.add_event::<StartupRevealStarted>().add_event::<StartupRevealFinished>();
+        app.add_event::<StartupRevealStarted>()
+            .add_event::<StartupRevealFinished>();
     }
 
     fn six_owners(app: &mut App) -> (usize, usize, FrameRenderConfig) {
@@ -1933,16 +2480,32 @@ mod startup_handoff_integration {
         let config_allocation = config.lang_override.as_ref().unwrap().as_ptr() as usize;
         let window = WindowSize::new(1431, 913);
         let frame = FrameRenderConfig {
-            extent_0: [1431,913], extent_8: [1171,733], extent_10: [1001,607],
-            world_resolution_scale: 0.75, tgsr_resolution_scale: 0.5, flag_20: true,
+            extent_0: [1431, 913],
+            extent_8: [1171, 733],
+            extent_10: [1001, 607],
+            world_resolution_scale: 0.75,
+            tgsr_resolution_scale: 0.5,
+            flag_20: true,
         };
-        let monitors = AvailableMonitors { monitors: vec![AvailableMonitor {
-            monitor: MonitorMatch { name: Some("loading-monitor".into()), physical_position: [-1431,91], physical_size: [1431,913] },
-            video_modes: vec![VideoMode { resolution: [1431,913], refresh_rate_millihertz: 144_001, bit_depth: 30 }],
-        }] };
+        let monitors = AvailableMonitors {
+            monitors: vec![AvailableMonitor {
+                monitor: MonitorMatch {
+                    name: Some("loading-monitor".into()),
+                    physical_position: [-1431, 91],
+                    physical_size: [1431, 913],
+                },
+                video_modes: vec![VideoMode {
+                    resolution: [1431, 913],
+                    refresh_rate_millihertz: 144_001,
+                    bit_depth: 30,
+                }],
+            }],
+        };
         let monitor_allocation = monitors.monitors.as_ptr() as usize;
         app.insert_resource(config);
-        app.insert_resource(ActiveInputModeTracker::new_default_controller(std::time::Duration::from_millis(827)));
+        app.insert_resource(ActiveInputModeTracker::new_default_controller(
+            std::time::Duration::from_millis(827),
+        ));
         app.insert_resource(window);
         app.insert_resource(monitors);
         app.insert_resource(frame);
@@ -1962,90 +2525,199 @@ mod startup_handoff_integration {
         let marker = egui::Id::new("loading-egui-owner");
         context.data_mut(|data| data.insert_temp(marker, 912_u32));
         loading.insert_resource(EguiContextResource(context.clone()));
-        loading.insert_resource(VermeerState { frame_count: 71, progress: 0.37,
-            timer: 8.25, target_extent: [1431,913], phase: VermeerPhase::Ready,
-            hold: true, freeze_camera: false, ..Default::default() });
-        let loading_shaders = Arc::new(country_core::asset_libraries::shader_library::AssetShaderLibrary::new());
+        loading.insert_resource(VermeerState {
+            frame_count: 71,
+            progress: 0.37,
+            timer: 8.25,
+            target_extent: [1431, 913],
+            phase: VermeerPhase::Ready,
+            hold: true,
+            freeze_camera: false,
+            ..Default::default()
+        });
+        let loading_shaders =
+            Arc::new(country_core::asset_libraries::shader_library::AssetShaderLibrary::new());
         loading.insert_resource(ApplicationShaderLibrary(loading_shaders.clone()));
         let mut gameplay = App::new();
         events(&mut gameplay);
-        let gameplay_shaders = Arc::new(country_core::asset_libraries::shader_library::AssetShaderLibrary::new());
+        let gameplay_shaders =
+            Arc::new(country_core::asset_libraries::shader_library::AssetShaderLibrary::new());
         gameplay.insert_resource(ApplicationShaderLibrary(gameplay_shaders.clone()));
-        gameplay.insert_resource(WindowSize::new(1,2));
+        gameplay.insert_resource(WindowSize::new(1, 2));
         gameplay.insert_resource(GameConfig::default());
         let (sender, receiver) = std::sync::mpsc::channel();
-        sender.send(Ok(std::mem::take(gameplay.main_mut()))).unwrap();
-        let mut preparation = GameplayPreparation { receiver, pending: None,
-            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)), worker: None };
+        sender
+            .send(Ok(std::mem::take(gameplay.main_mut())))
+            .unwrap();
+        let mut preparation = GameplayPreparation {
+            receiver,
+            pending: None,
+            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            worker: None,
+        };
         assert!(!preparation.poll(&mut loading).unwrap());
-        assert_eq!(loading.world().resource::<LogoAnimation>().progress[3],1.0);
-        assert_eq!(loading.world().resource::<GameConfig>().video.fps_limit,117.5);
-        assert!(loading.world().resource::<Events<StartupRevealStarted>>().is_empty());
-        loading.world_mut().resource_mut::<LogoAnimation>().progress[4]=1.0;
+        assert_eq!(loading.world().resource::<LogoAnimation>().progress[3], 1.0);
+        assert_eq!(
+            loading.world().resource::<GameConfig>().video.fps_limit,
+            117.5
+        );
+        assert!(
+            loading
+                .world()
+                .resource::<Events<StartupRevealStarted>>()
+                .is_empty()
+        );
+        loading.world_mut().resource_mut::<LogoAnimation>().progress[4] = 1.0;
         let loading_world = loading.world().id();
         assert!(preparation.ready_to_handoff(&mut loading).unwrap());
-        assert_eq!(loading.world().id(), loading_world, "readiness must not swap the App before render is settled");
+        assert_eq!(
+            loading.world().id(),
+            loading_world,
+            "readiness must not swap the App before render is settled"
+        );
         assert!(preparation.pending.is_some());
-        assert!(loading.world().resource::<Events<StartupRevealStarted>>().is_empty());
+        assert!(
+            loading
+                .world()
+                .resource::<Events<StartupRevealStarted>>()
+                .is_empty()
+        );
         assert!(preparation.poll(&mut loading).unwrap());
-        let world=loading.world();
-        assert_eq!(world.resource::<GameConfig>().lang_override.as_ref().unwrap().as_ptr() as usize,config_ptr);
-        assert_eq!(world.resource::<GameConfig>().video.fps_limit,117.5);
-        assert_eq!(*world.resource::<ActiveInputModeTracker>(),ActiveInputModeTracker::new_default_controller(std::time::Duration::from_millis(827)));
-        assert_eq!(*world.resource::<WindowSize>(),WindowSize::new(1431,913));
-        let monitors=world.resource::<AvailableMonitors>();
-        assert_eq!(monitors.monitors.as_ptr() as usize,monitors_ptr);
-        assert_eq!(monitors.monitors[0].monitor.name.as_deref(),Some("loading-monitor"));
-        assert_eq!(monitors.monitors[0].video_modes[0].refresh_rate_millihertz,144_001);
-        assert_eq!(*world.resource::<FrameRenderConfig>(),expected_frame);
-        assert_eq!(*world.resource::<AdaptiveRenderState>(),AdaptiveRenderState::at_startup(true));
-        assert_eq!(world.resource::<Events<StartupRevealStarted>>().len(),1);
+        let world = loading.world();
+        assert_eq!(
+            world
+                .resource::<GameConfig>()
+                .lang_override
+                .as_ref()
+                .unwrap()
+                .as_ptr() as usize,
+            config_ptr
+        );
+        assert_eq!(world.resource::<GameConfig>().video.fps_limit, 117.5);
+        assert_eq!(
+            *world.resource::<ActiveInputModeTracker>(),
+            ActiveInputModeTracker::new_default_controller(std::time::Duration::from_millis(827))
+        );
+        assert_eq!(*world.resource::<WindowSize>(), WindowSize::new(1431, 913));
+        let monitors = world.resource::<AvailableMonitors>();
+        assert_eq!(monitors.monitors.as_ptr() as usize, monitors_ptr);
+        assert_eq!(
+            monitors.monitors[0].monitor.name.as_deref(),
+            Some("loading-monitor")
+        );
+        assert_eq!(
+            monitors.monitors[0].video_modes[0].refresh_rate_millihertz,
+            144_001
+        );
+        assert_eq!(*world.resource::<FrameRenderConfig>(), expected_frame);
+        assert_eq!(
+            *world.resource::<AdaptiveRenderState>(),
+            AdaptiveRenderState::at_startup(true)
+        );
+        assert_eq!(world.resource::<Events<StartupRevealStarted>>().len(), 1);
         assert!(world.resource::<Events<StartupRevealFinished>>().is_empty());
-        let reveal=world.resource::<VermeerState>();
-        assert_eq!(reveal.frame_count,71); assert_eq!(reveal.progress,0.37);
-        assert_eq!(reveal.timer,8.25); assert_eq!(reveal.target_extent,[1431,913]);
-        assert_eq!(reveal.phase,VermeerPhase::Ready); assert!(!reveal.hold); assert!(!reveal.freeze_camera);
-        assert_eq!(world.resource::<EguiContextResource>().0.data(|data|data.get_temp::<u32>(marker)),Some(912));
-        world.resource::<EguiContextResource>().0.data_mut(|data|data.insert_temp(marker,913_u32));
-        assert_eq!(context.data(|data|data.get_temp::<u32>(marker)),Some(913));
-        assert!(Arc::ptr_eq(&world.resource::<ApplicationShaderLibrary>().0,&gameplay_shaders));
-        assert!(!Arc::ptr_eq(&world.resource::<ApplicationShaderLibrary>().0,&loading_shaders));
+        let reveal = world.resource::<VermeerState>();
+        assert_eq!(reveal.frame_count, 71);
+        assert_eq!(reveal.progress, 0.37);
+        assert_eq!(reveal.timer, 8.25);
+        assert_eq!(reveal.target_extent, [1431, 913]);
+        assert_eq!(reveal.phase, VermeerPhase::Ready);
+        assert!(!reveal.hold);
+        assert!(!reveal.freeze_camera);
+        assert_eq!(
+            world
+                .resource::<EguiContextResource>()
+                .0
+                .data(|data| data.get_temp::<u32>(marker)),
+            Some(912)
+        );
+        world
+            .resource::<EguiContextResource>()
+            .0
+            .data_mut(|data| data.insert_temp(marker, 913_u32));
+        assert_eq!(context.data(|data| data.get_temp::<u32>(marker)), Some(913));
+        assert!(Arc::ptr_eq(
+            &world.resource::<ApplicationShaderLibrary>().0,
+            &gameplay_shaders
+        ));
+        assert!(!Arc::ptr_eq(
+            &world.resource::<ApplicationShaderLibrary>().0,
+            &loading_shaders
+        ));
     }
 
     #[test]
     fn skipped_splash_moves_pending_context_and_finishes_without_started_or_loading_wait() {
-        let mut app=App::new(); events(&mut app);
-        let context=egui::Context::default();let marker=egui::Id::new("skip-context");
-        context.data_mut(|data|data.insert_temp(marker,53_u32));
+        let mut app = App::new();
+        events(&mut app);
+        let context = egui::Context::default();
+        let marker = egui::Id::new("skip-context");
+        context.data_mut(|data| data.insert_temp(marker, 53_u32));
         app.insert_resource(PendingEguiContextResource(context.clone()));
         // No LoadingGameComplete, preparation manager, logo, or six-owner bundle
         // exists: the original skip path requires none of those objects.
         finish_skipped_splash(app.world_mut()).unwrap();
-        assert!(!app.world().contains_resource::<PendingEguiContextResource>());
-        assert_eq!(app.world().resource::<EguiContextResource>().0.data(|data|data.get_temp::<u32>(marker)),Some(53));
-        app.world().resource::<EguiContextResource>().0.data_mut(|data|data.insert_temp(marker,54_u32));
-        assert_eq!(context.data(|data|data.get_temp::<u32>(marker)),Some(54));
-        assert_eq!(app.world().resource::<Events<StartupRevealFinished>>().len(),1);
-        assert!(app.world().resource::<Events<StartupRevealStarted>>().is_empty());
+        assert!(
+            !app.world()
+                .contains_resource::<PendingEguiContextResource>()
+        );
+        assert_eq!(
+            app.world()
+                .resource::<EguiContextResource>()
+                .0
+                .data(|data| data.get_temp::<u32>(marker)),
+            Some(53)
+        );
+        app.world()
+            .resource::<EguiContextResource>()
+            .0
+            .data_mut(|data| data.insert_temp(marker, 54_u32));
+        assert_eq!(context.data(|data| data.get_temp::<u32>(marker)), Some(54));
+        assert_eq!(
+            app.world()
+                .resource::<Events<StartupRevealFinished>>()
+                .len(),
+            1
+        );
+        assert!(
+            app.world()
+                .resource::<Events<StartupRevealStarted>>()
+                .is_empty()
+        );
     }
 
     #[test]
     fn started_is_published_after_all_six_moves_before_vermeer_and_egui_move() {
-        let mut loading=App::new();six_owners(&mut loading);
-        let context=egui::Context::default();
+        let mut loading = App::new();
+        six_owners(&mut loading);
+        let context = egui::Context::default();
         loading.insert_resource(EguiContextResource(context));
         // Deliberately omit Vermeer: the real handoff exposes the exact native
         // mutation boundary rather than replacing failure with a ready marker.
-        let mut gameplay=App::new();events(&mut gameplay);
-        assert!(transfer_loading_resources(loading.world_mut(),gameplay.world_mut()).is_err());
-        let from=loading.world();let to=gameplay.world();
+        let mut gameplay = App::new();
+        events(&mut gameplay);
+        assert!(transfer_loading_resources(loading.world_mut(), gameplay.world_mut()).is_err());
+        let from = loading.world();
+        let to = gameplay.world();
         assert!(!from.contains_resource::<GameConfig>() && to.contains_resource::<GameConfig>());
-        assert!(!from.contains_resource::<ActiveInputModeTracker>() && to.contains_resource::<ActiveInputModeTracker>());
+        assert!(
+            !from.contains_resource::<ActiveInputModeTracker>()
+                && to.contains_resource::<ActiveInputModeTracker>()
+        );
         assert!(!from.contains_resource::<WindowSize>() && to.contains_resource::<WindowSize>());
-        assert!(!from.contains_resource::<AvailableMonitors>() && to.contains_resource::<AvailableMonitors>());
-        assert!(!from.contains_resource::<FrameRenderConfig>() && to.contains_resource::<FrameRenderConfig>());
-        assert!(!from.contains_resource::<AdaptiveRenderState>() && to.contains_resource::<AdaptiveRenderState>());
-        assert_eq!(to.resource::<Events<StartupRevealStarted>>().len(),1);
+        assert!(
+            !from.contains_resource::<AvailableMonitors>()
+                && to.contains_resource::<AvailableMonitors>()
+        );
+        assert!(
+            !from.contains_resource::<FrameRenderConfig>()
+                && to.contains_resource::<FrameRenderConfig>()
+        );
+        assert!(
+            !from.contains_resource::<AdaptiveRenderState>()
+                && to.contains_resource::<AdaptiveRenderState>()
+        );
+        assert_eq!(to.resource::<Events<StartupRevealStarted>>().len(), 1);
         assert!(from.contains_resource::<EguiContextResource>());
         assert!(!to.contains_resource::<EguiContextResource>());
     }
@@ -2059,35 +2731,66 @@ mod startup_handoff_integration {
         let mut vermeer = VermeerState::default();
         vermeer.activate(true, true);
         // A graph-local reference deliberately has no native managed owner.
-        vermeer.background = Some(country_core::systems::render_loop::vermeer::ManagedTexture(TexRef(999)));
+        vermeer.background = Some(country_core::systems::render_loop::vermeer::ManagedTexture(
+            TexRef(999),
+        ));
         loading.insert_resource(vermeer);
         let mut gameplay = App::new();
         events(&mut gameplay);
-        let error = transfer_loading_resources(loading.world_mut(), gameplay.world_mut()).unwrap_err();
-        assert!(error.to_string().contains("managed texture owner is missing"));
+        let error =
+            transfer_loading_resources(loading.world_mut(), gameplay.world_mut()).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("managed texture owner is missing")
+        );
         assert!(loading.world().contains_resource::<GameConfig>());
-        assert!(loading.world().contains_resource::<ActiveInputModeTracker>());
+        assert!(
+            loading
+                .world()
+                .contains_resource::<ActiveInputModeTracker>()
+        );
         assert!(loading.world().contains_resource::<WindowSize>());
         assert!(loading.world().contains_resource::<AvailableMonitors>());
         assert!(loading.world().contains_resource::<FrameRenderConfig>());
         assert!(loading.world().contains_resource::<AdaptiveRenderState>());
         assert!(loading.world().contains_resource::<EguiContextResource>());
-        assert!(loading.world().resource::<VermeerState>().background.is_some());
+        assert!(
+            loading
+                .world()
+                .resource::<VermeerState>()
+                .background
+                .is_some()
+        );
         assert!(!gameplay.world().contains_resource::<GameConfig>());
-        assert!(gameplay.world().resource::<Events<StartupRevealStarted>>().is_empty());
+        assert!(
+            gameplay
+                .world()
+                .resource::<Events<StartupRevealStarted>>()
+                .is_empty()
+        );
     }
 }
 
 #[cfg(test)]
 mod gameplay_preparation_shutdown_tests {
     use super::*;
-    use std::sync::{atomic::{AtomicBool, Ordering}, mpsc};
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    };
 
     fn prepared_worker(result: anyhow::Result<bevy_app::SubApp>) -> GameplayPreparation {
         let (sender, receiver) = mpsc::channel();
-        let worker = std::thread::spawn(move || { sender.send(result).unwrap(); });
-        GameplayPreparation { receiver, pending: None,
-            cancel: Arc::new(AtomicBool::new(false)), worker: Some(worker) }
+        let worker = std::thread::spawn(move || {
+            sender.send(result).unwrap();
+        });
+        GameplayPreparation {
+            receiver,
+            pending: None,
+            cancel: Arc::new(AtomicBool::new(false)),
+            worker: Some(worker),
+        }
     }
 
     #[test]
@@ -2098,12 +2801,20 @@ mod gameplay_preparation_shutdown_tests {
         let stopped = Arc::new(AtomicBool::new(false));
         let worker_stopped = stopped.clone();
         let worker = std::thread::spawn(move || {
-            while !worker_cancel.load(Ordering::Acquire) { std::thread::yield_now(); }
+            while !worker_cancel.load(Ordering::Acquire) {
+                std::thread::yield_now();
+            }
             worker_stopped.store(true, Ordering::Release);
-            sender.send(Err(GameplayPreparationCancelled.into())).unwrap();
+            sender
+                .send(Err(GameplayPreparationCancelled.into()))
+                .unwrap();
         });
-        let mut preparation = GameplayPreparation { receiver, pending: None, cancel,
-            worker: Some(worker) };
+        let mut preparation = GameplayPreparation {
+            receiver,
+            pending: None,
+            cancel,
+            worker: Some(worker),
+        };
         preparation.cancel_and_join().unwrap();
         assert!(stopped.load(Ordering::Acquire));
         assert!(preparation.worker.is_none());
@@ -2130,7 +2841,9 @@ mod gameplay_preparation_shutdown_tests {
     #[derive(bevy_ecs::resource::Resource)]
     struct WorldDropFlag(Arc<AtomicBool>);
     impl Drop for WorldDropFlag {
-        fn drop(&mut self) { self.0.store(true, Ordering::Release); }
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::Release);
+        }
     }
 
     #[test]
@@ -2140,14 +2853,20 @@ mod gameplay_preparation_shutdown_tests {
             let stopped = Arc::new(AtomicBool::new(false));
             let worker_stopped = stopped.clone();
             let mut world = bevy_app::SubApp::new();
-            world.world_mut().insert_resource(WorldDropFlag(released.clone()));
+            world
+                .world_mut()
+                .insert_resource(WorldDropFlag(released.clone()));
             let (sender, receiver) = mpsc::channel();
             let worker = std::thread::spawn(move || {
                 let _ = sender.send(Ok(world));
                 worker_stopped.store(true, Ordering::Release);
             });
-            let mut preparation = GameplayPreparation { receiver, pending: None,
-                cancel: Arc::new(AtomicBool::new(false)), worker: Some(worker) };
+            let mut preparation = GameplayPreparation {
+                receiver,
+                pending: None,
+                cancel: Arc::new(AtomicBool::new(false)),
+                worker: Some(worker),
+            };
             if receive_before_drop {
                 preparation.pending = Some(preparation.receiver.recv().unwrap().unwrap());
             }
@@ -2156,15 +2875,19 @@ mod gameplay_preparation_shutdown_tests {
             assert!(released.load(Ordering::Acquire));
         }
     }
-
 }
 
 #[cfg(test)]
 mod save_shutdown_preparation_tests {
     use super::*;
-    use country_core::systems::save::{save_game::AutoSaveState,
-        save_thread::{AutosaveErrorState, SaveThreadHandle}};
-    use std::sync::{atomic::{AtomicBool, Ordering}, mpsc};
+    use country_core::systems::save::{
+        save_game::AutoSaveState,
+        save_thread::{AutosaveErrorState, SaveThreadHandle},
+    };
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    };
 
     #[derive(bevy_ecs::resource::Resource)]
     struct SaveStoppedBeforeWorldDrop {
@@ -2173,7 +2896,8 @@ mod save_shutdown_preparation_tests {
     }
     impl Drop for SaveStoppedBeforeWorldDrop {
         fn drop(&mut self) {
-            self.observed.store(self.stopped.load(Ordering::Acquire), Ordering::Release);
+            self.observed
+                .store(self.stopped.load(Ordering::Acquire), Ordering::Release);
         }
     }
 
@@ -2184,24 +2908,37 @@ mod save_shutdown_preparation_tests {
         let (command_sender, receiver) = crossbeam_channel::unbounded();
         let (error_sender, error_state) = AutosaveErrorState::channel();
         let join = std::thread::spawn(move || {
-            assert!(matches!(receiver.recv_timeout(std::time::Duration::from_secs(2)),
-                Err(crossbeam_channel::RecvTimeoutError::Disconnected)));
+            assert!(matches!(
+                receiver.recv_timeout(std::time::Duration::from_secs(2)),
+                Err(crossbeam_channel::RecvTimeoutError::Disconnected)
+            ));
             drop(error_sender);
             worker_stopped.store(true, Ordering::Release);
         });
         let mut auto = AutoSaveState::default();
         auto.attach_command_sender(command_sender.clone());
         world.insert_resource(auto);
-        world.insert_resource(SaveThreadHandle { join, command_sender, error_state });
+        world.insert_resource(SaveThreadHandle {
+            join,
+            command_sender,
+            error_state,
+        });
         world.insert_resource(SaveStoppedBeforeWorldDrop {
-            stopped: stopped.clone(), observed: observed.clone(),
+            stopped: stopped.clone(),
+            observed: observed.clone(),
         });
         (stopped, observed)
     }
 
     fn assert_saved_before_drop(flags: (Arc<AtomicBool>, Arc<AtomicBool>)) {
-        assert!(flags.0.load(Ordering::Acquire), "save worker must terminate");
-        assert!(flags.1.load(Ordering::Acquire), "World must drop only after save join");
+        assert!(
+            flags.0.load(Ordering::Acquire),
+            "save worker must terminate"
+        );
+        assert!(
+            flags.1.load(Ordering::Acquire),
+            "World must drop only after save join"
+        );
     }
 
     #[test]
@@ -2213,15 +2950,26 @@ mod save_shutdown_preparation_tests {
         app.init_resource::<country_core::systems::mode_manager::AppMode>();
         app.init_resource::<country_core::systems::save::load_game::LoadGameManager>();
         let observed = updates.clone();
-        app.add_systems(bevy_app::Update, move || { observed.fetch_add(1, Ordering::Relaxed); });
+        app.add_systems(bevy_app::Update, move || {
+            observed.fetch_add(1, Ordering::Relaxed);
+        });
         let flags = attach_save_owner(app.world_mut());
         let warmed = warmups.clone();
         let mut preparation = GameplayPreparation::spawn_with_initializer(
-            std::mem::take(app.main_mut()), |_, _| Err(std::io::Error::from(std::io::ErrorKind::NotFound).into()),
-            move |_| { warmed.fetch_add(1, Ordering::Relaxed); Ok(()) }).unwrap();
+            std::mem::take(app.main_mut()),
+            |_, _| Err(std::io::Error::from(std::io::ErrorKind::NotFound).into()),
+            move |_| {
+                warmed.fetch_add(1, Ordering::Relaxed);
+                Ok(())
+            },
+        )
+        .unwrap();
         preparation.join_worker().unwrap();
         let error = preparation.poll_completion().unwrap_err();
-        assert_eq!(error.downcast_ref::<std::io::Error>().unwrap().kind(), std::io::ErrorKind::NotFound);
+        assert_eq!(
+            error.downcast_ref::<std::io::Error>().unwrap().kind(),
+            std::io::ErrorKind::NotFound
+        );
         assert_eq!(updates.load(Ordering::Relaxed), 0);
         assert_eq!(warmups.load(Ordering::Relaxed), 0);
         assert!(preparation.pending.is_none());
@@ -2246,10 +2994,22 @@ mod save_shutdown_preparation_tests {
         let flags = attach_save_owner(app.world_mut());
         let initialize = initialized.clone();
         let mut preparation = GameplayPreparation::spawn_with_initializer(
-            std::mem::take(app.main_mut()), move |_, _| { initialize.fetch_add(1, Ordering::Release); Ok(()) },
-            |_| panic!("the genuine missing catalog must prevent warmup")).unwrap();
+            std::mem::take(app.main_mut()),
+            move |_, _| {
+                initialize.fetch_add(1, Ordering::Release);
+                Ok(())
+            },
+            |_| panic!("the genuine missing catalog must prevent warmup"),
+        )
+        .unwrap();
         preparation.join_worker().unwrap();
-        assert!(preparation.poll_completion().unwrap_err().to_string().contains("ClutterMeshes"));
+        assert!(
+            preparation
+                .poll_completion()
+                .unwrap_err()
+                .to_string()
+                .contains("ClutterMeshes")
+        );
         assert_eq!(initialized.load(Ordering::Acquire), 1);
         assert_eq!(updates.load(Ordering::Relaxed), 1);
         assert!(preparation.pending.is_none());
@@ -2262,18 +3022,28 @@ mod save_shutdown_preparation_tests {
         let mut app = App::new();
         app.init_resource::<country_core::systems::mode_manager::AppMode>();
         app.init_resource::<country_core::systems::save::load_game::LoadGameManager>();
-        app.add_systems(bevy_app::Update, || panic!("cancelled initializer must not update"));
+        app.add_systems(bevy_app::Update, || {
+            panic!("cancelled initializer must not update")
+        });
         let flags = attach_save_owner(app.world_mut());
         let (started_tx, started_rx) = mpsc::channel();
         let (release_tx, release_rx) = mpsc::channel();
         let mut preparation = GameplayPreparation::spawn_with_initializer(
-            std::mem::take(app.main_mut()), move |_, cancelled| {
+            std::mem::take(app.main_mut()),
+            move |_, cancelled| {
                 started_tx.send(()).unwrap();
-                release_rx.recv_timeout(std::time::Duration::from_secs(2)).unwrap();
+                release_rx
+                    .recv_timeout(std::time::Duration::from_secs(2))
+                    .unwrap();
                 assert!(cancelled.load(Ordering::Acquire));
                 Ok(())
-            }, |_| panic!("cancelled initializer must not warm up")).unwrap();
-        started_rx.recv_timeout(std::time::Duration::from_secs(2)).unwrap();
+            },
+            |_| panic!("cancelled initializer must not warm up"),
+        )
+        .unwrap();
+        started_rx
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .unwrap();
         preparation.cancel.store(true, Ordering::Release);
         release_tx.send(()).unwrap();
         preparation.cancel_and_join().unwrap();
@@ -2299,14 +3069,24 @@ mod save_shutdown_preparation_tests {
         let flags = attach_save_owner(gameplay.world_mut());
         let mut preparation = GameplayPreparation::spawn(gameplay, |_| {
             panic!("missing AppMode must reject startup before warmup")
-        }).unwrap();
+        })
+        .unwrap();
         preparation.join_worker().unwrap();
         let error = preparation.poll_completion().unwrap_err();
-        assert!(error.to_string().contains("original gameplay AppMode/startup producers"));
+        assert!(
+            error
+                .to_string()
+                .contains("original gameplay AppMode/startup producers")
+        );
         assert!(preparation.pending.is_none());
         assert_eq!(loading.world().id(), loading_id);
         assert_eq!(*loading.world().resource::<LogoAnimation>(), logo);
-        assert!(loading.world().resource::<Events<StartupRevealStarted>>().is_empty());
+        assert!(
+            loading
+                .world()
+                .resource::<Events<StartupRevealStarted>>()
+                .is_empty()
+        );
         assert_saved_before_drop(flags);
         preparation.cancel_and_join().unwrap();
     }
@@ -2319,11 +3099,21 @@ mod save_shutdown_preparation_tests {
             .context("required gameplay asset read");
         let (sender, receiver) = mpsc::channel();
         sender.send(Err(error)).unwrap();
-        let mut preparation = GameplayPreparation { receiver, pending: None,
-            cancel: Arc::new(AtomicBool::new(false)), worker: None };
+        let mut preparation = GameplayPreparation {
+            receiver,
+            pending: None,
+            cancel: Arc::new(AtomicBool::new(false)),
+            worker: None,
+        };
         let error = preparation.poll_completion().unwrap_err();
         assert_eq!(error.to_string(), "required gameplay asset read");
-        assert_eq!(error.downcast_ref::<std::io::Error>().unwrap().raw_os_error(), Some(2));
+        assert_eq!(
+            error
+                .downcast_ref::<std::io::Error>()
+                .unwrap()
+                .raw_os_error(),
+            Some(2)
+        );
         assert!(preparation.pending.is_none());
         preparation.cancel_and_join().unwrap();
     }
@@ -2343,9 +3133,15 @@ mod save_shutdown_preparation_tests {
         let gameplay_id = gameplay.world().id();
         let flags = attach_save_owner(gameplay.world_mut());
         let (sender, receiver) = mpsc::channel();
-        let worker = std::thread::spawn(move || { sender.send(Ok(gameplay)).unwrap(); });
-        let mut preparation = GameplayPreparation { receiver, pending: None,
-            cancel: Arc::new(AtomicBool::new(false)), worker: Some(worker) };
+        let worker = std::thread::spawn(move || {
+            sender.send(Ok(gameplay)).unwrap();
+        });
+        let mut preparation = GameplayPreparation {
+            receiver,
+            pending: None,
+            cancel: Arc::new(AtomicBool::new(false)),
+            worker: Some(worker),
+        };
         preparation.join_worker().unwrap();
 
         // The background wait can poll repeatedly after the producer closes
@@ -2359,7 +3155,12 @@ mod save_shutdown_preparation_tests {
             assert!(!flags.1.load(Ordering::Acquire));
             assert_eq!(loading.world().id(), loading_id);
             assert_eq!(*loading.world().resource::<LogoAnimation>(), logo);
-            assert!(loading.world().resource::<Events<StartupRevealStarted>>().is_empty());
+            assert!(
+                loading
+                    .world()
+                    .resource::<Events<StartupRevealStarted>>()
+                    .is_empty()
+            );
         }
         preparation.cancel_and_join().unwrap();
         assert!(preparation.pending.is_none());
@@ -2373,9 +3174,15 @@ mod save_shutdown_preparation_tests {
             let mut app = bevy_app::SubApp::new();
             let flags = attach_save_owner(app.world_mut());
             let (sender, receiver) = mpsc::channel();
-            let worker = std::thread::spawn(move || { sender.send(Ok(app)).unwrap(); });
-            let mut preparation = GameplayPreparation { receiver, pending: None,
-                cancel: Arc::new(AtomicBool::new(false)), worker: Some(worker) };
+            let worker = std::thread::spawn(move || {
+                sender.send(Ok(app)).unwrap();
+            });
+            let mut preparation = GameplayPreparation {
+                receiver,
+                pending: None,
+                cancel: Arc::new(AtomicBool::new(false)),
+                worker: Some(worker),
+            };
             if receive_first {
                 preparation.pending = Some(preparation.receiver.recv().unwrap().unwrap());
             }
@@ -2389,8 +3196,11 @@ mod save_shutdown_preparation_tests {
         let mut app = bevy_app::SubApp::new();
         let flags = attach_save_owner(app.world_mut());
         let mut preparation = GameplayPreparation::spawn(app, |_| Ok(())).unwrap();
-        let failure = preparation.receiver.recv_timeout(std::time::Duration::from_secs(2))
-            .unwrap().unwrap_err();
+        let failure = preparation
+            .receiver
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .unwrap()
+            .unwrap_err();
         assert!(failure.to_string().contains("AppMode"));
         assert_saved_before_drop(flags);
         preparation.cancel_and_join().unwrap();
@@ -2407,13 +3217,16 @@ mod save_shutdown_preparation_tests {
             app.add_event::<country_core::systems::save::load_game::LoadingGameComplete>();
             app.add_systems(bevy_app::Update, move |world: &mut World| {
                 assert_ne!(phase, "update panic", "injected update panic");
-                world.send_event(country_core::systems::save::load_game::LoadingGameComplete::default());
+                world.send_event(
+                    country_core::systems::save::load_game::LoadingGameComplete::default(),
+                );
             });
             let flags = attach_save_owner(app.world_mut());
             let gameplay = std::mem::take(app.main_mut());
             let mut preparation = GameplayPreparation::spawn(gameplay, move |_| {
                 panic!("missing gameplay catalog must prevent warmup: {phase}");
-            }).unwrap();
+            })
+            .unwrap();
             if phase == "cancel" {
                 // Immediate cancellation races with the observable catalog
                 // failure; both must finish the same actual save owner.
@@ -2421,9 +3234,16 @@ mod save_shutdown_preparation_tests {
                     assert!(error.to_string().contains("ClutterMeshes"));
                 }
             } else {
-                let error = preparation.receiver.recv_timeout(std::time::Duration::from_secs(2))
-                    .unwrap().unwrap_err();
-                let expected = if phase == "missing catalog" { "ClutterMeshes" } else { phase };
+                let error = preparation
+                    .receiver
+                    .recv_timeout(std::time::Duration::from_secs(2))
+                    .unwrap()
+                    .unwrap_err();
+                let expected = if phase == "missing catalog" {
+                    "ClutterMeshes"
+                } else {
+                    phase
+                };
                 assert!(error.to_string().contains(expected));
                 preparation.cancel_and_join().unwrap();
             }
@@ -2456,8 +3276,12 @@ mod save_shutdown_preparation_tests {
         let mut app = bevy_app::SubApp::new();
         let flags = attach_save_owner(app.world_mut());
         let (_sender, receiver) = mpsc::channel();
-        let mut preparation = GameplayPreparation { receiver, pending: Some(app),
-            cancel: Arc::new(AtomicBool::new(false)), worker: None };
+        let mut preparation = GameplayPreparation {
+            receiver,
+            pending: Some(app),
+            cancel: Arc::new(AtomicBool::new(false)),
+            worker: None,
+        };
         let mut loading = App::new();
         let mut logo = country_core::resources::logo_animation::LogoAnimation::default();
         logo.progress[4] = 1.0;
@@ -2474,8 +3298,12 @@ mod save_shutdown_preparation_tests {
             let flags = attach_save_owner(app.world_mut());
             let (sender, receiver) = mpsc::channel();
             sender.send(Ok(app)).unwrap();
-            let mut preparation = GameplayPreparation { receiver, pending: None,
-                cancel: Arc::new(AtomicBool::new(false)), worker: None };
+            let mut preparation = GameplayPreparation {
+                receiver,
+                pending: None,
+                cancel: Arc::new(AtomicBool::new(false)),
+                worker: None,
+            };
             if receive_first {
                 preparation.pending = Some(preparation.receiver.recv().unwrap().unwrap());
             }
@@ -2487,8 +3315,14 @@ mod save_shutdown_preparation_tests {
             let error = preparation.poll(&mut loading).unwrap_err();
             assert!(error.to_string().contains("mandatory LogoAnimation"));
             assert!(preparation.pending.is_none());
-            assert_eq!(loading.world().resource::<GameConfig>().lang_override.as_deref(),
-                Some("loading-owner-retained"));
+            assert_eq!(
+                loading
+                    .world()
+                    .resource::<GameConfig>()
+                    .lang_override
+                    .as_deref(),
+                Some("loading-owner-retained")
+            );
             assert_saved_before_drop(flags);
             preparation.cancel_and_join().unwrap();
         }
@@ -2502,9 +3336,22 @@ mod member14_owner_stage_tests {
     use bevy_ecs::schedule::IntoScheduleConfigs;
     use country_core::{
         asset_libraries::{runtime::AssetLibraryRuntime, ssbo_library::AssetSsboLibrary},
-        geometry::{instanced_wall::{BrickTransformSsbo, InstancedWall}, runtime::{prepare_wall_brick_assembly_owners, sync_wall_bricks, WallBrickUploadStatus}},
-        render::{sparse_instance_buffer::SparseInstanceBuffer},
-        resources::{walls::{InnerWalls, WallId, WallState, public_walls::{PublicWalls, WallEntities}, publication_source::TerrainHeightGrid512, wall_trigger_volume::WallTriggerVolume}, rt::UpdateRtWorldEvent},
+        geometry::{
+            instanced_wall::{BrickTransformSsbo, InstancedWall},
+            runtime::{
+                WallBrickUploadStatus, prepare_wall_brick_assembly_owners, sync_wall_bricks,
+            },
+        },
+        render::sparse_instance_buffer::SparseInstanceBuffer,
+        resources::{
+            rt::UpdateRtWorldEvent,
+            walls::{
+                InnerWalls, WallId, WallState,
+                public_walls::{PublicWalls, WallEntities},
+                publication_source::TerrainHeightGrid512,
+                wall_trigger_volume::WallTriggerVolume,
+            },
+        },
         systems::wall::construct_wall_bricks::WallBricksChanged,
     };
     use std::sync::Arc;
@@ -2522,7 +3369,10 @@ mod member14_owner_stage_tests {
             desc: &country_core::render::ssbo::rhapsody_boundary::BufferDesc,
             _name: &str,
             data: Option<&[u8]>,
-        ) -> Result<country_core::render::ssbo::rhapsody_boundary::Buffer, country_core::render::ssbo::rhapsody_boundary::BackendError> {
+        ) -> Result<
+            country_core::render::ssbo::rhapsody_boundary::Buffer,
+            country_core::render::ssbo::rhapsody_boundary::BackendError,
+        > {
             assert!(data.is_none_or(|bytes| bytes.len() <= desc.size));
             Ok(country_core::render::ssbo::rhapsody_boundary::Buffer {
                 id: self.0,
@@ -2542,7 +3392,9 @@ mod member14_owner_stage_tests {
             for range in ranges {
                 assert!(previous_end <= range.start);
                 assert!(range.start <= range.end && range.end <= data.len());
-                let end = offset.checked_add(range.end).expect("CPU fixture byte offset overflow");
+                let end = offset
+                    .checked_add(range.end)
+                    .expect("CPU fixture byte offset overflow");
                 assert!((end as u64) <= buffer.byte_size);
                 previous_end = range.end;
             }
@@ -2559,7 +3411,10 @@ mod member14_owner_stage_tests {
             _name: &str,
             _desc: &country_core::render::load_texture::boundary::TextureDesc,
             _data: &[u8],
-        ) -> Result<country_core::render::load_texture::boundary::Texture, country_core::render::load_texture::boundary::BackendError> {
+        ) -> Result<
+            country_core::render::load_texture::boundary::Texture,
+            country_core::render::load_texture::boundary::BackendError,
+        > {
             panic!("texture creation is outside this CPU wall-owner fixture")
         }
     }
@@ -2567,7 +3422,10 @@ mod member14_owner_stage_tests {
         fn create_persistent_descriptor_set(
             &self,
             _name: &str,
-        ) -> Result<country_core::rhapsody_contract::DescriptorSet, country_core::render::load_texture::boundary::BackendError> {
+        ) -> Result<
+            country_core::rhapsody_contract::DescriptorSet,
+            country_core::render::load_texture::boundary::BackendError,
+        > {
             panic!("descriptor creation is outside this CPU wall-owner fixture")
         }
         fn update_persistent_descriptor_set(
@@ -2581,7 +3439,10 @@ mod member14_owner_stage_tests {
             &self,
             _texture: &country_core::render::load_texture::boundary::Texture,
             _mip: u32,
-        ) -> Result<country_core::asset_libraries::texture_library::ImageView, country_core::render::load_texture::boundary::BackendError> {
+        ) -> Result<
+            country_core::asset_libraries::texture_library::ImageView,
+            country_core::render::load_texture::boundary::BackendError,
+        > {
             panic!("image views are outside this CPU wall-owner fixture")
         }
         fn update_texture(
@@ -2593,27 +3454,50 @@ mod member14_owner_stage_tests {
         }
     }
 
-
     #[derive(Resource, Default)]
-    struct Observed { changed_counts: Vec<usize> }
+    struct Observed {
+        changed_counts: Vec<usize>,
+    }
 
     fn inspect_at25(
-        public: Res<PublicWalls>, library: Res<AssetSsboLibrary>, entities: Res<WallEntities>,
-        owners: Query<(&InstancedWall<BrickTransformSsbo>, Option<&WallTriggerVolume>)>,
+        public: Res<PublicWalls>,
+        library: Res<AssetSsboLibrary>,
+        entities: Res<WallEntities>,
+        owners: Query<(
+            &InstancedWall<BrickTransformSsbo>,
+            Option<&WallTriggerVolume>,
+        )>,
         changed: Query<Entity, Changed<InstancedWall<BrickTransformSsbo>>>,
-        successes: Res<Events<WallBricksChanged>>, rt: Res<Events<UpdateRtWorldEvent>>,
+        successes: Res<Events<WallBricksChanged>>,
+        rt: Res<Events<UpdateRtWorldEvent>>,
         mut observed: ResMut<Observed>,
     ) {
         let wall = WallId(0x700000031);
         assert!(public.get(wall).is_some());
         let (owner, trigger) = owners.get(entities.wall_entity(wall).unwrap()).unwrap();
         assert_eq!(owner.id, wall.0);
-        assert!(owner.is_awaiting_production()); assert!(!owner.is_upload_pending());
-        assert!(trigger.is_none()); assert!(successes.is_empty()); assert!(rt.is_empty());
+        assert!(owner.is_awaiting_production());
+        assert!(!owner.is_upload_pending());
+        assert!(trigger.is_none());
+        assert!(successes.is_empty());
+        assert!(rt.is_empty());
         let storage = library.get::<BrickTransformSsbo>().unwrap();
-        let lanes = [owner.allocation().unwrap(), owner.chimney_allocation().unwrap(), owner.door_stairs_allocation().unwrap()];
-        for lane in lanes { assert!(storage.owns_allocation(lane)); }
-        for i in 0..3 { for j in i+1..3 { assert!(!core::ptr::eq(lanes[i].handle.0.as_deref().unwrap(), lanes[j].handle.0.as_deref().unwrap())); } }
+        let lanes = [
+            owner.allocation().unwrap(),
+            owner.chimney_allocation().unwrap(),
+            owner.door_stairs_allocation().unwrap(),
+        ];
+        for lane in lanes {
+            assert!(storage.owns_allocation(lane));
+        }
+        for i in 0..3 {
+            for j in i + 1..3 {
+                assert!(!core::ptr::eq(
+                    lanes[i].handle.0.as_deref().unwrap(),
+                    lanes[j].handle.0.as_deref().unwrap()
+                ));
+            }
+        }
         observed.changed_counts.push(changed.iter().count());
     }
 
@@ -2621,25 +3505,67 @@ mod member14_owner_stage_tests {
     fn actual_set_type_and_ordinary_edges_expose_preassembly_commands_without_false_base_success() {
         let mut app = bevy_app::App::new();
         // Same actual GameSystemSet and exact pairwise configuration as run_game_thread.
-        for stage in 0..44 { app.configure_sets(bevy_app::Update, GameSystemSet(stage).before(GameSystemSet(stage+1))); }
+        for stage in 0..44 {
+            app.configure_sets(
+                bevy_app::Update,
+                GameSystemSet(stage).before(GameSystemSet(stage + 1)),
+            );
+        }
         let mut inner = InnerWalls::new();
-        let curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(vec![[0.,0.],[4.,0.]], false).unwrap();
+        let curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(
+            vec![[0., 0.], [4., 0.]],
+            false,
+        )
+        .unwrap();
         inner.new_wall_with_id(WallId(0x700000031), WallState::new(curve, 2., 0, 0, false));
         let mut public = PublicWalls::default();
-        public.consume_with_paths(&mut inner, &TerrainHeightGrid512 { encoded: vec![0u16;512*512].into(), minimum_y: 0., maximum_y: 4., sampling_fix: true }, None, &country_core::resources::walls::public_walls::WallPublicationDirty::default(), &country_core::resources::walls::public_walls::WallSpatialHash::default());
-        let storage = SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&CpuBufferDevice(1)).unwrap();
-        let mut library = AssetSsboLibrary::new(); library.register::<BrickTransformSsbo>(storage);
-        app.insert_resource(public); app.insert_resource(library); app.init_resource::<WallEntities>();
-        app.insert_resource(AssetLibraryRuntime::new(Arc::new(CpuBufferDevice(1)), Arc::new(CpuBufferDevice(2))));
-        app.init_resource::<WallBrickUploadStatus>(); app.init_resource::<Observed>();
-        app.add_event::<WallBricksChanged>(); app.add_event::<UpdateRtWorldEvent>();
-        app.add_systems(bevy_app::Update, prepare_wall_brick_assembly_owners.in_set(GameSystemSet(19)));
+        public.consume_with_paths(
+            &mut inner,
+            &TerrainHeightGrid512 {
+                encoded: vec![0u16; 512 * 512].into(),
+                minimum_y: 0.,
+                maximum_y: 4.,
+                sampling_fix: true,
+            },
+            None,
+            &country_core::resources::walls::public_walls::WallPublicationDirty::default(),
+            &country_core::resources::walls::public_walls::WallSpatialHash::default(),
+        );
+        let storage =
+            SparseInstanceBuffer::<BrickTransformSsbo>::try_new(&CpuBufferDevice(1)).unwrap();
+        let mut library = AssetSsboLibrary::new();
+        library.register::<BrickTransformSsbo>(storage);
+        app.insert_resource(public);
+        app.insert_resource(library);
+        app.init_resource::<WallEntities>();
+        app.insert_resource(AssetLibraryRuntime::new(
+            Arc::new(CpuBufferDevice(1)),
+            Arc::new(CpuBufferDevice(2)),
+        ));
+        app.init_resource::<WallBrickUploadStatus>();
+        app.init_resource::<Observed>();
+        app.add_event::<WallBricksChanged>();
+        app.add_event::<UpdateRtWorldEvent>();
+        app.add_systems(
+            bevy_app::Update,
+            prepare_wall_brick_assembly_owners.in_set(GameSystemSet(19)),
+        );
         app.add_systems(bevy_app::Update, inspect_at25.in_set(GameSystemSet(25)));
         app.add_systems(bevy_app::PostUpdate, sync_wall_bricks);
-        app.update(); app.update();
-        assert_eq!(app.world().resource::<Observed>().changed_counts, [1,0]);
+        app.update();
+        app.update();
+        assert_eq!(app.world().resource::<Observed>().changed_counts, [1, 0]);
         assert!(app.world().resource::<WallBrickUploadStatus>().gpu_ready);
-        let entity = app.world().resource::<WallEntities>().wall_entity(WallId(0x700000031)).unwrap();
-        assert!(app.world().get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap().is_awaiting_production());
+        let entity = app
+            .world()
+            .resource::<WallEntities>()
+            .wall_entity(WallId(0x700000031))
+            .unwrap();
+        assert!(
+            app.world()
+                .get::<InstancedWall<BrickTransformSsbo>>(entity)
+                .unwrap()
+                .is_awaiting_production()
+        );
     }
 }

@@ -5,10 +5,8 @@ use crate::resources::{
     critters::sheep::CmdCheckForSheepInsideBuilding,
     ivy::{IvyId, IvyLeafStorage, IvyStorage},
     walls::{
-        public_walls::{OnWallChanged, PublicWalls},
-        public_wall_state::PublicWallState,
+        WallId, public_wall_state::PublicWallState, public_walls::PublicWalls,
         wall_holes::PrevWallHoles,
-        WallId,
     },
 };
 use crate::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash;
@@ -138,10 +136,7 @@ pub fn is_point_still_valid(
     prev_holes: &PrevWallHoles,
 ) -> Option<WallId> {
     let p = Vec2::new(point.x, point.z);
-    let cell = crate::resources::walls::spatial_index::cell_index_of_world_point([
-        p.x,
-        p.y,
-    ]);
+    let cell = crate::resources::walls::spatial_index::cell_index_of_world_point([p.x, p.y]);
     let rows: Vec<(super::WallSegment, WallId)> = spatial
         .segments_in_cell(cell)
         .map(|s| (wall_segment_from_spatial(s), s.wall))
@@ -272,11 +267,6 @@ fn revalidate_ivy(
 /// (0x140997a58..ae3). Emptied ivies are `remove_entry`-deleted from the
 /// storage map after the loop (0x140998711..1312).
 ///
-/// Cross-domain registration: `resources::events::OnCircleRotated` is not yet
-/// declared in this crate. Until it lands, the crate's existing
-/// `OnWallChanged` event is the equivalent dirty-wall source (same wall id
-/// payload); the ECS signature must switch to the two native readers when
-/// `OnCircleRotated` is recovered.
 pub fn ivy_pruner(
     mut storage: ResMut<IvyStorage>,
     mut leaves: ResMut<IvyLeafStorage>,
@@ -284,18 +274,19 @@ pub fn ivy_pruner(
     spatial: Res<WallSpatialHash>,
     prev_holes: Res<PrevWallHoles>,
     mut sheep_cmds: EventReader<CmdCheckForSheepInsideBuilding>,
-    mut changed: EventReader<OnWallChanged>,
+    mut changed: EventReader<crate::resources::events::OnCircleRotated>,
 ) {
-    let mut dirty: Vec<WallId> = sheep_cmds.read().map(|command| command.wall).collect();
-    dirty.extend(changed.read().map(|event| event.0));
-    if dirty.is_empty() {
-        return;
-    }
+    // Each native reader drains its unread batch but retains only its last
+    // wall. Earlier events must not trigger pruning or missing-wall failures.
+    let dirty = [
+        sheep_cmds.read().last().map(|command| command.wall),
+        changed.read().last().map(|event| event.0),
+    ];
     let mut emptied: Vec<IvyId> = Vec::new();
-    for wall_id in dirty {
-        let Some(state) = walls.get(wall_id) else {
-            continue;
-        };
+    for wall_id in dirty.into_iter().flatten() {
+        let state = walls
+            .get(wall_id)
+            .expect("ivy_pruner: event referenced a missing wall");
         // Event-wall validity (0x1409974f4..501): the native panics.
         if state.simplified_curve_2d().points.len() < 2 || wall_length(state) <= 0.0 {
             panic!("ivy_pruner: event referenced an invalid wall");
@@ -318,5 +309,42 @@ pub fn ivy_pruner(
     }
     for id in emptied {
         storage.remove(id);
+    }
+}
+
+#[cfg(test)]
+mod event_tests {
+    use super::*;
+    use bevy_ecs::prelude::*;
+
+    fn world() -> World {
+        let mut world = World::new();
+        world.init_resource::<IvyStorage>();
+        world.init_resource::<IvyLeafStorage>();
+        world.init_resource::<PublicWalls>();
+        world.init_resource::<WallSpatialHash>();
+        world.init_resource::<PrevWallHoles>();
+        world.init_resource::<Events<CmdCheckForSheepInsideBuilding>>();
+        world.init_resource::<Events<crate::resources::events::OnCircleRotated>>();
+        world
+    }
+
+    #[test]
+    #[should_panic(expected = "event referenced a missing wall")]
+    fn last_circle_event_requires_published_wall() {
+        let mut world = world();
+        world.send_event(crate::resources::events::OnCircleRotated(WallId(999)));
+        let mut schedule = Schedule::default();
+        schedule.add_systems(ivy_pruner);
+        schedule.run(&mut world);
+    }
+
+    #[test]
+    fn empty_reader_batch_preserves_ivy_storage() {
+        let mut world = world();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(ivy_pruner);
+        schedule.run(&mut world);
+        assert!(world.resource::<IvyStorage>().iter().next().is_none());
     }
 }

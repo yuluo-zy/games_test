@@ -1,6 +1,6 @@
 //! Original building and forest runtime assembly on the gameplay App's owners.
-//! Existing real producers only. No draw/edit UI, platform TODO, legacy main
-//! construct_walls, empty path sampler, or duplicate AssetMaintenance is mounted.
+//! Existing construction resources and set22/44 producers. The main wall
+//! chain is installed separately by app_systems::WallSystems in the host.
 use bevy_app::{App, Update};
 use bevy_ecs::prelude::*;
 use crate::run_game::GameSystemSet;
@@ -96,15 +96,6 @@ fn install_open_adapter_inputs(app: &mut App) {
     // ShowPinnedDecoClutter is an Event (56 B) in the original (registered by ClutterPlugin as its
     // 8th register_event); decoclutter_show_pins reads it through an EventReader.
     app.add_event::<sys::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>();
-    {
-        use sys::ui_clutter::decoclutter_show_pins as pins;
-        app.init_resource::<pins::PinnedDecoClutter>();
-        app.init_resource::<pins::PinnedDecoGeometryTable>();
-        app.init_resource::<pins::PinnedDecoClutterBuffers>();
-        app.init_resource::<pins::PinAnimationTable>();
-        app.init_resource::<pins::PinHitDedup>();
-        app.add_event::<pins::PinVisibilityToggle>();
-    }
     // OPEN: HintResetState is an onboarding-crate adapter (reset_hints state).
     app.init_resource::<system_onboarding::reset_hints::HintResetState>();
     // OPEN: SheepInputStream is a crate seam; the original gate is a field of an

@@ -58,18 +58,22 @@ impl Aabb2 {
             && self.min.y <= b.max.y
             && b.min.y <= self.max.y
     }
-    /// Returns the signed slab entrance parameter, without testing the exit.
-    /// A parallel ray outside a slab returns positive infinity.
+    /// Returns the original signed slab entrance without testing the exit.
+    /// IEEE division and native min/max rules apply to parallel and NaN inputs.
     pub fn intersect_ray(self, ray: Ray2) -> f32 {
-        let Some((x, _)) = slab_interval(self.min.x, self.max.x, ray.origin.x, ray.direction.x)
-        else {
-            return f32::INFINITY;
-        };
-        let Some((y, _)) = slab_interval(self.min.y, self.max.y, ray.origin.y, ray.direction.y)
-        else {
-            return f32::INFINITY;
-        };
-        x.max(y)
+        self.intersect_ray_interval(ray).0
+    }
+    /// Original B 0x1412401c0: both slab times, without parallel or finite guards.
+    pub fn intersect_ray_interval(self, ray: Ray2) -> (f32, f32) {
+        fn min_num(a: f32, b: f32) -> f32 { if b.is_nan() || a < b { a } else { b } }
+        fn max_num(a: f32, b: f32) -> f32 { if b.is_nan() || a > b { a } else { b } }
+        let a = (self.min - ray.origin) / ray.direction;
+        let b = (self.max - ray.origin) / ray.direction;
+        let x_low = min_num(a.x, b.x);
+        let y_low = min_num(a.y, b.y);
+        let x_high = max_num(a.x, b.x);
+        let y_high = max_num(a.y, b.y);
+        (max_num(y_low, x_low), min_num(y_high, x_high))
     }
     pub fn max_extent(self) -> f32 {
         let d = self.max - self.min;
@@ -266,4 +270,25 @@ fn ray_interval<const N: usize>(
         }
     }
     Some((enter, exit))
+}
+
+#[cfg(test)]
+mod native_ray_interval_tests {
+    use super::*;
+    #[test]
+    fn matches_executed_original_ray_intervals() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reverse-engineering/tiny-glade/evidence/country-core-deep/wall/m01-aabb-ray-fixture.json"))).unwrap();
+        assert_eq!(fixture["pe_sha256"], "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03");
+        for case in fixture["cases"].as_array().unwrap() {
+            let f = |v: &serde_json::Value| f32::from_bits(u32::from_str_radix(v.as_str().unwrap(), 16).unwrap());
+            let b = case["box"].as_array().unwrap(); let r = case["ray"].as_array().unwrap();
+            let bounds = Aabb2 { min: Vec2::new(f(&b[0]), f(&b[1])), max: Vec2::new(f(&b[2]), f(&b[3])) };
+            let ray = Ray2 { origin: Vec2::new(f(&r[0]), f(&r[1])), direction: Vec2::new(f(&r[2]), f(&r[3])) };
+            let (enter, exit) = bounds.intersect_ray_interval(ray);
+            assert_eq!(enter.to_bits(), f(&case["enter"]).to_bits());
+            assert_eq!(exit.to_bits(), f(&case["exit"]).to_bits());
+            assert_eq!(0.0 <= exit && enter <= exit, case["hit"].as_bool().unwrap());
+            assert_eq!(bounds.intersect_ray(ray).to_bits(), enter.to_bits());
+        }
+    }
 }

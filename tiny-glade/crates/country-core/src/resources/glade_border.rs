@@ -84,11 +84,12 @@ impl GladeBorder {
         lo: BorderShape,
         hi: BorderShape,
     ) -> BorderShape {
-        if !self.is_shape_inside(lo) {
+        let first = lerp_border_shape(lo, hi, 0.0);
+        if !self.is_shape_inside(first) {
             return lo;
         }
-        let mut best = lo;
-        for step in 1..=0x14u32 {
+        let mut best = first;
+        for step in 1..0x14u32 {
             let t = step as f32 / 0x14 as f32;
             let candidate = lerp_border_shape(lo, hi, t);
             if !self.is_shape_inside(candidate) {
@@ -104,10 +105,13 @@ impl GladeBorder {
 fn lerp_border_shape(lo: BorderShape, hi: BorderShape, t: f32) -> BorderShape {
     match (lo, hi) {
         (BorderShape::Circle(a), BorderShape::Circle(b)) => BorderShape::Circle(a.lerp(b, t)),
-        // Rectangle2d::lerp (native FUN_140c9c730) is not ported yet — it is only needed for
-        // rectangle-subject fit search (§10–12). §6 circle editing uses the Circle arm above.
-        (BorderShape::Rectangle(_), BorderShape::Rectangle(_)) => {
-            todo!("Rectangle2d::lerp port pending (§10-12)")
+        (BorderShape::Rectangle(a), BorderShape::Rectangle(b)) => {
+            use crate::systems::wall::valid_enclosure::{Shape, ShapeParameters};
+            let from = ShapeParameters::from_shape(Shape::Rectangle(a)).to_snapshot();
+            let to = ShapeParameters::from_shape(Shape::Rectangle(b)).to_snapshot();
+            let result = crate::resources::history::wall_edit::interpolate_rectangle_enclosure(&from, &to, t)
+                .expect("original rectangle interpolation requires valid geometry");
+            BorderShape::Rectangle(ShapeParameters::from_snapshot(&result).as_rectangle())
         }
         _ => panic!("search_lerped_shape_that_fits_into_glade: shape kind mismatch"),
     }
@@ -151,5 +155,33 @@ mod tests {
         // `lo` already outside the glade → returns `lo` unchanged.
         let far = BorderShape::Circle(Circle2d::new(Vec2::new(100.0, 0.0), 1.0));
         assert_eq!(border.search_lerped_shape_that_fits_into_glade(far, far), far);
+        // The original loop stops at 19/20 even when the target fits.
+        let inside_hi = BorderShape::Circle(Circle2d::new(Vec2::ZERO, 12.0));
+        match border.search_lerped_shape_that_fits_into_glade(lo, inside_hi) {
+            BorderShape::Circle(c) => assert!((c.radius - 11.9).abs() < 1e-4),
+            _ => panic!("expected circle"),
+        }
+    }
+
+    #[test]
+    fn search_lerped_accepts_rectangle_subject_and_stops_at_nineteen_twentieths() {
+        let border = GladeBorder(BorderShape::Rectangle(Rectangle2d::new_centered_axis_aligned(Vec2::splat(100.0))));
+        let from = BorderShape::Rectangle(Rectangle2d::new(Vec2::ZERO, Vec2::splat(2.0), Vec2::X));
+        let to = BorderShape::Rectangle(Rectangle2d::new(Vec2::new(20.0, 0.0), Vec2::splat(2.0), Vec2::X));
+        let BorderShape::Rectangle(result) = border.search_lerped_shape_that_fits_into_glade(from, to) else { panic!("rectangle result") };
+        assert_eq!(result.center, Vec2::new(19.0, 0.0));
+    }
+
+    #[test]
+    fn search_checks_variant_and_interpolated_initial_candidate_before_inside() {
+        let border = GladeBorder(BorderShape::Circle(Circle2d::new(Vec2::ZERO, 10.0)));
+        let outside = BorderShape::Circle(Circle2d::new(Vec2::new(100.0, 0.0), 1.0));
+        let rect = BorderShape::Rectangle(Rectangle2d::new(Vec2::ZERO, Vec2::splat(2.0), Vec2::X));
+        assert!(std::panic::catch_unwind(|| border.search_lerped_shape_that_fits_into_glade(outside, rect)).is_err());
+        // Interpolation at zero must still evaluate the target; NaN target
+        // produces an outside initial candidate, so the exact original lo returns.
+        let lo = BorderShape::Circle(Circle2d::new(Vec2::ZERO, 1.0));
+        let hi = BorderShape::Circle(Circle2d::new(Vec2::new(f32::NAN, 0.0), 1.0));
+        assert_eq!(border.search_lerped_shape_that_fits_into_glade(lo, hi), lo);
     }
 }

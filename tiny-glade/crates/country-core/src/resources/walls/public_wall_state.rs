@@ -357,6 +357,12 @@ impl PublicWallState {
         // 原 publisher 140a8d825..140a8d914：保留来源 +0x58/+0x5c。
         // 吸附资格读 +0x280，屋顶放置也使用它；不是地形重采样或零值占位。
         bytes[0x280..0x284].copy_from_slice(&self.authority.elevation().to_le_bytes());
+        // B publisher 0x140a8d7a4..d90c: source height +0x54,
+        // bounded according to the original +0x65 byte.
+        let resolved_height = super::height_rules::clamp_resolved_wall_height(
+            self.authority.height(), None, self.authority.source_flag_65(),
+        );
+        bytes[0x284..0x288].copy_from_slice(&resolved_height.to_le_bytes());
         bytes[0x288..0x28c].copy_from_slice(&self.authority.arch_height().to_le_bytes());
         bytes[0x295] = self.authority.freehand_ty();
         bytes[0x296] = self.authority.source_flag_65();
@@ -376,6 +382,36 @@ impl PublicWallState {
 #[cfg(test)]
 mod initialization_tests {
     use super::*;
+    #[test]
+    fn building_projection_publishes_resolved_source_height_and_flag() {
+        use crate::resources::roofs::geometry::surface::Curve2;
+        let curve = Curve2::try_new(vec![[0.0, 0.0], [8.0, 0.0]], false).unwrap();
+        let wall = WallState::new(curve, 3.0, 0, 0, false);
+        let terrain = TerrainHeightGrid512 { encoded: vec![0; 512 * 512].into(), minimum_y: 0.0, maximum_y: 0.0, sampling_fix: true };
+        let mut public = PublicWallState::collect(&wall, &terrain).unwrap();
+        for (flag, height, expected) in [(0, -1.0f32, 0.5f32), (0, 14.0, 14.0), (0, 99.0, 14.0), (1, -1.0, 0.3), (1, 2.5, 2.5), (1, 99.0, 2.5)] {
+            public.authority.snapshot.source.extra = height;
+            public.authority.snapshot.source.clutter_version = flag;
+            assert_eq!(public.building_projection().float_0x284().to_bits(), expected.to_bits());
+        }
+        public.authority.snapshot.source.extra = f32::NAN;
+        for flag in [0, 1] {
+            public.authority.snapshot.source.clutter_version = flag;
+            assert!(public.building_projection().float_0x284().is_nan());
+        }
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reverse-engineering/tiny-glade/evidence/country-core-deep/wall/m01-analysis-20261028-publisher-clamp-fixture.json"))).unwrap();
+        assert_eq!(fixture["executed"], true);
+        assert_eq!(fixture["original_B_sha256"], "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03");
+        for case in fixture["nan_cases_both_bounds"].as_array().unwrap() {
+            let input = u32::from_str_radix(case[0].as_str().unwrap(), 16).unwrap();
+            let expected = u32::from_str_radix(case[1].as_str().unwrap(), 16).unwrap();
+            for flag in [0, 1] {
+                public.authority.snapshot.source.clutter_version = flag;
+                public.authority.snapshot.source.extra = f32::from_bits(input);
+                assert_eq!(public.building_projection().float_0x284().to_bits(), expected, "flag {flag}, input {input:08x}");
+            }
+        }
+    }
     #[test]
     fn no_roof_gable_maximum_has_explicit_ready_reset_lifecycle() {
         use crate::resources::roofs::geometry::surface::Curve2;

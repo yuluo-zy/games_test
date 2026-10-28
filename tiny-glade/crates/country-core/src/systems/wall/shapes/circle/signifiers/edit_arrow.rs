@@ -3,7 +3,7 @@
 //! PDB: 1 `Query<(&EditCircleSignifier,&mut Transform)>`, 2 `Res<AnimatedCircleSignifierResource>`,
 //! 3 `Res<UiSignifierStream>`.
 //!
-//! Gate `tag != 2` (circle 0 / rectangle 1 emit; freehand 2 does not). `tag != 2` →
+//! Gate `tag != 2` (hover 0 / active 1 emit; absent 2 does not). `tag != 2` →
 //! `quat = rotation_from_normal(resource.normal)`, `pos = resource.position`; emit
 //! `edit_circle_{WidgetId-hash}_arrow` through the real factory path and write
 //! `Transform{rotation,translation}` to every `EditCircleSignifier` entity. Marker only —
@@ -75,15 +75,14 @@ pub fn signifier_edit_circle_arrow(
         let mut factory = SignifierFactory::from_closure(
             &name,
             Arc::new(move |meshes, shaders, commands| {
-                let entity = SignifierEntityBuilder::new(SignifierMesh::Named(
-                    "flat_arrow".to_string(),
-                ))
-                .rotation(quat)
-                .position(pos)
-                .disable_default_animation()
-                .animation_duration(0.0)
-                .custom_shader("vertex_color_shader")
-                .build(meshes, shaders, commands);
+                let entity =
+                    SignifierEntityBuilder::new(SignifierMesh::Named("flat_arrow".to_string()))
+                        .rotation(quat)
+                        .position(pos)
+                        .disable_default_animation()
+                        .animation_duration(0.0)
+                        .custom_shader("vertex_color_shader")
+                        .build(meshes, shaders, commands);
                 vec![entity]
             }),
         );
@@ -166,7 +165,10 @@ mod tests {
     #[test]
     fn resource_layout_matches_native_offsets() {
         assert_eq!(size_of::<AnimatedCircleSignifierResource>(), 64);
-        assert_eq!(offset_of!(AnimatedCircleSignifierResource, angle_base), 0x18);
+        assert_eq!(
+            offset_of!(AnimatedCircleSignifierResource, angle_base),
+            0x18
+        );
         assert_eq!(offset_of!(AnimatedCircleSignifierResource, position), 0x20);
         assert_eq!(offset_of!(AnimatedCircleSignifierResource, normal), 0x2c);
         assert_eq!(offset_of!(AnimatedCircleSignifierResource, tag), 0x38);
@@ -180,6 +182,10 @@ mod tests {
             registration.type_id,
             (0x1ae899de41d987a3, 0xc0085b7b93938bcb)
         );
-        assert!(registration.name.ends_with("edit_arrow::EditCircleSignifier"));
+        assert!(
+            registration
+                .name
+                .ends_with("edit_arrow::EditCircleSignifier")
+        );
     }
 }

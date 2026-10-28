@@ -1,0 +1,10 @@
+{
+  "original_B_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "source": "workspace/input/tiny-glade.exe; 0x140a8d8ae..0x140a8d8b7",
+  "original_instructions": ["f3410f5fdc", "f30f5dd3"],
+  "scope": "Original two instructions executed in a Win64 ABI wrapper with explicitly supplied bounds; no game function executed",
+  "executed": true,
+  "bounds": [["3f000000", "41600000"], ["3e99999a", "40200000"]],
+  "nan_cases_both_bounds": [["7fc12345", "7fc12345"], ["ffc12345", "ffc12345"], ["7f812345", "7f812345"], ["ff812345", "ff812345"]],
+  "other_cases": "Both signed zero and negative infinity return lower bound, positive infinity returns upper bound; tested in-range values preserve bits."
+}

@@ -51,8 +51,13 @@ pub struct PreviewCircle {
 
 impl Default for PreviewCircle {
     fn default() -> Self {
-        Self { last_audio_position: None, center: Vec2::ZERO, radius: 3.0,
-            rotation: 0.0, placement_y: 0.0 }
+        Self {
+            last_audio_position: None,
+            center: Vec2::ZERO,
+            radius: 3.0,
+            rotation: 0.0,
+            placement_y: 0.0,
+        }
     }
 }
 
@@ -71,12 +76,17 @@ pub struct PreviewRectangle {
 
 impl Default for PreviewRectangle {
     fn default() -> Self {
-        Self { last_audio_position: None, center: Vec2::ZERO, dimensions: Vec2::splat(6.0),
-            orientation: Vec2::X, placement_y: 0.0 }
+        Self {
+            last_audio_position: None,
+            center: Vec2::ZERO,
+            dimensions: Vec2::splat(6.0),
+            orientation: Vec2::X,
+            placement_y: 0.0,
+        }
     }
 }
 
-pub use shape_placement::{ShapePlacement, SnapMode, DontRecalculateShapePlacement};
+pub use shape_placement::{DontRecalculateShapePlacement, ShapePlacement, SnapMode};
 
 /// 兼容原恢复接口；与半木构造缓存共用同一个权威资源。
 pub use calc_shape_height::TimberframeConstructionParamsCache as CalcShapeHeight;
@@ -107,15 +117,6 @@ pub struct CreateRectangleCmd {
     pub elevation: f32,
 }
 
-/// EditCircleCmd (radius / rotation edit transport).
-#[derive(Event, Clone, Copy, Debug, PartialEq)]
-pub struct EditCircleCmd {
-    pub wall: WallId,
-    pub center: Vec2,
-    pub radius: f32,
-    pub rotation: f32,
-}
-
 /// EditRectangleCmd (B 0x40 B row, rectangle parameters @+0x10).
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
 pub struct EditRectangleCmd {
@@ -123,12 +124,9 @@ pub struct EditRectangleCmd {
     pub center: Vec2,
     pub dimensions: Vec2,
     pub orientation: Vec2,
-}
-
-/// FinishEditCircleCmd (ui_edit_circle release, history commit).
-#[derive(Event, Clone, Copy, Debug, PartialEq)]
-pub struct FinishEditCircleCmd {
-    pub wall: WallId,
+    pub position: glam::Vec3,
+    pub movement: f32,
+    pub rotating: bool,
 }
 
 /// FinishEditRectangleCmd (finish_edit_rectangle 0x141464a60 reader).
@@ -137,24 +135,14 @@ pub struct FinishEditRectangleCmd {
     pub wall: WallId,
 }
 
-/// RotateCircleCmd (ui_rotate_circle 0x1409ac910): rotate the circle wall's
-/// roof-ridge orientation.
-#[derive(Event, Clone, Copy, Debug, PartialEq)]
-pub struct RotateCircleCmd {
-    pub wall: WallId,
-    pub rotation: f32,
-}
-
 /// Convert the geometry-domain Curve2 into the wall-authority curve
 /// (crate::resources::roofs::geometry::surface::Curve2). The original had one Curve2; the
 /// reconstruction keeps the two recovered representations bridged here.
 /// (`::utils::` crate path: the local `shapes::utils` submodule shadows it.)
-pub fn to_authority_curve(curve: &::utils::curve::Curve2) -> crate::resources::roofs::geometry::surface::Curve2 {
-    let points = curve
-        .points
-        .iter()
-        .map(|p| [p.x, p.y])
-        .collect::<Vec<_>>();
+pub fn to_authority_curve(
+    curve: &::utils::curve::Curve2,
+) -> crate::resources::roofs::geometry::surface::Curve2 {
+    let points = curve.points.iter().map(|p| [p.x, p.y]).collect::<Vec<_>>();
     crate::resources::roofs::geometry::surface::Curve2::try_new(points, false)
         .expect("shape curve produced a valid authority Curve2")
 }
@@ -170,16 +158,17 @@ pub fn register_shape_resources(world: &mut World) {
     world.init_resource::<Events<CreateCircleCmd>>();
     world.init_resource::<Events<crate::resources::glade_border::MaxDemoElevationReached>>();
     world.init_resource::<Events<CreateRectangleCmd>>();
-    world.init_resource::<Events<EditCircleCmd>>();
     world.init_resource::<Events<EditRectangleCmd>>();
-    world.init_resource::<Events<FinishEditCircleCmd>>();
+    world.init_resource::<Events<rectangle::finish_edit_rectangle::OnRectangleEdited>>();
     world.init_resource::<Events<FinishEditRectangleCmd>>();
-    world.init_resource::<Events<RotateCircleCmd>>();
     world.init_resource::<crate::resources::walls::shape_alignment::WallShapeAlignmentWrites>();
     world.init_resource::<rectangle::ui_create_rectangle::ShapesDragMouseMoved>();
-    world.init_resource::<rectangle::ui_edit_rectangle_dims::RectangleDimsEditInput>();
-    world.init_resource::<rectangle::ui_edit_rectangle_orientation::RectangleOrientationEditInput>();
-    world.init_resource::<circle::ui_edit_circle::CircleEditState>();
+    world.init_resource::<rectangle::ui_edit_rectangle_dims::UiEditRectangleActiveWidgetResource>();
+    world.init_resource::<Events<rectangle::ui_edit_rectangle_dims::DoUiEditRectangleDims>>();
+    world.init_resource::<rectangle::ui_edit_rectangle_orientation::ClosestCornerCache>();
+    world
+        .init_resource::<Events<rectangle::ui_edit_rectangle_orientation::DoUiEditRectangleRotate>>(
+        );
     world.init_resource::<rectangle::finish_edit_rectangle::RectangleEditUiState>();
 }
 

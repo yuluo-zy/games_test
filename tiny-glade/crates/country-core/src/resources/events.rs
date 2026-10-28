@@ -100,8 +100,20 @@ pub struct InitAdjWallHeightMode;
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct FinishAdjWallHeightMode(pub crate::resources::walls::WallId);
 
-/// Original `OnShapeMoved` (produced by `ui_move_shapes` case 3 commit, 0x20 push row).
-/// Reader not yet located: payload is a placeholder carrying the moved wall id; exact
-/// fields pending analysis (registered UNKNOWN — not fabricated further).
+/// B 0x30 EventInstance: decorator offsets, wall, current center, then EventId.
+#[derive(Event, Clone, Debug)]
+pub struct OnShapeMoved {
+    pub offsets: Vec<(u32, f32, f32)>,
+    pub wall: crate::resources::walls::WallId,
+    pub center: glam::Vec2,
+}
+
+/// B freehand edit event: decorator id and position along the original curve.
+#[derive(Event, Clone, Debug)]
+pub struct OnFreehandWallEdited {
+    pub offsets: Vec<(u32, u32, f32)>,
+    pub wall: crate::resources::walls::WallId,
+}
+
 #[derive(Event, Clone, Copy, Debug)]
-pub struct OnShapeMoved(pub crate::resources::walls::WallId);
+pub struct OnCircleRotated(pub crate::resources::walls::WallId);

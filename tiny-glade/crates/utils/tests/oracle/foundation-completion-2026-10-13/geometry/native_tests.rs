@@ -638,7 +638,9 @@ fn rect(b:[u32;6])->Rectangle2d{let b=b.map(f);Rectangle2d{axis:Vec2::new(b[0],b
 #[test]fn original_completion_rectangle_intersections(){
 {let r=rect([1065353216,0,0,0,1082130432,1086324736]);assert_eq!(r.intersects(rect([1065353216,0,0,0,1065353216,1065353216])),false);assert_eq!(r.intersects_circle(Circle2d::new(v2([0,0]),f(1036831949))),false);}
 {let r=rect([1065353216,0,0,0,1082130432,1086324736]);assert_eq!(r.intersects(rect([1065353216,0,0,0,1101004800,1101004800])),false);assert_eq!(r.intersects_circle(Circle2d::new(v2([0,0]),f(1101004800))),false);}
-{let r=rect([1065353216,0,0,0,1082130432,1086324736]);assert_eq!(r.intersects(rect([1065353216,0,0,0,1082130432,1086324736])),true);assert_eq!(r.intersects_circle(Circle2d::new(v2([1073741824,0]),f(1065353216))),true);}
+// Re-executed B 0x140c9b990 and its original helper, 2026-10-28:
+// m01-pin-rectangle-legacy-oracle-fixture.json case line641 proves false.
+{let r=rect([1065353216,0,0,0,1082130432,1086324736]);assert_eq!(r.intersects(rect([1065353216,0,0,0,1082130432,1086324736])),false);assert_eq!(r.intersects_circle(Circle2d::new(v2([1073741824,0]),f(1065353216))),true);}
 {let r=rect([1065353216,0,0,0,1082130432,1086324736]);assert_eq!(r.intersects(rect([1058642330,1061997773,1084145009,1070288922,1066564325,1091318265])),false);assert_eq!(r.intersects_circle(Circle2d::new(v2([3230094063,1075959673]),f(1082304845))),true);}
 {let r=rect([1065353216,0,0,0,1082130432,1086324736]);assert_eq!(r.intersects(rect([1058642330,1061997773,3212845000,3213188202,1088753231,1065777981])),true);assert_eq!(r.intersects_circle(Circle2d::new(v2([1083893539,1082499386]),f(1072402284))),false);}
 {let r=rect([1065353216,0,0,0,1082130432,1086324736]);assert_eq!(r.intersects(rect([1058642330,1061997773,1071696036,1075018743,1084226708,1064634534])),true);assert_eq!(r.intersects_circle(Circle2d::new(v2([3216055889,1081286378]),f(1085195919))),true);}

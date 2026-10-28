@@ -1,5 +1,7 @@
 # Shape-edit UX 独立审查（B 版原证对照）
 
+> 2026-10-28用户停止点：采样差异确认后提交并停止。原UI resize0.5与timed/instant Morph replay0.2均已按原B PE调用/常量确认；未改生产回放算法。root已复读最新host1/1、circle5/5、pins3/3、utils177/177通过日志。扩展跨进程测试v5的circle/write通过，circle/restore因fixture JSON f64比较失败，诊断26处均同f32 bits，typed期望规范化未实施；circle/restore-applied尚未执行。不得据此声称两项全部完成。形状编辑在B库存归M06，目录m01-scratch是历史名，M01整体未验收。停止点与当前impl-status/中央STATUS优先于下文历史审查。
+
 - 审查 owner：独立审查 agent（只读，不改生产源码、不 commit）
 - 日期：2026-10-28
 - 工程：`D:/game/tiny-glade` ｜ 原版：`D:/game/ljxsj_92385/Tiny Glade`
@@ -400,3 +402,17 @@ PENDING=规格未 READY、旧实现不可用。
 | 4 | `ui_move_shapes` | **case1 已落地（12:02）**：archive `move_shape`(Wall+Terrain)→cull→`wall_decorators_mut` 三元组（源字段 `+0x1c`/`+0x24`）→`ShapeParameters::center()`+地形 anchor→写 shape_rec（Vec 头 `{cap@0, ptr@8, len@0x10}`、Δscreen@0x18、SP 拷贝@0x20、anchor.y@0x3c、decorator_triples），与映射一致（SP 基址@0x258）；单测断言 len/SP-copy/triples/anchor.y。**case3 = `ChangeSupports`（非 StateChange）+ `EditType::Wall`(type7)** ✔（单测断言变体）。case2(WallSpatialHash)✔ + digital[2]✔。**6 tests passed（12:03 锁内）**。剩余 PARTIAL：**9 writer 仅 2/9 实际发射**（`OnShapeMoved`/`ShowPinned`；`material/building/wall_ui audio`/`sheep_check`/`hide_trees`/`out_of_border`/`feedback_oob` 仅签名未 `.write()`）；move_gizmo tail 占位（→新收尾 agent）；注释仍误写 "StateChange"（代码已 ChangeSupports） | **PARTIAL**（case1/2/3/digital 达成；9-writer 与 move_gizmo tail 未闭合） |
 
 - 终判在每项落地 + 挂 a/c 组后给出，附独立跑测；锁被实现线占用期间不抢 Cargo。
+
+
+## 2026-10-28 统一接线批次审查（优先于上文历史结论）
+
+用户范围：先完成既定15叶，再M06；本轮不要求GPU画面、continuous present和Release长稳，不改变重写渲染架构。当前模型切换后重建分析/实现agent，按完整调用链分批验证。
+
+- 共享ShowPinned owner改为Circle/Rectangle/Wall语义事件；生产消费真实DecoratorStorage、CachedDecoratorTransforms、ClutterMeshes、PublicWalls、GameTime和RaycastWorld，更新真实DecoClutterLock/Ui2dWsExtent/Ui2dImage实体。删除人工几何/动画table和可见性假事件。生成、无事件淡出、owner排除、NaN生命周期和真实Rapier遮挡局部测试通过。原类型0x3e没有已证合法mesh producer，保留显式异常，不填猜测mesh。
+- 原Rectangle2d::intersects完整PE及真实helper在Unicorn执行81组（有限随机、大坐标、非单位轴、负size/零轴和非有限）。在既有utils owner恢复f32原算术/分支，现有19项矩形测试通过。包含/相等轮廓结果不能用SAT代替。测试原始损坏输入直接构造raw记录，不借constructor挡掉原函数输入。
+- 原extent/NaN生命周期的反编译条件曾与机器码不一致，已按原span实际执行撤销错误推论：extent8组、progress14组fixture保存于evidence/country-core-deep/wall。后者NaN保留，不因反编译简化而归零或删除。
+- 原polar wrapper包含CRT桥接，fixture只证明原wrapper和本机CRT边界，不冒称原打包CRT/整个系统执行。原f32格式化入口由PDB确认Display，停止依名称猜测。
+- host形状树使用原a/c chain_ignore_deferred、b两组之间chain和set17；移除独立adjust/raise重复安装。装饰reader在发布之后、历史结束之前的排序属于必要工程连接，不冒称已找回原系统set。现host native-physics使用真实Rapier；无该feature的既有miss后端不是本轮遮挡验收目标。
+- 统一shape首批59项通过；随后§6 5项、move8项、freehand edit1项、ivy2项、pins3项通过。本批point factory duration0、最后host smoke/保存回归由实现agent继续，不把构建前指纹等同后续修订。
+
+未决：原完整系统侧差分、真实host Gameplay执行和跨进程保存回归需看最终结果；原decorator set尚无确证。独立gated smoke只证明树和gate，不能证明活动Gameplay。当前不宣布15叶或M01整体验收完成。

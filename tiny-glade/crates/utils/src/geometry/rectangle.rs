@@ -1,6 +1,6 @@
 //! B Rectangle2d：axis@0、center@8、size@16，共24B观察字段。
 use super::{Aabb2, Circle2d, Ray2};
-use glam::{Affine2, DVec2, Mat2, Mat3, Vec2, Vec3};
+use glam::{Affine2, Mat2, Mat3, Vec2, Vec3};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Rectangle2d {
     pub axis: Vec2,
@@ -484,58 +484,31 @@ impl Rectangle2d {
             })
         })
     }
-    /// Test whether the closed rectangle boundaries intersect. Strictly
-    /// contained contours do not intersect; shared edges and vertices do.
+    /// B 0x140c9b990: test the other rectangle's four edges against the
+    /// local slabs. Contained and coincident contours are not intersections.
     pub fn intersects(self, other: Self) -> bool {
-        if [self, other].iter().any(|rectangle| {
-            !rectangle.axis.is_finite()
-                || !rectangle.center.is_finite()
-                || !rectangle.size.is_finite()
-                || rectangle.size.min_element() < 0.0
-                || rectangle.axis == Vec2::ZERO
-        }) {
-            return false;
-        }
-        let axis = self.axis.as_dvec2();
-        let perpendicular = DVec2::new(-axis.y, axis.x);
-        let scale_squared = axis.length_squared();
-        let to_local =
-            |delta: DVec2| DVec2::new(delta.dot(axis), delta.dot(perpendicular)) / scale_squared;
-        let relative_center = to_local(other.center.as_dvec2() - self.center.as_dvec2());
-        let relative_x = to_local(other.axis.as_dvec2());
-        let relative_y = DVec2::new(-relative_x.y, relative_x.x);
-        let other_half = other.size.as_dvec2() * 0.5;
+        assert!(self.size.length() >= 0.0, "invalid rectangle size");
+        assert!(other.size.y * other.size.x > 0.0, "invalid rectangle area");
+        let inverse = self.orientation_mat2().inverse();
+        let other_rotation = other.orientation_mat2();
+        let x = inverse * other_rotation.x_axis;
+        let y = inverse * other_rotation.y_axis;
+        let translation = (inverse.x_axis * other.center.x + inverse.y_axis * other.center.y)
+            - (inverse.y_axis * self.center.y + inverse.x_axis * self.center.x);
+        let half = other.size * 0.5;
         let points = [
-            DVec2::new(-other_half.x, -other_half.y),
-            DVec2::new(other_half.x, -other_half.y),
-            DVec2::new(other_half.x, other_half.y),
-            DVec2::new(-other_half.x, other_half.y),
-        ]
-        .map(|p| relative_center + relative_x * p.x + relative_y * p.y);
-        let half = self.size.as_dvec2() * 0.5;
+            Vec2::new(-half.x, -half.y), Vec2::new(-half.x, half.y),
+            Vec2::new(half.x, half.y), Vec2::new(half.x, -half.y),
+        ].map(|point| translation + y * point.y + x * point.x);
+        let half = self.size * 0.5;
         (0..4).any(|index| {
             let start = points[index];
             let direction = points[(index + 1) % 4] - start;
-            let mut near = f64::NEG_INFINITY;
-            let mut far = f64::INFINITY;
-            let mut on_boundary = false;
-            for dimension in 0..2 {
-                if direction[dimension] == 0.0 {
-                    if start[dimension].abs() > half[dimension] {
-                        return false;
-                    }
-                    on_boundary |= start[dimension].abs() == half[dimension];
-                } else {
-                    let first = (-half[dimension] - start[dimension]) / direction[dimension];
-                    let last = (half[dimension] - start[dimension]) / direction[dimension];
-                    near = near.max(first.min(last));
-                    far = far.min(first.max(last));
-                }
-            }
-            near <= far
-                && far >= 0.0
-                && near <= 1.0
-                && (on_boundary || (0.0..=1.0).contains(&near) || (0.0..=1.0).contains(&far))
+            let positive = (half - start) / direction;
+            let negative = (-half - start) / direction;
+            let near = positive.x.min(negative.x).max(positive.y.min(negative.y));
+            let far = positive.x.max(negative.x).min(positive.y.max(negative.y));
+            near <= far && far >= 0.0 && (far <= 1.0 || (near <= 1.0 && near >= 0.0))
         })
     }
     /// Clamp the selected dimension and move its named edge while retaining the
@@ -894,5 +867,29 @@ mod normal_regressions {
             rectangle.signed_distance_to_closest_edge(Vec2::new(3.0, 2.0)),
             2.0f32.hypot(1.0)
         );
+    }
+}
+
+#[cfg(test)]
+mod original_intersection_tests {
+    use super::*;
+    #[test]
+    fn matches_original_complete_rectangle_intersection() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reverse-engineering/tiny-glade/evidence/country-core-deep/wall/m01-pin-rectangle-intersects-fixture.json"))).unwrap();
+        assert_eq!(fixture["pe_sha256"], "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03");
+        let rectangle = |value: &serde_json::Value| {
+            let f = |v: &serde_json::Value| v.as_f64().map(|n| n as f32).unwrap_or_else(|| v.as_str().unwrap().parse::<f32>().unwrap());
+            let vec = |v: &serde_json::Value| Vec2::new(f(&v[0]), f(&v[1]));
+            Rectangle2d { center: vec(&value[1]), size: vec(&value[2]), axis: vec(&value[0]) }
+        };
+        for case in fixture["cases"].as_array().unwrap() {
+            let a = rectangle(&case["a"]); let b = rectangle(&case["b"]);
+            let actual = std::panic::catch_unwind(|| a.intersects(b));
+            if case["intersects"].as_str() == Some("panic_assert") {
+                assert!(actual.is_err(), "{}", case["name"]);
+            } else {
+                assert_eq!(actual.unwrap(), case["intersects"].as_bool().unwrap(), "{}", case["name"]);
+            }
+        }
     }
 }

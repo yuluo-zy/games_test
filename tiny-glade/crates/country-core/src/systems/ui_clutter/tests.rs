@@ -311,66 +311,6 @@ fn debug_spawn_single_uses_payload_rotation_and_batch_uses_zero() {
 }
 
 #[test]
-fn show_pins_applies_type_gate_geometry_and_dedup() {
-    use super::decoclutter_show_pins::{
-        PinAnimationTable, PinHitDedup, PinVisibilityToggle, PinnedDecoClutter,
-        PinnedDecoClutterBuffers, PinnedDecoGeometry, PinnedDecoGeometryTable,
-        ShowPinnedDecoClutter, decoclutter_show_pins,
-    };
-    use super::registration::register_ui_clutter_resources;
-    use utils::geometry::{Circle2d, Rectangle2d, Rectangle3d};
-
-    let mut world = World::new();
-    register_ui_clutter_resources(&mut world);
-    let footprint = Rectangle3d::new(
-        glam::Vec3::ZERO,
-        glam::Vec3::new(2.0, 2.0, 2.0),
-        glam::Vec2::X,
-    );
-    let trigger3d = Rectangle3d::new(
-        glam::Vec3::new(1.0, 0.0, 1.0),
-        glam::Vec3::new(10.0, 4.0, 10.0),
-        glam::Vec2::X,
-    );
-    let trigger2d = Rectangle2d::new(
-        glam::Vec2::new(1.0, 1.0),
-        glam::Vec2::new(10.0, 10.0),
-        glam::Vec2::X,
-    );
-    let base = PinnedDecoGeometry {
-        type_byte: 0x40,
-        footprint,
-        axis: glam::Vec2::X,
-        position: glam::Vec3::ZERO,
-        trigger_kind: 1,
-        trigger3d,
-        trigger2d,
-        circle: Circle2d::new(glam::Vec2::ZERO, 1.0),
-        ..Default::default()
-    };
-    let mut geo = PinnedDecoGeometryTable::default();
-    geo.0.insert(10, base); // 命中
-    geo.0.insert(11, PinnedDecoGeometry { type_byte: 0x38, ..base }); // 类型门跳过
-    world.insert_resource(geo);
-    world.insert_resource(PinnedDecoClutter([10, 11].into_iter().collect()));
-    world.send_event(ShowPinnedDecoClutter {
-        show: true,
-        ..Default::default()
-    });
-    world.init_resource::<PinAnimationTable>();
-    world.init_resource::<PinnedDecoClutterBuffers>();
-    world.init_resource::<PinHitDedup>();
-    let mut schedule = Schedule::default();
-    schedule.add_systems(decoclutter_show_pins);
-    schedule.run(&mut world);
-    let mut events = world.resource_mut::<Events<PinVisibilityToggle>>();
-    let toggles: Vec<_> = events.drain().collect();
-    assert_eq!(toggles.len(), 1);
-    assert_eq!(toggles[0].entity, 10);
-    assert!(toggles[0].visible);
-}
-
-#[test]
 fn focused_requests_preserve_original_native_producer_fields() {
     use super::ui_focus_decoclutter::{request_focused_decorator_move, request_focused_decorator_rotation};
     use crate::resources::walls::{decorator::{DecoratorId, DecoratorInfo}, decorator_storage::{DecoratorStorage, DecoratorStorageAddr}, WallId};

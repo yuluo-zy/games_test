@@ -33,12 +33,69 @@ pub struct WallTriggerVolume {
     uvs: Vec<[Vec2; 3]>,
     special: u8,
 }
+fn clip_u_sse(low: f32, high: f32, u: f32) -> f32 {
+    let v = if low > u { low } else { u };
+    if high < v { high } else { v }
+}
 impl WallTriggerVolume {
     pub fn is_valid(&self) -> bool {
         !self.quads.is_empty()
     }
     pub fn default_tris(&self) -> &[Triangle] {
         &self.triangles
+    }
+
+    /// B `get_tris` with the circle-edit parameters: no u clipping,
+    /// thickness 0.2875, minimum bottom 0, top offset -0.5, adjustment enabled.
+    pub fn edit_shape_tris(&self) -> Vec<Triangle> {
+        self.edit_shape_tris_in_range(None)
+    }
+
+    /// Same native edit-shape parameters with an optional CurveU range.
+    pub fn edit_shape_tris_in_range(&self, range: Option<[f32; 2]>) -> Vec<Triangle> {
+        assert!(!self.quads.is_empty(), "wall trigger volume has no quads");
+        let mut result = Vec::with_capacity(self.quads.len() * 2);
+        for q in &self.quads {
+            let [u0, u1] = q.prepared_u;
+            let [v0, v1] = if let Some([low, high]) = range {
+                assert!(low <= high, "invalid wall trigger range");
+                let clip = |u: f32| {
+                    let v = clip_u_sse(low, high, u);
+                    assert!((0.0..=1.0).contains(&v), "invalid CurveU");
+                    v
+                };
+                [clip(u0), clip(u1)]
+            } else { [u0, u1] };
+            if v0 == v1 {
+                continue;
+            }
+            let mut p = q.positions;
+            for i in 0..2 {
+                let h = q.segment_heights[i];
+                let bottom = if h.is_nan() || h < 0.0 { 0.0 } else { h };
+                let offset = q.endpoint_normals[i] * 0.2875;
+                p[i] = (p[i] - Vec3::Y * h) + Vec3::Y * bottom + offset;
+                let top = if self.special & 1 != 0 && q.segment_heights[0] > 0.0 {
+                    q.segment_heights[0] - q.positions[i + 2].y
+                } else {
+                    -0.5
+                };
+                p[i + 2] = Vec3::Y * top + p[i + 2] + offset;
+            }
+            if v0 != u0 || v1 != u1 {
+                let t0 = utils::scalar::inverse_lerp(u0, u1, v0);
+                let t1 = utils::scalar::inverse_lerp(u0, u1, v1);
+                let old = p;
+                p[0] = old[1] * t0 + old[0] * (1.0 - t0);
+                p[1] = old[1] * t1 + old[0] * (1.0 - t1);
+                p[2] = old[3] * t0 + old[2] * (1.0 - t0);
+                p[3] = old[3] * t1 + old[2] * (1.0 - t1);
+            }
+            result.push(Triangle::new(p[0], p[1], p[2]));
+            result.push(Triangle::new(p[1], p[3], p[2]));
+        }
+        assert!(!result.is_empty(), "wall trigger volume has no triangles");
+        result
     }
     pub fn triangle_normals(&self) -> &[[Vec3; 3]] {
         &self.normals
@@ -230,6 +287,82 @@ impl WallTriggerVolume {
                     .push(indices.map(|i| q.endpoint_normals[i & 1]));
                 self.uvs.push(indices.map(|i| q.wall_uv[i]));
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod edit_shape_tests {
+    use super::*;
+
+    fn volume() -> WallTriggerVolume {
+        WallTriggerVolume {
+            quads: vec![Quad {
+                wall_uv: [Vec2::ZERO; 4],
+                positions: [Vec3::ZERO, Vec3::X, Vec3::Y * 3.0, Vec3::X + Vec3::Y * 4.0],
+                prepared_u: [0.0, 1.0],
+                endpoint_normals: [Vec3::Z; 2],
+                segment_heights: [-1.0, 2.0],
+            }],
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn edit_shape_triangles_respect_bottom_top_and_special_height() {
+        let mut wall = volume();
+        let triangles = wall.edit_shape_tris();
+        assert_eq!(triangles[0].points, [Vec3::new(0.0, 1.0, 0.2875), Vec3::new(1.0, 0.0, 0.2875), Vec3::new(0.0, 2.5, 0.2875)]);
+        wall.special = 1;
+        wall.quads[0].segment_heights = [2.0, 3.0];
+        let triangles = wall.edit_shape_tris();
+        assert_eq!(triangles[0].points[2].y, 2.0);
+        assert_eq!(triangles[1].points[1].y, 2.0);
+    }
+
+    #[test]
+    fn edit_shape_triangles_preserve_nan_propagation() {
+        let mut wall = volume();
+        wall.quads[0].prepared_u[0] = f32::NAN;
+        assert!(wall.edit_shape_tris().iter().all(|triangle| triangle.points.iter().all(|point| point.is_nan())));
+    }
+
+    #[test]
+    fn range_clips_quad_endpoints_and_keeps_reverse_winding() {
+        let mut wall = volume();
+        let full = wall.edit_shape_tris();
+        let clipped = wall.edit_shape_tris_in_range(Some([0.25, 0.75]));
+        let lerp = |a: Vec3, b: Vec3, t: f32| b * t + a * (1.0 - t);
+        assert_eq!(clipped[0].points, [lerp(full[0].points[0], full[0].points[1], 0.25), lerp(full[0].points[0], full[0].points[1], 0.75), lerp(full[0].points[2], full[1].points[1], 0.25)]);
+        wall.quads[0].prepared_u = [1.0, 0.0];
+        let reverse = wall.edit_shape_tris_in_range(Some([0.25, 0.75]));
+        assert_eq!(reverse[0].points[0], clipped[0].points[0]);
+        assert_eq!(reverse[0].points[1], clipped[0].points[1]);
+        let mut second = wall.quads[0].clone();
+        wall.quads[0].prepared_u = [0.0, 0.5];
+        second.prepared_u = [0.5, 1.0];
+        wall.quads.push(second);
+        assert_eq!(wall.edit_shape_tris_in_range(Some([0.25, 0.75])).len(), 4);
+    }
+
+    #[test]
+    fn range_rejects_empty_invalid_and_nan() {
+        assert!(std::panic::catch_unwind(|| WallTriggerVolume::default().edit_shape_tris_in_range(Some([0.0, 1.0]))).is_err());
+        for range in [[0.5, 0.5], [0.75, 0.25], [f32::NAN, 1.0]] {
+            assert!(std::panic::catch_unwind(|| volume().edit_shape_tris_in_range(Some(range))).is_err());
+        }
+        let mut wall = volume();
+        wall.quads[0].prepared_u[0] = f32::NAN;
+        assert!(std::panic::catch_unwind(|| wall.edit_shape_tris_in_range(Some([0.0, 1.0]))).is_err());
+    }
+
+    #[test]
+    fn range_clip_matches_executed_original_sse_bits() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reverse-engineering/tiny-glade/evidence/country-core-deep/wall/m01-get-tris-sse-fixture.json"))).unwrap();
+        assert_eq!(fixture["pe_sha256"], "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03");
+        for case in fixture["cases"].as_array().unwrap() {
+            let bits = |key| u32::from_str_radix(case[key].as_str().unwrap(), 16).unwrap();
+            assert_eq!(clip_u_sse(f32::from_bits(bits("low")), f32::from_bits(bits("high")), f32::from_bits(bits("u"))).to_bits(), bits("result"));
         }
     }
 }

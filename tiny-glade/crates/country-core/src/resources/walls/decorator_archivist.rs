@@ -418,6 +418,11 @@ impl<C: Send + Sync + 'static> DecoratorArchivist<C> {
         }
     }
 
+    /// Return the saved pre-edit wall decorator used by edit consumers.
+    pub fn archived_wall_decorator(&self, wall: WallId, id: u32) -> Option<crate::resources::walls::decorator::DecoratorInfo> {
+        self.walls.get(&RecoveredWallId(wall.0))?.items.get(&id).map(observed_to_info)
+    }
+
     /// B `archive_storage_decorators` 0x1412b2a70/0x1412b3910（in-domain 核）：
     /// 按存储判别 0=墙 / 1=special1（before @+0xc0）/ 2=special2（after @+0x150）。
     ///

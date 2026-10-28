@@ -22,31 +22,11 @@ use glam::Vec2;
 
 use country_core::resources::walls::decorator::{DecoratorId, DecoratorInfo};
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
-use country_core::resources::walls::WallId;
+use country_core::resources::events::OnShapeMoved;
 
 use crate::decorator_on_wall_height_changed::{
     get_anchor_ws, set_anchor_ws, side_from_tag_byte,
 };
-
-/// 单元素偏移（O：12B `{id: u32, offset: Vec2}`）。
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MoveShapeOffset {
-    pub id: u32,
-    pub offset: Vec2,
-}
-
-/// 形状移动事件（O 读面；生产者属 core wall 系统，U）。
-#[derive(Event, Clone, Debug)]
-pub struct MoveShapeEvent {
-    /// +0x00：判别/前域（U）。
-    pub kind: u64,
-    /// +0x08/+0x10：受影响装饰 + 各自偏移。
-    pub affected: Vec<MoveShapeOffset>,
-    /// +0x20：事件级偏移。
-    pub offset: Vec2,
-    /// +0x18/推得：墙 id（闭包 `**(u32**)(env+0x10) = event.wall`）。
-    pub wall: WallId,
-}
 
 /// 位置写入（O：anchor_ws = xvy(elem.offset + event.offset)，y 保留，见 U）。
 #[inline]
@@ -63,28 +43,28 @@ pub fn apply_move_shape_offset(
 /// `decorator_on_move_shape` @0x140811fc0（O 结构）。
 pub fn decorator_on_move_shape(
     mut storage: ResMut<DecoratorStorage>,
-    mut events: EventReader<MoveShapeEvent>,
+    mut events: EventReader<OnShapeMoved>,
 ) {
     for event in events.read() {
         let Some(bucket) = storage.wall_decorators_mut(event.wall) else {
             continue;
         };
         // O：元素 id → modified_ids（`HashSet::insert`）。
-        for entry in &event.affected {
-            bucket.modified_ids.insert(entry.id);
+        for &(id, _, _) in &event.offsets {
+            bucket.modified_ids.insert(id);
         }
         // O：逐元素查 map + side 分派 + 位置写。
-        for entry in &event.affected {
-            let Some(info) = bucket.get_mut(DecoratorId(entry.id)) else {
+        for &(id, x, z) in &event.offsets {
+            let Some(info) = bucket.get_mut(DecoratorId(id)) else {
                 continue;
             };
             let side = side_from_tag_byte(info.dst_tag());
             match side {
-                0 => apply_move_shape_offset(info, entry.offset, event.offset),
+                0 => apply_move_shape_offset(info, Vec2::new(x, z), event.center),
                 1 => {}
                 2 => panic!(
                     "assertion failed: move_shape decorator {} has unsupported destination side 2",
-                    entry.id
+                    id
                 ),
                 _ => unreachable!(
                     "internal error: entered unreachable code (decorator_on_move_shape.rs)"
@@ -99,6 +79,26 @@ mod tests {
     use super::*;
     use crate::decorator_on_wall_height_changed::{get_wall_coord, set_wall_coord};
     use utils::wall_space::WallSpaceCoord;
+
+    #[test]
+    fn real_event_updates_wall_decorators_and_preserves_y() {
+        use country_core::resources::walls::decorator_storage::DecoratorStorageAddr;
+        use country_core::resources::walls::WallId;
+        let wall = WallId(7);
+        let mut world = World::new();
+        let mut storage = DecoratorStorage::default();
+        let mut info = DecoratorInfo::default();
+        set_anchor_ws(&mut info, glam::Vec3::new(5.0, 3.0, 9.0));
+        storage.get_or_insert_default(DecoratorStorageAddr::Wall(wall)).insert(DecoratorId(11), info);
+        world.insert_resource(storage);
+        world.init_resource::<Events<OnShapeMoved>>();
+        world.resource_mut::<Events<OnShapeMoved>>().send(OnShapeMoved { offsets: vec![(11, 1.0, 2.0)], wall, center: Vec2::new(4.0, 5.0) });
+        let mut schedule = Schedule::default();
+        schedule.add_systems(decorator_on_move_shape);
+        schedule.run(&mut world);
+        let info = world.resource::<DecoratorStorage>().get(DecoratorStorageAddr::Wall(wall)).unwrap().get(DecoratorId(11)).unwrap();
+        assert_eq!(get_anchor_ws(info), glam::Vec3::new(5.0, 3.0, 7.0));
+    }
 
     #[test]
     fn offset_adds_element_and_event_and_preserves_height() {

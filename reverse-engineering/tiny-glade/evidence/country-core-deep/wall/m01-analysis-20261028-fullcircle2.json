@@ -1,0 +1,66 @@
+{
+  "backend": "reva",
+  "transport": "official_mcp_sdk_streamable_http",
+  "worker": "m01-analysis-20261028",
+  "pid": 26836,
+  "project": "D:\\game\\tools\\reverse-runtime\\m01-analysis-20261028\\project\\TinyGlade.gpr",
+  "backend_reused": true,
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "ok": true,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "timeoutSeconds": 60,
+        "code": "import json,struct\nfrom ghidra.program.flatapi import FlatProgramAPI\napi=FlatProgramAPI(currentProgram,monitor);af=currentProgram.getAddressFactory()\ndef read(va,n):return bytes(x&255 for x in api.getBytes(af.getAddress(hex(va)[2:]),n))\nfor va in [0x142c82528,0x142c824b8]:\n b=read(va,64);print(hex(va),[hex(x) for x in struct.unpack(\"<8Q\",b)])\n if va==0x142c824b8:\n  for i in range(4):\n   ptr,size=struct.unpack_from(\"<QQ\",b,i*16);print(i,repr(read(ptr,size)) if size else b\"\")\n\nfor va,n in [(0x14165e6c0,4),(0x14165e72e,4),(0x142a7c880,4),(0x142934604,4)]:print(\"clamp\",hex(va),read(va,n).hex())\n"
+      },
+      "stdout_artifact": "D:\\game\\reverse-engineering\\tiny-glade\\evidence\\country-core-deep\\wall\\m01-analysis-20261028-fullcircle2.artifacts\\000.stdout.txt",
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"artifact\\\": \\\"D:\\\\\\\\game\\\\\\\\reverse-engineering\\\\\\\\tiny-glade\\\\\\\\evidence\\\\\\\\country-core-deep\\\\\\\\wall\\\\\\\\m01-analysis-20261028-fullcircle2.artifacts\\\\\\\\000.stdout.txt\\\", \\\"bytes\\\": 341, \\\"sha256\\\": \\\"b6f3f91e26a06e7141b1192575f4f11898003f01962df8f35f64ce4a6617eabb\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":19}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      },
+      "elapsed_seconds": 0.032,
+      "stdout": "0x142c82528 ['0x0', '0x14', '0x4', '0x1409a3620', '0x1409a3620', '0x1409a3620', '0x142c822be', '0x44']\n0x142c824b8 ['0x142c82413', '0x6', '0x142c82419', '0x6', '0x142c824b6', '0x1', '0x1', '0x0']\n0 b'circle'\n1 b'_edit_'\n2 b'_'\n3 b''\nclamp 0x14165e6c0 f30f5fc6\nclamp 0x14165e72e f30f5dc8\nclamp 0x142a7c880 6766663f\nclamp 0x142934604 00000041\n",
+      "passed": true
+    }
+  ],
+  "tool_count": 86,
+  "elapsed_seconds": 0.453,
+  "identity_result": {
+    "meta": null,
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"path\\\": \\\"/tiny-glade.exe\\\", \\\"functions\\\": 116270}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":9}",
+        "annotations": null,
+        "meta": null
+      }
+    ],
+    "structuredContent": null,
+    "isError": false
+  },
+  "identity": {
+    "sha256": "cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323",
+    "path": "/tiny-glade.exe",
+    "functions": 116270
+  },
+  "save_result": {
+    "nonce": "7e9d6f52b90854931b45ed1a2584dbf7",
+    "success": true,
+    "was_changed": false,
+    "changed_after_save": false,
+    "path": "/tiny-glade.exe",
+    "saved_locally": true
+  }
+}

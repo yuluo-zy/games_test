@@ -41,6 +41,8 @@ pub mod chimney_smoke_anim_thickness;
 pub mod collision_detection;
 pub mod cull_oob_decorators;
 pub mod decorator_on_freehand_wall_edited;
+#[cfg(test)]
+mod freehand_history_integration;
 pub mod decorator_on_move_shape;
 pub mod decorator_on_rectangle_edited;
 pub mod decorator_on_wall_height_changed;
@@ -129,6 +131,10 @@ pub fn add_decorator_systems<S: Send + Sync + 'static, C: Send + Sync + 'static>
     app: &mut bevy_app::App,
 ) {
     use bevy_app::Update;
+
+    app.add_event::<country_core::resources::events::OnShapeMoved>();
+    app.add_systems(Update, decorator_on_move_shape::decorator_on_move_shape
+        .before(derive_decorator_subtype::derive_decorator_subtypes));
 
     // 阶段 0/3（契约 §1 阶段 0.3 + 3.1）：子类型派生 → 变换缓存。缓存必须先于
     // UI 高度系统与可视化生成（它们消费 CachedDecoratorTransforms）。

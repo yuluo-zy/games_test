@@ -192,3 +192,9 @@ b = (                                   // .chain()
 - `WipRectangle`/`UiEditRectangleActiveWidgetResource`/`AnimatedCircleSignifierResource` 的字段名（仅默认写入字节已知）。
 - `ShapePlacement`/`SnapMode` 的字段语义归属（合同只给原写入，未给字段名）。
 - 本地 CPU schedule 与宿主 set(17) 树的职责划分（属工程决策，需用户确认；不属原版 ABI）。
+
+## 2026-10-28 旋转历史接线复核（静态）
+
+- 当前 `tiny-glade/crates/tiny-glade/src/run_game.rs` 的 `install_toolbar_shape_dependencies` 仍是缩减两链，`ui_adjust_wall_height` 另行独立注册；还没有生产注册 `do_ui_edit_rectangle_rotate`、`edit_rectangle`、`finish_edit_rectangle`。接线应使用上文原 a/b/c 结构，移除重复注册，保留 b 组间 `.chain()` 和其余 `.chain_ignore_deferred()`、set 17 与 gameplay 条件。
+- `finish_edit_rectangle` 每帧先发活动 Wip 的 `OnRectangleEdited`，之后处理 finish/history；`decorator_on_rectangle_edited` 在另一个系统 crate，当前未找到其生产注册，也未有证据确定它与 finish 的原 set/执行顺序。不能将静态事件顺序自动等同于 consumer 同帧执行。Bevy Events 注册和 update 应保留宿主既有 owner，避免重复事件维护。
+- 原注册树及事件时序是静态证据；局部 schedule 测试不能证明完整应用接线。不得为接线更改已重写 renderer。

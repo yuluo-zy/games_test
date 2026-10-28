@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn finish_produces_the_morph_premade_shape_payload() {
-        // Rectangle dims-edit state: variant 1 (+0 wall id @16, old axes @32,
+        // Rectangle orientation-edit state: variant 1 (+0 wall id @16, old axes @32,
         // old dimensions @48). The new source has rotated axes, so the
         // orientation criterion crosses the 0.01° guard.
         let mut state = RectangleEditState([0; 80]);

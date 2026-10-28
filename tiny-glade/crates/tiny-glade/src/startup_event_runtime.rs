@@ -56,11 +56,9 @@ pub(super) fn install(app: &mut App) {
     // sys::wall::shapes
     app.add_event::<sys::wall::shapes::CreateCircleCmd>();
     app.add_event::<sys::wall::shapes::CreateRectangleCmd>();
-    app.add_event::<sys::wall::shapes::EditCircleCmd>();
     app.add_event::<sys::wall::shapes::EditRectangleCmd>();
-    app.add_event::<sys::wall::shapes::FinishEditCircleCmd>();
+    app.add_event::<sys::wall::shapes::rectangle::finish_edit_rectangle::OnRectangleEdited>();
     app.add_event::<sys::wall::shapes::FinishEditRectangleCmd>();
-    app.add_event::<sys::wall::shapes::RotateCircleCmd>();
     // sys::wall::history_recording
     app.add_event::<sys::wall::history_recording::RecordWallHistory>();
     app.add_event::<sys::wall::history_recording::RecordColorHistory>();

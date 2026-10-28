@@ -1,5 +1,15 @@
 # 业务流恢复台账
 
+### 2026-10-28 用户停止点（优先于下方历史计划）
+
+用户最新要求：确认圆形编辑与历史回放的采样差异后，更新进度、提交当前文件并停止，不继续推进。分析与实现 agent 已停止；不自动续做 M06。
+
+- **采样差异已确认**：原 B UI resize 使用 step=0.5；timed/instant Morph 回放均使用 step=0.2（原常量1429cd068，bits3e4ccccd）。Morph只记录before/after形状，不记录UI临时curve Vec；生产回放默认值正确，未修改它迁就测试。原调用与PE身份见 `work/m01-scratch/shape-edit-spec.md` 末尾。
+- **真实宿主非空编辑链通过**：实际形状树、picker、press/held/release、publication19、非空decorator reader、history finish35均已运行通过；最新日志 `work/m01-scratch/impl_host_shape_final.log`。圆形canonical start/finish、wall+decorator Undo/Redo5/5；point factory1/1、pins3/3、rectangle reader4/4、utils177/177通过。
+- **圆形跨进程回归未全部通过**：最新v5中wall场景三子进程通过，circle/write已通过真实拖动生成Morph、完整Undo/Redo及保存；circle/restore在测试侧serialized-history JSON比较失败，后续circle/restore-applied尚未执行。独立诊断定位26处JSON f64解析/展示差异，转回f32后bits一致，其余结构/整数无差异；typed SavedMultiEdit期望规范化尚未实施。保留失败测试及 `work/m01-scratch/impl_circle_save_fresh_process_v5.log`，不记保存全链通过，不因此改生产序列化。按用户停止要求不继续修复此夹具。
+- **模块口径**：本批形状编辑叶子在B函数库存中归M06；m01-scratch为历史目录名。M01整体仍未验收，191/451是唯一同名函数体候选定位比例，不是完成率；104多候选与156未匹配仍待核查。GPU画面/连续present/Release长稳按用户排除，真实OS输入保持暂缓，真实Steam SDK不纳入。
+- **M06仅准备下一批证据**：主墙已有实现/注册可复用；corners/skirts/stairs附加输出、楼板/支撑/抹灰/半木等仍未完成。已保存corners完整原函数多分支输出、角度/seed及裙层原指令fixtures，尚未移植这些新增辅几何算法。下方旧“持续推进/不进入下一模块”等计划不覆盖本停止点。
+
 当前模块：**1 公共交互／toolbar，已恢复实施，未验收**。2026-10-24 用户确认按模块推进，并要求每轮记录过程与经验。先收口当前模块，后序模块只列实施范围和进入条件，不提前展开实现。本文件合并维护状态与业务流合同，优先增量修改现有文件，不为模板拆出多套文档。旧报告、候选代码及临时日志只作为指定版本的历史证据，不是平行进度表。
 
 ### 2026-10-24 用户范围决定：Steam SDK不修复
@@ -234,6 +244,47 @@
 | M17 | 整游戏联合验收 | 混合编辑、历史顺序、存档兼容、新进程恢复、反复切场景、窗口生命周期和 Release 长稳 | M01–M16 分别验收后进入；这里只验证共同运行，不承担补前序缺项。 |
 
 M13/M14 在其真实依赖通过后具备独立推进条件；默认执行仍遵循上表，不自动发起并行任务。M16 的菜单抢占/保存入口等前置部分应在所属模块同步验证，不能等到 M16 才提供验收入口。
+
+### M06 进入前只读盘点（2026-10-28，未修改生产）
+
+按 B 原职责和当前真实调用者记录，不采用旧库存的 stub 数量。历史 m01-scratch 中的形状编辑叶子在函数库存归 M06，沿用本轮实现，保留现有渲染架构。
+
+| 原职责 / 当前承载 | 可复用的生产链 | 仍需闭合的差异与消费者 |
+| --- | --- | --- |
+| B `systems/wall-constructor/src/construct_walls.rs` → 当前同路径 reexport → `country-core/src/systems/wall/construct_wall_bricks.rs:201` | 消费 OnWallChanged、RecalculateWallBricks 与屋顶 gable/presence/geometry；读取同一 PublicWalls/WallHoles/Roof，更新 WallEntities、InstancedWall、WallTriggerVolume、RtWorld，再发 WallBricksChanged/UpdateRtWorldEvent。special +296 返回空砖是已观察原分支。 | **不是未注册**：`run_game.rs:1173` 全限定调用 WallSystems::add_wall_systems；`app_systems.rs:117-130` set28 已有 gates→fences→finalize_wall_holes→construct_walls。缺的是原主 owner 的 corners/skirts/stairs_signifiers 附加输出，不能另建平行主墙实现。 |
+| authority → publication：`resources/walls/{inner_walls,public_walls,public_wall_state}.rs`、`systems/wall/wall_state/publish_public_wall_state.rs:103` | InnerWalls 变更集、真实 terrain/path 四栅格、Path/Terrain 双订阅、prepared path/高度缓存、PublicWalls.last_delta 与 OnWallChanged/Deleted 已有。 | 核新增/变形/合并/拆分/删除/历史回放是否使同一缓存失效；不能直接注入 PublicWallState 替代 publisher。完整 PreStartup 原链与保存重启仍未验收。 |
+| 高度/掩码前置：`app_systems.rs:79-101`、`wall-constructor/src/{init_wall_height_and_arch_segment_height,segmentation/*}` | set19 publisher→spatial→bend→clear planks→sample intersections→calculate segmentation→init heights；set22 roof relation→split stair masks→arches→lintels 已有真实注册。 | `build_wall_bricks:64` 必须取得 prepared_path、arch_segment_heights、segment_heights、finalized holes；缺项记录 WallBrickBuildState.failures 并跳过，不伪造成功。需要从每种 authority 输入验证前置真实写者。 |
+| 原 from_curve：`wall-constructor/src/wall_constructor.rs` → `country-core/src/systems/wall/construction/{parameters,production,bricks}.rs` | policy/seed、随机行、洞口归一/重叠切割及 96B instance 主链已有共享实现，继续复用。 | 旧局部原码 fixtures 不等于完整 construct_walls/ECS/渲染判等；核 style、roof、special、freehand 选择参数与失败路径。 |
+| 墙角/裙边/阶梯提示：`wall-constructor/src/utils/{wall_corners,wall_skirts,stairs_signifiers}.rs` | 部分 corner 检测 helper 已有；原入口 add_wall_corners141215540、add_skirts1412221f0、stairs_signifiers141223d10 已定位。 | 最终实例发射仍 todo；`wall_constructor.rs::helpers` 只是转调。当前 construct_wall_bricks 未调用这些附加 producer，应在原 owner 补算法及真实输出。这里的 stairs_signifiers 属原主墙 owner，独立平台/手工楼梯构造属于 M08。 |
+| arches/lintels/gates/fences：`wall-constructor/src/construct_{arches,lintels,gates,fences}/*` | arches/lintels 在 set22 消费掩码/PublicWalls，写材料统计、arch segments、per-wall GPU output、ConstructGateCmd；set28 gates/fences 已有生产系统。 | 核缺掩码/过期 roof、style2 等未覆盖分支与实际 writer；expect 中的 unrecovered 不能当整个系统为空。不要安装旧 add_wall_constructor_systems 总链：它会重复当前 set 并包含确定 todo。 |
+| 楼板/支撑/抹灰/半木：`construct_floors.rs:56`、`construct_elevation_supports/mod.rs:118/152/164/174`、`plaster_systems.rs:65/84/244`、`curved_halftimber/mod.rs:23` | 原入口与部分控制流/资源已定位。debug_force_update_arches 在 B 是原 1B ret，当前空体正确。 | 这些仍有真实 todo；Floor 组件未在当前 core 找到；overhang finder→supports→stone-column collider、plaster mesh/生命周期、curved-halftimber 维护仍须恢复。平台/手工楼梯专属主体划入 M08，不混称 M06 完成。 |
+| geometry → render/RT/collision：`construct_wall_bricks.rs:189-291`、`geometry/{instanced_wall,runtime}.rs`、`asset_libraries/runtime.rs:88`、`systems/collision/world.rs` | 主砖重算 trigger、清旧 RT positions 后追加实际 triangles；复用现上传 owner/dirty/容量失败处理，AssetMaintenance sync_wall_bricks 与 set44 brick/plank flush 已有。 | RT mesh/UI trigger 不等于 Rapier collider。本次尚未定位主墙 trigger→RaycastWorld 的明确生产边，列为 consumer 合同待核，不能因存在 flush 就宣称碰撞更新；先核原来源、holes/transform/remove，再复用现 upsert/remove/flush API。 |
+| history：`systems/history/{recording,replay_wall}.rs`、`resources/history/wall_edit.rs:472`、`systems/wall/deferred_wall_history.rs:140/165` | set14 start、set34 wall/merge记录、set35 finish/process、set40 replay 与 authority 恢复可复用。 | 验证 undo/redo 后同一实例、holes、trigger、RT、碰撞及删除重建；wall center 回放测试不能提升为整建筑/GPU/保存跨进程验收。 |
+
+下一最小批次先以真实普通墙审清 set19→22→28→44 的输入、实例与删除/重建，再恢复原主 owner 附加 geometry；后按楼板/支撑/洞口/抹灰/半木扩展。本次仅源码及调用者盘点，未运行 M06 测试或新增原码差分。旧 `app_systems.rs` 文件头 unmounted 注释滞后；仅搜 `.add_wall_systems(` 会漏掉 `run_game.rs:1173` 的全限定生产调用。
+
+#### M06 辅几何下一批可执行规格（2026-10-28，部分合同已证，完整 emitter 未完成）
+
+原证在既有 `reverse-engineering/tiny-glade/evidence/building-structures/m06-helpers-prepare.json` 及 `artifacts/001.stdout.txt`；仅自身 worker `m01-analysis-20261028` prepare，未触共享库。corners/skirt/stairs/main 四个范围均来自原 B PE RUNTIME_FUNCTION，绑定原发行 SHA `f507a6ce…7d03`；持久库仍是 patched `cf048e27…6323`。正式工具入口仍为既有 `evidence/building-constructor/native_fixture.py`，本批只增有界原函数/片段模式。未在 reconstruction/building、country-core、crates、wall 的 Rust 源中发现三辅 emitter 的完整实现；现 `building/wall_constructor.rs` 是主 from_curve 链，不可因名字相同认作已覆盖 corners/skirts。
+
+- **同一输出 owner，存在洞口副作用**：原 main `140758cf3` 传 corners 第7参为栈 `RBP+0x2b0` 的 Vec；`140758f70`、`140758fb6` 分别传 skirts/stairs 第3参为同一 Vec；`14075920b/212` 又将此 Vec 给 from_curve。三辅函数都按 `len*0x60` 追加 96B 并递增 len，不建立另一个 entity/SSBO。原先 corners，再 local holes finalize，随后条件 skirts、条件 stairs、from_curve；不能把辅几何附在已完成 base 后面就假定顺序一致。
+- **corners 真实参数（尚不能沿用当前 points/out 壳）**：PublicWallState（无桶前 WallId，Curve2 字段从 state+0 起）、WallId、prepared point-Y slice(ptr/count)、constructor arch-height slice(ptr/count)、上述同一输出 Vec、InProgressHoleStorage、construction kind byte、top bounds（20B f32 数据+tag@0x14）；caller 另传一个栈槽，是否在 callee 使用尚未闭合。prepared path 的 XZ/u、3D points、wall-space 与 max_y 都从 published state 读取。当前外部 `utils/wall_corners.rs::add_wall_corners_new(points,out)` 的输入面不足，不能只补其空体。
+- **洞口状态与最小适配方案**：原 `140758bce` 先 clone_and_reopen 源 WallHoleStorage，深拷至 constructor 栈 local；`140758c3d` as_wip_mut(local) 给 corners；corners 末 `14123fe30` 将临时 RawWallHole Vec extend 进该 local；`140758d1a/d2d` finalize/as_finalized(local)，其结果传后续 skirts/stairs/base。当前 `WallHoleStorage::clone_and_reopen`（geometry.rs:133）保留 raw/cached/fingerprints 并重开，`add` 只接受 Wip，`finalized_holes` 只接受 Finalized，正好可复用。建议保留现 canonical writers 与外置 finalize，不全局 reopen/清空；在主 constructor 内 clone/reopen 本墙 storage，角砖只改 local，再 finalize 给后三者。原local正常清理已核：from_curve返回14075925f后，14075927e检RBP230 tag，14075928b/292读取RBP238 cap、RBP240 ptr，1407592ac以cap*20释放；1407592b1读取RBP258/RBP260，1407592d5释放另一20B向量；未finalized走140759aa7另一清理路。这里是constructor局部副本生命周期，不把角砖holes写回canonical源桶。缺桶插默认后再clone的路径已定位，仍需最终集成差分。
+- **角点选择不是现 helper 的已验行为**：原 incoming=current−previous、outgoing=next−current，cos=`dot/sqrt(len2(incoming)*len2(outgoing))`，阈值 `[0xbe31d0d5,0x3e31d0d7)`；先检查闭合轮廓 index0，再继续窗口/索引步进。当前 `check_angle` 用反向 incoming，分母为两次 sqrt 再乘；`find_corners` 不检闭合 index0。原片段执行53例，直接 include 正式 helper 的 Rust probe 有2例反证（见 `B-corners-angle-fragment-fixture.json`）：next.x=−0.1736481934785843、next.y=0.9848077297210693 时原 reject/现 true；x反号时原 selected/现 false。该证据仅算术/分支，不覆盖角砖发射。
+- **corner seed 已执行，不是外部随机参数**：`corner_u=source.points_u[i]*source.length`；扫描 local raw 20B holes，不筛 kind，若 `abs(hole.center.x−corner_u)<0.01`，将 center.y 饱和转换 u64 并 wrapping 求和；seed=`cornerIndex.wrapping_add(sum)`。原 `141215b72..5c24` 无桥执行7例，含 kind0/2等同、负/NaN不加、+∞饱和后 wrapping，见 `B-corners-seed-fragment-fixture.json`。corners 最后将每个 resolved Aabb 的 center.x/y、width/height、kind=2 写成 RawWallHole20B；生成这些 Aabb 的 Triangle 链、交叠裁剪、交替宽度/最后宽0.76及 96B deformation/flags 仍待完整算法恢复，不据 seed/角点片段宣称完成。
+- **skirts 输入和已可执行前置**：PublicWallState、WallId、同一96B Vec、prepared Curve2、prepared point-Y slice(ptr/count)、published segment-height slice(ptr/count)、constructor-local FinalizedWallHoles。矩形取四条 get_point_u 区间，其他形状先取 [0,1]；layer、terrain/elevation 阈值、随机水平切分、holes_no_duplicates、resolve_hole_overlap、wall-space 坐标变换后追加实例，末字段@0x5c=4。当前只有 todo emitter；不能复用旧均分近似。现 core `split_height_into_skirts` 可作为有限值候选，但 NaN guard 错：原 UCOMISS/JAE 让 NaN直接空Vec，现 `height<5.9` 使 NaN进入无终止循环。既有 native_fixture 新模式 `--skirts-height` 已执行完整原 helper13例（仅桥通用 Vec<f32> 增容，排除 capacity/pointer，不替换业务），得到5.9→[4.5]、9.4→[4.5]、12.9→[4.5,8]、±NaN→[]，见 `B-skirts-height-fixture.json`；完整 add_skirts 尚未执行。
+
+实现归属建议：共享几何算法落现 core `systems/wall/construction/{structures,production}.rs` 的已有职责，外部原 B `utils/{wall_corners,wall_skirts,stairs_signifiers}.rs` 保留薄桥/reexport；主 producer 组装同一 Vec 与 local holes。这样 core 不反向依赖 external crate，也不新造事件/resource/重复实例 owner。下一验证批必须覆盖“角砖新增hole→local finalize→裙/阶梯/基础砖切洞→同一96B数组”，保持 gates/fences/arches/lintels 已有洞口写者。完整原 emitter 可执行入口仍需真实 published state、两组高度、holes 与 top-bound；暂未用零填字段冒充完整函数输入。
+
+### M06 corners 完整原函数执行补证（2026-10-28，未修改生产）
+
+既有 `evidence/building-constructor/native_fixture.py --corners-full` 已执行完整原 B `141215540`，矩形4×4、周长16、五个闭合点、published/prepared-Y=0、arch heights=3、kind=2、top_tag=2，实际返回12条96B实例及12条kind2 raw holes；`--hole` 先用原 `14123fe30` 初始化kind0洞口，再完整运行，返回8实例及9 raw holes，观察到原 `1412411c0` overlap与periodic wrap路径。`--top1` 返回18/18；加 `--support1` 返回14/14。原PE身份与每条96B/raw20B bits、必要published字段读偏移、采样/seed/overlap/flags观察轨迹均保存在既有 `evidence/building-structures/B-corners-full*-fixture.json`。桥接仅allocator/reallocator/free、host ucrt ceilf/fmodf；完整业务几何/洞口算法保留原PE。不是完整construct_walls/ECS验收，CRT也不声明是原发行版实现。首轮缺fmodf IAT失败记录保留。
+
+进一步核准：`141217a20` 是沿Curve3取coord并线性插值三组高度的闭包，ctx为curve和三组ptr/count（segment heights、prepared-Y、arch heights），不是需要另造Triangle库的独立泛几何算法。角砖输出+0x30..0x3f deformation在原body赋零，以上完整运行全部为零；surface三值才承载支撑/上沿剪裁，普通无支撑为(-100,-100,-100)，support1样例为(1,1,1)。追加 `--top1 --top-steep`（arch heights=[1,10,1,10,1]）完整原函数返回28实例/28洞，flags4×23、12×3、20×2，已覆盖flags12上沿剪裁，逐次比较三值bits亦记录；仍不能据此宣布实现或整链恢复。decomp复用布尔变量，前半段“特殊最后砖宽0.76”与后半段“三个segment-height采样和>0”不是同一语义，实施时必须分开。
+
+特殊最后砖的洞口合同（静态机器码、完整 `--hole` 路径已执行）：`141216132..165` 仅在 `hole.minX <= brick.centerX < hole.maxX` 处理；`141216191` 若hole.centerY高于brick.centerY，`141216197..1bf` 令brick.maxY=min(brick.maxY,hole.minY)；若brick中心高于hole中心，`1412161f6..224` 令brick.minY=max(brick.minY,hole.maxY)；中心相等不改。闭合轮廓对跨0/length的洞平移±length重复裁剪。minY>=maxY早停，最终height<=0.1丢弃，否则保持单proposal；不能用普通resolve_hole_overlap的左右拆块代替最后砖。原min/max含NaN选择保护，移植应沿用Rust f32::min/max并以bits fixture复核。
+
+原main的PDB FunctionSystem签名直接持有PublicWalls、AssetSsboLibrary、Roof query、TerrainHeightsData、WallEntities、WallHoles、RtWorld、InstancedWall/WallTriggerVolume query、变化事件与plaster/half-timber重算writer、UiSignifierStream和decorator derived资源；没有RaycastWorld/WallPhysicsColliders。不能把trigger/RT更新当Rapier碰撞完成，也不能据此把Rapier upsert/remove无证硬塞主owner。现base相较原main仍缺附加geometry、plaster/half-timber通知及signifier/decorator输入；真正碰撞owner待随后限定调用者核实。
 
 ### M01 当前模块收口步骤
 

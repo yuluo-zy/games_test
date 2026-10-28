@@ -1726,6 +1726,16 @@ impl RaycastWorld {
         Rapier::raycast_simple(self, origin, dir, f32::MAX, mask)
     }
 
+    /// B 0x1408ca9a0: exclude source tags 0/1/2/8 whose wall id at +8
+    /// matches the selected wall. Filtering occurs inside each Rapier query.
+    #[cfg(feature = "native-physics")]
+    pub fn raycast_simple_excluding_wall(
+        &self, origin: glam::Vec3, dir: glam::Vec3, mask: u32,
+        excluded: crate::resources::walls::WallId,
+    ) -> RaycastSimpleResult {
+        Rapier::raycast_simple_excluding_wall(self, origin, dir, f32::MAX, mask, excluded)
+    }
+
     /// `RaycastWorld::raycast_simple_exclude_wall_id`（非 native-physics 壳）。
     #[cfg(not(feature = "native-physics"))]
     pub fn raycast_simple_exclude_wall_id(
@@ -1737,6 +1747,12 @@ impl RaycastWorld {
     ) -> RaycastSimpleResult {
         RaycastSimpleResult::miss()
     }
+
+    #[cfg(not(feature = "native-physics"))]
+    pub fn raycast_simple_excluding_wall(
+        &self, _origin: glam::Vec3, _dir: glam::Vec3, _mask: u32,
+        _excluded: crate::resources::walls::WallId,
+    ) -> RaycastSimpleResult { RaycastSimpleResult::miss() }
 
     /// `RaycastWorld::legacy_raycast_w_params`（0x1408cc770）：转发 `Rapier::raycast`；
     /// 未命中把判别 2 写 +0x30（toi 槽，legacy 特例，同 `legacy_raycast`）。
@@ -2317,6 +2333,13 @@ impl Rapier {
         max_toi: f32,
         mask: u32,
     ) -> RaycastSimpleResult {
+        Self::raycast_simple_filtered(world, origin, dir, max_toi, mask, None)
+    }
+
+    fn raycast_simple_filtered(
+        world: &RaycastWorld, origin: glam::Vec3, dir: glam::Vec3, max_toi: f32,
+        mask: u32, excluded: Option<crate::resources::walls::WallId>,
+    ) -> RaycastSimpleResult {
         let ray = Ray::new(
             Point::new(origin.x, origin.y, origin.z),
             Vector::new(dir.x, dir.y, dir.z),
@@ -2327,13 +2350,21 @@ impl Rapier {
             if (mask >> slot_index) & 1 == 0 {
                 continue;
             }
+            let predicate = |handle: ColliderHandle, _: &Collider| {
+                let source = world.registered_mesh_for_collider(slot_index as u8, handle).source;
+                !excluded.is_some_and(|id| matches!(source.tag(), 0 | 1 | 2 | 8)
+                    && u64::from_le_bytes(source.0[8..16].try_into().unwrap()) == id.0)
+            };
+            let filter = if excluded.is_some() {
+                QueryFilter { predicate: Some(&predicate), ..QueryFilter::default() }
+            } else { QueryFilter::default() };
             if let Some((handle, toi)) = slot.pipeline.cast_ray(
                 &slot.bodies,
                 &slot.colliders,
                 &ray,
                 maximum_toi,
                 true,
-                QueryFilter::default(),
+                filter,
             ) {
                 // B 0x1408ce180: a hit shortens the next slot's maximum TOI.
                 maximum_toi = toi;
@@ -2345,6 +2376,13 @@ impl Rapier {
             }
         }
         result
+    }
+
+    fn raycast_simple_excluding_wall(
+        world: &RaycastWorld, origin: glam::Vec3, dir: glam::Vec3, max_toi: f32,
+        mask: u32, excluded: crate::resources::walls::WallId,
+    ) -> RaycastSimpleResult {
+        Self::raycast_simple_filtered(world, origin, dir, max_toi, mask, Some(excluded))
     }
 
     /// O：0x1408cdc40。槽范围访问器（原输出 {start=&self+0x20, end=&self+0x3cb0, 0}，
@@ -4312,6 +4350,35 @@ mod finite_simple_ray_regressions {
             u64::from_le_bytes(expected.0[i * 8..i * 8 + 8].try_into().unwrap())
         });
         assert_eq!(hit.handle, words);
+    }
+
+    #[test]
+    fn selected_wall_filter_skips_nearest_and_keeps_farther_hit_in_same_slot() {
+        for tag in [0u8, 1, 2, 8] {
+            let mut world = RaycastWorld::new();
+            let mut map = HashMap::new();
+            let mut near = RaycastGeoSource::tag_only(tag);
+            near.0[8..16].copy_from_slice(&7u64.to_le_bytes());
+            let mut far = RaycastGeoSource::tag_only(tag);
+            far.0[8..16].copy_from_slice(&8u64.to_le_bytes());
+            insert_box(&mut world, &mut map, 1, near, Vec3::Z * 2.0);
+            insert_box(&mut world, &mut map, 2, far, Vec3::Z * 4.0);
+            world.flush_colliders();
+            let hit = world.raycast_simple_excluding_wall(Vec3::ZERO, Vec3::Z, 1 << near.subworld(), crate::resources::walls::WallId(7));
+            assert_source(&hit, far);
+            assert_eq!(hit.toi, 3.5);
+        }
+        let mut world = RaycastWorld::new();
+        let mut map = HashMap::new();
+        let mut allowed = RaycastGeoSource::tag_only(3);
+        allowed.0[8..16].copy_from_slice(&7u64.to_le_bytes());
+        let mut other_slot = RaycastGeoSource::tag_only(1);
+        other_slot.0[8..16].copy_from_slice(&8u64.to_le_bytes());
+        insert_box(&mut world, &mut map, 1, allowed, Vec3::Z * 2.0);
+        insert_box(&mut world, &mut map, 2, other_slot, Vec3::Z * 4.0);
+        world.flush_colliders();
+        let mask = (1 << allowed.subworld()) | (1 << other_slot.subworld());
+        assert_source(&world.raycast_simple_excluding_wall(Vec3::ZERO, Vec3::Z, mask, crate::resources::walls::WallId(7)), allowed);
     }
 
     #[test]

@@ -1,0 +1,90 @@
+{
+  "scope": "Unicorn original PE instructions 140ad9211..140ad933d, input packed vector registers, not complete consumer",
+  "pe_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "cases": [
+    {
+      "name": "same",
+      "a": "(1.0, 0.0)",
+      "b": "(1.0, 0.0)",
+      "angle_bits": "00000000"
+    },
+    {
+      "name": "positive",
+      "a": "(1.0, 0.0)",
+      "b": "(0.0, 1.0)",
+      "angle_bits": "3fc90fda"
+    },
+    {
+      "name": "negative",
+      "a": "(1.0, 0.0)",
+      "b": "(0.0, -1.0)",
+      "angle_bits": "bfc90fda"
+    },
+    {
+      "name": "negative-dot",
+      "a": "(1.0, 0.0)",
+      "b": "(-1.0, 1.0)",
+      "angle_bits": "4016cbe5"
+    },
+    {
+      "name": "opposite",
+      "a": "(1.0, 0.0)",
+      "b": "(-1.0, 0.0)",
+      "angle_bits": "40490fdb"
+    },
+    {
+      "name": "zero-vector",
+      "a": "(0.0, 0.0)",
+      "b": "(1.0, 0.0)",
+      "angle_bits": "7fc00000"
+    },
+    {
+      "name": "nan",
+      "a": "(nan, 0.0)",
+      "b": "(1.0, 0.0)",
+      "angle_bits": "7fc00000"
+    },
+    {
+      "name": "negative-zero",
+      "a": "(1.0, -0.0)",
+      "b": "(1.0, -0.0)",
+      "angle_bits": "00000000"
+    },
+    {
+      "name": "nonunit-a",
+      "a_bits": [
+        "40400000",
+        "40800000"
+      ],
+      "b_bits": [
+        "40a00000",
+        "40e00000"
+      ],
+      "angle_bits": "3cbe74d5"
+    },
+    {
+      "name": "nonunit-b",
+      "a_bits": [
+        "40400000",
+        "40e00000"
+      ],
+      "b_bits": [
+        "c1100000",
+        "40800000"
+      ],
+      "angle_bits": "3fc75af8"
+    },
+    {
+      "name": "tiny",
+      "a_bits": [
+        "1e3ce508",
+        "1e3ce508"
+      ],
+      "b_bits": [
+        "1e3ce508",
+        "9e3ce508"
+      ],
+      "angle_bits": "bfc90fda"
+    }
+  ]
+}
