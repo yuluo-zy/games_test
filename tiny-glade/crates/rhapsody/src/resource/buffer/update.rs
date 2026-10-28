@@ -5,42 +5,29 @@ use crate::Result;
 use super::desc::BufferDesc;
 
 /// Validation failures of a sparse buffer update.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum BufferUpdateError {
     /// 区间 `start > end`。
+    #[error("更新区间 {start}..{end} 起点大于终点")]
     RangeInverted { start: usize, end: usize },
     /// 区间 `end > src_data.len()`。
+    #[error("更新区间终点 {end} 超过源数据长度 {len}")]
     RangeOutOfData { end: usize, len: usize },
     /// `total_bytes + src_data.len() + dst_offset` exceeds the buffer size.
+    #[error("assertion failed: total_bytes + src_data.len() + dst_offset as usize <= dst_buffer.desc.size（{total}+{dst_offset}>{capacity}）")]
     ExceedsCapacity {
         total: u64,
         dst_offset: u64,
         capacity: u64,
     },
     /// `"Buffer {} must be created with vk::BufferUsageFlags::TRANSFER_DST in order to support updates"`。
+    #[error("Buffer must be created with vk::BufferUsageFlags::TRANSFER_DST in order to support updates")]
     MissingTransferDst,
     /// The update has no bytes.
+    #[error("assertion failed: size > 0")]
     Empty,
 }
 
-impl std::fmt::Display for BufferUpdateError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::RangeInverted { start, end } => write!(f, "更新区间 {start}..{end} 起点大于终点"),
-            Self::RangeOutOfData { end, len } => write!(f, "更新区间终点 {end} 超过源数据长度 {len}"),
-            Self::ExceedsCapacity { total, dst_offset, capacity } => write!(
-                f,
-                "assertion failed: total_bytes + src_data.len() + dst_offset as usize <= dst_buffer.desc.size（{total}+{dst_offset}>{capacity}）"
-            ),
-            Self::MissingTransferDst => f.write_str(
-                "Buffer must be created with vk::BufferUsageFlags::TRANSFER_DST in order to support updates",
-            ),
-            Self::Empty => f.write_str("assertion failed: size > 0"),
-        }
-    }
-}
-
-impl std::error::Error for BufferUpdateError {}
 
 impl From<BufferUpdateError> for crate::Error {
     fn from(source: BufferUpdateError) -> Self {
@@ -128,4 +115,18 @@ pub fn plan_buffer_update(
         return Err(BufferUpdateError::Empty.into());
     }
     Ok(BufferUpdatePlan { total, regions })
+}
+
+#[cfg(test)]
+mod error_display_tests {
+    use super::*;
+
+    #[test]
+    fn display_text_is_stable() {
+        assert_eq!(
+            BufferUpdateError::RangeInverted { start: 3, end: 1 }.to_string(),
+            "更新区间 3..1 起点大于终点"
+        );
+        assert_eq!(BufferUpdateError::Empty.to_string(), "assertion failed: size > 0");
+    }
 }

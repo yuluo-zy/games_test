@@ -3,7 +3,8 @@ use crate::command::recording;
 use crate::rg::recorder as record;
 use super::GraphExecution;
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
+#[error("{self:?}")]
 pub enum Error {
     /// Some batches succeeded. The caller must retain the execution until its
     /// completion set is reached; error cleanup never blocks or rolls back GPU work.
@@ -45,10 +46,13 @@ impl From<Error> for crate::Error {
     }
 }
 
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
+
+#[cfg(test)]
+mod error_display_tests {
+    use super::*;
+
+    #[test]
+    fn display_text_is_stable() {
+        assert_eq!(Error::ChunkPlan.to_string(), "ChunkPlan");
     }
 }
-
-impl std::error::Error for Error {}

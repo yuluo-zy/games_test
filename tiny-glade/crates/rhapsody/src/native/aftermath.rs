@@ -18,7 +18,6 @@
 //! Feature=DeferDebugInfoCallbacks 是按 SDK 头命名的推断，数值是实测）；状态值 2/4 对应的 SDK 枚举名。
 use std::{
     ffi::{CStr, c_char, c_void},
-    fmt,
     time::Duration,
 };
 
@@ -297,17 +296,12 @@ pub fn wait_for_status_with(
 
 /// `get_shader_debug_info_identifier` 的错误：文案 = `"GFSDK_Aftermath_GetShaderDebugInfoIdentifier: {code:?}\n"`
 /// （0x142b1a608 / 0x142b1a636 两段字面量 + 1 个参数）。
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("{call}: {code:?}\n")]
 pub struct AftermathError {
     pub call: &'static str,
     pub code: i32,
 }
-impl fmt::Display for AftermathError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "{}: {:?}", self.call, self.code)
-    }
-}
-impl std::error::Error for AftermathError {}
 
 /// Windows 绑定：`GFSDK_Aftermath_Lib.x64.dll` 的 4 个导入（与原 EXE 导入表一致）。
 /// **未在本机（Linux）编译验证**：仓库没有 Windows 目标；写法遵循 `raw-dylib`（Rust ≥1.71）。
@@ -386,5 +380,16 @@ pub mod windows_api {
             };
             (code, id)
         }
+    }
+}
+
+#[cfg(test)]
+mod error_display_tests {
+    use super::*;
+
+    #[test]
+    fn display_text_is_stable() {
+        let e = AftermathError { call: "GFSDK_Aftermath_X", code: 5 };
+        assert_eq!(e.to_string(), "GFSDK_Aftermath_X: 5\n");
     }
 }

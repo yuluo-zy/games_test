@@ -74,7 +74,8 @@ impl RecordingCounters {
             .map(RecordingId)
     }
 }
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, thiserror::Error)]
+#[error("{self:?}")]
 pub enum Failure {
     CounterBounds,
     PoolFamilyBounds,
@@ -84,12 +85,6 @@ pub struct BeginFailure {
     pub reason: Failure,
     pub command: Command,
 }
-impl std::fmt::Display for Failure {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-impl std::error::Error for Failure {}
 
 // Recording failures keep their structured detail and actionable category.
 impl From<Failure> for crate::Error {
@@ -100,3 +95,13 @@ impl From<Failure> for crate::Error {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod error_display_tests {
+    use super::*;
+
+    #[test]
+    fn display_text_is_stable() {
+        assert_eq!(Failure::CounterBounds.to_string(), "CounterBounds");
+    }
+}

@@ -41,24 +41,36 @@ pub struct ReflectedPushConstant {
     #[serde(rename = "type")]
     pub reflected_type: serde_json::Value,
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum InterfaceError {
+    #[error("着色器接口无效：{self:?}")]
     Stage(String),
+    #[error("着色器接口无效：{self:?}")]
     Descriptor(String),
+    #[error("着色器接口无效：{self:?}")]
     IncompatibleBinding(u32, u32),
+    #[error("Sampler not found: {0}")]
     MissingSampler(String),
+    #[error("着色器接口无效：{self:?}")]
     InvalidPushConstant,
+    #[error("着色器接口无效：{self:?}")]
     RuntimeBindingNotLast(u32, u32),
+    #[error("着色器接口无效：{self:?}")]
     InvalidLayout,
+    #[error("着色器接口无效：{self:?}")]
     IncompatibleLocation(u32, u32),
     /// A vertex input has no byte size (`Type::nbyte()` is None, e.g. an
     /// opaque resource type).
+    #[error("{}", original_panics::VERTEX_INPUT_ATTRIB_BYTE_COUNT)]
     VertexInputByteCount,
     /// Unsupported vertex attribute type; the payload is the type's Debug text.
+    #[error("Unsupported vertex attribute type: {0}")]
     UnsupportedVertexAttributeType(String),
     /// A compute shader declares stage inputs.
+    #[error("{}", original_panics::COMPUTE_INPUTS_NOT_EMPTY)]
     ComputeHasVertexInputs,
     /// A compute shader has no workgroup size (`local_size` is None).
+    #[error("{}", original_panics::VALID_GROUP_SIZE)]
     MissingGroupSize,
 }
 pub mod original_panics {
@@ -92,27 +104,6 @@ pub fn validate_compute_reflection(
         .local_size
         .ok_or_else(|| InterfaceError::MissingGroupSize.into())
 }
-impl std::fmt::Display for InterfaceError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::VertexInputByteCount => {
-                f.write_str(original_panics::VERTEX_INPUT_ATTRIB_BYTE_COUNT)
-            }
-            Self::UnsupportedVertexAttributeType(ty) => {
-                write!(
-                    f,
-                    "{}{ty}",
-                    original_panics::UNSUPPORTED_VERTEX_ATTRIBUTE_TYPE_PREFIX
-                )
-            }
-            Self::ComputeHasVertexInputs => f.write_str(original_panics::COMPUTE_INPUTS_NOT_EMPTY),
-            Self::MissingGroupSize => f.write_str(original_panics::VALID_GROUP_SIZE),
-            Self::MissingSampler(name) => write!(f, "Sampler not found: {name}"),
-            _ => write!(f, "着色器接口无效：{self:?}"),
-        }
-    }
-}
-impl std::error::Error for InterfaceError {}
 impl From<InterfaceError> for crate::Error {
     fn from(source: InterfaceError) -> Self {
         Self::invalid_usage_with("着色器接口无效", source)
@@ -376,4 +367,21 @@ pub fn compiled_pipeline_entries(
                 .ok_or_else(invalid_shader)
         })
         .collect()
+}
+
+#[cfg(test)]
+mod error_display_tests {
+    use super::*;
+
+    #[test]
+    fn display_text_is_stable() {
+        assert_eq!(InterfaceError::MissingSampler("s".into()).to_string(), "Sampler not found: s");
+        assert_eq!(InterfaceError::InvalidLayout.to_string(), "着色器接口无效：InvalidLayout");
+        assert_eq!(InterfaceError::Stage("x".into()).to_string(), "着色器接口无效：Stage(\"x\")");
+        assert_eq!(InterfaceError::MissingGroupSize.to_string(), "a valid group size");
+        assert_eq!(
+            InterfaceError::UnsupportedVertexAttributeType("T".into()).to_string(),
+            "Unsupported vertex attribute type: T"
+        );
+    }
 }

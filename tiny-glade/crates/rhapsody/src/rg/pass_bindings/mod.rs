@@ -14,8 +14,9 @@ use crate::resource::managed::resources::{ManagedResources, ResourceManager};
 use crate::resource::managed::texture::ManagedTexture;
 use crate::resource::texture::{Texture, TextureViewDesc};
 use ash::vk;
-use std::{fmt, sync::Arc};
-#[derive(Debug)]
+use std::sync::Arc;
+#[derive(Debug, thiserror::Error)]
+#[error("资源绑定失败：{self:?}")]
 pub enum PassBindingError {
     Build(BuildError),
     MissingLogical,
@@ -47,12 +48,6 @@ impl From<vk::Result> for PassBindingError {
         Self::Vulkan(value)
     }
 }
-impl fmt::Display for PassBindingError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "资源绑定失败：{self:?}")
-    }
-}
-impl std::error::Error for PassBindingError {}
 
 #[derive(Clone, Copy)]
 pub struct PassBinding {
@@ -240,5 +235,15 @@ impl ManagedPassResources {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod error_display_tests {
+    use super::*;
+
+    #[test]
+    fn display_text_is_stable() {
+        assert_eq!(PassBindingError::InvalidView.to_string(), "资源绑定失败：InvalidView");
     }
 }

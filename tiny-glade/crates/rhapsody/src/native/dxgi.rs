@@ -9,7 +9,6 @@
 //!
 //! Windows uses [`SystemDxgi`] via `raw-dylib`; other platforms and tests
 //! inject a [`DxgiSource`].
-use std::fmt;
 
 /// Win32 `DXGI_ADAPTER_DESC` (0x130 bytes on 64-bit targets).
 #[repr(C)]
@@ -55,20 +54,11 @@ impl DxgiAdapter {
 }
 
 /// `CreateDXGIFactory` 失败（带 `"CreateDXGIFactory"` 上下文）。
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("CreateDXGIFactory failed: HRESULT {:#010x}", *.hresult as u32)]
 pub struct DxgiError {
     pub hresult: i32,
 }
-impl fmt::Display for DxgiError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "DXGI: HRESULT {:#010x}",
-            self.hresult as u32
-        )
-    }
-}
-impl std::error::Error for DxgiError {}
 
 /// 一次 `EnumAdapters(index)` + `GetDesc` 的结果。
 // Carries `DXGI_ADAPTER_DESC` by value so the probe stays Copy without boxing.
@@ -100,6 +90,9 @@ pub fn enumerate(source: &mut impl DxgiSource) -> Result<Vec<DxgiAdapter>, DxgiE
             AdapterProbe::DescFailed => {}
             AdapterProbe::Desc(desc) => adapters.push(DxgiAdapter::from_desc(&desc)),
         }
+        // Overflowing a `u32` adapter index is not a realistic state. If it ever
+        // happened it would be reported as E_BOUNDS, and `DxgiError`'s text
+        // (which names `CreateDXGIFactory`) would then mislabel it.
         index = index.checked_add(1).ok_or(DxgiError { hresult: 0x8000000Bu32 as i32 })?;
     }
 }
@@ -214,3 +207,16 @@ mod windows_impl {
 }
 #[cfg(windows)]
 pub use windows_impl::SystemDxgi;
+
+#[cfg(test)]
+mod error_display_tests {
+    use super::*;
+
+    #[test]
+    fn display_text_is_stable() {
+        assert_eq!(
+            DxgiError { hresult: 0x887a0004_u32 as i32 }.to_string(),
+            "CreateDXGIFactory failed: HRESULT 0x887a0004"
+        );
+    }
+}

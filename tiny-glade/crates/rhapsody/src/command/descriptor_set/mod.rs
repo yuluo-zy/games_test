@@ -635,19 +635,13 @@ pub struct LayoutPlan {
     pub bindings: Vec<LayoutBinding>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
+#[error("描述符布局无效：{self:?}")]
 pub enum Error {
     ZeroDescriptorCount,
     UnknownReflectionTag(u8),
     Vulkan(i32),
 }
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "描述符布局无效：{self:?}")
-    }
-}
-impl std::error::Error for Error {}
 impl From<Error> for crate::Error {
     fn from(source: Error) -> Self {
         Self::invalid_usage_with("描述符布局无效", source)
@@ -771,3 +765,13 @@ impl crate::tracking::GpuUse for VulkanDescriptorSet {
 mod descriptor_pool_tests;
 mod pool_ring;
 pub use pool_ring::{DescriptorPoolRing, DescriptorPoolRingConfig, DescriptorPoolRingStats};
+
+#[cfg(test)]
+mod error_display_tests {
+    use super::*;
+
+    #[test]
+    fn display_text_is_stable() {
+        assert_eq!(Error::Vulkan(-3).to_string(), "描述符布局无效：Vulkan(-3)");
+    }
+}

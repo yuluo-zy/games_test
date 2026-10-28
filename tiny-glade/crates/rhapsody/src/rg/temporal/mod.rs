@@ -88,7 +88,8 @@ pub(crate) struct TemporalPair {
     pub second: TemporalLookup,
     pub parity: u32,
 }
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("{self:?}")]
 pub enum TemporalError {
     AlreadyRequested(Arc<str>),
     WrongResourceKind(Arc<str>),
@@ -695,13 +696,6 @@ fn raw_state(descriptor: Descriptor, handle: ResourceHandle) -> TemporalRecordSt
     }
 }
 
-impl std::fmt::Display for TemporalError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-impl std::error::Error for TemporalError {}
-
 impl From<TemporalError> for crate::Error {
     fn from(error: TemporalError) -> Self {
         match error {
@@ -716,3 +710,16 @@ mod error_conversion_tests;
 
 #[cfg(test)]
 mod recorder_tests;
+
+#[cfg(test)]
+mod error_display_tests {
+    use super::*;
+
+    #[test]
+    fn display_text_is_stable() {
+        assert_eq!(
+            TemporalError::ExportMissing(Arc::from("x")).to_string(),
+            "ExportMissing(\"x\")"
+        );
+    }
+}
