@@ -20,9 +20,10 @@ cpu-probe = []
 # Exposes internal modules (`raw`, …) to this crate's own integration tests
 # and benches. Not part of the public API; enabled only through the
 # self dev-dependency below.
-test-support = []
+test-support = ["prism-gfx/test-support"]
 
 [dependencies]
+prism-gfx = { workspace = true, features = ["native-types"] }
 ash.workspace = true
 spirq.workspace = true
 rspirv.workspace = true
