@@ -10,7 +10,7 @@ actually run (and where the output is), and what still needs a machine this was 
 | --- | --- | --- | --- |
 | P0 baseline | Dispersion of GPU time for the 0.5 performance thresholds | `p0_gpu_matrix.py` (+ test) | Not run: needs the Windows machine and a frozen build. Plan and wiring unit-tested (`--dry-run`). CPU render-phase baseline is separate (`tools/perf_headless_series.py`) and not driven here. |
 | X1a | Do the production-lowered shaders have features Metal can't take, and how widespread is binding aliasing? | `crates/rhapsody/crates/shader-compiler/examples/x1_lower_all.rs`, `x1/x1_static_report.py` | **Run** on all 404 manifest pipelines with real DXC: 404/404 built and lowered. Output: `results/x1_static.md`. |
-| X1b | Does SPIRV-Cross translate the lowered SPIR-V (and does the Metal compiler accept the MSL)? | `x1/x1_msl_translate.py` (+ test with a stub translator), `x1/build_spirv_cross.sh` | **Not run.** SPIRV-Cross is not vendored and building it clones third-party source, which this environment refused to do automatically. The runner logic is tested against a stub. |
+| X1b | Does SPIRV-Cross translate the lowered SPIR-V (and does the Metal compiler accept the MSL)? | `x1/x1_msl_translate.py` (+ test with a stub translator), `x1/x1_msl_layout_check.py`, `x1/build_spirv_cross.sh` | **Run (translation only).** All 638 stages translate with argument buffers tier 2 in device storage. **The Metal compiler step has not been run** (needs a Mac): translation success is not proof the MSL compiles or is correct. Output: `results/x1b_translation.md`, `results/x1b_layout.md`. |
 | X2 | Apple-GPU time per pass; encoder and draw counts; MoltenVK gaps | `x2_mac_moltenvk.py` (+ test) | Not run: needs a Mac and the game assets. Environment construction is unit-tested against the Windows controller. |
 | X3 | How many tests change if Vulkan-typed fields become neutral types? | `x3_test_impact.py` | **Run.** Output: `results/x3_test_impact.md` / `.json`. |
 | X4 | Mobile bottleneck and budget on a phone | `x4_ios_harness/` (telemetry helper only; the harness is **not** written) | Not run. `x4_ios_harness/README.md` lists the blockers. |
@@ -55,6 +55,42 @@ the design's claim is that with them none do. That claim is not yet verified on 
 - The two `final_post.raster.hlsl` pipelines initially failed only because the manifest lists the
   pixel entry before the vertex entry and the builder requires vertex first; the driver orders stages.
 
+### X1b: SPIRV-Cross translation (`results/x1b_translation.md`, `results/x1b_layout.md`)
+
+SPIRV-Cross `vulkan-sdk-1.4.350.1` (commit `1a61695`), MSL 3.0, macOS target, all 638 lowered stages.
+
+| profile | translated | failed |
+| --- | ---: | ---: |
+| `plain` (no argument buffers; control) | 124 | 514 |
+| `argbuf-tier1` (control) | 124 | 514 |
+| **`argbuf-tier2-device`** (what D8 proposes) | **638** | 0 |
+| `argbuf-tier2-device-rich` | 638 | 0 |
+
+- The 514 failures of the controls are the stages that have heap resources; the 124 that pass are the
+  stages without any. Reasons: `Unsized array of descriptors requires argument buffer tier 2` and, with
+  argument buffers on but in constant storage, `Runtime sized variables must be in device storage
+  argument buffers`. My first run used the second configuration without the device-storage option and
+  failed 514 stages for that reason alone; the correct flag was found in `spirv-cross --help-msl`,
+  not guessed.
+- **Aliased bindings are translated, not rejected**: SPIRV-Cross emits one argument-buffer member and
+  re-views the same base address as each aliased type
+  (`reinterpret_cast<const device spvDescriptor<texture2d<float>>*>(&spvDescriptorSet0.<first member>)`),
+  commenting the others as `// Overlapping binding`. This answers the main X1a risk at the translator.
+- **Every declaration uses `[[id(0)]]`** (3143 of 3143), every struct has exactly one non-overlapping
+  member, and only descriptor set 0 is used (`x1b_layout.md`). The generated shader therefore assumes the
+  heap is **one flat table of descriptors indexed by slot, shared by textures, samplers and buffer
+  pointers**.
+- No stage exceeds Metal's binding limits: at most 2 buffer slots (the argument buffer and the
+  parameter block), 0 textures, 0 samplers, because everything goes through the heap.
+- `--msl-runtime-array-rich-descriptor` changes a buffer descriptor to `{pointer, length, padding}`
+  (16 bytes) while textures and samplers stay 8 bytes; that would break the flat re-viewing above.
+  No stage needs it (the translation succeeds without it; the "buffer_size" text found in 8 outputs is
+  a game struct field, `grass_buffer_size`). Do not enable it.
+
+Not established: that the Metal compiler accepts these 638 files (run with `--compile` on a Mac, and with
+`--no-fast-math` for D25); that the device-address-space argument buffer performs acceptably; that the
+generated code is correct.
+
 ### X6
 
 `n.a.` here (see table). Log: `rustup target add` error is the download being refused through the
@@ -62,9 +98,9 @@ proxy, not a rustup or workspace problem.
 
 ## Running order that avoids wasted effort
 
-1. On any machine with the shader tools: `x1_lower_all` (already done here), then
-   `x1/build_spirv_cross.sh` and `x1/x1_msl_translate.py` for X1b. On a Mac add `--compile` and, for
-   D25, `--no-fast-math`.
+1. X1b translation is done (above). Repeat it on a Mac with `--compile` (and `--no-fast-math` for D25) to
+   add the Metal compiler result: `x1_msl_translate.py <lowered> --spirv-cross <bin> --out <dir>
+   --profiles argbuf-tier2-device --compile`.
 2. On a Mac: `x5_metal_probe` (format/ICB/fence tests **without** validation first; see the file header),
    then `x2_mac_moltenvk.py`.
 3. On the Windows machine: `p0_gpu_matrix.py` (and the CPU series separately) before the first P1 change.

@@ -67,9 +67,18 @@ class TranslateTests(unittest.TestCase):
         self.assertIn('with N in binding N', text)  # hex id normalised once
 
     def test_every_profile_is_run(self):
-        (_, _, rows), _ = self.run_tool('--profiles', 'plain,argbuf-tier2')
-        self.assertEqual({r['profile'] for r in rows}, {'plain', 'argbuf-tier2'})
+        (_, _, rows), _ = self.run_tool('--profiles', 'plain,argbuf-tier2-device')
+        self.assertEqual({r['profile'] for r in rows}, {'plain', 'argbuf-tier2-device'})
         self.assertEqual(len(rows), 6)
+
+    def test_version_falls_back_to_build_files_next_to_the_binary(self):
+        # A stub that reports an unknown revision, like a CLI built without CMake.
+        with open(self.stub, 'w') as f:
+            f.write("#!/usr/bin/env python3\nprint('Git revision unknown. Build with CMake.')\n")
+        for name, text in (('SPIRV-Cross.tag', 'vulkan-sdk-9.9'), ('SPIRV-Cross.commit', 'abc123')):
+            with open(os.path.join(self.tmp.name, name), 'w') as f:
+                f.write(text + '\n')
+        self.assertEqual(tool.spirv_cross_version(self.stub), 'vulkan-sdk-9.9 abc123')
 
     def test_unknown_profile_rejected(self):
         with self.assertRaises(SystemExit):

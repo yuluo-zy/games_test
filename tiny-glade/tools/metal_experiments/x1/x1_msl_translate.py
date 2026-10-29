@@ -9,7 +9,7 @@ MSL is also compiled with the Metal compiler, optionally with fast math off (D25
 
     python3 tools/metal_experiments/x1/x1_msl_translate.py <lowered_dir> \
         --spirv-cross ~/tools/spirv-cross/spirv-cross --out <result_dir> \
-        [--profiles plain,argbuf-tier2] [--platform macos|ios] [--compile] [--no-fast-math]
+        [--profiles plain,argbuf-tier2-device] [--platform macos|ios] [--compile] [--no-fast-math]
 
 SPIRV-Cross is not vendored; build it with build_spirv_cross.sh (pinned tag) or point
 --spirv-cross at your own build. The result records the binary's version string.
@@ -26,12 +26,21 @@ import subprocess
 import sys
 
 PROFILES = {
-    # No argument buffers: every resource gets a plain [[buffer/texture/sampler(n)]] slot.
+    # No argument buffers: every resource gets a plain [[buffer/texture/sampler(n)]] slot. Expected to
+    # fail for the lowered shaders (they use unsized descriptor arrays); kept as the control.
     'plain': [],
-    # Argument buffers, tier 2 (device-addressable resource arrays), what D8 proposes.
-    'argbuf-tier2': ['--msl-argument-buffers', '--msl-argument-buffer-tier', '1'],
-    # Tier 1, for devices without tier 2 argument buffers.
-    'argbuf-tier1': ['--msl-argument-buffers', '--msl-argument-buffer-tier', '0'],
+    # Argument buffers, tier 2, set 0 held in device address space. This is what D8 proposes. The
+    # lowered shaders declare runtime-sized arrays, which SPIRV-Cross only accepts in device storage
+    # argument buffers (found by running the tool: "Runtime sized variables must be in device storage
+    # argument buffers"). All lowered bindings are in descriptor set 0.
+    'argbuf-tier2-device': ['--msl-argument-buffers', '--msl-argument-buffer-tier', '1',
+                            '--msl-device-argument-buffer', '0'],
+    # As above plus {ptr, len} descriptors for runtime arrays of storage buffers (OpArrayLength support).
+    'argbuf-tier2-device-rich': ['--msl-argument-buffers', '--msl-argument-buffer-tier', '1',
+                                 '--msl-device-argument-buffer', '0', '--msl-runtime-array-rich-descriptor'],
+    # Tier 1 control: runtime-sized arrays need tier 2, so failure here is the expected result.
+    'argbuf-tier1': ['--msl-argument-buffers', '--msl-argument-buffer-tier', '0',
+                     '--msl-device-argument-buffer', '0'],
 }
 # Metal per-stage limits that matter here (Apple GPUs; verify against the device in X5).
 LIMITS = {'buffer': 31, 'texture': 128, 'sampler': 16}
@@ -56,11 +65,24 @@ def static_checks(msl):
 
 
 def spirv_cross_version(binary):
+    """Version text for the result record. A CLI built without CMake reports no revision, so also
+    read the tag/commit files build_spirv_cross.sh writes next to the binary."""
     try:
         proc = subprocess.run([binary, '--revision'], capture_output=True, text=True, timeout=30)
-        return (proc.stdout or proc.stderr).strip()
+        text = (proc.stdout or proc.stderr).strip()
     except (OSError, subprocess.SubprocessError) as error:
         return f'unknown ({error})'
+    if 'unknown' in text.lower():
+        base = os.path.dirname(os.path.abspath(binary))
+        parts = []
+        for name in ('SPIRV-Cross.tag', 'SPIRV-Cross.commit'):
+            path = os.path.join(base, name)
+            if os.path.isfile(path):
+                with open(path, encoding='utf-8') as handle:
+                    parts.append(handle.read().strip())
+        if parts:
+            return ' '.join(parts)
+    return text
 
 
 def translate_one(binary, spv, out_path, profile, platform, extra):
@@ -175,7 +197,7 @@ def parse_args(argv=None):
     parser.add_argument('directory', help='output of the x1_lower_all example')
     parser.add_argument('--spirv-cross', required=True)
     parser.add_argument('--out', required=True)
-    parser.add_argument('--profiles', default='plain,argbuf-tier2', type=lambda s: s.split(','))
+    parser.add_argument('--profiles', default='plain,argbuf-tier2-device', type=lambda s: s.split(','))
     parser.add_argument('--platform', choices=('macos', 'ios'), default='macos')
     parser.add_argument('--compile', action='store_true', help='also run the Metal compiler (needs xcrun)')
     parser.add_argument('--no-fast-math', action='store_true')

@@ -79,6 +79,7 @@ Android 暂缓。
 | F30 | Nani 有多块按固定命令总量定容的缓冲(约 15MB/块),大小与场景无关 | `gpu_generate_draw_lists.rs:917,1147` |
 | F31 | 降级后的 SPIR-V 实测(404 个管线、638 个阶段,`tools/metal_experiments/results/x1_static.md`):**每个**阶段都带运行时描述符数组能力;**486/638(76%)的阶段至少有一个 binding 别名了多种资源类型**(binding 2 是不同布局的存储缓冲,所有受影响阶段都有,最宽 7 种;binding 0 是分量类型或深度标志不同的图像,39 个阶段;binding 1,16 个阶段) | X1a 实测 |
 | F32 | 不使用 K1 别名时,P1/P2 相关类型会触及 100 个测试文件、最多 643 个测试(rhapsody 493、tiny-glade 150、country-core 0);全部类型族合计 139 个文件、841 个测试。上界,不是实际修改数 | X3 实测(`results/x3_test_impact.md`) |
+| F33 | SPIRV-Cross(`vulkan-sdk-1.4.350.1`)把全部 638 个降级后的阶段转成了 MSL(`--msl-argument-buffers --msl-argument-buffer-tier 1 --msl-device-argument-buffer 0`,MSL 3.0)。别名 binding 被翻译成「同一个基地址按不同类型重新解释」,不是被拒绝;所有声明都用 `[[id(0)]]`,只用到描述符集 0,即**整个堆是一块平铺的描述符表,所有种类共用同一个槽位索引**。没有阶段超出 Metal 的绑定数上限(最多 2 个缓冲槽、0 个纹理、0 个采样器)。**Metal 编译器是否接受这些 MSL 未验证**(需要 Mac) | X1b 实测(`tools/metal_experiments/results/x1b_*.md`) |
 
 ### 0.5 性能门槛(新增)
 
@@ -228,7 +229,7 @@ Vulkan 后端不分组,行为不变。诊断模式下关闭分组与合并,保�
 
 | Vulkan(现有) | Metal |
 | --- | --- |
-| 共享描述符堆(一个 set,数组按类型别名到同一 binding) | 一个 argument buffer,内含按类型分组的资源数组 |
+| 共享描述符堆(一个 set,数组按类型别名到同一 binding;**每种资源各有独立的索引空间**,`bindless/slots.rs` 的 `entries: [Vec<Slot>; 4]`) | 一块**平铺的 8 字节描述符表**(device 地址空间的 argument buffer),所有种类共用 `[[id(0)]]`(F33)。堆的槽位索引必须跨种类唯一:`flat_slot = kind_base + index`,`kind_base` 取自各种类的容量配置;参数块里写入的是 `flat_slot` |
 | 参数块(存储缓冲,内含原推送字节和堆索引) | 同样是缓冲,经缓冲偏移或 `setBytes` 传入 |
 | 1 个推送字 | `setBytes` 4 字节;ICB 中改用继承的缓冲(ICB 命令不能 `setBytes`,审查 B) |
 | 采样器在堆表里,索引运行时从参数块读取 | 同样在 argument buffer 里 |
@@ -237,7 +238,9 @@ Vulkan 后端不分组,行为不变。诊断模式下关闭分组与合并,保�
 
 **最大风险**:降级后的 SPIR-V 中,同一个 binding 上别名了维度或类型不同的资源数组。这是 SPIRV-Cross 的已知薄弱点(审查 B 的已有了解)。X1a 的实测把它量化了(F31):它不是个别着色器的边角情况,而是 **76% 的阶段**都有,其中 binding 2 上不同布局的存储缓冲别名在所有受影响的阶段里都存在。所以 D8 的单一模型是否成立,取决于 X1b(SPIRV-Cross 能否处理这些别名)的结果,而且需要在 P0 里最先出结果。
 
-推翻条件:X1 显示别名数组无法转译,则改为构建期把别名数组拆成按类型、按维度分开的数组再转译(只在 Metal 构建中做,Windows 不变)。
+**X1b 已部分回答**(F33):SPIRV-Cross 能转译全部别名,代价是堆必须是平铺的、跨种类索引唯一的 8 字节描述符表。要点:(1) Metal 的堆实现要用 `flat_slot = kind_base + index`,这发生在写参数块的 CPU 一侧;(2) 所有种类的描述符必须同为 8 字节,所以**不能**启用 `--msl-runtime-array-rich-descriptor`(它把缓冲描述符变成 16 字节),实测没有任何阶段需要它;(3) 仍未验证的是 Metal 编译器接受这些 MSL、device 地址空间的 argument buffer 性能可接受、生成代码正确——需要 Mac。
+
+推翻条件:Metal 编译器拒绝这种按类型重新解释的写法,则改为构建期把别名数组拆成按类型、按维度分开的数组再转译(只在 Metal 构建中做,Windows 不变)。
 
 ### D9. 着色器转译链(修)
 
@@ -563,7 +566,7 @@ Vulkan 后端不分组,行为不变。诊断模式下关闭分组与合并,保�
 | X5 | Metal 能力原型:第 6.2 节全部"待 X5"项 | 各决策依赖的能力是否成立;后端 trait 形状 | Mac + iPhone |
 | X6 | 在 Linux 上对 Apple 目标做 `cargo check`(审查 B 未能完成:本机没装 Apple target) | D2 的 CI 是否需要 Mac | Linux |
 
-**实验代码已准备好**,位置、运行状态和已得结果见 [`tools/metal_experiments/README.md`](../../tools/metal_experiments/README.md)。截至本版:X1a、X3 已在 Linux 上实测并出结果(F31、F32);X6 在本机为 n.a.(Apple 目标的标准库下载被网络拦截);X1b、X2、X4、X5 的代码已写好但尚未运行,X4 的 harness 本身未写(阻塞项见其 README)。
+**实验代码已准备好**,位置、运行状态和已得结果见 [`tools/metal_experiments/README.md`](../../tools/metal_experiments/README.md)。截至本版:X1a、X3 已在 Linux 上实测并出结果(F31、F32);X6 在本机为 n.a.(Apple 目标的标准库下载被网络拦截);X1b 的转译部分已实测(F33),Metal 编译一步未做;X2、X4、X5 的代码已写好但尚未运行,X4 的 harness 本身未写(阻塞项见其 README)。
 
 ## 6. 风险与 Metal 能力状态
 
