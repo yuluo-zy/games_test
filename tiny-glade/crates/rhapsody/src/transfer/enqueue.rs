@@ -15,7 +15,7 @@ use super::queue::UploadQueueConfig;
 use super::queue::UploadQueueStats;
 use super::record::QueueTarget;
 use super::route::TransferImageSupport;
-use super::staging::Staging;
+use super::staging::{Staging, StagingLock};
 use super::tickets::QueuedUploadTicket;
 
 impl TransferManager {
@@ -56,7 +56,7 @@ impl TransferManager {
             .as_ref()
             .filter(|target| target.family() != graphics.family())
             .map(|target| [graphics.family(), target.family()]);
-        let staging = Arc::new(parking_lot::Mutex::new(Staging::new(
+        let staging = Arc::new(StagingLock::new(Staging::new(
             device.clone(),
             staging_families,
             config.slots,

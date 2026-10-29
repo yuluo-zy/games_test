@@ -1,5 +1,5 @@
 //! Registration and release of allocations.
-use ash::vk;
+use crate::native_types::MemoryProperties;
 use crate::Error;
 use crate::Result;
 use std::sync::atomic::Ordering;
@@ -17,7 +17,7 @@ impl AllocatorStats {
         size: u64,
         memory_type: u32,
         heap: u32,
-        properties: vk::MemoryPropertyFlags,
+        properties: MemoryProperties,
         name: String,
     ) -> Result<u64> {
         self.register_with_spare(size, memory_type, heap, properties, name, None, false)
@@ -25,12 +25,13 @@ impl AllocatorStats {
 
     /// Register a dedicated VkDeviceMemory object whose native slot was taken
     /// by [`Self::acquire_native_object`]; releasing the record frees it.
-    pub(crate) fn register_native(
+    #[doc(hidden)]
+    pub fn register_native(
         &self,
         size: u64,
         memory_type: u32,
         heap: u32,
-        properties: vk::MemoryPropertyFlags,
+        properties: MemoryProperties,
     ) -> Result<u64> {
         self.register_with_spare(
             size,
@@ -44,12 +45,13 @@ impl AllocatorStats {
     }
 
     #[cfg(any(feature = "suballocation", test))]
-    pub(crate) fn register_suballocation(
+    #[doc(hidden)]
+    pub fn register_suballocation(
         &self,
         size: u64,
         memory_type: u32,
         heap: u32,
-        properties: vk::MemoryPropertyFlags,
+        properties: MemoryProperties,
         spare: u64,
     ) -> Result<u64> {
         self.register_with_spare(
@@ -69,7 +71,7 @@ impl AllocatorStats {
         size: u64,
         memory_type: u32,
         heap: u32,
-        properties: vk::MemoryPropertyFlags,
+        properties: MemoryProperties,
         name: String,
         spare: Option<u64>,
         native: bool,
@@ -107,7 +109,7 @@ impl AllocatorStats {
             let id = state.next_id.checked_add(1).ok_or_else(overflow)?;
             let mut totals = state.totals;
             totals.total_allocated_bytes = total;
-            if properties.contains(vk::MemoryPropertyFlags::DEVICE_LOCAL) {
+            if properties.contains(MemoryProperties::DEVICE_LOCAL) {
                 totals.device_local_bytes = totals
                     .device_local_bytes
                     .checked_add(size)
@@ -176,7 +178,8 @@ impl AllocatorStats {
     }
 
     #[cfg(any(feature = "suballocation", test))]
-    pub(crate) fn release_suballocation(&self, id: u64, spare: u64) -> Result<()> {
+    #[doc(hidden)]
+    pub fn release_suballocation(&self, id: u64, spare: u64) -> Result<()> {
         self.release_with_spare(id, Some(spare))
     }
 
@@ -211,7 +214,7 @@ impl AllocatorStats {
             }
             state.refresh_heap_pressure();
             state.totals.total_allocated_bytes -= size;
-            if properties & vk::MemoryPropertyFlags::DEVICE_LOCAL.as_raw() != 0 {
+            if properties & MemoryProperties::DEVICE_LOCAL.as_raw() != 0 {
                 state.totals.device_local_bytes -= size;
             } else {
                 state.totals.system_bytes -= size;
@@ -228,14 +231,16 @@ impl AllocatorStats {
 
     /// Only unused native blocks may be trimmed. No live range changes here.
     #[cfg(any(feature = "suballocation", test))]
-    pub(crate) fn trim_suballocator_spare(&self, memory_type: u32, heap: u32) {
+    #[doc(hidden)]
+    pub fn trim_suballocator_spare(&self, memory_type: u32, heap: u32) {
         self.with_state(|state| {
             replace_spare(state, memory_type, heap, 0);
             state.refresh_heap_pressure();
         });
     }
 
-    pub(crate) fn rename(&self, id: u64, name: String) {
+    #[doc(hidden)]
+    pub fn rename(&self, id: u64, name: String) {
         let mut state = self.state.lock();
         if let Some(record) = state.records.get_mut(&id) {
             record.name = name.clone();

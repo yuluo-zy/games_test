@@ -31,7 +31,7 @@ macro_rules! internal_mod {
     )+};
 }
 
-pub mod accounting;
+pub use prism_gfx::accounting;
 pub mod bindless;
 pub mod collections;
 pub mod command;

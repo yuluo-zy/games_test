@@ -37,7 +37,7 @@ pub use queue::{
     UploadPriority, UploadQueueConfig, UploadQueueStats, UploadStatus,
 };
 use record::QueueTarget;
-use staging::Staging;
+use staging::StagingLock;
 use std::sync::Arc;
 pub use setup::{
     SETUP_WAIT_TIMEOUT_NS, SetupAccess, SetupContext, SetupStats, SetupSubmission,
@@ -67,7 +67,7 @@ pub struct TransferManager {
     transfer_images: TransferImageSupport,
     config: TransferConfig,
     /// Staging slots; registered as an evictable cache with the device.
-    staging: Arc<parking_lot::Mutex<Staging>>,
+    staging: Arc<StagingLock>,
     capacity_stalls: u64,
     queued: UploadQueue<Buffer>,
 }

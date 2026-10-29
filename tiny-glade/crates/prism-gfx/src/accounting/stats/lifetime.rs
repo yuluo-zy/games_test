@@ -12,7 +12,8 @@ use super::super::budget::BudgetCategory;
 
 impl AllocatorStats {
     /// Stage a GPU use without the global statistics lock.
-    pub(crate) fn record_gpu_use(&self, id: u64, point: SyncPoint) {
+    #[doc(hidden)]
+    pub fn record_gpu_use(&self, id: u64, point: SyncPoint) {
         {
             let mut pending = self.pending_uses[point.queue.index()].lock();
             if pending.try_reserve(1).is_ok() {
@@ -25,7 +26,8 @@ impl AllocatorStats {
         self.with_state(|state| state.apply_use(point.queue, point.value, id));
     }
 
-    pub(crate) fn mark_retiring(&self, id: u64) {
+    #[doc(hidden)]
+    pub fn mark_retiring(&self, id: u64) {
         // Drop owns this allocation exclusively. Do not flush unrelated staged
         // uses (which can grow in-flight statistics) while marking it terminal.
         let mut state = self.state.lock();
@@ -34,7 +36,8 @@ impl AllocatorStats {
             .store(encode_action(state.action()), Ordering::Release);
     }
 
-    pub(crate) fn mark_cached(&self, id: u64, completed: &CompletedValues) {
+    #[doc(hidden)]
+    pub fn mark_cached(&self, id: u64, completed: &CompletedValues) {
         self.with_state(|state| {
             if state
                 .phases
@@ -48,7 +51,8 @@ impl AllocatorStats {
 
     /// Reusing completed cached storage changes its category, not its real GPU
     /// history. A retiring allocation stays terminal in transition_phase.
-    pub(crate) fn mark_live(&self, id: u64, completed: &CompletedValues) {
+    #[doc(hidden)]
+    pub fn mark_live(&self, id: u64, completed: &CompletedValues) {
         self.with_state(|state| {
             if state
                 .phases
@@ -63,7 +67,8 @@ impl AllocatorStats {
     /// Move in-flight allocations whose uses completed back to `Live`. Work is
     /// proportional to the reached entries; an unchanged snapshot returns
     /// without taking the statistics lock.
-    pub(crate) fn observe_completed(&self, completed: &CompletedValues) {
+    #[doc(hidden)]
+    pub fn observe_completed(&self, completed: &CompletedValues) {
         let advanced = self.observed.iter().enumerate().any(|(index, seen)| {
             QueueId::new(index)
                 .is_some_and(|queue| completed.get(queue) > seen.load(Ordering::Acquire))

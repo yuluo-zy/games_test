@@ -8,7 +8,8 @@ use super::super::budget::BudgetCategory;
 /// Known host allocations are charged to the host budget. They never become
 /// VkDeviceMemory records or physical-GPU allocation totals. The ticket follows
 /// the actual owner; cache removal cannot credit bytes held by an active lease.
-pub(crate) struct CpuMemoryReservation {
+#[doc(hidden)]
+pub struct CpuMemoryReservation {
     pub(super) stats: std::sync::Arc<AllocatorStats>,
     pub(super) bytes: u64,
     pub(super) category: crate::accounting::BudgetCategory,
@@ -16,7 +17,8 @@ pub(crate) struct CpuMemoryReservation {
 
 /// Known payload plus the two reference counters of a shared allocation. The
 /// reservation stays in the payload, including when its Arc escapes a cache.
-pub(crate) fn shared_cpu_bytes<T>() -> Result<u64> {
+#[doc(hidden)]
+pub fn shared_cpu_bytes<T>() -> Result<u64> {
     let (layout, _) = std::alloc::Layout::new::<[usize; 2]>()
         .extend(std::alloc::Layout::new::<T>())
         .map_err(|_| Error::OutOfHostMemory)?;
@@ -25,7 +27,8 @@ pub(crate) fn shared_cpu_bytes<T>() -> Result<u64> {
 
 /// Admit renderer-owned Arc payload and separately owned CPU buffers before a
 /// native object is created. Keep this ticket in the actual allocation owner.
-pub(crate) fn reserve_shared_cpu_metadata<T>(
+#[doc(hidden)]
+pub fn reserve_shared_cpu_metadata<T>(
     stats: &std::sync::Arc<AllocatorStats>,
     extra_bytes: u64,
 ) -> Result<CpuMemoryReservation> {
@@ -35,7 +38,8 @@ pub(crate) fn reserve_shared_cpu_metadata<T>(
     stats.reserve_cpu_bytes(bytes, crate::accounting::BudgetCategory::Live)
 }
 
-pub(crate) fn cpu_vec_bytes<T>(capacity: usize) -> Result<u64> {
+#[doc(hidden)]
+pub fn cpu_vec_bytes<T>(capacity: usize) -> Result<u64> {
     let layout = std::alloc::Layout::array::<T>(capacity).map_err(|_| Error::OutOfHostMemory)?;
     u64::try_from(layout.size()).map_err(|_| Error::OutOfHostMemory)
 }
@@ -58,14 +62,18 @@ pub(super) fn sub_cpu(usage: &mut crate::accounting::BudgetUsage, category: Budg
 }
 
 impl CpuMemoryReservation {
-    pub(crate) fn bytes(&self) -> u64 { self.bytes }
-    pub(crate) fn belongs_to(&self, budget: &std::sync::Arc<AllocatorStats>) -> bool { std::sync::Arc::ptr_eq(&self.stats, budget) }
-    pub(crate) fn split_off(&mut self, bytes: u64) -> Result<Self> {
+    #[doc(hidden)]
+    pub fn bytes(&self) -> u64 { self.bytes }
+    #[doc(hidden)]
+    pub fn belongs_to(&self, budget: &std::sync::Arc<AllocatorStats>) -> bool { std::sync::Arc::ptr_eq(&self.stats, budget) }
+    #[doc(hidden)]
+    pub fn split_off(&mut self, bytes: u64) -> Result<Self> {
         if bytes > self.bytes { return Err(Error::invalid_usage("CPU credit split exceeds reservation")); }
         self.bytes -= bytes;
         Ok(Self { stats: self.stats.clone(), bytes, category: self.category })
     }
-    pub(crate) fn resize(&mut self, bytes: u64) -> Result<()> {
+    #[doc(hidden)]
+    pub fn resize(&mut self, bytes: u64) -> Result<()> {
         if bytes == self.bytes {
             return Ok(());
         }
@@ -87,7 +95,8 @@ impl CpuMemoryReservation {
         self.bytes = bytes;
         Ok(())
     }
-    pub(crate) fn reclassify(&mut self, category: BudgetCategory) {
+    #[doc(hidden)]
+    pub fn reclassify(&mut self, category: BudgetCategory) {
         if category == self.category
             || !matches!(category, BudgetCategory::Live | BudgetCategory::Cache)
         {
@@ -120,7 +129,8 @@ impl Drop for CpuMemoryReservation {
     }
 }
 
-pub(crate) struct DescriptorReservation {
+#[doc(hidden)]
+pub struct DescriptorReservation {
     pub(super) stats: std::sync::Arc<AllocatorStats>,
     pub(super) count: u64,
 }

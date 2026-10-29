@@ -15,7 +15,7 @@ pub(super) struct UploadSlot {
 /// An upload slot remains exclusive while packing/recording outside the
 /// staging lock. The irreversible submit point is published even on error.
 pub(super) struct UploadLease {
-    pub staging: Arc<parking_lot::Mutex<Staging>>,
+    pub staging: Arc<StagingLock>,
     pub index: Option<usize>,
     pub submitted: Option<SyncPoint>,
 }
@@ -291,11 +291,27 @@ impl Staging {
     }
 }
 
+/// `Mutex<Staging>` as a type local to this crate. `Evictable` is defined in `prism-gfx`, and the orphan
+/// rule does not allow implementing it for `parking_lot::Mutex<Staging>` from here. `Deref` keeps every
+/// `.lock()` call site unchanged.
+pub(super) struct StagingLock(parking_lot::Mutex<Staging>);
+impl StagingLock {
+    pub(super) fn new(staging: Staging) -> Self {
+        Self(parking_lot::Mutex::new(staging))
+    }
+}
+impl std::ops::Deref for StagingLock {
+    type Target = parking_lot::Mutex<Staging>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 /// Registered with the device budget controller. Never blocks: a manager in
 /// the middle of an operation (holding the lock) is skipped.
-impl Evictable for parking_lot::Mutex<Staging> {
+impl Evictable for StagingLock {
     fn evict_idle(&self, completed: &CompletedValues, target_bytes: u64) -> u64 {
-        match self.try_lock() {
+        match self.0.try_lock() {
             Some(mut staging) => staging.evict(completed, target_bytes),
             None => 0,
         }

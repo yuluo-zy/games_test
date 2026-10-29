@@ -59,7 +59,8 @@ impl AllocatorStats {
         }
     }
 
-    pub(crate) fn reserve_cpu_bytes(
+    #[doc(hidden)]
+    pub fn reserve_cpu_bytes(
         self: &std::sync::Arc<Self>,
         bytes: u64,
         category: BudgetCategory,
@@ -108,7 +109,8 @@ impl AllocatorStats {
         self.host.lock().budget.limit()
     }
 
-    pub(crate) fn reserve_update_after_bind_descriptors(
+    #[doc(hidden)]
+    pub fn reserve_update_after_bind_descriptors(
         self: &std::sync::Arc<Self>,
         count: u64,
         limit: u64,
@@ -174,7 +176,8 @@ impl AllocatorStats {
     }
 
     /// Bytes still admissible on `heap` under the device and heap limits.
-    pub(crate) fn heap_available(&self, heap: u32) -> u64 {
+    #[doc(hidden)]
+    pub fn heap_available(&self, heap: u32) -> u64 {
         let state = self.state.lock();
         let device = if state.budget.limit() == 0 {
             u64::MAX
@@ -232,7 +235,8 @@ impl AllocatorStats {
     /// Apply a `VK_EXT_memory_budget` snapshot. Each heap's limit becomes the
     /// driver budget minus memory this tracker did not allocate. A limit below
     /// current usage is accepted: new allocations fail and pressure is raised.
-    pub(crate) fn apply_driver_heap_budgets(&self, heaps: &[(u64, u64)]) {
+    #[doc(hidden)]
+    pub fn apply_driver_heap_budgets(&self, heaps: &[(u64, u64)]) {
         self.with_state(|state| {
             for (index, &(budget, usage)) in heaps.iter().enumerate().take(MAX_HEAPS) {
                 let foreign = usage.saturating_sub(state.heap_used[index]);
@@ -248,7 +252,8 @@ impl AllocatorStats {
         Ok((state.heap_used[index], state.heap_limit(index)))
     }
 
-    pub(crate) fn set_max_native_objects(&self, count: u64) {
+    #[doc(hidden)]
+    pub fn set_max_native_objects(&self, count: u64) {
         self.max_native_objects.store(count, Ordering::Release);
     }
 
@@ -257,7 +262,8 @@ impl AllocatorStats {
     }
 
     /// Reserve one VkDeviceMemory object under `maxMemoryAllocationCount`.
-    pub(crate) fn acquire_native_object(&self) -> Result<()> {
+    #[doc(hidden)]
+    pub fn acquire_native_object(&self) -> Result<()> {
         let max = self.max_native_objects.load(Ordering::Acquire);
         self.native_objects
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |count| {
@@ -267,7 +273,8 @@ impl AllocatorStats {
             .map_err(|_| Error::exhausted("maxMemoryAllocationCount reached"))
     }
 
-    pub(crate) fn release_native_object(&self) {
+    #[doc(hidden)]
+    pub fn release_native_object(&self) {
         let _ = self
             .native_objects
             .fetch_update(Ordering::AcqRel, Ordering::Acquire, |count| {

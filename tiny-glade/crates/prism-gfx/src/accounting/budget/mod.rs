@@ -158,7 +158,8 @@ impl MemoryBudgetController {
     }
 
     /// Record an already-owned cache charge that may exceed a lowered limit.
-    pub(crate) fn record_cache(&mut self, bytes: u64) {
+    #[doc(hidden)]
+    pub fn record_cache(&mut self, bytes: u64) {
         self.add(BudgetCategory::Cache, bytes);
         self.refresh_pressure();
     }
@@ -168,7 +169,8 @@ impl MemoryBudgetController {
         self.sub(category, bytes);
         self.refresh_pressure();
     }
-    pub(crate) fn reclassify(&mut self, from: BudgetCategory, to: BudgetCategory, bytes: u64) {
+    #[doc(hidden)]
+    pub fn reclassify(&mut self, from: BudgetCategory, to: BudgetCategory, bytes: u64) {
         self.sub(from, bytes);
         self.add(to, bytes);
         self.refresh_pressure();

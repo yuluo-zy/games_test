@@ -1,7 +1,10 @@
 //! Memory accounting: budgets, eviction registry, host-storage credit and the allocator
 //! statistics registry.
 
-internal_mod!(budget, stats);
+#[doc(hidden)]
+pub mod budget;
+#[doc(hidden)]
+pub mod stats;
 mod cpu_storage;
 
 pub use budget::{
@@ -10,7 +13,9 @@ pub use budget::{
 };
 pub use cpu_storage::CpuStorageReservation;
 pub use stats::{AllocationRecord, AllocationTotals, AllocatorReport, AllocatorStats};
-pub(crate) use stats::{
+// Crate-private inside `rhapsody`; `pub` + hidden here because `rhapsody` (a separate crate now) uses them.
+#[doc(hidden)]
+pub use stats::{
     CpuMemoryReservation, DescriptorReservation, cpu_vec_bytes, reserve_shared_cpu_metadata,
     shared_cpu_bytes,
 };

@@ -12,6 +12,10 @@ description = "Backend-neutral core of the renderer: errors, queue sync points, 
 # keep compiling unchanged. With it off, they are self-contained numeric newtypes with the same values, so
 # a backend that is not Vulkan can use this crate without `ash`. Both configurations must compile.
 native-types = ["dep:ash"]
+# Gates `AllocatorStats` registration of sub-allocations. Declared here because the accounting code that
+# reads it moved out of `rhapsody`; `rhapsody` forwards its own `suballocation` feature to this one. A feature
+# that the moved code references but this crate does not declare is silently always off.
+suballocation = []
 # Exposes internal modules to the facade's own integration tests and benches.
 test-support = []
 
@@ -20,6 +24,7 @@ ash = { workspace = true, optional = true }
 log.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
+smallvec = "=1.13.2"
 thiserror.workspace = true
 
 [lints]

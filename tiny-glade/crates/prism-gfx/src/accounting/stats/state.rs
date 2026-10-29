@@ -1,5 +1,4 @@
 //! Mutable statistics state, allocation phases and heap bookkeeping.
-use ash::vk;
 use crate::Error;
 use crate::Result;
 use crate::sync::CompletedValues;
@@ -21,7 +20,7 @@ pub(super) struct HostState {
 }
 
 /// Vulkan's `VK_MAX_MEMORY_HEAPS`.
-pub(super) const MAX_HEAPS: usize = vk::MAX_MEMORY_HEAPS;
+pub(super) const MAX_HEAPS: usize = crate::native_types::MAX_MEMORY_HEAPS;
 
 #[derive(Default)]
 pub(super) struct StatisticsState {

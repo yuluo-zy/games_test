@@ -11,7 +11,7 @@ readme = "README.md"
 # 原版 gpu-allocator 是本地分叉（Cargo.lock 记 0.26.0，但 PDB 里 with_global_allocator 返回
 # AllocatorReport，该类型只在 0.27 的 generate_report 中出现），算法按公共 0.27 复用；原版就是子分配，故默认开启。
 default = ["suballocation"]
-suballocation = ["dep:gpu-allocator"]
+suballocation = ["dep:gpu-allocator", "prism-gfx/suballocation"]
 # Run the independent plan verifiers on every plan-cache miss in release builds
 # (debug builds always run them; `rg::set_plan_validation` enables them at runtime).
 validation = []

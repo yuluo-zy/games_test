@@ -13,7 +13,8 @@ mod budget;
 mod lifetime;
 mod reports;
 mod registry;
-pub(crate) use reservation::{CpuMemoryReservation, shared_cpu_bytes, reserve_shared_cpu_metadata, cpu_vec_bytes, DescriptorReservation};
+#[doc(hidden)]
+pub use reservation::{CpuMemoryReservation, shared_cpu_bytes, reserve_shared_cpu_metadata, cpu_vec_bytes, DescriptorReservation};
 use state::{HostState, StatisticsState};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -66,8 +67,8 @@ pub struct AllocatorStats {
     state: Mutex<StatisticsState>,
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native-types"))]
 mod budget_tests;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native-types"))]
 mod native_spare_tests;
