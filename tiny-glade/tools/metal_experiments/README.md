@@ -17,6 +17,8 @@ actually run (and where the output is), and what still needs a machine this was 
 | X5 | Which Metal capabilities D5-D8, D13, D18-D25 rely on actually exist | `x5_metal_probe/x5_metal_probe.swift` | Not run, **never compiled** (no Swift toolchain or Mac here). |
 | X6 | Can Apple targets be type-checked from Linux/Windows CI? | `x6_apple_check.sh` | **Run here: n.a.** `rustup target add aarch64-apple-darwin` fails: the download from `static.rust-lang.org` is blocked on this machine. Needs a machine with access, or a Mac CI runner. |
 
+**Running on a Mac:** follow [`MAC_CHECKLIST.md`](MAC_CHECKLIST.md) (ordered steps, expected results, what to send back).
+
 Tests for the Python tools: `cd tools/metal_experiments && python3 -B -m unittest discover -p 'test_*.py'`.
 
 ## Results obtained here
