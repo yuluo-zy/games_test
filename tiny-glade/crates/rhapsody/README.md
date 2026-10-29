@@ -14,6 +14,7 @@ rhapsody 是 tiny-glade 工作区中的 Vulkan 渲染框架 crate（基于 `ash`
 | [CROSS_BACKEND_API.md](CROSS_BACKEND_API.md) | 跨后端(Vulkan/Metal)公共 API 草案:复用/抽象/重写分类、接口签名、泄漏点与迁移步骤 |
 | [METAL_INTEGRATION_AUDIT.md](METAL_INTEGRATION_AUDIT.md) | Metal 集成调查:测试影响、重写清单、宿主层泄漏审计(附 [METAL_AUDIT_leaks.tsv](METAL_AUDIT_leaks.tsv))、移动端铺垫项 |
 | [METAL_DESIGN.md](METAL_DESIGN.md) | Metal 集成与移动/桌面双端渲染设计(第 3 版,经两轮独立审查):27 个模块的多方案比较与选择、依赖拆分、性能门槛、分阶段计划、决策实验与审查记录。与另两份文档冲突时以此为准 |
+| [CORE_SPLIT_DESIGN.md](CORE_SPLIT_DESIGN.md) | P1 详细设计:拆出后端中立的 `rhapsody-core`(过渡类型别名、错误与时间线、渲染图按后端族泛型、分步移动清单);依赖统计见 `tools/rhapsody_core_split_deps.py` |
 | [DELIVERY_PLAN.md](DELIVERY_PLAN.md) | 交付范围、阶段顺序与验收门槛 |
 | [REFACTOR_PLAN.md](REFACTOR_PLAN.md) | 各阶段开发工作包、依赖与下游迁移 |
 | [REFACTOR_PROGRESS.md](REFACTOR_PROGRESS.md) | 当前状态与实测证据，区分实现、接线与验收 |
