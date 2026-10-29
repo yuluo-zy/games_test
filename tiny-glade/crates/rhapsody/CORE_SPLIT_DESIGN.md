@@ -1,10 +1,10 @@
-# P1 详细设计:拆出后端中立的 `rhapsody-core`
+# P1 详细设计:拆出后端中立的 `prism-gfx`
 
 本文是 [METAL_DESIGN.md](METAL_DESIGN.md) 第 4 节 P1(依赖拆分)的详细设计,取代该文第 3.4 节的 S0–S7。依赖数字由 [`tools/rhapsody_core_split_deps.py`](../../tools/rhapsody_core_split_deps.py) 生成,每完成一步都要重跑。
 
 ## 1. 范围与验收
 
-**范围**:把 `crates/rhapsody` 中不依赖 Vulkan 后端的代码移到新 crate `rhapsody-core`。现有 `rhapsody` crate 成为"门面 + Vulkan 后端",对外导入路径不变。
+**范围**:把 `crates/rhapsody` 中不依赖 Vulkan 后端的代码移到新 crate `prism-gfx`。现有 `rhapsody` crate 成为"门面 + Vulkan 后端",对外导入路径不变。
 
 **不在范围内**:Metal 后端(P5/P6);同步计划输出的中立化(P2);`resource` 的创建与描述拆分(第 6.2 节,另出设计);删除过渡别名(第 3.1 节)。
 
@@ -174,13 +174,13 @@
 
 ```rust
 // crates/rhapsody/src/lib.rs(示意)
-pub use rhapsody_core::{accounting, collections, profile, sync, tracking};
-pub use rhapsody_core::{Error, ErrorKind, Result, SharedError};
+pub use prism_gfx::{accounting, collections, profile, sync, tracking};
+pub use prism_gfx::{Error, ErrorKind, Result, SharedError};
 ```
 
 - 模块级 `pub use` 让 rhapsody 内部原有的 `crate::sync::…` 路径继续解析,后端代码基本不用改导入。
 - `internal_mod!` 暴露给测试的内部模块(`log_ring`、`retire`):core 也提供同名的 `test-support` 特性,门面的 `test-support` 转发给它。
-- `rg` 跨两个 crate:门面的 `rg` 模块写 `pub use rhapsody_core::rg::*;`,再声明留在后端的子模块(`vulkan`、`executor` 等)。
+- `rg` 跨两个 crate:门面的 `rg` 模块写 `pub use prism_gfx::rg::*;`,再声明留在后端的子模块(`vulkan`、`executor` 等)。
 
 ## 4. 步骤
 
@@ -190,9 +190,9 @@ pub use rhapsody_core::{Error, ErrorKind, Result, SharedError};
 
 | 项 | 内容 |
 | --- | --- |
-| 新建 | `crates/rhapsody-core`,特性 `native-types = ["dep:ash"]`、`test-support`;`native_types.rs`(K1 别名、K2 的 `From`、K3 的 `impl TimelineApi for ash::Device`) |
+| 新建 | `crates/prism-gfx`,特性 `native-types = ["dep:ash"]`、`test-support`;`native_types.rs`(K1 别名、K2 的 `From`、K3 的 `impl TimelineApi for ash::Device`) |
 | 移入 | `log_ring`、`profile`、`error`(K2)、`sync`(含 `timeline`,K3)、`accounting`(`MemoryProperties` 别名;`MAX_HEAPS` 改为字面量 16 并加数值断言)、`collections`(另加从 `native/submit/mod.rs:12-63` 移来的 `SubmitScratch`)、`retire` |
-| 门面 | `rhapsody` 依赖 `rhapsody-core`(开启 `native-types`),按 K7 重新导出 |
+| 门面 | `rhapsody` 依赖 `prism-gfx`(开启 `native-types`),按 K7 重新导出 |
 | 测试改动 | `profile` 中引用 `crate::rg` 的两处测试(`record_trace_tests.rs:125`、`command_workload/tests.rs:26`)移到 rhapsody 侧;其余不改 |
 | 规模 | 约 4.7k 行 |
 
@@ -235,7 +235,7 @@ S3 之后重跑脚本,预期闭包干净、可以移入 core 的子模块:`compi
 
 | crate | 内容 | 预期行数 |
 | --- | --- | ---: |
-| `rhapsody-core` | 基础层、访问词汇、跟踪、`rg` 中立部分 | 约 22–23k |
+| `prism-gfx` | 基础层、访问词汇、跟踪、`rg` 中立部分 | 约 22–23k |
 | `rhapsody`(门面 + Vulkan) | 其余全部 | 约 45k |
 
 这些行数由第 2 节的统计推算,不是测量结果。

@@ -67,13 +67,14 @@ tiny-glade 在本机无法编译(GTK 依赖、`bzip2-sys` 需要 `windows.h`),�
 | 验收 | 偏差写进 CORE_SPLIT_DESIGN.md;偏差使某个设计假设失效则触发 H4 |
 | 规模 | 小 |
 
-### WP2 P1 的 S1:`rhapsody-core` 基础层
+### WP2 P1 的 S1:`prism-gfx` 基础层
 
 | 项 | 内容 |
 | --- | --- |
 | 前置 | WP0、WP1 |
-| 范围 | 新建 `crates/rhapsody-core`;特性 `native-types`(依赖可选 `ash`)与 `test-support`;`native_types.rs`;移入 `log_ring`、`profile`、`error`、`sync`(含 `timeline`)、`accounting`、`collections`(含从 `native/submit/mod.rs:12-63` 移来的 `SubmitScratch`)、`retire`;门面按 CORE_SPLIT_DESIGN.md K7 重新导出 |
-| 小步 | ① 建 crate 与 `native_types.rs` 骨架,门面不动,编译通过;② 移 `log_ring`、`profile`、`collections`、`retire`(无 `ash`);③ 移 `error`(K2);④ 移 `sync`(K3);⑤ 移 `accounting` |
+| 范围 | 新建 `crates/prism-gfx`;特性 `native-types`(依赖可选 `ash`)与 `test-support`;`native_types.rs`;移入 `log_ring`、`profile`、`error`、`sync`(含 `timeline`)、`accounting`、`collections`(含从 `native/submit/mod.rs:12-63` 移来的 `SubmitScratch`)、`retire`;门面按 CORE_SPLIT_DESIGN.md K7 重新导出 |
+| 小步(第 2 次修订,见下) | ① 建 crate 与 `native_types.rs` 骨架,门面只加依赖;② 移 `trace`、`log_ring`、`profile`(`profile` 的两处测试移到 rhapsody 侧);③ 移 `error`(K2);④ 移 `sync`(K3,含 `impl TimelineApi for ash::Device`);⑤ 移 `accounting`;⑥ 移 `collections`、`retire` |
+| 对原计划的修正 | **顺序**:原计划先移 `collections`、`retire`,编译不过。它们依赖 `accounting` 和 `sync`,后者依赖 `error`,所以顺序必须是 `error → sync → accounting → collections/retire`(`error` 在 `sync` 之前,`trace` 在 `sync` 之前)。**范围**:`trace`(85 行,无依赖)要一起移,`sync/timeline` 依赖它(`crate::trace::SubmitTrace`);`SubmitScratch` 实际只被 `tracking` 使用,移到 S2,不在本包。**测试**:core 里直接用 `ash::vk` 的测试模块要加 `cfg(feature = "native-types")`,否则关闭特性时 `cargo test` 编译不过;这仍满足 K1 规则 2(两种配置下非测试代码都能编译) |
 | 验证(本机) | 通用检查(第 1.3 节),其中 `compare` 必须对 `crates/rhapsody/baseline/test_results.tsv` 无回归、无消失;core 在 `--features native-types` 与默认两种配置下都 `cargo check` 通过;K1 检查:core 内 `ash` 只出现在 `native_types.rs`;别名数值测试(开启特性时中立常量与 `ash` 常量逐个相等) |
 | 允许的测试改动 | `profile` 中引用 `crate::rg` 的两处测试(`record_trace_tests.rs:125`、`command_workload/tests.rs:26`)移到 rhapsody 侧 |
 | Windows 待验 | tiny-glade 编译;性能门槛 |
@@ -165,7 +166,7 @@ P1 的 S2(访问词汇、`tracking`)、S3(切开 `rg` 的两个污染源,K4)、S
 | --- | --- | --- | --- |
 | WP0 | 基线记录 | 本机部分完成 | `crates/rhapsody/baseline/`(提交 f82cd210 上的 957 个测试);Windows 部分待做 |
 | WP1 | S0 依赖统计复核 | 完成 | `baseline/deps_report.txt`:模块行数、`vk::`/`ash::` 数与 CORE_SPLIT_DESIGN.md 第 2 节逐项一致(error 198/17/1、sync 635/21/13、accounting 1515/7/2、tracking 2346/19/7、rg 27157/467/72);`crates/rhapsody/src`、`crates/country-core/src` 自 `d4b49171` 起无改动,没有设计假设被证伪 |
-| WP2 | S1 `rhapsody-core` 基础层 | 未开始 | — |
+| WP2 | S1 `prism-gfx` 基础层 | 未开始 | — |
 | WP3 | 手工同步归类(只读) | 未开始 | — |
 | WP4 | 同步计划快照机制 | 未开始 | — |
 | WP5 | country-core 泄漏收口设计 | 未开始 | — |
@@ -174,7 +175,7 @@ P1 的 S2(访问词汇、`tracking`)、S3(切开 `rg` 的两个污染源,K4)、S
 
 ## 7. 约定
 
-- **分支**:从当前分支起点另开工作分支,例如 `codex/rhapsody-core-split`;不改写已推送的历史,不强制推送(H6)。
+- **分支**:从当前分支起点另开工作分支,例如 `codex/prism-gfx-split`;不改写已推送的历史,不强制推送(H6)。
 - **提交**:按工作包的小步提交,提交信息写明所属工作包与步骤;不在一个提交里混入多个工作包。
 - **推送**:只在用户要求时推送。
 - **报告**:每个工作包结束,更新第 6 节的状态与证据,并列出:改动的文件、测试集合与基线的对比、遇到的任何停止条件。

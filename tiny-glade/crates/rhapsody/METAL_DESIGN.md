@@ -131,7 +131,7 @@ B2 一致而 B1 不一致,是转译或精度问题;B2 不一致而 B3 一致,是
 
 ### D1. crate 划分
 
-**选择:多 crate + 门面**:`rhapsody-core`(中立)、`rhapsody-vulkan`、`rhapsody-metal`,门面 `rhapsody` 保持现有导入路径。单 crate 加特性开关会让代码交织;动态库插件在 iOS 不可用。拆分方式见第 3.4 节。
+**选择:多 crate + 门面**:`prism-gfx`(中立)、`rhapsody-vulkan`、`rhapsody-metal`,门面 `rhapsody` 保持现有导入路径。单 crate 加特性开关会让代码交织;动态库插件在 iOS 不可用。拆分方式见第 3.4 节。
 
 ### D2. 后端选择与分发(修)
 
@@ -482,7 +482,7 @@ Vulkan 后端不分组,行为不变。诊断模式下关闭分组与合并,保�
 
 1. 门面继续导出现有公开路径;移入 core 的项在原路径用 `pub use` 重新导出。
 2. `rhapsody::native::*`、`rhapsody::raw::*` 保留在 `vulkan-raw` 特性后面,直到对应测试迁移完毕。
-3. CI 检查 `rhapsody-core` 中不出现 `ash::`/`vk::`。
+3. CI 检查 `prism-gfx` 中不出现 `ash::`/`vk::`。
 
 ### 3.3 测试影响(修)
 

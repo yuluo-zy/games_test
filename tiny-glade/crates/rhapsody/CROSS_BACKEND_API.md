@@ -79,7 +79,7 @@
 
 | crate | 内容 |
 | --- | --- |
-| `rhapsody-core` | 词汇类型、渲染图声明/计划/编译/缓存、访问词汇、能力、错误、统计、回收(§3 中"复用"与抽象后的中立部分) |
+| `prism-gfx` | 词汇类型、渲染图声明/计划/编译/缓存、访问词汇、能力、错误、统计、回收(§3 中"复用"与抽象后的中立部分) |
 | `rhapsody-rhi` | 后端 trait:`DeviceBackend`、`SwapchainBackend`、`PipelineBackend`、`ResourceTable`、`CommandSink`、`AccessLowering` |
 | `rhapsody-vulkan` | Vulkan 实现与访问码到屏障的降级表(现有代码迁入) |
 | `rhapsody-metal` | Metal 实现与降级(新写) |
@@ -96,7 +96,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 #[derive(Debug)]
 pub struct Error;
 
-// ===================== vocabulary (rhapsody-core) =====================
+// ===================== vocabulary (prism-gfx) =====================
 /// Vulkan format number as written by game code (e.g. 0x65 R32G32_UINT, 0x7a B10G11R11_UFLOAT). Backends own the native mapping.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[repr(transparent)]
@@ -332,7 +332,7 @@ E1 里的边界 trait **保持名字和方法不变**,只替换其中的 Vulkan 
 | 步 | 内容 | 验收 |
 | --- | --- | --- |
 | 1 | **泄漏审计**(只读):列出 §5 每个泄漏点的全部调用点,逐个给出替换方案;逐文件确认 §3 `rg` 子目录分类 | 清单完整;每项有替换方案或明确标为"无法消除" |
-| 2 | 把零引用文件(约 22.4k 行)移入 `rhapsody-core`,门面重新导出 | Windows 构建通过;现有 `cargo test -p rhapsody`(lavapipe)结果与迁移前一致 |
+| 2 | 把零引用文件(约 22.4k 行)移入 `prism-gfx`,门面重新导出 | Windows 构建通过;现有 `cargo test -p rhapsody`(lavapipe)结果与迁移前一致 |
 | 3 | 引入中立词汇类型,Vulkan 后端用适配层对接 | 表面像素对比(`tools/compare_surface_pixels.py`)结果不变;CPU 渲染阶段 p95 不退化(用现有性能夹具) |
 | 4 | 定稿 `rhapsody-rhi` trait,Vulkan 实现迁到 `rhapsody-vulkan` | 同上,加上 `CommandSink` 分发开销的专项测量 |
 | 5 | Metal 后端最小可用:清屏、三角形、compute、读回 | 在 Mac 上跑通;lavapipe 之外增加 Metal 的功能测试 |
