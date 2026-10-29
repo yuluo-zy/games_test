@@ -9,7 +9,13 @@
 //! - 值只在 `vkQueueSubmit` 成功后才算已提交；失败的提交不占用值，因此任何已知的
 //!   [`SyncPoint`] 最终都会完成（或设备丢失）。
 //! - 等待一个尚未提交的值是误用（会永远挂起），返回 [`crate::Error::InvalidUsage`]。
-internal_mod!(generation, timeline);
+#[doc(hidden)]
+pub mod generation;
+#[doc(hidden)]
+pub mod timeline;
+
+use crate::native_types::StageMask;
+
 pub use generation::{DeviceGeneration, Generationed};
 pub use timeline::{QueueLockStats, SubmitSignal, TimelineApi, Timelines};
 
@@ -102,37 +108,37 @@ impl From<SyncPoint> for SyncSet {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StagedDependencies {
     points: SyncSet,
-    stages: [ash::vk::PipelineStageFlags; MAX_QUEUES],
+    stages: [StageMask; MAX_QUEUES],
 }
 
 impl StagedDependencies {
     pub const EMPTY: Self = Self {
         points: SyncSet::EMPTY,
-        stages: [ash::vk::PipelineStageFlags::empty(); MAX_QUEUES],
+        stages: [StageMask::empty(); MAX_QUEUES],
     };
     /// Conservative wrapper for prerequisites whose consumer stage is unknown.
     pub fn opaque(points: SyncSet) -> Self {
         let mut result = Self::EMPTY;
-        result.merge_set(&points, ash::vk::PipelineStageFlags::ALL_COMMANDS);
+        result.merge_set(&points, StageMask::ALL_COMMANDS);
         result
     }
     /// Add one prerequisite needed from `stages` onward. Empty stages mean no
     /// proven consumer stage and are widened to `ALL_COMMANDS`.
-    pub fn insert(&mut self, point: SyncPoint, stages: ash::vk::PipelineStageFlags) {
+    pub fn insert(&mut self, point: SyncPoint, stages: StageMask) {
         if point.value == 0 {
             return;
         }
         self.points.insert(point);
         // Host access is synchronized by waiting for the submission receipt;
         // HOST is never a legal semaphore wait destination in a command queue.
-        let stages = stages & !ash::vk::PipelineStageFlags::HOST;
+        let stages = stages & !StageMask::HOST;
         self.stages[point.queue.index()] |= if stages.is_empty() {
-            ash::vk::PipelineStageFlags::ALL_COMMANDS
+            StageMask::ALL_COMMANDS
         } else {
             stages
         };
     }
-    pub fn merge_set(&mut self, points: &SyncSet, stages: ash::vk::PipelineStageFlags) {
+    pub fn merge_set(&mut self, points: &SyncSet, stages: StageMask) {
         for point in points.points() {
             self.insert(point, stages);
         }
@@ -148,9 +154,9 @@ impl StagedDependencies {
     }
     /// Destination stages that must wait for `queue`'s value (empty when the
     /// set has no prerequisite on that queue).
-    pub fn stages(&self, queue: QueueId) -> ash::vk::PipelineStageFlags {
+    pub fn stages(&self, queue: QueueId) -> StageMask {
         if self.points.get(queue) == 0 {
-            ash::vk::PipelineStageFlags::empty()
+            StageMask::empty()
         } else {
             self.stages[queue.index()]
         }
@@ -159,7 +165,7 @@ impl StagedDependencies {
         self.points.is_empty()
     }
     /// `(point, stages)` per source queue.
-    pub fn waits(&self) -> impl Iterator<Item = (SyncPoint, ash::vk::PipelineStageFlags)> + '_ {
+    pub fn waits(&self) -> impl Iterator<Item = (SyncPoint, StageMask)> + '_ {
         self.points
             .points()
             .map(|point| (point, self.stages[point.queue.index()]))
@@ -189,5 +195,5 @@ impl CompletedValues {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native-types"))]
 mod tests;

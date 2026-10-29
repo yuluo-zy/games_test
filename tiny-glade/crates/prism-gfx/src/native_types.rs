@@ -14,6 +14,34 @@ mod native {
     /// Number of memory heaps a device may report (`VK_MAX_MEMORY_HEAPS`).
     pub const MAX_MEMORY_HEAPS: usize = ash::vk::MAX_MEMORY_HEAPS;
 
+    use crate::sync::timeline::TimelineApi;
+
+    // The real timeline implementation, here for the same reason as the `From` impl below.
+    impl TimelineApi for ash::Device {
+        fn counter_value(&self, semaphore: ash::vk::Semaphore) -> crate::Result<u64> {
+            Ok(unsafe { self.get_semaphore_counter_value(semaphore) }?)
+        }
+        fn wait_all(
+            &self,
+            semaphores: &[ash::vk::Semaphore],
+            values: &[u64],
+            timeout_ns: u64,
+        ) -> crate::Result<bool> {
+            let info = ash::vk::SemaphoreWaitInfo::default()
+                .semaphores(semaphores)
+                .values(values);
+            let mut trace = crate::trace::SubmitTrace::new("vkWaitSemaphores");
+            trace.count("semaphores", semaphores.len());
+            let result = unsafe { self.wait_semaphores(&info, timeout_ns) };
+            trace.mark("driver");
+            match result {
+                Ok(()) => Ok(true),
+                Err(ash::vk::Result::TIMEOUT) => Ok(false),
+                Err(error) => Err(error.into()),
+            }
+        }
+    }
+
     // Lives here, not in `error`, so that `ash` is named in this file only. The orphan rule is satisfied
     // because `Error` is local to this crate.
     impl From<ash::vk::Result> for crate::Error {

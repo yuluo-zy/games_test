@@ -43,7 +43,7 @@ pub mod profile;
 pub mod present;
 pub mod resource;
 pub mod rg;
-pub mod sync;
+pub use prism_gfx::sync;
 pub mod tracking;
 pub mod transfer;
 internal_mod!(retire);

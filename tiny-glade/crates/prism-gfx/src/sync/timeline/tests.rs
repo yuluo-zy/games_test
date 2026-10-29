@@ -1,4 +1,5 @@
 use super::*;
+use ash::vk;
 use crate::error::ErrorKind;
 use ash::vk::Handle;
 use std::collections::HashMap;

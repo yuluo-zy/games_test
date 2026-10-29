@@ -7,57 +7,32 @@
 //! 锁顺序：交换链锁 → 队列提交锁 → 回收锁。提交锁内只做队列操作，不做阻塞等待。
 use super::{CompletedValues, MAX_QUEUES, QueueId, SyncPoint, SyncSet};
 use crate::error::{Error, Result};
-use ash::vk;
+use crate::native_types::SemaphoreHandle;
 use parking_lot::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Instant;
 
 /// 时间线相关的设备调用；真实实现为 `ash::Device`，测试可替换。
 pub trait TimelineApi: Send + Sync {
-    fn counter_value(&self, semaphore: vk::Semaphore) -> Result<u64>;
+    fn counter_value(&self, semaphore: SemaphoreHandle) -> Result<u64>;
     /// 等待全部信号量到达对应值。到达返回 `Ok(true)`，超时返回 `Ok(false)`。
     fn wait_all(
         &self,
-        semaphores: &[vk::Semaphore],
+        semaphores: &[SemaphoreHandle],
         values: &[u64],
         timeout_ns: u64,
     ) -> Result<bool>;
 }
 
-impl TimelineApi for ash::Device {
-    fn counter_value(&self, semaphore: vk::Semaphore) -> Result<u64> {
-        Ok(unsafe { self.get_semaphore_counter_value(semaphore) }?)
-    }
-    fn wait_all(
-        &self,
-        semaphores: &[vk::Semaphore],
-        values: &[u64],
-        timeout_ns: u64,
-    ) -> Result<bool> {
-        let info = vk::SemaphoreWaitInfo::default()
-            .semaphores(semaphores)
-            .values(values);
-        let mut trace = crate::trace::SubmitTrace::new("vkWaitSemaphores");
-        trace.count("semaphores", semaphores.len());
-        let result = unsafe { self.wait_semaphores(&info, timeout_ns) };
-        trace.mark("driver");
-        match result {
-            Ok(()) => Ok(true),
-            Err(vk::Result::TIMEOUT) => Ok(false),
-            Err(error) => Err(error.into()),
-        }
-    }
-}
-
 /// 一次提交需要 signal 的时间线值。调用方把它放进 `VkTimelineSemaphoreSubmitInfo`。
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SubmitSignal {
-    pub semaphore: vk::Semaphore,
+    pub semaphore: SemaphoreHandle,
     pub value: u64,
 }
 
 struct QueueTimeline {
-    semaphore: vk::Semaphore,
+    semaphore: SemaphoreHandle,
     /// 最后一次成功提交的值；锁本身是该队列的外部同步锁。
     submit: Mutex<u64>,
     /// `submit` 的无锁镜像，供等待前校验。
@@ -113,7 +88,7 @@ pub struct Timelines<A> {
 
 impl<A: TimelineApi> Timelines<A> {
     /// `semaphores[i]` 是 `QueueId(i)` 的时间线信号量，初值须为 0。
-    pub fn new(api: A, semaphores: &[vk::Semaphore]) -> Result<Self> {
+    pub fn new(api: A, semaphores: &[SemaphoreHandle]) -> Result<Self> {
         if semaphores.is_empty() || semaphores.len() > MAX_QUEUES {
             return Err(Error::invalid_usage(format!(
                 "逻辑队列数必须在 1..={MAX_QUEUES}，实际 {}",
@@ -165,7 +140,7 @@ impl<A: TimelineApi> Timelines<A> {
             })
         })
     }
-    pub fn semaphore(&self, queue: QueueId) -> Result<vk::Semaphore> {
+    pub fn semaphore(&self, queue: QueueId) -> Result<SemaphoreHandle> {
         Ok(self.queue(queue)?.semaphore)
     }
     fn queue(&self, queue: QueueId) -> Result<&QueueTimeline> {
@@ -320,7 +295,7 @@ impl<A: TimelineApi> Timelines<A> {
         if set.is_reached(&completed) {
             return Ok(());
         }
-        let mut semaphores = [vk::Semaphore::default(); MAX_QUEUES];
+        let mut semaphores = [SemaphoreHandle::default(); MAX_QUEUES];
         let mut values = [0; MAX_QUEUES];
         let mut count = 0;
         for point in set
@@ -360,5 +335,5 @@ impl<A: TimelineApi> Timelines<A> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "native-types"))]
 mod tests;

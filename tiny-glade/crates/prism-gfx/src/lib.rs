@@ -5,6 +5,7 @@
 //! that imports `rhapsody::sync::...` does not change.
 pub mod error;
 pub mod native_types;
+pub mod sync;
 
 pub use error::{Error, ErrorKind, Result, SharedError};
 
