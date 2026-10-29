@@ -28,11 +28,14 @@
 ```bash
 export PATH=$HOME/.cargo/bin:$PATH
 export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json   # 必须强制:本机还装有其他 Vulkan 驱动
+cargo check -p prism-gfx --offline && cargo check -p prism-gfx --features native-types --offline   # 两种配置都必须通过且无警告
 cargo check -p rhapsody -p shader-compiler -p shader-pipeline --offline
 CC_x86_64_pc_windows_gnu=gcc AR_x86_64_pc_windows_gnu=ar \
   cargo check -p country-core --target x86_64-pc-windows-gnu --offline     # 仅类型检查,不能运行
-python3 tools/rhapsody_test_baseline.py record --out /tmp/current.tsv       # = cargo test --no-fail-fast
-python3 tools/rhapsody_test_baseline.py compare crates/rhapsody/baseline/test_results.tsv /tmp/current.tsv
+export CARGO_INCREMENTAL=0                                                   # 否则 target/debug/incremental 会长到十几 GB
+python3 tools/rhapsody_test_baseline.py record -p rhapsody -p prism-gfx --out /tmp/current.tsv   # = cargo test --no-fail-fast
+python3 tools/rhapsody_test_baseline.py compare crates/rhapsody/baseline/test_results.tsv /tmp/current.tsv --alias prism_gfx=rhapsody
+python3 tools/clean_superseded_test_binaries.py --apply                      # 每步之后:删被取代的旧测试可执行文件
 python3 tools/rhapsody_core_split_deps.py                                  # 依赖统计,迁移步骤要重跑并与基线比较
 ```
 
@@ -166,7 +169,7 @@ P1 的 S2(访问词汇、`tracking`)、S3(切开 `rg` 的两个污染源,K4)、S
 | --- | --- | --- | --- |
 | WP0 | 基线记录 | 本机部分完成 | `crates/rhapsody/baseline/`(提交 f82cd210 上的 957 个测试);Windows 部分待做 |
 | WP1 | S0 依赖统计复核 | 完成 | `baseline/deps_report.txt`:模块行数、`vk::`/`ash::` 数与 CORE_SPLIT_DESIGN.md 第 2 节逐项一致(error 198/17/1、sync 635/21/13、accounting 1515/7/2、tracking 2346/19/7、rg 27157/467/72);`crates/rhapsody/src`、`crates/country-core/src` 自 `d4b49171` 起无改动,没有设计假设被证伪 |
-| WP2 | S1 `prism-gfx` 基础层 | 未开始 | — |
+| WP2 | S1 `prism-gfx` 基础层 | 本机部分完成 | 分支 `codex/gfx-core-split`,提交 `262cd9c4`..`91445d44`;7 个模块已移,`profile` 按偏差 D2 留到 S4;958 个测试对基线无回归、无消失;详见 CORE_SPLIT_DESIGN.md 第 8 节(含 9 条与设计的偏差)。Windows 待验:tiny-glade 编译、country-core/tiny-glade 测试、性能门槛 |
 | WP3 | 手工同步归类(只读) | 未开始 | — |
 | WP4 | 同步计划快照机制 | 未开始 | — |
 | WP5 | country-core 泄漏收口设计 | 未开始 | — |

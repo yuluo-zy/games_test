@@ -274,3 +274,38 @@ S3 之后重跑脚本,预期闭包干净、可以移入 core 的子模块:`compi
 - `pub(crate)` 中实际需要提升的项数。
 - S4 的预期移动清单,以 S3 后重跑脚本的结果为准。
 - 第 5 节的行数。
+
+## 8. 实施记录:WP2(S1)
+
+分支 `codex/gfx-core-split`,提交 `262cd9c4`(骨架)到 `91445d44`(步骤 6)。已移入 `prism-gfx`:`trace`、`log_ring`、`error`、`sync`、`accounting`、`collections`、`retire`,非测试代码约 4.6k 行、测试约 2.0k 行。`rhapsody/src` 净减约 6.4k 行。**`profile` 没有移动**(见偏差 D2)。
+
+每一步的验收都是:`prism-gfx` 在开、关 `native-types` 两种配置下 `cargo check` 通过且无警告;`rhapsody` 与 `country-core`(windows-gnu 类型检查)通过;`tools/rhapsody_test_baseline.py compare` 对 `baseline/test_results.tsv` 无回归、无消失。最终:958 个测试,944 ok、2 FAILED(基线里就有,校验层缺失)、12 ignored;比基线多的 1 个是 `native_types` 的数值测试。
+
+### 与设计和计划不一致的地方(都已在代码里处理,逐条列出)
+
+| # | 设计/计划的说法 | 实际情况 | 处理 |
+| --- | --- | --- | --- |
+| D1 | 步骤顺序 `collections`、`retire` 在前 | 它们依赖 `accounting`、`sync`,后者依赖 `error`:顺序必须是 `error → sync → accounting → collections/retire` | 按依赖顺序移动;`trace` 因被 `sync/timeline` 使用而一起移 |
+| D2 | `profile` 在 S1 内移动,其两处 `crate::rg` 测试移到 rhapsody | 这两处测试用 `super::*` 访问 `profile` 的私有内部,不能搬出 crate;而本批次移动的模块没有一个使用 `profile` | `profile` 留到 S4 随 `rg` 一起移动,届时测试自然同处一个 crate;S1 因此没有改任何测试逻辑 |
+| D3 | `SubmitScratch` 随 `collections` 移动 | 它只被 `tracking` 使用 | 留给 S2 |
+| D4 | K2:`Error` 已是 `#[non_exhaustive]`,没有影响 | 跨 crate 后 `non_exhaustive` 会强制 `_ =>` 通配符;rhapsody 有两处故意写成穷举(`command_buffer/retention.rs`、`transfer/queue/mod.rs`),新增变体时靠编译错误提醒 | **去掉了 `Error` 上的 `#[non_exhaustive]`**,保住这道保险。代价:新增变体会让下游匹配也报错;下游都在本工作区。**这是个 API 约定层面的决定,可以否决** |
+| D5 | 未提及特性 | `accounting` 里有三处受 `suballocation` 特性控制的代码;核心不声明该特性就会**永远被编译掉** | 核心声明 `suballocation`,rhapsody 的同名特性转发给它。教训:被移动的代码引用的每个特性,核心都必须声明并转发 |
+| D6 | K6 预告了孤儿规则 | 实际遇到 3 处:`impl Evictable for parking_lot::Mutex<Staging>`;`impl CpuPoolValue for Arc<ParameterCpuBlock>`;`impl CpuPoolValue for Arc<ReceiptSlot>` | 第一处用本地新类型 `StagingLock`(`Deref` 到 mutex,`.lock()` 调用点和 `Arc` 所有权不变)。后两处在核心加 `ArcPoolValue` trait 和对 `Arc<T>` 的泛型 `CpuPoolValue` 实现,rhapsody 为自己的本地类型实现 `ArcPoolValue`,方法体原样迁移,池的类型不变 |
+| D7 | K5:约 250 个 `pub(crate)` 项,约 170 个被引用 | 实际放开 73 个(`accounting` 30、`collections`/`retire` 43),全部 `pub` + `#[doc(hidden)]` | 同时让 `rhapsody::sync::timeline`、`collections::cache` 等从 crate 私有变成对文档隐藏的公开 |
+| D8 | 宏 `atomic_snapshot!` 没有提到 | 跨 crate 调用需要 `#[macro_export]` | 导出为 `__atomic_snapshot` 并在原路径重新导出;宏内部通过 `$crate` 引用自己 |
+| D9 | 未提及 | 测试里直接写 `vk::` 的模块在关闭 `native-types` 时编译不过 | 这些测试模块只在 `native-types` 下编译;`error/tests.rs`、`sync/timeline/tests.rs` 各加了一行 `use ash::vk;`(原来靠 `use super::*` 间接得到) |
+
+### 改动的测试
+
+只有两类,且断言一律没变:`error/tests.rs` 和 `sync/timeline/tests.rs` 各加一行 `use ash::vk;`;若干测试模块的声明加上 `cfg(feature = "native-types")`。没有测试被删除或改写断言。
+
+### 工作中暴露的工具问题
+
+- `cargo test` 不带 `--no-fail-fast` 会在第一个失败的二进制处停下,漏掉后面的测试;`cargo` 的标准输出与标准错误不能分开读,否则测试会归到错误的二进制名下(见 `baseline/BASELINE.md`)。
+- 每次改动,rhapsody 的 95 个集成测试都会重新链接,旧可执行文件留在 `target/debug/deps`;加上增量缓存,这台机器的磁盘被填满两次。处理:构建时设 `CARGO_INCREMENTAL=0`,定期运行 `tools/clean_superseded_test_binaries.py`(每个测试名只保留最新的一份,默认只报告)。
+
+### 仍然没有验证的
+
+- `tiny-glade` 在 Windows 上编译、`country-core` 与 `tiny-glade` 的测试(本机只能做 `country-core` 的类型检查)。
+- 性能:拆 crate 会改变内联与代码生成,release 是 thin LTO + `codegen-units=1`,预期影响小,但**没有测量**。合入主线前要按 METAL_DESIGN.md 第 0.5 节的门槛在 Windows 实机上比较。
+- K1 的关闭配置只验证了编译与 63 个不依赖 `ash` 的测试;错误映射、同步集合等需要 Vulkan 类型的行为只在开启配置下测试。
