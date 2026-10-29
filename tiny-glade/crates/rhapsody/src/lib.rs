@@ -47,7 +47,14 @@ pub mod rg;
 pub mod sync;
 pub mod tracking;
 pub mod transfer;
-internal_mod!(log_ring, retire, trace);
+internal_mod!(retire);
+// Moved to prism-gfx. Same paths and the same visibility as before: crate-private unless `test-support`.
+#[cfg(feature = "test-support")]
+#[doc(hidden)]
+pub use prism_gfx::{log_ring, trace};
+#[cfg(not(feature = "test-support"))]
+#[allow(unused_imports)]
+pub(crate) use prism_gfx::{log_ring, trace};
 
 pub use error::{Error, ErrorKind, Result, SharedError};
 pub use log_ring::{dump_log_vec, init_logging, record_log};

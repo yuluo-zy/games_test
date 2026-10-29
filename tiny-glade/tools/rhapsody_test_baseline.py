@@ -2,13 +2,18 @@
 """Record and compare per-test results of `cargo test`, so "test results unchanged" is checkable.
 
     # record: runs the tests (no-fail-fast, lavapipe) and writes one row per test
-    python3 tools/rhapsody_test_baseline.py record --out crates/rhapsody/baseline/test_results.tsv [-p rhapsody]
+    python3 tools/rhapsody_test_baseline.py record --out crates/rhapsody/baseline/test_results.tsv [-p rhapsody] [-p prism-gfx]
 
     # parse an existing cargo output instead of running (for tests / offline analysis)
     python3 tools/rhapsody_test_baseline.py record --from-log run.txt --out results.tsv
 
     # compare two recordings; exit status 1 if anything regressed or changed
-    python3 tools/rhapsody_test_baseline.py compare baseline.tsv current.tsv
+    python3 tools/rhapsody_test_baseline.py compare baseline.tsv current.tsv [--alias prism_gfx=rhapsody]
+
+When code moves between packages its unit tests keep their module path but run in another test binary.
+`--alias NEW=OLD` renames binary NEW to OLD on the `current` side before comparing (and the same for the
+`doctest:` binaries), so a moved test is matched with its old self. If the alias makes two current tests
+collide on one key, that is an error, never a silent merge.
 
 Rows are `binary<TAB>test<TAB>result` with result ok | FAILED | ignored. `cargo test` stops at the first
 failing test binary unless `--no-fail-fast` is given, which `record` always passes; a baseline recorded
@@ -75,6 +80,23 @@ def read_tsv(path):
     return result
 
 
+def apply_aliases(table, aliases):
+    """Rename binaries on one side. Raises ValueError if two rows would share a key afterwards."""
+    if not aliases:
+        return table
+    mapping = {}
+    for new, old in aliases:
+        mapping[new] = old
+        mapping['doctest:' + new] = 'doctest:' + old
+    result = {}
+    for (binary, test), outcome in table.items():
+        key = (mapping.get(binary, binary), test)
+        if key in result:
+            raise ValueError(f'alias makes two tests collide on {key[0]} :: {key[1]}')
+        result[key] = outcome
+    return result
+
+
 def compare(before, after):
     keys_before, keys_after = set(before), set(after)
     regress = sorted(k for k in keys_before & keys_after if before[k] == 'ok' and after[k] == 'FAILED')
@@ -102,7 +124,8 @@ def cmd_record(args):
     else:
         env = dict(os.environ)
         env.setdefault('VK_ICD_FILENAMES', '/usr/share/vulkan/icd.d/lvp_icd.json')
-        command = ['cargo', 'test', '-p', args.package, '--all-features', '--offline', '--no-fail-fast']
+        packages = [flag for package in (args.package or ['rhapsody']) for flag in ('-p', package)]
+        command = ['cargo', 'test', *packages, '--all-features', '--offline', '--no-fail-fast']
         # One merged stream: cargo prints `Running <binary>` on stderr and the test lines on stdout, and the
         # parser attributes each test to the most recent `Running` line, so the interleaving must survive.
         proc = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env, cwd=args.cwd)
@@ -120,7 +143,18 @@ def cmd_record(args):
 
 
 def cmd_compare(args):
-    result = compare(read_tsv(args.before), read_tsv(args.after))
+    aliases = []
+    for item in args.alias:
+        if '=' not in item:
+            print(f'bad --alias {item!r}, expected NEW=OLD', file=sys.stderr)
+            return 2
+        aliases.append(tuple(item.split('=', 1)))
+    try:
+        after = apply_aliases(read_tsv(args.after), aliases)
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return 2
+    result = compare(read_tsv(args.before), after)
     label = {'regress': 'REGRESSED (ok -> FAILED)', 'fixed': 'fixed (FAILED -> ok)',
              'flips': 'ok <-> ignored', 'still_failing': 'still failing (in baseline)',
              'added': 'added', 'removed': 'REMOVED'}
@@ -141,7 +175,7 @@ def main(argv=None):
     sub = parser.add_subparsers(dest='command', required=True)
     rec = sub.add_parser('record')
     rec.add_argument('--out', required=True)
-    rec.add_argument('-p', '--package', default='rhapsody')
+    rec.add_argument('-p', '--package', action='append', help='package to test; repeatable (default: rhapsody)')
     rec.add_argument('--from-log')
     rec.add_argument('--cwd', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
     rec.set_defaults(func=cmd_record)
@@ -149,6 +183,7 @@ def main(argv=None):
     cmp_.add_argument('before')
     cmp_.add_argument('after')
     cmp_.add_argument('--limit', type=int, default=20)
+    cmp_.add_argument('--alias', action='append', default=[], help='NEW=OLD binary rename for the current side')
     cmp_.set_defaults(func=cmd_compare)
     args = parser.parse_args(argv)
     return args.func(args)

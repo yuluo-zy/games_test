@@ -63,5 +63,24 @@ class CompareTests(unittest.TestCase):
         self.assertTrue(t.compare(self.base(), after)['removed'])
 
 
+class AliasTests(unittest.TestCase):
+    def test_moved_unit_tests_match_their_old_selves_through_an_alias(self):
+        before = {('rhapsody', 'log_ring::tests::a'): 'ok', ('rhapsody', 'sync::tests::b'): 'ok'}
+        after = {('prism_gfx', 'log_ring::tests::a'): 'ok', ('rhapsody', 'sync::tests::b'): 'ok'}
+        self.assertTrue(t.compare(before, after)['removed'])  # without the alias a move looks like a removal
+        aliased = t.apply_aliases(after, [('prism_gfx', 'rhapsody')])
+        r = t.compare(before, aliased)
+        self.assertEqual((r['removed'], r['added'], r['regress']), ([], [], []))
+
+    def test_doctest_binaries_are_aliased_too(self):
+        after = {('doctest:prism_gfx', 'x'): 'ok'}
+        self.assertEqual(t.apply_aliases(after, [('prism_gfx', 'rhapsody')]), {('doctest:rhapsody', 'x'): 'ok'})
+
+    def test_collision_is_an_error_not_a_silent_merge(self):
+        after = {('prism_gfx', 'same'): 'ok', ('rhapsody', 'same'): 'FAILED'}
+        with self.assertRaises(ValueError):
+            t.apply_aliases(after, [('prism_gfx', 'rhapsody')])
+
+
 if __name__ == '__main__':
     unittest.main()

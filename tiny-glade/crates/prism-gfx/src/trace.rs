@@ -2,7 +2,7 @@
 
 /// 仅在 RHAPSODY_SUBMIT_TRACE=1 时启用的提交分段观测，开关每进程读取一次。
 /// 禁用时不取时间、不分配；启用时所有样本也放在固定栈数组中。
-pub(crate) struct SubmitTrace {
+pub struct SubmitTrace {
     active: Option<SubmitTraceActive>,
 }
 struct SubmitTraceActive {
@@ -15,13 +15,13 @@ struct SubmitTraceActive {
     count_count: usize,
 }
 impl SubmitTrace {
-    pub(crate) fn configured() -> bool {
+    pub fn configured() -> bool {
         static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
         *ENABLED.get_or_init(|| {
             std::env::var_os("RHAPSODY_SUBMIT_TRACE").is_some_and(|value| value == "1")
         })
     }
-    pub(crate) fn new(scope: &'static str) -> Self {
+    pub fn new(scope: &'static str) -> Self {
         Self {
             active: Self::configured().then(|| {
                 let now = std::time::Instant::now();
@@ -37,10 +37,10 @@ impl SubmitTrace {
             }),
         }
     }
-    pub(crate) fn enabled(&self) -> bool {
+    pub fn enabled(&self) -> bool {
         self.active.is_some()
     }
-    pub(crate) fn mark(&mut self, phase: &'static str) {
+    pub fn mark(&mut self, phase: &'static str) {
         let Some(active) = &mut self.active else {
             return;
         };
@@ -56,7 +56,7 @@ impl SubmitTrace {
         }
         active.last = now;
     }
-    pub(crate) fn count(&mut self, name: &'static str, value: usize) {
+    pub fn count(&mut self, name: &'static str, value: usize) {
         let Some(active) = &mut self.active else {
             return;
         };

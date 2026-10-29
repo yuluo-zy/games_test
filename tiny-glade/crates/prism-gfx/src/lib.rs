@@ -4,3 +4,10 @@
 //! METAL_EXECUTION_PLAN.md). `rhapsody` re-exports everything moved here at its original path, so code
 //! that imports `rhapsody::sync::...` does not change.
 pub mod native_types;
+
+// Internal diagnostics. `doc(hidden)` and `pub` only because the facade crate re-exports them; the facade
+// keeps the visibility they had inside `rhapsody` (crate-private unless its `test-support` feature is on).
+#[doc(hidden)]
+pub mod log_ring;
+#[doc(hidden)]
+pub mod trace;
