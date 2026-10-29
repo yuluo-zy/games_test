@@ -31,7 +31,8 @@ impl<T> TempList<T> {
     pub fn reserve(&mut self, needed: usize) -> Result<()> {
         self.reserve_capped(needed, usize::MAX)
     }
-    pub(crate) fn reserve_capped(&mut self, needed: usize, max_new_bytes: usize) -> Result<()> {
+    #[doc(hidden)]
+    pub fn reserve_capped(&mut self, needed: usize, max_new_bytes: usize) -> Result<()> {
         if needed > self.max_items {
             return Err(Error::exhausted("temporary list capacity exceeded"));
         }
@@ -83,7 +84,8 @@ impl<T> TempList<T> {
         self.items.push(item);
         Ok(self.items.last().expect("pushed one item"))
     }
-    pub(crate) fn reclassify(&mut self, category: BudgetCategory) {
+    #[doc(hidden)]
+    pub fn reclassify(&mut self, category: BudgetCategory) {
         if let Some(memory) = &mut self.memory { memory.reclassify(category); }
     }
     pub fn clear(&mut self) {
@@ -92,13 +94,16 @@ impl<T> TempList<T> {
             memory.reclassify(BudgetCategory::Cache);
         }
     }
-    pub(crate) fn capacity(&self) -> usize {
+    #[doc(hidden)]
+    pub fn capacity(&self) -> usize {
         self.items.capacity()
     }
-    pub(crate) fn drain(&mut self) -> std::vec::Drain<'_, T> {
+    #[doc(hidden)]
+    pub fn drain(&mut self) -> std::vec::Drain<'_, T> {
         self.items.drain(..)
     }
-    pub(crate) fn retain(&mut self, keep: impl FnMut(&T) -> bool) {
+    #[doc(hidden)]
+    pub fn retain(&mut self, keep: impl FnMut(&T) -> bool) {
         self.items.retain(keep);
         if self.items.is_empty()
             && let Some(memory) = &mut self.memory
@@ -109,18 +114,21 @@ impl<T> TempList<T> {
     pub fn as_slice(&self) -> &[T] {
         &self.items
     }
-    pub(crate) fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+    #[doc(hidden)]
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         self.items.get_mut(index)
     }
     /// Capacity was admitted before an irreversible native operation. This
     /// insertion cannot grow storage or fail after that operation succeeds.
-    pub(crate) fn add_reserved(&mut self, item: T) {
+    #[doc(hidden)]
+    pub fn add_reserved(&mut self, item: T) {
         assert!(self.items.len() < self.items.capacity() && self.items.len() < self.max_items);
         self.items.push(item);
     }
     /// Move the last item to its position in a list otherwise sorted by `key`
     /// (one binary search and memmove instead of a full re-sort).
-    pub(crate) fn sift_last_by_key<K: Ord>(&mut self, mut key: impl FnMut(&T) -> K) {
+    #[doc(hidden)]
+    pub fn sift_last_by_key<K: Ord>(&mut self, mut key: impl FnMut(&T) -> K) {
         let Some(last) = self.items.last() else {
             return;
         };
@@ -129,13 +137,15 @@ impl<T> TempList<T> {
         let at = self.items[..len - 1].partition_point(|item| key(item) < wanted);
         self.items[at..].rotate_right(1);
     }
-    pub(crate) fn sort_dedup_by_key<K: Ord>(&mut self, mut key: impl FnMut(&T) -> K) {
+    #[doc(hidden)]
+    pub fn sort_dedup_by_key<K: Ord>(&mut self, mut key: impl FnMut(&T) -> K) {
         self.items.sort_unstable_by_key(&mut key);
         self.items.dedup_by(|a, b| key(a) == key(b));
     }
     /// A fallible builder over the same accounted capacity. Every push goes
     /// through add/reserve; success, error and panic all drop temporary values.
-    pub(crate) fn with_entries<R>(&mut self, run: impl FnOnce(&mut Self) -> R) -> R {
+    #[doc(hidden)]
+    pub fn with_entries<R>(&mut self, run: impl FnOnce(&mut Self) -> R) -> R {
         self.clear();
         struct Active<'a, T>(&'a mut TempList<T>);
         impl<T> Drop for Active<'_, T> {
@@ -153,7 +163,8 @@ impl<T> TempList<T> {
     }
     /// Take cached storage without holding its mutex during resource gates,
     /// budget admission or driver work. Concurrent callers own separate lists.
-    pub(crate) fn checkout(cache: &parking_lot::Mutex<Self>) -> CachedTempList<'_, T> {
+    #[doc(hidden)]
+    pub fn checkout(cache: &parking_lot::Mutex<Self>) -> CachedTempList<'_, T> {
         let mut cached = cache.lock();
         let empty = Self {
             items: Vec::new(), memory: None, budget: cached.budget.clone(),
@@ -177,7 +188,8 @@ impl<T> TempList<T> {
     /// The only Vec mutation escape is crate-private. The caller must reserve
     /// the maximum number of pushes first; scope exit (including panic) clears
     /// all CPU values while retaining the accounted backing for the next call.
-    pub(crate) fn with_reserved<R>(
+    #[doc(hidden)]
+    pub fn with_reserved<R>(
         &mut self,
         needed: usize,
         run: impl FnOnce(&mut Vec<T>) -> R,
@@ -197,7 +209,8 @@ impl<T> TempList<T> {
         Ok(run(&mut active.0.items))
     }
 }
-pub(crate) struct CachedTempList<'a, T> {
+#[doc(hidden)]
+pub struct CachedTempList<'a, T> {
     cache: &'a parking_lot::Mutex<TempList<T>>,
     list: TempList<T>,
 }

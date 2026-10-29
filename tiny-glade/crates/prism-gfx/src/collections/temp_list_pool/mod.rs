@@ -102,7 +102,8 @@ impl<T> TempListLease<T> {
         Ok(())
     }
     pub fn is_empty(&self) -> bool { self.as_slice().is_empty() }
-    pub(crate) fn drain(&mut self) -> std::vec::Drain<'_, T> { self.lease.value_mut().drain() }
+    #[doc(hidden)]
+    pub fn drain(&mut self) -> std::vec::Drain<'_, T> { self.lease.value_mut().drain() }
     pub fn as_slice(&self) -> &[T] { self.lease.value().as_slice() }
 }
 

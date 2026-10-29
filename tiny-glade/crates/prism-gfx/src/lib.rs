@@ -4,8 +4,11 @@
 //! METAL_EXECUTION_PLAN.md). `rhapsody` re-exports everything moved here at its original path, so code
 //! that imports `rhapsody::sync::...` does not change.
 pub mod accounting;
+pub mod collections;
 pub mod error;
 pub mod native_types;
+#[doc(hidden)]
+pub mod retire;
 pub mod sync;
 
 pub use error::{Error, ErrorKind, Result, SharedError};

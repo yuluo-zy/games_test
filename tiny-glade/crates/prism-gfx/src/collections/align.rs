@@ -2,7 +2,8 @@
 
 /// Rounds `value` up to the next multiple of `alignment`; `None` when the result
 /// overflows `u64`. `alignment` must be non-zero.
-pub(crate) fn align_up(value: u64, alignment: u64) -> Option<u64> {
+#[doc(hidden)]
+pub fn align_up(value: u64, alignment: u64) -> Option<u64> {
     value
         .checked_add(alignment - 1)
         .map(|end| end / alignment * alignment)
@@ -10,7 +11,8 @@ pub(crate) fn align_up(value: u64, alignment: u64) -> Option<u64> {
 
 /// Buffer offset alignment for copies of `block_bytes`-sized texel blocks: the
 /// least common multiple of the block size and the 4-byte copy granularity.
-pub(crate) fn texel_block_alignment(block_bytes: u64) -> u64 {
+#[doc(hidden)]
+pub fn texel_block_alignment(block_bytes: u64) -> u64 {
     let (mut a, mut b) = (block_bytes, 4);
     while b != 0 {
         (a, b) = (b, a % b);

@@ -1,6 +1,6 @@
 //! Callback-local, bounded CPU credit for parameter payloads. Published
 //! parameters pin the same block; their destruction never takes the budget lock.
-use crate::{Error, Result, collections::cpu_pool::{CpuPool, CpuPoolLease, CpuPoolLimits, CpuPoolValue}};
+use crate::{Error, Result, collections::cpu_pool::{ArcPoolValue, CpuPool, CpuPoolLease, CpuPoolLimits, CpuPoolValue}};
 use crate::accounting::{AllocatorStats, BudgetAction, BudgetCategory, CpuMemoryReservation, reserve_shared_cpu_metadata, shared_cpu_bytes};
 use std::sync::Arc;
 
@@ -10,13 +10,11 @@ pub(crate) struct ParameterCpuBlock {
     reservation: CpuMemoryReservation,
 }
 pub(crate) type ParameterCpuCredit = Arc<ParameterCpuBlock>;
-impl CpuPoolValue for ParameterCpuCredit {
-    type Statistics = ();
-    fn capacity_bytes(&self) -> usize { self.accounted_bytes }
-    fn available(&self) -> bool { Arc::strong_count(self) == 1 && Arc::weak_count(self) == 0 }
-    fn reset(&mut self) {}
-    fn reclassify(&mut self, category: BudgetCategory) {
-        Arc::get_mut(self).expect("exclusive CPU credit").reservation.reclassify(category);
+impl ArcPoolValue for ParameterCpuBlock {
+    fn capacity_bytes(this: &Self) -> usize { this.accounted_bytes }
+    fn reset(_: &mut Arc<Self>) {}
+    fn reclassify(this: &mut Arc<Self>, category: BudgetCategory) {
+        Arc::get_mut(this).expect("exclusive CPU credit").reservation.reclassify(category);
     }
 }
 pub(crate) struct ParameterCpuPool {

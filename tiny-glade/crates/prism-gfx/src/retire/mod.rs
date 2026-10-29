@@ -8,7 +8,8 @@ use std::sync::{
     atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
-pub(crate) struct Node<T> {
+#[doc(hidden)]
+pub struct Node<T> {
     value: u64,
     after: SyncSet,
     item: Option<T>,
@@ -19,7 +20,8 @@ pub(crate) struct Node<T> {
 
 /// Exclusive construction credit. Not Clone: one native payload consumes one
 /// node, or cancellation returns the node and its host-budget credit.
-pub(crate) struct RetirementTicket<T> {
+#[doc(hidden)]
+pub struct RetirementTicket<T> {
     // One fallibly allocated node; release physical storage before its credit.
     storage: Vec<Node<T>>,
     _memory: Option<crate::accounting::CpuMemoryReservation>,
@@ -36,7 +38,8 @@ impl<T> std::ops::DerefMut for RetirementTicket<T> {
     }
 }
 impl<T> RetirementTicket<T> {
-    pub(crate) fn reserve(
+    #[doc(hidden)]
+    pub fn reserve(
         stats: &Arc<crate::accounting::AllocatorStats>,
     ) -> crate::Result<Self> {
         let memory = stats.reserve_cpu_bytes(
@@ -247,7 +250,8 @@ impl<T> Retirement<T> {
         self.enqueue_reserved(after, item, ticket);
         Ok(())
     }
-    pub(crate) fn enqueue_reserved(&self, after: SyncSet, item: T, ticket: RetirementTicket<T>) {
+    #[doc(hidden)]
+    pub fn enqueue_reserved(&self, after: SyncSet, item: T, ticket: RetirementTicket<T>) {
         let (queue, value) = after
             .points()
             .next()
@@ -298,7 +302,8 @@ impl<T> Retirement<T> {
     /// A completed GPU object may still have a busy native host owner (for
     /// example another command recording in its pool). Return its unchanged
     /// payload to the SAME reserved node and set it aside for this round.
-    pub(crate) fn collect_limited_retry(
+    #[doc(hidden)]
+    pub fn collect_limited_retry(
         &self,
         completed: &CompletedValues,
         max_scans: usize,

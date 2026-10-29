@@ -33,7 +33,7 @@ macro_rules! internal_mod {
 
 pub use prism_gfx::accounting;
 pub mod bindless;
-pub mod collections;
+pub use prism_gfx::collections;
 pub mod command;
 pub mod device;
 pub mod format;
@@ -46,14 +46,13 @@ pub mod rg;
 pub use prism_gfx::sync;
 pub mod tracking;
 pub mod transfer;
-internal_mod!(retire);
 // Moved to prism-gfx. Same paths and the same visibility as before: crate-private unless `test-support`.
 #[cfg(feature = "test-support")]
 #[doc(hidden)]
-pub use prism_gfx::{log_ring, trace};
+pub use prism_gfx::{log_ring, retire, trace};
 #[cfg(not(feature = "test-support"))]
 #[allow(unused_imports)]
-pub(crate) use prism_gfx::{log_ring, trace};
+pub(crate) use prism_gfx::{log_ring, retire, trace};
 
 pub(crate) use prism_gfx::error;
 pub use prism_gfx::{Error, ErrorKind, Result, SharedError};

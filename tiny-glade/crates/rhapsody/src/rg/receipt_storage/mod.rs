@@ -1,7 +1,7 @@
 //! Bounded immutable CPU receipts. GPU completion is independent: an external
 //! receipt clone keeps its own snapshot capacity and budget alive until Drop.
 use super::graph;
-use crate::{Error, Result, collections::cpu_pool::{CpuPool, CpuPoolLease, CpuPoolLimits, CpuPoolValue}};
+use crate::{Error, Result, collections::cpu_pool::{CpuPool, CpuPoolLease, CpuPoolLimits, ArcPoolValue}};
 use crate::accounting::{AllocatorStats, BudgetCategory, CpuMemoryReservation};
 use std::sync::Arc;
 
@@ -57,18 +57,16 @@ pub(crate) struct ReceiptStorage {
 pub(crate) struct ReceiptLease {
     lease: CpuPoolLease<Arc<ReceiptSlot>>,
 }
-impl CpuPoolValue for Arc<ReceiptSlot> {
-    type Statistics = ();
-    fn capacity_bytes(&self) -> usize { self.bytes }
-    fn available(&self) -> bool { Arc::strong_count(self) == 1 && Arc::weak_count(self) == 0 }
-    fn reset(&mut self) {
-        let slot = Arc::get_mut(self).expect("exclusive receipt slot");
+impl ArcPoolValue for ReceiptSlot {
+    fn capacity_bytes(this: &Self) -> usize { this.bytes }
+    fn reset(this: &mut Arc<Self>) {
+        let slot = Arc::get_mut(this).expect("exclusive receipt slot");
         slot.data.receipts.clear();
         slot.data.snapshot.physical_mapping.clear();
         slot.data.snapshot.pool_hits.clear();
     }
-    fn reclassify(&mut self, category: BudgetCategory) {
-        Arc::get_mut(self).expect("exclusive receipt slot").reservation.reclassify(category);
+    fn reclassify(this: &mut Arc<Self>, category: BudgetCategory) {
+        Arc::get_mut(this).expect("exclusive receipt slot").reservation.reclassify(category);
     }
 }
 fn bytes<T>(capacity: usize) -> usize {

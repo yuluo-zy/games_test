@@ -85,13 +85,16 @@ impl CacheDiagnostics {
     pub fn invalidations(self, reason: CacheReason) -> u64 {
         self.invalidations[reason as usize]
     }
-    pub(crate) fn miss(&mut self, reason: CacheReason) {
+    #[doc(hidden)]
+    pub fn miss(&mut self, reason: CacheReason) {
         self.misses[reason as usize] += 1;
     }
-    pub(crate) fn invalidate(&mut self, reason: CacheReason, count: usize) {
+    #[doc(hidden)]
+    pub fn invalidate(&mut self, reason: CacheReason, count: usize) {
         self.invalidations[reason as usize] += count as u64;
     }
-    pub(crate) fn merge_invalidations(&mut self, other: Self) {
+    #[doc(hidden)]
+    pub fn merge_invalidations(&mut self, other: Self) {
         for (target, count) in self.invalidations.iter_mut().zip(other.invalidations) {
             *target += count;
         }
@@ -197,7 +200,8 @@ impl<K: Clone + Eq + Hash, V> BoundedCache<K, V> {
 
     /// Refine an enabled lookup's generic miss after the owner has constructed
     /// and compared its complete key. This is never called on the hit path.
-    pub(crate) fn classify_miss(&mut self, reason: CacheReason) {
+    #[doc(hidden)]
+    pub fn classify_miss(&mut self, reason: CacheReason) {
         if reason != CacheReason::Cold {
             let cold = &mut self.stats.diagnostics.misses[CacheReason::Cold as usize];
             debug_assert!(*cold != 0);
@@ -205,7 +209,8 @@ impl<K: Clone + Eq + Hash, V> BoundedCache<K, V> {
             self.stats.diagnostics.miss(reason);
         }
     }
-    pub(crate) fn record_bypass(&mut self, reason: CacheReason) {
+    #[doc(hidden)]
+    pub fn record_bypass(&mut self, reason: CacheReason) {
         self.stats.diagnostics.miss(reason);
     }
 
@@ -215,14 +220,16 @@ impl<K: Clone + Eq + Hash, V> BoundedCache<K, V> {
     }
 
     /// Preserve recency when an owner replaces cache backing during admission.
-    pub(crate) fn iter_lru(&self) -> impl Iterator<Item = (&K, &V)> {
+    #[doc(hidden)]
+    pub fn iter_lru(&self) -> impl Iterator<Item = (&K, &V)> {
         std::iter::successors(self.oldest, |&index| self.entries[index].as_ref().unwrap().next)
             .map(|index| { let entry = self.entries[index].as_ref().unwrap(); (&entry.key, &entry.value) })
     }
 
     /// Return the oldest entry that may be evicted without changing recency.
     /// A cache owner uses this to keep externally held or in-flight values live.
-    pub(crate) fn lru_key_where(&self, mut ready: impl FnMut(&V) -> bool) -> Option<K> {
+    #[doc(hidden)]
+    pub fn lru_key_where(&self, mut ready: impl FnMut(&V) -> bool) -> Option<K> {
         self.iter_lru().find_map(|(key, value)| ready(value).then(|| key.clone()))
     }
 
@@ -248,7 +255,8 @@ impl<K: Clone + Eq + Hash, V> BoundedCache<K, V> {
     pub fn remove(&mut self, key: &K) -> Option<V> {
         self.remove_with_reason(key, CacheReason::ExplicitRemoval)
     }
-    pub(crate) fn remove_with_reason(&mut self, key: &K, reason: CacheReason) -> Option<V> {
+    #[doc(hidden)]
+    pub fn remove_with_reason(&mut self, key: &K, reason: CacheReason) -> Option<V> {
         let index = *self.map.get(key)?;
         let entry = self.remove_index(index);
         self.stats.diagnostics.invalidate(reason, 1);
@@ -262,7 +270,8 @@ impl<K: Clone + Eq + Hash, V> BoundedCache<K, V> {
     pub fn clear(&mut self) {
         self.clear_with_reason(CacheReason::ExplicitClear);
     }
-    pub(crate) fn clear_with_reason(&mut self, reason: CacheReason) {
+    #[doc(hidden)]
+    pub fn clear_with_reason(&mut self, reason: CacheReason) {
         self.stats.diagnostics.invalidate(reason, self.map.len());
         self.map.clear(); self.entries.clear(); self.free.clear();
         self.oldest = None; self.newest = None; self.total_bytes = 0;

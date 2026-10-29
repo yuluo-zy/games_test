@@ -5,7 +5,8 @@ use crate::accounting::{AllocatorStats, BudgetAction, BudgetCategory, CpuMemoryR
 use parking_lot::Mutex;
 use std::sync::Arc;
 
-pub(crate) trait CpuPoolValue {
+#[doc(hidden)]
+pub trait CpuPoolValue {
     type Statistics: Copy + Default;
     fn capacity_bytes(&self) -> usize;
     fn available(&self) -> bool {
@@ -16,8 +17,39 @@ pub(crate) trait CpuPoolValue {
     fn reclassify(&mut self, category: BudgetCategory);
 }
 
+/// A pooled value that is held as `Arc<Self>`.
+///
+/// `CpuPoolValue` is defined in this crate, and the orphan rule does not let another crate implement it for
+/// `Arc<TheirType>`. This trait is the hook: they implement `ArcPoolValue` for their own type and the blanket
+/// impl below makes `Arc<TheirType>` poolable, with the call sites (`CpuPool<Arc<TheirType>>`) unchanged.
+/// The methods take `&mut Arc<Self>` so an implementation keeps control of when it needs exclusive access
+/// (`Arc::get_mut`): a no-op `reset` must stay a no-op and never panic on a shared value.
+#[doc(hidden)]
+pub trait ArcPoolValue: Sized {
+    fn capacity_bytes(this: &Self) -> usize;
+    fn reset(this: &mut Arc<Self>);
+    fn reclassify(this: &mut Arc<Self>, category: BudgetCategory);
+}
+
+impl<T: ArcPoolValue> CpuPoolValue for Arc<T> {
+    type Statistics = ();
+    fn capacity_bytes(&self) -> usize {
+        T::capacity_bytes(self)
+    }
+    fn available(&self) -> bool {
+        Arc::strong_count(self) == 1 && Arc::weak_count(self) == 0
+    }
+    fn reset(&mut self) {
+        T::reset(self)
+    }
+    fn reclassify(&mut self, category: BudgetCategory) {
+        T::reclassify(self, category)
+    }
+}
+
 #[derive(Clone, Copy)]
-pub(crate) struct CpuPoolLimits {
+#[doc(hidden)]
+pub struct CpuPoolLimits {
     pub items: usize,
     pub total_bytes: usize,
     pub cached_bytes: usize,
@@ -25,7 +57,8 @@ pub(crate) struct CpuPoolLimits {
 }
 
 #[derive(Clone, Copy, Default)]
-pub(crate) struct CpuPoolStats<S> {
+#[doc(hidden)]
+pub struct CpuPoolStats<S> {
     pub checked_out: usize,
     pub cached: usize,
     pub pinned: usize,
@@ -60,7 +93,8 @@ struct Shared<T: CpuPoolValue> {
     budget: Arc<AllocatorStats>,
     _metadata: CpuMemoryReservation,
 }
-pub(crate) struct CpuPool<T: CpuPoolValue> {
+#[doc(hidden)]
+pub struct CpuPool<T: CpuPoolValue> {
     shared: Arc<Shared<T>>,
 }
 impl<T: CpuPoolValue> Clone for CpuPool<T> {
@@ -71,7 +105,8 @@ impl<T: CpuPoolValue> Clone for CpuPool<T> {
     }
 }
 impl<T: CpuPoolValue> CpuPool<T> {
-    pub(crate) fn new(limits: CpuPoolLimits, budget: Arc<AllocatorStats>) -> Result<Self> {
+    #[doc(hidden)]
+    pub fn new(limits: CpuPoolLimits, budget: Arc<AllocatorStats>) -> Result<Self> {
         if !(1..=256).contains(&limits.items) || limits.cached_bytes > limits.total_bytes {
             return Err(Error::invalid_usage("invalid bounded CPU pool limits"));
         }
@@ -108,7 +143,8 @@ impl<T: CpuPoolValue> CpuPool<T> {
     }
     /// A snapshot has no accounting side effects. External immutable owners
     /// may have released their last clone since the last pool maintenance.
-    pub(crate) fn stats(&self) -> CpuPoolStats<T::Statistics> {
+    #[doc(hidden)]
+    pub fn stats(&self) -> CpuPoolStats<T::Statistics> {
         let state = self.shared.state.lock();
         let mut stats = state.stats;
         if stats.pinned != 0 {
@@ -124,7 +160,8 @@ impl<T: CpuPoolValue> CpuPool<T> {
         }
         stats
     }
-    pub(crate) fn checkout(&self, create: impl FnOnce() -> Result<T>) -> Result<CpuPoolLease<T>> {
+    #[doc(hidden)]
+    pub fn checkout(&self, create: impl FnOnce() -> Result<T>) -> Result<CpuPoolLease<T>> {
         let mut state = self.shared.state.lock();
         state.refresh();
         let value = if state.stats.cached != 0 {
@@ -164,7 +201,8 @@ impl<T: CpuPoolValue> CpuPool<T> {
             reusable: true,
         })
     }
-    pub(crate) fn trim_idle(&self, target: usize) -> usize {
+    #[doc(hidden)]
+    pub fn trim_idle(&self, target: usize) -> usize {
         let mut state = self.shared.state.lock();
         state.refresh();
         let mut freed = 0;
@@ -203,22 +241,26 @@ impl<T: CpuPoolValue> State<T> {
         }
     }
 }
-pub(crate) struct CpuPoolLease<T: CpuPoolValue> {
+#[doc(hidden)]
+pub struct CpuPoolLease<T: CpuPoolValue> {
     value: Option<T>,
     shared: Arc<Shared<T>>,
     reusable: bool,
 }
 impl<T: CpuPoolValue> CpuPoolLease<T> {
-    pub(crate) fn value(&self) -> &T {
+    #[doc(hidden)]
+    pub fn value(&self) -> &T {
         self.value.as_ref().expect("active CPU storage lease")
     }
-    pub(crate) fn value_mut(&mut self) -> &mut T {
+    #[doc(hidden)]
+    pub fn value_mut(&mut self) -> &mut T {
         self.value.as_mut().expect("active CPU storage lease")
     }
     /// Admission and accounting surround capacity changes, never individual
     /// element operations. `peak_extra` includes any replacement block which
     /// coexists with the old allocation; the payload enforces its exact budget.
-    pub(crate) fn update<R>(
+    #[doc(hidden)]
+    pub fn update<R>(
         &mut self,
         peak_extra: usize,
         change: impl FnOnce(&mut T, usize) -> Result<R>,
@@ -247,7 +289,8 @@ impl<T: CpuPoolValue> CpuPoolLease<T> {
         }
         result
     }
-    pub(crate) fn discard_on_return(&mut self) {
+    #[doc(hidden)]
+    pub fn discard_on_return(&mut self) {
         self.reusable = false;
     }
 }
