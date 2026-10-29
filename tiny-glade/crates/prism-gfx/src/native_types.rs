@@ -13,6 +13,33 @@ mod native {
     pub type BackendResult = ash::vk::Result;
     /// Number of memory heaps a device may report (`VK_MAX_MEMORY_HEAPS`).
     pub const MAX_MEMORY_HEAPS: usize = ash::vk::MAX_MEMORY_HEAPS;
+
+    // Lives here, not in `error`, so that `ash` is named in this file only. The orphan rule is satisfied
+    // because `Error` is local to this crate.
+    impl From<ash::vk::Result> for crate::Error {
+        fn from(result: ash::vk::Result) -> crate::Error {
+            match result {
+                ash::vk::Result::ERROR_DEVICE_LOST => crate::Error::DeviceLost,
+                ash::vk::Result::ERROR_OUT_OF_DEVICE_MEMORY => crate::Error::OutOfDeviceMemory,
+                ash::vk::Result::ERROR_OUT_OF_HOST_MEMORY => crate::Error::OutOfHostMemory,
+                ash::vk::Result::ERROR_OUT_OF_DATE_KHR
+                | ash::vk::Result::ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT => crate::Error::SurfaceOutOfDate,
+                ash::vk::Result::ERROR_SURFACE_LOST_KHR => crate::Error::SurfaceLost,
+                ash::vk::Result::TIMEOUT => crate::Error::Timeout,
+                ash::vk::Result::ERROR_OUT_OF_POOL_MEMORY | ash::vk::Result::ERROR_FRAGMENTED_POOL => {
+                    crate::Error::Exhausted(format!("{result:?}").into())
+                }
+                ash::vk::Result::ERROR_FEATURE_NOT_PRESENT
+                | ash::vk::Result::ERROR_EXTENSION_NOT_PRESENT
+                | ash::vk::Result::ERROR_LAYER_NOT_PRESENT
+                | ash::vk::Result::ERROR_FORMAT_NOT_SUPPORTED
+                | ash::vk::Result::ERROR_INCOMPATIBLE_DRIVER => {
+                    crate::Error::Unsupported(format!("{result:?}").into())
+                }
+                other => crate::Error::Vulkan(other),
+            }
+        }
+    }
 }
 
 #[cfg(not(feature = "native-types"))]

@@ -1,4 +1,5 @@
 use super::*;
+use ash::vk;
 
 #[test]
 fn shared_errors_compare_by_identity_not_by_value() {

@@ -37,7 +37,6 @@ pub mod collections;
 pub mod command;
 pub mod device;
 pub mod format;
-mod error;
 pub mod native;
 pub mod pipeline;
 pub mod profile;
@@ -56,5 +55,6 @@ pub use prism_gfx::{log_ring, trace};
 #[allow(unused_imports)]
 pub(crate) use prism_gfx::{log_ring, trace};
 
-pub use error::{Error, ErrorKind, Result, SharedError};
+pub(crate) use prism_gfx::error;
+pub use prism_gfx::{Error, ErrorKind, Result, SharedError};
 pub use log_ring::{dump_log_vec, init_logging, record_log};

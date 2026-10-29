@@ -16,7 +16,7 @@
 //!
 //! 约定：用户可触发的误用一律返回 [`Error::InvalidUsage`]，不 panic；`debug_assert!` 只用于
 //! rhapsody 内部不变量（违反即 rhapsody 自身的 bug）。
-use ash::vk;
+use crate::native_types::BackendResult;
 use std::borrow::Cow;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -24,8 +24,12 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 /// 附带在 [`Error::InvalidUsage`] 上的下层细节（各模块自己的错误枚举）。
 pub type Source = Box<dyn std::error::Error + Send + Sync + 'static>;
 
+// Deliberately NOT `#[non_exhaustive]`. Inside `rhapsody` this enum was matched exhaustively on purpose
+// (`command_buffer/retention.rs`, `transfer/queue/mod.rs`): adding a variant must be a compile error there.
+// `non_exhaustive` only lets the defining crate match exhaustively, so once the enum moved to its own crate
+// it would have forced `_ =>` arms and silently dropped that guarantee. Cost: adding a variant now breaks
+// downstream matches too; every downstream crate is in this workspace (`publish = false`).
 #[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
 pub enum Error {
     #[error("GPU 设备丢失")]
     DeviceLost,
@@ -49,8 +53,14 @@ pub enum Error {
         #[source]
         source: Option<Source>,
     },
+    /// A backend status code that has no neutral class. With `native-types` it is the Vulkan result code.
+    #[cfg(feature = "native-types")]
     #[error("Vulkan 错误：{0:?}")]
-    Vulkan(vk::Result),
+    Vulkan(BackendResult),
+    /// A backend status code that has no neutral class (a non-Vulkan backend).
+    #[cfg(not(feature = "native-types"))]
+    #[error("后端错误：{0:?}")]
+    Backend(BackendResult),
 }
 
 /// Cloneable diagnostic identity for protocols which implement Eq. Failures
@@ -95,6 +105,8 @@ pub enum ErrorKind {
     Exhausted,
     Unsupported,
     InvalidUsage,
+    /// An unmapped backend status code. Named `Vulkan` because existing code matches on it; it covers
+    /// `Error::Backend` too and can be renamed once those matches are migrated.
     Vulkan,
 }
 impl From<std::sync::Arc<Error>> for Error {
@@ -108,7 +120,10 @@ impl From<std::sync::Arc<Error>> for Error {
             Self::Timeout => Self::Timeout,
             Self::Exhausted(what) => Self::Exhausted(what.clone()),
             Self::Unsupported(what) => Self::Unsupported(what.clone()),
+            #[cfg(feature = "native-types")]
             Self::Vulkan(code) => Self::Vulkan(*code),
+            #[cfg(not(feature = "native-types"))]
+            Self::Backend(code) => Self::Backend(*code),
             Self::InvalidUsage { what, .. } => Self::InvalidUsage {
                 what: what.clone(),
                 source: Some(Box::new(error.clone())),
@@ -128,7 +143,10 @@ impl Error {
             Self::Exhausted(_) => ErrorKind::Exhausted,
             Self::Unsupported(_) => ErrorKind::Unsupported,
             Self::InvalidUsage { .. } => ErrorKind::InvalidUsage,
+            #[cfg(feature = "native-types")]
             Self::Vulkan(_) => ErrorKind::Vulkan,
+            #[cfg(not(feature = "native-types"))]
+            Self::Backend(_) => ErrorKind::Vulkan,
         }
     }
 
@@ -168,30 +186,5 @@ impl Error {
     }
 }
 
-impl From<vk::Result> for Error {
-    fn from(result: vk::Result) -> Self {
-        match result {
-            vk::Result::ERROR_DEVICE_LOST => Self::DeviceLost,
-            vk::Result::ERROR_OUT_OF_DEVICE_MEMORY => Self::OutOfDeviceMemory,
-            vk::Result::ERROR_OUT_OF_HOST_MEMORY => Self::OutOfHostMemory,
-            vk::Result::ERROR_OUT_OF_DATE_KHR
-            | vk::Result::ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT => Self::SurfaceOutOfDate,
-            vk::Result::ERROR_SURFACE_LOST_KHR => Self::SurfaceLost,
-            vk::Result::TIMEOUT => Self::Timeout,
-            vk::Result::ERROR_OUT_OF_POOL_MEMORY | vk::Result::ERROR_FRAGMENTED_POOL => {
-                Self::Exhausted(format!("{result:?}").into())
-            }
-            vk::Result::ERROR_FEATURE_NOT_PRESENT
-            | vk::Result::ERROR_EXTENSION_NOT_PRESENT
-            | vk::Result::ERROR_LAYER_NOT_PRESENT
-            | vk::Result::ERROR_FORMAT_NOT_SUPPORTED
-            | vk::Result::ERROR_INCOMPATIBLE_DRIVER => {
-                Self::Unsupported(format!("{result:?}").into())
-            }
-            other => Self::Vulkan(other),
-        }
-    }
-}
-
-#[cfg(test)]
+#[cfg(all(test, feature = "native-types"))]
 mod tests;
