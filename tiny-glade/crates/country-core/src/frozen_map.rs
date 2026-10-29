@@ -45,6 +45,18 @@ impl<K: Eq + Hash, V> FrozenMap<K, V> {
         self.map.get_mut().get_mut(key).map(|b| &mut **b)
     }
 
+    /// 同一独占借用中访问不同键；值留在原Box，不复制owner或延长可变引用生命周期。
+    /// 重复键即使缺失也拒绝，随后由标准HashMap核验返回引用互不重叠。
+    pub fn get_disjoint_mut<const N: usize>(&mut self, keys: [&K; N]) -> [Option<&mut V>; N] {
+        for second in 1..N {
+            for first in 0..second {
+                assert!(keys[first] != keys[second], "duplicate keys in FrozenMap::get_disjoint_mut");
+            }
+        }
+        self.map.get_mut().get_disjoint_mut(keys)
+            .map(|entry| entry.map(|value| value.as_mut()))
+    }
+
     /// 独占移除（O：`AssetMeshLibrary::remove` 直接对内部 hashbrown 表 `remove_entry`，值随后被 drop）。
     pub fn remove(&mut self, key: &K) -> Option<Box<V>> {
         self.map.get_mut().remove(key)
@@ -100,5 +112,31 @@ impl<K: Eq + Hash, V> FrozenMap<K, V> {
         for (key, value) in guard.iter() {
             f(key, value);
         }
+    }
+}
+
+#[cfg(test)]
+mod disjoint_tests {
+    use super::*;
+    #[test]
+    fn independent_owners_mutate_in_place_and_missing_keys_remain_none() {
+        let mut map = FrozenMap::new();
+        map.insert(1, Box::new(String::from("first"))).unwrap();
+        map.insert(2, Box::new(String::from("second"))).unwrap();
+        let first = map.get(&1).unwrap() as *const String;
+        let [Some(a), Some(b), absent] = map.get_disjoint_mut([&1, &2, &3]) else { panic!() };
+        assert!(absent.is_none()); a.push('A'); b.push('B');
+        assert_eq!(map.get(&1).unwrap(), "firstA");
+        assert_eq!(map.get(&2).unwrap(), "secondB");
+        assert_eq!(map.get(&1).unwrap() as *const String, first);
+        assert_eq!(map.len(), 2);
+    }
+    #[test]
+    fn repeated_keys_are_rejected_even_when_the_key_is_absent() {
+        let mut map = FrozenMap::<u32, u32>::new();
+        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = map.get_disjoint_mut([&1, &1, &2]);
+        }));
+        assert!(panic.is_err()); assert!(map.is_empty());
     }
 }

@@ -113,9 +113,10 @@ impl<E: EventInstance> AudioInstance<E> {
     /// {Playing, Sustaining, Starting}.
     pub fn start_if_not_playing(&mut self) -> Result<(), E::Error> {
         if let AudioInstance::Active { event, .. } = self {
-            let state = event.get_playback_state()?;
+            // B 140a573b0/140a573fa：查询和启动失败都 unwrap，不得吞掉坏句柄。
+            let state = event.get_playback_state().unwrap();
             if should_start_if_not_playing(state as u32) {
-                event.start()?;
+                event.start().unwrap();
             }
         }
         Ok(())
@@ -160,10 +161,13 @@ impl<E: EventInstance> AudioInstance<E> {
         Ok(())
     }
 
-    /// `set_position` (0x140a57da0): forward=(0,0,-1), up=(0,1,0), velocity 0.
+    /// B 140a57da0：保留原 forward 的负零；位置错误只告警一次，调用者继续播放。
     pub fn set_position(&mut self, position: [f32; 3]) -> Result<(), E::Error> {
-        if let AudioInstance::Active { event, .. } = self {
-            event.set_3d_attributes(position, [0.0, 0.0, -1.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0])?;
+        if let AudioInstance::Active { event, name, .. } = self {
+            if let Err(error) = event.set_3d_attributes(position, [-0.0, -0.0, -1.0], [0.0, 1.0, 0.0], [0.0, 0.0, 0.0]) {
+                log_once::warn_once!("Failed to set 3d attributes for FMOD event {}\n{:?}", name, error);
+                return Err(error);
+            }
         }
         Ok(())
     }

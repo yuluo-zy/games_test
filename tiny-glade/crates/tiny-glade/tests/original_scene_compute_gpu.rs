@@ -739,7 +739,7 @@ fn original_terrain_strokes_empty_clean_then_event_odd_xz_use_the_same_owner() {
         );
         assert_eq!(
             fixture.world.resource::<TerrainEditingData>().next_index,
-            u32::from(index == 2)
+            u64::from(index == 2)
         );
         fixture
             .bridge
@@ -2133,4 +2133,651 @@ fn effects_host_temporal_reuse_tracks_real_submission_resize_and_cancellation() 
         assert_eq!(fixture.bridge.with_session(|session| session.frame_import_count()), 0);
     }
     assert_eq!(submitted_initializers, 3);
+}
+
+/// 原版高度读取子链：真实输入纹理、原 shader、双 u16 SSBO、异步票据和 CPU 延迟。
+/// 本测试不将受控高度纹理冒充完整 W5 的 floor/rocky 深度生产链。
+#[test]
+fn original_terrain_height_gpu_readback_waits_for_both_fresh_fields_and_dirty_tiles() {
+    use bevy_ecs::{event::Events, schedule::Schedule};
+    use country_core::{
+        asset_libraries::{texture_library::{TextureLibraryDevice, TextureUpdate}, vao_library::AssetVAOLibrary},
+        render::gpu_readback::GpuReadbacks,
+        resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData, VisualTerrainHeightSsbo},
+        systems::{terrain::delayed_terrain_changed_msg::{delayed_terrain_changed_msg, OnTerrainChange},
+            render_loop::compute_passes::{pass_kit::PassEnv, read_terrain_data::{self, ScheduledTerrainReadback, TerrainReadbackSsbos}}},
+    };
+    use tiny_glade::{frame_world::{FrameLibraries, FrameWorldAccess}, gpu_readback::ReadbackPublisher,
+        render_thread::FrameFeedback};
+    let Some(mut fixture) = Fixture::new() else { return; };
+    let buffers = fixture.bridge.hosts().buffers.clone();
+    let textures = fixture.bridge.hosts().textures.clone();
+    fixture.world.resource::<AssetSsboLibrary>().add_new::<TerrainHeightSsbo>(buffers.as_ref());
+    fixture.world.resource::<AssetSsboLibrary>().add_new::<VisualTerrainHeightSsbo>(buffers.as_ref());
+    fixture.world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
+    fixture.world.insert_resource(TerrainHeightsData::<VisualTerrainHeightSsbo>::new());
+    fixture.world.init_resource::<Events<OnTerrainChange>>();
+    fixture.world.init_resource::<ScheduledTerrainReadback>();
+    let mut authority_dirty = fixture.world.resource_mut::<TerrainHeightsData<TerrainHeightSsbo>>().subscribe();
+    let mut visual_dirty = fixture.world.resource_mut::<TerrainHeightsData<VisualTerrainHeightSsbo>>().subscribe();
+    let mut delayed = Schedule::default();
+    delayed.add_systems(delayed_terrain_changed_msg);
+    let mut publisher = ReadbackPublisher::new(fixture.device.clone());
+    // 独立真实票据保留第一帧反馈，模拟交接晚于第二帧。
+    let mut late_publisher = ReadbackPublisher::new(fixture.device.clone());
+    let mut old_feedback = Vec::new();
+    let mut authority: Vec<u16> = (0..512 * 512).map(|i| {
+        let x = i % 512; let y = i / 512;
+        (x * 127 + y * 353 + 193) as u16
+    }).collect();
+    let mut visual: Vec<u16> = (0..512 * 512).map(|i| {
+        let x = i % 512; let y = i / 512;
+        (x * 631 + y * 59 + 17011) as u16
+    }).collect();
+    authority[512 * 512 - 1] = u16::MAX;
+    visual[512 * 512 - 1] = 0;
+    let mut previous_authority = vec![0u16; 512 * 512];
+    let mut previous_visual = previous_authority.clone();
+
+    // 所有反馈都由真实 TransferManager 票据产生；None 仅轮询，不伪造已提交帧。
+    fn apply(publisher: &mut ReadbackPublisher, world: &mut World,
+        buffers: &tiny_glade::render_host::BufferHost, points: Option<rhapsody::sync::SyncSet>) {
+        let mut feedback = FrameFeedback::default();
+        publisher.finish_frame(world, buffers, points, &mut feedback);
+        assert!(feedback.error.is_none(), "real GPU feedback: {:?}", feedback.error);
+        for step in feedback.apply { step(world); }
+    }
+    fn exact(actual: &[u16], expected: &[u16], name: &str) {
+        assert_eq!(actual.len(), expected.len(), "{name} length");
+        let mismatch = actual.iter().zip(expected).enumerate().find(|(_, (a, b))| a != b);
+        assert!(mismatch.is_none(), "{name} first mismatch: {mismatch:?}");
+    }
+    fn ready(publisher: &mut ReadbackPublisher, world: &mut World,
+        buffers: &tiny_glade::render_host::BufferHost, after: u64) {
+        let deadline = std::time::Instant::now() + Duration::from_secs(20);
+        loop {
+            apply(publisher, world, buffers, None);
+            let readbacks = world.resource::<GpuReadbacks>();
+            if readbacks.get::<TerrainHeightSsbo>().is_some_and(|r| r.frame >= after)
+                && readbacks.get::<VisualTerrainHeightSsbo>().is_some_and(|r| r.frame >= after) { break; }
+            assert!(std::time::Instant::now() < deadline, "原高度 GPU 回读超时: {:?}", publisher.stats());
+            std::thread::sleep(Duration::from_millis(1));
+        }
+    }
+    for edit in 0..3u64 {
+        if edit == 1 {
+            // 两个打包半字和两 CPU owner 均变化，且只落在同一个原版 8×8 脏块。
+            for index in [24 * 512 + 16, 24 * 512 + 17] {
+                authority[index] ^= 0x7531;
+                visual[index] ^= 0x1597;
+            }
+        }
+        for (preset, expected_format, data) in [(9, 70, &authority), (10, 124, &visual)] {
+            let state = fixture.world.resource::<AssetTextureLibrary>().preset(TexturePreset(preset)).unwrap();
+            assert_eq!(state.desc.format, expected_format, "原 B 预设格式");
+            assert_eq!(state.desc.extent_2d(), [512, 512]);
+            textures.update_texture(&state.texture, &TextureUpdate {
+                data: bytemuck::cast_slice(data).to_vec(), buffer_offset: 0, mip_level: 0,
+                extent: [512, 512, 1], array_layers: 1, access: 0x22,
+            }).unwrap();
+        }
+        // 同帧多次编辑由原 AtomicU64 取走式合并，不覆盖下一次请求。
+        let request = fixture.world.resource::<ScheduledTerrainReadback>();
+        request.on_terrain_modified(); request.on_terrain_modified();
+        let (_, built) = fixture.bridge.build_frame(|frame| {
+            tiny_glade::frame_setup::with_frame_resources(frame, &mut fixture.world, |frame, world| {
+                let shaders = frame.shader_library();
+                let backend = frame.shader_backend();
+                let raster = frame.raster_resources();
+                let access = FrameWorldAccess::new(FrameLibraries {
+                    shaders: shaders.as_ref(), textures: world.resource::<AssetTextureLibrary>(),
+                    ssbos: world.resource::<AssetSsboLibrary>(), vaos: world.resource::<AssetVAOLibrary>(),
+                    placement: world.resource::<AssetPlacementDataLibrary>(), constants: raster.dynamic_constants(),
+                }, frame.compute_device()).with_resource_graph_factory(frame.resource_graph_factory());
+                frame.with_compute(|compute| {
+                    let mut uniforms = tiny_glade::compute_frame::ComputeUniformAllocator;
+                    let mut env = PassEnv::new(&access, &*backend, &mut uniforms, compute);
+                    let pass = read_terrain_data::read_terrain_height::<TerrainReadbackSsbos>(&mut env);
+                    env.record(pass);
+                    Ok(())
+                })
+            })
+        }).unwrap();
+        fixture.bridge.shader_backend().prepare_test_pipelines(Duration::from_secs(30)).unwrap();
+        let receipt = fixture.bridge.execute_test_graph(built).unwrap();
+        assert_eq!(receipt.snapshot.pass_order.iter().filter(|name| name.as_str() == "Read terrain height").count(), 1);
+        assert!(!receipt.receipts.is_empty());
+        let tick = fixture.world.read_change_tick().get();
+        fixture.world.resource_mut::<ScheduledTerrainReadback>().on_gpu_copy_issued(tick);
+        assert_eq!(fixture.world.resource::<ScheduledTerrainReadback>().pending.load(std::sync::atomic::Ordering::SeqCst), 0);
+        let mut points = rhapsody::sync::SyncSet::EMPTY;
+        for point in &receipt.receipts { points.insert(*point); }
+        if edit == 0 {
+            let mut feedback = FrameFeedback::default();
+            late_publisher.finish_frame(&mut fixture.world, &buffers, Some(points), &mut feedback);
+            assert!(feedback.error.is_none());
+            old_feedback.extend(feedback.apply);
+        }
+        apply(&mut publisher, &mut fixture.world, &buffers, Some(points));
+        assert_eq!(fixture.world.resource::<GpuReadbacks>().submitted_frame(), edit + 1);
+        // 首帧先等真实票据就绪，仍须完整经过两帧软件延迟；后续编辑故意延后反馈，
+        // 检查旧帧不能满足当前请求。延迟期间再来的请求也必须保留给下一次真实提交。
+        if edit == 0 {
+            ready(&mut publisher, &mut fixture.world, &buffers, 1);
+            let deadline = std::time::Instant::now() + Duration::from_secs(20);
+            while late_publisher.stats().published < 2 {
+                let mut feedback = FrameFeedback::default();
+                late_publisher.finish_frame(&mut fixture.world, &buffers, None, &mut feedback);
+                assert!(feedback.error.is_none());
+                old_feedback.extend(feedback.apply);
+                assert!(std::time::Instant::now() < deadline, "旧帧真实票据超时");
+                std::thread::sleep(Duration::from_millis(1));
+            }
+        }
+        if edit < 2 { fixture.world.resource::<ScheduledTerrainReadback>().on_terrain_modified(); }
+        for _ in 0..if edit == 0 { 2 } else { 3 } {
+            delayed.run(&mut fixture.world);
+            exact(fixture.world.resource::<TerrainHeightsData<TerrainHeightSsbo>>().heights(), &previous_authority, "等待中的权威场");
+            exact(fixture.world.resource::<TerrainHeightsData<VisualTerrainHeightSsbo>>().heights(), &previous_visual, "等待中的视觉场");
+            assert_eq!(fixture.world.resource::<Events<OnTerrainChange>>().len(), edit as usize);
+        }
+        if edit != 0 { ready(&mut publisher, &mut fixture.world, &buffers, edit + 1); }
+        assert_eq!(fixture.world.resource::<GpuReadbacks>().submitted_frame(), edit + 1, "poll 不增加来源帧");
+        delayed.run(&mut fixture.world);
+        exact(fixture.world.resource::<TerrainHeightsData<TerrainHeightSsbo>>().heights(), &authority, "权威完整高度场");
+        exact(fixture.world.resource::<TerrainHeightsData<VisualTerrainHeightSsbo>>().heights(), &visual, "视觉完整高度场");
+        if edit == 1 {
+            assert!(!old_feedback.is_empty());
+            for step in old_feedback.drain(..) { step(&mut fixture.world); }
+            let views = fixture.world.resource::<GpuReadbacks>();
+            assert_eq!(views.submitted_frame(), 2);
+            assert_eq!(views.get::<TerrainHeightSsbo>().unwrap().frame, 2);
+            assert_eq!(views.get::<VisualTerrainHeightSsbo>().unwrap().frame, 2);
+            exact(bytemuck::cast_slice(views.get::<TerrainHeightSsbo>().unwrap().data), &authority, "晚到反馈后的 GPU 权威回读");
+            exact(bytemuck::cast_slice(views.get::<VisualTerrainHeightSsbo>().unwrap().data), &visual, "晚到反馈后的 GPU 视觉回读");
+            exact(fixture.world.resource::<TerrainHeightsData<TerrainHeightSsbo>>().heights(), &authority, "晚到反馈后的权威场");
+            exact(fixture.world.resource::<TerrainHeightsData<VisualTerrainHeightSsbo>>().heights(), &visual, "晚到反馈后的视觉场");
+        }
+        assert_eq!(fixture.world.resource::<Events<OnTerrainChange>>().len(), edit as usize + 1);
+        for batch in [authority_dirty.take(), visual_dirty.take()] {
+            if edit == 0 { assert_eq!(batch.unwrap().tile_indices().count(), 4096); }
+            else if edit == 1 { assert_eq!(batch.unwrap().tile_indices().collect::<Vec<_>>(), [3 * 64 + 2]); }
+            else { assert!(batch.is_none(), "相同数据不重复发布脏块"); }
+        }
+        assert_eq!(fixture.world.resource::<TerrainHeightsData<TerrainHeightSsbo>>().sample_at_world_xz_with_mode(65., 65., true), 24.);
+        assert_eq!(fixture.world.resource::<TerrainHeightsData<VisualTerrainHeightSsbo>>().sample_at_world_xz_with_mode(65., 65., true), -2.5);
+        // 旧存档的角点路径在正边界保留外推，不能误改成新版中心采样的钳制。
+        let decode = |value: u16| { let v = f32::from(value) / 65535.; v * 24. + (1. - v) * -2.5 };
+        let legacy_edge = |data: &[u16]| {
+            let a = decode(data[510 * 512 + 510]); let b = decode(data[511 * 512 + 510]);
+            let c = decode(data[510 * 512 + 511]); let d = decode(data[511 * 512 + 511]);
+            let left = a + (b - a) * 2.; let right = c + (d - c) * 2.;
+            left + (right - left) * 2.
+        };
+        assert_eq!(fixture.world.resource::<TerrainHeightsData<TerrainHeightSsbo>>().sample_at_world_xz_with_mode(65., 65., false).to_bits(), legacy_edge(&authority).to_bits());
+        assert_eq!(fixture.world.resource::<TerrainHeightsData<VisualTerrainHeightSsbo>>().sample_at_world_xz_with_mode(65., 65., false).to_bits(), legacy_edge(&visual).to_bits());
+        for _ in 0..3 { delayed.run(&mut fixture.world); }
+        assert_eq!(fixture.world.resource::<Events<OnTerrainChange>>().len(), edit as usize + 1, "请求已消费");
+        assert!(authority_dirty.take().is_none() && visual_dirty.take().is_none());
+        assert_eq!(fixture.world.resource::<ScheduledTerrainReadback>().pending.load(std::sync::atomic::Ordering::SeqCst), u64::from(edit < 2), "CPU 延迟消费者不吞后来的编辑请求");
+        previous_authority.clone_from(&authority); previous_visual.clone_from(&visual);
+    }
+    let stats = publisher.stats();
+    assert_eq!((stats.issued, stats.published, stats.skipped, stats.dropped, stats.errors), (6, 6, 0, 0, 0));
+    eprintln!("original W5 height subchain: three actual GPU frames, six real tickets, both complete u16 fields, stale-frame wait and dirty-tile checks passed");
+}
+
+/// 真实设备资源下执行空墙删除与空创建；此用例不执行抹灰绘制。
+#[test]
+fn plaster_real_device_empty_world_delete_and_create() {
+    use bevy_ecs::{event::Events, system::RunSystemOnce};
+    use country_core::{resources::{time::GameTime, walls::{WallId,
+        plaster::{AnimatedPlasterPeel, PlasterPeelAmount, CreatePlasterCmd, DeletePlasterCmd, RecalculatePlasterCmd},
+        public_walls::{PublicWalls, WallPlasters}, wall_holes::WallHoles}}, systems::audio::PlayBuildingAudio};
+    use system_wall_constructor::plaster_systems::{maintain_plaster, create_plaster};
+    let Some(mut fixture) = Fixture::new() else { return };
+    let world = &mut fixture.world;
+    world.init_resource::<PublicWalls>();
+    world.init_resource::<WallHoles>();
+    world.init_resource::<GameTime>();
+    world.init_resource::<Events<CreatePlasterCmd>>();
+    world.init_resource::<Events<DeletePlasterCmd>>();
+    world.init_resource::<Events<RecalculatePlasterCmd>>();
+    world.init_resource::<Events<PlayBuildingAudio>>();
+    let live = world.spawn_empty().id();
+    let stale = world.spawn_empty().id();
+    world.despawn(stale);
+    let preserved = world.spawn_empty().id();
+    let mut plasters = WallPlasters::default();
+    plasters.0.insert(WallId(7), vec![Some(live), None, Some(stale)]);
+    plasters.0.insert(WallId(9), vec![Some(preserved)]);
+    world.insert_resource(plasters);
+    let mut peel = AnimatedPlasterPeel::default();
+    peel.0.insert(WallId(7), PlasterPeelAmount(0.5));
+    peel.0.insert(WallId(9), PlasterPeelAmount(0.75));
+    world.insert_resource(peel);
+    world.resource_mut::<Events<DeletePlasterCmd>>().send(DeletePlasterCmd(WallId(7)));
+    world.run_system_once(maintain_plaster).unwrap();
+    assert!(world.get_entity(live).is_err());
+    assert!(world.get_entity(preserved).is_ok());
+    assert!(!world.resource::<WallPlasters>().0.contains_key(&WallId(7)));
+    assert_eq!(world.resource::<WallPlasters>().0.get(&WallId(9)).unwrap(), &vec![Some(preserved)]);
+    assert!(world.resource::<AnimatedPlasterPeel>().0.is_empty());
+    assert!(world.resource::<Events<PlayBuildingAudio>>().is_empty());
+    world.run_system_once(create_plaster).unwrap();
+    assert!(world.get_entity(preserved).is_ok());
+    assert_eq!(world.resource::<WallPlasters>().0.len(), 1);
+}
+
+/// 真实设备执行非空抹灰创建和删除；只验证 buffer/实体生命周期，不提交 draw。
+#[test]
+fn plaster_real_device_create_and_delete_nonempty_wall() {
+    use bevy_ecs::{event::Events, system::RunSystemOnce};
+    use country_core::{resources::{time::GameTime, roofs::geometry::surface::Curve2,
+        walls::{InnerWalls, WallState, plaster::{AnimatedPlasterPeel, Plaster, CreatePlasterCmd, DeletePlasterCmd, RecalculatePlasterCmd},
+        public_walls::{PublicWalls, WallPlasters, WallPublicationDirty, WallSpatialHash},
+        publication_source::TerrainHeightGrid512, wall_holes::WallHoles}}, systems::{audio::PlayBuildingAudio,
+        wall::wall_state::path_preparation::PathRasters512}};
+    use system_wall_constructor::plaster_systems::{maintain_plaster, create_plaster, PlasterBufferOwner};
+    let Some(mut fixture) = Fixture::new() else { return };
+    let mut inner = InnerWalls::new();
+    let wall = inner.new_wall(WallState::new(Curve2::try_new(vec![[0.,0.],[4.,0.]],false).unwrap(), 2., 0, 0, false));
+    let terrain = TerrainHeightGrid512 { encoded: vec![0;512*512].into(), minimum_y: 0., maximum_y: 0., sampling_fix: false };
+    let rasters = PathRasters512::from_encoded(std::array::from_fn(|_| vec![0u8;512*512].into()), false).unwrap();
+    let mut public = PublicWalls::default();
+    public.consume_with_paths(&mut inner, &terrain, Some(&rasters), &WallPublicationDirty::default(), &WallSpatialHash::default());
+    assert!(public.get(wall).unwrap().prepared_path.is_some());
+    let world = &mut fixture.world;
+    world.insert_resource(public); world.init_resource::<WallPlasters>(); world.init_resource::<WallHoles>();
+    world.init_resource::<AnimatedPlasterPeel>(); world.init_resource::<GameTime>();
+    world.init_resource::<Events<CreatePlasterCmd>>(); world.init_resource::<Events<DeletePlasterCmd>>();
+    world.init_resource::<Events<RecalculatePlasterCmd>>(); world.init_resource::<Events<PlayBuildingAudio>>();
+    use country_core::{render::{device::GraphicsDeviceResource, nani::{gpu_world::{GpuWorld, GpuWorldSubset, GpuWorldSubsetKind, OwnedGpuWorldSubset, InstanceKey, InstanceDataBuffer},
+        instance_data::PlasterInstanceData, systems::{nani_maintain_instances_ecs, nani_update_plaster_ecs}}},
+        resources::render::mesh_atlas_library::MeshAtlasLibrary};
+    use bevy_ecs::schedule::{Schedule, IntoScheduleConfigs, ApplyDeferred};
+    let device = world.resource::<GraphicsDeviceResource>().device().clone();
+    let mut gpu = GpuWorld::new(&device);
+    gpu.assign_subset(GpuWorldSubsetKind::Plaster, GpuWorldSubset::Owned(
+        OwnedGpuWorldSubset::new::<PlasterInstanceData>(&device, GpuWorldSubsetKind::Plaster, 0)));
+    world.insert_resource(gpu); world.insert_resource(MeshAtlasLibrary::default());
+    let mut nani = Schedule::default();
+    let mut maintain = Schedule::default(); maintain.add_systems(maintain_plaster);
+    nani.add_systems((nani_maintain_instances_ecs, ApplyDeferred, nani_update_plaster_ecs).chain_ignore_deferred());
+    world.resource_mut::<Events<CreatePlasterCmd>>().send(CreatePlasterCmd(wall));
+    world.run_system_once(create_plaster).unwrap();
+    let entities = world.resource::<WallPlasters>().0.get(&wall).unwrap().clone();
+    assert!(entities.len() > 1, "原非空墙应生成 owner 与条带实体");
+    assert!(world.get::<PlasterBufferOwner>(entities[0].unwrap()).is_some());
+    for entity in entities.iter().skip(1).flatten() {
+        let plaster = world.get::<Plaster>(*entity).unwrap();
+        assert_eq!(plaster.wall, wall);
+        assert_ne!((u64::from(plaster.words[5]) << 32) | u64::from(plaster.words[4]), 0);
+        assert!((1..=32).contains(&plaster.words[6]));
+    }
+    nani.run(world);
+    for entity in entities.iter().skip(1).flatten() {
+        let key = world.get::<InstanceKey>(*entity).expect("原 Nani 应分配实例");
+        let plaster = world.get::<Plaster>(*entity).unwrap();
+        let subset = world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::Plaster);
+        let data = subset.data().as_any().downcast_ref::<InstanceDataBuffer<PlasterInstanceData>>().unwrap();
+        let raw = data.shadow.data[key.index as usize].raw;
+        assert_eq!(&raw[..4], &plaster.words[..4]);
+        assert_eq!((raw[7], raw[8], raw[9], raw[10]),
+            (plaster.words[6], plaster.words[4], plaster.words[5], plaster.words[7]));
+    }
+    world.resource_mut::<Events<RecalculatePlasterCmd>>().send(RecalculatePlasterCmd(wall));
+    maintain.run(world);
+    let replacement = world.resource::<WallPlasters>().0.get(&wall).unwrap().clone();
+    assert_eq!(replacement.len(), entities.len());
+    assert!(entities.iter().flatten().all(|entity| world.get_entity(*entity).is_err()));
+    assert!(replacement.iter().flatten().all(|entity| world.get_entity(*entity).is_ok()));
+    nani.run(world);
+    assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::Plaster).instance_count(), replacement.len() - 1);
+    let y = { let row = world.resource::<PublicWalls>().get(wall).unwrap();
+        (row.authority.elevation() + row.max_y()) * 0.5 };
+    {
+        let mut public = world.resource_mut::<PublicWalls>();
+        let row = public.get_mut(wall).unwrap();
+        let mut snapshot = row.authority.clone().into_snapshot().0;
+        snapshot.metadata.source_60_bits = 1.0f32.to_bits();
+        row.authority = WallState::from_snapshot(snapshot, 0);
+    }
+    world.resource_mut::<GameTime>().delta = 0.1;
+    maintain.run(world);
+    let animated = world.resource::<WallPlasters>().0.get(&wall).unwrap().clone();
+    assert!(replacement.iter().flatten().all(|entity| world.get_entity(*entity).is_err()));
+    assert!(animated.iter().flatten().all(|entity| world.get_entity(*entity).is_ok()));
+    let peel = world.resource::<AnimatedPlasterPeel>().get(wall).unwrap();
+    assert!(peel > 0.0 && peel < 1.0);
+    let audio = world.resource::<Events<PlayBuildingAudio>>().iter_current_update_events().last().unwrap();
+    assert_eq!((audio.id, audio.kind, audio.position), (wall.0, 9, glam::Vec3::new(0., y, 0.)));
+    nani.run(world);
+    {
+        let mut public = world.resource_mut::<PublicWalls>();
+        let row = public.get_mut(wall).unwrap();
+        let mut snapshot = row.authority.clone().into_snapshot().0;
+        snapshot.metadata.source_60_bits = peel.to_bits();
+        row.authority = WallState::from_snapshot(snapshot, 0);
+    }
+    world.resource_mut::<Events<DeletePlasterCmd>>().send(DeletePlasterCmd(wall));
+    maintain.run(world);
+    nani.run(world);
+    assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::Plaster).instance_count(), 0);
+    assert!(!world.resource::<WallPlasters>().0.contains_key(&wall));
+    assert!(animated.iter().flatten().all(|entity| world.get_entity(*entity).is_err()));
+}
+
+/// 真实状态退出调用生产卸载函数，验证三种独立稀疏分配与颜色上传一起退役。
+/// 实例是显式生命周期夹具，不作为支撑或半木生成算法的证明。
+#[test]
+fn wall_constructor_owners_retire_on_real_game_exit() {
+    use bevy_app::App;
+    use bevy_state::{app::{AppExtStates, StatesPlugin}, state::{NextState, OnExit, State}};
+    use country_core::{
+        app_loading_state::AppLoadingState,
+        geometry::instanced_wall::BrickTransformSsbo,
+        resources::{color_id::*, roofs::{geometry::surface::Curve2, roof_buffers::WoodenPlankSsbo},
+            walls::{InnerWalls, WallState, WallHighlight, public_walls::{PublicWalls, WallEntities, WallPlasters},
+                wooden_gates::Gates}},
+    };
+    use system_wall_constructor::{construct_arches::WallConstructorOutput,
+        construct_platform_stairs::PlatformStairsStorage,
+        gpu_output::{ConstructorKey, ConstructorPart}};
+    let Some(mut fixture) = Fixture::new() else { return };
+    let buffers = fixture.bridge.hosts().buffers.clone();
+    // 只为此读回夹具增添TRANSFER_SRC，生产颜色缓冲描述保持原样。
+    struct ReadableColors<'a>(&'a dyn country_core::render::ssbo::rhapsody_boundary::GraphicsDevice);
+    impl country_core::render::ssbo::rhapsody_boundary::GraphicsDevice for ReadableColors<'_> {
+        fn create_buffer(&self, desc: &country_core::render::ssbo::rhapsody_boundary::BufferDesc,
+            name: &str, initial: Option<&[u8]>) -> Result<country_core::render::ssbo::rhapsody_boundary::Buffer,
+                country_core::render::ssbo::rhapsody_boundary::BackendError> {
+            let mut desc = *desc;
+            desc.usage |= vk::BufferUsageFlags::TRANSFER_SRC.as_raw();
+            self.0.create_buffer(&desc, name, initial)
+        }
+        fn update_buffer_bytes(&self, buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer,
+            data: &[u8], ranges: &[std::ops::Range<usize>], offset: usize)
+            -> Result<(), country_core::render::ssbo::rhapsody_boundary::BackendError> {
+            self.0.update_buffer_bytes(buffer, data, ranges, offset)
+        }
+        fn device_address(&self, buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer) -> u64 {
+            self.0.device_address(buffer)
+        }
+        fn release_buffer(&self, buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer) {
+            self.0.release_buffer(buffer)
+        }
+    }
+    let library = fixture.world.resource::<AssetSsboLibrary>();
+    library.add_new::<BrickTransformSsbo>(buffers.as_ref());
+    library.add_new::<WoodenPlankSsbo>(buffers.as_ref());
+    library.add_new::<WallColorIdSsbo>(&ReadableColors(buffers.as_ref()));
+    library.add_new::<GateColorIdSsbo>(&ReadableColors(buffers.as_ref()));
+    library.add_new::<HalftimberColorIdSsbo>(&ReadableColors(buffers.as_ref()));
+    let mut inner = InnerWalls::new();
+    let wall = inner.new_wall(WallState::new(
+        Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap(), 3.0, 0, 0, false));
+    let key = ConstructorKey { wall: wall.0, part: ConstructorPart::ElevationSupports };
+    let mut output = WallConstructorOutput::default();
+    {
+        let mut library = fixture.world.resource_mut::<AssetSsboLibrary>();
+        let bricks = library.get_mut::<BrickTransformSsbo>().unwrap();
+        output.gpu.append_bricks(bricks, key, &[BrickTransformSsbo::default()]);
+        assert!(!bricks.to_draw_multi_instanced().is_empty());
+        let planks = library.get_mut::<WoodenPlankSsbo>().unwrap();
+        output.gpu.append_planks(planks, key, &[WoodenPlankSsbo::default()]);
+        output.gpu.init_half_timber_planks(planks, wall.0);
+        output.gpu.append_half_timber_planks(planks, wall.0, &[WoodenPlankSsbo::default(); 2]);
+        assert_eq!(planks.to_draw_multi_instanced().iter().map(|range| range.1).sum::<u32>(), 3);
+    }
+    let device = fixture.world.remove_resource::<country_core::render::device::GraphicsDeviceResource>().unwrap();
+    let ssbos = fixture.world.remove_resource::<AssetSsboLibrary>().unwrap();
+    let color_buffers = [*ssbos.get_buffer::<WallColorIdSsbo>().unwrap(),
+        *ssbos.get_buffer::<GateColorIdSsbo>().unwrap(), *ssbos.get_buffer::<HalftimberColorIdSsbo>().unwrap()];
+    for buffer in &color_buffers {
+        country_core::render::ssbo::rhapsody_boundary::GraphicsDevice::update_buffer_bytes(
+            buffers.as_ref(), buffer, bytemuck::cast_slice(&vec![7u32; MAX_NUMBER_OF_WALLS]),
+            &[0..MAX_NUMBER_OF_WALLS * 4], 0).unwrap();
+    }
+    let mut app = App::new();
+    app.add_plugins(StatesPlugin).init_state::<AppLoadingState>();
+    app.insert_resource(device).insert_resource(ssbos).insert_resource(inner).insert_resource(output);
+    app.init_resource::<PublicWalls>().init_resource::<WallEntities>().init_resource::<WallPlasters>()
+        .init_resource::<country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash>()
+        .init_resource::<WallColorIds>().init_resource::<GateColorIds>().init_resource::<HalftimberColorIds>()
+        .init_resource::<WallHighlight>().init_resource::<PlatformStairsStorage>().init_resource::<Gates>();
+    app.world_mut().resource_mut::<WallColorIds>().0[wall.0 as usize] = 7;
+    app.world_mut().resource_mut::<GateColorIds>().0[wall.0 as usize] = 8;
+    app.world_mut().resource_mut::<HalftimberColorIds>().0[wall.0 as usize] = 9;
+    app.add_systems(OnExit(AppLoadingState::Game), tiny_glade::app_systems::walls_on_glade_unload);
+    app.world_mut().resource_mut::<NextState<AppLoadingState>>().set(AppLoadingState::Game);
+    app.update();
+    assert_eq!(*app.world().resource::<State<AppLoadingState>>().get(), AppLoadingState::Game);
+    app.world_mut().resource_mut::<NextState<AppLoadingState>>().set(AppLoadingState::Reload);
+    app.update();
+    assert_eq!(*app.world().resource::<State<AppLoadingState>>().get(), AppLoadingState::Reload);
+    let world = app.world_mut();
+    let gpu = &world.resource::<WallConstructorOutput>().gpu;
+    assert!(gpu.brick_allocation(key).is_none());
+    assert!(gpu.plank_allocation(key).is_none());
+    assert!(gpu.half_timber_allocation(wall.0).is_none());
+    assert_eq!(world.resource::<InnerWalls>().max_id(), 0);
+    assert_eq!(world.resource::<InnerWalls>().wall_ids().count(), 0);
+    assert_eq!(world.resource::<WallColorIds>().iter_nondefault().count(), 0);
+    assert_eq!(world.resource::<GateColorIds>().iter_nondefault().count(), 0);
+    assert_eq!(world.resource::<HalftimberColorIds>().iter_nondefault().count(), 0);
+    {
+        let mut library = world.resource_mut::<AssetSsboLibrary>();
+        let bricks = library.get_mut::<BrickTransformSsbo>().unwrap();
+        bricks.take_out_waste();
+        assert!(bricks.to_draw_multi_instanced().is_empty());
+        let planks = library.get_mut::<WoodenPlankSsbo>().unwrap();
+        planks.take_out_waste();
+        assert!(planks.to_draw_multi_instanced().is_empty());
+    }
+    // 读取生产卸载实际提交给设备的整张颜色表，不只检查CPU资源归零。
+    let (readbacks, built) = fixture.bridge.build_frame(|frame| {
+        color_buffers.iter().map(|buffer| {
+            let id = frame.import_buffer(buffer, 0)?;
+            read_dof_buffer_range(frame, &fixture.device,
+                country_core::render::pass_builder::compute_pass_builder::RgBuffer { resource: id.raw() },
+                0, (MAX_NUMBER_OF_WALLS * 4) as u64)
+        }).collect::<rhapsody::Result<Vec<_>>>()
+    }).unwrap();
+    let compiled = fixture.bridge.compile_built(built).unwrap();
+    fixture.bridge.prepare_test_execution().unwrap();
+    let receipt = fixture.bridge.execute_compiled(compiled).unwrap();
+    fixture.bridge.with_session(|session| session.wait_frame(receipt.frame, 10_000_000_000)).unwrap();
+    for readback in readbacks {
+        assert!(dof_read_words(&readback, MAX_NUMBER_OF_WALLS).iter().all(|word| *word == 0));
+    }
+}
+
+/// 原维护父函数：无旧项跳过缺墙；旧项存在时才查墙并触发原 unwrap。
+#[test]
+fn plaster_real_device_recalculate_missing_wall_depends_on_old_owner() {
+    use bevy_ecs::{event::Events, system::RunSystemOnce};
+    use country_core::{resources::{time::GameTime, walls::{WallId,
+        plaster::{AnimatedPlasterPeel, DeletePlasterCmd, RecalculatePlasterCmd},
+        public_walls::{PublicWalls, WallPlasters}, wall_holes::WallHoles}}, systems::audio::PlayBuildingAudio};
+    use system_wall_constructor::plaster_systems::maintain_plaster;
+    let Some(mut fixture) = Fixture::new() else { return };
+    let world = &mut fixture.world;
+    world.init_resource::<PublicWalls>(); world.init_resource::<WallHoles>();
+    world.init_resource::<WallPlasters>(); world.init_resource::<AnimatedPlasterPeel>();
+    world.init_resource::<GameTime>(); world.init_resource::<Events<DeletePlasterCmd>>();
+    world.init_resource::<Events<RecalculatePlasterCmd>>(); world.init_resource::<Events<PlayBuildingAudio>>();
+    let id = WallId(42);
+    world.resource_mut::<Events<RecalculatePlasterCmd>>().send(RecalculatePlasterCmd(id));
+    world.run_system_once(maintain_plaster).unwrap();
+    assert!(!world.resource::<WallPlasters>().0.contains_key(&id));
+    world.resource_mut::<WallPlasters>().0.insert(id, Vec::new());
+    let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        world.run_system_once(maintain_plaster).unwrap();
+    }));
+    assert!(failure.is_err(), "原有旧项而墙缺失必须触发 unwrap");
+    assert!(!world.resource::<WallPlasters>().0.contains_key(&id));
+}
+
+/// 与原父入口 old=0、target=.5、delta=.1 夹具相同的真实设备重建。
+#[test]
+fn plaster_real_device_maintain_matches_original_parent_strips() {
+    use bevy_ecs::{event::Events, system::RunSystemOnce};
+    use country_core::{resources::{time::GameTime, roofs::geometry::surface::Curve2,
+        walls::{InnerWalls, WallState, plaster::{AnimatedPlasterPeel, Plaster, PlasterPeelAmount, DeletePlasterCmd, RecalculatePlasterCmd},
+        public_walls::{PublicWalls, WallPlasters, WallPublicationDirty, WallSpatialHash},
+        publication_source::TerrainHeightGrid512, height_cache::RegularWallHeightCache, wall_holes::WallHoles}},
+        systems::{audio::PlayBuildingAudio, wall::wall_state::path_preparation::{PathRasters512, PreparedWallPath}}};
+    use system_wall_constructor::plaster_systems::{maintain_plaster, PlasterBufferOwner};
+    let Some(mut fixture) = Fixture::new() else { return };
+    let mut state = WallState::new(Curve2::try_new(vec![[0.,0.],[4.,0.]],false).unwrap(), 2., 0, 0, false).into_snapshot().0;
+    state.source.terrain_floor = 1.; state.metadata.source_60_bits = 0.5f32.to_bits();
+    let mut inner = InnerWalls::new(); let wall = inner.new_wall(WallState::from_snapshot(state, 0));
+    let terrain = TerrainHeightGrid512 { encoded: vec![0;512*512].into(), minimum_y: 0., maximum_y: 0., sampling_fix: false };
+    let rasters = PathRasters512::from_encoded(std::array::from_fn(|_| vec![0u8;512*512].into()), false).unwrap();
+    let mut public = PublicWalls::default();
+    public.consume_with_paths(&mut inner, &terrain, Some(&rasters), &WallPublicationDirty::default(), &WallSpatialHash::default());
+    let row = public.get_mut(wall).unwrap();
+    row.prepared_path = Some(PreparedWallPath { positions: vec![[0.,0.,0.],[4.,0.,0.]], points_u: vec![0.,1.], length: 4., segment_values: vec![0.;2] });
+    row.regular_heights = Some(RegularWallHeightCache { maximum_y: 3., arch_segment_heights: vec![3.;2] });
+    row.freeform_heights = None; row.segment_heights = vec![2.;2];
+    let world = &mut fixture.world;
+    world.insert_resource(public); world.init_resource::<WallHoles>(); world.init_resource::<GameTime>();
+    world.resource_mut::<GameTime>().delta = 0.1;
+    let mut plasters = WallPlasters::default(); plasters.0.insert(wall, Vec::new()); world.insert_resource(plasters);
+    let mut peel = AnimatedPlasterPeel::default(); peel.0.insert(wall, PlasterPeelAmount(0.)); world.insert_resource(peel);
+    world.init_resource::<Events<DeletePlasterCmd>>(); world.init_resource::<Events<RecalculatePlasterCmd>>(); world.init_resource::<Events<PlayBuildingAudio>>();
+    world.run_system_once(maintain_plaster).unwrap();
+    assert_eq!(world.resource::<AnimatedPlasterPeel>().get(wall).unwrap().to_bits(), 0x3e80dfc9);
+    let audio = world.resource::<Events<PlayBuildingAudio>>().iter_current_update_events().last().unwrap();
+    assert_eq!((audio.id, audio.kind, audio.position, audio.editing_speed), (wall.0, 9, glam::Vec3::new(0.,2.,0.), 1.));
+    let entities = world.resource::<WallPlasters>().0.get(&wall).unwrap(); assert_eq!(entities.len(), 9);
+    assert!(world.get::<PlasterBufferOwner>(entities[0].unwrap()).is_some());
+    let native = include_bytes!("../../../reports/business/2026-10-23-module-recovery/m6-plaster-entry-strips.bin");
+    let records: Vec<_> = entities.iter().skip(1).map(|e| world.get::<Plaster>(e.unwrap()).unwrap()).collect();
+    for i in 0..8 {
+        let expected = &native[i*32..(i+1)*32]; let actual = records[i].words;
+        for k in [0,1,2,3,6,7] {
+            let offset = k*4; assert_eq!(actual[k], u32::from_le_bytes(expected[offset..offset+4].try_into().unwrap()), "条带 {i} 字段 {k}");
+        }
+        let base = (u64::from(actual[5])<<32) | u64::from(actual[4]);
+        let first = records[(i/4)*4].words;
+        let first_base = (u64::from(first[5])<<32) | u64::from(first[4]);
+        let expected_base = u64::from_le_bytes(expected[16..24].try_into().unwrap());
+        let expected_first = u64::from_le_bytes(native[(i/4)*128+16..(i/4)*128+24].try_into().unwrap());
+        assert_eq!(base.wrapping_sub(first_base), expected_base.wrapping_sub(expected_first), "条带 {i} 相对地址");
+    }
+}
+
+/// 原创建读取器不去重；墙不存在时消费当前事件后 panic。
+#[test]
+fn plaster_real_device_create_duplicate_and_missing_wall() {
+    use bevy_ecs::{event::Events, system::RunSystemOnce};
+    use country_core::resources::{roofs::geometry::surface::Curve2, walls::{InnerWalls, WallId, WallState,
+        plaster::CreatePlasterCmd, public_walls::{PublicWalls, WallPlasters, WallPublicationDirty, WallSpatialHash},
+        publication_source::TerrainHeightGrid512, wall_holes::WallHoles}};
+    use country_core::systems::wall::wall_state::path_preparation::PathRasters512;
+    use system_wall_constructor::plaster_systems::create_plaster;
+    let Some(mut fixture) = Fixture::new() else { return };
+    let mut inner = InnerWalls::new();
+    let wall = inner.new_wall(WallState::new(Curve2::try_new(vec![[0.,0.],[4.,0.]], false).unwrap(), 2., 0, 0, false));
+    let terrain = TerrainHeightGrid512 { encoded: vec![0;512*512].into(), minimum_y: 0., maximum_y: 0., sampling_fix: false };
+    let rasters = PathRasters512::from_encoded(std::array::from_fn(|_| vec![0u8;512*512].into()), false).unwrap();
+    let mut public = PublicWalls::default();
+    public.consume_with_paths(&mut inner, &terrain, Some(&rasters), &WallPublicationDirty::default(), &WallSpatialHash::default());
+    let world = &mut fixture.world;
+    world.insert_resource(public); world.init_resource::<WallPlasters>(); world.init_resource::<WallHoles>();
+    world.init_resource::<Events<CreatePlasterCmd>>();
+    world.send_event(CreatePlasterCmd(wall)); world.send_event(CreatePlasterCmd(wall));
+    world.run_system_once(create_plaster).unwrap();
+    let current = world.resource::<WallPlasters>().0.get(&wall).unwrap().clone();
+    assert!(current.len() > 1);
+    // 两次生成各创建实体；映射只保留第二组，不自动删除第一组。
+    let mut owners = world.query::<&system_wall_constructor::plaster_systems::PlasterBufferOwner>();
+    assert_eq!(owners.iter(world).count(), 2);
+    let mut missing = Fixture::new().expect("设备应持续可用");
+    missing.world.init_resource::<PublicWalls>(); missing.world.init_resource::<WallPlasters>();
+    missing.world.init_resource::<WallHoles>(); missing.world.init_resource::<Events<CreatePlasterCmd>>();
+    missing.world.send_event(CreatePlasterCmd(WallId(123)));
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        missing.world.run_system_once(create_plaster).unwrap();
+    }));
+    assert!(result.is_err());
+}
+
+/// 原墙色写入：一个命令仍上传 CPU 整表，保留另一已存槽并发送抹灰事件。
+#[test]
+fn wall_color_writer_real_device_uploads_entire_table() {
+    use bevy_ecs::{event::Events, system::RunSystemOnce};
+    use country_core::{resources::{color_id::{SetWallColorIdCmd, WallColorIds, WallColorIdSsbo, MAX_NUMBER_OF_WALLS},
+        roofs::geometry::surface::Curve2, walls::{InnerWalls, WallState, plaster::{CreatePlasterCmd, DeletePlasterCmd},
+        public_walls::{PublicWalls, WallPublicationDirty, WallSpatialHash}, publication_source::TerrainHeightGrid512}},
+        systems::audio::PlayWallUiSound};
+    use country_core::render::ssbo::rhapsody_boundary::{GraphicsDevice, Buffer, BufferDesc, BackendError};
+    struct Readable<'a>(&'a dyn GraphicsDevice);
+    impl GraphicsDevice for Readable<'_> {
+        fn create_buffer(&self, d: &BufferDesc, n: &str, i: Option<&[u8]>) -> Result<Buffer, BackendError> {
+            let mut d = *d; d.usage |= vk::BufferUsageFlags::TRANSFER_SRC.as_raw(); self.0.create_buffer(&d, n, i)
+        }
+        fn update_buffer_bytes(&self, b: &Buffer, d: &[u8], r: &[std::ops::Range<usize>], o: usize) -> Result<(), BackendError> {
+            self.0.update_buffer_bytes(b, d, r, o)
+        }
+        fn device_address(&self, b: &Buffer) -> u64 { self.0.device_address(b) }
+        fn release_buffer(&self, b: &Buffer) { self.0.release_buffer(b) }
+    }
+    let Some(mut fixture) = Fixture::new() else { return };
+    let buffers = fixture.bridge.hosts().buffers.clone();
+    fixture.world.resource::<AssetSsboLibrary>().add_new::<WallColorIdSsbo>(&Readable(buffers.as_ref()));
+    let buffer = *fixture.world.resource::<AssetSsboLibrary>().get_buffer::<WallColorIdSsbo>().unwrap();
+    let mut inner = InnerWalls::new();
+    let wall = inner.new_wall(WallState::new(Curve2::try_new(vec![[0.,0.],[4.,0.]], false).unwrap(), 2., 0, 0, false));
+    let terrain = TerrainHeightGrid512 { encoded: vec![0;512*512].into(), minimum_y: 0., maximum_y: 0., sampling_fix: false };
+    let mut public = PublicWalls::default();
+    public.consume_with_paths(&mut inner, &terrain, None, &WallPublicationDirty::default(), &WallSpatialHash::default());
+    let world = &mut fixture.world;
+    world.insert_resource(public); world.init_resource::<WallColorIds>();
+    world.init_resource::<Events<SetWallColorIdCmd>>(); world.init_resource::<Events<PlayWallUiSound>>();
+    world.init_resource::<Events<CreatePlasterCmd>>(); world.init_resource::<Events<DeletePlasterCmd>>();
+    let other = if wall.0 == 19 { 20 } else { 19 };
+    world.resource_mut::<WallColorIds>().0[other] = 77;
+    world.send_event(SetWallColorIdCmd::new(wall, 12, 0));
+    world.run_system_once(system_color::set_wall_color_id::set_wall_color_id).unwrap();
+    assert_eq!(world.resource::<Events<CreatePlasterCmd>>().iter_current_update_events().next().unwrap().0, wall);
+    assert!(world.resource::<Events<DeletePlasterCmd>>().is_empty());
+    let (readback, built) = fixture.bridge.build_frame(|frame| {
+        let id = frame.import_buffer(&buffer, 0)?;
+        read_dof_buffer_range(frame, &fixture.device,
+            country_core::render::pass_builder::compute_pass_builder::RgBuffer { resource: id.raw() },
+            0, (MAX_NUMBER_OF_WALLS * 4) as u64)
+    }).unwrap();
+    let compiled = fixture.bridge.compile_built(built).unwrap();
+    fixture.bridge.prepare_test_execution().unwrap();
+    let receipt = fixture.bridge.execute_compiled(compiled).unwrap();
+    fixture.bridge.with_session(|session| session.wait_frame(receipt.frame, 10_000_000_000)).unwrap();
+    let words = dof_read_words(&readback, MAX_NUMBER_OF_WALLS);
+    assert_eq!(words[wall.0 as usize], 12);
+    assert_eq!(words[other], 77);
+    assert_eq!(words, fixture.world.resource::<WallColorIds>().0);
+}
+
+/// 无事件不查缓冲；有事件但 SSBO 缺失时在修改表或发事件之前失败。
+#[test]
+fn wall_color_writer_real_device_missing_ssbo_precedes_mutation() {
+    use bevy_ecs::{event::Events, system::RunSystemOnce};
+    use country_core::{resources::{color_id::{SetWallColorIdCmd, WallColorIds}, walls::{WallId,
+        plaster::{CreatePlasterCmd, DeletePlasterCmd}, public_walls::PublicWalls}}, systems::audio::PlayWallUiSound};
+    let Some(mut fixture) = Fixture::new() else { return };
+    let world = &mut fixture.world;
+    world.init_resource::<PublicWalls>(); world.init_resource::<WallColorIds>();
+    world.init_resource::<Events<SetWallColorIdCmd>>(); world.init_resource::<Events<PlayWallUiSound>>();
+    world.init_resource::<Events<CreatePlasterCmd>>(); world.init_resource::<Events<DeletePlasterCmd>>();
+    world.run_system_once(system_color::set_wall_color_id::set_wall_color_id).unwrap();
+    world.send_event(SetWallColorIdCmd::new(WallId(7), 12, 0));
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        world.run_system_once(system_color::set_wall_color_id::set_wall_color_id).unwrap();
+    }));
+    assert!(result.is_err());
+    assert_eq!(world.resource::<WallColorIds>().0[7], 0);
+    assert!(world.resource::<Events<CreatePlasterCmd>>().is_empty());
+    assert!(world.resource::<Events<DeletePlasterCmd>>().is_empty());
 }

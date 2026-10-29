@@ -15,34 +15,12 @@ use glam::{Quat, Vec3};
 pub use crate::components::NormalMap as NormalMapView;
 pub use crate::components::drawable::{AlbedoMap as AlbedoMapView, AlphaMap as AlphaMapView};
 
-/// `components::WallFlagCloth`（TypeId 0x0e2c5c63fb76ee91/0xc662ff3d29b2c8d6；真实类型 `(pub Gap)`）：
-/// `i32 @+0`、`f32 @+4/+8/+0xc`、`bool @+0x10`。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
-#[component(on_insert = crate::render::extract::record_component_change::<Self>,
-    on_remove = crate::render::extract::record_component_change::<Self>)]
-pub struct WallFlagClothView {
-    pub id: i32,
-    pub f4: f32,
-    pub f8: f32,
-    pub fc: f32,
-    pub flag: bool,
-}
-
-/// `components::RoofFlagCloth`（TypeId 0x983a5c6eded1c4e5/0x929a707bdcc6a79c）：`u32 @+0`。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-#[component(on_insert = crate::render::extract::record_component_change::<Self>,
-    on_remove = crate::render::extract::record_component_change::<Self>)]
-pub struct RoofFlagClothView(pub u32);
+// 真实生产组件；保留原回调公开名称和全部读取字段。
+pub use crate::components::drawable::{WallFlagCloth as WallFlagClothView, RoofFlagCloth as RoofFlagClothView};
 
 /// `components::WoodenGate`（TypeId 0x3b633fbe5a39b5b4/0xd54faa3a72d3ee09；真实类型 `(pub Gap)`）：
 /// `qword @+0x18`（取低 32 位写 `i32` uniform）、`i32 @+0x30`。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-#[component(on_insert = crate::render::extract::record_component_change::<Self>,
-    on_remove = crate::render::extract::record_component_change::<Self>)]
-pub struct WoodenGateView {
-    pub q18: u64,
-    pub d30: i32,
-}
+pub use crate::components::WoodenGate as WoodenGateView;
 
 /// `components::SplashParticle`（TypeId 0x73873257d5f05e11/0xdb3ade5ce1f0e7df）：`f32 @+8`。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
@@ -103,13 +81,6 @@ pub struct LoadingScreenProgressView {
 /// 权威定义在 `resources::glade_border`（组 A restorer 接线，原位置）。
 pub use crate::resources::glade_border::ShowDemoBorderOverlay;
 
-/// `ActiveSession`（TypeId 0x74430dfcc6d8719b/0xca5591f7e464509c）：`byte @+0x58`（变体）与字节序列（`ptr @+8`、`len @+0x10`）。
-#[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]
-pub struct ActiveSessionView {
-    pub variant: u8,
-    pub glade_bytes: Vec<u8>,
-}
-
 /// `Weather`（TypeId 0xd2f519263066413b/0x5192b15f962559e4；真实类型 `(pub Gap)`）：`f32 @+0xc`（强度）。
 #[cfg(test)]
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
@@ -150,7 +121,4 @@ pub struct RoofHighlight {
 }
 
 impl crate::render::extract::JournaledComponent for SplashParticleView {}
-impl crate::render::extract::JournaledComponent for RoofFlagClothView {}
-impl crate::render::extract::JournaledComponent for WallFlagClothView {}
 impl crate::render::extract::JournaledComponent for ArrowGizmoView {}
-impl crate::render::extract::JournaledComponent for WoodenGateView {}

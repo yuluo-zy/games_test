@@ -1,176 +1,295 @@
-//! B `decorator_visual/arrow_slit.rs` — 箭窗（arrow slit）装饰视觉生成（D1）。
-//!
-//! 证据：fresh RE-MCP 反编译 0x1407bbee0（generate_arrow_slits，63KB）+ 常量
-//! rne-read + 骨架 callees（O）：PublicWallState::is_premade_shape、
-//! Decorators::iter_modified、DecoratorMaybeMut::get（0x1400885d0）、
-//! DerivedDecoratorInfo::{new,bbx_ls,collision_mesh,interaction_mesh,subtype}、
-//! DormerHoleSsbo::gothic、Rectangle3d::{extent,center,width}、
-//! get_gothic_hat_bones（gothic_wall_window）、swizzlers x0y/xvy、
-//! WindowVisualEntityBuilder::{new,mark_as_preview,mark_as_window_glass,color_id}、
-//! blueprint {set_colliders,set_outline,insert}。
-//!
-//! 常量（O，0x142a85680..0x2c + 0x142a80d40 + 0x40200000/0x3d4ccccd）：
-//! - `{0.4, 1.7}`（0x3ecccccd/0x3fd9999a），`{0.6049, 0.55}`（0x3f1ae148/
-//!   0x3f0ccccd；旧注释记 0.588，字节实为 0.6049），`{0.4, 1.5}`
-//!   （0x3ecccccd/0x3fc00000），`{0.14, 0.7}` + `2.54`
-//!   （0x3e0f5c29/0x3f333333/0x40228f5c）；
-//! - 附加尺寸 `{0.14, 0.72}`（0x142a80d40）；
-//! - 旋转比例 `0.5`（0x142925870，8× 用）与 `0.1406`（旧证据常量）；
-//! - 洞记录 `DormerHoleSsbo::gothic(..., 2.5, 0.05)`（0x40200000/0x3d4ccccd）。
-//!
-//! 业务（O 结构）：逐墙逐 modified 装饰（仅 premade 形状）→ 箭窗剖面几何 →
-//! DormerHoleSsbo::gothic 洞记录 → Rectangle3d extent（缓存变换消费）→
-//! 蓝图（colliders + outline）+ 视觉实体（mark_as_window_glass + preview +
-//! color_id）。
-//!
-//! U 登记：① 剖面装配数学链（逐点世界变换）② 参数排序 ③ 箭窗精确类型判别
-//! （按证据取 DecoratorType 0x3a 族）。
-
-use bevy_ecs::prelude::*;
-use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms;
-use country_core::resources::walls::decorator::DecoratorInfo;
-use country_core::resources::walls::decorator_storage::DecoratorStorage;
-use country_core::resources::walls::decorator_subtype::{DecoratorLibKey, DerivedDecoratorInfoResources};
-use country_core::resources::walls::public_walls::PublicWalls;
-use glam::{Quat, Vec2};
-
+//! 原B `decorator_visual/arrow_slit.rs`，主生成器1407bbee0/63KB。
+//! 原文件SHA 6cf90892319dda7d481045d9c1cfbef261a8a87b20e5fc280804f39ac5345daf。
+//! 墙空间帽骨、碰撞、墙洞、玻璃与半老虎窗必须共同发布到唯一蓝图owner。
+use super::{cottage_wall_window::window_builder, gothic_wall_window::get_gothic_hat_bones};
 use crate::blueprint::DecoratorBlueprints;
-use crate::utils::visual_entity_builder::WindowVisualEntityBuilder;
-use crate::utils::DormerHoleSsbo;
+use bevy_ecs::prelude::*;
+use country_core::{
+    resources::{
+        color_id::ColorId,
+        walls::{
+            decorator::{DecoratorId, DecoratorInfo},
+            decorator_storage::{DecoratorStorage, DecoratorStorageAddr},
+            decorator_subtype::{DecoratorLibKey, DerivedDecoratorInfoResources},
+            dormers::DormerHoleSsbo,
+            public_walls::PublicWalls,
+            wall_holes::RawWallHole,
+        },
+    },
+    systems::ui::signifiers::signifier_create::UiSignifierStream,
+    utils::components::transform::Transform,
+};
+use glam::{Vec2, Vec3};
 
-/// 箭窗剖面常量（O，0x142a85680..0x2c）。
-pub const ARROW_SLIT_PROFILE: [(f32, f32); 4] = [
-    (0.4, 1.7),
-    (0.604_9, 0.55),
-    (0.4, 1.5),
-    (0.14, 0.7),
-];
-/// 箭窗附加尺寸（O，0x142a80d40）。
-pub const ARROW_SLIT_EXTRA: (f32, f32) = (0.14, 0.72);
-/// 箭窗附加高度（O，0x40228f5c = 2.54）。
-pub const ARROW_SLIT_EXTRA_HEIGHT: f32 = 2.54;
-/// 旋转比例（O，0x142925870 = 0.5，8× 用）。
-pub const ARROW_SLIT_ROT_SCALE: (f32, f32) = (0.5, 0.140_6);
-/// 洞记录尾参数（O：0x40200000 = 2.5 / 0x3d4ccccd = 0.05）。
-pub const ARROW_SLIT_HOLE: (f32, f32) = (2.5, 0.05);
-/// 箭窗装饰类型（O：`DecoratorType::can_change_seed` 的 0x3a 族；精确谓词 U）。
 pub const ARROW_SLIT_TYPE: u8 = 0x3a;
-
-/// 箭窗剖面曲线（`arrow_slit_profile_curve`，内联；O 常量点表）。
-///
-/// 返回 (u, y) 控制点；原函数以硬编码点表构造剖面（0x1407bbee0 内联）。
-/// U：点序与曲线插值方式（直线/圆弧）未在反编译中闭合。
-pub fn arrow_slit_profile_curve() -> Vec<Vec2> {
-    ARROW_SLIT_PROFILE
-        .iter()
-        .map(|(u, y)| Vec2::new(*u, *y))
-        .collect()
-}
-
-/// 箭窗扩展剖面（附加尺寸，O 两个常量）。
-pub fn arrow_slit_extended_profile() -> Vec<Vec2> {
-    let mut out = arrow_slit_profile_curve();
-    out.push(Vec2::new(
-        ARROW_SLIT_EXTRA.0 + ARROW_SLIT_PROFILE[3].0,
-        ARROW_SLIT_EXTRA.1 + ARROW_SLIT_EXTRA_HEIGHT,
-    ));
-    out
-}
-
-/// 0x1407bbee0（O 结构）：生成箭窗装饰视觉。
-pub fn generate_arrow_slits(
-    decorator_storage: Res<DecoratorStorage>,
-    cached_transforms: Res<CachedDecoratorTransforms>,
-    walls: Res<PublicWalls>,
-    derived: DerivedDecoratorInfoResources,
-    mut blueprints: ResMut<DecoratorBlueprints>,
-) {
-    let derived = derived.as_view();
-    let mesh_lib = derived.mesh_library();
-    for (wall, decorators) in decorator_storage.iter_walls() {
-        for (id, info) in decorators.iter_modified() {
-            if !is_arrow_slit(info) {
-                continue;
-            }
-            let subtype = derived
-                .subtype(country_core::resources::walls::decorator::DecoratorId(id))
-                .0;
-            // 原bc528排除loader故意不注册的23/rank1，先于墙/网格/cache读取。
-            if subtype == 23 && info.rank() == 1 {
-                continue;
-            }
-            let _wall_state = walls
-                .get(wall)
-                .expect("arrow slit requires its public wall");
-            let key = DecoratorLibKey::new(subtype, info.rank());
-            let collision = mesh_lib.collision_record(key);
-            info.dst_as_wall();
-            // 原bc703的完整bones/面板桥仍未恢复；保现真实缓存适配，不能提前吞required失败。
-            let transform = cached_transforms.transform(id);
-            // O：洞记录（DormerHoleSsbo::gothic，尾参数 2.5/0.05）。
-            let _hole = DormerHoleSsbo::gothic(
-                [0; 16],
-                id,
-                [0; 16],
-                [ARROW_SLIT_HOLE.0, ARROW_SLIT_HOLE.1, 0.0, 0.0],
-            );
-            // O：蓝图（bbx_ls → collision/interaction mesh + outline）。
-            let blueprint = blueprints.insert_for(
-                id,
-                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
-                info.state(),
-            );
-            blueprint.set_positioned_colliders(
-                std::sync::Arc::clone(&collision.mesh),
-                std::sync::Arc::clone(&mesh_lib.interaction_record(key).mesh),
-                &transform.translation,
-                &transform.rotation,
-            );
-            blueprint.set_outline((ARROW_SLIT_ROT_SCALE.0, ARROW_SLIT_ROT_SCALE.1, 0.0));
-            // O：视觉实体（window glass + preview + color_id）。
-            let pos = transform.translation;
-            let mut builder = WindowVisualEntityBuilder::new(pos, Quat::IDENTITY, id);
-            builder.mark_as_window_glass();
-            builder.mark_as_preview();
-            let _ = &mut builder;
-        }
-    }
-}
-
-/// 箭窗判别（O：DecoratorType 0x3a 族；精确谓词 U）。
 pub fn is_arrow_slit(info: &DecoratorInfo) -> bool {
     info.decorator_type().0 == ARROW_SLIT_TYPE
 }
 
+/// 原表是独立墙洞尺寸，不是四点曲线。rank3追加两个不同尺寸的洞。
+const HOLES_ONE: [[f32; 2]; 1] = [[0.5, 0.5]];
+const HOLES_TWO: [[f32; 2]; 1] = [[f32::from_bits(0x3ecc_cccd), 1.5]];
+const HOLES_THREE: [[f32; 2]; 2] = [
+    [f32::from_bits(0x3ecc_cccd), f32::from_bits(0x3fd9_999a)],
+    [f32::from_bits(0x3f1a_e148), f32::from_bits(0x3f0c_cccd)],
+];
+fn slit_holes(rank: u8) -> &'static [[f32; 2]] {
+    match rank {
+        1 => &HOLES_ONE,
+        2 => &HOLES_TWO,
+        3 => &HOLES_THREE,
+        _ => panic!("internal error: entered unreachable code"),
+    }
+}
+
+fn arrow_slit_rotation(first: Vec3, second: Vec3) -> glam::Quat {
+    let delta = second - first;
+    let inv = 1.0 / (delta.z * delta.z + delta.x * delta.x).sqrt();
+    utils::xz_projective_rotation_bad(Vec3::new(-inv * delta.z, 0.0, delta.x * inv))
+}
+
+/// 原五组参数：箭窗直接由墙空间构建，不能换成缓存位姿近似。
+pub fn generate_arrow_slits(
+    storage: Res<DecoratorStorage>,
+    derived: DerivedDecoratorInfoResources,
+    walls: Res<PublicWalls>,
+    _signifiers: Res<UiSignifierStream>,
+    mut blueprints: ResMut<DecoratorBlueprints>,
+) {
+    let view = derived.as_view();
+    for (wall_id, bucket) in storage.iter_walls() {
+        for id in bucket.iter_modified_ids() {
+            let info = bucket
+                .get(DecoratorId(id))
+                .expect("modified decorator is missing from its storage");
+            if !is_arrow_slit(info) {
+                continue;
+            }
+            let subtype = view.subtype(DecoratorId(id)).0;
+            if subtype == 23 && info.rank() == 1 {
+                continue;
+            }
+            let wall = walls
+                .get(wall_id)
+                .expect("called `Option::unwrap()` on a `None` value");
+            let key = DecoratorLibKey::new(subtype, info.rank());
+            let bounds = view.mesh_library().collision_record(key).bounds;
+            let coord = info.dst_as_wall().wall_space_coord();
+            let bones =
+                get_gothic_hat_bones(wall, info, coord.u, coord.y, f32::from_bits(0x3f4c_cccd));
+            let rotation = arrow_slit_rotation(bones.first, bones.second);
+            let pose = Transform {
+                rotation,
+                translation: bones.second * 0.5 + bones.first * 0.5,
+                scale: Vec3::ONE,
+            };
+            let blueprint =
+                blueprints.insert_for(id, DecoratorStorageAddr::Wall(wall_id), info.state());
+            let mesh = match info.rank() {
+                1 => "decorators/arrow_slit_1x1",
+                2 => "decorators/arrow_slit_1x2",
+                3 if subtype == 23 => "decorators/arrow_slit_1x3_halfdormer",
+                3 => "decorators/arrow_slit_1x3",
+                _ => panic!("internal error: entered unreachable code"),
+            };
+            let half = bounds.footprint.size.x * 0.5;
+            let mut brick = [0u8; 24];
+            let words = [
+                info.decorator_id,
+                wall_id.0 as u32,
+                (coord.u - half).to_bits(),
+                (half + coord.u).to_bits(),
+                bounds.footprint.size.x.to_bits(),
+            ];
+            for (slot, word) in brick[..20].chunks_exact_mut(4).zip(words) {
+                slot.copy_from_slice(&word.to_le_bytes());
+            }
+            let semi = info.state() != 0;
+            let mut frame = window_builder(
+                DecoratorId(id),
+                pose,
+                mesh,
+                if info.u28 == 999 {
+                    "nani_solid_vertex_color_bricks"
+                } else {
+                    "nani_solid_vertex_color_window"
+                },
+                Some(ColorId(info.u28)),
+                semi,
+            );
+            frame.brick_color = Some(brick);
+            blueprint.visual_entities.push(frame);
+            blueprint.set_positioned_colliders(
+                std::sync::Arc::clone(&view.mesh_library().collision_record(key).mesh),
+                std::sync::Arc::clone(&view.mesh_library().interaction_record(key).mesh),
+                &pose.translation,
+                &pose.rotation,
+            );
+            for dimensions in slit_holes(info.rank()) {
+                blueprint.wall_holes.push(RawWallHole {
+                    center: [coord.u, coord.y],
+                    dimensions: *dimensions,
+                    kind: 0,
+                });
+            }
+            let premade = wall.shape().tag() < 2;
+            let mut outline = pose;
+            if premade {
+                outline.translation += rotation * Vec3::new(0.0, 0.0, f32::from_bits(0x3e0f_5c29));
+            }
+            blueprint.set_cached_transform(country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform {
+                rotation: outline.rotation, translation: outline.translation, scale: outline.scale });
+            if premade {
+                let mesh = match info.rank() {
+                    1 => "decorators/arrow_slit_1x1_glass",
+                    2 => "decorators/arrow_slit_1x2_glass",
+                    3 => "decorators/arrow_slit_1x3_glass",
+                    _ => unreachable!(),
+                };
+                let mut glass = window_builder(
+                    DecoratorId(id),
+                    pose,
+                    mesh,
+                    "nani_solid_vertex_color_window_glass",
+                    Some(ColorId(info.extra().as_window().0)),
+                    semi,
+                );
+                glass.window_light = Some(u64::from(id) + u64::from(info.rank()) * 1000);
+                blueprint.visual_entities.push(glass);
+            }
+            if subtype == 23 {
+                let mesh = match info.rank() {
+                    2 => "decorators/arrow_slit_1x2_hat",
+                    3 => "decorators/arrow_slit_1x3_hat",
+                    _ => panic!("internal error: entered unreachable code"),
+                };
+                let mut hat = window_builder(
+                    DecoratorId(id),
+                    pose,
+                    mesh,
+                    "nani_gothic_window_bricks",
+                    Some(ColorId(999)),
+                    semi,
+                );
+                hat.brick_color = Some(brick);
+                let values = [
+                    bones.side[0],
+                    bones.side[1],
+                    bones.side[2],
+                    bones.side[3],
+                    bones.edge[0],
+                    bones.edge[1],
+                    bones.first.x,
+                    bones.first.y,
+                    bones.first.z,
+                    bones.center.x,
+                    bones.center.y,
+                    bones.center.z,
+                    bones.second.x,
+                    bones.second.y,
+                    bones.second.z,
+                ];
+                let mut deformation = [0u8; 60];
+                for (slot, value) in deformation.chunks_exact_mut(4).zip(values) {
+                    slot.copy_from_slice(&value.to_le_bytes());
+                }
+                hat.gothic_window_brick_deformation = Some(deformation);
+                blueprint.visual_entities.push(hat);
+                let extent = bounds.extent();
+                let forward = rotation * Vec3::Z;
+                let middle_y = (bounds.bottom + bounds.top) * 0.5;
+                let center = pose.translation + Vec3::new(middle_y * 0.0, middle_y, middle_y * 0.0);
+                let first = center + forward * 0.5 * 0.5;
+                blueprint.dormer_holes.push(DormerHoleSsbo::gothic(
+                    wall_id.0 as u32,
+                    first,
+                    Vec3::new(
+                        f32::from_bits(0x3f33_3333),
+                        f32::from_bits(0x4022_8f5c),
+                        extent.z + 0.5,
+                    ),
+                    [forward.x, forward.z, 2.5, f32::from_bits(0x3d4c_cccd)],
+                ));
+            }
+        }
+    }
+}
+
 #[cfg(test)]
-mod tests {
+mod original_world_tests {
+    use super::super::flag::full_visual_test_support::*;
     use super::*;
-
+    use bevy_ecs::system::RunSystemOnce;
     #[test]
-    fn profile_matches_machine_constants() {
-        let p = arrow_slit_profile_curve();
-        assert_eq!(p.len(), 4);
-        assert_eq!(p[0], Vec2::new(0.4, 1.7));
-        assert_eq!(p[1], Vec2::new(0.604_9, 0.55));
-        assert_eq!(p[2], Vec2::new(0.4, 1.5));
-        assert_eq!(p[3], Vec2::new(0.14, 0.7));
+    fn original_arrow_native_rotation_bits() {
+        let cases: &[([u32; 6], [u32; 4])] = include!(
+            "../../../../../reports/module-recovery-2026-10-23/m01-arrow-pose-native-cases.rs"
+        );
+        for (index, (input, expected)) in cases.iter().enumerate() {
+            let first = Vec3::from_array(std::array::from_fn(|i| f32::from_bits(input[i])));
+            let second = Vec3::from_array(std::array::from_fn(|i| f32::from_bits(input[i + 3])));
+            assert_eq!(
+                arrow_slit_rotation(first, second)
+                    .to_array()
+                    .map(f32::to_bits),
+                *expected,
+                "原箭孔旋转case {index}"
+            );
+        }
     }
-
     #[test]
-    fn extended_profile_appends_extra_size() {
-        let p = arrow_slit_extended_profile();
-        assert_eq!(p.len(), 5);
-        assert_eq!(p[4], Vec2::new(0.14 + 0.14, 0.72 + 2.54));
-    }
-
-    #[test]
-    fn predicate_accepts_only_type_0x3a() {
-        let mut info = DecoratorInfo::default();
-        info.ty = 0x3a;
-        assert!(is_arrow_slit(&info));
-        info.ty = 0x38;
-        assert!(!is_arrow_slit(&info));
-        info.ty = 0x39;
-        assert!(!is_arrow_slit(&info));
+    fn every_rank_and_halfdormer_publishes_real_holes_glass_deformation_and_releases() {
+        for subtype in [22, 23] {
+            for (rank, state) in (1..=3).flat_map(|rank| [0, 1].map(|state| (rank, state))) {
+                let mut info = DecoratorInfo {
+                    ty: 0x3a,
+                    rank,
+                    state,
+                    u28: 55,
+                    decorator_id: 19,
+                    ..Default::default()
+                };
+                info.dst_wall = u64::from(4f32.to_bits()) | (u64::from(2f32.to_bits()) << 32);
+                info.set_extra(
+                    country_core::resources::walls::decorator::DecoratorExtraInfo::Window(
+                        country_core::resources::walls::decorator::WindowExtra(77),
+                    ),
+                );
+                let mut world = scene(
+                    info,
+                    subtype,
+                    DecoratorStorageAddr::Wall(country_core::resources::walls::WallId(7)),
+                );
+                world.run_system_once(generate_arrow_slits).unwrap();
+                if subtype == 23 && rank == 1 {
+                    assert!(world.resource::<DecoratorBlueprints>().map.is_empty());
+                    continue;
+                }
+                let bp = world.resource::<DecoratorBlueprints>().get(41).unwrap();
+                assert_eq!(bp.visual_entities.len(), if subtype == 23 { 3 } else { 2 });
+                assert_eq!(bp.wall_holes.len(), if rank == 3 { 2 } else { 1 });
+                assert_eq!(
+                    bp.visual_entities[1].window_light,
+                    Some(41 + u64::from(rank) * 1000)
+                );
+                assert_eq!(bp.visual_entities[1].color_id, Some(ColorId(77)));
+                assert_eq!(bp.dormer_holes.len(), usize::from(subtype == 23));
+                if subtype == 23 {
+                    assert!(
+                        bp.visual_entities[2]
+                            .gothic_window_brick_deformation
+                            .is_some()
+                    );
+                }
+                let entities = instantiate(&mut world);
+                assert_eq!(entities.len(), if subtype == 23 { 3 } else { 2 });
+                assert!(
+                    world
+                        .get::<country_core::resources::window_lights::WindowLight>(entities[1])
+                        .is_some()
+                );
+                assert_unload(&mut world, &entities);
+            }
+        }
     }
 }

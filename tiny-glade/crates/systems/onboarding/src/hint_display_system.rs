@@ -1,7 +1,7 @@
 //! hint_display_system（O：动画/冷却/音效/删除/位置/高亮/绘制）。
 //!
 //! 恢复（evidence/batch2-display.txt）：
-//! - `hint_animation_system` 0x141c4f400：逐提示逐属性 `value=clamp(value+dt/0.3*dir,
+//! - `hint_animation_system` 0x141c4f400：逐提示 `value=clamp(value+dt/0.3*dir,
 //!   0,1)`（dir=±1，删除中 -1）、`eased=EasingFunction::apply(value)`、`time+=dt`。
 //! - `hint_deletion_cooldown_system` 0x141c4f790：`timer-=dt`，`<=0` →
 //!   remove<HintDeleteAfterCooldown> + insert<HintMarkedForDeletion>（warn）。
@@ -13,6 +13,7 @@
 //! 位置、高亮、生命周期按 B 原指令恢复；绘制经生产模板和 Graphic 路径。
 
 use bevy_ecs::prelude::*;
+use bevy_time::Time;
 use country_core::resources::time::GameTime;
 use country_core::systems::history::replay_mode::time_continuous_lerp;
 use country_core::systems::ui::resources::widget_params::PlayUiSound;
@@ -21,9 +22,10 @@ use utils::easing_functions::EasingFunction;
 
 use crate::{BindingHintDisplay, HintPlacement, HintProgressBar, HintType};
 
-/// 提示动画（O：HintAnimation，每属性 {value f32@+0, eased f32@+4, time f32@+8}，
-/// 步长 0xc；属性数组结构未恢复，本重建取单属性）。
+/// 原 HintAnimation 组件：value@+0、eased@+4、time@+8；descriptor size=12、align=4。
+/// 原循环的 0xc 步长是实体组件行，不是被省略的属性数组。
 #[derive(Component, Clone, Copy, Debug, Default, PartialEq)]
+#[repr(C)]
 pub struct HintAnimation {
     /// 归一化进度 [0,1]
     pub value: f32,
@@ -73,10 +75,11 @@ pub const DELETION_COOLDOWN_TABLE: [f32; 19] = [
 /// `eased = EasingFunction::apply(value)`，`time += dt`；dir 删除中 -1（有
 /// HintMarkedForDeletion）否则 +1。原静态 142f144bc=1，即 CubicInOut。
 pub fn hint_animation_system(
-    time: Res<GameTime>,
+    time: Res<Time>,
     mut query: Query<(&mut HintAnimation, Option<&HintMarkedForDeletion>)>,
 ) {
-    let dt = time.delta;
+    // 原 PDB 为 Res<Time<()>>；暂停游戏也要继续显示和删除提示。
+    let dt = time.delta_secs();
     for (mut anim, deleting) in &mut query {
         let step = dt / 0.3;
         let step = if deleting.is_some() { -step } else { step };
@@ -91,11 +94,12 @@ pub fn hint_animation_system(
 /// hint_deletion_cooldown_system（O 0x141c4f790）：timer -= dt；<=0 →
 /// remove<HintDeleteAfterCooldown> + insert<HintMarkedForDeletion>（warn）。
 pub fn hint_deletion_cooldown_system(
-    time: Res<GameTime>,
+    time: Res<Time>,
     mut commands: Commands,
     mut query: Query<(Entity, &mut HintDeleteAfterCooldown)>,
 ) {
-    let dt = time.delta;
+    // 原 PDB 为 Res<Time<()>>；暂停游戏也要继续显示和删除提示。
+    let dt = time.delta_secs();
     for (entity, mut cooldown) in &mut query {
         cooldown.timer -= dt;
         if cooldown.timer <= 0.0 {
@@ -766,6 +770,7 @@ mod tests {
             std::array::from_fn(|_| mesh.clone()), vec![mesh],
         ));
         world.insert_resource(GameTime::default());
+        world.insert_resource(Time::<()>::default());
         world
     }
 
@@ -901,6 +906,36 @@ mod tests {
     }
 
     #[test]
+    fn animation_matches_original_instructions_including_nan_payloads() {
+        type Row = (u32, u32, u64, u32, bool, u32, u32, u32);
+        let rows: Vec<Row> = ron::from_str(include_str!(
+            "../../../../tests/fixtures/native/m01-hints-animation.ron"
+        )).unwrap();
+        let mut world = World::new();
+        world.insert_resource(Time::<()>::default());
+        let entity = world.spawn(HintAnimation::default()).id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(hint_animation_system);
+        assert_eq!(std::mem::size_of::<HintAnimation>(), 12);
+        assert_eq!(std::mem::align_of::<HintAnimation>(), 4);
+        for (index, &(value, age, duration_ns, delta, deleting, expected_value, expected_eased, expected_time)) in rows.iter().enumerate() {
+            let mut clock = Time::<()>::default();
+            clock.advance_by(std::time::Duration::from_nanos(duration_ns));
+            assert_eq!(clock.delta_secs().to_bits(), delta, "帧时间夹具 {index}");
+            world.insert_resource(clock);
+            world.entity_mut(entity).insert(HintAnimation {
+                value: f32::from_bits(value), eased: -123., time: f32::from_bits(age),
+            });
+            if deleting { world.entity_mut(entity).insert(HintMarkedForDeletion); }
+            else { world.entity_mut(entity).remove::<HintMarkedForDeletion>(); }
+            schedule.run(&mut world);
+            let actual = world.get::<HintAnimation>(entity).unwrap();
+            assert_eq!((actual.value.to_bits(), actual.eased.to_bits(), actual.time.to_bits()),
+                (expected_value, expected_eased, expected_time), "原版指令夹具 {index}: {:#x?}", rows[index]);
+        }
+    }
+
+    #[test]
     fn original_lifecycle_opens_cools_closes_and_unloads() {
         let mut world = position_world();
         world.init_resource::<Events<PlayUiSound>>();
@@ -908,7 +943,8 @@ mod tests {
         let mut audio = Schedule::default(); audio.add_systems(hint_audio);
         audio.run(&mut world);
         assert_eq!(world.resource_mut::<Events<PlayUiSound>>().drain().map(|e|e.kind).collect::<Vec<_>>(), [20]);
-        world.resource_mut::<GameTime>().delta = 0.3;
+        // 游戏时间保持暂停，UI 生命周期仍跟随原版真实帧时间。
+        world.resource_mut::<Time>().advance_by(std::time::Duration::from_secs_f32(0.3));
         let mut animation = Schedule::default(); animation.add_systems(hint_animation_system);
         animation.run(&mut world);
         assert_eq!(world.get::<HintAnimation>(entity).unwrap().eased, 1.);
@@ -1148,6 +1184,9 @@ mod original_render_tests {
     fn real_draw_uses_frame_scale_anchor_memo_beta_and_entity_unload() {
         let mut world = World::new();
         world.insert_resource(real_mei());
+        let mut clock = Time::<()>::default();
+        clock.advance_by(std::time::Duration::from_millis(150));
+        world.insert_resource(clock);
         world.insert_resource(
             country_core::input::ActiveInputModeTracker::new_default_mouse_keyboard(
                 std::time::Duration::ZERO,
@@ -1161,10 +1200,7 @@ mod original_render_tests {
         let entity = world
             .spawn((
                 HintLayoutMemo::default(),
-                HintAnimation {
-                    eased: 0.5,
-                    ..Default::default()
-                },
+                HintAnimation::default(),
                 HintSpring {
                     target: Vec2::new(900., 600.),
                     ..Default::default()
@@ -1177,6 +1213,10 @@ mod original_render_tests {
             ))
             .id();
         world.send_event(country_core::resources::events::DisplayBetaWIPWarning);
+        let mut animation = Schedule::default();
+        animation.add_systems(hint_animation_system);
+        animation.run(&mut world);
+        assert_eq!(world.get::<HintAnimation>(entity).unwrap().eased, 0.5);
         let mut schedule = Schedule::default();
         schedule.add_systems(hint_draw);
         schedule.run(&mut world);
@@ -1229,7 +1269,12 @@ mod original_render_tests {
                 |event| matches!(event.kind,FrameKind::AtPos{anchor,..} if anchor==Vec2::ZERO)
             )
         );
-        world.despawn(entity);
+        world.entity_mut(entity).insert(HintMarkedForDeletion);
+        animation.run(&mut world);
+        let mut deletion = Schedule::default();
+        deletion.add_systems(hint_deletion_system);
+        deletion.run(&mut world);
+        assert!(world.get_entity(entity).is_err());
         world.resource_mut::<MeiContext>().recycle_frame_nodes();
         schedule.run(&mut world);
         assert!(

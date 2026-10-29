@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-27",
+  "original_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "original_pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "sources": {
+    "crates/systems/decorator/src/decorator_visual/cottage_dormers/assemble_dormer_roof_tiles.rs": "f39a59a691df788143ceab60e83e45163def5907c7d4e4a3b9feb3a97cb374ad",
+    "crates/systems/decorator/src/decorator_visual/cottage_dormers/util_assemble_gothic_dormer.rs": "c5f55baedfdffc81a2a28ff98de763cb9e67969975ab845ec37ba08c82ce8b3b",
+    "crates/systems/decorator/src/decorator_visual/gothic_wall_window.rs": "ff29982fb972b4073ab4243205fb06caa7998721060429680c80336fef46fbb0",
+    "crates/systems/decorator/src/decorator_visual/cottage_dormers/cottage_dormer.rs": "bfcee0ef4eee9720946661f173362c50880476e7d9cd7cf35c966154402b56f9",
+    "crates/country-core/src/resources/roofs/roof_shape.rs": "7fca45e58dcbce5884c12c65342f7c80b4c855375106b7a7718bc7702c717054",
+    "Cargo.lock": "1c6c70729f6518b4b4339e6ce7adcc629116b45117f9d6520780d1ebae09797a"
+  },
+  "native": {
+    "cottage_inputs": 12,
+    "cottage_complete_64byte_records": 312,
+    "gothic_inputs": 54,
+    "gothic_complete_64byte_records": 1485,
+    "halfprofile_inputs": 36,
+    "section_inputs": 200,
+    "expected_section_panics": 2,
+    "bay_resolved_branch_inputs": 6
+  },
+  "system_decorator": {
+    "command": "CARGO_INCREMENTAL=0 cargo test --offline -p system-decorator --lib dormer",
+    "passed": 41,
+    "failed": 0,
+    "log": "m01-dormer-tiles-final-system-tests.log",
+    "real_world_fullvisual_upload_cache_unload_scenarios": 6,
+    "real_window_arrow_producer_to_tile_unload_scenarios": 12
+  },
+  "limits": [
+    "Native game algorithms execute with Darwin C float math bridges, not original Windows CRT bodies.",
+    "Main system is full static original CFG/signature recovery plus bounded native bay branch and real Rust World tests, not emulated native Bevy ECS internals.",
+    "Recorded GraphicsDevice upload verifies actual sparse buffer dirty bytes; actual GPU/present is root integration responsibility."
+  ],
+  "country_core": {
+    "command": "CARGO_INCREMENTAL=0 cargo test --offline -p country-core --lib dormer_native_intersection_tests",
+    "passed": 1,
+    "failed": 0,
+    "native_inputs": 200,
+    "log": "m01-dormer-tiles-core-final-tests.log"
+  }
+}

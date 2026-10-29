@@ -1,6 +1,6 @@
 //! B Rectangle2d：axis@0、center@8、size@16，共24B观察字段。
 use super::{Aabb2, Circle2d, Ray2};
-use glam::{Affine2, DVec2, Mat2, Mat3, Vec2, Vec3};
+use glam::{Affine2, Mat2, Mat3, Vec2, Vec3};
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Rectangle2d {
     pub axis: Vec2,
@@ -47,6 +47,22 @@ impl RectangleSliceState {
     }
 }
 impl Rectangle2d {
+    /// 原 B 0x140c9c730：方向沿有符号最短角插值，中心和尺寸作线性插值。
+    /// glam 0.29 的 angle_to 保留原 acos 多项式与叉积符号规则，不能换成轴向量归一化插值。
+    pub fn lerp(self, other: Self, factor: f32) -> Self {
+        let complement = 1.0 - factor;
+        let angle = self.axis.angle_to(other.axis) * factor + complement * 0.0;
+        let (sin, cos) = angle.sin_cos();
+        let axis = Vec2::new(
+            -sin * self.axis.y + cos * self.axis.x,
+            cos * self.axis.y + sin * self.axis.x,
+        );
+        Self::new(
+            self.center * complement + other.center * factor,
+            other.size * factor + self.size * complement,
+            axis,
+        )
+    }
     pub fn orientation_mat2(self) -> Mat2 {
         Mat2::from_cols(self.axis, Vec2::new(-self.axis.y, self.axis.x))
     }
@@ -183,8 +199,8 @@ impl Rectangle2d {
         ]
     }
     pub fn get_point(self, index: usize) -> Vec2 {
-        assert!(index < 4);
-        self.as_points2()[index]
+        assert!(index < 5);
+        self.as_points2()[if index == 4 { 0 } else { index }]
     }
     pub fn get_point_u(self, index: usize) -> f32 {
         assert!(index < 5);
@@ -339,8 +355,19 @@ impl Rectangle2d {
             q.x.hypot(q.y)
         }
     }
+    /// B 140c9a750：此入口在逆投影后直接减半尺寸，原指令没有取绝对值。
+    /// 圆柱选邻墙依赖这个非对称门，不能复用上面的有符号矩形距离。
     pub fn distance_to_closest_edge(self, point: Vec2) -> f32 {
-        self.signed_distance_to_closest_edge(point).max(0.0)
+        let q = self.perimeter_local_point(point) - self.size * 0.5;
+        let distance = if q.x < 0.0 || q.y < 0.0 {
+            // 保留原maxnum及最后MAXSS的无序、相等和有符号零选择。
+            if q.x.is_nan() { q.y }
+            else if q.y.is_nan() || q.x >= q.y { q.x }
+            else { q.y }
+        } else {
+            q.x.hypot(q.y)
+        };
+        if distance > 0.0 { distance } else { 0.0 }
     }
     pub fn get_edge_pts(self, index: usize) -> (Vec2, Vec2) {
         assert!(index < 4);
@@ -487,68 +514,86 @@ impl Rectangle2d {
     /// Test whether the closed rectangle boundaries intersect. Strictly
     /// contained contours do not intersect; shared edges and vertices do.
     pub fn intersects(self, other: Self) -> bool {
-        if [self, other].iter().any(|rectangle| {
-            !rectangle.axis.is_finite()
-                || !rectangle.center.is_finite()
-                || !rectangle.size.is_finite()
-                || rectangle.size.min_element() < 0.0
-                || rectangle.axis == Vec2::ZERO
-        }) {
-            return false;
-        }
-        let axis = self.axis.as_dvec2();
-        let perpendicular = DVec2::new(-axis.y, axis.x);
-        let scale_squared = axis.length_squared();
-        let to_local =
-            |delta: DVec2| DVec2::new(delta.dot(axis), delta.dot(perpendicular)) / scale_squared;
-        let relative_center = to_local(other.center.as_dvec2() - self.center.as_dvec2());
-        let relative_x = to_local(other.axis.as_dvec2());
-        let relative_y = DVec2::new(-relative_x.y, relative_x.x);
-        let other_half = other.size.as_dvec2() * 0.5;
-        let points = [
-            DVec2::new(-other_half.x, -other_half.y),
-            DVec2::new(other_half.x, -other_half.y),
-            DVec2::new(other_half.x, other_half.y),
-            DVec2::new(-other_half.x, other_half.y),
-        ]
-        .map(|p| relative_center + relative_x * p.x + relative_y * p.y);
-        let half = self.size.as_dvec2() * 0.5;
+        // B140c9b990：MOVSD搬运两个f32；全部运算为PS/SS，不是f64。
+        let length = (self.size.y * self.size.y + self.size.x * self.size.x).sqrt();
+        assert!(length >= 0.0, "原intersects尺寸长度guard");
+        let determinant = self.axis.x * self.axis.x - (-self.axis.y) * self.axis.y;
+        let positive = 1.0 / determinant;
+        let negative = -1.0 / determinant;
+        let column_x = Vec2::new(self.axis.x * positive, self.axis.y * negative);
+        let column_y = Vec2::new((-self.axis.y) * negative, self.axis.x * positive);
+        let transform = |point: Vec2| column_x * point.x + column_y * point.y;
+        let relative_x = transform(other.axis);
+        let relative_y = transform(Vec2::new(-other.axis.y, other.axis.x));
+        // 原先分别转换两个中心再相减，不能先减世界坐标后变换。
+        let relative_center = transform(other.center) - transform(self.center);
+        let points = other.as_points2_centered_aligned()
+            .map(|point| relative_x * point.x + relative_y * point.y + relative_center);
+        let half = self.size * 0.5;
+        let minnum = |first: f32, second: f32| {
+            if first.is_nan() || second < first { second } else { first }
+        };
+        let maxnum = |first: f32, second: f32| {
+            if first.is_nan() || second > first { second } else { first }
+        };
         (0..4).any(|index| {
             let start = points[index];
             let direction = points[(index + 1) % 4] - start;
-            let mut near = f64::NEG_INFINITY;
-            let mut far = f64::INFINITY;
-            let mut on_boundary = false;
-            for dimension in 0..2 {
-                if direction[dimension] == 0.0 {
-                    if start[dimension].abs() > half[dimension] {
-                        return false;
-                    }
-                    on_boundary |= start[dimension].abs() == half[dimension];
-                } else {
-                    let first = (-half[dimension] - start[dimension]) / direction[dimension];
-                    let last = (half[dimension] - start[dimension]) / direction[dimension];
-                    near = near.max(first.min(last));
-                    far = far.min(first.max(last));
-                }
-            }
-            near <= far
-                && far >= 0.0
-                && near <= 1.0
-                && (on_boundary || (0.0..=1.0).contains(&near) || (0.0..=1.0).contains(&far))
+            let first_x = ((half.x + 0.0) - start.x) / direction.x;
+            let last_x = ((0.0 - half.x) - start.x) / direction.x;
+            let first_y = ((half.y + 0.0) - start.y) / direction.y;
+            let last_y = ((0.0 - half.y) - start.y) / direction.y;
+            let near = maxnum(minnum(first_x, last_x), minnum(first_y, last_y));
+            let far = minnum(maxnum(first_x, last_x), maxnum(first_y, last_y));
+            near <= far && 0.0 <= far
+                && (far <= 1.0 || (0.0 <= near && near <= 1.0))
         })
     }
-    /// Clamp the selected dimension and move its named edge while retaining the
-    /// opposite edge. The raw delta is a full-size change, not a per-side offset.
-    /// B 0x140c9c620 clamps the new size to [0, max]; the leading bound argument
-    /// is not the clamp lower bound in the observed behavior.
-    pub fn expand_along_edge(&mut self, edge: usize, delta: f32, _min: f32, max: f32) {
+    /// 原 B 0x140c9c620：按给定上下界限制整条边的尺寸变化，保持对边不动。
+    /// 原指令先 MAXSS(min, delta + old)，再 MINSS(max, result)；NaN 增量须传播。
+    pub fn expand_along_edge(&mut self, edge: usize, delta: f32, min: f32, max: f32) {
+        // 原 SSE 加减乘优先保留左操作数 NaN，再保留右操作数 NaN，并 quiet signaling NaN。
+        // 两个操作数都不是 NaN 时产生的 invalid（∞-∞、0*∞ 等）则为原 x86 indefinite。
+        // 仅在异常路径使用，不能把所有最终 NaN 统一置负而丢掉输入 payload。
+        #[inline]
+        fn sse_result(left: f32, right: f32, result: f32) -> f32 {
+            if left.is_nan() {
+                f32::from_bits(left.to_bits() | 0x0040_0000)
+            } else if right.is_nan() {
+                f32::from_bits(right.to_bits() | 0x0040_0000)
+            } else if result.is_nan() {
+                f32::from_bits(0xffc0_0000)
+            } else {
+                result
+            }
+        }
+        #[cold]
+        fn exceptional_center(axis: Vec2, center: Vec2, edge: usize, new: f32, old: f32) -> Vec2 {
+            let mul = |a, b| sse_result(a, b, a * b);
+            let add = |a, b| sse_result(a, b, a + b);
+            let difference = sse_result(new, old, new - old);
+            let shift = mul(difference, 0.5);
+            let local = [-Vec2::X, Vec2::Y, Vec2::X, -Vec2::Y][edge];
+            let normal_x = add(mul(-axis.y, local.y), mul(axis.x, local.x));
+            let normal_y = add(mul(axis.x, local.y), mul(axis.y, local.x));
+            // 原 MULPS 的左操作数为 shift；末次 ADDPS 的右操作数为旧中心。
+            Vec2::new(add(mul(shift, normal_x), center.x), add(mul(shift, normal_y), center.y))
+        }
         let dimension = if edge == 1 || edge == 3 { 1 } else { 0 };
         let old = self.size[dimension];
-        let new = (old + delta).clamp(0.0, max);
+        let sum = delta + old;
+        let sum = if sum.is_nan() { sse_result(delta, old, sum) } else { sum };
+        let new = sum.clamp(min, max);
         self.size[dimension] = new;
         let normal = self.get_edge_normal(edge);
-        self.center += normal * ((new - old) * 0.5);
+        let old_center = self.center;
+        let center = old_center + normal * ((new - old) * 0.5);
+        // 有限正常路径保留原向量算术；跨平台 NaN 契约只在实际出现 NaN 时处理。
+        self.center = if center.is_nan() {
+            exceptional_center(self.axis, old_center, edge, new, old)
+        } else {
+            center
+        };
     }
     /// B separating-axis test includes touching edges as overlap.
     pub fn overlaps_rectangle2d(self, other: Self) -> bool {
@@ -672,7 +717,84 @@ impl Rectangle3d {
 }
 
 #[cfg(test)]
+mod original_intersects_regressions {
+    use super::*;
+    #[test]
+    fn complete_original_intersects_and_iterator_match_results_and_guards() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../tests/fixtures/native/m01-rectangle-intersects.json")).unwrap();
+        let mut mismatches = Vec::new();
+        for row in fixture["cases"].as_array().unwrap() {
+            let bits = row["bits"].as_array().unwrap();
+            let rectangle = |start: usize| {
+                let f = |index: usize| f32::from_bits(bits[start + index].as_u64().unwrap() as u32);
+                Rectangle2d { axis: Vec2::new(f(0), f(1)), center: Vec2::new(f(2), f(3)), size: Vec2::new(f(4), f(5)) }
+            };
+            let actual = std::panic::catch_unwind(|| rectangle(0).intersects(rectangle(6)))
+                .map_or(2, u8::from);
+            let expected = row["expected"].as_u64().unwrap() as u8;
+            if actual != expected { mismatches.push((row["id"].clone(), row["label"].clone(), actual, expected)); }
+        }
+        assert_eq!(mismatches.len(), 0, "前20项原侧差异: {:?}", &mismatches[..mismatches.len().min(20)]);
+    }
+}
+
+#[cfg(test)]
 mod normal_regressions {
+
+    fn native_fixture_rectangle(value: &serde_json::Value) -> Rectangle2d {
+        let values: Vec<f32> = value.as_array().unwrap().iter()
+            .map(|v| f32::from_bits(v.as_u64().unwrap() as u32)).collect();
+        Rectangle2d { axis: Vec2::new(values[0], values[1]),
+            center: Vec2::new(values[2], values[3]), size: Vec2::new(values[4], values[5]) }
+    }
+
+    fn native_fixture_bits(rectangle: Rectangle2d) -> Vec<u32> {
+        [rectangle.axis.x, rectangle.axis.y, rectangle.center.x, rectangle.center.y,
+            rectangle.size.x, rectangle.size.y].map(f32::to_bits).to_vec()
+    }
+
+    #[test]
+    fn original_expand_along_edge_complete_function_matches_native_bits_and_panics() {
+        let fixtures: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../tests/fixtures/native/m01-shared-geometry.json")).unwrap();
+        let mut mismatches = Vec::new();
+        for (index, row) in fixtures["expand"].as_array().unwrap().iter().enumerate() {
+            let mut rectangle = native_fixture_rectangle(&row["before"]);
+            let value = |key: &str| f32::from_bits(row[key].as_u64().unwrap() as u32);
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                rectangle.expand_along_edge(row["edge"].as_u64().unwrap() as usize,
+                    value("delta"), value("lower"), value("upper"));
+            }));
+            assert_eq!(result.is_err(), row["panic"].as_bool().unwrap(), "原 expand guard {index}");
+            let expected: Vec<u32> = serde_json::from_value(row["after"].clone()).unwrap();
+            let actual = native_fixture_bits(rectangle);
+            if actual != expected {
+                mismatches.push(serde_json::json!({"index":index,"actual":actual,"expected":expected,"input":row}));
+            }
+        }
+        if let Some(path) = std::env::var_os("TG_M01_GEOMETRY_DIFF_OUTPUT") {
+            std::fs::write(path, serde_json::to_string_pretty(&mismatches).unwrap()).unwrap();
+        }
+        assert!(mismatches.is_empty(), "原 expand 位型不匹配 {} 例；首例 {:?}", mismatches.len(), mismatches.first());
+    }
+
+    #[test]
+    fn original_rectangle_lerp_complete_function_matches_native_bits_and_panics() {
+        let fixtures: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../tests/fixtures/native/m01-shared-geometry.json")).unwrap();
+        for (index, row) in fixtures["lerp"].as_array().unwrap().iter().enumerate() {
+            let before = native_fixture_rectangle(&row["before"]);
+            let after = native_fixture_rectangle(&row["after"]);
+            let factor = f32::from_bits(row["factor"].as_u64().unwrap() as u32);
+            let result = std::panic::catch_unwind(|| before.lerp(after, factor));
+            assert_eq!(result.is_err(), row["panic"].as_bool().unwrap(), "原 lerp guard {index}: {row}");
+            if let Ok(actual) = result {
+                let expected: Vec<u32> = serde_json::from_value(row["output"].clone()).unwrap();
+                assert_eq!(native_fixture_bits(actual), expected, "原 lerp 完整输出 {index}: {row}");
+            }
+        }
+    }
 
     #[test]
     fn original_corner_edge_directions_preserve_incoming_then_outgoing_order() {
@@ -880,7 +1002,7 @@ mod normal_regressions {
         );
     }
     #[test]
-    fn edge_distance_is_symmetric_in_local_coordinates() {
+    fn signed_distance_and_original_unsigned_gate_have_distinct_contracts() {
         let rectangle = Rectangle2d::new_centered_axis_aligned(Vec2::splat(2.0));
         assert_eq!(
             rectangle.signed_distance_to_closest_edge(Vec2::new(-3.0, -2.0)),
@@ -888,11 +1010,33 @@ mod normal_regressions {
         );
         assert_eq!(
             rectangle.distance_to_closest_edge(Vec2::new(-3.0, -2.0)),
-            2.0f32.hypot(1.0)
+            0.0
         );
         assert_eq!(
             rectangle.signed_distance_to_closest_edge(Vec2::new(3.0, 2.0)),
             2.0f32.hypot(1.0)
         );
+        assert_eq!(rectangle.distance_to_closest_edge(Vec2::new(3.0, 2.0)), 2.0f32.hypot(1.0));
+        // 覆盖原圆柱邻墙反例的四个方位，保留非对称选择门。
+        let neighbour = Rectangle2d::new_axis_aligned(Vec2::new(3.5, 0.0), Vec2::ONE);
+        for (point, expected) in [
+            (Vec2::new(2.1, 0.0), 0.0f32),
+            (Vec2::new(0.0, -2.1), 0.0),
+            (Vec2::new(-2.1, -0.0), 0.0),
+            (Vec2::new(-0.0, 2.1), 2.1 - 0.5),
+        ] {
+            assert_eq!(neighbour.distance_to_closest_edge(point).to_bits(), expected.to_bits());
+        }
+    }
+}
+
+#[cfg(test)]
+mod original_closed_corner_tests {
+    use super::*;
+    #[test]
+    fn fifth_corner_closes_and_sixth_panics() {
+        let rectangle = Rectangle2d::new(Vec2::new(3.0, -4.0), Vec2::new(8.0, 6.0), Vec2::new(0.6, 0.8));
+        assert_eq!(rectangle.get_point(4), rectangle.get_point(0));
+        assert!(std::panic::catch_unwind(|| rectangle.get_point(5)).is_err());
     }
 }

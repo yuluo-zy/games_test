@@ -16,16 +16,24 @@
 //! rank3 {(0,1.45),(0.19,1.34),(0.36,1.19),(0.5,1.02),(0.61,0.82),(0.69,0.62),
 //! (0.73,0.4),(0.76,0.18)}（机器码仅拷贝前 5/6/8 点）。
 //!
-//! U 登记：① generate_gothic_dormers 几何主体 ② 参数排序。
+//! 原七组SystemParam、两实体蓝图、碰撞/交互、BrickColor与48B孔写面已恢复；瓦片由独立generate_dormer_roofs生成。
 
 use bevy_ecs::prelude::*;
-use country_core::resources::walls::decorator_storage::DecoratorStorage;
-use country_core::resources::walls::decorator_subtype::{DecoratorLibKey, DerivedDecoratorInfoResources};
-use glam::Vec2;
-
-use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
-use crate::decorator_visual_state::DecoratorTransientVisualState;
-use crate::utils::visual_entity_builder::WindowVisualEntityBuilder;
+use country_core::{
+    name_hash::NameHash,
+    resources::{color_id::ColorId, roofs::roof_shape::Roof, walls::{
+        cached_decorator_transforms::{CachedDecoratorTransform, CachedDecoratorTransforms},
+        decorator::DecoratorId,
+        decorator_storage::{DecoratorStorage, DecoratorStorageAddr},
+        decorator_subtype::{DecoratorLibKey, DerivedDecoratorInfoResources},
+        dormers::DormerHoleSsbo, public_walls::PublicWalls,
+    }},
+    systems::ui::signifiers::UiSignifierStream,
+    utils::components::transform::Transform,
+};
+use glam::{Vec2, Vec3};
+use crate::blueprint::DecoratorBlueprints;
+use super::cottage_wall_window::window_builder;
 
 /// rank 1 剖面（5 常量 + 终点 {0.35,0}）。
 const RANK1_PROFILE: [Vec2; 6] = [
@@ -72,51 +80,80 @@ pub fn gothic_dormer_profile_curve(rank: u8) -> Vec<Vec2> {
     }
 }
 
-/// 0x1407c5650（O 结构）：生成哥特老虎窗装饰视觉。
+const FRAME_NAMES: [&str; 3] = ["decorators/window_gothic_1x1_dormer",
+    "decorators/window_gothic_2x1_dormer", "decorators/window_gothic_3x1_dormer"];
+const GLASS_NAMES: [&str; 3] = ["decorators/window_gothic_1x1_dormer_glass",
+    "decorators/window_gothic_2x1_dormer_glass", "decorators/window_gothic_3x1_dormer_glass"];
+
+/// 原1407c5650七组参数：只发布蓝图，fullvisual统一拥有实体及删除生命周期。
 pub fn generate_gothic_dormers(
-    decorator_storage: Res<DecoratorStorage>,
     derived: DerivedDecoratorInfoResources,
-    mut blueprints: ResMut<DecoratorBlueprints>,
-    mut transient: ResMut<DecoratorTransientVisualState>,
-    cached: Res<
-        country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms,
-    >,
+    storage: Res<DecoratorStorage>, cached: Res<CachedDecoratorTransforms>,
+    walls: Res<PublicWalls>, roofs: Query<&Roof>,
+    mut blueprints: ResMut<DecoratorBlueprints>, _signifiers: Res<UiSignifierStream>,
 ) {
-    let derived = derived.as_view();
-    let mesh_lib = derived.mesh_library();
-    for (wall, decorators) in decorator_storage.iter_walls() {
-        for (id, info) in decorators.iter_modified() {
-            // O：哥特老虎窗子类型 = 8（0x1407c5650 行 430）。
-            if derived
-                .subtype(country_core::resources::walls::decorator::DecoratorId(id))
-                .0
-                != GOTHIC_DORMER_SUBTYPE
-            {
-                continue;
-            }
-            let transform = cached.transform(id);
-            // O：剖面（rank 驱动）。
-            let _profile = gothic_dormer_profile_curve(info.rank());
-            // O：蓝图 + 视觉实体。
-            let blueprint = blueprints.insert_for(
-                id,
-                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
-                info.state(),
-            );
+    let view = derived.as_view();
+    let library = view.mesh_library();
+    for (wall_id, decorators) in storage.iter_walls() {
+        let Some(roof_entity) = walls.roof_entity(wall_id) else { continue; };
+        let Ok(roof) = roofs.get(roof_entity) else { continue; };
+        if roof.is_flat() { continue; }
+        for (modified, info) in decorators.iter_modified() {
+            let id = DecoratorId(modified);
+            if view.subtype(id).0 != GOTHIC_DORMER_SUBTYPE { continue; }
+            let transform = cached.transform(modified);
             let key = DecoratorLibKey::new(GOTHIC_DORMER_SUBTYPE, info.rank());
-            blueprint.set_positioned_colliders(
-                std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
-                std::sync::Arc::clone(&mesh_lib.interaction_record(key).mesh),
-                &transform.translation,
-                &transform.rotation,
-            );
-            blueprint.set_outline((0.0, 0.0, 0.0));
-            let builder =
-                WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);
-            let _ = &mut transient;
-            let _ = &builder;
+            // 原先取碰撞库bounds，再insert；缺资产失败不能留下伪蓝图。
+            let bounds = library.collision_record(key).bounds;
+            let width = match info.rank() { 1 => 0.72, 2 => 1.2, _ => 1.54 };
+            let blueprint = blueprints.insert_for(modified, DecoratorStorageAddr::Wall(wall_id), info.state());
+            let roof_coord = f32::from_bits(info.dst_as_roof().dst_wall as u32);
+            let wall = walls.get_unchecked(wall_id).expect("called `Option::unwrap()` on a `None` value");
+            let index = usize::from(info.rank().wrapping_sub(1));
+            // 原在这项分支对非法rank跳过后续生成；资源库required失败仍先发生。
+            if index >= 3 { continue; }
+            let pose = Transform { rotation: transform.rotation, translation: transform.translation,
+                scale: transform.scale };
+            let color = ColorId(info.u28); let semi = info.state() != 0;
+            let mut frame = window_builder(id, pose, FRAME_NAMES[index],
+                if color.0 == 999 { "nani_solid_vertex_color_bricks" } else { "nani_solid_vertex_color_window" },
+                Some(color), semi);
+            // 原屋顶窗的起点就是roof coord，不套墙窗的u±width/2。
+            let mut brick = [0u8; 24];
+            for (slot, word) in brick[..20].chunks_exact_mut(4).zip([
+                info.decorator_id, wall_id.0 as u32, roof_coord.to_bits(),
+                (width + roof_coord).to_bits(), width.to_bits(),
+            ]) { slot.copy_from_slice(&word.to_le_bytes()); }
+            brick[20] = u8::from(wall.authority.style() >= 2);
+            frame.brick_color = Some(brick);
+            blueprint.visual_entities.push(frame);
+            blueprint.set_positioned_colliders(library.collision_record(key).mesh.clone(),
+                library.interaction_record(key).mesh.clone(), &transform.translation, &transform.rotation);
+            blueprint.set_cached_transform(transform);
+            let mut glass = window_builder(id, pose, GLASS_NAMES[index],
+                "nani_solid_vertex_color_window_glass", Some(ColorId(info.window_extra().0)), semi);
+            glass.window_light = Some(u64::from(info.rank()) * 1000 + u64::from(modified));
+            glass.albedo_map = Some(NameHash::compute("window_glass").0);
+            blueprint.visual_entities.push(glass);
+            blueprint.dormer_holes.push(gothic_hole(wall_id.0 as u32, transform, bounds, info.rank()));
         }
     }
+}
+
+/// 原1407c6af0..6cec：截面竖直中心与正面法线；bounds自身XZ中心不参与孔位置。
+fn gothic_hole(wall: u32, transform: CachedDecoratorTransform,
+    bounds: utils::geometry::Rectangle3d, rank: u8) -> DormerHoleSsbo {
+    let normal = transform.rotation * Vec3::Z;
+    let extent = bounds.extent();
+    let middle = (bounds.bottom + bounds.top) * 0.5;
+    let point = Vec3::new(
+        (transform.translation.x + middle * 0.0) + normal.x * extent.z * -0.5 + normal.x * 0.05,
+        transform.translation.y + middle,
+        (transform.translation.z + middle * 0.0) + normal.z * extent.z * -0.5 + normal.z * 0.05,
+    );
+    let curvature = match rank { 1 | 2 => f32::from_bits(0x3f1e_f9db),
+        3 => f32::from_bits(0x3f0f_9db2), _ => panic!("gothic dormer rank") };
+    DormerHoleSsbo::gothic(wall, point, extent, [normal.x, normal.z, 1.04, curvature])
 }
 
 #[cfg(test)]
@@ -134,5 +171,34 @@ mod tests {
     #[should_panic]
     fn unexpected_rank_panics() {
         let _ = gothic_dormer_profile_curve(4);
+    }
+}
+
+#[cfg(test)]
+mod native_hole_tests {
+    use super::*;
+    #[test]
+    fn original_hole_words_preserve_rank_rotation_and_all_twelve_words() {
+        // 原B完整孔写面9组输入，不只是比较构造器或默认轴向孔。
+        let rows: &[(u8, [u32; 4], [u32; 12])] = &[
+        (1, [0, 0, 0, 1065353216], [1074790400, 1071015526, 3228775219, 7, 1061997773, 1066192077, 1060320051, 0, 0, 1065353216, 1065688760, 1058994651]),
+        (1, [0, 1058642330, 0, 1061997773], [1073423057, 1071015526, 3227869250, 7, 1061997773, 1066192077, 1060320051, 0, 1064682128, 1049582634, 1065688760, 1058994651]),
+        (1, [1058642330, 0, 0, 1061997773], [1074790400, 1071015526, 3227869250, 7, 1061997773, 1066192077, 1060320051, 0, 0, 1049582634, 1065688760, 1058994651]),
+        (2, [0, 0, 0, 1065353216], [1074790400, 1071015526, 3228775219, 7, 1061997773, 1066192077, 1060320051, 0, 0, 1065353216, 1065688760, 1058994651]),
+        (2, [0, 1058642330, 0, 1061997773], [1073423057, 1071015526, 3227869250, 7, 1061997773, 1066192077, 1060320051, 0, 1064682128, 1049582634, 1065688760, 1058994651]),
+        (2, [1058642330, 0, 0, 1061997773], [1074790400, 1071015526, 3227869250, 7, 1061997773, 1066192077, 1060320051, 0, 0, 1049582634, 1065688760, 1058994651]),
+        (3, [0, 0, 0, 1065353216], [1074790400, 1071015526, 3228775219, 7, 1061997773, 1066192077, 1060320051, 0, 0, 1065353216, 1065688760, 1057988018]),
+        (3, [0, 1058642330, 0, 1061997773], [1073423057, 1071015526, 3227869250, 7, 1061997773, 1066192077, 1060320051, 0, 1064682128, 1049582634, 1065688760, 1057988018]),
+        (3, [1058642330, 0, 0, 1061997773], [1074790400, 1071015526, 3227869250, 7, 1061997773, 1066192077, 1060320051, 0, 0, 1049582634, 1065688760, 1057988018]),
+        ];
+        for &(rank, rotation, expected) in rows {
+            let rotation = glam::Quat::from_array(rotation.map(f32::from_bits));
+            let transform = CachedDecoratorTransform { rotation,
+                translation: Vec3::new(2.25, 1.125, -3.5), scale: Vec3::ONE };
+            let bounds = utils::geometry::Rectangle3d { footprint: utils::geometry::Rectangle2d {
+                axis: Vec2::X, center: Vec2::new(0.2, -0.3), size: Vec2::new(0.8, 0.7) },
+                bottom: 0.0, top: 1.1 };
+            assert_eq!(gothic_hole(7, transform, bounds, rank).0, expected);
+        }
     }
 }

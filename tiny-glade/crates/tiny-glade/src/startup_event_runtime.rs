@@ -18,6 +18,12 @@ pub(super) fn install(app: &mut App) {
     // res::walls::public_walls
     app.add_event::<res::walls::public_walls::OnWallChanged>();
     app.add_event::<res::walls::public_walls::OnWallDeleted>();
+    // 原墙构造与半木重建通道必须先注册维护，再进入World资源兼容入口。
+    app.add_event::<res::walls::plaster::RecalculatePlasterCmd>();
+    app.add_event::<res::walls::plaster::RecalculateHalfTimberMeshCmd>();
+    app.add_event::<res::walls::plaster::RecalculateWoodenTurretCmd>();
+    app.add_event::<system_wall_constructor::construct_elevation_supports::RecalculateRectangleSupports>();
+    app.add_event::<system_wall_constructor::construct_elevation_supports::RecalculateCircleSupports>();
     // sys::wall::calc_wall_bend
     app.add_event::<sys::wall::calc_wall_bend::WallBendChangedEvent>();
     // sys::wall::construct_wall_bricks
@@ -56,11 +62,16 @@ pub(super) fn install(app: &mut App) {
     // sys::wall::shapes
     app.add_event::<sys::wall::shapes::CreateCircleCmd>();
     app.add_event::<sys::wall::shapes::CreateRectangleCmd>();
-    app.add_event::<sys::wall::shapes::EditCircleCmd>();
     app.add_event::<sys::wall::shapes::EditRectangleCmd>();
-    app.add_event::<sys::wall::shapes::FinishEditCircleCmd>();
     app.add_event::<sys::wall::shapes::FinishEditRectangleCmd>();
-    app.add_event::<sys::wall::shapes::RotateCircleCmd>();
+    app.add_event::<sys::wall::shapes::rectangle::OnRectangleEdited>();
+    app.add_event::<sys::wall::shapes::rectangle::ui_edit_rectangle_dims::DoUiEditRectangleDims>();
+    app.add_event::<sys::wall::shapes::rectangle::ui_edit_rectangle_orientation::DoUiEditRectangleRotate>();
+    app.add_event::<sys::ui_move_freehand_walls::OnShapeMoved>();
+    app.add_event::<sys::ui_edit_freehand_walls::OnFreehandWallEdited>();
+    app.add_event::<res::events::ReanchorDecorators>();
+    app.add_event::<res::events::OnCircleRotated>();
+    app.add_event::<res::events::LightLanternCmd>();
     // sys::wall::history_recording
     app.add_event::<sys::wall::history_recording::RecordWallHistory>();
     app.add_event::<sys::wall::history_recording::RecordColorHistory>();
@@ -82,6 +93,9 @@ pub(super) fn install(app: &mut App) {
     app.add_event::<res::glade_border::NotInDemoHint>();
     // res::onboarding
     app.add_event::<res::onboarding::NotifyHintSystemToolWasJustUsed>();
+    // 原墙擦除器的writer必须在World兼容初始化之前接入App事件维护。
+    app.add_event::<res::onboarding::NotifyHintSystemSomethingWasErased>();
+    app.add_event::<sys::ivy::ivy_pruner::RemoveIvyCmd>();
     // sys::history::history_process
     app.add_event::<sys::history::history_process::DebugHistoryMsg>();
     // res::roofs::commands
@@ -141,4 +155,29 @@ pub(super) fn install(app: &mut App) {
     // res::session
     app.add_event::<res::session::NewSessionStartedCmd>();
     app.add_event::<res::session::SessionLoadedCmd>();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy_ecs::event::Events;
+    use res::walls::{WallId, plaster::{RecalculatePlasterCmd,
+        RecalculateHalfTimberMeshCmd, RecalculateWoodenTurretCmd}};
+
+    #[test]
+    fn m6_rebuild_events_are_maintained_before_world_compatibility_initialization() {
+        let mut app = App::new();
+        // 与build_game保持同一顺序；后面的add_event不能修复已被裸init占用的通道。
+        crate::run_game::register_gameplay_events(&mut app);
+        sys::wall::registration::register_wall_cpu_resources(app.world_mut());
+        crate::app_systems::WallSystems::add_wall_events(&mut app);
+        let wall = WallId(7);
+        app.world_mut().send_event(RecalculatePlasterCmd(wall));
+        app.world_mut().send_event(RecalculateHalfTimberMeshCmd { wall, instances: vec![] });
+        app.world_mut().send_event(RecalculateWoodenTurretCmd { wall, instances: vec![] });
+        for _ in 0..3 { app.update(); }
+        assert!(app.world().resource::<Events<RecalculatePlasterCmd>>().is_empty());
+        assert!(app.world().resource::<Events<RecalculateHalfTimberMeshCmd>>().is_empty());
+        assert!(app.world().resource::<Events<RecalculateWoodenTurretCmd>>().is_empty());
+    }
 }

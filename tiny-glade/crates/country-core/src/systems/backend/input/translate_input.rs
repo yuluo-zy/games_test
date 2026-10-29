@@ -35,7 +35,9 @@ pub struct SteamInputActive {
     pub on_deck: bool,
 }
 
-/// Demo 门（O：全局字节 `0x143634cd8` = demo 开关；为 1 时额外启用演示模式的硬编码键）。
+/// 原core::_DEV_OVERRIDE_IS_DEMO_MODE@143634d90的现代唯一ECS owner。
+/// main1403dcf78从GameConfig.dev.demo写入；与143634cd8的开发者热键门独立。
+/// 旧名保留兼容现消费者，core根目录提供同TypeId语义再导出，不能拿它启用开发者键。
 #[derive(Resource, Clone, Copy, Debug, Default)]
 pub struct DemoModeEnabled(pub bool);
 
@@ -342,7 +344,6 @@ pub fn translate_input(
     mut values: ResMut<ActionSetValues>,
     mut mode_tracker: ResMut<ActiveInputModeTracker>,
     steam: Res<SteamInputActive>,
-    demo: Res<DemoModeEnabled>,
     mut mouse_moved: Local<MouseMoved>,
     mut wheel: EventReader<MouseWheel>,
     mut cursor_delta: EventReader<InputCursorDelta>,
@@ -440,9 +441,9 @@ pub fn translate_input(
         }
     }
 
-    // Demo 门硬编码键（O：全局 0x143634cd8 != 0，行 730..776；0xa6 经机器码核验
+    // 开发者热键门（原143634cd8，独立于demo的143634d90）；0xa6经机器码核验
     // `setne`——`pressed(0xab) && pressed(0x3d)`）。
-    if demo.0 {
+    if crate::game_config::developer_hotkeys_enabled() {
         if key_pressed(&keyboard, 0x35) && key_pressed(&keyboard, 0x3d) {
             values.current.digital[26] = true; // clear_canvas
         }
@@ -514,7 +515,14 @@ mod tests {
         let mut schedule = Schedule::default();
         schedule.add_systems((reset_input_state, translate_input).chain());
         let mut compared = 0;
-        for (tag, flag, slot, key, modifier, demo, history, expected) in rows {
+        // 旧fixture变量demo实际是原cd8热键门；原向量不变，只纠正宿主接线。
+        let original_hotkeys = crate::game_config::developer_hotkeys_enabled();
+        struct RestoreHotkeys(bool);
+        impl Drop for RestoreHotkeys {
+            fn drop(&mut self) { crate::game_config::set_developer_hotkeys_enabled(self.0); }
+        }
+        let _restore_hotkeys = RestoreHotkeys(original_hotkeys);
+        for (tag, flag, slot, key, modifier, hotkeys, history, expected) in rows {
             // 原已按用户要求删除的页面tag6/9不再进入生产枚举；原证保留这些样本。
             let menu = match tag {
                 0 => EscMenuState::Load(LoadMenuState::default()),
@@ -533,7 +541,7 @@ mod tests {
                 _ => unreachable!(),
             };
             world.insert_resource(menu);
-            world.resource_mut::<DemoModeEnabled>().0 = demo;
+            crate::game_config::set_developer_hotkeys_enabled(hotkeys);
             let mut profile = world.resource_mut::<GameProfile>();
             profile.key_bindings.bindings = [None; 37];
             profile.key_bindings.mouse = [None; 3];
@@ -564,7 +572,7 @@ mod tests {
                 .fold(0u64, |bits, (i, v)| bits | (u64::from(*v) << i));
             assert_eq!(
                 actual, expected,
-                "原菜单门tag={tag} flag={flag} slot={slot} key={key} modifier={modifier} demo={demo} history={history}"
+                "原菜单门tag={tag} flag={flag} slot={slot} key={key} modifier={modifier} hotkeys={hotkeys} history={history}"
             );
             compared += 1;
         }

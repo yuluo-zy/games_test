@@ -377,6 +377,22 @@ impl PublicWallState {
 mod initialization_tests {
     use super::*;
     #[test]
+    fn m6_support_height_projection_keeps_original_clamped_source_height() {
+        use crate::resources::roofs::geometry::surface::Curve2;
+        let curve = Curve2::try_new(vec![[0., 0.], [4., 0.]], false).unwrap();
+        let terrain = TerrainHeightGrid512 {
+            encoded: vec![0; 512 * 512].into(), minimum_y: 0., maximum_y: 0., sampling_fix: false,
+        };
+        // 原140a8d8ae/8b3在选择上/下界之后夹取source+54；不能只复制上界。
+        for (flag, height, expected) in [(0, 0.25, 0.5f32), (0, 2., 2.),
+            (0, 20., 14.), (1, 0.1, 0.3), (1, 1.75, 1.75),
+            (1, 20., 2.5), (255, 20., 2.5)] {
+            let wall = PublicWallState::collect(&WallState::new(curve.clone(), height, 0, flag, false), &terrain).unwrap();
+            assert_eq!(wall.building_projection().float_0x284().to_bits(), expected.to_bits(),
+                "source flag={flag}, height={height}");
+        }
+    }
+    #[test]
     fn no_roof_gable_maximum_has_explicit_ready_reset_lifecycle() {
         use crate::resources::roofs::geometry::surface::Curve2;
         use std::sync::Arc;

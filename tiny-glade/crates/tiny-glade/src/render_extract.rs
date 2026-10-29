@@ -100,17 +100,19 @@ fn write_backs(set: &mut RenderExchange) {
     let consumed = std::sync::Arc::new(parking_lot::Mutex::new(None));
     let at_extract = consumed.clone();
     set.extract.add(move |game, render, _| {
+        let session = crate::gpu_readback::TerrainReadbackSession::capture(game);
+        render.insert_resource(session);
         *at_extract.lock() = game.get_resource_change_ticks::<ScheduledTerrainReadback>().map(|ticks| {
             let pending = render.get_resource::<ScheduledTerrainReadback>()
                 .map_or(0, |readback| readback.pending.load(std::sync::atomic::Ordering::Acquire));
-            (game.id(), ticks.added, ticks.changed, pending)
+            (game.id(), ticks.added, pending, session)
         });
     });
     set.write_back.add(move |render, at, out| {
         let Some(readback) = render.get_resource::<ScheduledTerrainReadback>() else {
             return;
         };
-        let Some((source, added, changed, before)) = *consumed.lock() else { return; };
+        let Some((source, added, before, session)) = *consumed.lock() else { return; };
         if !render.get_resource_change_ticks::<ScheduledTerrainReadback>().is_some_and(|ticks|
             ticks.changed.is_newer_than(at.render, render.read_change_tick())) { return; }
         let taken = before.saturating_sub(readback.pending.load(std::sync::atomic::Ordering::Acquire));
@@ -120,18 +122,19 @@ fn write_backs(set: &mut RenderExchange) {
         }
         out.push(Box::new(move |game: &mut bevy_ecs::world::World| {
             if game.id() != source { return; }
+            if crate::gpu_readback::TerrainReadbackSession::capture(game) != session { return; }
             let Some(ticks) = game.get_resource_change_ticks::<ScheduledTerrainReadback>() else { return; };
             if ticks.added != added { return; }
-            let merge_flags = ticks.changed == changed;
+            if issued { game.insert_resource(country_core::render::gpu_readback::TerrainCopyEpoch(session)); }
             if let Some(mut readback) = game.get_resource_mut::<ScheduledTerrainReadback>() {
                 // Requests can arrive through shared references during render.
                 // Subtract only this frame's consumption without losing increments.
                 let _ = readback.pending.fetch_update(std::sync::atomic::Ordering::AcqRel,
                     std::sync::atomic::Ordering::Acquire, |pending| Some(pending.saturating_sub(taken)));
-                if merge_flags {
-                    readback.copy_issued |= issued;
-                    readback.changed_tick = tick;
-                }
+                // CPU延迟系统每帧取走copy_issued，也会改变changed tick。
+                // 同一实例的新提交确认必须OR合并；会话/World/added共同隔离Reload。
+                readback.copy_issued |= issued;
+                readback.changed_tick = tick;
             }
         }));
     });
@@ -368,6 +371,100 @@ mod tests {
         assert_eq!(readback.pending.load(Ordering::Acquire), 1);
         assert!(readback.copy_issued);
         assert_eq!(readback.changed_tick, 18);
+    }
+
+    #[test]
+    fn terrain_copy_ack_survives_the_live_cpu_delay_system_running_before_feedback() {
+        use country_core::{
+            asset_libraries::ssbo_library::AssetSsboLibrary,
+            render::gpu_readback::GpuReadbacks,
+            render::ssbo::{MappedStorageBuffer, rhapsody_boundary::Buffer},
+            resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData, VisualTerrainHeightSsbo},
+            systems::terrain::delayed_terrain_changed_msg::{delayed_terrain_changed_msg, OnTerrainChange},
+        };
+        use bevy_ecs::prelude::*;
+
+        let mut game = World::new();
+        let mut render = World::new();
+        game.init_resource::<ScheduledTerrainReadback>();
+        game.insert_resource(AssetSsboLibrary::new());
+        // 回归用真实类型化注册表和完成副本；空mapping刻意禁止从GPU在途页读取。
+        game.resource::<AssetSsboLibrary>().register::<TerrainHeightSsbo>(MappedStorageBuffer::from_mapping(
+            &mut [], Buffer { id: 81, generation: 1, byte_size: 0x80000, ..Default::default() },
+        ));
+        game.resource::<AssetSsboLibrary>().register::<VisualTerrainHeightSsbo>(MappedStorageBuffer::from_mapping(
+            &mut [], Buffer { id: 82, generation: 1, byte_size: 0x80000, ..Default::default() },
+        ));
+        game.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
+        game.insert_resource(TerrainHeightsData::<VisualTerrainHeightSsbo>::new());
+        game.init_resource::<Events<OnTerrainChange>>();
+        game.init_resource::<GpuReadbacks>();
+        game.resource::<ScheduledTerrainReadback>().on_terrain_modified();
+        let mut exchange = production_exchange();
+        exchange.extract.run(&mut game, &mut render);
+        render.resource_mut::<ScheduledTerrainReadback>().on_gpu_copy_issued(29);
+        let mut out = Vec::new();
+        exchange.write_back.run_submitted(&mut render, &mut out);
+
+        // 真实游戏线程在渲染反馈到达前继续执行。该系统每帧取走copy_issued，
+        // 会改变资源tick；这不应把同一资源实例尚未到达的提交确认作废。
+        game.increment_change_tick();
+        let mut cpu = Schedule::default();
+        cpu.add_systems(delayed_terrain_changed_msg);
+        cpu.run(&mut game);
+        game.resource::<ScheduledTerrainReadback>().on_terrain_modified();
+        for apply in out { apply(&mut game); }
+        let readback = game.resource::<ScheduledTerrainReadback>();
+        assert_eq!(readback.pending.load(Ordering::Acquire), 1);
+        assert!(readback.copy_issued, "running the CPU delay system lost the submitted GPU copy acknowledgment");
+        assert_eq!(readback.changed_tick, 29);
+        {
+            let mut readbacks = game.resource_mut::<GpuReadbacks>();
+            readbacks.note_submitted(31);
+            readbacks.publish_slice(&vec![TerrainHeightSsbo(0x000a_0009); 0x20000], 31);
+            readbacks.publish_slice(&vec![VisualTerrainHeightSsbo(0x000e_000d); 0x20000], 31);
+        }
+        for _ in 0..2 {
+            cpu.run(&mut game);
+            assert!(game.resource::<Events<OnTerrainChange>>().is_empty());
+        }
+        cpu.run(&mut game);
+        assert_eq!(game.resource::<Events<OnTerrainChange>>().len(), 1);
+        assert_eq!(&game.resource::<TerrainHeightsData<TerrainHeightSsbo>>().heights()[..2], &[9, 10]);
+        assert_eq!(&game.resource::<TerrainHeightsData<VisualTerrainHeightSsbo>>().heights()[..2], &[13, 14]);
+    }
+
+    #[test]
+    fn terrain_feedback_rejects_previous_session_without_replacing_its_request_owner() {
+        use country_core::resources::session::{ActiveSession, SessionId, SessionMeta};
+        use country_core::systems::render_loop::compute_passes::read_terrain_data::ScheduledTerrainReadback;
+        use std::sync::atomic::Ordering;
+        let mut game = World::new();
+        let mut render = World::new();
+        game.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
+        game.init_resource::<ScheduledTerrainReadback>();
+        let added = game.get_resource_change_ticks::<ScheduledTerrainReadback>().unwrap().added;
+        game.resource::<ScheduledTerrainReadback>().on_terrain_modified();
+        let mut exchange = production_exchange();
+        exchange.extract.run(&mut game, &mut render);
+        render.resource_mut::<ScheduledTerrainReadback>().on_gpu_copy_issued(19);
+        let mut old = Vec::new();
+        exchange.write_back.run_submitted(&mut render, &mut old);
+        game.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
+        game.resource::<ScheduledTerrainReadback>().on_terrain_modified();
+        assert_eq!(game.get_resource_change_ticks::<ScheduledTerrainReadback>().unwrap().added, added);
+        for apply in old { apply(&mut game); }
+        assert_eq!(game.resource::<ScheduledTerrainReadback>().pending.load(Ordering::Acquire), 2);
+        assert!(!game.resource::<ScheduledTerrainReadback>().copy_issued);
+        // 新会话的有效确认必须继续消费，而不是一概拒绝反馈。
+        exchange.extract.run(&mut game, &mut render);
+        assert_eq!(crate::gpu_readback::terrain_session(&render).session, Some(game.resource::<ActiveSession>().id));
+        render.resource_mut::<ScheduledTerrainReadback>().on_gpu_copy_issued(20);
+        let mut current = Vec::new();
+        exchange.write_back.run_submitted(&mut render, &mut current);
+        for apply in current { apply(&mut game); }
+        assert_eq!(game.resource::<ScheduledTerrainReadback>().pending.load(Ordering::Acquire), 0);
+        assert!(game.resource::<ScheduledTerrainReadback>().copy_issued);
     }
 
     #[test]

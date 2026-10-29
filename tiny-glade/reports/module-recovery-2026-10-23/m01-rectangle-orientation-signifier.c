@@ -1,0 +1,194 @@
+country_core::systems::wall::shapes::rectangle::ui_modes::edit_orientation::impl$0::to_widget_name_hash :: systems/wall/shapes/rectangle/ui_modes/edit_orientation.rs
+/* WARNING: Globals starting with '_' overlap smaller symbols at the same address */
+void FUN_14083da10(longlong param_1,undefined4 param_2,undefined8 param_3)
+{
+  longlong lVar1;
+  undefined8 uVar2;
+  code *pcVar3;
+  uint uVar4;
+  uint uVar5;
+  uint uVar6;
+  undefined4 uVar7;
+  longlong lVar8;
+  undefined8 *puVar9;
+  longlong lVar10;
+  longlong *in_RDX;
+  undefined8 uVar11;
+  undefined4 uVar12;
+  undefined4 uVar13;
+  undefined1 auStack_194 [12];
+  longlong lStack_188;
+  code *pcStack_180;
+  undefined8 **ppuStack_178;
+  code *pcStack_170;
+  undefined4 *puStack_168;
+  code *pcStack_160;
+  undefined1 auStack_154 [12];
+  longlong lStack_148;
+  undefined8 uStack_140;
+  longlong lStack_138;
+  undefined8 uStack_130;
+  uint auStack_128 [2];
+  undefined8 uStack_120;
+  undefined8 uStack_118;
+  undefined1 uStack_110;
+  undefined *puStack_108;
+  undefined8 uStack_100;
+  longlong lStack_f8;
+  undefined8 uStack_f0;
+  undefined8 *puStack_e4;
+  undefined4 uStack_dc;
+  undefined8 *puStack_d8;
+  longlong lStack_d0;
+  undefined8 *puStack_c8;
+  undefined4 uStack_c0;
+  undefined8 uStack_b8;
+  undefined *puStack_b0;
+  longlong *plStack_a8;
+  undefined8 *puStack_a0;
+  undefined *puStack_98;
+  undefined8 uStack_88;
+  longlong lStack_80;
+  undefined4 uStack_74;
+  undefined8 uStack_70;
+  
+  uStack_70 = 0xfffffffffffffffe;
+  uStack_130 = param_3;
+  lStack_d0 = param_1;
+  if (*(char *)(param_1 + 0x2c) == '\0') {
+    lVar8 = *in_RDX;
+    if (*(char *)(lVar8 + 0x18) == '\0') {
+      return;
+    }
+    if (*(longlong *)(lVar8 + 0x38) != in_RDX[1]) {
+      return;
+    }
+    if (*(int *)(lVar8 + 0x28) == 2) {
+      return;
+    }
+    uVar12 = *(undefined4 *)(lVar8 + 0x50);
+    uVar11 = *(undefined8 *)(param_1 + 0x20);
+    uVar13 = FUN_140c99600(param_1 + 8,uVar11);
+    uStack_b8 = (undefined8 *)CONCAT44(param_2,uVar13);
+    func_0x000140c9cde0(&puStack_e4,&uStack_b8,uVar12);
+    auStack_128[0] = FUN_140c9a140(param_1 + 8,uVar11);
+    auStack_128[1] = param_2;
+    func_0x000140c9cdc0(auStack_194,auStack_128);
+    FUN_140c90a40(auStack_128,auStack_194);
+    uVar12 = (undefined4)uStack_120;
+    uVar13 = uStack_120._4_4_;
+    uStack_74 = _UNK_142925908;
+    goto code_r0x00014083db58;
+  }
+  uVar11 = *(undefined8 *)(param_1 + 0x20);
+  uVar12 = FUN_140c99600(param_1 + 8,uVar11);
+  uStack_b8 = (undefined8 *)CONCAT44(param_2,uVar12);
+  func_0x000140c9cde0(&puStack_e4,&uStack_b8,*(float *)(param_1 + 0x28) + _UNK_142925984);
+  auStack_128[0] = FUN_140c9a140(param_1 + 8,uVar11);
+  auStack_128[1] = param_2;
+  func_0x000140c9cdc0(auStack_154,auStack_128);
+  lVar8 = *in_RDX;
+  uStack_74 = _UNK_142a88850;
+  if (*(char *)(lVar8 + 0x18) == '\x01') {
+    if ((*(longlong *)(lVar8 + 0x38) == in_RDX[1]) && (*(char *)(lVar8 + 0x19) != '\0')) {
+code_r0x00014083db3b:
+      uStack_74 = _UNK_142a92ec0;
+    }
+  }
+  else if (((*(char *)(lVar8 + 0x18) != '\0') && (*(longlong *)(lVar8 + 0x38) == in_RDX[1])) &&
+          (*(char *)(lVar8 + 0x19) != '\x02')) goto code_r0x00014083db3b;
+  FUN_140c90a40(auStack_128,auStack_154);
+  uVar12 = (undefined4)uStack_120;
+  uVar13 = uStack_120._4_4_;
+code_r0x00014083db58:
+  uVar6 = auStack_128[1];
+  uVar5 = auStack_128[0];
+  uStack_c0 = uStack_dc;
+  puStack_c8 = puStack_e4;
+  auStack_128[0] = auStack_128[0] & 0xffffff00;
+  uStack_120 = &UNK_142a93950;
+  uStack_118 = 0xc;
+  uStack_110 = 1;
+  puStack_108 = &UNK_142a9395c;
+  uStack_100 = 0x14;
+  uStack_f0 = 2;
+  lVar8 = 0;
+  while( true ) {
+    if (lVar8 == 2) {
+      return;
+    }
+    lVar1 = lVar8 + 1;
+    uVar4 = auStack_128[lVar8 * 6];
+    if ((char)uVar4 == '\x02') {
+      return;
+    }
+    uVar11 = (&uStack_120)[lVar8 * 3];
+    uVar2 = (&uStack_118)[lVar8 * 3];
+    lStack_188 = lStack_d0;
+    pcStack_180 = FUN_14083eab0;
+    ppuStack_178 = &puStack_c8;
+    pcStack_170 = FUN_140d4ba00;
+    puStack_168 = &uStack_74;
+    pcStack_160 = FUN_140d8c910;
+    uStack_b8 = (undefined8 *)&UNK_142a93988;
+    puStack_b0 = (undefined *)0x3;
+    plStack_a8 = &lStack_188;
+    puStack_a0 = (undefined8 *)0x3;
+    puStack_98 = (undefined *)0x0;
+    lStack_f8 = lVar1;
+    FUN_140d79f90(&lStack_148,&uStack_b8);
+    uVar7 = uStack_74;
+    lVar8 = lStack_138;
+    lStack_80 = lStack_148;
+    uStack_88 = uStack_140;
+    uStack_b8 = puStack_c8;
+    puStack_b0 = (undefined *)CONCAT44(puStack_b0._4_4_,uStack_c0);
+    puVar9 = (undefined8 *)func_0x000140613c10(0x50,0x10);
+    if (puVar9 == (undefined8 *)0x0) {
+      FUN_1428d9000(0x10,0x50);
+      goto code_r0x00014083de6f;
+    }
+    *puVar9 = 1;
+    puVar9[1] = 1;
+    puVar9[2] = uVar11;
+    puVar9[3] = uVar2;
+    *(uint *)(puVar9 + 4) = uVar5;
+    *(uint *)((longlong)puVar9 + 0x24) = uVar6;
+    *(undefined4 *)(puVar9 + 5) = uVar12;
+    *(undefined4 *)((longlong)puVar9 + 0x2c) = uVar13;
+    *(undefined4 *)(puVar9 + 6) = uVar7;
+    *(undefined8 **)((longlong)puVar9 + 0x34) = uStack_b8;
+    *(undefined4 *)((longlong)puVar9 + 0x3c) = puStack_b0._0_4_;
+    *(char *)(puVar9 + 8) = (char)uVar4;
+    puStack_b0 = &UNK_142a939b8;
+    puStack_d8 = puVar9;
+    uStack_b8 = puVar9;
+    if (lVar8 < 0) break;
+    if (lVar8 == 0) {
+      lVar10 = 1;
+    }
+    else {
+      uVar11 = 1;
+      lVar10 = func_0x000140613c10(lVar8,1);
+      if (lVar10 == 0) goto code_r0x00014083de5d;
+    }
+    func_0x000142923c00(lVar10,uStack_88,lVar8);
+    uStack_b8 = (undefined8 *)lVar8;
+    plStack_a8 = (longlong *)lVar8;
+    puStack_a0 = puStack_d8;
+    puStack_98 = &UNK_142a939b8;
+    puStack_b0 = (undefined *)lVar10;
+    FUN_14146c880(uStack_130,&uStack_b8);
+    lVar8 = lVar1;
+    if (lStack_80 != 0) {
+      func_0x000140613c20(uStack_88,lStack_80,1);
+    }
+  }
+  uVar11 = 0;
+code_r0x00014083de5d:
+  FUN_1428d8fe3(uVar11,lVar8,&UNK_142a98f20);
+code_r0x00014083de6f:
+                    /* WARNING: Does not return */
+  pcVar3 = (code *)invalidInstructionException();
+  (*pcVar3)();
+}

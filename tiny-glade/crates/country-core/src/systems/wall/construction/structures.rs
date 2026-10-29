@@ -706,6 +706,18 @@ pub fn construct_lintel_supports(
     wall_id: u64,
     third: &mut [f32],
 ) -> Result<Vec<WallWoodenPlankInstance64B>, WallStructuresError> {
+    construct_lintel_supports_with_segments(input, public_284, public_288, wall_id, third).map(|(instances, _)| instances)
+}
+
+/// 同一原14076d9f0拥有型结果：上层必须保留替换高度后的104B段，供碰撞consumer读取。
+/// 旧入口委派此实现，避免上层重复materialize或另建近似段。
+pub fn construct_lintel_supports_with_segments(
+    input: WallSegmentSource<'_>,
+    public_284: f32,
+    public_288: f32,
+    wall_id: u64,
+    third: &mut [f32],
+) -> Result<(Vec<WallWoodenPlankInstance64B>, Vec<MaterializedWallSegment>), WallStructuresError> {
     let mut segments = materialize_wall_segments(input)?;
     let mut output = Vec::new();
     for (index, s) in segments.iter_mut().enumerate() {
@@ -720,5 +732,94 @@ pub fn construct_lintel_supports(
         s.heights = source.heights;
     }
     accumulate_lintel_third_heights(&segments, third)?;
-    Ok(output)
+    Ok((output, segments))
+}
+
+#[cfg(test)]
+mod native_retained_lintel_tests {
+    use super::*;
+    #[test]
+    fn original_lintel_height_replacement_retains_all_segment_vectors_and_existing_outputs() {
+        let report: serde_json::Value = serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../reports/module-recovery-2026-10-23/m01-lintel-retained-native.json"))).unwrap();
+        assert_eq!(report["binary_sha256"], "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03");
+        let rows = report["rows"].as_array().unwrap(); assert_eq!(rows.len(),98);
+        let mut total_segments = 0; let mut total_planks = 0;
+        for (case, row) in rows.iter().enumerate() {
+            let input = &row["input"]; let source = &input["source"];
+            let f = |v: &serde_json::Value| v.as_f64().unwrap() as f32;
+            let values = |key: &str| source[key].as_array().unwrap().iter().map(f).collect::<Vec<_>>();
+            let mask = WallPathSegmentationMask {
+                flags: source["flags"].as_array().unwrap().iter().map(|v|v.as_u64().unwrap() as u8).collect(),
+                coords: source["coords"].as_array().unwrap().iter().map(|c| crate::systems::wall::construction::segmentation::ThresholdedCurveCoord { point_index: c[0].as_u64().unwrap() as u32, fraction: f(&c[1]) }).collect(),
+                range: WallLoopRange { start: source["loop_range"][0].as_i64().unwrap() as i32, end: source["loop_range"][1].as_i64().unwrap() as i32, modulus: source["loop_range"][2].as_i64().unwrap() as i32 },
+                length: 0.0,
+                pillar_proposals: Vec::new(), pillar_scores: Vec::new(), pillar_keys: Vec::new(),
+            };
+            let segment_values = values("segment_values"); let arch_heights = values("arch"); let us = values("us");
+            let positions: Vec<[f32;3]> = source["points"].as_array().unwrap().iter().map(|p|std::array::from_fn(|i|f(&p[i]))).collect();
+            let raw = WallSegmentSource { mask: &mask, segment_values: &segment_values, arch_heights: &arch_heights, prepared_positions: &positions, prepared_u: &us, regular: source["regular"].as_bool().unwrap(), closed: source["closed"].as_bool().unwrap() };
+            let mut third: Vec<f32> = input["initial_third"].as_array().unwrap().iter().map(f).collect();
+            let (planks, segments) = construct_lintel_supports_with_segments(raw, f(&input["public_284"]), f(&input["public_288"]), input["wall_id"].as_u64().unwrap(), &mut third).unwrap();
+            let expected = row["segments"].as_array().unwrap(); assert_eq!(segments.len(), expected.len(), "原段数case{case}");
+            for (segment, expected) in segments.iter().zip(expected) {
+                let bits = |name: &str| expected[name].as_array().unwrap().iter().map(|v|v.as_u64().unwrap() as u32).collect::<Vec<_>>();
+                assert_eq!(segment.heights.iter().map(|v|v.to_bits()).collect::<Vec<_>>(),bits("heights"),"原改高段case{case}");
+                assert_eq!(segment.positions.iter().flatten().map(|v|v.to_bits()).collect::<Vec<_>>(),bits("positions"),"原ground段case{case}");
+                assert_eq!(segment.points_u.iter().map(|v|v.to_bits()).collect::<Vec<_>>(),bits("points_u"),"原u段case{case}");
+                assert_eq!(segment.source_indices, std::array::from_fn(|i|expected["source_indices"][i].as_u64().unwrap() as usize));
+                assert_eq!([segment.range.start, segment.range.end, segment.range.modulus], std::array::from_fn(|i|expected["range"][i].as_i64().unwrap() as i32));
+            }
+            assert_eq!(third.iter().map(|v|v.to_bits()).collect::<Vec<_>>(), row["third"].as_array().unwrap().iter().map(|v|v.as_u64().unwrap() as u32).collect::<Vec<_>>(), "原第三数组case{case}");
+            let expected_planks: Vec<Vec<u8>> = row["planks"].as_array().unwrap().iter().map(|v|v.as_str().unwrap().as_bytes().chunks_exact(2).map(|p|u8::from_str_radix(std::str::from_utf8(p).unwrap(),16).unwrap()).collect()).collect();
+            assert_eq!(planks.iter().map(|p|p.observed_bytes().to_vec()).collect::<Vec<_>>(), expected_planks, "原64B支持梁case{case}");
+            total_segments += segments.len(); total_planks += planks.len();
+        }
+        assert_eq!(total_segments, 304); assert_eq!(total_planks, 1052);
+    }
+    #[cfg(feature = "native-physics")]
+    #[test]
+    fn actual_retained_lintel_owner_enters_rapier_and_releases_replaced_and_disabled_meshes() {
+        use crate::resources::walls::{WallId, arches::LintelSegments};
+        use crate::systems::collision::world::{RaycastWorld, RaycastMeshData, RaycastGeoSource, construct_arch_geo, upsert_collider, remove_collider};
+        use bevy_ecs::world::World;
+        use std::{collections::HashMap, sync::{Arc, Weak}};
+        let positions = [[0.0,0.0,0.0],[1.0,0.1,0.0],[2.0,0.3,0.4],[3.0,0.2,1.0]];
+        let us = [0.0,1.0/3.0,2.0/3.0,1.0]; let values = [0.3,0.6,0.8,0.4]; let arch = [2.0;4];
+        let mask = WallPathSegmentationMask { flags: vec![8,0,0,8], coords: [(0,0.0),(1,0.0),(2,0.0),(2,1.0)].map(|(point_index,fraction)| crate::systems::wall::construction::segmentation::ThresholdedCurveCoord {point_index,fraction}).to_vec(), range: WallLoopRange {start:0,end:4,modulus:4}, length: 3.0, pillar_proposals: Vec::new(), pillar_scores: Vec::new(), pillar_keys: Vec::new() };
+        let mut world = World::new(); world.init_resource::<LintelSegments>(); world.insert_resource(RaycastWorld::new());
+        let id = WallId(818); let mut colliders = HashMap::new(); let mut previous: Option<Weak<RaycastMeshData>> = None;
+        let mut previous_hash = None;
+        for public_284 in [1.2,2.4] {
+            let mut third = [0.0;4];
+            let (_, segments) = construct_lintel_supports_with_segments(WallSegmentSource {mask:&mask, segment_values:&values, arch_heights:&arch, prepared_positions:&positions, prepared_u:&us, regular:true, closed:false}, public_284, 0.5, id.0, &mut third).unwrap();
+            assert!(!segments.is_empty());
+            world.resource_mut::<LintelSegments>().0.insert(id, segments);
+            let mut normals = Vec::new(); let mut triangles = Vec::new();
+            for segment in &world.resource::<LintelSegments>().0[&id] {construct_arch_geo(segment, &mut normals, &mut triangles);}
+            assert!(!triangles.is_empty());
+            let mesh = Arc::new(RaycastMeshData::new_unindexed(&triangles,&normals,None));
+            assert_eq!(mesh.vertices(), triangles.iter().flat_map(|t|t.points).collect::<Vec<_>>());
+            assert_eq!(mesh.normals(), normals.iter().flatten().copied().collect::<Vec<_>>());
+            assert!(mesh.uvs().is_empty());
+            if let Some(hash) = previous_hash {assert_ne!(mesh.hash,hash);}
+            previous_hash = Some(mesh.hash);
+            let weak = Arc::downgrade(&mesh);
+            let mut source = RaycastGeoSource::Slot9; source.0[8..16].copy_from_slice(&id.0.to_le_bytes());
+            upsert_collider(&mut world.resource_mut::<RaycastWorld>(), &mut colliders,id,source,mesh,Vec3::ZERO,glam::Quat::IDENTITY);
+            if let Some(old) = previous.replace(weak) {assert!(old.upgrade().is_none());}
+            let instance = colliders[&id];
+            assert!(world.resource_mut::<RaycastWorld>().get_rapier_collider(instance.slot,instance.collider).is_some());
+        }
+        // 上层真实writer的禁用分支以空Vec替换；consumer不创建空trimesh，按原分支移除活句柄。
+        world.resource_mut::<LintelSegments>().0.insert(id,Vec::new());
+        let mut normals = Vec::new(); let mut triangles = Vec::new();
+        for segment in &world.resource::<LintelSegments>().0[&id] {construct_arch_geo(segment,&mut normals,&mut triangles);}
+        assert!(normals.is_empty() && triangles.is_empty());
+        let instance = colliders[&id];
+        assert!(remove_collider(&mut world.resource_mut::<RaycastWorld>(),&mut colliders,&id).is_some());
+        assert!(colliders.is_empty());
+        assert!(world.resource_mut::<RaycastWorld>().get_rapier_collider(instance.slot,instance.collider).is_none());
+        assert!(previous.unwrap().upgrade().is_none());
+    }
+
 }

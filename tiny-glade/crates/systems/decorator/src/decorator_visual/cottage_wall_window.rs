@@ -134,7 +134,8 @@ fn wall_window_pose(info: &DecoratorInfo, width: f32, wall: &PublicWallState,
         .to_world_space(wall.simplified_curve_2d());
     let dx = second.x - first.x; let dz = second.z - first.z;
     let reciprocal = 1.0 / (dx * dx + dz * dz).sqrt();
-    Transform { rotation: utils::xz_rotation_bad(Vec2::new(-dz * reciprocal, dx * reciprocal)),
+    // 原1407eccd3调用Vec3的XZ投影专化，不能借用相近命名的Vec2入口。
+    Transform { rotation: utils::xz_projective_rotation_bad(Vec3::new(-dz * reciprocal, 0.0, dx * reciprocal)),
         translation: Vec3::new(second.x * 0.5 + first.x * 0.5, coord.y,
             second.z * 0.5 + first.z * 0.5), scale: Vec3::ONE }
 }
@@ -164,7 +165,10 @@ pub fn generate_cottage_wall_windows(derived: DerivedDecoratorInfoResources,
     _signifiers: Res<UiSignifierStream>) {
     let view = derived.as_view();
     for (wall_id, decorators) in storage.iter_walls() {
-        for (modified, info) in decorators.iter_modified() {
+        for &modified in &decorators.modified_ids {
+            // 原iter_modified::next在同桶required查表；失配先于subtype筛选失败。
+            let info = decorators.decorators.get(&modified)
+                .expect("called `Option::unwrap()` on a `None` value");
             let id = DecoratorId(modified); let subtype = view.subtype(id).0;
             if subtype > 1 { continue; }
             let wall = walls.get(wall_id).expect("called `Option::unwrap()` on a `None` value");
@@ -472,7 +476,8 @@ pub(super) mod original_window_helper_tests {
         let blueprints = world.resource::<DecoratorBlueprints>();
         let blueprint = blueprints.get(7).unwrap();
         assert_eq!(blueprint.storage_addr, Some(DecoratorStorageAddr::Wall(WallId(42))));
-        assert_eq!(blueprint.interaction_source_flags, 2);
+        assert_eq!(blueprint.interaction_source_flags, 0);
+        assert_eq!(blueprint.u138, 2);
         assert_eq!(blueprint.visual_entities.len(), 3);
         let frame = &blueprint.visual_entities[0]; let glass = &blueprint.visual_entities[1];
         assert_eq!(frame.mesh_name, "decorators/window_cottage_1x1");
@@ -566,6 +571,226 @@ pub(super) mod original_window_helper_tests {
         let blueprints = world.resource::<DecoratorBlueprints>();
         let blueprint = blueprints.get(7).unwrap();
         assert!(blueprint.visual_entities.is_empty());
+    }
+
+    fn run_window_family(world: &mut World, family: u8) {
+        use bevy_ecs::system::RunSystemOnce;
+        match family {
+            0 => { world.run_system_once(generate_cottage_wall_windows).unwrap(); }
+            3 => { world.run_system_once(super::super::cottage_corner_window::generate_cottage_corner_windows).unwrap(); }
+            _ => { world.run_system_once(super::super::gothic_wall_window::generate_gothic_wall_windows).unwrap(); }
+        }
+    }
+
+    #[test]
+    fn three_windows_require_modified_info_before_subtype_and_skip_terrain_stair_buckets() {
+        for (family, subtype) in [(0,0), (3,3), (6,6)] {
+            let mut world = producer_world(subtype, 1);
+            {
+                let mut storage = world.resource_mut::<DecoratorStorage>();
+                storage.wall_decorators_mut(WallId(42)).unwrap().modified_ids.clear();
+                for address in [DecoratorStorageAddr::Terrain, DecoratorStorageAddr::Stair] {
+                    // 原三入口不遍历special桶，即使这里保留失配modified也不能误读。
+                    storage.get_or_insert_default(address).modified_ids.insert(999);
+                }
+            }
+            run_window_family(&mut world, family);
+            assert!(world.resource::<DecoratorBlueprints>().map.is_empty());
+            world.resource_mut::<DecoratorStorage>().wall_decorators_mut(WallId(42)).unwrap()
+                .modified_ids.insert(999);
+            let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run_window_family(&mut world, family))).unwrap_err();
+            let text = failure.downcast_ref::<String>().map(String::as_str)
+                .or_else(|| failure.downcast_ref::<&str>().copied()).unwrap();
+            assert!(text.contains("Option::unwrap()"), "必须先同桶required查Info，family={family}: {text}");
+            assert!(world.resource::<DecoratorBlueprints>().map.is_empty());
+        }
+    }
+
+    #[test]
+    fn gothic_window_preserves_fifth_required_signifier_resource_dependency() {
+        use bevy_ecs::system::RunSystemOnce;
+        let mut world = producer_world(6, 1);
+        world.remove_resource::<UiSignifierStream>();
+        let result = world.run_system_once(super::super::gothic_wall_window::generate_gothic_wall_windows);
+        assert!(result.is_err());
+        assert!(world.resource::<DecoratorBlueprints>().map.is_empty());
+    }
+
+    #[test]
+    fn cottage_windows_native_cloth_rng_and_xz_projection_match_actual_nonempty_blueprint_branches() {
+        type NativeCase = (u32, u8, [u32;3], bool, u32, [u32;4], u64);
+        let cases: &[NativeCase] = include!("../../../../../tests/fixtures/native/m01-window-branches.rs");
+        for &(word, rank, direction, _, _, expected, seed) in cases {
+            assert_eq!(utils::rng::init_rng(word), seed);
+            let direction = direction.map(f32::from_bits);
+            let actual = utils::xz_projective_rotation_bad(Vec3::new(direction[0], direction[1], direction[2]));
+            assert_eq!(actual.to_array().map(f32::to_bits), expected, "原XZ投影word={word} rank={rank}");
+        }
+        for (family, subtype) in [(0,0), (0,1), (3,3)] {
+            for rank in 1..=3 {
+                let mut world = producer_world(subtype, rank);
+                // 真实位置资产含两个点，避免空asset把原随机消费分支掩盖成零输出。
+                for name in FLOWERBED_NAMES.into_iter().chain(CORNER_FLOWERBED_NAMES) {
+                    world.resource::<AssetMeshLibrary>().add(MeshAsset::new(location_mesh(
+                        vec![Vec3::X, Vec3::Z], VertexAttributeValues::Float3(vec![Vec3::Z, Vec3::Z])), Some(name.into())));
+                }
+                for &(word, _, _, cloth, top2, _, _) in cases.iter().filter(|case| case.1 == rank) {
+                    world.resource_mut::<DecoratorStorage>().wall_decorators_mut(WallId(42)).unwrap()
+                        .get_mut(DecoratorId(7)).unwrap().decorator_id = word;
+                    run_window_family(&mut world, family);
+                    let bp = world.resource::<DecoratorBlueprints>().get(7).unwrap();
+                    assert_eq!(bp.cloth_info.is_some(), cloth, "family={family} rank={rank} word={word}");
+                    let flowers = bp.window_auto_clutter_candidates.iter().filter(|candidate|
+                        matches!(candidate.kind, WindowAutoClutterKind::WindowFlowerbed { .. })).count();
+                    let shutters = bp.window_auto_clutter_candidates.iter().filter(|candidate|
+                        matches!(candidate.kind, WindowAutoClutterKind::WindowShutter { .. })).count();
+                    assert_eq!(flowers, if !cloth && top2 == 1 { 2 } else { 0 }, "family={family} rank={rank} word={word}");
+                    assert_eq!(shutters, if family == 0 && rank == 2 && top2 >> 1 != 0 { 2 } else { 0 });
+                    assert!(bp.window_auto_clutter_candidates.iter().all(|candidate| candidate.wall == WallId(42)));
+                }
+            }
+        }
+        assert_eq!(cases.len(), 384);
+    }
+
+    fn install_window_fullvisual(world: &mut World) {
+        use std::sync::Arc;
+        use crate::{blueprint::PrevDecoratorBlueprints, decorator_visual_state::DecoratorVisualState,
+            decorator_visual::deco_differential_state::{ChimneyAssemblyParams, DoorStairsAssemblyParams, WallAttachedDecoTracker}};
+        use country_core::{asset_libraries::{shader_library::{AssetShaderLibrary, SharedAssetShaderLibrary}, texture_library::AssetTextureLibrary},
+            resources::walls::{decorator_collision::DecoratorPhysicsColliders, public_walls::OnWallDeleted, wall_holes::WallHoles},
+            systems::collision::{world::RaycastWorld, WindowAutoClutterCandidates}};
+        world.init_resource::<PrevDecoratorBlueprints>();
+        world.init_resource::<DecoratorVisualState>();
+        world.init_resource::<WallHoles>();
+        world.insert_resource(RaycastWorld::new());
+        world.init_resource::<DecoratorPhysicsColliders>();
+        world.init_resource::<WindowAutoClutterCandidates>();
+        world.init_resource::<WallAttachedDecoTracker<ChimneyAssemblyParams>>();
+        world.init_resource::<WallAttachedDecoTracker<DoorStairsAssemblyParams>>();
+        world.init_resource::<Events<OnWallDeleted>>();
+        world.insert_resource(SharedAssetShaderLibrary(Arc::new(AssetShaderLibrary::new())));
+        world.insert_resource(AssetTextureLibrary::new(&country_core::render::test_device::TestDevice(7)));
+    }
+
+    #[test]
+    fn three_window_families_all_ranks_formal_and_preview_reach_actual_fullvisual_rebuild_and_unload() {
+        use bevy_ecs::system::RunSystemOnce;
+        use crate::{blueprint::{copy_blueprints_to_prev, instantiate_blueprints}, decorator_visual_state::DecoratorVisualState};
+        use country_core::resources::walls::{decorator_collision::DecoratorPhysicsColliders, wall_holes::WallHoles};
+        use country_core::systems::collision::WindowAutoClutterCandidates;
+        for (family, subtype) in [(0,0), (0,1), (3,3), (6,6), (6,7)] {
+            for rank in 1..=3 {
+                for state in [0,1] {
+                    let mut world = producer_world(subtype, rank);
+                    world.resource_mut::<DecoratorStorage>().wall_decorators_mut(WallId(42)).unwrap()
+                        .get_mut(DecoratorId(7)).unwrap().state = state;
+                    install_window_fullvisual(&mut world);
+                    run_window_family(&mut world, family);
+                    let bp = world.resource::<DecoratorBlueprints>().get(7).unwrap();
+                    let builders = bp.visual_entities.clone(); let holes = bp.wall_holes.clone();
+                    assert!(!builders.is_empty() && !holes.is_empty());
+                    assert_eq!(bp.u138, state); assert_eq!(bp.interaction_source_flags, 0);
+                    let weak_mesh = match &bp.collision_mesh {
+                        crate::blueprint::BlueprintMeshSlot::Mesh(mesh) => std::sync::Arc::downgrade(&mesh.mesh),
+                        _ => panic!("窗口应有真实网格"),
+                    };
+                    world.run_system_once(instantiate_blueprints).unwrap();
+                    let entities = world.resource::<DecoratorVisualState>().persistent_entities_of(7).unwrap().to_vec();
+                    assert_eq!(entities.len(), builders.len());
+                    for (&entity, builder) in entities.iter().zip(&builders) {
+                        if let Some(key) = builder.window_light {
+                            let light = world.get::<country_core::resources::window_lights::WindowLight>(entity).unwrap();
+                            assert_eq!(light.decorator_id, 7); assert_eq!(light.key as u64, key);
+                        }
+                        assert_eq!(builder.normal_offset, Vec3::ZERO);
+                        assert!(builder.scale_override.is_none());
+                        assert_eq!(*world.get::<Transform>(entity).unwrap(), Transform {
+                            rotation: builder.rotation, translation: builder.translation, scale: builder.scale });
+                        assert_eq!(world.get::<ColorId>(entity).copied(), builder.color_id);
+                        // 生成器和Nani消费者必须是同一canonical TypeId，不能仅有同名本地组件。
+                        assert_eq!(world.get::<country_core::components::BrickColor>(entity).map(|value|value.0),
+                            builder.brick_color.filter(|payload|payload[20] != 2));
+                        assert_eq!(world.get::<country_core::components::GothicWindowBrickDeformation>(entity).map(|value|value.0),
+                            builder.gothic_window_brick_deformation);
+                        assert_eq!(world.get::<country_core::components::SemiTransparent>(entity).is_some(), state != 0);
+                        let desc = world.get::<country_core::components::drawable::NaniInstanceDesc>(entity).unwrap();
+                        assert_eq!(desc.mesh, country_core::render::nani::systems::NaniMeshSelector::Named(
+                            country_core::name_hash::NameHash::compute(builder.mesh_name)));
+                    }
+                    let physics = world.resource::<DecoratorPhysicsColliders>();
+                    assert_eq!(physics.first.contains_key(&DecoratorId(7)), state == 0);
+                    assert_eq!(physics.second.contains_key(&DecoratorId(7)), state == 0);
+                    assert_eq!(world.resource::<WallHoles>().storage[&WallId(42)].raw_holes(), holes);
+                    world.run_system_once(copy_blueprints_to_prev).unwrap();
+                    // 原相同值不重建实体，但逐帧输出仍需重新收集。
+                    world.insert_resource(WallHoles::default());
+                    world.resource_mut::<WindowAutoClutterCandidates>().0.clear();
+                    world.run_system_once(instantiate_blueprints).unwrap();
+                    assert_eq!(world.resource::<DecoratorVisualState>().persistent_entities_of(7).unwrap(), entities);
+                    assert_eq!(world.resource::<WallHoles>().storage[&WallId(42)].raw_holes(), holes);
+                    world.resource_mut::<DecoratorBlueprints>().map.clear();
+                    world.insert_resource(WallHoles::default());
+                    world.resource_mut::<WindowAutoClutterCandidates>().0.clear();
+                    world.run_system_once(instantiate_blueprints).unwrap();
+                    assert!(world.resource::<DecoratorVisualState>().persistent_entities_of(7).is_none());
+                    assert!(entities.iter().all(|entity| world.get_entity(*entity).is_err()));
+                    let physics = world.resource::<DecoratorPhysicsColliders>();
+                    assert!(physics.first.is_empty() && physics.second.is_empty());
+                    assert!(world.resource::<WallHoles>().storage.is_empty());
+                    assert!(world.resource::<DecoratorVisualState>().cloth_infos.is_empty());
+                    world.resource_mut::<crate::blueprint::PrevDecoratorBlueprints>().map.clear();
+                    world.resource_mut::<DecoratorMeshLibrary>().collision.clear();
+                    world.resource_mut::<DecoratorMeshLibrary>().interaction.clear();
+                    drop(builders); assert!(weak_mesh.upgrade().is_none(), "卸载后不得残留窗口碰撞Arc");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn three_window_families_use_a_consistent_live_circle_authority_curve_and_radius() {
+        use bevy_ecs::system::RunSystemOnce;
+        use country_core::resources::{roofs::geometry::surface::Curve2, walls::{
+            InnerWalls, WallState, publication_fields::WallShapeSnapshot, publication_source::TerrainHeightGrid512}};
+        use crate::decorator_visual_state::DecoratorVisualState;
+        for (family, subtype) in [(0,0), (0,1), (3,3), (6,6), (6,7)] {
+            for rank in 1..=3 {
+                let mut world = producer_world(subtype, rank);
+                let circle = utils::geometry::Circle2d { center: Vec2::new(1.0,-2.0), radius: 4.0, rotation: 0.2 };
+                let curve = Curve2::try_new(circle.as_points2(0.25).map(|point|point.to_array()).collect(), false).unwrap();
+                let mut snapshot = WallState::new(curve, 3.0, 0, 0, false).snapshot().clone();
+                let mut shape = [0;28];
+                for (index,value) in [circle.center.x,circle.center.y,circle.radius,circle.rotation].into_iter().enumerate() {
+                    shape[4+index*4..8+index*4].copy_from_slice(&value.to_le_bytes());
+                }
+                snapshot.source.shape = WallShapeSnapshot::from_observed(shape); snapshot.source.curve_kind_tag = 0;
+                let mut inner = InnerWalls::new(); inner.new_wall_with_id(WallId(42),WallState::from_snapshot(snapshot,0));
+                let mut walls = PublicWalls::default();
+                walls.consume_with_paths(&mut inner,&TerrainHeightGrid512 { encoded:vec![0;512*512].into(),
+                    minimum_y:0.0,maximum_y:0.0,sampling_fix:false },None,
+                    &country_core::resources::walls::public_walls::WallPublicationDirty::default(),
+                    &country_core::resources::walls::public_walls::WallSpatialHash::default());
+                let wall = walls.get(WallId(42)).unwrap(); assert_eq!(wall.is_circle().unwrap().radius,4.0);
+                let position = WallSpaceCoord::new_unchecked(4.0,2.0).to_world_space(wall.simplified_curve_2d());
+                world.insert_resource(walls);
+                world.resource_mut::<CachedDecoratorTransforms>().insert(7,CachedDecoratorTransform {
+                    translation:position,rotation:glam::Quat::IDENTITY,scale:Vec3::ONE });
+                world.resource_mut::<DecoratorStorage>().wall_decorators_mut(WallId(42)).unwrap()
+                    .get_mut(DecoratorId(7)).unwrap().state = 0;
+                install_window_fullvisual(&mut world); run_window_family(&mut world,family);
+                let bp = world.resource::<DecoratorBlueprints>().get(7).unwrap();
+                assert!(!bp.visual_entities.is_empty() && !bp.wall_holes.is_empty());
+                assert!(bp.visual_entities.iter().all(|builder|builder.translation.is_finite() && builder.rotation.is_finite()));
+                assert_eq!(bp.dormer_holes.is_empty(), !(subtype==1 || subtype==7));
+                world.run_system_once(crate::blueprint::instantiate_blueprints).unwrap();
+                let old = world.resource::<DecoratorVisualState>().persistent_entities_of(7).unwrap().to_vec();
+                world.run_system_once(crate::blueprint::copy_blueprints_to_prev).unwrap();
+                world.resource_mut::<DecoratorBlueprints>().map.clear();
+                world.run_system_once(crate::blueprint::instantiate_blueprints).unwrap();
+                assert!(old.iter().all(|entity| world.get_entity(*entity).is_err()));
+            }
+        }
     }
 
 }

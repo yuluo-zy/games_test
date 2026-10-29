@@ -31,13 +31,16 @@ pub fn ws_to_ss(distance: f32, projection: glam::Mat4, screen_height: f32) -> f3
 pub fn rotation_from_normal(normal: glam::Vec3) -> glam::Quat {
     let n = normal;
     assert!(n.x.is_finite() && n.y.is_finite() && n.z.is_finite());
-    // Preserve the established basis orientation, including the vertical fallback.
-    let inv = 1.0 / (n.x * n.x + n.z * n.z).sqrt();
+    // 原140c90ac6..b06先执行完整叉积；代数约简会丢失有符号零。
+    let first_x = 0.0 * n.y - n.z;
+    let first_y = n.z * 0.0 - 0.0 * n.x;
+    let first_z = n.x - 0.0 * n.y;
+    let inv = 1.0 / (first_z * first_z + (first_x * first_x + first_y * first_y)).sqrt();
     let valid = inv.is_finite() && inv != 0.0;
     let w = glam::Vec3::new(
-        if valid { n.x * inv } else { 0.0 },
-        if valid { -n.z * inv } else { 1.0 },
-        0.0,
+        if valid { first_z * inv } else { 0.0 },
+        if valid { first_x * inv } else { 1.0 },
+        if valid { first_y * inv } else { 0.0 },
     );
     // Keep the scalar summation order stable for existing numeric consumers.
     let raw = glam::Vec3::new(
@@ -66,6 +69,28 @@ pub fn rotation_from_normal(normal: glam::Vec3) -> glam::Quat {
 #[cfg(test)]
 mod rotation_from_normal_tests {
     use super::*;
+
+    #[test]
+    fn original_rotation_samples_preserve_all_quaternion_bits() {
+        // B140c90a40原函数独立执行的10个有限输入；无业务/数学函数桥接。
+        // 对应m06-roof-outline-rotation-results.json，包含±轴和负零。
+        let cases: [(&str, [u32; 3], [u32; 4]); 10] = [
+            ("x+", [0x3f800000, 0x00000000, 0x00000000], [0x3f3504f3, 0x00000000, 0x3f3504f3, 0x00000000]),
+            ("x-", [0xbf800000, 0x00000000, 0x00000000], [0x3f3504f3, 0x00000000, 0xbf3504f3, 0x80000000]),
+            ("y+", [0x00000000, 0x3f800000, 0x00000000], [0x3f3504f3, 0x00000000, 0x00000000, 0xbf3504f3]),
+            ("y-", [0x00000000, 0xbf800000, 0x00000000], [0x3f3504f3, 0x00000000, 0x00000000, 0x3f3504f3]),
+            ("z+", [0x00000000, 0x00000000, 0x3f800000], [0x00000000, 0x00000000, 0x3f800000, 0x00000000]),
+            ("z-", [0x00000000, 0x00000000, 0xbf800000], [0x3f800000, 0x00000000, 0x00000000, 0x80000000]),
+            ("signed-zeros", [0x80000000, 0xbf800000, 0x80000000], [0x3f3504f3, 0x00000000, 0x00000000, 0x3f3504f3]),
+            ("first-roof", [0x00000000, 0xbf72966f, 0xbea38d10], [0x3f4fee51, 0x80000000, 0x00000000, 0x3f155595]),
+            ("diagonal", [0x3eb851ec, 0xbef5c28f, 0x3f4ccccd], [0x3e5031a7, 0xbe780496, 0x3f727f7e, 0x3d54eed8]),
+            ("diagonal-neg", [0xbeb851ec, 0x3ef5c28f, 0xbf4ccccd], [0x3f727f7e, 0xbd54eed8, 0xbe5031a7, 0xbe780496]),
+        ];
+        for (name, input, expected) in cases {
+            let actual = rotation_from_normal(glam::Vec3::from_array(input.map(f32::from_bits)));
+            assert_eq!(actual.to_array().map(f32::to_bits), expected, "{name}");
+        }
+    }
 
     fn approx(a: glam::Quat, b: glam::Quat) -> bool {
         (a.x - b.x).abs() < 1e-5

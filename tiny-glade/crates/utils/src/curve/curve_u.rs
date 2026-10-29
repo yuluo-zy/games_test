@@ -1,6 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Visitor};
 use std::marker::PhantomData;
-/// Finite normalized coordinate, including both endpoints.
+/// 常规构造的参数位于 [0,1]；原算法直接输出可通过 `from_raw` 保留未校验值。
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct CurveU<S = super::CurveCoordSemantic2D> {
     value: f32,
@@ -53,6 +53,11 @@ impl<'de, S> Deserialize<'de> for CurveU<S> {
     }
 }
 impl<S> CurveU<S> {
+    /// 保留原算法直接产出的未校验浮点；可能是非有限数。
+    /// 普通输入应使用 `new`，反序列化仍执行原有检查。
+    pub const fn from_raw(value: f32) -> Self {
+        Self { value, semantic: PhantomData }
+    }
     pub fn new(value: f32) -> Self {
         assert!((0.0..=1.0).contains(&value), "CurveU outside [0,1]");
         Self {

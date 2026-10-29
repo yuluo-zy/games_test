@@ -1,0 +1,74 @@
+{
+  "scope": "M01实际阳台门生成器与同World消费/卸载",
+  "date": "2026-10-27",
+  "original_B": {
+    "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "functions": [
+      "1407f3da0",
+      "1407f0900",
+      "1407f5e70",
+      "1407f3340"
+    ]
+  },
+  "source_sha256": {
+    "crates/systems/decorator/src/decorator_visual/cottage_balcony_door.rs": "c02d9fe8372a689d6a9bf9a3a9042e46682b64a61a0f5ec7f7d19a7476cca056",
+    "crates/systems/decorator/src/decorator_visual/gothic_balcony_door.rs": "bac3de518f9c843578810f59eeab134df8036b65b31e0a9beea2a405106b3b2c",
+    "crates/systems/decorator/src/decorator_visual/gothic_wall_window.rs": "5a070ad7057052b215a29b9e5c5f98b214de9d21498e2a2cba2d76487486de62",
+    "crates/systems/decorator/src/blueprint.rs": "bda2eb9ee705a2aa7f88018fafeb2a9d60a384fa00dee4b263ed40b2a095c379",
+    "Cargo.lock": "1c6c70729f6518b4b4339e6ce7adcc629116b45117f9d6520780d1ebae09797a"
+  },
+  "native": [
+    {
+      "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "original": "0x1407f5e70",
+      "cases": 4096,
+      "bridges": [],
+      "nested_original": [
+        "140c96240 init_rng",
+        "14128cc30 Sip13",
+        "14092e6c0 is_autumn"
+      ],
+      "outer_modified_id": "Info.id + 700",
+      "session_abi": "sixth physical arg is Res<ActiveSession> wrapper",
+      "fixture_sha256": "ac50a1192b0a41a664b53a08e37dfe4282ef81ae53919c8cfda5e5de31d4cad5",
+      "manifest": "1407f5e70-autoclutter-native.json",
+      "fixture": "1407f5e70-autoclutter-native.txt",
+      "script_sha256": "f827ac588d4ef5aff4d25333934da75ce133afa165a470c4ae77717cb83f514b",
+      "exact_Rust_test_passed": true
+    },
+    {
+      "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "cases": 2080,
+      "bridges": [],
+      "ranges": [
+        "1407f459b..1407f4648",
+        "1407f10c7..1407f1142",
+        "1407f11a8..1407f11f9"
+      ],
+      "nested": "140c911d0 complete",
+      "fixture_sha256": "12906feff962466589b1bcc290859df88fa32c2143f9ca15b2b03b1a6dfad008",
+      "manifest": "1407f0900-1407f3da0-pose-native.json",
+      "fixture": "1407f0900-1407f3da0-pose-native.txt",
+      "script_sha256": "75003a7fcc861e50263b3783772b8974cdba78c9fec88f07a1b213756a41af84",
+      "exact_Rust_test_passed": true
+    }
+  ],
+  "test": {
+    "command": "CARGO_INCREMENTAL=0 cargo test --offline -p system-decorator --lib balcony --no-fail-fast",
+    "exit_code": 0,
+    "filtered_passed": 20,
+    "own_door_tests_passed": 11,
+    "log": "1407f0900-1407f3da0-阳台门测试.log",
+    "log_sha256": "13cd624d2891949a5de62d4308c9a4aaa2545408f17dcfccc021df9f3a34dc4d"
+  },
+  "diff_check": "passed scoped git diff --check",
+  "production_public_wrapper": "implemented_unverified: same-body seam tested, unused AssetTextureLibrary scheduling dependency retained",
+  "not_claimed": [
+    "original whole main function machine-code equivalence",
+    "actual OS input",
+    "actual GPU visual acceptance",
+    "public14parameter production wrapper complete resource acceptance"
+  ],
+  "report": "1407f0900-1407f3da0-阳台门恢复.md"
+}

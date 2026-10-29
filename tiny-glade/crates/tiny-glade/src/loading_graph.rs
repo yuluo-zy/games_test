@@ -237,7 +237,8 @@ pub(crate) fn initialize_grading_assets(
     Ok(())
 }
 
-pub(crate) fn attach_loading_mei(
+/// 将MEI接到同设备的既有资产与缓冲owner，供宿主和嵌入式App共用。
+pub fn attach_loading_mei(
     world: &mut World, device: Arc<rhapsody::device::Device>, hosts: &HostTables,
 ) -> Result<()> {
     anyhow::ensure!(!world.contains_resource::<LoadingGpuResources>(), "loading GPU resources already initialized");

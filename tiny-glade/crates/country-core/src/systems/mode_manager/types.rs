@@ -156,6 +156,10 @@ pub enum ClutterMeshTy {
     CratesWPumpkinsRegular = 55,
 }
 impl ClutterMeshTy {
+    /// 原repr(u8)判别，用于转换请求与音效的真实类型载荷。
+    pub const fn native_tag(self) -> u8 {
+        self as u8
+    }
     pub fn from_native_tag(tag: u8) -> Option<Self> {
         let all: [ClutterMeshTy; 56] = [
             Self::PlantPotV1,

@@ -743,6 +743,75 @@ mod tests {
         assert!(cache.wall.is_none() && cache.u.is_none() && cache.grab_offset.is_none());
         assert!(cache.original_height.is_none() && cache.current_height.is_none());
     }
+
+    /// 多帧运行真实生产者、投影、权威高度命令与历史消费者，避免仅测手工事件接线。
+    #[test]
+    fn height_widget_drag_runs_projection_authority_audio_archive_and_history_chain() {
+        use crate::{resources::{events::InitAdjWallHeightMode, time::GameTime},
+            systems::{mode_manager::AppMode,
+                camera_rig::main_camera::MainCameraMoved,
+                ui::{resources::ui_state::{UiState, UiInteraction, WidgetId},
+                    signifiers::signifier_create::UiSignifierStream},
+                wall::{adjust_wall_height::{
+                    ui_adjust_wall_height::ui_adjust_wall_height,
+                    adjust_wall_height_impl::adjust_wall_height_impl,
+                }, wall_state::publish_public_wall_state::WallPublicationTerrain},
+                audio::{RequestWallMaterialAudio, PlayBuildingAudio}}};
+        let (mut world, wall) = ui_world();
+        world.insert_resource(AppMode::default());
+        world.insert_resource(UiState::at_startup());
+        world.init_resource::<UiSignifierStream>();
+        world.init_resource::<Events<MainCameraMoved>>();
+        world.init_resource::<Events<InitAdjWallHeightMode>>();
+        world.init_resource::<Events<RequestWallMaterialAudio>>();
+        world.init_resource::<Events<PlayBuildingAudio>>();
+        world.insert_resource(WallPublicationTerrain(flat_terrain()));
+        world.insert_resource(GameTime { delta: 0.5, ..Default::default() });
+        let mut history = Hist::after_observed_future_clear();
+        history.start_input_recording(0).unwrap();
+        world.insert_resource(history);
+        let mut schedule = Schedule::default();
+        schedule.add_systems((ui_adjust_wall_height, ui_adjust_wall_height_mode,
+            adjust_wall_height_impl, history_record_adjust_wall_height::<()>).chain());
+        let initial = extra(&world, wall);
+        for (phase, y) in [(3, -199.0), (4, -299.0), (1, -299.0)] {
+            world.resource::<UiState>().clear_widgets();
+            world.resource_mut::<UiState>().replace_interaction(UiInteraction {
+                native_tag: 2, native_phase: phase,
+                widget: WidgetId::from_name(&format!("edit_height_{wall}")),
+            });
+            world.insert_resource(CursorPositionSS(Vec2::new(150.0, y)));
+            world.resource_mut::<Events<AudioCursorMoved>>().send(AudioCursorMoved);
+            schedule.run(&mut world);
+            if phase == 3 {
+                assert!(cmds(&world).is_empty());
+                let archival = world.resource::<LiveDecoratorArchivist>();
+                assert!(archival.walls.contains_key(&RecoveredWallId(wall.0)));
+                assert!(archival.special1.is_some());
+                assert!(archival.culling.allowed_ids.is_superset(&[11,77].into_iter().collect()));
+            }
+        }
+        let final_height = world.resource::<crate::resources::walls::InnerWalls>()
+            .get_unwrapped(wall).height();
+        assert!((final_height - (initial + 2.0)).abs() < 1e-4);
+        let events = world.resource::<Events<RequestWallMaterialAudio>>();
+        let audio = events.get_cursor().read(events).copied().collect::<Vec<_>>();
+        assert_eq!(audio.len(), 1);
+        assert_eq!(audio[0].id, wall.0);
+        assert_eq!(audio[0].kind, 0);
+        assert_eq!(world.resource::<Events<PlayBuildingAudio>>().len(), 0);
+        let edits = pending_edits(&world);
+        let [EditType::Wall(compound)] = edits.as_slice() else { panic!("应只记录一次原Wall历史") };
+        assert_eq!(compound.groups.len(), 1);
+        let [WallHistoryEdit::AdjustHeight { wall: id, from, to }] = compound.groups[0].as_slice()
+            else { panic!("原高度历史必须保留墙ID和前后高度") };
+        assert_eq!(*id, RecoveredWallId(wall.0));
+        assert_eq!(*from, initial);
+        assert!((*to - final_height).abs() < 1e-4);
+        assert_eq!(*world.resource::<AdjWallHeightModeCache>(), AdjWallHeightModeCache::default());
+        assert_eq!(hints(&world), 0);
+    }
+
 }
 
 use crate::render::extract::ComponentWrite;

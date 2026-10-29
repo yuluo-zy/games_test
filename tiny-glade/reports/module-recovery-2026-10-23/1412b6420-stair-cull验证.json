@@ -1,0 +1,113 @@
+{
+  "date": "2026-10-27",
+  "scope": "M01 Stair bucket edge/invalid cull",
+  "status": "implemented_and_bounded_validated",
+  "original_functions": [
+    "14080ec10",
+    "14080f040",
+    "1412b6c30",
+    "1412b6420"
+  ],
+  "source_sha256": {
+    "crates/systems/decorator/src/cull_oob_decorators.rs": "af8c270501b37e83fd8a12bf39991f688a07bb81913ae79b479fd484b7784dc8",
+    "Cargo.lock": "1c6c70729f6518b4b4339e6ce7adcc629116b45117f9d6520780d1ebae09797a"
+  },
+  "native": {
+    "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "cases": 1024,
+    "fixture_sha256": "c1d03d37b9699d81bc7c8f4de2860770bc6329534d3176cab8c5bbb2722f8b30",
+    "ranges": [
+      "1412b6788..1412b65c8/1412b6800",
+      "1412b7000..1412b6db9"
+    ],
+    "nested_actual": "140833470 dst_as_stair",
+    "bridges": [],
+    "position_cases": [
+      [
+        0,
+        0,
+        0,
+        0,
+        2147483648,
+        3296329728,
+        2147483648
+      ],
+      [
+        0,
+        2147483648,
+        1148846080,
+        1,
+        2147483648,
+        3296329728,
+        2147483648
+      ],
+      [
+        0,
+        1065353216,
+        3221225472,
+        1077936128,
+        2147483648,
+        3296329728,
+        2147483648
+      ],
+      [
+        0,
+        2139095039,
+        4286578687,
+        8388608,
+        2147483648,
+        3296329728,
+        2147483648
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        2147483648,
+        1148846080,
+        1,
+        2147483648,
+        1148846080,
+        1
+      ],
+      [
+        1,
+        1065353216,
+        3221225472,
+        1077936128,
+        1065353216,
+        3221225472,
+        1077936128
+      ],
+      [
+        1,
+        2139095039,
+        4286578687,
+        8388608,
+        2139095039,
+        4286578687,
+        8388608
+      ]
+    ]
+  },
+  "world_test": {
+    "command": "CARGO_INCREMENTAL=0 cargo test --offline -p system-decorator --lib stair_cull --no-fail-fast",
+    "passed": 6,
+    "exit_code": 0,
+    "log": "1412b6420-stair-cull测试.log",
+    "sha256": "852be8a7d3a6865a0b36f0fba14f6f1b43f11197edc69b258f752f00e2dfa3b3"
+  },
+  "not_claimed": [
+    "whole original main execution",
+    "actual OS/GPU acceptance",
+    "remaining slot14 business groups"
+  ],
+  "remaining_owned_business_leaf": []
+}

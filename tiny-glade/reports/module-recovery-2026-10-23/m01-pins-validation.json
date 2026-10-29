@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-27",
+  "scope": "candidate pins runtime and three actual producers; original complete rectangle geometry differential",
+  "features": "native-physics explicitly enabled by country-core test flag or system-water dependency",
+  "cargo_incremental": "0",
+  "commands": [
+    "CARGO_INCREMENTAL=0 cargo test --offline -p country-core --features native-physics --lib systems::ui_clutter::decoclutter_show_pins::tests -- --nocapture",
+    "CARGO_INCREMENTAL=0 cargo test --offline -p country-core -p system-water --lib --no-run; run emitted binaries with retained test filters",
+    "CARGO_INCREMENTAL=0 cargo test --offline -p utils --lib geometry::rectangle:: -- --nocapture",
+    "python3 reports/module-recovery-2026-10-23/probe_m01_intersects_native.py"
+  ],
+  "logs": {
+    "m01-pins-world.log": {
+      "sha256": "05d544e651da1ea211ed30f305ed11ac9319eed041bf7b7893ff1753fce45a3d"
+    },
+    "m01-pins-garden.log": {
+      "sha256": "ed25731c6ce79bb5f080dd2feac1e2d2a28e19a3536784e96e5201ea5544c17f"
+    },
+    "m01-pins-path.log": {
+      "sha256": "a7772d12115f04fbc96d3ad9d7a6dea825b3e38811db69e7248885e0ae62b7a6"
+    },
+    "m01-pins-water.log": {
+      "sha256": "90aaabc6fa878a2627132b565b3d4c9c6f2881b5a878c73237a6e5d2ea6a05c6"
+    },
+    "m01-pins-rectangle-module.log": {
+      "sha256": "4463251e0d60b5fc8cd5d1f8915536afdd1b667d8bc03991f06720058ac814b8"
+    },
+    "m01-pins-rectangle-differential.log": {
+      "sha256": "ff010f05b910f17828c7182dd6722a219b5babde633750c40bca457179f84caa"
+    }
+  },
+  "source_sha256": {
+    "crates/country-core/src/systems/ui_clutter/decoclutter_show_pins.rs": "9371244ef9e96bce2ce50f28e986db8277d849324d4a22c787e6262475b949df",
+    "crates/country-core/src/systems/ui_clutter/registration.rs": "89ea5ad9828560f1d300026953fa53b52f052ec4af51ef0a88574e7e770dd35c",
+    "crates/country-core/src/systems/ui_clutter/tests.rs": "3a61100cd2b71725f32dbf4cbb8dd40980640b6f418de78d8b456a97cad76449",
+    "crates/country-core/src/systems/garden/draw_garden.rs": "3070c5d1e64fa8f89c43240eb9b1c64101a404a5280846d3194d9557ac33fd64",
+    "crates/country-core/src/systems/garden/mod.rs": "542f795b18ac3d578c9710007d6d8c05a3c3a1f990ce711808434828fd97e5b6",
+    "crates/country-core/src/systems/garden/tests.rs": "6117c9abee181cee400aec081d713fde2a8fdd2ecc212dce2d92589599d400c2",
+    "crates/country-core/src/systems/paths.rs": "dc30b7bbff08b87e2b340c3c1c58b67ecc1d0ba571141def7724fecd80fedf09",
+    "crates/systems/water/src/draw_water.rs": "c28a67bbd1dc4abb72ab20fbc24500a617ca44a9932bc20b4c9ad8bd972d7e58",
+    "crates/systems/water/src/lib.rs": "da0fef6044383b9fe6ccb3c651640a6c13f1e534e8c45c3096c555ed448e8b3e",
+    "crates/systems/water/Cargo.toml": "e0a92fd7f9364c6e2975e517dfbac3b7e0ea8c94b6c6c6658ec912d7e346b1a7",
+    "crates/utils/src/geometry/rectangle.rs": "dfa1f58de4765f4898bd9aecf56b65cd08d6b95f4aa7e3eba7ceecf637d40012",
+    "Cargo.lock": "1c6c70729f6518b4b4339e6ce7adcc629116b45117f9d6520780d1ebae09797a"
+  },
+  "rectangle_intersects_body_sha256": "ecc82afe7da1f8a0b0f8caa7cc00095463bfec0febcd63f75478aaae6fa3e808",
+  "native_fixture_sha256": "ea57c79f72c7cca806924180c3b155d015e104104a8d01252113ecf2bc226732",
+  "limitations": [
+    "No original whole pins/ECS differential",
+    "No GPU pixels or OS inputs",
+    "No full game reload or long-run performance acceptance"
+  ]
+}

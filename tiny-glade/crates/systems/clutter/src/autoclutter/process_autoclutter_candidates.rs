@@ -19,6 +19,7 @@
 //! +0x54=源+0x54 低 32；+0x58=源+0x54 高 32；+0x5c=源+0x5c；+0x60=源+0x60。
 
 use bevy_ecs::prelude::*;
+use country_core::systems::ui_clutter::DeletedAutoClutter;
 
 use super::{AutoClutterCandidate, AutoClutterSpawn, AutoClutterState, SpawnShared};
 
@@ -26,7 +27,8 @@ use super::{AutoClutterCandidate, AutoClutterSpawn, AutoClutterState, SpawnShare
 #[derive(Clone, Copy, Debug)]
 struct OrderedCandidate {
     /// +0x00：键/哈希（enumerate 上下文，sort 后遍历不直接读）。
-    _key: u64,
+    region_key: u64,
+    priority: u32,
     /// +0x0c：u16 源候选下标。
     index: u16,
 }
@@ -41,16 +43,18 @@ struct AcceptedRecord {
 }
 
 /// process_autoclutter_candidates（0x1422ce260）。
-pub fn process_autoclutter_candidates(mut state: ResMut<AutoClutterState>) {
+pub fn process_autoclutter_candidates(mut state: ResMut<AutoClutterState>, deleted: Res<DeletedAutoClutter>) {
     // 1+2+3：枚举过滤（closure$0 L40）→ 稳定排序（closure$1 L56 比较器）。
     let mut ordered: Vec<OrderedCandidate> = state
         .region_candidates
         .iter()
         .enumerate()
-        .filter_map(|(i, c)| filter_candidate(c).then_some(i as u16))
-        .map(|index| OrderedCandidate { _key: 0, index })
+        .filter_map(|(i, c)| (!deleted.is_deleted(c.f40)).then_some(OrderedCandidate {
+            region_key: c.region_key, priority: c.priority, index: i as u16,
+        }))
         .collect();
-    ordered.sort_by(|a, b| cmp_candidate(&state.region_candidates, a.index, b.index));
+    // B 141cf9b50：优先级、区域键均降序，相等时维持原先顺序。
+    ordered.sort_by(|a, b| b.priority.cmp(&a.priority).then_with(|| b.region_key.cmp(&a.region_key)));
 
     // 4+5：遍历有序候选 → 强制路径 / 重叠剔除 → 输出写。
     let mut accepted: Vec<AcceptedRecord> = Vec::new();
@@ -86,20 +90,6 @@ pub fn process_autoclutter_candidates(mut state: ResMut<AutoClutterState>) {
     state.region_candidates = src;
 }
 
-/// 过滤闭包（PDB closure$0 L40；**过滤谓词 U——评审独立反编译未见 body**，现
-/// `forced==0 || forced==6` 为未取证猜测，不得判等；结构 = enumerate+filter_map）。
-fn filter_candidate(c: &AutoClutterCandidate) -> bool {
-    c.forced == 0 || c.forced == 6
-}
-
-/// 排序比较器（PDB closure$1 L56；**排序键 U——评审独立反编译未见 body**，现按源候选
-/// +0x34（f34）为未取证猜测；结构 = 稳定排序（<0x15 insertion 否则 driftsort））。
-fn cmp_candidate(candidates: &[AutoClutterCandidate], a: u16, b: u16) -> std::cmp::Ordering {
-    let va = candidates.get(a as usize).map_or(0u32, |c| c.f34);
-    let vb = candidates.get(b as usize).map_or(0u32, |c| c.f34);
-    va.cmp(&vb)
-}
-
 /// 接受路径（O：switch 源判别 3/4/5 + 写已接受缓冲 + 输出字段复制）。
 fn accept_candidate(
     c: &AutoClutterCandidate,
@@ -112,38 +102,39 @@ fn accept_candidate(
         shared: 0,
         key: 0,
     });
-    // O：switch `*puVar26`：case3 截 u32；case4 Arc LOCK++；case5 裸指针；默认截 u32。
-    // case5 的 key（uVar23 未被 switch 复写，Ghidra 为跳表地址残留）语义 U——现截 u32 为
-    // 未取证猜测。
-    let (tag, shared, key) = match c.kind {
+    // source 的 Arc/指针所有权仍待上游提供；此处不能用整数制造 Arc。
+    let (tag, shared) = match c.kind {
         4 => {
             // case4：Arc 强计数++（LOCK 语义；**U 登记缝**——Arc payload 合同 U，登记不执行）。
-            (4u8, c.shared, c.key)
+            (4u8, c.shared)
         }
         5 => {
             // case5：裸指针语义（源候选指针；以 shared 承载）。
-            (5u8, c.shared, c.key & 0xffff_ffff)
+            (5u8, c.shared)
         }
         _ => {
             // case3 / default：截 u32。
-            (3u8, c.shared, c.key & 0xffff_ffff)
+            (c.kind, c.shared)
         }
     };
     AutoClutterSpawn {
         kind: tag,
-        shared: if tag == 4 {
+        shared: if let Some(object) = &c.resolved {
+            assert_eq!(object.source.native_tag(), c.kind, "自动杂物来源判别不一致");
+            SpawnShared::Object(object.clone())
+        } else if tag == 4 {
             SpawnShared::ArcStrong(shared)
         } else {
             SpawnShared::Prefab(String::new())
         },
         f18: (c.f18 & 0xffff_ffff) as u32,
-        key,
+        key: c.f40,
         marker: c.forced,
-        // 输出 +0x38/+0x40 打包为位置（low32 取 f32 x/z、y=0）——为推断，非取证（U）。
+        // B 输出 +0x48..+0x53：原 candidate 的完整 xyz。
         position: glam::Vec3::new(
-            f32::from_bits(c.f38 as u32),
-            0.0,
-            f32::from_bits(c.f40 as u32),
+            f32::from_bits(c.f48 as u32),
+            f32::from_bits((c.f48 >> 32) as u32),
+            f32::from_bits(c.f50),
         ),
         host_id: c.f48,
         f48: c.f48,
@@ -152,5 +143,60 @@ fn accept_candidate(
         f58: ((c.f54 >> 32) & 0xffff_ffff) as u32,
         f5c: c.f5c,
         scale: f32::from_bits(c.f60),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stale_region_removes_grid_links_and_its_candidate() {
+        use crate::autoclutter::{AutoClutterRegion, ClutterCandidateIndex, ClutterRegionId};
+        let key = ClutterRegionId(91);
+        let mut state = AutoClutterState { lazy_grid: vec![vec![]; 4096], epoch: 4, ..Default::default() };
+        let region = AutoClutterRegion { key, epoch: 3, center: glam::Vec3::ZERO,
+            basis: [glam::Vec2::X, glam::Vec2::ONE], ..Default::default() };
+        state.add_region(key, &region);
+        state.regions.get_mut(&key).unwrap().epoch = 3;
+        state.regions.get_mut(&key).unwrap().candidate_index = ClutterCandidateIndex(0);
+        state.region_candidates.push(AutoClutterCandidate { region_key: key.0, ..Default::default() });
+        assert!(state.lazy_grid.iter().any(|cell| cell.contains(&key.0)));
+        state.remove_stale_regions();
+        state.flush_candidates_pending_removal();
+        assert!(state.regions.is_empty());
+        assert!(state.region_candidates.is_empty());
+        assert!(state.lazy_grid.iter().all(|cell| !cell.contains(&key.0)));
+    }
+
+    #[test]
+    fn deleted_keys_are_filtered_before_priority_order_and_full_pose_is_copied() {
+        let mut world = World::new();
+        let candidate = |id, region_key, priority, x: f32| AutoClutterCandidate {
+            kind: 3,
+            f40: id,
+            f48: u64::from(x.to_bits()) | (u64::from(2.0f32.to_bits()) << 32),
+            f50: 3.0f32.to_bits(),
+            forced: 6,
+            region_key,
+            priority,
+            f60: 1.0f32.to_bits(),
+            ..Default::default()
+        };
+        world.insert_resource(AutoClutterState {
+            region_candidates: vec![candidate(0x1_0000_0001, 1, 2, 1.0),
+                candidate(7, 9, 2, 4.0), candidate(8, 2, 3, 5.0),
+                candidate(9, 3, 9, 6.0)],
+            ..Default::default()
+        });
+        let mut deleted = DeletedAutoClutter::default();
+        deleted.0.insert(9);
+        world.insert_resource(deleted);
+        let mut schedule = Schedule::default();
+        schedule.add_systems(process_autoclutter_candidates);
+        schedule.run(&mut world);
+        let output = &world.resource::<AutoClutterState>().spawn_candidates;
+        assert_eq!(output.iter().map(|s| s.key).collect::<Vec<_>>(), [8, 7, 0x1_0000_0001]);
+        assert_eq!(output[2].position, glam::Vec3::new(1.0, 2.0, 3.0));
     }
 }

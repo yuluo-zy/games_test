@@ -1,0 +1,69 @@
+{
+  "base_commit": "858da5891b0744cd35353c9c1e85e84f442f0b35",
+  "target": "aarch64-apple-darwin",
+  "profile": "debug unoptimized + debuginfo",
+  "cargo_environment": {
+    "CARGO_INCREMENTAL": "0"
+  },
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8",
+  "oracle_binary": "B版本内容/tiny-glade.rne",
+  "oracle_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "results": {
+    "expand_exact_bits_and_guards": 2612,
+    "expand_rosetta_original_no_bridge": 2592,
+    "expand_unicorn_panic_partial_writes": 20,
+    "rectangle_lerp_exact_bits_and_guards": 1427,
+    "search_exact_defined_fields_and_guards": 465,
+    "search_original_20_steps": 79,
+    "search_t0_fail_before_28_bytes_exact": 234,
+    "utils_regression_tests_passed": 20,
+    "country_search_test_passed": 1,
+    "unicorn_double_nan_disagreements_preserved": 96
+  },
+  "comparison": "完整定义字段/原输入payload/新生NaN逐位比较，panic一致；search起点失败比较完整28B，成功circle原未定义tail8B不当语义字段；没有数值容差",
+  "limits": [
+    "Rosetta直接原expand与Unicorn双重执行，不是物理Intel机器验收；96条双NaN以直接原RNE执行为权威并保存Unicorn分歧",
+    "lerp/search原CRT sinf/cosf/fmodf/ceilf桥至Darwin；未宣称Windows UCRT全域逐位等价",
+    "共享源码文件可能包含其他owner代码，窄函数块hash额外绑定本轮实际算法；不作为全仓实现/调度/GPU覆盖统计",
+    "测试为debug；未创建新target或release profile，未运行OS输入/GPU窗口"
+  ],
+  "function_block_sha256": {
+    "tiny-glade/crates/utils/src/geometry/rectangle.rs::pub fn lerp(": "52e9bff7d60d1cf2f262a9c8dad42d899b5af499f364625995a115161c9b6912",
+    "tiny-glade/crates/utils/src/geometry/rectangle.rs::pub fn expand_along_edge(": "75504759264dadd550df8112f2cf1d5a017952999956318bebffafe44dbb6f85",
+    "tiny-glade/crates/utils/src/geometry/rectangle.rs::pub fn get_edge_normal(": "74aa035a6eccd8b9e4c64c17adc298586cb68e175fcd3b36787ac916c661f26f",
+    "tiny-glade/crates/utils/src/geometry/rectangle.rs::fn original_expand_along_edge_complete_function_matches_native_bits_and_panics(": "97426f283c75d5ee3fa7692035d7f365cec12b808aecb348beac150f60d7cf69",
+    "tiny-glade/crates/utils/src/geometry/rectangle.rs::fn original_rectangle_lerp_complete_function_matches_native_bits_and_panics(": "aa12b2905c56d9d869cf2036b23a421cc786fa8d5ebded735a028380715a5341",
+    "tiny-glade/crates/country-core/src/resources/glade_border.rs::pub fn search_lerped_shape_that_fits_into_glade(": "02b0607891c4f8ace2af766ca496ead2a7678daa67927343807b47bb5878abc3",
+    "tiny-glade/crates/country-core/src/resources/glade_border.rs::pub fn is_shape_inside(": "cf9c68e6b924ffdf2eac613e7ab4f5ab443e3e8325a4870d282133bcf82eabac",
+    "tiny-glade/crates/country-core/src/resources/glade_border.rs::fn original_search_complete_function_preserves_steps_guards_and_before_bytes(": "7e4074b270c317c7ee7166d2d6d2ddfa727eef9e60d9b1f7f27d88ee8d6ebe62"
+  },
+  "sha256": {
+    "tiny-glade/crates/utils/src/geometry/rectangle.rs": "dfa1f58de4765f4898bd9aecf56b65cd08d6b95f4aa7e3eba7ceecf637d40012",
+    "tiny-glade/crates/utils/src/geometry/circle.rs": "c6370f380bad5cb5e48ac76c116a243f9d82f2f4625be092a6bfce128c12edec",
+    "tiny-glade/crates/utils/src/circular_f32.rs": "56104cd1c5404792628dce62fb2832787d9fc381a7735f8ca574502e0d633616",
+    "tiny-glade/crates/country-core/src/resources/glade_border.rs": "bc7d608b1a668bd11f70059b402bbab310064e502967bf90d6c477eedcd5c27d",
+    "tiny-glade/crates/country-core/src/systems/wall/valid_enclosure/mod.rs": "13b4b1c2e8b655d76d8922b7916f7b54d23c7bc09438eda4e003258707c6a063",
+    "tiny-glade/crates/utils/Cargo.toml": "88c9cfcc10c437400b40925497e225a53bbc8138ee847f29e494edd4ae9e91ea",
+    "tiny-glade/crates/country-core/Cargo.toml": "69f1270318de93057ce95c0748805ea43cfcbd8a23c4e3ee561d4de89ae007c1",
+    "tiny-glade/Cargo.toml": "f72a636d5c1f1e066ba6450948bd5ac5af35f26e976bd720aba75730f4a36f5d",
+    "tiny-glade/Cargo.lock": "1c6c70729f6518b4b4339e6ce7adcc629116b45117f9d6520780d1ebae09797a",
+    "tiny-glade/tests/fixtures/native/m01-shared-geometry.json": "cf64fc38ba434511415d139467d99a0b57c0a070e86e8c72f9bf3c20d2d5bb71",
+    "tiny-glade/reports/module-recovery-2026-10-23/probe_m01_shared_geometry_native.py": "7247a169afdf9e14858f53d3510ebb844c4534805ad10edabed7c77a0b23f692",
+    "tiny-glade/reports/module-recovery-2026-10-23/probe_m01_expand_x86.c": "1db0e32c034ee6097d59e889e2934e3dbe7d3ce04446c8e557df8143a2f85a45",
+    "tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-native.json": "61bd337f63538949c62c66262103a8a5408395811b1b10536cf05917b9680ca9",
+    "tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-native-contract.json": "3653044dd95849b4e3d79e22e49502204794d569bd51c849b8bb07d1e52fff5b",
+    "tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-rectangle.asm": "a2cd0101f3656aa13eaa014bd9c3dc1ae65416b6ded17adf110778dc65c6991b",
+    "tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-search.asm": "76ba8827445e584627ee0760f1743c74a37bc8ec7cbb48184072dea3f9fe87c5",
+    "tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-border-contains-point.asm": "4d83c45bb066f9c4ac82b2af7111c905a723092a53a231276e8351083ad397a7",
+    "tiny-glade/reports/module-recovery-2026-10-23/m01-expand-rosetta-unicorn-differences.json": "bfab54775e8c8e06b4d8b18ad422750e04c1cbb0c2674f11e09762e1c80895fa",
+    "tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-expand-mismatches-before.json": "e500fdd56802cc9b4c530683ece461c51f498199beadd3d461fbbb87b98e4b59",
+    "tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-expand-mismatches.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-expand-before-tests.log": "738a1c1156f5ab7bc52e663c96f7bcea32c92eb9fea8d1b4fb5a10f1671669d8",
+    "tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-expand-tests.log": "28c7dba3a6d7938e5a7586d088c5d3f328118e20d13180a0b61cceb721966f51",
+    "tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-lerp-tests.log": "6e599bc25323b1d17b42e5c17c7dadbf6b1aeff5de9624a46779b69292ae4659",
+    "tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-utils-final-tests.log": "1beff09fb8decd59e41e6e2f2c81152ea5727aa0ca1e2ad790a9e8ba07ab049b",
+    "tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-search-tests.log": "9c0776fc7a42ed03f17f8733d0d05ff91e48d5cd3051e8e1f59ea11743bbea81",
+    "tiny-glade/target/debug/deps/utils-650f504f2dc09894": "063cef34fb084473d22715755d2f2a0c06ce2c0334b6a4e60a16724f33690d9f",
+    "tiny-glade/target/debug/deps/country_core-e9f521ee91fd484b": "8e04d6bf487f1fa568742eff67d640bc65094b6679c013107b888a52a1125c83"
+  }
+}

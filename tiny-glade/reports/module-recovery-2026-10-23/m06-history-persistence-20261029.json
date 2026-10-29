@@ -1,0 +1,277 @@
+{
+  "date": "2026-10-29",
+  "scope": "M06 墙体样式和抹灰剥离 CPU 历史、保存与跨进程加载；非完整 M06 验收",
+  "tested_source": {
+    "path": "tiny-glade/crates/tiny-glade/tests/original_session_control.rs",
+    "sha256": "88a43bd4db15ed4c96034dcc6f2a29008e4c9530fe27e82e2e60f2b98fa864a7",
+    "snapshot": "/private/tmp/root-m6-history-persistence-source.rs"
+  },
+  "command": "TG_INSTALL_ROOT='/Users/yuluo/Desktop/game/B版本内容' CARGO_INCREMENTAL=0 cargo test --offline -p tiny-glade --test original_session_control m06_wall_persistence -- --test-threads=1 --nocapture",
+  "result": {
+    "tests": "2 passed",
+    "log": "/private/tmp/root-m6-history-persistence-20261029.log",
+    "processes": "独立 write 与 restore 子进程均成功",
+    "status": "已重新按同步 History 代码执行并通过；旧历史通过版保留，仅新版日志证明新代码",
+    "synchronous_log": "/private/tmp/root-m6-synchronous-history-roof-round5-20261029.log",
+    "synchronous_test_source_sha256": "48b6c292e4694ea3e9429893fa26b6c700c3fd9210c84188ebbb1ebd30af55a1"
+  },
+  "chain": [
+    "起始 CreateWall 是显式前置夹具",
+    "SetWallStyleCmd 与 SetPlasterPeelAmountCmd 由真实 set_wall_style 更新 InnerWalls 并发 RecordWallHistory",
+    "真实 record_wall_history 写入 History 事务，history_process_system 与 replay_wall 驱动撤销重做",
+    "实际 SaveThread 的 OpenFile 和同步 flush 写入临时账户，新进程实际 try_load_game_system 加载并回放，再撤销重做"
+  ],
+  "limits": [
+    "初始墙不是交互式创建，输入是合成命令；安装树检查存在但本测试不加载网格资产",
+    "未验收屋顶、墙重发布、支撑或半木生成器、GPU、画面、OS输入和完整App卸载",
+    "屋顶跨进程真实快照候选尚未运行，见当前源码后续增量；通过版文件快照与哈希保持独立",
+    "原 set_wall_style 同步 History::add 的候选待新源码测试；其他 RecordWallHistory seam 生产者须单独核原时序，不从此叶推断。"
+  ],
+  "registration": {
+    "set_wall_style": "system-color ColorPlugin GameSystemSet(31)",
+    "history_process": "tiny-glade run_game GameSystemSet(35)",
+    "replay_wall": "tiny-glade run_game GameSystemSet(40)",
+    "save_game_system": "tiny-glade run_game GameSystemSet(43)",
+    "roof_create": "RoofPlugin GameSystemSet(20)",
+    "roof_association": "startup_construction_runtime set22；原始注册点尚未定位",
+    "snapshot_pending_association": "注册了 rebuild_pending_roof_associations，但 snapshot Roofs 分支仅发送 CreateRoofCmd，未见该路径写入 pending.rows"
+  },
+  "original_instruction_correction": {
+    "function": "set_wall_style@1409a2290",
+    "observation": "style、plaster、freehand 三分支均在 authority 写后直接调用 History::add@140a84ec0；此前推断原独立 RecordWallHistory 消费者是错误的。",
+    "implementation": "现有 set_wall_style 同步调用 History；ColorSystems 原 set31 注册泛型实例；无新调度系统。",
+    "verification": "源码候选待中央运行，生产调度唯一性与相对位置待验收。",
+    "source_sha256": {
+      "set_wall_style.rs": "d4c61cd9f72b71f501d8639b045f899a9241e1ffc1d7ea2a45246a582b124662",
+      "color/lib.rs": "d92889e4fd9aa862f649ab917f47a3789dbdc4133718c44c87415f76e3d5d5bc"
+    }
+  },
+  "m06_additional_producers": {
+    "original_evidence": {
+      "history_record_wall_changed@1408dccf0": "PDB SystemParam 为 History 和 PendingWallHistory 可变借用；直接调用 History::add@140a84ec0",
+      "history_record_merge_walls@1408dd1b0": "PDB 增 InnerWalls 只读；直接调用 History::add，调整高度记录先于 merged wall lookup",
+      "finish_wall@140a800a0": "原直接调用 History::add",
+      "WallEraserArchivist::finish@14092f990": "原 add 后清 map1/map2；wall_splitter@140a74c20 调用点 140a7695b，wall_eraser@140accab0 调用点 140accf72；图 snapshot 053060f0c5d388b353567d8b"
+    },
+    "implementation": "迁移候选已接现有原调度 set17/set34（仅泛型替换），辅助测试删除延迟重复消费者；等待集中编译和验收",
+    "limits": [
+      "拆分调用点已按既有原点击guard接 finish_recorded 并调整 add→clear；另一 wall_eraser 的完整输入结束调用、Sip13 内墙探针及原侧差分未闭合。",
+      "finish_wall premade shape 与 closed-loop enclosure 保持显式未恢复"
+    ],
+    "eraser_source_sha256": {
+      "archivist.rs": "982fa6956a5e8cca59621c5af1cb9f7902744db5d05c4ffab836c64a5b2feaf2",
+      "wall_splitter.rs": "ab966e7d975807d5655e4d9afa2c8331eeb6a25415602f4dcb38ff2275f40222",
+      "registration.rs": "14f27fbd09af83f75dd4abed9695a45632a7ca8188ef87b575145b6b1af47452"
+    },
+    "evidence": [
+      "/private/tmp/m06-eraser-finish-neighbors.json",
+      "/private/tmp/m06-eraser-start-asm.json",
+      "/private/tmp/m06-eraser-finish-asm.json"
+    ],
+    "eraser_guard": "原 140accd0c–d98：默认 phase2；仅活跃且 ID 匹配时取 UiState+25。phase 2/3/4 分别跳 acfdfd/accd9a/acce55，其他值到 acceeb 完成并在 accf72 调 finish；accef2 的 map+0x78=0 只跳过内部事件，仍到 finish。当前 Rust wall_eraser 仅 stroke seam，无这些 UI producer，不伪造结束门。",
+    "eraser_guard_evidence": {
+      "snapshot": "053060f0c5d388b353567d8b",
+      "jump_table_rva": "2ae0cc8",
+      "target_rvas": [
+        "acfdfd",
+        "accd9a",
+        "acce55",
+        "acceeb"
+      ],
+      "pages": "/private/tmp/m06-eraser-page-{400..4000 step 200}.json",
+      "baseline_start": "/private/tmp/m06-eraser-start-asm.json",
+      "baseline_200": "/private/tmp/m06-eraser-finish-asm.json"
+    },
+    "eraser_height": {
+      "original": "140aceb8d..140acebd9，逆插值0.5至6.0，分别乘14与0.75再加；两处读真实切片Curve2长度",
+      "oracle": "tiny-glade/reports/module-recovery-2026-10-23/m06-erase-height-oracle.c",
+      "oracle_sha256": "367aa810326d1f1fd2e46e78750aad6487c4ee2aa5ffde8bb518696a4b42b37f",
+      "output": "/private/tmp/m06-erase-height-oracle.txt",
+      "output_sha256": "76775dc1d33610c851ea5a55138b88dee641fd58aceaa0e01b81f167b3e4987a",
+      "source_sha256": "9eb70533240bef5ed877b98d86781fc77608b67202a42b6f3de192bac8063aeb",
+      "boundary": "Rosetta执行9组有限长度算术片段，转出屋顶分支，不含后续min/NaN及真实UI。Rust定向断言在集中core round10通过。"
+    },
+    "wall_eraser_full_chain": {
+      "status": "未完成：现有 EventReader<WallEraserStroke> 是重构 seam，不代表原 UI producer。不要声明M06擦除通过。",
+      "native_type": "PDB run_unsafe@1405349b0 定型：AppMode、AnimateWallBulldozeBuffer、CursorTerrainRaycast、DecoratorArchivalResources、WallColorIds、InnerWalls、UiState、History、EditingHighlight、EraserSizeMultiplier、Terrain/PublicWalls/Roof、WallEraserArchivist/DecoratorStorage/DecoratorArchivist、HalftimberColorIds及八个实际事件writer。",
+      "mode": "原仅 Eraser(All|Wall)，注册 clearing_canvas(\"eraser\",6,3)，读取当前 widget 的真实 drag phase。",
+      "algorithm": "按 wall id 序列检查 bulldoze，真实曲线点和缓存U与刷圆逐段相交；保留段间距<0.1合并，保留长度<0.2剔除；单保留[0,1]早退。其余先归档/cull/cache，再按0/1/多保留段更新删除/收缩/拆分及关联，结束phase调用真实 archivist finish。",
+      "open": [
+        "完整 UI 地形命中到圆心/半径和相交数值逐位、所有侧效/失败顺序",
+        "0/多保留段的完整矩形/圆形、ChildWall/rewire、颜色/提示/ivy与 roof 路径",
+        "原 finish 内 Sip13 内墙探针仍缺、完整原侧行为差分及真实交互"
+      ],
+      "original_decomp": "reverse-engineering/tiny-glade/evidence/country-core-deep/wall/decomp/decomp-0x140accab0.txt",
+      "original_decomp_sha256": "49ba2258e5abe23f7ae4f9f77aa16384d76479859842665f1f7809a2fbfc2493",
+      "decomp_limit": "旧 C 含 bad-instruction 警告，结论须回原 RNE 指令；已对 4149 条分页",
+      "pdb_signature": "/private/tmp/m06-eraser-pdb-symbol.json",
+      "pdb_signature_sha256": "8aac35ba0a2ecf1f5cf54318a262ed04cbd0def04429d13d0182ec10ac799676",
+      "original_binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+      "brush_radius": "140acd330–351: EraserSizeMultiplier.0 × f32 bits 0x3ff1eb84；圆心来自 cursor x/z。",
+      "interval_thresholds": "间隔 0.1 bits 0x3dcccccd；保留段世界长度 0.2 bits 0x3e4ccccd。",
+      "finish_gap_detail": "正 niche 候选按原墙消失写 bucket5a0 Delete、异id子墙 bucket588 Create，借用实际 InnerWalls 命中写 bucket570 StateChange；原 140931218..263 inverse_lerp 为 (mid_start,mid_end,child.a/b)，缺墙140931be5 panic。正 niche 验证使用曲线长度，异id style 等于原 style==1，颜色表取 +65 bit0；完整字段及失败路径待原机差分。",
+      "fully_erased_payload": "原 add_fully_erased_event@14092f630 空桶变体保存被移除 child 的两个f32区间（不含id）；ChildWalls.erased_range 保存原值。原 finish 空桶分支完整[0,1]变换为墙高中间短段，构造 bucket570 StateChange 和 bucket558 Delete；Rust候选静态对照待原机差分。",
+      "finish_candidate_sha256": "438aca7601fedc2992074501252699137ae9f08a5878c237cc422a45966c1dc5",
+      "splitter_candidate_sha256": "8fddc8b32de6025f9bf97f33ace65ea6fdd6b769e3093bcd62110f9645a1d61e",
+      "finish_range_oracle": {
+        "probe": "tiny-glade/reports/module-recovery-2026-10-23/m06-eraser-finish-range-oracle.c",
+        "probe_sha256": "c086f8d37f05d42ecaeb2250565eec0ba685fd81a9899c4168faa965b6c1bdbc",
+        "output": "/private/tmp/m6-eraser-finish-range-oracle.txt",
+        "output_sha256": "67f2b8432dea5a6ab91438e893d7fd25e2cce92583de47dbeb5f72faf4fe5163",
+        "scope": "原 RNE 14093010a..16b，在后继转出。输入为 Curve2.length，6组含NaN；Rust源码补同位断言与长度2/墙高3真实边界，待集中测试。仅算术片段，不代表完整finish。"
+      },
+      "active_tail": "原 140acfa82..fb8b：map1 非空发 RemoveIvy，中心(cursor.x,0,cursor.z)、尺寸(multiplier×0x4071eb84,10,同宽)；随后对map1中仍在InnerWalls的key发 ReanchorDecorators。结束phase成功History::add后清map1，结束后遍历为空；相关 writer/早期注册待真实入口。"
+    },
+    "eraser_ranges": {
+      "status": "旧源码三项在 core round10 通过；新增相切/小圆及直角曲线原位模式断言，待中央运行；私有 helper 未生产接线",
+      "source_sha256": "4eac6e34335c2b33fda48c88e49e0e2d7458364ee000b3ef61129b98e94b00db",
+      "circle_oracle": "tiny-glade/reports/module-recovery-2026-10-23/m06-eraser-interval-oracle.c",
+      "circle_oracle_sha256": "81caccb6a6eb7b94513746cf4c603ed23a1a8e6b3e0945e2969712417775da4e",
+      "circle_output": "/private/tmp/m06-eraser-interval-oracle.txt",
+      "circle_output_sha256": "17685dc08a1935f3700b10d96ad7173781153dd18ecd6dcdefae2e30f3ef52a1",
+      "filter_oracle": "tiny-glade/reports/module-recovery-2026-10-23/m06-eraser-filter-oracle.c",
+      "filter_oracle_sha256": "d0c2c7da8ec5baaa8d9f6876f2c37227a9dcd59b4d3231936d64d2a1d770d198",
+      "filter_output": "/private/tmp/m06-eraser-filter-oracle.txt",
+      "filter_output_sha256": "c0ecbeac71960553427116e42dd78e201e1d6fa757bdcc9e2bca84b9dc61e2d0",
+      "limits": "区间原执行为预分配4点直线、5组有限圆，未含实际UI和副作用；压缩执行5组含 NaN 的隔离输入，不代表完整父函数；射线非有限传播及异常须核。",
+      "nan_u_probe": {
+        "source": "/private/tmp/m06-eraser-interval-nan-probe.c",
+        "sha256": "c306f7e0724b02d2309dd409ebee5110ebd0de97bb5c2679b8ebe38616acb98e",
+        "result": "两点、刷圆未命中、终点U=0x7fc12345，原返回0段；匹配 MAXSS 目的U/源旧end 的选择",
+        "limit": "单个无序样本，不代表所有NaN和跨架构payload"
+      },
+      "merge_probe": {
+        "source": "/private/tmp/m06-eraser-interval-extra.c",
+        "sha256": "ed8d31055877ba56c36166fa283168b5ceefdb5c2184e61ff0d737c287fd02f4",
+        "result": "半径0.02/0.05及相切圆在6米直墙上均返回完整[0,1]；已加入Rust断言待测"
+      },
+      "dependencies_sha256": {
+        "utils/geometry/circle.rs": "60a49a294f9cad90096e672e4ef4ed7a944701711de61b78ea06710194e7f7b9",
+        "country-core/resources/roofs/geometry/surface.rs": "f06e573d5dff6d915bdf980b805868778963b51b0d6ca7477e77df8173d2c04a"
+      },
+      "elbow_probe": {
+        "source": "tiny-glade/reports/module-recovery-2026-10-23/m06-eraser-elbow-oracle.c",
+        "sha256": "3e3eb4c80e97d37d3fd959dc3b8ab9e6bdf96365e505956616289b9c9f1532c0",
+        "result": "垂直拐角墙 radius1 原返回 [0,3eaaaaab],[3f2aaaab,3f800000]；radius0.5 原返回 [0,3ed55556],[3f155556,3f800000]；已加入Rust断言待测"
+      },
+      "rust_test_log": "/private/tmp/root-m6-core-authority-history-round10-20261029.log",
+      "side_effect_order": "原完整保留区间早退；其他先 archive_current_decorators_in_storage@1413e7230、decorator_cull_allow_wall@140b2bc00、cache_if_original_wall@14092ea50，之后短段过滤；0段 add_fully_erased_event@14092f630 后 remove@14085aa60，1段切片校验后 add_shrink_event@14092eff0，再 update_wall_state@140aa9bc0。helper仅返回未过滤区间以保留此顺序。",
+      "archive_owner": "新增未接入 helper archive_affected_wall，复用 LiveDecoratorArchivist::archive_current_decorators_at_with_resources 的真实碰撞资源，按原顺序 cull 后缓存墙；候选待集中编译。",
+      "ui_candidate": "同 owner 的 eraser_ui_phase 调真实 canvas 和 dragged，活动 widget+有效交点写 EditingHighlight RGB(0.1,0.03,0)，常量原RNE RVA 2ab6650；有真实 UiState canvas/widget/phase 断言；待集中测试和入口接线。",
+      "brush_candidate": "eraser_brush 使用真实 CursorTerrainRaycast.position 与 EraserSizeMultiplier*0x3ff1eb84；待入口接线和集中验证。",
+      "premade_candidate": "原前置最近点@14146a060、闭曲线重接@140a6ba50、curve/enclosure 两次写入@140aaa090/140aa9610；140acd792 UCOMISS(radius,distance)+JBE 的相等和无序均跳过，已复用真实 InnerWalls/Curve2/geo helper 并加远/近/等距/NaN World 边界断言，待编译/原机完整差分和入口接线。",
+      "writer_types": "PDB 1405349b0 8 个真实writer定型到原 owner，未挂生产系统；无第二数据源。",
+      "finish_ui_candidate": "finish_eraser_input 直接同步真实History并发两个原提示；以真实World/事件定向测试，待集中编译，尚未接生产UI。",
+      "rewire_u_oracle": {
+        "source": "tiny-glade/reports/module-recovery-2026-10-23/m06-eraser-u-lerp-oracle.c",
+        "sha256": "d5f574e1b8215149db0c79ba08388835b43fec38d1162100f4206703d7d3ff62",
+        "result": "原 140c904d0 输入 bits 3f1af100 3f29fa8b 3f71e191 得 3f29263c；加权式为 3f29263b。Rust 复用 utils::scalar::lerp，定向断言待集中测试。"
+      },
+      "branches_candidate": "单段按 140ace69f..140aced37 真实事件、切片校验、shrink、活墙高度、roof 和同ID全状态更新；零段按 140ace441..140ace657 先 fully-erased 再 remove，再发 PlayWallAudio kind由 source+65 决定；多段状态候选使用 terrain/PublicWalls 和长度高度上限。真实World零/单段断言待中央测试。均未接真实UI入口，整父体未差分。"
+    }
+  },
+  "roof_snapshot": {
+    "status": "目标测试1/1通过，write与restore两新进程通过",
+    "failed_log": "/private/tmp/root-m6-synchronous-history-roof-round5-20261029.log",
+    "hypothesis": "测试首次直接请求保存，save_game 首帧比较缓存为 None 不发布快照引用；已加零时长真实先导帧和引用诊断，须重跑确认",
+    "current_test_sha256": "c6b020e2a8d92abde640c38c32a8c3e9e22443c4b61eba3afbe98a6260b50d15",
+    "second_failed_log": "/private/tmp/root-m6-roof-snapshot-round5-v2-20261029.log",
+    "second_result": "history.json 包含 snapshot 引用，真实加载后墙存在；随后比较因 f32 JSON 文本经 Value 直接解析成 f64 与 f32→f64 值不同而失败",
+    "fix": "两边均经 Roof typed serde 后比较全部持久字段；没有误差容限",
+    "passed_log": "/private/tmp/root-m6-roof-snapshot-round5-v3-20261029.log",
+    "passed_test_sha256": "c6b020e2a8d92abde640c38c32a8c3e9e22443c4b61eba3afbe98a6260b50d15",
+    "scope": "真实 CreateRoofCmd → create_roof → wall_roof_hashmap 关联 → save_game_system World 捕获 → SaveThread 快照 → 新进程 load_game、墙发布及屋顶事件消费 → 类型化字段对比和墙样式 undo/redo。创建墙为夹具、屋顶命令合成；不含画面/GPU/完整App及重算卸载。"
+  },
+  "m06_history_missing_recording": {
+    "original": "History::add@140a84ec0 pending niche absent jumps panic_fmt at 140a8525b, format Tried writing ... to History when the input recording is finished",
+    "previous_candidate": "同步helper将错误转 HistoryRecordingFailed 事件继续，splitter 返回Err；撤回这一错误合同",
+    "current_candidate": "M06同步调用点原位 panic；eraser finish 的最终 map1/map2 clear 位于成功 History::add 后，测试分别核 style权威写后panic和擦除 drain后map1保留",
+    "source_sha256": {
+      "set_wall_style.rs": "d93c2347c5445b8f929aa234b8faf00bb15999299e9b589459a4393a5709e092",
+      "history_recording.rs": "1f52eeb27127419893254a459a0566661b292420e7e424f7a3135925011038b1",
+      "archivist.rs": "cf79ce0f30474b5f4fa73608ec81dbf75640d95325c00b7392b08dbfa6e9e767"
+    },
+    "validation": "集中 core 墙组 round10：238通过、1失败；style 无 recording panic、archivist 成功与 panic 顺序、finish_wall 六项、ui_continue_wall 九项均通过。唯一失败 registration fixture 缺 Time 资源；跨进程和完整生产链仍须重新验证。",
+    "splitter_color": {
+      "evidence": "原 decomp-0x140a74c20.txt:1327,1364 直接调用 History::add",
+      "source_sha256": "77fb753412df489e6fe8b141338540b167ee486f729fd4c9ba8e654fe5f1f9b6",
+      "status": "no-recording panic 候选与单测待中央运行"
+    },
+    "validation_log": "/private/tmp/root-m6-core-authority-history-round10-20261029.log"
+  },
+  "central_wall_round13": {
+    "log": "/private/tmp/root-m6-eraser-history-complete-round13-20261029.log",
+    "result": "systems::wall 244/244通过",
+    "scope": "含原中心区间6组、曲线长度2/墙高3、颜色bit0、真实UiState phase/highlight、折角/相切原机器码样本和历史panic；非真实完整UI、原完整finish差分或跨进程擦除链。",
+    "archivist_sha256": "fcb1494db6eaa2fae1ffb88752f3edba727126929c99a6ebf7be08a9dd780233",
+    "wall_eraser_sha256": "7382bf4ef479f48d0f17dc41957190b8b6a9f38bf7f794335e85d1ceaf9c6e1c",
+    "wall_splitter_sha256": "8fddc8b32de6025f9bf97f33ace65ea6fdd6b769e3093bcd62110f9645a1d61e"
+  },
+  "eraser_review_checkpoint_20261029": {
+    "source_sha256": "24d81081449d16cc05c4d43478d26d7a019e320552005fe3b0a74a9d0ec82fbc",
+    "interval_correction": "原 MAXSS 的目的为 u1、源为旧 end；无序或相等选源。修正旧 end 为 NaN 时错误选 u1，新增无序双方向及 signed zero 断言。原片段已有 u1 NaN 的执行证据，反向无序及相等依 x86 指令语义，未另做原执行。",
+    "validation": "最新 wall_eraser 源码未编译，已通知中央执行 cargo test --offline -p country-core wall_eraser --lib -- --test-threads=1；旧 whole244 不适用于此源码。",
+    "graph": "复用 graph 查询 wall_eraser：本地 socket 经授权重试后 ConnectionRefused；未重启或修改共享服务。已有 snapshot 053060f0c5d388b353567d8b 可作先前 finish 调用证据。",
+    "acceptance_remaining": "现有 original_history_wire 测序列化和 replay bucket，original_gameplay_chain 已有生产 App 存档 worker 测试；均未覆盖真实擦除输入→finish→undo/redo→save worker→新进程恢复→删除/Reload，仍须在现有生产 App 测试扩展并绑定实际状态与事件，不能以手工提交历史或旧测试代替。",
+    "acceptance_candidate": {
+      "file": "tiny-glade/crates/tiny-glade/tests/original_gameplay_chain.rs",
+      "sha256": "2907c3e14d06cda76afce57a7d06763fbe51448266d3d0b6756ee200f727bec7",
+      "description": "小刷选真实长墙中点，undo比较全部墙源/元数据、颜色、屋顶关联与装饰ID；redo检查保留墙、已删墙实体/GPU实例、抹灰/支撑/公开墙owner；父进程存档、子进程Reload后比较剩余墙与末项历史。需真实运行校验，屋顶按关联墙ID与序列化字段比较，不比较ECS代次，GPU检查仅ECS实例owner退役。",
+      "status": "round26之后增强候选，尚未编译/执行；新旧结果不得混淆。",
+      "command": "CARGO_INCREMENTAL=0 cargo test --offline -p tiny-glade --test original_gameplay_chain m06_shipped_wall_synthetic_input_uses_real_ui_and_history -- --exact --nocapture --test-threads=1"
+    },
+    "round26": {
+      "log": "/private/tmp/root-m6-real-ui-history-save-round26-20261029.log",
+      "result": "真实设备父1/1、子进程1/1；父39.28s，子20.18s。",
+      "boundary": "旧候选宽刷清空墙，合成地形/按键，检查目标墙存在性、生产存档完成及新进程Reload；不证明保留墙字段、屋顶/装饰恢复、GPU退休或OS输入。"
+    },
+    "round37": {
+      "log": "/private/tmp/root-m6-strong-ui-history-save-round37-20261029.log",
+      "result": "真实设备强化输入16.66秒，adjust_wall_height_impl因WallId(30)不在InnerWalls panic；未跳过原unwrap。",
+      "evidence": "B decomp-0x14092f990.txt 末段顺序复制五个24字节Vec：长度依次5b8、5a0、588、570、558；旧Rust错误为5b8、570、558、588、5a0。",
+      "correction": "按原复制顺序修正五组，确保原墙Delete和子墙Create在子墙StateChange之前；逆向undo顺序亦先完成子墙状态再撤除子墙。诊断测试附独立EventReader与阶段打印，待集中运行确定故障是否关闭。",
+      "archivist_sha256": "7ca7e6c995e6d162974c770105f9a684af539c37449ae2639419cef9a9f8bbf8",
+      "status": "原反编译静态对照；修后尚未运行或做完整原侧差分。"
+    },
+    "round40": {
+      "log": "中央实测 native-physics 墙组253/253，原ASM 140931c9b..d79 与C末段独立确认五组24B顺序。",
+      "scope": "墙组局部测试与原静态组序；强化真实GPU链仍待复验。"
+    },
+    "round42_fixture": "撤销/重做要求目标历史游标、两个回放队列为空和模式离开Replay；再运行2帧消费末帧事件并确认未再启动。子进程Reload同理；事件双缓冲长度不等于各reader游标。待集中运行。",
+    "round42": {
+      "log": "/private/tmp/root-m6-strong-ui-history-save-round42-20261029.log",
+      "result": "原五组顺序修正后不再发生缺墙高度panic，执行到已删墙支撑统计键断言失败。",
+      "correction": "该断言把独立ElevationSupportStats统计误认作GPU owner；原卸载13参数不含此资源且尚无原删除清理证据。detector对零高程公开墙插入默认统计，不能推测性清除。现fixture检查实际ConstructorGpuOutput三槽、StoneColumnCollisionStorage空几何与碰撞句柄；记录真实分配范围和全局活动范围，全局chunk可被其他墙复用。",
+      "status": "新断言待集中测试，不声称原统计生命周期或物理内存释放已完整证明。"
+    },
+    "round45": {
+      "log": "/private/tmp/root-m6-strong-ui-history-save-round45-20261029.log",
+      "result": "真实UI拆墙、undo/redo、GPU owner退役及子进程生产Reload后剩余墙比对通过；历史末项比较失败，父40.11s/子20.66s。",
+      "boundary": "尚无首差异，不能推断保存丢字段或判定等价；已补JSON首差异指针/两侧值，不移除断言，待集中复跑。"
+    },
+    "round47": {
+      "log": "/private/tmp/root-m6-save-wire-difference-round47-20261029.log",
+      "first_diff": "/edits/0/Wall/0/0/WallChanged/after/arch_height expected=2.8 actual=2.799999952316284",
+      "cause": "父端to_string→from_str，子端to_value：锁定serde_json 1.0.85 value/ser.rs:133 serialize_f32将f32转f64，文本ser.rs:155使用f32输出。两个投影表示不同，不能视为保存丢失。",
+      "fix": "子端同父端及实际存档走to_string→from_str，保留严格全部字段及数组比较，不引入浮点容差。修后待运行。"
+    }
+  },
+  "finish_wall_closure_checkpoint": {
+    "graph": "复用 Neo4j snapshot 053060f0c5d388b353567d8b，B SHA f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03；finish@140a800a0 PDB span a800a0..a82052，Ghidra body为离散候选，未以单段 body 认定完整CFG。",
+    "evidence": "原RNE ASM 140a80efd..f5b：pending后取活墙tag、snap后析构续画旧快照；tag<2时查询当前墙并在140a816ea..817bb构造 niche 0x8000000000000003 / next tag2、History add，再 mark_non_enclosed；progress 在812cf清理，其后自吸附循环写当前→Yes并更新权威。",
+    "reachability": "复用graph snapshot 053060f0c5d388b353567d8b 定位 B ui_continue_wall@140aadd30，原RNE 140aae47c cmp [r15-0x48],2 / jne 筛公开墙tag2；finish@140a80efd 读InnerWalls活源。生产单次续画draw_wall自身不改变enclosure；仅依据公开/活源分离不能证明正常UI能进入premade尾部，跨系统或陈旧发布仍是假说。SystemParam测试仅证有此输入时的候选行为。",
+    "implementation": "finish_wall 候选接入原历史/权威owner，既有单元覆盖历史顺序、panic前不改权威、真实SystemParam预制续画及新墙自吸附；生产App合成UI完整链、原侧输入差分未验。",
+    "sha256": "a6ffc0ba06f21f88d34c404a5d965cf44fcbbc83b70a32c25a3a694cb5d6ea59",
+    "tests": "中央 native-physics finish_wall round49 8/8，/private/tmp/root-m6-finish-enclosure-round49-20261029.log；之后仅追加生产App测试注入顺序约束，原侧对比和真实业务闭环仍未验。",
+    "correction": "此前把 f32处快照析构误读为 progress.clear，已按原指令把premade记录置于clear前。true事件分支未读取续画快照；live墙缺失则clear，已撤销UnsupportedFinish。",
+    "app_candidate": "生产App合成动作与地形命中；画布/拾取/吸附/绘墙/历史均由生产系统，输入在生产地形射线之后及 ui_draw_wall/snapping之前注入，验闭合→undo/redo→save→子进程Reload并比较墙与历史。真实OS输入暂缓；尚未运行。",
+    "app_sha256": "72335cf18de3d66949c5ed5667bdba367d8061bbd6cbf3c380ca057230c9e855"
+  },
+  "snapping_signifier_round59": {
+    "failure": "/private/tmp/root-m6-closed-ui-gpu-round59-20261029.log；闭墙触发mode3 Raw生产者并被真实signifier_create拒绝。",
+    "original": "B snapping_signifiers@140a6a650：逐帧两个唯一预览实体Transform.scale清零；mode2对端预览写 xvy位置与1.5 scale，不产生工厂；mode3 PublicWalls validated lookup、preview_snapping_line@1408dfc60长度4/后两浮点0，取完整点列 DebugLine::show@140b04f70 width2，取anchor DebugSphere::show@140b02520 radius0.2、line_width1、filled=true。",
+    "candidate": "复用已验证完整preview helper和既有typed DebugLine/DebugSphere工厂；新增mode2/3实体与factory World测试，未编译/运行。",
+    "inventory": "墙域直接Raw写入经rg定位只有旧snapping两分支和 ui_bulldozer；后者单独由m6_intersections恢复。不能据此证明跨域无Raw。",
+    "source_sha256": "e8a720b4c6bcba5e948d9f101aea4ac5d2daddff5e9dff2d4179600e97808230"
+  }
+}

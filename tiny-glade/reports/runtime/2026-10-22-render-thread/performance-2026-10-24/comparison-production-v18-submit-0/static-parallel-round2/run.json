@@ -1,0 +1,78 @@
+{
+  "pid": 17473,
+  "binary": "/private/tmp/tg-render-perf-production-v18-performance",
+  "binary_sha256": "0cb568f16232e6fe3088644da4c6cd13ac69f30bc6e0e456e9f6453b3bb91500",
+  "parallel_evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/runtime/2026-10-22-render-thread/performance-2026-10-24/diagnostics-production-v18/static-parallel-round1/run.json",
+  "frozen_build_manifest": "/Users/yuluo/Desktop/game/tiny-glade/reports/runtime/2026-10-22-render-thread/performance-2026-10-24/production-v18-performance-build.json",
+  "audited_source_archive_sha256": "1f9eec646be468909e54e82b062c116bfb5f26eec86ff07c693842c8c8a91586",
+  "scenario": "static",
+  "mode": "parallel",
+  "warmup": 300,
+  "frames": 3000,
+  "stack_sampling": false,
+  "gpu_timestamps": false,
+  "stage_timing": false,
+  "cpu_sampling": false,
+  "started_utc": "2026-10-25T07:48:25.938514+00:00",
+  "workspace_sha256_at_start": {
+    "Cargo.lock": "fa00a6d4615d9e970bf10fde1483fe8bf1cf6acd46b5a1b93c8881c71eb4de0b",
+    "crates/tiny-glade/tests/original_loading_present.rs": "f7d71a6b802d0bc9c9b5a32ccc27b9cbacfa862ad24003bd58be77b2f087b486",
+    "crates/tiny-glade/src/production_renderer.rs": "c7efa09c182c72ced299929f01b64c0d0eda8a9c4fa247d04a5b12a7af5fd3b3"
+  },
+  "environment": {
+    "MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS": "0",
+    "VK_ICD_FILENAMES": "/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json",
+    "VK_LAYER_PATH": "/opt/homebrew/share/vulkan/explicit_layer.d",
+    "DYLD_FALLBACK_LIBRARY_PATH": "/opt/homebrew/lib",
+    "RHAPSODY_REQUIRE_VULKAN": "1",
+    "MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS": "1",
+    "TG_INSTALL_ROOT": "/Users/yuluo/Desktop/game/B\u7248\u672c\u5185\u5bb9",
+    "TG_VALIDATE_GAMEPLAY_WSI": "1",
+    "TG_VALIDATE_WORLD_FRAMES": "3300",
+    "TG_VALIDATE_TIMEOUT_SECONDS": "600",
+    "TG_PERF_SCENARIO": "static",
+    "TG_FRAME_TIMING": "0",
+    "TG_FRAME_TIMING_EVERY": "1",
+    "TG_DRAW_COLLECT_CHUNK": "64",
+    "TG_REQUIRE_CROSS_PASS": "1"
+  },
+  "exit_code": 0,
+  "elapsed_s": 140.04932079091668,
+  "log_sha256": "4e9f4b7b1f5109ba34f7ee384cd2b9ab1dfc4c8665c9ab1576461c04f37b1198",
+  "cpu": {
+    "average_process_cpu_percent": 165.23666369889,
+    "sampled_cpu_ms_per_observed_frame": 67.6336898395722,
+    "peak_rss_kib": 926896,
+    "observed_frame_range": [
+      303,
+      3295
+    ],
+    "scope": "1-second process snapshots; 100% is one CPU core; sampled subrange excludes startup/warmup, not exact full-frame CPU attribution."
+  },
+  "measurement": {
+    "frames": 3000,
+    "warmup": 300,
+    "observed_fps": 24.419185070715947,
+    "allocator": "mimalloc",
+    "measured_upload_pending_yields": null,
+    "metrics": {
+      "observed_native_frame_interval_ms": {
+        "n": 3000,
+        "p50": 39.43175,
+        "p95": 54.548916,
+        "p99": 75.133084
+      }
+    },
+    "render_stage_rows": 0,
+    "gpu_window_count": 0,
+    "gpu_windows_with_samples": 0,
+    "collect_measured": {
+      "rows": 0,
+      "tasks": 0,
+      "cross_pass_tasks": 0
+    },
+    "collect_totals_all_gameplay": null,
+    "startup_line": "PERF_WORLD_FIRST scenario=static wall_ms=2789.527 world=WorldId(0)",
+    "scope": "Real desktop loop and native WSI; render-feedback intervals measure throughput, not GPU completion or photon latency. Stage wall times overlap CPU/GPU work and must not be summed. Missing timing rows/counters mean instrumentation was disabled."
+  }
+}

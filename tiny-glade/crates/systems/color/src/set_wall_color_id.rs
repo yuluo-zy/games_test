@@ -3,13 +3,12 @@
 //!
 //! `set_wall_color_id` 真实控制流（0x142290820，1817B）：
 //! 1. `FrozenMap::get<SsboId,BufferState>` 取 `WallColorIdSsbo`，memcmp 50B 名校验
-//!    （不符 `assert_failed`），vtable+0x18 取缓冲；**SSBO 上传段未恢复**（country_core
-//!    `WallColorIdSsbo` 为 typed-gap，无 `SsboType`，分歧点）。
+//!    （不符 `assert_failed`），vtable+0x18 取缓冲；消费完事件后整表上传。
 //! 2. 事件循环（stride 0x18）：`idx = id→索引`（0x1400885d0）；断言
 //!    `idx <= 0x4fff`（panic 0x1401412e0 区）；读旧色、写 `WallColorIds[idx]=新色`、
 //!    写 change tick。
 //! 3. `PublicWalls::get(id)` 命中时：`cmd.custom != 0` → `WallStyle::is_halftimbered()`
-//!    （返回未在反编译中参与分支，U）+ 折线 AABB（`Aabb2::from_points` 折叠、
+//!    的返回值作为音效 selector，加上折线 AABB（`Aabb2::from_points` 折叠、
 //!    `Aabb2::center`、`PublicWallState::max_y`、`xvy`）→ 推 0x20B 记录 tag=6。
 //! 4. 脏色分类：新色 ∈ {4..10,12} → `CreatePlasterCmd`；否则旧色 ∈ 该集 →
 //!    `DeletePlasterCmd`。
@@ -81,15 +80,12 @@ fn insert_missing_color_tables(commands: &mut Commands, wall: bool, gate: bool, 
     }
 }
 
-/// `set_wall_color_id` @0x142290820（1817B，重建；SSBO 上传段未恢复）。
-///
-/// 分歧点：真实 8 参（含 `Res<GraphicsDeviceResource>`）中 rhapsody 设备接线未
-/// 接入（core 无 `GraphicsDeviceResource` 资源）；`WallColorIdSsbo` typed-gap 使
-/// `get::<WallColorIdSsbo>()`+`update_buffer_bytes` 段无法编译。已恢复：事件循环、
-/// 索引断言、颜色写、halftimber AABB、脏色石膏分类、0x20B 记录 tag=6。
+/// `set_wall_color_id` @0x142290820（1817B）。有事件时先取缓冲，
+/// 再逐条消费并更新 CPU 表和事件，最后一次上传整表。
 #[allow(clippy::too_many_arguments)]
 pub fn set_wall_color_id(
-    _library: Res<AssetSsboLibrary>,
+    library: Res<AssetSsboLibrary>,
+    device: Res<country_core::render::device::GraphicsDeviceResource>,
     mut cmds: EventReader<SetWallColorIdCmd>,
     mut wall_colors: ResMut<WallColorIds>,
     mut sounds: EventWriter<PlayWallUiSound>,
@@ -97,7 +93,34 @@ pub fn set_wall_color_id(
     mut plaster_create: EventWriter<country_core::resources::walls::plaster::CreatePlasterCmd>,
     mut plaster_delete: EventWriter<country_core::resources::walls::plaster::DeletePlasterCmd>,
 ) {
+    use country_core::resources::color_id::WallColorIdSsbo;
+    // 原入口在查 SSBO 前检查待读数量；缺失缓冲时不推进 EventReader。
+    if cmds.is_empty() {
+        return;
+    }
+    let buffer = library.get::<WallColorIdSsbo>().expect("原墙颜色 SSBO 缺失");
     for cmd in cmds.read() {
+        apply_wall_color(cmd, &mut wall_colors, &walls, &mut sounds, &mut plaster_create, &mut plaster_delete);
+    }
+    if !wall_colors.0.is_empty() {
+        use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
+        // 类型已由库校验；u32 表按原字节序直接写入同一缓冲，不分配副本。
+        let data: &[u8] = bytemuck::cast_slice(&wall_colors.0);
+        assert!(data.len() <= buffer.byte_size(), "原墙颜色整表超过缓冲容量");
+        GraphicsDevice::update_buffer_bytes(device.device(), &buffer.buffer, data, &[0..data.len()], 0)
+            .expect("原墙颜色整表上传失败");
+    }
+}
+
+// 共用原逐事件控制流；设备查验及整表上传只在真实系统入口执行。
+fn apply_wall_color(
+    cmd: &SetWallColorIdCmd,
+    wall_colors: &mut WallColorIds,
+    walls: &PublicWalls,
+    sounds: &mut EventWriter<PlayWallUiSound>,
+    plaster_create: &mut EventWriter<country_core::resources::walls::plaster::CreatePlasterCmd>,
+    plaster_delete: &mut EventWriter<country_core::resources::walls::plaster::DeletePlasterCmd>,
+) {
         let wall_id = cmd.wall_id();
         // O：`idx = id→索引`（0x1400885d0）；`0x4fff < idx` → panic（= idx <
         // MAX_NUMBER_OF_WALLS=0x5000）。
@@ -113,9 +136,7 @@ pub fn set_wall_color_id(
         // 在 wall==null 时跳过处理直接进入下一事件）。
         if let Some(wall) = walls.get(wall_id) {
             if cmd.custom != 0 {
-                // O：`WallStyle::is_halftimbered()`（内联于 0x142290820；返回未参与
-                // 反编译分支，U——可能为 Ghidra 丢失的数据流；core `PublicWallState`
-                // 未暴露该访问器，未调用，登记 GAP）。
+                // O：`WallStyle::is_halftimbered()` 返回值写入音效 selector。
                 // O：折线 AABB（墙+0x40 点 ptr / +0x48 计数，每点 3×u32 (x,z,0)；
                 // SIMD minps/maxps = glam Vec2::min/max，Aabb2::from_points 折叠）
                 // → center → max_y → xvy。空折线时 Aabb2 保持 {f32::MAX, f32::MIN}，
@@ -124,11 +145,11 @@ pub fn set_wall_color_id(
                     Aabb2::from_points(wall.height_outline().iter().map(|p| Vec2::new(p[0], p[2])));
                 let center = aabb.center();
                 let position = center.xvy(wall.max_y());
-                // O：推 0x20B 记录（tag 6；PlayWallUiSound kind=6）。selector/
-                // value 载荷在反编译为未解出的字节（+0x09/+0x0c），登记 U。
+                // O：推 0x20B 记录（tag 6；PlayWallUiSound kind=6）。
                 sounds.write(PlayWallUiSound {
                     kind: 6,
-                    selector: 0,
+                    // 原调用 WallStyle::is_halftimbered 的 AL 写入记录 +1。
+                    selector: u8::from(wall.authority.style() >= 2),
                     value: 0.0,
                     position,
                 });
@@ -146,7 +167,6 @@ pub fn set_wall_color_id(
                 ));
             }
         }
-    }
 }
 
 #[cfg(test)]
@@ -161,6 +181,16 @@ mod full_wall_id_tests {
             publication_source::TerrainHeightGrid512,
         },
     };
+    // 这些旧测试仅验证逐事件 CPU 合同；完整系统的设备前置与上传另由真实设备验收。
+    fn test_set_wall_color_id(
+        mut cmds: EventReader<SetWallColorIdCmd>, mut colors: ResMut<WallColorIds>,
+        walls: Res<PublicWalls>, mut sounds: EventWriter<PlayWallUiSound>,
+        mut create: EventWriter<CreatePlasterCmd>, mut delete: EventWriter<DeletePlasterCmd>,
+    ) {
+        for cmd in cmds.read() {
+            apply_wall_color(cmd, &mut colors, &walls, &mut sounds, &mut create, &mut delete);
+        }
+    }
     /// Same CPU-table segment as `init_color_ids_buffer` without the GPU device parameter.
     fn test_init_tables(
         mut commands: Commands,
@@ -213,7 +243,7 @@ mod full_wall_id_tests {
                 schedule.add_systems(crate::set_halftimber_color_id::set_halftimber_color_id);
             } else {
                 world.send_event(SetWallColorIdCmd::new(id, 12, 0));
-                schedule.add_systems(set_wall_color_id);
+                schedule.add_systems(test_set_wall_color_id);
             }
             let result =
                 std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule.run(&mut world)));
@@ -258,7 +288,7 @@ mod full_wall_id_tests {
         let mut schedule = Schedule::default();
         schedule.add_systems(
             (
-                set_wall_color_id,
+                test_set_wall_color_id,
                 crate::set_gate_color_id::set_gate_color_id,
                 crate::set_halftimber_color_id::set_halftimber_color_id,
             )
@@ -281,7 +311,7 @@ mod full_wall_id_tests {
         world.remove_resource::<HalftimberColorIds>();
         world.send_event(SetWallColorIdCmd::new(WallId(7), 12, 0));
         let mut schedule = Schedule::default();
-        schedule.add_systems((test_init_tables, set_wall_color_id).chain());
+        schedule.add_systems((test_init_tables, test_set_wall_color_id).chain());
         schedule.run(&mut world);
         assert_eq!(world.resource::<WallColorIds>().0[7], 12);
         schedule.run(&mut world);

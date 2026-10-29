@@ -12,7 +12,7 @@ use crate::resources::ivy::{
     IvyDirectionProposer, IvyLeafRng, IvyLeafStorage, IvySpawnNoise, IvyStorage,
 };
 use crate::resources::critters::sheep::CmdCheckForSheepInsideBuilding;
-use crate::resources::walls::public_walls::OnWallChanged;
+use crate::resources::events::OnCircleRotated;
 use crate::resources::walls::wall_holes::PrevWallHoles;
 use bevy_ecs::prelude::*;
 
@@ -30,11 +30,9 @@ pub fn register_ivy_storage(world: &mut World) {
     world.init_resource::<Events<IvySegmentDoneGrowingMsg>>();
     world.init_resource::<Events<IvyLeafIsGrowing>>();
     world.init_resource::<Events<RemoveIvyCmd>>();
-    // ivy_pruner dirty-wall inputs: the native readers are
-    // CmdCheckForSheepInsideBuilding + OnCircleRotated; OnWallChanged is the
-    // crate's available equivalent until OnCircleRotated is recovered.
+    // 原两个独立reader共用生产者的真实事件身份。
     world.init_resource::<Events<CmdCheckForSheepInsideBuilding>>();
-    world.init_resource::<Events<OnWallChanged>>();
+    world.init_resource::<Events<OnCircleRotated>>();
 }
 
 /// B `systems/ivy/mod.rs::impl$0::insert_ivy_resources` (0x1409440c0): inserts

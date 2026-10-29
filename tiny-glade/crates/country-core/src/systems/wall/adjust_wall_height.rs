@@ -2,8 +2,8 @@
 //! Original submodules (`adjust_wall_height::{adjust_wall_height_impl, signifier_animation, ui_adjust_wall_height_mode}`).
 pub mod adjust_wall_height_impl;
 pub mod signifier_animation;
-pub mod ui_adjust_wall_height;
 pub mod ui_adjust_wall_height_mode;
+pub mod ui_adjust_wall_height;
 use crate::systems::wall::height_command::AdjustWallHeightRequest;
 use crate::systems::wall::height_command::WallHeightCommandError;
 use crate::systems::wall::height_command::WallHeightFeedback;
@@ -78,21 +78,11 @@ pub struct WallCursorHit {
     pub point: Vec3,
 }
 
-/// Native `adjust_wall_ui_mode::UiWallHeight` host fields (fresh 2026-10-17).
-///
-/// Anchors:
-/// - `+0x00` qword `WallId` (signifier 0x140956cd0 `uVar3 = *in_RCX`,
-///   formatted through `resources::walls::impl$0::fmt`);
-/// - `+0x08` flag byte (signifier `cVar2 = byte[+8]`); selects the `0.2` env
-///   scalar (`0.0` when set) and the reduced guard set;
-/// - `+0x09` mode byte (widget 0x1409566d0 and signifier compare `== 1`);
-/// - `+0x90/+0x98` points pointer/length and `+0xe0/+0xe8` heights
-///   pointer/length (both bodies `min(points.len, heights.len)` and lift y).
-///
-/// The native gaps between `+0x0a` and `+0x90` are unproven; they are not
-/// modelled. The container's exact `Vec` field order is likewise unproven
-/// (native reads length at `+0x98`, not the current Rust `Vec` len offset), so
-/// this is a semantic host face, not an ABI claim.
+/// 原 `UiWallHeight` 的局部字段为WallId/+8 flag/+9 mode（原140b303c6..ce）。
+/// 原widget的+0x90/+0x98和+0xe0/+0xe8属于独立传入的PublicWallState，
+/// 分别是prepared Curve3和arch_segment_heights，不能把它们当成self字段。
+/// 本类型保留早期公共数学辅助面上的owned points/heights以兼容既有调用；
+/// 真实生产者借用PublicWallState，不填充或克隆这两个兼容数组。
 #[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
 pub struct UiWallHeight {
     /// +0x00.
@@ -101,9 +91,9 @@ pub struct UiWallHeight {
     pub flag: u8,
     /// +0x09.
     pub mode: u8,
-    /// +0x90 / +0x98.
+    /// 兼容数学辅助面；真实生产读取PublicWallState::height_outline。
     pub points: Vec<Vec3>,
-    /// +0xe0 / +0xe8.
+    /// 兼容数学辅助面；真实生产读取PublicWallState::arch_segment_heights。
     pub heights: Vec<f32>,
 }
 
@@ -111,7 +101,7 @@ impl UiWallHeight {
     /// Widget `0.6` lift when the mode byte is 0 (0x1409566d0).
     pub const FLAT_LIFT: f32 = 0.6;
     /// Widget `-0.29` lift when mode != 0 and the stack flag is set.
-    pub const STACKED_LIFT: f32 = -0.29;
+    pub const STACKED_LIFT: f32 = f32::from_bits(0xbe94_7ae2);
     /// Signifier env scalar when `+8 == 0` (0x3e4ccccd = 0.2).
     pub const SIGNIFIER_ENV_SCALAR: f32 = 0.2;
 
@@ -141,26 +131,25 @@ impl UiWallHeight {
 
     /// Signifier guard for `mode == 1 && flag == 0` (0x140956cd0): the native
     /// returns early unless `byte[state+0x18] != 0`, `qword[state+0x38] ==
-    /// wall id` and `dword[state+0x28] != 2`.
+    /// context widget id` and `dword[state+0x28] != 2`.
     pub fn signifier_guard_passes(&self, state: &crate::systems::ui::resources::ui_state::UiState) -> bool {
         if self.mode != 1 || self.flag != 0 {
             return true;
         }
         state.hover_byte() != 0
-            && state.active_widget() == crate::systems::ui::resources::ui_state::WidgetId(self.wall.0)
+            && state.active_widget() == crate::systems::ui::resources::ui_state::WidgetId::from_name(&self.widget_name())
             && state.intersection_tag() != 2
     }
 
     /// Signifier names (0x140956cd0):
     /// - `mode == 1`: `wall_height_edit_{wall}`;
-    /// - else: `wall_height_edit_{wall}{count}` where `count` is the zipped
-    ///   point/height length used by the lifted preview.
-    pub fn signifier_name(&self) -> String {
+    /// - else: `wall_height_edit_{wall}{count}` where `count` is GameTime.frame_count,
+    ///   saved from R9D at 0x140956cfa.
+    pub fn signifier_name(&self, frame: u32) -> String {
         if self.mode == 1 {
             format!("wall_height_edit_{}", self.wall)
         } else {
-            let count = self.points.len().min(self.heights.len());
-            format!("wall_height_edit_{}{}", self.wall, count)
+            format!("wall_height_edit_{}{}", self.wall, frame)
         }
     }
 
@@ -483,8 +472,8 @@ mod ui_wall_height_tests {
     /// 0x140956cd0 names and the mode/flag env scalar.
     #[test]
     fn signifier_names_and_env_scalar_match_fresh() {
-        assert_eq!(host(1, 0).signifier_name(), "wall_height_edit_WallId(12)");
-        assert_eq!(host(0, 0).signifier_name(), "wall_height_edit_WallId(12)2");
+        assert_eq!(host(1, 0).signifier_name(2), "wall_height_edit_WallId(12)");
+        assert_eq!(host(0, 0).signifier_name(2), "wall_height_edit_WallId(12)2");
         assert_eq!(host(1, 0).signifier_env_scalar(), 0.2);
         assert_eq!(host(1, 1).signifier_env_scalar(), 0.0);
     }
@@ -493,7 +482,7 @@ mod ui_wall_height_tests {
     #[test]
     fn signifier_guard_reads_the_ui_state_fields() {
         let value = host(1, 0);
-        let id = WidgetId(value.wall.0);
+        let id = WidgetId::from_name(&value.widget_name());
         let mut state = UiState::new(UiInteraction {
             native_tag: 1,
             native_phase: 0,

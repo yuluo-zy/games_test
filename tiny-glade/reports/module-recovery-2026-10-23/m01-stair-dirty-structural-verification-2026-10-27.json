@@ -1,0 +1,333 @@
+{
+  "date": "2026-10-27",
+  "scope": "M01 slot14 leaves4/5 plus required real lazy subscriptions, LazyTile and visual dependency owner; no host registration, later assembly or GPU completion claim",
+  "original_identities": "m01-stair-dirty-structural-original-identities.json",
+  "original_source_path": "crates/systems/decorator/src/decorator_visual/stairs_assemble.rs",
+  "original_source_sha256": "5547521ff43efe863fba348656e8c55203e556ccfd647d82ee794436eead86cd",
+  "parameter_groups": {
+    "lazy_initializer": 4,
+    "propagate": 4,
+    "structural": 7
+  },
+  "oracle_domains": [
+    {
+      "artifact": "m01-stair-structural-stage-native-v3.json",
+      "cases": 139,
+      "original_failures": 18,
+      "convex_call_records": 248,
+      "boundary": "Full original1407d20c0 entry/ret, originalgen+swizzler, bridges Parry and physical/container storage, explicit empty graph input"
+    },
+    {
+      "artifact": "m01-stair-structural-junction-native.json",
+      "cases": 16,
+      "original_failures": 2,
+      "boundary": "Original completejunction1407d32d1..3755, nonempty graph/neighbor/count inputs, container dependencies and add-edge storage bridged"
+    },
+    {
+      "artifact": "m01-stair-dirty-event-native.json",
+      "cases": 420,
+      "boundary": "Full original1407d16b0 entry/ret with explicit emptyrequests/subscriptions; originalvariant/event write logic, storage reads and emptyfold/memzero bridged"
+    },
+    {
+      "artifact": "m01-stair-lazy-tile-native.json",
+      "cases": 144,
+      "boundary": "Full original140aac630/140833250 and original1412946a2..6b2 truncation, no candidate oracle"
+    }
+  ],
+  "validation": [
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test -p system-decorator --offline --lib dirty_structural_tests -- --test-threads=1",
+      "result": "10 passed,0 failed;477filtered;0.10s",
+      "log": "m01-stair-dirty-structural-tests-final-ladder.log"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test -p system-decorator --offline --test stairs_structural_collider -- --test-threads=1",
+      "result": "4 passed,0 failed",
+      "log": "m01-stair-dirty-structural-existing-geometry-tests.log"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test -p system-decorator --lib --offline decorator_visual::stairs_assemble -- --test-threads=1",
+      "result": "Later shared compilation blocked by other owner ui_move_decorator roof_uv_at_ws_pos old4arg Result versus current3arg Option API; target source had passed10tests before this unrelated edit. Does not certify latest wholeworkspace build.",
+      "log": "m01-stair-dirty-structural-module-regression.log"
+    }
+  ],
+  "source_snapshots": [
+    {
+      "path": "crates/systems/decorator/src/decorator_visual/stairs_assemble.rs",
+      "size": 80310,
+      "sha256": "abffd2d7a63b63bb71424e9b9d755aab07cfd9cd9b384a49154186036ad45ad4"
+    },
+    {
+      "path": "crates/country-core/src/lib.rs",
+      "size": 3006,
+      "sha256": "4e0aac4097f0f05d54b374bda3fc31cc0a5c71a3db39deeac7b639c68ae169c9"
+    },
+    {
+      "path": "crates/country-core/src/resources/stairs/visual.rs",
+      "size": 23462,
+      "sha256": "2fa2741d3cf7f96e01e899c7281da2f1b9d83dbb42288d6074c82141bbb6adff"
+    },
+    {
+      "path": "crates/systems/decorator/Cargo.toml",
+      "size": 868,
+      "sha256": "977ba31815210280e581251a7bb3fcf5c3a9ba57d9c82db25ee870ead40af3f8"
+    },
+    {
+      "path": "Cargo.lock",
+      "size": 170538,
+      "sha256": "4371d7f680a21f3e1666c35e6f20eaa816168e39f699e9a5b16405f0fe2839ec"
+    }
+  ],
+  "task_owned_blocks": [
+    {
+      "path": "crates/systems/decorator/src/decorator_visual/stairs_assemble.rs",
+      "symbol": "pub struct StairsLazySubscriber",
+      "line": 76,
+      "sha256": "27651792f1fbad9b57c2724dacbb2a3aaebd9a04e6c73768a679d51638ecb28e"
+    },
+    {
+      "path": "crates/systems/decorator/src/decorator_visual/stairs_assemble.rs",
+      "symbol": "pub fn stairs_subscribe_lazy(",
+      "line": 81,
+      "sha256": "0298dc4ecedb67cbd4d0f710174df5ded87f589d9cb5ad9962b0ce9a299a2d79"
+    },
+    {
+      "path": "crates/systems/decorator/src/decorator_visual/stairs_assemble.rs",
+      "symbol": "pub fn playermade_stairs_assembly_propagate_dirty_flags(",
+      "line": 298,
+      "sha256": "a66c96f9a190ec98cbd4e814eb8e899e65c3a2a89c5ea63401b002ae6c8633d8"
+    },
+    {
+      "path": "crates/systems/decorator/src/decorator_visual/stairs_assemble.rs",
+      "symbol": "pub fn create_structural_colliders_and_initial_graph(",
+      "line": 351,
+      "sha256": "626c0f0b804e9577d093ae6139418de3b5a6045686556817734254a963ff0bbe"
+    },
+    {
+      "path": "crates/systems/decorator/src/decorator_visual/stairs_assemble.rs",
+      "symbol": "fn upsert_initial_structural_span(",
+      "line": 432,
+      "sha256": "bc8c4446172466ea7123290d58c2328d13dfcce4f9c966040e8c52f57b0653c1"
+    },
+    {
+      "path": "crates/systems/decorator/src/decorator_visual/stairs_assemble.rs",
+      "symbol": "pub fn upsert_structural_stair_segment(",
+      "line": 521,
+      "sha256": "5bf97fa2ade77e249e59ef56392abea8d43fec10fd5f23029a744af3b98a2dbb"
+    },
+    {
+      "path": "crates/systems/decorator/src/decorator_visual/stairs_assemble.rs",
+      "symbol": "mod dirty_structural_tests",
+      "line": 592,
+      "sha256": "1b9bad33cf32f74c7a6c1ee8983d0ebf29a3bbc2dd22b092b57a25b492cb3506"
+    },
+    {
+      "path": "crates/country-core/src/lib.rs",
+      "symbol": "impl LazyTile",
+      "line": 32,
+      "sha256": "8ba4a79948a46e23c54f2445570fcdc672c66235a6fe04d7e45aa2f936542fb7"
+    },
+    {
+      "path": "crates/country-core/src/lib.rs",
+      "symbol": "impl From<glam::UVec2> for LazyTile",
+      "line": 39,
+      "sha256": "b442abea9efa6f80b545ff37178b73694aa109d00aa8858960fac70ed0823d72"
+    },
+    {
+      "path": "crates/country-core/src/resources/stairs/visual.rs",
+      "symbol": "pub fn force_rebuild_for_tile(",
+      "line": 240,
+      "sha256": "f05d7ab29c814cab2aa86f5797b57519733c10b3e4630b7457d3cc3275a9aab8"
+    }
+  ],
+  "shared_test_binary_snapshot": {
+    "path": "target/debug/deps/system_decorator-80071a7209e64c1a",
+    "size": 42440208,
+    "sha256": "17ca3529e1bab5b07aebdab262f98841c59b7f2bc7c60c7f5e683a00f157a213"
+  },
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+  "artifacts": [
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-4-1407d16b0-full.asm",
+      "size": 33843,
+      "sha256": "b87403c4797e3972b106b0ae5802f4dd0bb1c2e503c86fcdb052984f71db9998"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-5-1407d20c0-full.asm",
+      "size": 135527,
+      "sha256": "6db30bfb31c2be9b1068baf9c10a550fc1280024a295df2236536c59438706df"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-event-native-cases.rs",
+      "size": 12446,
+      "sha256": "4e3bb377273b62b0751f8d7425d792025441c58f015b8258b75bc55ca5391648"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-event-native.json",
+      "size": 78446,
+      "sha256": "f8418fe63c5c0f4bfe50a7db5162c7a6c0148f16b689912742b1cb818773585c"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-event-native.py",
+      "size": 3626,
+      "sha256": "cb89fb6e83e216c3863c71043ff14de1587aaed75e10760d3924154695fffb1f"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-helper-native.json",
+      "size": 29718,
+      "sha256": "714df2a03a725c48f31bdf0bc72f6e54a1d1ddd124d4dfcda104e1241c5f2a18"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-check-first.log",
+      "size": 29949,
+      "sha256": "0e0d71c691bf770514125db045c588bbed6e02b9d77f0d74e3d42485170ae186"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-existing-geometry-tests.log",
+      "size": 28381,
+      "sha256": "f0dba1210deb43b5232e6f678c977a2a08a2e3267ebe711ac84fc0929d1590c5"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-module-regression.log",
+      "size": 29412,
+      "sha256": "25e1767b754d3307b3add20720db1ac4d8a0afd571c2b592ad49abbb9f16c46b"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-native.json",
+      "size": 88940,
+      "sha256": "709f956fe4218b4464996376a67a20281492fcf4e7441fc0dc1edf79cb08d1da"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-original-identities.json",
+      "size": 1299,
+      "sha256": "3c75d1cfc6cbb9c88e42cd05545bdaa6e4c343d6558c0dcdc3fc76be7d6c09a3"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-recovery-2026-10-27.md",
+      "size": 9592,
+      "sha256": "17c0957463d5bf5168387c465cb4eb038b359adee97cc0272a0c13dc047b95cd"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-tests-fifth.log",
+      "size": 28930,
+      "sha256": "089814e0062bf5b17c4e54fff19ce5fffe630fc4dcfef3fc44c1b40c503c305a"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-tests-final-ladder.log",
+      "size": 29642,
+      "sha256": "9bee663f522d11cb831989585f47b639b31aea8368ebd964bf2d2a6bc69e5159"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-tests-final-shared-helper.log",
+      "size": 27817,
+      "sha256": "3b8fdd327034244bc3fcfbca17bac803664f8df71389a8eed81a99173881b03e"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-tests-final.log",
+      "size": 29455,
+      "sha256": "d7501aeafd73c6834ddfd70b2692c2a734622577fada4c93fa37dff932bb8829"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-tests-first.log",
+      "size": 28205,
+      "sha256": "cd4122e3a79646cfa3b5d80da58f919e1802eb9594143e23efddf46b8c03913c"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-tests-fourth.log",
+      "size": 28854,
+      "sha256": "b72879af8eeb4428badc8e7c7b9b8ea0d70611f08f25cb4264d2ad166cd78b9d"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-tests-second.log",
+      "size": 28545,
+      "sha256": "72fbb10d0eee8fe88e0616e7517bc6bbb8a83614dd88a2d7cc6fbaf96e88a754"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-tests-sixth.log",
+      "size": 29096,
+      "sha256": "7eb76c0ccfc73f4c9176b08f04417faba4745be4633cd7fe0d2ae41885f74003"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-dirty-structural-tests-third.log",
+      "size": 27808,
+      "sha256": "6b91f957034724850fb41c97ebf78b40c5005ce2cf881e589d3a5ad97d669820"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-lazy-init-1407cf210-full.asm",
+      "size": 13583,
+      "sha256": "fb635c1a4697c9b3ee9db0db9bfda5e9f25870c67550bd29217ca36e97a5c902"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-lazy-tile-native-cases.rs",
+      "size": 4019,
+      "sha256": "f6c459b66ca58c32e33dd1436345acc7a86ef0e120161b739bd53f9333fee441"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-lazy-tile-native.json",
+      "size": 20319,
+      "sha256": "ebb93f957b053ec924430bde4b27f5c0540af47f1590b486dca8db40032e30d7"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-lazy-tile-native.py",
+      "size": 1937,
+      "sha256": "21c86f35d42ba51eabc9611422406be4886cd4838b49db7b3aaa6d1b6cf493be"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-structural-junction-native-cases.rs",
+      "size": 2174,
+      "sha256": "26d198248eb29d4807f1d43c0762c8ca86a83ade43e8871dde1f45d063f6a4cc"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-structural-junction-native.json",
+      "size": 13363,
+      "sha256": "26db5cde492c0ccfd7cdab775c95007010b13a337f01024f60a331647a782cae"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-structural-junction-native.py",
+      "size": 3817,
+      "sha256": "2b14c0b000b3faebd6c044f8556f71adc797d3b72aa493140dc80d96b6eaca2a"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-structural-native.c",
+      "size": 64806,
+      "sha256": "91a154301d090e2488adf7ccfc1e24fcb9318b382512c19c84634245a1a162ed"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-structural-stage-native-cases.rs",
+      "size": 91239,
+      "sha256": "f6068de8ac27186c861bda169ad310cf22e4c3683561687adcf41af51d451042"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-structural-stage-native-v2.json",
+      "size": 470149,
+      "sha256": "1b24c2d7c3ade65c36ff8281f63a19af808579e3ce8c00fccae3e0fe124c7fe7"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-structural-stage-native-v3.json",
+      "size": 497728,
+      "sha256": "47e6657161b1a70a4be19a5aa5b3b18be03747dcd24438725e8bd4cb43e8daca"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-structural-stage-native.json",
+      "size": 332097,
+      "sha256": "9b34f18d36d38fe4e4c7bb9eb862e2c5f9e4ae7ffe945570828b5e43712bd078"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-structural-stage-native.py",
+      "size": 7465,
+      "sha256": "f2a204ba8c8e2bc2ab4d2b3f82d82f553e1526fda56e19a6fa27f8dd1abe53e2"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-stair-structural-wall-anchor-native-cases.rs",
+      "size": 2524,
+      "sha256": "b96357ac62df81531b33e153b22978cf17ddb571dcd6301a5fcd11bf822abf89"
+    }
+  ],
+  "limits": [
+    "NoOSinputs/GPU",
+    "No host registration modified",
+    "affected_tiles owner is real but original assemble producer remains to recover",
+    "No complete reset_edge/18leaf/wholegame claim",
+    "Wholefile and Cargo.lock snapshots include concurrent edits; bevy_time lock entry is another owner, only tabloid dependency addition belongs to this task. Shared test binary can be rebuilt by other workers."
+  ]
+}

@@ -453,6 +453,24 @@ impl AssetSsboLibrary {
         Some(storage)
     }
 
+    /// 原楼梯reset同时写Brick/Sparkle/Wooden的安全适配；三键仍属于同一canonical表。
+    /// 重复短名拒绝；逐项核完整类型名，只有全部可写存储成功时才记录三路change。
+    /// render快照若仅保留声明对象，原downcast失败仍返回None，不恢复CPU写权限。
+    pub fn get3_mut<A: SsboType, B: SsboType, C: SsboType>(
+        &mut self,
+    ) -> Option<(&mut A::Storage, &mut B::Storage, &mut C::Storage)> {
+        let ids = [SsboId::of::<A>(), SsboId::of::<B>(), SsboId::of::<C>()];
+        let [a, b, c] = self.buffers.get_disjoint_mut(ids.each_ref());
+        if let Some(state) = a.as_ref() { assert_eq!(state.name, type_name::<A>()); }
+        if let Some(state) = b.as_ref() { assert_eq!(state.name, type_name::<B>()); }
+        if let Some(state) = c.as_ref() { assert_eq!(state.name, type_name::<C>()); }
+        let a = a?.data.as_any_mut().downcast_mut::<A::Storage>()?;
+        let b = b?.data.as_any_mut().downcast_mut::<B::Storage>()?;
+        let c = c?.data.as_any_mut().downcast_mut::<C::Storage>()?;
+        for id in ids { self.changes.record(id); }
+        Some((a, b, c))
+    }
+
     pub fn get_buffer<T: SsboType>(&self) -> Option<&Buffer> {
         let state = self.buffers.get(&SsboId::of::<T>())?;
         assert_eq!(state.name, type_name::<T>());
@@ -600,6 +618,19 @@ mod tests {
             initial: Option<&[u8]>,
         ) -> Self::Storage {
             InstanceBuffer::new_storage_buffer(device, initial)
+        }
+    }
+
+    /// 第三类真实存储：CPU影子在render快照中被剥离，用于核多借接口的权限边界。
+    #[repr(transparent)]
+    #[derive(Clone, Copy, Debug, PartialEq, bytemuck::NoUninit)]
+    struct Gamma(u32);
+    impl StorageElement for Gamma { const NAME: &'static str = "GammaSsbo"; }
+    impl SsboType for Gamma {
+        type Storage = crate::render::shadowed_buffer::ShadowedBuffer<Gamma>;
+        fn new_storage_buffer(device: &dyn GraphicsDevice, initial: Option<&[u8]>) -> Self::Storage {
+            assert!(initial.is_none());
+            crate::render::shadowed_buffer::ShadowedBuffer::new(device, vec![Gamma(3)])
         }
     }
 
@@ -765,6 +796,57 @@ mod tests {
         // 初始数据 2 个 u32 元素 → 8 字节容量（占位设备按 desc.size 回填）。
         assert_eq!(buf.byte_size(), 8);
         assert!(lib.get_mut::<Beta>().is_none());
+    }
+
+    #[test]
+    fn disjoint_three_storages_preserve_canonical_owners_and_publish_all_changes() {
+        let (mut library, device) = lib_with_alpha();
+        library.add_new::<Beta>(&device); library.add_new::<Gamma>(&device);
+        let original = library.get::<Alpha>().unwrap() as *const _;
+        let cursor = library.changes.cursor();
+        let (alpha, beta, gamma) = library.get3_mut::<Alpha, Beta, Gamma>().unwrap();
+        alpha.buffer.generation = 17; beta.buffer.buffer.generation = 19;
+        gamma.write(0, &[Gamma(29)]);
+        assert_eq!(library.get::<Alpha>().unwrap() as *const _, original);
+        assert_eq!(library.get::<Alpha>().unwrap().buffer.generation, 17);
+        assert_eq!(library.get::<Beta>().unwrap().buffer.buffer.generation, 19);
+        assert_eq!(library.get::<Gamma>().unwrap().data[0], Gamma(29));
+        let (_, changes) = library.changes.since(Some(cursor)).unwrap();
+        assert_eq!(changes, [SsboId::of::<Alpha>(), SsboId::of::<Beta>(), SsboId::of::<Gamma>()]);
+    }
+
+    #[test]
+    fn disjoint_missing_storage_does_not_publish_partial_borrows() {
+        let (mut library, _) = lib_with_alpha();
+        let revision = library.snapshot_revision();
+        assert!(library.get3_mut::<Alpha, Beta, Gamma>().is_none());
+        assert_eq!(library.snapshot_revision(), revision);
+    }
+
+    #[test]
+    fn disjoint_duplicate_keys_and_full_type_conflicts_are_rejected_without_changes() {
+        let (mut library, device) = lib_with_alpha();
+        library.add_new::<Beta>(&device); library.add_new::<Gamma>(&device);
+        let revision = library.snapshot_revision();
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = library.get3_mut::<Alpha, Alpha, Beta>();
+        })).is_err());
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = library.get3_mut::<AlphaImpostor, Beta, Gamma>();
+        })).is_err());
+        assert_eq!(library.snapshot_revision(), revision);
+    }
+
+    #[test]
+    fn disjoint_render_snapshot_cannot_recover_stripped_cpu_shadow_authority() {
+        let (library, device) = lib_with_alpha();
+        library.add_new::<Beta>(&device); library.add_new::<Gamma>(&device);
+        let mut render = library.clone(); let revision = render.snapshot_revision();
+        assert!(render.get3_mut::<Alpha, Beta, Gamma>().is_none());
+        assert!(render.get_buffer::<Gamma>().is_some());
+        assert!(render.get::<Gamma>().is_none());
+        assert_eq!(render.snapshot_revision(), revision);
+        assert_eq!(library.get::<Gamma>().unwrap().data[0], Gamma(3));
     }
 
     #[test]

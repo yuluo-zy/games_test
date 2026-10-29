@@ -1,0 +1,68 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "seed": "0x140c9c730",
+  "fixture": "tiny-glade/tests/fixtures/native/m01-shared-geometry.json",
+  "fixture_sha256": "cf64fc38ba434511415d139467d99a0b57c0a070e86e8c72f9bf3c20d2d5bb71",
+  "counts": {
+    "expand": 2612,
+    "lerp": 1427,
+    "search": 465,
+    "search_20_steps": 79,
+    "search_before_exact_bytes": 234
+  },
+  "expand_rosetta_crosscheck": {
+    "cases": 2592,
+    "stdout": "",
+    "stderr": "original expand x86_64 executed 2592 non-panic cases",
+    "mapped_image_sha256": "8cea54a6f59659acd7f0b85b1c5375e019a250bd323bd47596f7f675aa1f313d",
+    "executable_sha256": "059a7c6b66690184f3217a3d83503dd592fc776ba29f82e8c94b5d559aed282c",
+    "source_sha256": "1db0e32c034ee6097d59e889e2934e3dbe7d3ce04446c8e557df8143a2f85a45",
+    "input_sha256": "d83e05ff187b2dfbdde2e305e44b47c2f852d09c8f360dfc7fb17cd2a40044fe",
+    "output_sha256": "df1f6f997146e2f02cf6493422879d6f4cda09aff545e7ff9145f88cb59b1181",
+    "bridges": [],
+    "scope": "Rosetta x86_64 直接调用原RNE完整expand；不含panic实现与Windows CRT，原函数不需要CRT"
+  },
+  "unicorn_double_nan_differences": 96,
+  "functions": [
+    "0x140c9c620 expand_along_edge complete",
+    "0x140c9c730 Rectangle2d::lerp complete",
+    "0x140ad2ce0 search_lerped_shape_that_fits_into_glade complete",
+    "0x140ad2970 is_shape_inside complete and original circle/rectangle callees"
+  ],
+  "bridges": [
+    {
+      "address": "0x142923fd0",
+      "kind": "original CRT import",
+      "replacement": "Darwin libm sinf",
+      "calls": 8461,
+      "limitation": "只验证相同宿主数学库边界的原算法；不是Windows UCRT与Darwin逐位等价证明"
+    },
+    {
+      "address": "0x142923e80",
+      "kind": "original CRT import",
+      "replacement": "Darwin libm cosf",
+      "calls": 8461,
+      "limitation": "只验证相同宿主数学库边界的原算法；不是Windows UCRT与Darwin逐位等价证明"
+    },
+    {
+      "address": "0x142923f10",
+      "kind": "original CRT import",
+      "replacement": "Darwin libm fmodf",
+      "calls": 9894,
+      "limitation": "只验证相同宿主数学库边界的原算法；不是Windows UCRT与Darwin逐位等价证明"
+    },
+    {
+      "address": "0x142923e60",
+      "kind": "original CRT import",
+      "replacement": "Darwin libm ceilf",
+      "calls": 658,
+      "limitation": "只验证相同宿主数学库边界的原算法；不是Windows UCRT与Darwin逐位等价证明"
+    }
+  ],
+  "panic_observation": "在原 panic/panic_fmt/clamp panic 入口停止，不替换成功算法",
+  "comparison": "输出定义字段逐位、panic一致；search t0失败额外完整28B before比较；circle成功尾8B原未初始化不作为语义字段",
+  "supplied_boundaries": [
+    "原私有ABI的已解析形状记录，真实边界函数和插值完整执行",
+    "栈初始为0xcd，输出存储初始为0xa5；不注入输出或边界判定"
+  ]
+}

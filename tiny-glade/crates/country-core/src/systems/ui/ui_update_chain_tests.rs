@@ -133,6 +133,30 @@ mod real_input_chain {
         assert_eq!(sounds[1].native_slot()[4..8], 11u32.to_le_bytes());
     }
     #[test]
+    fn native_default_sound_slots_reach_real_hover_press_and_release() {
+        let (mut world, mut schedule) = setup();
+        world.insert_resource(crate::systems::mode_manager::AppMode::Wall(
+            crate::systems::mode_manager::WallShape::Freeform,
+        ));
+        for phase in [DigitalActionPhase::Idle, DigitalActionPhase::JustPressed,
+            DigitalActionPhase::Held, DigitalActionPhase::JustReleased] {
+            let params = WidgetParams::default()
+                .geometry(WidgetGeometry::ScreenAabb {
+                    min: Vec2::splat(40.0), max: Vec2::splat(60.0), distance: 0.5,
+                })
+                .occlude_by_world(false);
+            world.resource::<UiState>().add_with_id(WidgetId(91), params);
+            world.resource_mut::<ActionSetStates>().digital[0] = DigitalActionState {
+                phase, timer_seconds: 0.0,
+            };
+            schedule.run(&mut world);
+        }
+        // 原构造器的声音通过实际picker和捕获生命周期发出；无需手工覆盖声音槽。
+        assert_eq!(world.resource_mut::<Events<PlayUiSound>>().drain()
+            .map(|sound| sound.kind).collect::<Vec<_>>(), [1, 2, 3]);
+    }
+
+    #[test]
     fn actual_pointer_outside_on_release_cancels_captured_widget() {
         let (mut world, mut schedule) = setup();
         world.insert_resource(crate::systems::mode_manager::AppMode::Wall(

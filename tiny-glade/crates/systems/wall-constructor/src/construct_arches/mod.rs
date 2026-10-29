@@ -58,7 +58,7 @@ pub fn construct_arches(
     mut create_roof: EventReader<CreateRoofCmd>,
     mut switch_type: EventReader<SwitchRoofTypeCmd>,
     mut walls: ResMut<PublicWalls>,
-    masks: Res<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>,
+    mut masks: ResMut<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>,
     mut arch_segments: ResMut<country_core::resources::walls::arches::ArchSegments>,
     roofs: Query<&Roof>,
     mut previous: ResMut<country_core::resources::walls::arches::BuildingHadArchesLastFrame>,
@@ -99,6 +99,15 @@ pub fn construct_arches(
             wall.construct_arches(id, segments, has_roof)
                 .expect("invalid or unrecovered authoritative arch input")
         };
+        if wall.building_projection().observed_296() == 0 {
+            let mask_list = masks.masks.get_mut(&wall_id).expect("arches require processed masks for the source wall");
+            assert_eq!(mask_list.len(), outcome.pillar_caches.len());
+            for (mask, (proposals, scores, keys)) in mask_list.iter_mut().zip(&outcome.pillar_caches) {
+                mask.pillar_proposals.clone_from(proposals);
+                mask.pillar_scores.clone_from(scores);
+                mask.pillar_keys.clone_from(keys);
+            }
+        }
         {
             let stats = &outcome.material_stats;
             wall.material_stats
@@ -164,5 +173,74 @@ pub fn construct_arches(
             );
         }
         previous.0.insert(id.0, now);
+    }
+}
+
+#[cfg(test)]
+mod pillar_producer_tests {
+    use super::*;
+    use bevy_ecs::schedule::Schedule;
+    use country_core::{
+        geometry::instanced_wall::BrickTransformSsbo,
+        render::{sparse_instance_buffer::SparseInstanceBuffer, ssbo::rhapsody_boundary::{BackendError, Buffer, BufferDesc, GraphicsDevice}},
+        resources::{roofs::{geometry::surface::Curve2, commands::{RecalculateRoofCmd, RecalculateWallBricks}},
+            walls::{InnerWalls, arches::{ArchSegments, BuildingHadArchesLastFrame}, publication_source::TerrainHeightGrid512},
+            world_raster::DirtyTilePublisher,
+            world_raster_defs::{PathRaster, Cobblestone1Raster, Cobblestone2Raster, Cobblestone3Raster}},
+        systems::wall::{construction::segmentation::{wall_path_segmentation, WallSegmentationInput},
+            registration::register_wall_cpu_resources,
+            wall_state::publish_public_wall_state::{publish_public_wall_state, WallPublicationTerrain}},
+    };
+    struct CpuDevice;
+    impl GraphicsDevice for CpuDevice {
+        fn create_buffer(&self, desc: &BufferDesc, _: &str, _: Option<&[u8]>) -> Result<Buffer, BackendError> {
+            Ok(Buffer { id: 813, byte_size: desc.size as u64, ..Default::default() })
+        }
+        fn update_buffer_bytes(&self, _: &Buffer, _: &[u8], _: &[std::ops::Range<usize>], _: usize) -> Result<(), BackendError> {
+            Err(BackendError::invalid_usage("此测试不提供 GPU 上传"))
+        }
+    }
+    #[test]
+    fn real_arch_segments_feed_stone_pillars() {
+        let mut world = World::new();
+        register_wall_cpu_resources(&mut world);
+        world.init_resource::<Events<CreateRoofCmd>>();
+        world.init_resource::<Events<SwitchRoofTypeCmd>>();
+        world.init_resource::<Events<RecalculateRoofCmd>>();
+        world.init_resource::<Events<RecalculateWallBricks>>();
+        world.init_resource::<Events<crate::construct_gates::systems::ConstructGateCmd>>();
+        world.insert_resource(WallPublicationTerrain(TerrainHeightGrid512 { encoded: vec![0;512*512].into(), minimum_y:0., maximum_y:0., sampling_fix:false }));
+        let mut path = PathRaster::new(DirtyTilePublisher::unique());
+        path.write_composite(Some(&vec![255;512*512])); world.insert_resource(path);
+        world.insert_resource(Cobblestone1Raster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(Cobblestone2Raster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(Cobblestone3Raster::new(DirtyTilePublisher::unique()));
+        world.init_resource::<ArchSegments>();
+        world.init_resource::<BuildingHadArchesLastFrame>();
+        world.init_resource::<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>();
+        world.init_resource::<WallConstructorOutput>();
+        let library = AssetSsboLibrary::new();
+        library.register::<BrickTransformSsbo>(SparseInstanceBuffer::<BrickTransformSsbo>::new_storage_buffer(&CpuDevice, None));
+        world.insert_resource(library);
+        let id = world.resource_mut::<InnerWalls>().new_wall_w_params(
+            Curve2::try_new(vec![[-6.,0.],[-1.,0.],[3.,2.],[7.,2.]], false).unwrap(), 1.2, 0, 0, false);
+        let mut publication = Schedule::default(); publication.add_systems(publish_public_wall_state); publication.run(&mut world);
+        let masks = {
+            let walls = world.resource::<PublicWalls>(); let wall = walls.get(id).unwrap();
+            assert_eq!(wall.building_projection().observed_296(), 0);
+            let path = wall.prepared_path.as_ref().unwrap();
+            wall_path_segmentation(WallSegmentationInput {prepared_positions:&path.positions, path_values:&path.segment_values,
+                shape:wall.shape(), observed_special_flag:wall.authority.source_flag_65()}).unwrap()
+        };
+        world.resource_mut::<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>().masks.insert(id.0, masks);
+        let mut source = Schedule::default(); source.add_systems(construct_arches); source.run(&mut world);
+        let count: usize = world.resource::<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>().masks[&id.0].iter().map(|m|m.pillar_proposals.len()).sum();
+        assert!(count > 0, "真实拱段必须生成非空柱候选");
+        let before: u32 = world.resource_mut::<AssetSsboLibrary>().get_mut::<BrickTransformSsbo>().unwrap().to_draw_multi_instanced().iter().map(|(_, n)| *n).sum();
+        let mut place = Schedule::default(); place.add_systems(crate::place_pillars::place_pillars); place.run(&mut world);
+        let stats = &world.resource::<PublicWalls>().get(id).unwrap().material_stats;
+        assert_eq!(stats.pillar_placements.len(), count);
+        let after: u32 = world.resource_mut::<AssetSsboLibrary>().get_mut::<BrickTransformSsbo>().unwrap().to_draw_multi_instanced().iter().map(|(_, n)| *n).sum();
+        assert!(after > before, "真实石柱必须写入砖分配");
     }
 }

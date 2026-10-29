@@ -1,0 +1,63 @@
+{
+  "date": "2026-10-27",
+  "owner": "m01_height",
+  "module": "M02 Mode10 terrain edit Widget production chain",
+  "original": "140aef1f0",
+  "original_body_bytes": 3764,
+  "original_body_sha256": "0cc159e97b1f808142a9a67ddb2d072171dc7e93ebabd404597dcc5be41b12c5",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "worker": {
+    "name": "m02-height-edit-20261027",
+    "private": true,
+    "body_before": 1973,
+    "body_after": 3764,
+    "manual_switches": 1,
+    "complete_C_lines": 627,
+    "reopen_C_equal": true,
+    "stopped": true
+  },
+  "changes": [
+    "real hover tag1/phase1 highlight gate",
+    "four empty native sound variants",
+    "camera-dependent kind11 brush preview",
+    "occlusion false with history flag retained",
+    "preserve HashMap iteration without per-frame temporary ID allocation"
+  ],
+  "test": {
+    "command": "CARGO_INCREMENTAL=0 cargo test --offline -p country-core --lib original_edit_producer_tests",
+    "exit_code": 0,
+    "passed": 23,
+    "failed": 0,
+    "log": "reports/module-recovery-2026-10-23/140aef1f0-edit-final-tests.log",
+    "log_sha256": "2cc73d4c628e47de234687ad8da9ecea3dea9d4e84ec8baf5997671aa0044b8a"
+  },
+  "native": {
+    "parameter_cases": 4,
+    "hover_cases": 192,
+    "bridges": [],
+    "repeat_run_equal": true
+  },
+  "source_sha256": {
+    "crates/country-core/src/systems/terrain/ui_edit_terrain.rs": "15dc21acdf3e99df772bd2a65bd3ed262a46316f2a149267520b4efa0310e1b9"
+  },
+  "evidence_sha256": {
+    "140aef1f0-edit-repair-job.json": "4dcaa4c9001f8ef835c87d3282532d85ede4f7bd19cde72f3cfc3d527a37a782",
+    "140aef1f0-edit-repair-result.json": "eb60a68b1484826e19539a9c748750cc37692eb4909c63d9d08e84ea62ac20f3",
+    "140aef1f0-edit-reopen-job.json": "e54c5c89be691132bf92200c3f7ff50dad843dc53b6e03647e29bcf8578330cf",
+    "140aef1f0-edit-reopen-result.json": "5ef2df949e2e16d7976fe3a03fe82296cd4df51584be79b476cb683365db8dd5",
+    "140aef1f0-edit完整原函数.c": "7c4a047757098df0c1e853094e293e518b10dc1821d947fae7a409783164aedf",
+    "140aef1f0-edit-original.asm": "575d5efb2593447125eec6e1a49beef35ce8e65d9246652eccedc1b605b98c20",
+    "140aef812-terrain-widget-native.py": "b53d86b957500ded6f878daf1599da04b6ac15b478a662b9b4b0a640c48826be",
+    "140aef812-terrain-widget-native.txt": "96dbc193676a612c12f640b2a4d236f82860584fa5181c536be3a199da6922a3",
+    "140aef812-terrain-widget-native.json": "f7de59a5a2274c6d5f5cd2ecbfb844aa7b1e181de42abde46062c2ef1e8edf0b"
+  },
+  "runtime_boundary": [
+    "actual UiState registration and ui_update owner",
+    "actual BrushPreview entity Transform insertion/removal/restoration",
+    "starts at picker intersection boundary, no OS input",
+    "no shader/production GPU/full Mode10 acceptance",
+    "unchanged finite drag math from prior implementation not newly claimed full-domain equivalent",
+    "original LocalSteepness ownership still carried by existing Resource adapter; lifecycle beyond this scoped Widget chain remains audit work"
+  ]
+}

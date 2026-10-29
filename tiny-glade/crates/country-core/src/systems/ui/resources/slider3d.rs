@@ -18,6 +18,89 @@ use crate::utils::project_cursor_onto_ray::{
 };
 
 use super::ui_state::UiWidgetContext;
+use crate::resources::{mouse_terrain_raycast::CursorPositionSS, window::WindowSize};
+use crate::systems::camera_rig::MainCamera;
+use bevy_ecs::prelude::*;
+
+/// B Slider3d的独立Local状态为28字节：24字节射线及末尾标量偏移。
+/// 原有24字节投影叶子保持兼容，不把其他编辑器的slider状态合并。
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Slider3dDragState {
+    pub line: Slider3dState,
+    pub offset: f32,
+}
+
+/// B原SystemParam：Local状态 + 屏幕光标、窗口和相机三个权威资源。
+#[derive(bevy_ecs::system::SystemParam)]
+pub struct Slider3d<'w, 's> {
+    state: Local<'s, Slider3dDragState>,
+    cursor: Res<'w, CursorPositionSS>,
+    window: Res<'w, WindowSize>,
+    camera: Res<'w, MainCamera>,
+}
+
+/// Started闭包给出的原点、方向与当前属性值。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Slider3dStart {
+    pub origin: Vec3,
+    pub direction: Vec3,
+    pub value: f32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Slider3dUpdate {
+    pub position: Vec3,
+    pub value: f32,
+}
+
+impl Slider3d<'_, '_> {
+    /// 原140b1cc80：Started只建锚点；Held/Finished投影并返回钳制结果。
+    /// 相机直接使用原+0/+80矩阵，禁止逆矩阵再求逆制造舍入误差。
+    pub fn update(
+        &mut self,
+        phase: DragState,
+        start: impl FnOnce() -> Slider3dStart,
+        range: [f32; 2],
+    ) -> Option<Slider3dUpdate> {
+        let project = |line: Slider3dState| {
+            line.project_cursor_onto_line(
+                self.cursor.0,
+                self.window.as_dims(),
+                &Slider3dMatrices {
+                    second: self.camera.read_matrix(0),
+                    gap: [0; 0x40],
+                    first: self.camera.read_matrix(0x80),
+                },
+            )
+        };
+        if phase == DragState::NONE {
+            return None;
+        }
+        if phase == DragState::STARTED {
+            let start = start();
+            self.state.line = Slider3dState {
+                origin: start.origin,
+                direction: start.direction,
+            };
+            let point = project(self.state.line);
+            // 原代码先z*d.z，再y*d.y，再x*d.x；不用glam::dot重排。
+            self.state.offset = ((start.direction.z * point.z + start.direction.y * point.y)
+                + point.x * start.direction.x)
+                - start.value;
+            return None;
+        }
+        assert!(range[0] <= range[1], "slider3d范围不合法");
+        let point = project(self.state.line);
+        let direction = self.state.line.direction;
+        let value = (((point.z * direction.z + point.y * direction.y) + point.x * direction.x)
+            - self.state.offset)
+            .clamp(range[0], range[1]);
+        Some(Slider3dUpdate {
+            position: self.state.line.origin + direction * value,
+            value,
+        })
+    }
+}
 
 /// 3D 滑块模块对 `DragState` 的公开面（原生符号归属
 /// `ui_state::DragState`，`into_drag_state` 定义在本模块）。

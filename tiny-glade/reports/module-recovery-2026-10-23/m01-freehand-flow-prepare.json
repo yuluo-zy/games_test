@@ -1,0 +1,28 @@
+{
+  "worker": "m01-freehand-20261026",
+  "job": [
+    {
+      "tool": "run-script",
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json,hashlib,zlib,base64\nfrom ghidra.program.model.address import AddressSet\nfrom ghidra.program.model.pcode import JumpTable\nfrom ghidra.app.decompiler import DecompInterface\nfrom ghidra.program.flatapi import FlatProgramAPI\nfrom java.util import ArrayList\np=currentProgram\nfm=p.getFunctionManager()\napi=FlatProgramAPI(p,monitor)\naf=p.getAddressFactory()\ndef a(x): return af.getAddress(x.removeprefix(\"0x\"))\nrows=json.loads('[{\"start\": \"0x1409781d0\", \"end\": \"0x1409799f0\", \"jump\": \"0x140978638\", \"targets\": [\"0x14097983e\", \"0x14097863a\", \"0x140978861\", \"0x140978917\"], \"sha256\": \"09333d6c604dd71e7767b0413e507fae007e87b8d1cd13b63437da41da0379eb\"}, {\"start\": \"0x140ac98e0\", \"end\": \"0x140acc850\", \"jump\": \"0x140aca189\", \"targets\": [\"0x140ac9dc5\", \"0x140aca18b\", \"0x140aca3e0\", \"0x140aca360\"], \"sha256\": \"ab497963e63682f3cbabfa37b9a03edeb5c952db0cac047853b57c4841a6af9a\"}]')\nresult=[]\nfor row in rows:\n monitor.checkCancelled()\n start,end=a(row[\"start\"]),a(row[\"end\"])\n raw=bytes(x&255 for x in api.getBytes(start,int(end.subtract(start))))\n if hashlib.sha256(raw).hexdigest()!=row[\"sha256\"]: raise RuntimeError(\"Original code SHA mismatch\")\n f=fm.getFunctionAt(start)\n tx=p.startTransaction(\"M01 freehand bounded original flow\")\n try:\n  body=AddressSet(start,end.subtract(1))\n  for other in fm.getFunctionsOverlapping(body):\n   if other.getEntryPoint()!=start: body.delete(other.getBody())\n  f.setBody(body)\n  cases=ArrayList()\n  for target in row[\"targets\"]: cases.add(a(target))\n  JumpTable(a(row[\"jump\"]),cases,True,0).writeOverride(f)\n  p.endTransaction(tx,True)\n except:\n  p.endTransaction(tx,False)\n  raise\n di=DecompInterface()\n try:\n  di.openProgram(p)\n  d=di.decompileFunction(f,45,monitor)\n  result.append(dict(address=row[\"start\"],body_bytes=f.getBody().getNumAddresses(),completed=d.decompileCompleted(),error=str(d.getErrorMessage()),gz=base64.b64encode(zlib.compress(d.getDecompiledFunction().getC().encode())).decode() if d.decompileCompleted() else None))\n finally: di.dispose()\nprint(json.dumps(dict(sha256=p.getExecutableSHA256(),result=result)))\n",
+        "timeoutSeconds": 120
+      },
+      "timeout_seconds": 180
+    }
+  ],
+  "result": {
+    "programPath": "/tiny-glade.exe",
+    "timedOut": false,
+    "success": true,
+    "stderrTruncated": false,
+    "scriptSource": {
+      "type": "inline",
+      "value": "<inline>"
+    },
+    "stdoutTruncated": false,
+    "stderr": "",
+    "durationMs": 1938
+  },
+  "source": "B版本内容/tiny-glade.rne"
+}

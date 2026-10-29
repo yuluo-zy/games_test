@@ -67,7 +67,8 @@ pub struct TerrainEditingData {
     /// This transient state is not part of the saved stroke map.
     pub cursor_height_override: Option<f32>,
     pub strokes: HashMap<StrokeId, TerrainStroke>,
-    pub next_index: u32,
+    /// 原TerrainEditingData+38是usize/u64；超过发号上限的存档值仍原样保留。
+    pub next_index: u64,
     /// Runtime rasterization state of this stroke owner. B startup +0x40 is
     /// false; W3 marks it true only after all four passes are constructed.
     /// RecalculateHeightMapCmd events trigger subsequent updates, so edits do
@@ -81,10 +82,11 @@ pub enum StrokeError {
 }
 impl TerrainEditingData {
     pub fn new_stroke(&mut self, point: [f32; 3]) -> Result<Option<StrokeId>, StrokeError> {
-        if self.next_index >= ID_COUNTER_LIMIT {
+        if self.next_index >= u64::from(ID_COUNTER_LIMIT) {
             return Ok(None);
         }
-        let id = StrokeId(self.next_index);
+        // 原924a20先限制到0x3ffffe以内，随后ESI写32位ID；此处窄化已有原范围保证。
+        let id = StrokeId(self.next_index as u32);
         self.next_index += 1;
         let old = self.strokes.insert(
             id,
@@ -95,18 +97,23 @@ impl TerrainEditingData {
                 height_ws: 2.5,
             },
         );
-        if old.is_some() {
-            return Err(StrokeError::IdCollision(id));
+        if let Some(old) = old {
+            // 原924ad1先drop被替换旧条目，再panic；计数和新条目不能回滚或被UI吞掉。
+            drop(old);
+            panic!("terrain stroke ID collision after counter increment: {}", id.0);
         }
         Ok(Some(id))
     }
+    /// 原924906先检查完整64位计数非零，随后DECL ESI仅对低32位减一。
+    /// 这是原查询合同，不能对高位存档计数新增try_from拒绝或先做64位减法后断言范围。
+    pub fn last_stroke_id(&self) -> StrokeId {
+        assert_ne!(self.next_index, 0, "original last terrain stroke counter assertion");
+        StrokeId((self.next_index as u32).wrapping_sub(1))
+    }
     pub fn get_last_mut_stroke(&mut self) -> Result<&mut TerrainStroke, StrokeError> {
-        let id = self
-            .next_index
-            .checked_sub(1)
-            .ok_or(StrokeError::MissingLastStroke)?;
+        let id = self.last_stroke_id();
         self.strokes
-            .get_mut(&StrokeId(id))
+            .get_mut(&id)
             .ok_or(StrokeError::MissingLastStroke)
     }
 }
@@ -121,6 +128,36 @@ mod tests {
         assert_eq!(data.next_index, 1);
         assert_eq!(data.get_last_mut_stroke().unwrap().index, StrokeId(0));
     }
+    #[test]
+    fn native_u64_counter_boundary_and_last_id_projection() {
+        for (counter, expected) in [(0x3ffffeu64, Some(StrokeId(0x3ffffe))),
+            (0x3fffff, None), (u64::from(u32::MAX) + 1, None), (u64::MAX, None)] {
+            let mut data = TerrainEditingData { next_index: counter, ..Default::default() };
+            assert_eq!(data.new_stroke([1.0, 2.0, 3.0]).unwrap(), expected);
+            assert_eq!(data.next_index, counter + u64::from(expected.is_some()));
+        }
+        let mut data = TerrainEditingData::default();
+        data.new_stroke([0.0; 3]).unwrap();
+        data.next_index = u64::from(u32::MAX) + 2;
+        assert_eq!(data.last_stroke_id(), StrokeId(0));
+        assert_eq!(data.get_last_mut_stroke().unwrap().index, StrokeId(0));
+        data.next_index = 0;
+        assert!(std::panic::catch_unwind(|| data.last_stroke_id()).is_err());
+    }
+    #[test]
+    fn native_collision_panics_after_replacement_and_counter_increment() {
+        let mut data = TerrainEditingData::default();
+        data.new_stroke([0.0; 3]).unwrap();
+        data.next_index = 0;
+        let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            data.new_stroke([4.0, 5.0, 6.0])
+        }));
+        assert!(failure.is_err());
+        assert_eq!(data.next_index, 1);
+        assert_eq!(data.strokes[&StrokeId(0)].points, [[4.0, 5.0, 6.0]]);
+        assert_eq!(data.strokes[&StrokeId(0)].height_ws, 2.5);
+    }
+
     #[test]
     fn morph_decision_uses_existing_segment() {
         let mut stroke = TerrainStroke {

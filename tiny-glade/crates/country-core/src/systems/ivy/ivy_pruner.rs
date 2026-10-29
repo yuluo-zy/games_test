@@ -3,9 +3,10 @@
 //! ivy's tail/root against the wall spatial hash plus the arch height band.
 use crate::resources::{
     critters::sheep::CmdCheckForSheepInsideBuilding,
+    events::OnCircleRotated,
     ivy::{IvyId, IvyLeafStorage, IvyStorage},
     walls::{
-        public_walls::{OnWallChanged, PublicWalls},
+        public_walls::PublicWalls,
         public_wall_state::PublicWallState,
         wall_holes::PrevWallHoles,
         WallId,
@@ -272,11 +273,7 @@ fn revalidate_ivy(
 /// (0x140997a58..ae3). Emptied ivies are `remove_entry`-deleted from the
 /// storage map after the loop (0x140998711..1312).
 ///
-/// Cross-domain registration: `resources::events::OnCircleRotated` is not yet
-/// declared in this crate. Until it lands, the crate's existing
-/// `OnWallChanged` event is the equivalent dirty-wall source (same wall id
-/// payload); the ECS signature must switch to the two native readers when
-/// `OnCircleRotated` is recovered.
+/// 圆旋转使用原跨域事件，不能以所有墙变化代替，以免触发额外修剪。
 pub fn ivy_pruner(
     mut storage: ResMut<IvyStorage>,
     mut leaves: ResMut<IvyLeafStorage>,
@@ -284,7 +281,7 @@ pub fn ivy_pruner(
     spatial: Res<WallSpatialHash>,
     prev_holes: Res<PrevWallHoles>,
     mut sheep_cmds: EventReader<CmdCheckForSheepInsideBuilding>,
-    mut changed: EventReader<OnWallChanged>,
+    mut changed: EventReader<OnCircleRotated>,
 ) {
     let mut dirty: Vec<WallId> = sheep_cmds.read().map(|command| command.wall).collect();
     dirty.extend(changed.read().map(|event| event.0));

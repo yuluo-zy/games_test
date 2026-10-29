@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-27",
+  "original_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "original_pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "sources": {
+    "crates/systems/decorator/src/merge_proposal_roof_decorators.rs": "82c60d56f695bf8df737275bd37ccafa0e1d33ed0b6ac2b8101d612571296f98",
+    "crates/country-core/src/resources/walls/decorator.rs": "ea40821697f4cf4455f351f07734cc74bd37ff8c95adc0030d4b03bc957444fc",
+    "crates/country-core/src/resources/walls/decorator_storage.rs": "98494a4397e50cfe92ffca99d7d5d62d548944f50410aec9ccff2090cd0b5105",
+    "crates/country-core/src/resources/walls/decorator_subtype.rs": "c50166393b1cc218152f2e8ccd2f14f893f17f7109949fa379925aa65774a933",
+    "crates/country-core/src/resources/walls/cached_decorator_transforms.rs": "d64956c247c9604f2927d2621cf854e853b6e0c45750f280b597b50e607152ff",
+    "crates/country-core/src/resources/roofs/roof_visual_shape.rs": "c97546e05b480768db711a61c6d256b822df40958032945b88cdfddb76f0aff3",
+    "crates/country-core/src/resources/roofs/geometry/surface.rs": "f06e573d5dff6d915bdf980b805868778963b51b0d6ca7477e77df8173d2c04a",
+    "crates/utils/src/geometry/rectangle.rs": "dfa1f58de4765f4898bd9aecf56b65cd08d6b95f4aa7e3eba7ceecf637d40012",
+    "Cargo.lock": "4371d7f680a21f3e1666c35e6f20eaa816168e39f699e9a5b16405f0fe2839ec"
+  },
+  "command": "CARGO_INCREMENTAL=0 cargo test --offline -p system-decorator --lib roof_merge",
+  "passed": 3,
+  "failed": 0,
+  "native_proposal": {
+    "inputs": 237,
+    "some_full_defined_words": 84,
+    "none": 147,
+    "expected_panics": 6,
+    "entry_points": [
+      "142000e60",
+      "141fe6a40"
+    ],
+    "bridges": [
+      "Resolved native inlined hash lookup only; preserve crossed output register initialization.",
+      "Derived subtype and keyed mesh collision lookup.",
+      "Darwin C float math, not Windows CRT body."
+    ]
+  },
+  "native_predicate": {
+    "inputs": 288,
+    "hits": 6,
+    "misses": 258,
+    "expected_panics": 24,
+    "entry_points": [
+      "141fe7280 query constructor prefix through 141fe73c2",
+      "141fe6f20 full body through native return"
+    ],
+    "full_32byte_query_and_existing_boxes": true,
+    "bridges": [
+      "Derived subtype, keyed collision and cached transform getters."
+    ]
+  },
+  "world": "Actual DecoratorStorage.apply_decorator_place + unique d2s, canonical derived/library/cached, actual Roof component -> intersect -> proposal -> cached position edit -> apply_decorator_remove with no stale hit/proposal.",
+  "integration": "Intent owner has connected new APIs; full parent Intent/Apply/History joint acceptance remains root/move responsibility. No OS/GPU claims.",
+  "section_visibility_follow_up": {
+    "change": "section_shape -> pub(crate), same algorithm; rectangle split reuses original section",
+    "source_sha256": "ac49d284e56f95a2d2dc58d7de3c757a702a120ed8ecdd4e5a9af48dc3c63b3c",
+    "command": "CARGO_INCREMENTAL=0 cargo test --offline -p system-decorator --lib roof_merge",
+    "passed": 4,
+    "failed": 0,
+    "log": "m01-roof-merge-shared-section-tests-v2.log",
+    "scope": "three original merge tests plus parent Intent World integration added by owner"
+  }
+}

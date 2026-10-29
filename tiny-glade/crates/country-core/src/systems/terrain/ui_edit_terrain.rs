@@ -24,7 +24,7 @@ use crate::{
         render_loop::compute_passes::highlight_active_terrain_stroke::AddTerrainHighlightCmd,
         ui::resources::{
             ui_state::UiState,
-            widget_params::{WidgetParams, WidgetVolumeShape},
+            widget_params::{UiSounds, WidgetParams, WidgetVolumeShape},
         },
     },
 };
@@ -73,8 +73,21 @@ pub type TerrainEditHistoryPending = super::deferred_terrain_history::PendingTer
 /// 地形编辑历史哨兵（O：case 3 `0x8000000000000001`；区别于 deferred 的 `…0002`）。
 pub const TERRAIN_EDIT_SENTINEL: u64 = 0x8000_0000_0000_0001;
 
+/// 原 MouseActivityTimer 构造值；三个字段的业务语义尚未确认。
+#[derive(Resource, Clone, Copy, Debug, PartialEq)]
+pub struct MouseActivityTimer {
+    pub value_00: f32,
+    pub value_04: f32,
+    pub flag_08: u8,
+}
+impl Default for MouseActivityTimer {
+    fn default() -> Self {
+        Self { value_00: 0.0, value_04: 1000.0, flag_08: 0 }
+    }
+}
+
 /// Existing semantic capture owner: previous height/falloff, drag point and
-/// steepness accumulator. This is not a native ABI layout. The legacy active
+/// capture compatibility fields. This is not a native ABI layout. The legacy active
 /// and slot_10 fields remain host compatibility only; native+0x1e0 is the real
 /// DecoratorArchivist culling policy and is written through that owner.
 #[derive(Resource, Clone, Copy, Debug, Default)]
@@ -85,7 +98,7 @@ pub struct TerrainEditUiState {
     pub slot_10: f32,
     /// Deprecated host compatibility; original+0x1e0 is archivist.culling.allow_any.
     pub active: u8,
-    /// 拖动累加器（O：`*pfVar22`；case 1 清 0、case 2 累加 `|dx*0.002|`）。
+    /// 旧宿主兼容字段；原拖动累加器由系统 Local 单独持有。
     pub accum: f32,
     /// Original drag capture: height then falloff are saved before editing.
     pub previous_height_ws: f32,
@@ -174,6 +187,7 @@ pub fn ui_edit_terrain(
     mut pending: ResMut<TerrainEditHistoryPending>,
     mut effects: TerrainEditEffects,
     mut ui: ResMut<TerrainEditUiState>,
+    mut steepness_amount: Local<f32>,
     modifiers: Res<Modifiers>,
     mut camera_moved: EventReader<MainCameraMoved>,
     mut archivist: ResMut<LiveDecoratorArchivist>,
@@ -200,8 +214,8 @@ pub fn ui_edit_terrain(
 
     // 逐笔画 widget 注册 + 各自的 subtype switch（O：`do { … } while (puVar48 != 0)`；
     // `UiState::add` 返回值即该 widget 的上下文）。
-    let stroke_ids: Vec<StrokeId> = terrain.strokes.keys().copied().collect();
-    for id in stroke_ids {
+    // 与原HashMap迭代一致；此系统只读笔画，不为每帧注册额外分配ID数组。
+    for &id in terrain.strokes.keys() {
         let ty = if !modifiers.disable_snapping() {
             (hovered_id != id.0 as i32) as u8 * 3 + 4
         } else {
@@ -217,10 +231,15 @@ pub fn ui_edit_terrain(
                     size: Vec2::splat(130.0),
                     ..Default::default()
                 },
-                [0; 2],
-            ),
+                // 原140aef862..86e：相机未移动才发布kind11预览，不能恒清空。
+                [u64::from(!camera_did_move) | (11 << 8), 0],
+            )
+            .sounds(UiSounds::empty())
+            // 原140aef897的0x0100：遮挡关闭，历史记录位仍保持1。
+            .occlude_by_world(false),
         );
-        if widget.clicked() && hovered_id != -1 && !camera_did_move {
+        // 原140aef8bc..8eb是hover(tag1/phase1)，不是点击释放(tag2/phase1)。
+        if widget.hovered() == 1 && hovered_id != -1 && !camera_did_move {
             effects.highlight.write(AddTerrainHighlightCmd(hovered_id));
         }
         let subtype = widget.dragged();
@@ -234,7 +253,7 @@ pub fn ui_edit_terrain(
                     ui.previous_falloff = stroke.falloff;
                 }
                 archivist.decorator_cull_allow_any();
-                ui.accum = 0.0;
+                *steepness_amount = 0.0;
             }
             2 => {
                 effects.arrow.write(EnableArrowGizmoStretch);
@@ -244,8 +263,8 @@ pub fn ui_edit_terrain(
                     {
                         effects.edits.write(EditTerrainStrokeCmd(command));
                         if delta.y.abs() <= delta.x.abs() {
-                            ui.accum += (delta.x * 0.002).abs();
-                            if 0.3 < ui.accum {
+                            *steepness_amount += (delta.x * 0.002).abs();
+                            if 0.3 < *steepness_amount {
                                 effects
                                     .steepness
                                     .write(NotifyHintSystemTerrainSteepness { tag: 1 });
@@ -286,6 +305,182 @@ pub fn ui_edit_terrain(
 #[cfg(test)]
 mod original_edit_producer_tests {
     use super::*;
+    fn widget_world() -> World {
+        let mut world = World::new();
+        super::super::register_terrain_events(&mut world);
+        world.insert_resource(AppMode::Terrain);
+        world.insert_resource(CursorTerrainRaycast { tag: 1, pos: Vec3::new(1.0, 2.0, 3.0),
+            ..Default::default() });
+        let mut data = tg_terrain::stroke::TerrainEditingData::default();
+        data.new_stroke([0.0; 3]).unwrap();
+        data.new_stroke([2.0, 0.0, 1.0]).unwrap();
+        world.insert_resource(TerrainEditingData(data));
+        world.insert_resource(HoveredTerrainStrokeId { tag: 1, id: 0 });
+        world.insert_resource(UiState::at_startup());
+        world
+    }
+
+    #[test]
+    fn steepness_local_is_per_system_and_survives_frames() {
+        use crate::systems::ui::resources::ui_state::{UiInteraction, WidgetId};
+        let mut world = widget_world();
+        world.resource_mut::<UiState>().replace_interaction(UiInteraction {
+            native_tag: 2, native_phase: 4,
+            widget: WidgetId::from_name("terrain_edit_0__canvas"),
+        });
+        let mut a = Schedule::default();
+        let mut b = Schedule::default();
+        a.add_systems(ui_edit_terrain);
+        b.add_systems(ui_edit_terrain);
+        world.send_event(CursorMovedScreenSpace(Vec2::new(100.0, 0.0)));
+        a.run(&mut world);
+        b.run(&mut world);
+        assert_eq!(world.resource::<Events<NotifyHintSystemTerrainSteepness>>().len(), 0);
+        world.send_event(CursorMovedScreenSpace(Vec2::new(100.0, 0.0)));
+        a.run(&mut world);
+        assert_eq!(world.resource::<Events<NotifyHintSystemTerrainSteepness>>().len(), 1);
+        world.resource_mut::<Events<CursorMovedScreenSpace>>().clear();
+        world.resource_mut::<Events<NotifyHintSystemTerrainSteepness>>().clear();
+        let mut rebuilt = Schedule::default();
+        rebuilt.add_systems(ui_edit_terrain);
+        world.send_event(CursorMovedScreenSpace(Vec2::new(100.0, 0.0)));
+        rebuilt.run(&mut world);
+        assert_eq!(world.resource::<Events<NotifyHintSystemTerrainSteepness>>().len(), 0);
+    }
+
+    #[test]
+    fn original_widget_packets_and_hover_branch_match_the_real_registration_system() {
+        use crate::systems::ui::resources::ui_state::{UiInteraction, WidgetId};
+        let fixture = include_str!(concat!(env!("CARGO_MANIFEST_DIR"),
+            "/../../reports/module-recovery-2026-10-23/140aef812-terrain-widget-native.txt"));
+        for (index, row) in fixture.lines().enumerate() {
+            let words: Vec<_> = row.split_whitespace().collect();
+            let mut world = widget_world();
+            let widget = WidgetId::from_name("terrain_edit_0__canvas");
+            let camera = if words[0] == "P" {
+                world.resource_mut::<Modifiers>().flags = u32::from(words[1] == "7");
+                words[2] == "1"
+            } else {
+                world.resource_mut::<UiState>().replace_interaction(UiInteraction {
+                    native_tag: words[1].parse().unwrap(), native_phase: words[2].parse().unwrap(),
+                    widget: if words[3] == "1" { widget } else { WidgetId(99) },
+                });
+                if words[4] == "-1" { world.resource_mut::<HoveredTerrainStrokeId>().tag = 0; }
+                words[5] == "1"
+            };
+            if camera { world.send_event(MainCameraMoved); }
+            let mut schedule = Schedule::default();
+            schedule.add_systems(ui_edit_terrain);
+            schedule.run(&mut world);
+            if words[0] == "H" {
+                assert_eq!(world.resource::<Events<AddTerrainHighlightCmd>>().len(),
+                    words[6].parse::<usize>().unwrap(), "原hover门case {index}");
+            } else {
+                let params = world.resource::<UiState>().widget(widget).unwrap();
+                let mut active = Vec::new();
+                for slot in params.sounds.slots { active.extend_from_slice(&slot[..4]); }
+                active.extend_from_slice(&params.extra_78[0].to_le_bytes()[..2]);
+                active.extend_from_slice(&[params.volume.tag, params.volume.layer]);
+                active.extend_from_slice(&params.volume.size.x.to_le_bytes());
+                active.extend_from_slice(&params.volume.size.y.to_le_bytes());
+                active.extend_from_slice(&[u8::from(params.occlude_by_world), params.flags.0]);
+                let native = (0..words[3].len()).step_by(2).map(|offset|
+                    u8::from_str_radix(&words[3][offset..offset + 2], 16).unwrap()).collect::<Vec<_>>();
+                assert_eq!(active, native, "原Widget写面case {index}");
+            }
+        }
+    }
+
+    #[test]
+    fn real_registration_distinguishes_hover_release_camera_and_disabled_snapping() {
+        use crate::systems::ui::resources::ui_state::{UiInteraction, WidgetId};
+        let widget = WidgetId::from_name("terrain_edit_0__canvas");
+        // 原highlight是hover phase1；tag2 phase1虽clicked为真也不能高亮。
+        for (tag, phase, matched, hovered, camera, disabled, expected) in [
+            (1, 1, true, true, false, false, 1),
+            (2, 1, true, true, false, false, 0),
+            (1, 0, true, true, false, false, 0),
+            (1, 1, false, true, false, false, 0),
+            (1, 1, true, false, false, false, 0),
+            (1, 1, true, true, true, false, 0),
+            (1, 1, true, true, false, true, 1),
+        ] {
+            let mut world = widget_world();
+            world.resource_mut::<UiState>().replace_interaction(UiInteraction {
+                native_tag: tag, native_phase: phase,
+                widget: if matched { widget } else { WidgetId(99) },
+            });
+            if !hovered { world.resource_mut::<HoveredTerrainStrokeId>().tag = 0; }
+            if camera { world.send_event(MainCameraMoved); }
+            world.resource_mut::<Modifiers>().flags = u32::from(disabled);
+            let mut schedule = Schedule::default();
+            schedule.add_systems(ui_edit_terrain);
+            schedule.run(&mut world);
+            let state = world.resource::<UiState>();
+            for id in [0, 1] {
+                let params = state.widget(WidgetId::from_name(&format!("terrain_edit_{id}__canvas"))).unwrap();
+                assert_eq!(params.volume.tag, if !disabled && hovered && id == 0 { 4 } else { 7 });
+                assert_eq!(params.volume.size, Vec2::splat(130.0));
+                assert_eq!(params.sounds, UiSounds::empty());
+                assert!(!params.occlude_by_world);
+                assert_eq!(params.flags.0, 1);
+                assert_eq!(params.extra_78[0] & 0xffff, u64::from(!camera) | (11 << 8));
+            }
+            assert_eq!(world.resource::<Events<AddTerrainHighlightCmd>>().len(), expected);
+            assert!(world.resource::<Events<EditTerrainStrokeCmd>>().is_empty());
+        }
+    }
+
+    #[test]
+    fn terrain_widget_reaches_real_ui_and_brush_consumers_and_camera_hides_then_restores() {
+        use crate::{input::action_set::ActionSetStates, resources::{events::{EscapeMenuJustOpened, ShutdownGameCmd},
+            mouse_capture::OsCursorVisibilityCmd, window::WindowFocusEvent, gui::DebugGui,
+            brush_sizes::BrushSizes, walls::EraserSizeMultiplier},
+            systems::{brush_preview::{BrushPreview, OverwriteBrushPreview, brush_preview},
+                ui::{ui_update::ui_update, resources::{ui_state::WidgetId, widget_params::PlayUiSound}}},
+            utils::components::transform::Transform};
+        let mut world = widget_world();
+        world.init_resource::<ActionSetStates>();
+        world.init_resource::<Events<WindowFocusEvent>>();
+        world.init_resource::<Events<EscapeMenuJustOpened>>();
+        world.init_resource::<Events<ShutdownGameCmd>>();
+        world.init_resource::<Events<OverwriteBrushPreview>>();
+        world.init_resource::<Events<OsCursorVisibilityCmd>>();
+        world.init_resource::<Events<PlayUiSound>>();
+        world.init_resource::<DebugGui>();
+        world.insert_resource(EraserSizeMultiplier(1.0));
+        world.insert_resource(BrushSizes { path: 0.8, water: 2.0, garden: 3.0 });
+        let terrain_preview = world.spawn(BrushPreview(11)).id();
+        let other_preview = world.spawn((BrushPreview(4), Transform::identity())).id();
+        // 从真实picker的交点边界开始；未伪造UiState的捕获Arc/预览事件。
+        let mut hit = [0; 56];
+        hit[..4].copy_from_slice(&1_u32.to_le_bytes());
+        hit[16..24].copy_from_slice(&WidgetId::from_name("terrain_edit_0__canvas").0.to_le_bytes());
+        world.resource_mut::<UiState>().set_hover_intersections(vec![hit]);
+        let mut schedule = Schedule::default();
+        schedule.add_systems((ui_edit_terrain, ui_update, brush_preview).chain());
+        for camera in [false, true, false] {
+            if camera { world.send_event(MainCameraMoved); }
+            schedule.run(&mut world);
+            let events = world.resource_mut::<Events<OverwriteBrushPreview>>().drain().collect::<Vec<_>>();
+            assert_eq!(events.len(), 1);
+            assert_eq!(events[0].kind, if camera { 0 } else { 11 });
+            if camera { assert!(world.get::<Transform>(terrain_preview).is_none()); }
+            else {
+                let transform = world.get::<Transform>(terrain_preview).unwrap();
+                assert_eq!(transform.translation, Vec3::new(1.0, 2.0, 3.0));
+                assert_eq!(transform.scale, Vec3::ONE);
+            }
+            assert!(world.get::<Transform>(other_preview).is_none());
+            // ui_update消费了真实注册并保留活动Arc；帧末注册表按原清空。
+            assert!(world.resource::<UiState>().widget(WidgetId::from_name("terrain_edit_0__canvas")).is_none());
+        }
+        let sounds = world.resource_mut::<Events<PlayUiSound>>().drain().collect::<Vec<_>>();
+        assert_eq!(sounds.len(), 1);
+        assert_eq!(sounds[0].kind, 0);
+        assert_eq!(world.resource::<Events<AddTerrainHighlightCmd>>().len(), 1);
+    }
+
     #[test]
     fn original_dispatch_all_bytes() {
         let expected: [u8; 256] = [

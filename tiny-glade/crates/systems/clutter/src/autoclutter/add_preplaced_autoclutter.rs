@@ -84,6 +84,7 @@ pub fn add_preplaced_autoclutter(
         );
         let key = hash_preplaced_key(PREPLACED_CLUTTER_NAME, i);
         let region = AutoClutterRegion {
+            source: Some(country_core::components::drawable::AutoClutterSource::None),
             kind: 5,
             key: ClutterRegionId(key),
             center,

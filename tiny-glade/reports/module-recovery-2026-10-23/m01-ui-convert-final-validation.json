@@ -1,0 +1,97 @@
+{
+  "started": 1793045729.6673229,
+  "before": {
+    "crates/country-core/src/systems/ui_clutter/ui_autoclutter.rs": "08ffca78f2e1f967746ccc606e261c0c212449b8520ae4aba256b931dfede50e",
+    "crates/country-core/src/systems/ui_clutter/rmb_autoclutter.rs": "b179ec165ac63368230b59b34d04cc95726099325adcc9ac4e3bfd45e234915a",
+    "crates/country-core/src/systems/ui_clutter/mod.rs": "80bd9a60b95640deb627fb0fc3e32fa66fbc45ae2b29191051524df12184be4b",
+    "crates/country-core/src/systems/ui_clutter/tests.rs": "25c9861ed0fdca3c158db1cbcdb60af7cb448d7c7cf5aef5bbed77d1381ee4b9",
+    "crates/country-core/src/resources/clutter_meshes.rs": "831268fac603d0b392c806ab6aea772cc167b24d332cbd8aa1f8f76ed7ca2a82",
+    "crates/country-core/src/components/mod.rs": "1e064ce341224431475f7bd8906095f43f1f4a7f627f3f0d660a2f9b2db69d6a",
+    "crates/systems/clutter/src/autoclutter/add_autoclutter_around_gates.rs": "e104b726692297a940674ac6d6d5badfb8cc7fbc4bf82727573680fd546580e7",
+    "crates/systems/wall-constructor/src/construct_gates/systems.rs": "6083688abb94ce40a0414bc47404a474004f2f3aa854ba56d5be428dde1ec0b1",
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs": "b3bd32f4fc0f4efaf5b4395455a079cbca5c7bf8ebcb535f5768eb583a5cb80c",
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a.rs": "6c5f675d73cd8a37fbb80ebd88a0809df4b78bd02885b7f7a90242de8fb926f4",
+    "Cargo.lock": "1c6c70729f6518b4b4339e6ce7adcc629116b45117f9d6520780d1ebae09797a",
+    "Cargo.toml": "f72a636d5c1f1e066ba6450948bd5ac5af35f26e976bd720aba75730f4a36f5d"
+  },
+  "checks": [
+    {
+      "name": "clutter",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "country-core",
+        "--features",
+        "native-physics",
+        "--offline",
+        "--lib",
+        "systems::ui_clutter::"
+      ],
+      "returncode": 0,
+      "log": "reports/module-recovery-2026-10-23/m01-ui-convert-final-clutter.log"
+    },
+    {
+      "name": "gate-clutter",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "system-clutter",
+        "--offline",
+        "--lib",
+        "canonical_gate_tests"
+      ],
+      "returncode": 0,
+      "log": "reports/module-recovery-2026-10-23/m01-ui-convert-final-gate-clutter.log"
+    },
+    {
+      "name": "gate-constructor",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "system-wall-constructor",
+        "--offline",
+        "--test",
+        "gate_spawn_layout"
+      ],
+      "returncode": 0,
+      "log": "reports/module-recovery-2026-10-23/m01-ui-convert-final-gate-constructor.log"
+    },
+    {
+      "name": "gate-draw",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "country-core",
+        "--features",
+        "native-physics",
+        "--offline",
+        "--lib",
+        "env14_wooden_gate_sequence"
+      ],
+      "returncode": 0,
+      "log": "reports/module-recovery-2026-10-23/m01-ui-convert-final-gate-draw.log"
+    }
+  ],
+  "native_oracle": "m01-ui-convert-heading-native.json",
+  "os_input": false,
+  "after": {
+    "crates/country-core/src/systems/ui_clutter/ui_autoclutter.rs": "08ffca78f2e1f967746ccc606e261c0c212449b8520ae4aba256b931dfede50e",
+    "crates/country-core/src/systems/ui_clutter/rmb_autoclutter.rs": "b179ec165ac63368230b59b34d04cc95726099325adcc9ac4e3bfd45e234915a",
+    "crates/country-core/src/systems/ui_clutter/mod.rs": "80bd9a60b95640deb627fb0fc3e32fa66fbc45ae2b29191051524df12184be4b",
+    "crates/country-core/src/systems/ui_clutter/tests.rs": "25c9861ed0fdca3c158db1cbcdb60af7cb448d7c7cf5aef5bbed77d1381ee4b9",
+    "crates/country-core/src/resources/clutter_meshes.rs": "831268fac603d0b392c806ab6aea772cc167b24d332cbd8aa1f8f76ed7ca2a82",
+    "crates/country-core/src/components/mod.rs": "1e064ce341224431475f7bd8906095f43f1f4a7f627f3f0d660a2f9b2db69d6a",
+    "crates/systems/clutter/src/autoclutter/add_autoclutter_around_gates.rs": "e104b726692297a940674ac6d6d5badfb8cc7fbc4bf82727573680fd546580e7",
+    "crates/systems/wall-constructor/src/construct_gates/systems.rs": "6083688abb94ce40a0414bc47404a474004f2f3aa854ba56d5be428dde1ec0b1",
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a_views.rs": "b3bd32f4fc0f4efaf5b4395455a079cbca5c7bf8ebcb535f5768eb583a5cb80c",
+    "crates/country-core/src/systems/render_loop/draw_passes/draw_callbacks_a.rs": "6c5f675d73cd8a37fbb80ebd88a0809df4b78bd02885b7f7a90242de8fb926f4",
+    "Cargo.lock": "1c6c70729f6518b4b4339e6ce7adcc629116b45117f9d6520780d1ebae09797a",
+    "Cargo.toml": "f72a636d5c1f1e066ba6450948bd5ac5af35f26e976bd720aba75730f4a36f5d"
+  },
+  "ended": 1793045854.2539258,
+  "source_unchanged": true
+}

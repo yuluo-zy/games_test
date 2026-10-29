@@ -640,17 +640,20 @@ pub fn nani_flush_instance_updates(gpu_world: &mut GpuWorld, device: &dyn Graphi
 // be published. This completeness guard is a host boundary, not a native branch.
 use bevy_ecs::{
     change_detection::DetectChangesMut,
-    prelude::{Changed, Commands, Local, ParamSet, Query, Res, ResMut, With, Without},
+    prelude::{Changed, Commands, Local, Or, ParamSet, Query, Res, ResMut, With, Without},
     query::Has,
     removal_detection::RemovedComponents,
     schedule::{ApplyDeferred, IntoScheduleConfigs, Schedule, SystemSet},
 };
 use crate::{
     asset_libraries::{ssbo_library::AssetSsboLibrary, texture_library::AssetTextureLibrary},
-    components::{FlatLighting, NormalMap, SemiTransparent,
-        drawable::{AlbedoMap, ClothlineCloth, PrevTransform, NaniSolidTexture}},
+    components::{BrickColor, GothicWindowBrickDeformation, FlatLighting, NormalMap, SemiTransparent, Smoke,
+        drawable::{AlbedoMap, ClothlineCloth, LanternLightParams, PrevTransform, NaniSolidTexture}},
     render::{device::GraphicsDeviceResource, nani::gpu_world::{InstanceDataMarker, OwnedGpuWorldSubset}},
-    resources::{color_id::ColorId, roofs::{Roof, RoofAnimation},
+    resources::{color_id::{ColorId, HalftimberColorIds}, roofs::{Roof, RoofAnimation},
+        walls::{Floor, WallId, public_walls::PublicWalls,
+            plaster::{Plaster, AnimatedPlasterPeel}, curved_halftimber::CurvedHalfTimber},
+        stairs::visual::StairsFloorMeshChunk,
         terrain_rock_mask::TerrainRockMaskSsbo, world_raster_defs::WaterRaster,
         window_lights::{GlobalWindowLightsControl, WindowLight}},
     systems::paths::PathRastersResources,
@@ -669,15 +672,24 @@ type MappedNaniMarkers = (
     Has<InstanceDataMarker<StoneFloorInstanceData>>,
     Has<InstanceDataMarker<ClothInstanceData>>,
     Has<InstanceDataMarker<SolidVertexColorWindowGlassInstanceData>>,
+    Has<InstanceDataMarker<SmokeInstanceData>>,
+    Has<InstanceDataMarker<LanternEmissiveInstanceData>>,
+    (Has<InstanceDataMarker<SolidVertexColorBricksInstanceData>>,
+     Has<InstanceDataMarker<GothicWindowBricksInstanceData>>,
+     Has<InstanceDataMarker<StairsFloorInstanceData>>,
+     Has<InstanceDataMarker<PlasterInstanceData>>,
+     Has<InstanceDataMarker<CurvedHalfTimberInstanceData>>),
 );
 
-type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool);
+type MappedNaniMarkerPresence = (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, (bool, bool, bool, bool, bool));
 type MappedNaniInputs = (MappedNaniMarkers, Has<ColorId>, Has<PrevTransform>, Has<Transform>,
-    Has<NaniSolidTexture>, Has<Roof>, Has<ClothlineCloth>, Has<NormalMap>, Has<WindowLight>);
+    Has<NaniSolidTexture>, Has<Roof>, Has<ClothlineCloth>, Has<NormalMap>, Has<WindowLight>, Has<Smoke>, Has<LanternLightParams>,
+    Has<BrickColor>, Has<GothicWindowBrickDeformation>,
+    (Has<StairsFloorMeshChunk>, Has<Plaster>, Has<CurvedHalfTimberInstanceData>, Has<CurvedHalfTimber>, Has<Floor>));
 fn require_mapped_nani_payload(
     kind: GpuWorldSubsetKind,
-    (markers, has_color, has_previous, has_transform, has_selector, has_roof, has_cloth, has_normal, has_light):
-        (MappedNaniMarkerPresence, bool, bool, bool, bool, bool, bool, bool, bool),
+    (markers, has_color, has_previous, has_transform, has_selector, has_roof, has_cloth, has_normal, has_light, has_smoke, has_lantern, has_brick, has_gothic, (has_floor, has_plaster, has_timber_data, has_timber, has_wall_floor)):
+        (MappedNaniMarkerPresence, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, (bool, bool, bool, bool, bool)),
 ) {
     let mapped = match kind {
         GpuWorldSubsetKind::SolidVertexColor => markers.0,
@@ -689,15 +701,21 @@ fn require_mapped_nani_payload(
         GpuWorldSubsetKind::VelocityOnly => markers.6 && has_previous,
         GpuWorldSubsetKind::SolidAlbedoMap => markers.7 && has_selector,
         GpuWorldSubsetKind::SolidAlbedoMapEmissive => markers.8 && has_selector,
-        // Restricted original kind9 producer domain. Floor-only entities
-        // remain unsupported; do not publish a key without a real Roof.
-        GpuWorldSubsetKind::RoofFloor => markers.9 && has_roof,
+        // 原 kind9 优先 Roof，否则必须有真实墙 Floor。
+        GpuWorldSubsetKind::RoofFloor => markers.9 && (has_roof || has_wall_floor),
         GpuWorldSubsetKind::Cloth => markers.10 && has_cloth && has_normal,
         GpuWorldSubsetKind::SolidVertexColorWindowGlass => markers.11 && has_color && has_light,
+        GpuWorldSubsetKind::Smoke => markers.12 && has_smoke,
+        GpuWorldSubsetKind::LanternEmissive => markers.13 && has_lantern,
+        GpuWorldSubsetKind::SolidVertexColorBricks => markers.14.0 && has_brick,
+        GpuWorldSubsetKind::GothicWindowBricks => markers.14.1 && has_brick && has_gothic,
+        GpuWorldSubsetKind::StairsFloor => markers.14.2 && has_floor,
+        GpuWorldSubsetKind::Plaster => markers.14.3 && has_plaster,
+        GpuWorldSubsetKind::CurvedHalfTimber => markers.14.4 && has_timber_data && has_timber,
         _ => false,
     };
     let marker_count = [markers.0, markers.1, markers.2, markers.3,
-        markers.4, markers.5, markers.6, markers.7, markers.8, markers.9, markers.10, markers.11]
+        markers.4, markers.5, markers.6, markers.7, markers.8, markers.9, markers.10, markers.11, markers.12, markers.13, markers.14.0, markers.14.1, markers.14.2, markers.14.3, markers.14.4]
         .into_iter().filter(|present| *present).count();
     assert!(mapped && has_transform && marker_count == 1,
         "Nani ECS payload mapping is unavailable or canonical inputs are incomplete: {kind:?}");
@@ -778,27 +796,94 @@ pub fn nani_update_solid_vertex_color_window_ecs(
     }
 }
 
-/// Native tuple5 / kind9, restricted to actual Roof-bearing entities. Keep
-/// the original With-only marker domain even if NaniInstanceDesc is absent:
-/// requiring &Roof in the Query would silently skip an unsupported active row.
-/// The original Floor-only component contract is not yet recovered.
+/// Native tuple5 / kind9：Roof 优先，否则读取墙 Floor。
 pub fn nani_update_roof_floor_for_roofs_ecs(
-    mut rows: Query<(&mut InstanceKey, &Transform, Option<&Roof>, Option<&RoofAnimation>),
+    mut rows: Query<(&mut InstanceKey, &Transform, Option<&Roof>, Option<&RoofAnimation>, Option<&Floor>),
         With<InstanceDataMarker<StoneFloorInstanceData>>>,
     gpu: Res<GpuWorld>,
 ) {
     let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::RoofFloor);
-    for (mut key, transform, roof, animation) in &mut rows {
-        let roof = roof.expect(
-            "RoofFloor ECS support requires a real Roof; Floor-only or missing Roof inputs are unsupported");
-        let words: RoofWords = std::array::from_fn(|index| {
+    for (mut key, transform, roof, animation, floor) in &mut rows {
+        let words: Option<RoofWords> = roof.map(|roof| std::array::from_fn(|index| {
             let offset = index * 4;
             u32::from_le_bytes(roof.observed()[offset..offset + 4].try_into().unwrap())
-        });
+        }));
+        let floor_words = floor.map(Floor::render_words);
         write_mapped_update(&mut subset, key.bypass_change_detection(),
-            build_stone_floor(transform.translation, Some(&words),
-                animation.map(|animation| animation.values()[0]), None, &circle_tangent_u0),
+            build_stone_floor(transform.translation, words.as_ref(),
+                animation.map(|animation| animation.values()[0]), floor_words.as_ref(), &circle_tangent_u0),
             |raw| StoneFloorInstanceData { raw });
+    }
+}
+
+/// 原14207cd60：每帧读取真实Smoke，不以Changed过滤厚度动画。
+pub fn nani_update_smoke_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform, &Smoke),
+        With<InstanceDataMarker<SmokeInstanceData>>>,
+    gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::Smoke);
+    for (mut key, transform, smoke) in &mut rows {
+        let (p, r, s) = trs(transform);
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_smoke(r, p, s, SmokeView::from(smoke)), |raw| SmokeInstanceData { raw });
+    }
+}
+
+/// 原14207a4f0：每帧读取36B灯参数与可选颜色，先锁kind18，即使查询为空也保留失败顺序。
+pub fn nani_update_lantern_emissive_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform, &LanternLightParams,
+        Option<&SemiTransparent>, Option<&ColorId>), With<InstanceDataMarker<LanternEmissiveInstanceData>>>,
+    gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::LanternEmissive);
+    for (mut key, transform, params, semi, color) in &mut rows {
+        let (p, r, s) = trs(transform);
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_lantern_emissive(r, p, s, LanternParamsView::from(params), semi.is_some(), color.map(|color| color.0)),
+            |raw| LanternEmissiveInstanceData { raw });
+    }
+}
+
+/// 原14207fcc0：只读同一48B组件，原Or<Changed<chunk>,Changed<active>>过滤保留静止帧。
+pub fn nani_update_stairs_floor_ecs(
+    mut rows: Query<(&mut InstanceKey, &StairsFloorMeshChunk),
+        (With<InstanceDataMarker<StairsFloorInstanceData>>,
+         Or<(Changed<StairsFloorMeshChunk>, Changed<InstanceKey>)>)>,
+    gpu: Res<GpuWorld>,
+) {
+    // 原先锁kind26，即使查询为空仍保留资源失败顺序。
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::StairsFloor);
+    for (mut key, chunk) in &mut rows {
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_stairs_floor(chunk.gpu_words()), |raw| StairsFloorInstanceData { raw });
+    }
+}
+
+/// 原142076230，kind6：原Query只读真实BrickColor，无ColorId/SemiTransparent附加门。
+pub fn nani_update_solid_vertex_color_bricks_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform, &BrickColor), With<InstanceDataMarker<SolidVertexColorBricksInstanceData>>>,
+    gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::SolidVertexColorBricks);
+    for (mut key, transform, brick) in &mut rows {
+        let (p, r, s) = trs(transform);
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_solid_vertex_color_bricks(p, r, s, brick.words()), |raw| SolidVertexColorBricksInstanceData { raw });
+    }
+}
+
+/// 原142076e40，kind7：每帧读取完整60B变形，保留原半精度/标志打包，不使用Changed过滤。
+pub fn nani_update_gothic_window_bricks_ecs(
+    mut rows: Query<(&mut InstanceKey, &Transform, &BrickColor, &GothicWindowBrickDeformation),
+        With<InstanceDataMarker<GothicWindowBricksInstanceData>>>,
+    gpu: Res<GpuWorld>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::GothicWindowBricks);
+    for (mut key, transform, brick, deformation) in &mut rows {
+        let (p, r, s) = trs(transform);
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_gothic_window_bricks(r, p, s, brick.words(), deformation.words()), |raw| GothicWindowBricksInstanceData { raw });
     }
 }
 
@@ -973,37 +1058,365 @@ pub fn nani_flush_instance_updates_ecs(
     nani_flush_instance_updates(&mut gpu, device.device());
 }
 
+/// 原 B14207b290：仅实例记录或活动键改变时更新；剥落重建由墙构造器触发。
+pub fn nani_update_plaster_ecs(
+    mut rows: Query<(&mut InstanceKey, &Plaster),
+        (With<InstanceDataMarker<PlasterInstanceData>>, Or<(Changed<Plaster>, Changed<InstanceKey>)>)>,
+    public: Res<PublicWalls>, gpu: Res<GpuWorld>, peel: Res<AnimatedPlasterPeel>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::Plaster);
+    for (mut key, plaster) in &mut rows {
+        let wall = public.get(plaster.wall).expect("plaster wall is absent from PublicWalls");
+        let curve = wall.simplified_curve_2d();
+        let inputs = PlasterWallInputs {
+            simplified_point_count: curve.points.len() as u64,
+            simplified_length: curve.length,
+            shape_tag: wall.shape().tag(),
+            default_peel: wall.authority.plaster_peel_amount(),
+        };
+        write_mapped_update(&mut subset, key.bypass_change_detection(),
+            build_plaster(plaster.nani_view(), inputs, peel.get(plaster.wall)),
+            |raw| PlasterInstanceData { raw });
+    }
+}
+
+/// 原 B142077d20：每帧改写半木颜色与完整实例；屋顶查找校验实际 ECS 实体代数。
+pub fn nani_update_curved_halftimber_ecs(
+    mut rows: Query<(&mut InstanceKey, &mut CurvedHalfTimberInstanceData, &CurvedHalfTimber),
+        With<InstanceDataMarker<CurvedHalfTimberInstanceData>>>,
+    gpu: Res<GpuWorld>, public: Res<PublicWalls>, colors: Res<HalftimberColorIds>, roofs: Query<&Roof>,
+) {
+    let mut subset = gpu.owned_subset_mut(GpuWorldSubsetKind::CurvedHalfTimber);
+    for (mut key, mut data, timber) in &mut rows {
+        let roof_color = if timber.direct == 0 {
+            public.roof_entity(WallId(timber.key)).and_then(|entity| roofs.get(entity).ok())
+                .filter(|roof| roof.observed()[0x40] == 2)
+                .map(|roof| u32::from_le_bytes(roof.observed()[0x44..0x48].try_into().unwrap()))
+        } else { None };
+        data.pad_0c = curved_halftimber_colour(timber.key, timber.direct != 0, roof_color,
+            |id| usize::try_from(id).ok().and_then(|index| colors.0.get(index)).copied());
+        subset.update_instance_data(key.bypass_change_detection(), data.position, 1.0, *data);
+    }
+}
+
 /// Original backend44 fragment: maintain -> explicit ApplyDeferred ->
 /// unordered20-update tuple -> flush, outer chain_ignore_deferred.
-/// 当前保留九类既有映射、Cloth 与限定 Roof-bearing kind9 分支，新增共享窗灯玻璃。
-/// Floor-only 及其他未闭合输入继续明确失败；绑定不代表独立场景生产者已可达。
+/// 当前登记已核实的19个实际ECS更新leaf，保留原tuple的相对注册顺序。
+/// 其它未闭合输入继续明确失败；绑定不代表独立场景生产者已可达。
 pub fn add_mapped_nani_instance_systems<S: SystemSet>(schedule: &mut Schedule, set: S) {
     schedule.add_systems((
         nani_maintain_instances_ecs,
         ApplyDeferred,
         (nani_update_solid_vertex_color_ecs,
          nani_update_solid_vertex_color_window_ecs,
+         nani_update_solid_vertex_color_window_glass_ecs,
+         nani_update_solid_vertex_color_bricks_ecs,
+         nani_update_gothic_window_bricks_ecs,
          nani_update_roof_floor_for_roofs_ecs,
          nani_update_plant_ecs,
          nani_update_preplaced_flower_ecs,
          nani_update_solid_albedo_map_ecs,
          nani_update_solid_albedo_map_emissive_ecs,
-         nani_update_balcony_door_ecs,
+         nani_update_curved_halftimber_ecs,
+         nani_update_lantern_emissive_ecs,
+         nani_update_plaster_ecs,
          nani_update_cloth_ecs,
-         nani_update_solid_vertex_color_window_glass_ecs,
+         nani_update_smoke_ecs,
+         nani_update_balcony_door_ecs,
          nani_update_uber_ecs,
-         nani_update_velocity_only_ecs),
+         nani_update_velocity_only_ecs,
+         nani_update_stairs_floor_ecs),
         nani_flush_instance_updates_ecs,
     ).chain_ignore_deferred().in_set(set));
+}
+
+#[cfg(test)]
+mod bricks_ecs_tests {
+    use super::*;
+    use bevy_ecs::{change_detection::DetectChanges, world::World};
+    use crate::render::{mesh::{Mesh, ATTR_POSITION},
+        nani::gpu_world::{GpuWorldSubset, InstanceDataBuffer}, ssbo::tests::MockDevice};
+
+    fn world(device: &MockDevice) -> World {
+        let mut gpu = GpuWorld::new(device);
+        gpu.assign_subset(GpuWorldSubsetKind::SolidVertexColorBricks, GpuWorldSubset::Owned(
+            OwnedGpuWorldSubset::new::<SolidVertexColorBricksInstanceData>(device, GpuWorldSubsetKind::SolidVertexColorBricks, 1)));
+        gpu.assign_subset(GpuWorldSubsetKind::GothicWindowBricks, GpuWorldSubset::Owned(
+            OwnedGpuWorldSubset::new::<GothicWindowBricksInstanceData>(device, GpuWorldSubsetKind::GothicWindowBricks, 1)));
+        let mut atlas = MeshAtlasLibrary::default();
+        for (kind, name) in [(GpuWorldSubsetKind::SolidVertexColorBricks,"solid_bricks_test"),
+            (GpuWorldSubsetKind::GothicWindowBricks,"gothic_bricks_test")] {
+            let mut mesh = Mesh::new(name); mesh.set_attribute(ATTR_POSITION, vec![Vec3::ZERO,Vec3::X,Vec3::Y]);
+            mesh.set_indices(vec![0,1,2]); atlas.add(kind,name,&mesh);
+        }
+        let mut world = World::new(); world.insert_resource(gpu); world.insert_resource(atlas); world
+    }
+
+    fn spawn(world: &mut World, gothic: bool) -> Entity {
+        let desc = NaniInstanceDesc { mesh:NaniMeshSelector::Named(NameHash::compute(
+            if gothic {"gothic_bricks_test"} else {"solid_bricks_test"})),
+            subset_kind:if gothic {GpuWorldSubsetKind::GothicWindowBricks} else {GpuWorldSubsetKind::SolidVertexColorBricks} };
+        if gothic { world.spawn((desc,Transform::identity(),InstanceDataMarker::<GothicWindowBricksInstanceData>::default(),
+            BrickColor([0;24]),GothicWindowBrickDeformation([0;60]))).id() }
+        else { world.spawn((desc,Transform::identity(),InstanceDataMarker::<SolidVertexColorBricksInstanceData>::default(),BrickColor([0;24]))).id() }
+    }
+
+    fn schedule() -> Schedule {
+        let mut schedule = Schedule::default(); schedule.add_systems((nani_maintain_instances_ecs,ApplyDeferred,
+            (nani_update_solid_vertex_color_bricks_ecs,nani_update_gothic_window_bricks_ecs)).chain_ignore_deferred()); schedule
+    }
+
+    fn payload(world: &World, entity: Entity) -> Vec<u32> {
+        let key=world.get::<InstanceKey>(entity).unwrap();
+        let subset=world.resource::<GpuWorld>().owned_subset_mut(key.kind);
+        match key.kind {
+            GpuWorldSubsetKind::SolidVertexColorBricks => subset.data().as_any()
+                .downcast_ref::<InstanceDataBuffer<SolidVertexColorBricksInstanceData>>().unwrap().shadow.data[key.index as usize].raw.to_vec(),
+            GpuWorldSubsetKind::GothicWindowBricks => subset.data().as_any()
+                .downcast_ref::<InstanceDataBuffer<GothicWindowBricksInstanceData>>().unwrap().shadow.data[key.index as usize].raw.to_vec(),
+            _=>panic!("非砖实例测试输入"),
+        }
+    }
+
+    #[test]
+    fn bricks_real_ecs_typed_buffers_match_512_original_numeric_blocks_and_flush_exact_sizes() {
+        let fixture:serde_json::Value=serde_json::from_str(include_str!(
+            "../../../../../tests/fixtures/native/m01-bricks-nani.json")).unwrap();
+        let device=MockDevice::default(); let mut world=world(&device);
+        let entities=[spawn(&mut world,false),spawn(&mut world,true)];let mut schedule=schedule();
+        for case in fixture["cases"].as_array().unwrap() {
+            let kind=case["kind"].as_u64().unwrap() as usize; let entity=entities[kind];
+            let words=|name:&str|case[name].as_array().unwrap().iter().map(|v|v.as_u64().unwrap() as u32).collect::<Vec<_>>();
+            let tr=words("transform");let f=|index|f32::from_bits(tr[index]);
+            let mut brick=[0;24];for (i,word) in words("brick").into_iter().enumerate(){brick[i*4..i*4+4].copy_from_slice(&word.to_le_bytes());}
+            let mut deformation=[0;60];for(i,word)in words("deformation").into_iter().enumerate(){deformation[i*4..i*4+4].copy_from_slice(&word.to_le_bytes());}
+            world.entity_mut(entity).insert((Transform {rotation:Quat::from_xyzw(f(0),f(1),f(2),f(3)),
+                translation:Vec3::new(f(4),f(5),f(6)),scale:Vec3::new(f(7),f(8),f(9))},BrickColor(brick)));
+            if kind==1 {world.entity_mut(entity).insert(GothicWindowBrickDeformation(deformation));}
+            // 原两Query均不读取这些额外组件，不能把它们混入brick的标志位。
+            world.entity_mut(entity).insert((ColorId(0xfedcba98),SemiTransparent));
+            schedule.run(&mut world);
+            assert_eq!(payload(&world,entity),words("expected_words"),"原砖数值case {}",case["id"]);
+            let key=*world.get::<InstanceKey>(entity).unwrap();
+            {
+                let subset=world.resource::<GpuWorld>().owned_subset_mut(key.kind);
+                assert_eq!(subset.positions()[key.index as usize].position.to_array().map(f32::to_bits),[tr[4],tr[5],tr[6]]);
+                assert_eq!(subset.positions()[key.index as usize].radius.to_bits(),half::f16::from_f32(
+                    f32::from_bits(case["expected_sort"].as_u64().unwrap() as u32)).to_bits());
+                assert_eq!(subset.positions_dirty().to_range(),Some(0..1));
+            }
+            nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(),&device);
+            assert!(world.resource::<GpuWorld>().owned_subset_mut(key.kind).positions_dirty().is_empty());
+            world.clear_trackers();
+        }
+        assert_eq!(fixture["cases"].as_array().unwrap().len(),512);
+        for size in [64,112] {assert!(device.writes.borrow().iter().any(|(ranges,offset,bytes)|ranges==&[0..size]&&*offset==0&&*bytes==size));}
+    }
+
+    #[test]
+    fn bricks_params_only_changes_and_dense_despawn_keep_original_active_identity() {
+        let device=MockDevice::default();let mut world=world(&device);
+        let solid=spawn(&mut world,false);let a=spawn(&mut world,true);let b=spawn(&mut world,true);
+        let mut schedule=schedule();schedule.run(&mut world);let key=*world.get::<InstanceKey>(b).unwrap();
+        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(),&device);world.clear_trackers();
+        world.get_mut::<BrickColor>(solid).unwrap().0[20]=3;
+        world.get_mut::<BrickColor>(b).unwrap().0[20]=0x80;
+        world.get_mut::<GothicWindowBrickDeformation>(b).unwrap().0[24..28].copy_from_slice(&0x7fc12345_u32.to_le_bytes());
+        schedule.run(&mut world);
+        assert_eq!(payload(&world,solid)[14],1<<31);
+        assert_eq!(payload(&world,b)[15],0x80);assert_eq!(payload(&world,b)[16],0x7fc12345);
+        assert!(!world.entity(b).get_ref::<InstanceKey>().unwrap().is_changed());
+        world.clear_trackers();world.despawn(a);schedule.run(&mut world);
+        assert_eq!(world.get::<InstanceKey>(b).unwrap().id,key.id);
+        assert_eq!(world.get::<InstanceKey>(b).unwrap().index,0);
+        assert_eq!(payload(&world,b)[16],0x7fc12345);
+        for entity in [solid,b] {world.clear_trackers();world.despawn(entity);schedule.run(&mut world);}
+        for kind in [GpuWorldSubsetKind::SolidVertexColorBricks,GpuWorldSubsetKind::GothicWindowBricks] {
+            assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(kind).instance_count(),0);
+        }
+    }
+
+    #[test]
+    fn bricks_missing_required_component_or_ambiguous_marker_fails_before_publication() {
+        for gothic in [false,true] {for missing in ["brick","transform","marker","ambiguous","deformation"] {
+            if !gothic&&missing=="deformation" {continue;}
+            let device=MockDevice::default();let mut world=world(&device);let entity=spawn(&mut world,gothic);
+            match missing {
+                "brick"=>{world.entity_mut(entity).remove::<BrickColor>();}
+                "transform"=>{world.entity_mut(entity).remove::<Transform>();}
+                "deformation"=>{world.entity_mut(entity).remove::<GothicWindowBrickDeformation>();}
+                "marker"=>{if gothic{world.entity_mut(entity).remove::<InstanceDataMarker<GothicWindowBricksInstanceData>>();}
+                    else{world.entity_mut(entity).remove::<InstanceDataMarker<SolidVertexColorBricksInstanceData>>();}}
+                _=>{world.entity_mut(entity).insert(InstanceDataMarker::<PlantInstanceData>::default());}
+            }
+            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||schedule().run(&mut world))).is_err(),"gothic={gothic} missing={missing}");
+            assert!(world.get::<InstanceKey>(entity).is_none());assert_eq!(world.resource::<GpuWorld>().total_instance_count,0);
+        }}
+        let device=MockDevice::default();let mut world=world(&device);let mut update=Schedule::default();
+        update.add_systems((nani_update_solid_vertex_color_bricks_ecs,nani_update_gothic_window_bricks_ecs));
+        update.run(&mut world);
+        for kind in [GpuWorldSubsetKind::SolidVertexColorBricks,GpuWorldSubsetKind::GothicWindowBricks] {
+            assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(kind).instance_count(),0);
+            assert!(world.resource::<GpuWorld>().owned_subset_mut(kind).positions_dirty().is_empty());
+        }
+        assert!(device.writes.borrow().is_empty());
+        world.insert_resource(GpuWorld::new(&device));
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||update.run(&mut world))).is_err());
+    }
+}
+
+#[cfg(test)]
+mod lantern_ecs_tests {
+    use super::*;
+    use bevy_ecs::change_detection::DetectChanges;
+    use bevy_ecs::world::World;
+    use crate::render::mesh::{Mesh, ATTR_POSITION};
+    use crate::render::nani::gpu_world::{GpuWorldSubset, InstanceDataBuffer};
+    use crate::render::ssbo::tests::MockDevice;
+
+    fn world(device: &MockDevice) -> World {
+        let mut gpu = GpuWorld::new(device);
+        gpu.assign_subset(GpuWorldSubsetKind::LanternEmissive, GpuWorldSubset::Owned(
+            OwnedGpuWorldSubset::new::<LanternEmissiveInstanceData>(device, GpuWorldSubsetKind::LanternEmissive, 1)));
+        let mut atlas = MeshAtlasLibrary::default();
+        let mut mesh = Mesh::new("灯实例真实ECS测试网格");
+        mesh.set_attribute(ATTR_POSITION, vec![Vec3::ZERO, Vec3::X, Vec3::Y]);
+        mesh.set_indices(vec![0, 1, 2]);
+        atlas.add(GpuWorldSubsetKind::LanternEmissive, "lantern_ecs_test", &mesh);
+        let mut world = World::new();
+        world.insert_resource(gpu);
+        world.insert_resource(atlas);
+        world
+    }
+
+    fn spawn(world: &mut World, params: LanternLightParams) -> Entity {
+        world.spawn((crate::components::drawable::NaniBundle::<LanternEmissiveInstanceData> {
+            desc: NaniInstanceDesc { mesh: NaniMeshSelector::Named(NameHash::compute("lantern_ecs_test")),
+                subset_kind: GpuWorldSubsetKind::LanternEmissive },
+            transform: Transform::identity(), marker: InstanceDataMarker::default(),
+        }, params)).id()
+    }
+
+    fn schedule() -> Schedule {
+        let mut schedule = Schedule::default();
+        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred,
+            nani_update_lantern_emissive_ecs).chain_ignore_deferred());
+        schedule
+    }
+
+    fn payload(world: &World, entity: Entity) -> [u32; 16] {
+        let key = world.get::<InstanceKey>(entity).unwrap();
+        world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::LanternEmissive)
+            .data().as_any().downcast_ref::<InstanceDataBuffer<LanternEmissiveInstanceData>>()
+            .unwrap().shadow.data[key.index as usize].raw
+    }
+
+    #[test]
+    fn lantern_real_ecs_typed_buffer_matches_original_numeric_instructions_in_448_cases() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../../tests/fixtures/native/m01-lantern-nani.json")).unwrap();
+        let device = MockDevice::default();
+        let mut world = world(&device);
+        let entity = spawn(&mut world, LanternLightParams([0; 36]));
+        let mut schedule = schedule();
+        let mut first_key = None;
+        for case in fixture["cases"].as_array().unwrap() {
+            let transform: Vec<u32> = case["transform"].as_array().unwrap().iter().map(|v| v.as_u64().unwrap() as u32).collect();
+            let f = |index| f32::from_bits(transform[index]);
+            let mut params = [0; 36];
+            for (index, value) in case["params"].as_array().unwrap().iter().enumerate() {
+                params[index * 4..index * 4 + 4].copy_from_slice(&(value.as_u64().unwrap() as u32).to_le_bytes());
+            }
+            world.entity_mut(entity).insert((Transform {
+                rotation: Quat::from_xyzw(f(0), f(1), f(2), f(3)),
+                translation: Vec3::new(f(4), f(5), f(6)), scale: Vec3::new(f(7), f(8), f(9)),
+            }, LanternLightParams(params), ColorId(case["color"].as_u64().unwrap() as u32)));
+            if case["semi"].as_u64().unwrap() != 0 { world.entity_mut(entity).insert(SemiTransparent); }
+            else { world.entity_mut(entity).remove::<SemiTransparent>(); }
+            schedule.run(&mut world);
+            let expected: Vec<u32> = case["expected_words"].as_array().unwrap().iter().map(|v| v.as_u64().unwrap() as u32).collect();
+            assert_eq!(payload(&world, entity).as_slice(), expected, "原数值块case {}", case["id"]);
+            let key = *world.get::<InstanceKey>(entity).unwrap();
+            if let Some(id) = first_key { assert_eq!(key.id, id); } else { first_key = Some(key.id); }
+            {
+                let subset = world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::LanternEmissive);
+                let compact = subset.positions()[key.index as usize];
+                assert_eq!(compact.position.to_array().map(f32::to_bits), [transform[4], transform[5], transform[6]]);
+                assert_eq!(compact.radius.to_bits(), half::f16::from_f32(f32::from_bits(
+                    case["expected_sort"].as_u64().unwrap() as u32)).to_bits());
+                assert_eq!(subset.positions_dirty().to_range(), Some(0..1));
+                let buffer = subset.data().as_any().downcast_ref::<InstanceDataBuffer<LanternEmissiveInstanceData>>().unwrap();
+                assert_eq!(buffer.shadow.dirty.to_range(), Some(0..1));
+            }
+            nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &device);
+            // 原计数是本帧创建请求数，不能把常驻活实例数写入该统计字段。
+            assert_eq!(world.resource::<GpuWorld>().previous_instance_count(), u64::from(case["id"].as_u64().unwrap() == 0));
+            assert!(world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::LanternEmissive)
+                .positions_dirty().is_empty());
+            world.clear_trackers();
+        }
+        assert_eq!(fixture["cases"].as_array().unwrap().len(), 448);
+        assert!(device.writes.borrow().iter().any(|(ranges, offset, bytes)| ranges == &[0..64] && *offset == 0 && *bytes == 64));
+    }
+
+    #[test]
+    fn lantern_params_only_changes_optional_color_dense_repair_and_despawn_share_one_instance_owner() {
+        let device = MockDevice::default(); let mut world = world(&device);
+        let entities: Vec<_> = (1..=3).map(|power| {
+            let mut params = [0; 36]; params[24..28].copy_from_slice(&(power as f32).to_le_bytes());
+            spawn(&mut world, LanternLightParams(params))
+        }).collect();
+        let mut schedule = schedule(); schedule.run(&mut world);
+        let key = *world.get::<InstanceKey>(entities[2]).unwrap();
+        assert_eq!(payload(&world, entities[2])[14], 0); // 原颜色为Option，缺失合法。
+        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &device);
+        world.clear_trackers();
+        world.get_mut::<LanternLightParams>(entities[2]).unwrap().0[32] = 1;
+        schedule.run(&mut world);
+        assert_eq!(payload(&world, entities[2])[14], 1 << 30);
+        assert_eq!(world.get::<InstanceKey>(entities[2]).unwrap().id, key.id);
+        assert!(!world.entity(entities[2]).get_ref::<InstanceKey>().unwrap().is_changed(),
+            "稠密提示修复不能制造原只读ActiveInstance的Changed");
+        world.clear_trackers(); world.despawn(entities[1]); schedule.run(&mut world);
+        assert_eq!(world.get::<InstanceKey>(entities[2]).unwrap().id, key.id);
+        assert_eq!(world.get::<InstanceKey>(entities[2]).unwrap().index, 1);
+        assert_eq!(payload(&world, entities[2])[13], 0x4200_0000); // 原power3的half位在高16。
+        assert_eq!(payload(&world, entities[2])[14], 1 << 30);
+        for entity in [entities[0], entities[2]] { world.clear_trackers(); world.despawn(entity); schedule.run(&mut world); }
+        assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::LanternEmissive).instance_count(), 0);
+    }
+
+    #[test]
+    fn lantern_missing_required_inputs_fail_before_publication_and_empty_query_still_requires_subset() {
+        for missing in ["params", "transform", "marker", "ambiguous"] {
+            let device = MockDevice::default(); let mut world = world(&device);
+            let entity = spawn(&mut world, LanternLightParams([0;36]));
+            match missing {
+                "params" => { world.entity_mut(entity).remove::<LanternLightParams>(); },
+                "transform" => { world.entity_mut(entity).remove::<Transform>(); },
+                "marker" => { world.entity_mut(entity).remove::<InstanceDataMarker<LanternEmissiveInstanceData>>(); },
+                _ => { world.entity_mut(entity).insert(InstanceDataMarker::<PlantInstanceData>::default()); },
+            }
+            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule().run(&mut world))).is_err());
+            assert!(world.get::<InstanceKey>(entity).is_none());
+            assert_eq!(world.resource::<GpuWorld>().total_instance_count, 0);
+        }
+        let device = MockDevice::default(); let mut world = world(&device);
+        let mut update = Schedule::default(); update.add_systems(nani_update_lantern_emissive_ecs);
+        update.run(&mut world);
+        world.insert_resource(GpuWorld::new(&device));
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| update.run(&mut world))).is_err());
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::render::mesh::Mesh;
-    use crate::render::nani::gpu_world::{GpuWorldSubset, OwnedGpuWorldSubset};
+    use crate::render::nani::gpu_world::{GpuWorldSubset, OwnedGpuWorldSubset, InstanceDataBuffer};
     use crate::render::ssbo::tests::MockDevice;
     use bevy_ecs::world::World;
+    use bevy_ecs::change_detection::DetectChanges;
     use glam::Vec3;
 
     fn glass_world(dev: &MockDevice) -> World {
@@ -1365,6 +1778,148 @@ mod tests {
     }
 
     #[test]
+    fn plaster_ecs_upload_change_filter_and_retirement_use_actual_wall_owner() {
+        use crate::resources::{roofs::geometry::surface::Curve2,
+            walls::{InnerWalls, WallState, public_walls::{WallPublicationDirty, WallSpatialHash},
+                publication_source::TerrainHeightGrid512, plaster::PlasterPeelAmount}};
+        let dev = MockDevice::default();
+        let mut gpu = GpuWorld::new(&dev);
+        gpu.assign_subset(GpuWorldSubsetKind::Plaster, GpuWorldSubset::Owned(
+            OwnedGpuWorldSubset::new::<PlasterInstanceData>(&dev, GpuWorldSubsetKind::Plaster, 0)));
+        let mut inner = InnerWalls::new();
+        let wall = inner.new_wall(WallState::new(
+            Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap(), 7.0, 0, 0, false));
+        inner.update_plaster_peel_amount(wall, 0.375);
+        let mut public = PublicWalls::default();
+        public.consume_with_paths(&mut inner, &TerrainHeightGrid512 {
+            encoded: vec![0; 512 * 512].into(), minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false,
+        }, None, &WallPublicationDirty::default(), &WallSpatialHash::default());
+        let shape_bit = u32::from(public.get(wall).unwrap().shape().tag() != 2);
+        let mut world = World::new();
+        world.insert_resource(gpu);
+        world.insert_resource(public);
+        world.insert_resource(AnimatedPlasterPeel::default());
+        world.insert_resource(MeshAtlasLibrary::default());
+        let entity = world.spawn((crate::components::drawable::NaniBundle::<PlasterInstanceData> {
+            desc: desc(0, GpuWorldSubsetKind::Plaster), transform: Transform::default(),
+            marker: InstanceDataMarker::default(),
+        }, Plaster { words: [11, 12, 13, 14, 15, 16, 17, 18], wall })).id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred, nani_update_plaster_ecs).chain_ignore_deferred());
+        schedule.run(&mut world);
+        let payload = |world: &World| {
+            let key = world.get::<InstanceKey>(entity).unwrap();
+            let subset = world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::Plaster);
+            subset.data().as_any().downcast_ref::<InstanceDataBuffer<PlasterInstanceData>>()
+                .unwrap().shadow.data[key.index as usize].raw
+        };
+        assert_eq!(payload(&world), [11, 12, 13, 14, wall.0 as u32, 4.0f32.to_bits(),
+            shape_bit, 17, 15, 16, 18, 0.375f32.to_bits()]);
+        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
+        world.clear_trackers();
+        world.resource_mut::<AnimatedPlasterPeel>().0.insert(wall, PlasterPeelAmount(0.625));
+        schedule.run(&mut world);
+        // 原过滤器不因动画map变化而重写；维护系统须按原策略重建实例。
+        assert_eq!(payload(&world)[11], 0.375f32.to_bits());
+        assert!(world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::Plaster).positions_dirty().is_empty());
+        assert!(!world.entity(entity).get_ref::<InstanceKey>().unwrap().is_changed());
+        world.get_mut::<Plaster>(entity).unwrap().words[7] = 99;
+        schedule.run(&mut world);
+        assert_eq!(&payload(&world)[10..], &[99, 0.625f32.to_bits()]);
+        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
+        assert!(dev.writes.borrow().iter().any(|(ranges, offset, bytes)|
+            ranges == &[0..48] && *offset == 0 && *bytes == 48));
+        world.despawn(entity);
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::Plaster).instance_count(), 0);
+    }
+
+    #[test]
+    fn curved_halftimber_ecs_resolves_roof_and_preserves_full_payload_lifecycle() {
+        let dev = MockDevice::default();
+        let mut gpu = GpuWorld::new(&dev);
+        gpu.assign_subset(GpuWorldSubsetKind::CurvedHalfTimber, GpuWorldSubset::Owned(
+            OwnedGpuWorldSubset::new::<CurvedHalfTimberInstanceData>(&dev, GpuWorldSubsetKind::CurvedHalfTimber, 0)));
+        let mut world = World::new();
+        world.insert_resource(gpu);
+        world.insert_resource(MeshAtlasLibrary::default());
+        world.insert_resource(PublicWalls::default());
+        world.insert_resource(HalftimberColorIds(vec![31, 37]));
+        let mut style = [0; 12];
+        style[0] = 2;
+        style[4..8].copy_from_slice(&0x1234_5678u32.to_le_bytes());
+        let roof = world.spawn(Roof::new(0u64.to_le_bytes(), [0; 28], [0; 28],
+            0f32.to_le_bytes(), 0u32.to_le_bytes(), 0, style)).id();
+        world.resource_mut::<PublicWalls>().associate_roof(WallId(1), roof);
+        let mut data = CurvedHalfTimberInstanceData::new_straight(
+            Vec3::new(3.0, 4.0, 5.0), -1.0, 2.0, -3.0, 6.0, true, 7);
+        data.w3c = 0x7fc0_1234;
+        let entity = world.spawn((crate::components::drawable::NaniBundle::<CurvedHalfTimberInstanceData> {
+            desc: desc(1, GpuWorldSubsetKind::CurvedHalfTimber), transform: Transform::default(),
+            marker: InstanceDataMarker::default(),
+        }, data, CurvedHalfTimber { key: 1, direct: 0 })).id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred, nani_update_curved_halftimber_ecs).chain_ignore_deferred());
+        let payload = |world: &World| {
+            let key = world.get::<InstanceKey>(entity).unwrap();
+            let subset = world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::CurvedHalfTimber);
+            let actual = subset.data().as_any().downcast_ref::<InstanceDataBuffer<CurvedHalfTimberInstanceData>>()
+                .unwrap().shadow.data[key.index as usize];
+            assert_eq!(subset.positions()[key.index as usize].position, data.position);
+            curved_halftimber_words(&actual)
+        };
+        schedule.run(&mut world);
+        let mut expected = curved_halftimber_words(&data);
+        expected[3] = 0x1234_5678;
+        assert_eq!(payload(&world), expected);
+        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
+        world.clear_trackers();
+        // 实体仍存活但不再持有Roof组件时必须回退；不能仅按ID映射判断。
+        world.entity_mut(roof).remove::<Roof>();
+        schedule.run(&mut world);
+        assert_eq!(payload(&world)[3], 37);
+        assert!(world.entity(entity).get_ref::<CurvedHalfTimberInstanceData>().unwrap().is_changed());
+        assert!(!world.entity(entity).get_ref::<InstanceKey>().unwrap().is_changed());
+        world.get_mut::<CurvedHalfTimber>(entity).unwrap().direct = 255;
+        world.get_mut::<CurvedHalfTimber>(entity).unwrap().key = 0;
+        schedule.run(&mut world);
+        expected[3] = 31;
+        assert_eq!(payload(&world), expected);
+        nani_flush_instance_updates(&mut world.resource_mut::<GpuWorld>(), &dev);
+        assert!(dev.writes.borrow().iter().any(|(ranges, offset, bytes)|
+            ranges == &[0..64] && *offset == 0 && *bytes == 64));
+        world.despawn(entity);
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::CurvedHalfTimber).instance_count(), 0);
+    }
+
+    #[test]
+    fn floor_only_instance_upload_and_retirement() {
+        let dev = MockDevice::default();
+        let mut world = roof_world(&dev);
+        let mut shape = [0u8; 28];
+        shape[..4].copy_from_slice(&1u32.to_le_bytes());
+        for (offset, value) in [(4, 1.0f32), (8, 0.0), (12, 2.0), (16, 3.0), (20, 4.0), (24, 5.0)] {
+            shape[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+        }
+        let entity = world.spawn((crate::components::drawable::NaniBundle::<StoneFloorInstanceData> {
+            desc: desc(0, GpuWorldSubsetKind::RoofFloor),
+            transform: Transform::from_translation(Vec3::new(2.0, 6.0, 3.0)),
+            marker: InstanceDataMarker::default(),
+        }, Floor { wall_id: crate::resources::walls::WallId(42),
+            shape: crate::resources::walls::publication_fields::WallShapeSnapshot::from_observed(shape) })).id();
+        let mut schedule = Schedule::default();
+        schedule.add_systems((nani_maintain_instances_ecs, ApplyDeferred, nani_update_roof_floor_for_roofs_ecs).chain_ignore_deferred());
+        schedule.run(&mut world);
+        let payload = actual_roof_payload(&world, entity);
+        assert_eq!(&payload[..4], &[2.0f32.to_bits(), 6.0f32.to_bits(), 3.0f32.to_bits(), 42]);
+        assert_eq!(payload[10], 1);
+        world.despawn(entity);
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::RoofFloor).instance_count(), 0);
+    }
+
+    #[test]
     fn roof_branch_uses_real_components_barrier_nonzero_payload_and_dirty_flush() {
         let dev = MockDevice::default();
         let mut world = roof_world(&dev);
@@ -1422,13 +1977,13 @@ mod tests {
     }
 
     #[test]
-    fn new_roof_descriptor_requires_roof_transform_marker_and_unique_mapped_marker() {
-        for missing in ["Roof", "Transform", "marker", "ambiguous marker"] {
+    fn new_roof_floor_descriptor_requires_payload_transform_marker_and_unique_mapped_marker() {
+        for missing in ["Roof and Floor", "Transform", "marker", "ambiguous marker"] {
             let dev = MockDevice::default();
             let mut world = roof_world(&dev);
             let entity = spawn_cpu_roof(&mut world, true);
             match missing {
-                "Roof" => { world.entity_mut(entity).remove::<Roof>(); }
+                "Roof and Floor" => { world.entity_mut(entity).remove::<Roof>(); }
                 "Transform" => { world.entity_mut(entity).remove::<Transform>(); }
                 "marker" => { world.entity_mut(entity).remove::<InstanceDataMarker<StoneFloorInstanceData>>(); }
                 _ => { world.entity_mut(entity).insert(InstanceDataMarker::<PlantInstanceData>::default()); }
@@ -1445,7 +2000,7 @@ mod tests {
     }
 
     #[test]
-    fn missing_roof_is_rejected_for_existing_descriptor_and_descriptorless_active_marker() {
+    fn missing_roof_and_floor_are_rejected_for_existing_descriptor_and_descriptorless_active_marker() {
         for keep_descriptor in [true, false] {
             let dev = MockDevice::default();
             let mut world = roof_world(&dev);
@@ -1470,7 +2025,7 @@ mod tests {
             if !keep_descriptor {
                 let message = error.downcast_ref::<&str>().copied()
                     .or_else(|| error.downcast_ref::<String>().map(String::as_str)).unwrap_or("");
-                assert!(message.contains("RoofFloor ECS support requires a real Roof"));
+                assert!(message.contains("called `Option::unwrap()` on a `None` value"));
             }
             assert_eq!(world.get::<InstanceKey>(entity).unwrap(), &key);
             assert_eq!(actual_roof_payload(&world, entity), before_payload);

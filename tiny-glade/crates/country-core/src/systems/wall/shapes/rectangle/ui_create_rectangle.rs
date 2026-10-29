@@ -181,6 +181,8 @@ pub fn ui_create_rectangle(
     let mut dimensions_delta = Vec2::ZERO;
     match phase {
         2 | 3 => {
+            // 原B rectangle/mod.rs:83的map_or_else已在创建入口内联：None取相机right的
+            // XZ投影，Some取墙面normal的垂向，均保留原倒数乘法与负零；不经过角度函数。
             preview.orientation = if placement.flat_roof().is_none() {
                 let right = camera.camera_matrices().eye_right();
                 let inv = 1.0 / (right.z * right.z + right.x * right.x).sqrt();
@@ -553,6 +555,93 @@ pub(crate) mod tests {
             1
         );
         assert!(!world.resource::<Events<DisplayOutOfBorder>>().is_empty());
+    }
+
+    #[test]
+    fn original_create_axis_864_native_cases_through_real_world() {
+        let fixture = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../reports/module-recovery-2026-10-23/14155d410-create-axis-native.txt"
+        ));
+        let mut nan_sign_differences = Vec::new();
+        let mut exact_lanes = 0;
+        for (i, line) in fixture.lines().enumerate() {
+            let row = line
+                .split_whitespace()
+                .map(|s| u32::from_str_radix(s, 16).unwrap())
+                .collect::<Vec<_>>();
+            let f = |n| f32::from_bits(row[n]);
+            let mut world = validation_world(AppMode::Wall(WallShape::Rectangle));
+            let inverse = glam::Mat4::from_cols_array(&[
+                f(2),
+                f(3),
+                f(4),
+                0.,
+                0.,
+                1.,
+                0.,
+                0.,
+                0.,
+                0.,
+                1.,
+                0.,
+                1.,
+                2.,
+                3.,
+                1.,
+            ]);
+            world
+                .resource_mut::<MainCamera>()
+                .set_camera_matrices(inverse);
+            let mut placement = *world.resource::<ShapePlacement>().observed();
+            placement[8..12].copy_from_slice(&row[1].to_le_bytes());
+            placement[0x2c] = row[0] as u8;
+            placement[0x18..0x1c].copy_from_slice(&row[5].to_le_bytes());
+            placement[0x1c..0x20].copy_from_slice(&row[6].to_le_bytes());
+            world.insert_resource(ShapePlacement::from_observed(placement));
+            let mut schedule = Schedule::default();
+            schedule.add_systems(ui_create_rectangle);
+            schedule.run(&mut world);
+            let axis = world.resource::<PreviewRectangle>().orientation.to_array();
+            for lane in 0..2 {
+                let expected = f32::from_bits(row[7 + lane]);
+                if expected.is_nan() {
+                    // ARM invalid-mul与x86 SSE的NaN符号不相同，原首个差异已保留日志；
+                    // 此处仅对退化输入验IEEE NaN，不把它替换成方向fallback或有效值。
+                    assert!(
+                        axis[lane].is_nan(),
+                        "original degenerate case {i} lane{lane}"
+                    );
+                    assert_eq!(
+                        axis[lane].to_bits() & 0x7fff_ffff,
+                        expected.to_bits() & 0x7fff_ffff,
+                        "退化case {i} lane{lane}只允许CPU invalid NaN符号差，payload仍须一致"
+                    );
+                    if axis[lane].to_bits() != expected.to_bits() {
+                        nan_sign_differences.push((
+                            i,
+                            lane,
+                            expected.to_bits(),
+                            axis[lane].to_bits(),
+                        ));
+                    }
+                } else {
+                    assert_eq!(
+                        axis[lane].to_bits(),
+                        expected.to_bits(),
+                        "original case {i} lane{lane} input={line}"
+                    );
+                    exact_lanes += 1;
+                }
+            }
+        }
+        assert_eq!(fixture.lines().count(), 864);
+        assert_eq!(exact_lanes, 1392);
+        eprintln!(
+            "原864例：非NaN/负零逐bit {exact_lanes} lanes；退化NaN符号架构差异 {} lanes，首项 {:?}",
+            nan_sign_differences.len(),
+            nan_sign_differences.first()
+        );
     }
 
     #[test]

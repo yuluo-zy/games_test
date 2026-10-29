@@ -1,0 +1,19 @@
+
+/Users/yuluo/Desktop/game/B版本内容/tiny-glade.rne:	file format coff-x86-64
+
+Disassembly of section .text:
+
+0000000140001000 <.text>:
+140c984f0: f2 0f 10 01                 	movsd	(%rcx), %xmm0
+140c984f4: f2 0f 10 49 08              	movsd	0x8(%rcx), %xmm1
+140c984f9: 0f 14 c0                    	unpcklps	%xmm0, %xmm0            # xmm0 = xmm0[0,0,1,1]
+140c984fc: 0f 28 12                    	movaps	(%rdx), %xmm2
+140c984ff: 0f 59 c2                    	mulps	%xmm2, %xmm0
+140c98502: 0f 14 c9                    	unpcklps	%xmm1, %xmm1            # xmm1 = xmm1[0,0,1,1]
+140c98505: 0f 59 ca                    	mulps	%xmm2, %xmm1
+140c98508: 0f 28 d0                    	movaps	%xmm0, %xmm2
+140c9850b: 66 0f 15 d1                 	unpckhpd	%xmm1, %xmm2            # xmm2 = xmm2[1],xmm1[1]
+140c9850f: 0f 16 c1                    	movlhps	%xmm1, %xmm0            # xmm0 = xmm0[0],xmm1[0]
+140c98512: 0f 58 c2                    	addps	%xmm2, %xmm0
+140c98515: 0f 11 01                    	movups	%xmm0, (%rcx)
+140c98518: c3                          	retq

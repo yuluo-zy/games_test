@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json,hashlib,zlib,base64\nfrom ghidra.program.model.address import AddressSet\nfrom ghidra.program.model.pcode import JumpTable\nfrom ghidra.app.decompiler import DecompInterface\nfrom ghidra.program.flatapi import FlatProgramAPI\nfrom java.util import ArrayList\np=currentProgram;fm=p.getFunctionManager();api=FlatProgramAPI(p,monitor);af=p.getAddressFactory()\ndef a(x):return af.getAddress(x.removeprefix(\"0x\"))\nstart,end=a(\"140aef1f0\"),a(\"140af00a4\")\nraw=bytes(x&255 for x in api.getBytes(start,int(end.subtract(start))))\nassert hashlib.sha256(raw).hexdigest()==\"0cc159e97b1f808142a9a67ddb2d072171dc7e93ebabd404597dcc5be41b12c5\", \"Original code SHA mismatch\"\nf=fm.getFunctionAt(start);old=int(f.getBody().getNumAddresses());overlaps=[]\nrows=[(\"140aef9c3\",[\"140aef71a\",\"140aef9c5\",\"140aefa80\",\"140aefbc0\"])]\ntx=p.startTransaction(\"M02 terrain edit original bounded body and four-case RNE jump table\")\ntry:\n body=AddressSet(start,end.subtract(1))\n for other in fm.getFunctionsOverlapping(body):\n  if other.getEntryPoint()!=start:\n   overlaps.append(dict(address=str(other.getEntryPoint()),name=other.getName(),bytes=int(other.getBody().getNumAddresses())))\n   body.delete(other.getBody())\n f.setBody(body)\n for jump,targets in rows:\n  cases=ArrayList()\n  for target in targets:cases.add(a(target))\n  JumpTable(a(jump),cases,True,0).writeOverride(f)\n p.endTransaction(tx,True)\nexcept:\n p.endTransaction(tx,False);raise\napi.disassemble(start)\ndi=DecompInterface()\ntry:\n di.openProgram(p);d=di.decompileFunction(f,60,monitor)\n print(json.dumps(dict(sha256=p.getExecutableSHA256(),code_sha256=hashlib.sha256(raw).hexdigest(),old=old,body=int(f.getBody().getNumAddresses()),overlaps=overlaps,completed=d.decompileCompleted(),error=str(d.getErrorMessage()),gz=base64.b64encode(zlib.compress(d.getDecompiledFunction().getC().encode())).decode() if d.decompileCompleted() else None)))\nfinally:di.dispose()\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 180
+  }
+]

@@ -1,0 +1,50 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "function": "0x140accab0",
+  "case": "one surviving segment",
+  "evidence": "/private/tmp/m06-wall-eraser-asm.txt; bounded RNE instructions 140ace69f-140aced37",
+  "event": {
+    "site": "140ace6ce-140ace744",
+    "type": "RequestWallMaterialAudio, identified by owner through PDB param14 writer mapping",
+    "stride": 32,
+    "payload": "sequence u64, wall id u64, cursor option Some Vec3 else zero Vec3, 02 02 kind/flag"
+  },
+  "sequence": [
+    "append audio event",
+    "roof predicate and old freehand flag",
+    "crashy_slice source curve by surviving interval",
+    "require points >=2 and length>0",
+    "archivist shrink_wall same id and interval",
+    "required inner state lookup",
+    "compute output state",
+    "_try_update_state same id"
+  ],
+  "height": {
+    "site": "140aceb7f-140acec45",
+    "length_interpolation": "t=min(1,max(0,inverse_lerp(0.5,6.0,sliced_length))); cap=t*14.0+(1.0-t)*0.75; height=min(existing_height,cap)+adjustment",
+    "roof_adjustment": "type<2 and roof exists and roof[0x3d]!=0 and roof[0x30]<=0.1 => f32 bits bf4a3d71 (-0.79); otherwise 0",
+    "nan": "match original SSE maxss/minss/comparison order"
+  },
+  "state": {
+    "+00..+37": "sliced Curve2 owned Vecs and length",
+    "+38": "shape discriminant u32 2",
+    "+54": "new height as above",
+    "+58": "terrain_floor 0",
+    "+5c..+65": "copy original bytes",
+    "+66": "old freehand type OR roof predicate",
+    "+67": "copy original",
+    "+68": "old style == 1, written as 0/1",
+    "+69": "demo global == 0 ? 5 : 0"
+  },
+  "failure": [
+    "empty surviving segment vector access panics",
+    "sliced point count <2 or length not ordered >0 panics",
+    "missing InnerWalls record unwrap panic"
+  ],
+  "limitations": [
+    "full original producer ABI not dynamically executed as a complete scenario",
+    "source cursor event identification based on owner PDB writer mapping, not standalone symbolic call",
+    "roof flag semantic name not independently established"
+  ]
+}

@@ -130,6 +130,8 @@ pub fn generate_decorator_clutter(
             // checked host boundary rejects it; this is not a native panic branch.
             let ty = ClutterMeshTy::from_native_tag(tag)
                 .expect("decorator clutter type is outside the recovered native enum");
+            // B 1407e3bb1 把原 insert 第五参明确写成零；clutter 即使来自
+            // Info.state=1 的记录也不沿用该状态，不能套用其它装饰物的预览规则。
             let blueprint = blueprints.insert_for(id, addr, 0);
             let transform = cached.transform(id);
             let data = clutter_mesh_ty_data(ty, &meshes);

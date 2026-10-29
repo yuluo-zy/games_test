@@ -1,55 +1,91 @@
-//! B `systems/wall/shapes/circle/signifiers/edit_line.rs`: circle radius line.
-//!
-//! Evidence: `chapters/systems/wall/shapes/circle/signifiers/edit_line.rs.md`
-//! (O, 0x140a64a40). Draws the edit radius line from the circle center toward
-//! the ring at angle offsets 0.23 / 0.75 · 90°. The entity query/spawn is
-//! render host 待接线; the library writes the signifier record.
-
+//! 原 B 140a64a40：半径加0.23的局部圆弧，以 eased 在0.75两侧展开。
+use super::{
+    super::ui_edit_circle::AnimatedCircleSignifierResource, edit_arrow::EditCircleSignifier,
+};
+use crate::{
+    asset_libraries::{Handle, mesh_library::AssetMeshLibrary},
+    render::{mesh::Mesh, pass_builder::draw_list::DrawTopology},
+    resources::walls::WallId,
+    systems::ui::signifiers::{
+        SignifierAnimation, SignifierEntityBuilder, SignifierFactory, UiSignifierStream,
+    },
+    utils::geo::update_curve_mesh,
+};
 use bevy_ecs::prelude::*;
-use ::utils::geometry::Circle2d;
+use glam::{Vec2, Vec3};
+use std::sync::Arc;
+use utils::geometry::Circle2d;
 
-use crate::systems::ui::signifiers::signifier_create::{UiAppendSignifier, UiSignifierStream};
-
-/// 打包两个 f32 到 qword（I：40B 布局裁决后的端点承载）。
-fn pack2(v: glam::Vec2) -> u64 {
-    u64::from(v.x.to_bits()) | (u64::from(v.y.to_bits()) << 32)
+/// 原40字节载荷：局部圆16B、墙身份8B、曲线更新附加量16B。
+#[derive(Component, Clone, Copy, Debug)]
+pub struct SignifierEditCircleShapeLine {
+    pub circle: Circle2d,
+    pub wall: WallId,
+    pub offset: Vec3,
+    pub reserved: f32,
 }
 
-/// Radius-line angular offsets (0x3e6b851f @0x142a89600 / 0x3f400000
-/// @0x1429edb90) and 90.0 scale.
-const LINE_ANGLE_OFFSET: f32 = 0.23;
-const LINE_ANGLE_SCALE: f32 = 0.75;
-const LINE_ANGLE_FULL: f32 = 90.0;
+fn local_circle(radius: f32) -> Circle2d {
+    let mut circle = Circle2d::new(Vec2::ZERO, radius + 0.23);
+    circle.center -= circle.get_pos_at_u(0.75);
+    circle
+}
+fn arc_points(circle: Circle2d, eased: f32) -> Vec<Vec3> {
+    // 142925984的原值为0.1，0.23是半径扩张，均不是角度或90度比例。
+    let half = eased * 0.1 + (1.0 - eased) * 0.01;
+    circle
+        .as_curve2_range(0.2, 0.75 - half, 0.75 + half)
+        .points
+        .into_iter()
+        .map(|p| Vec3::new(p.x, 0.0, p.y))
+        .collect()
+}
 
-/// B 0x140a64a40 (4-param system): circle center -> ring endpoint.
 pub fn signifier_edit_circle_line(
-    preview: Res<super::super::super::PreviewCircle>,
+    mut query: Query<(
+        &mut SignifierEditCircleShapeLine,
+        &Handle<Mesh>,
+        &SignifierAnimation,
+    )>,
+    subject: Res<AnimatedCircleSignifierResource>,
+    mut meshes: ResMut<AssetMeshLibrary>,
     mut stream: ResMut<UiSignifierStream>,
 ) {
-    let circle = Circle2d::new(preview.center, preview.radius);
-    let a = LINE_ANGLE_OFFSET * LINE_ANGLE_FULL;
-    let b = LINE_ANGLE_SCALE * LINE_ANGLE_FULL;
-    let start = circle.get_pos_at_u(a / 360.0);
-    let end = circle.get_pos_at_u(b / 360.0);
-    let mut extra = [0u8; 12];
-    for (i, bytes) in [end.x, 0.0f32, end.y]
-        .map(f32::to_le_bytes)
-        .iter()
-        .enumerate()
-    {
-        extra[i * 4..i * 4 + 4].copy_from_slice(bytes);
+    if subject.dragging == Some(false) {
+        let circle = local_circle(subject.circle.radius);
+        let wall = subject.wall;
+        let factory = SignifierFactory::from_closure(
+            &format!("edit_circle_WidgetId {{ hash: {} }}_line", subject.widget.0),
+            Arc::new(move |meshes, shaders, commands| {
+                let entity = SignifierEntityBuilder::new(
+                    crate::systems::ui::signifiers::signifier_factory::SignifierMesh::Empty,
+                )
+                .disable_default_animation()
+                .animation_duration(0.3)
+                .build(meshes, shaders, commands);
+                commands.entity(entity).insert((
+                    DrawTopology::Alt(3.0),
+                    SignifierEditCircleShapeLine {
+                        circle,
+                        wall,
+                        offset: Vec3::ZERO,
+                        reserved: 0.0,
+                    },
+                    EditCircleSignifier,
+                ));
+                vec![entity]
+            }),
+        );
+        stream.write_factory(&factory);
     }
-    // 40B 布局（中央裁决）：端点半打包入 name 槽（I 映射，原 12B extra 保留语义）。
-    stream.write(UiAppendSignifier {
-        tag: 4,
-        kind: 0,
-        position: glam::Vec3::new(start.x, 0.0, start.y),
-        scale: 0.0,
-        name: pack2(end),
-    });
-}
-
-/// B 0x140a66c90: component-registry slice (host 待接线).
-pub fn register_required_components() -> ([u64; 0], [u64; 0]) {
-    ([], [])
+    // 退出活动状态仍更新现有圆弧，使卸载动画可正常缩回。
+    for (mut line, mesh, animation) in &mut query {
+        if subject.dragging.is_some() {
+            line.circle = local_circle(subject.circle.radius);
+        }
+        update_curve_mesh(
+            meshes.get_mut(*mesh),
+            arc_points(line.circle, animation.eased),
+        );
+    }
 }

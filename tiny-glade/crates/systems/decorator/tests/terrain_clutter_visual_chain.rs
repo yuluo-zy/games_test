@@ -528,3 +528,61 @@ fn generated_terrain_visual_feeds_actual_nani_rows_and_removes_active_instance()
         0
     );
 }
+
+#[test]
+fn clutter_original_insert_keeps_zero_state_through_preview_commit_and_removal() {
+    let (mut world, mut schedule) = fixture();
+    let mut previous_entity = None;
+    let mut previous_blueprint = None;
+    // 原 clutter producer 明确传零；验证正式→预览→正式真实记录，不统一套用 Info.state。
+    for state in [0, 1, 0] {
+        {
+            let mut storage = world.resource_mut::<DecoratorStorage>();
+            let bucket = storage.get_mut(DecoratorStorageAddr::Terrain).unwrap();
+            bucket.get_mut(DecoratorId(91)).unwrap().state = state;
+            bucket.modified_ids.insert(91);
+        }
+        schedule.run(&mut world);
+        assert_eq!(
+            world
+                .resource::<DecoratorStorage>()
+                .get(DecoratorStorageAddr::Terrain)
+                .unwrap()
+                .get(DecoratorId(91))
+                .unwrap()
+                .state,
+            state,
+        );
+        let current_entity = entity(&world);
+        let blueprint = world.resource::<DecoratorBlueprints>().map[&91].clone();
+        assert_eq!(blueprint.u138, 0, "原 Info.state={state} 不能覆盖显式零参数");
+        assert_eq!(blueprint.interaction_source_flags, 0);
+        assert_eq!(blueprint.storage_addr, Some(DecoratorStorageAddr::Terrain));
+        assert!(!blueprint.visual_entities.is_empty());
+        assert!(world.get::<NaniInstanceDesc>(current_entity).is_some());
+        let colliders = world.resource::<DecoratorPhysicsColliders>();
+        assert_eq!((colliders.first.len(), colliders.second.len()), (1, 1));
+        if let Some(old_entity) = previous_entity {
+            assert_ne!(old_entity, current_entity);
+            assert!(!world.entities().contains(old_entity));
+        }
+        if let Some(old) = &previous_blueprint {
+            assert!(!Arc::ptr_eq(old, &blueprint));
+        }
+        previous_entity = Some(current_entity);
+        previous_blueprint = Some(blueprint);
+        drain(&mut world);
+    }
+    {
+        let mut storage = world.resource_mut::<DecoratorStorage>();
+        let bucket = storage.get_mut(DecoratorStorageAddr::Terrain).unwrap();
+        bucket.decorators.remove(&91);
+        bucket.removed_ids.insert(91);
+    }
+    schedule.run(&mut world);
+    assert!(!world.entities().contains(previous_entity.unwrap()));
+    assert!(!world.resource::<DecoratorBlueprints>().map.contains_key(&91));
+    assert!(!world.resource::<PrevDecoratorBlueprints>().map.contains_key(&91));
+    let colliders = world.resource::<DecoratorPhysicsColliders>();
+    assert!(colliders.first.is_empty() && colliders.second.is_empty());
+}

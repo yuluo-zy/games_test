@@ -525,7 +525,7 @@ mod tests {
         history.start_input_recording(12).unwrap();
         f.world.insert_resource(history);
         let mut schedule = Schedule::default();
-        schedule.add_systems((history_record_merge_walls, record_wall_history::<()>).chain());
+        schedule.add_systems(history_record_merge_walls::<()>);
         schedule.run(&mut f.world);
         schedule.run(&mut f.world); // drained: nothing is recorded twice
         assert!(f.world.resource::<PendingWallHistory>().merge_walls.is_none());
@@ -552,10 +552,11 @@ mod tests {
         let mut world = World::new();
         world.init_resource::<PendingWallHistory>();
         world.init_resource::<InnerWalls>();
-        world.init_resource::<Events<RecordWallHistory>>();
+        world.insert_resource(crate::resources::history::History::<()>::empty_glade());
+        world.init_resource::<Events<crate::systems::history::recording::HistoryRecordingFailed>>();
         let mut schedule = Schedule::default();
-        schedule.add_systems(history_record_merge_walls);
+        schedule.add_systems(history_record_merge_walls::<()>);
         schedule.run(&mut world);
-        assert!(world.resource::<Events<RecordWallHistory>>().is_empty());
+        assert!(world.resource::<crate::resources::history::History<()>>().pending().is_none());
     }
 }

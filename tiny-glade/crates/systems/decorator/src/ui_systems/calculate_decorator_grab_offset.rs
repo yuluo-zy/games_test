@@ -5,7 +5,7 @@ use country_core::resources::walls::decorator::DecoratorInfo;
 use country_core::resources::walls::decorator_storage::DecoratorStorageAddr;
 use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::resources::walls::WallId;
-use country_core::systems::collision::world::{RaycastWorldResult, Raycasting};
+use country_core::systems::collision::world::{RaycastWorld, RaycastWorldResult};
 use country_core::utils::components::transform::Transform;
 use glam::{Mat4, Vec2, Vec3};
 use utils::{geometry::ray::Ray, wall_space::WallSpaceCoord};
@@ -79,7 +79,7 @@ pub fn raycast_with_ss_offset(
     inverse_projection: Mat4,
     inverse_view: Mat4,
     decorator_type: u8,
-    raycasting: &Raycasting,
+    world: &RaycastWorld,
     terrain: &TerrainHeightsData<TerrainHeightSsbo>,
 ) -> RaycastIntersection {
     let ray = Ray::from_mouse_ss(
@@ -91,7 +91,7 @@ pub fn raycast_with_ss_offset(
     select_offset_raycast(
         ray,
         decorator_type,
-        |ray, mask| raycasting.raycast(terrain, ray.origin, ray.direction, mask),
+        |ray, mask| world.raycast_w_terrain(terrain, ray.origin, ray.direction, mask),
         |ray| {
             terrain
                 .intersect_ray(

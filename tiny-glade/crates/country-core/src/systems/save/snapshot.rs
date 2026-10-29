@@ -378,7 +378,7 @@ impl SnapshotDomainData {
             (
                 "Terrain",
                 json!({"strokes": self.terrain.0.strokes,
-                "next_stroke_id": self.terrain.0.next_index as usize}),
+                "next_stroke_id": self.terrain.0.next_index}),
             ),
             ("TerrainHeightRange", serde_json::to_value(range)?),
             ("Trees", serde_json::to_value(trees)?),
@@ -2181,10 +2181,11 @@ pub fn decorator_side_from_state(b: u8) -> u8 {
 /// **纠偏**：strokes 为 **JSON 明文**（非 flate2 deflate；flate2 只用于二进制栅格尾）。
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct TerrainSectionJson {
-    #[serde(default, alias = "next_stroke_id")]
-    pub next_stroke_index: u32,
-    #[serde(default)]
-    pub strokes: std::collections::HashMap<String, TerrainStrokeJson>,
+    // 原1415c64fe要求next_stroke_id；17字节旧名是同一字段的合法别名。
+    #[serde(rename = "next_stroke_id", alias = "next_stroke_index")]
+    pub next_stroke_index: u64,
+    // 直接复用canonical StrokeId的数值serde，错误必须在写回World前传播，不能丢掉非法键。
+    pub strokes: std::collections::HashMap<crate::resources::terrain_editing::StrokeId, TerrainStrokeJson>,
 }
 
 #[derive(Clone, Debug, serde::Deserialize)]
@@ -2618,17 +2619,15 @@ impl TerrainSectionJson {
         use crate::resources::terrain_editing::{StrokeId, TerrainStroke};
         let mut strokes = std::collections::HashMap::new();
         for (id, stroke) in self.strokes {
-            if let Ok(idx) = id.parse::<u32>() {
-                strokes.insert(
-                    StrokeId(idx),
-                    TerrainStroke {
-                        points: stroke.points,
-                        falloff: stroke.falloff,
-                        index: StrokeId(stroke.index),
-                        height_ws: stroke.height_ws,
-                    },
-                );
-            }
+            strokes.insert(
+                id,
+                TerrainStroke {
+                    points: stroke.points,
+                    falloff: stroke.falloff,
+                    index: StrokeId(stroke.index),
+                    height_ws: stroke.height_ws,
+                },
+            );
         }
         crate::resources::terrain_editing::TerrainEditingData(
             tg_terrain::stroke::TerrainEditingData {
@@ -3387,5 +3386,104 @@ mod tests {
             world.resource::<PendingRoofAssociationRebuild>().rows.len(),
             1
         );
+    }
+}
+
+#[cfg(test)]
+mod terrain_native_wire_contract_tests {
+    use super::*;
+
+    #[test]
+    fn terrain_u64_max_roundtrips_through_real_motomoto_file_and_world_restore() {
+        use crate::resources::{terrain_editing::TerrainEditingData,
+            terrain_height::{TerrainHeightSsbo, TerrainHeightsData}};
+        use crate::systems::terrain::draw_terrain_stroke::EvTerrainStrokeChanged;
+        let mut editing = TerrainEditingData(tg_terrain::stroke::TerrainEditingData::default());
+        editing.new_stroke([1.0, 2.0, 3.0]).unwrap().unwrap();
+        editing.next_index = u64::MAX;
+        let mut heights = TerrainHeightsData::<TerrainHeightSsbo>::new();
+        heights.set_height_range(-2.0, 7.0);
+        for (index, value) in heights.heights_mut().iter_mut().enumerate() { *value = index as u16; }
+        let raw = bytemuck::cast_slice(heights.heights()).to_vec();
+        let domain = SnapshotDomainData::collect(Vec::new(), Vec::new(), Vec::new(),
+            Some(StairsSnapshot::new(Vec::new())), Vec::new(),
+            (Vec::new(), Vec::new(), Vec::new()), editing, Vec::new(), Vec::new())
+            .with_terrain_and_supports(raw.clone(), -2.0..7.0, StairsRemovedSupports::default());
+        let encoded = encode_game_snapshot(&domain).unwrap();
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("terrain.snapshot");
+        std::fs::write(&path, encoded).unwrap();
+        let mut loaded = load_snapshot_file(&path).unwrap();
+        assert_eq!(loaded.terrain, raw);
+        let section = &loaded.sections.iter().find(|(name, _)| *name == "Terrain").unwrap().1;
+        assert_eq!(section["next_stroke_id"].as_u64(), Some(u64::MAX));
+        // 本轮只检查地形域；文件另带空stairs快照，由宿主原有的canonical图owner消费。
+        loaded.sections.retain(|(name, _)| matches!(*name, "Terrain" | "TerrainHeightRange"));
+        let mut world = bevy_ecs::world::World::new();
+        world.insert_resource(TerrainEditingData(tg_terrain::stroke::TerrainEditingData::default()));
+        world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
+        world.init_resource::<crate::resources::stairs::stairs_state::StairsState>();
+        world.init_resource::<bevy_ecs::event::Events<EvTerrainStrokeChanged>>();
+        let report = apply_loaded_snapshot_to_world(&mut world, &SnapshotLoadResources { loaded: Some(loaded) }).unwrap();
+        assert!(report.gaps.is_empty(), "{:?}", report.gaps);
+        assert_eq!(report.terrain_strokes, 1);
+        assert!(report.terrain_heights);
+        assert_eq!(world.resource::<TerrainEditingData>().next_index, u64::MAX);
+        assert_eq!(world.resource::<TerrainEditingData>().strokes[&tg_terrain::schema::StrokeId(0)].points, [[1.0, 2.0, 3.0]]);
+        assert_eq!(bytemuck::cast_slice::<u16, u8>(world.resource::<TerrainHeightsData<TerrainHeightSsbo>>().heights()), raw);
+        let events = world.resource::<bevy_ecs::event::Events<EvTerrainStrokeChanged>>();
+        assert_eq!(events.iter_current_update_events().map(|event| event.0).collect::<Vec<_>>(), [tg_terrain::schema::StrokeId(0)]);
+        assert_eq!(world.resource_mut::<TerrainEditingData>().new_stroke([9.0; 3]).unwrap(), None);
+        assert_eq!(world.resource::<TerrainEditingData>().next_index, u64::MAX);
+    }
+
+    #[test]
+    fn terrain_json_rejects_missing_fields_and_invalid_numeric_keys() {
+        // 原1415c64f4/650a是missing_field；键采用真实StrokeId数值serde错误传播。
+        let mut incorrectly_accepted = Vec::new();
+        for (name, text) in [
+            ("missing_both", r#"{}"#),
+            ("missing_strokes", r#"{"next_stroke_id":1}"#),
+            ("missing_counter", r#"{"strokes":{}}"#),
+            ("invalid_key", r#"{"next_stroke_id":1,"strokes":{"not-a-number":{"falloff":0.4,"height_ws":2.0,"index":0,"points":[[0.0,0.0,0.0]]}}}"#),
+            ("overflow_key", r#"{"next_stroke_id":1,"strokes":{"4294967296":{"falloff":0.4,"height_ws":2.0,"index":0,"points":[[0.0,0.0,0.0]]}}}"#),
+        ] {
+            match serde_json::from_str::<TerrainSectionJson>(text) {
+                Ok(section) => {
+                    let before = section.strokes.len();
+                    let after = section.into_editing_data().strokes.len();
+                    incorrectly_accepted.push((name, before, after));
+                }
+                Err(error) => eprintln!("{name}: {error}"),
+            }
+        }
+        assert!(incorrectly_accepted.is_empty(), "原应拒绝的地形数据被接受/丢弃: {incorrectly_accepted:?}");
+        for text in [r#"{"next_stroke_id":0,"strokes":{}}"#, r#"{"next_stroke_index":0,"strokes":{}}"#] {
+            assert!(serde_json::from_str::<TerrainSectionJson>(text).is_ok());
+        }
+        assert!(serde_json::from_str::<TerrainSectionJson>(r#"{"next_stroke_id":0,"next_stroke_index":0,"strokes":{}}"#).is_err());
+    }
+
+    #[test]
+    fn terrain_wire_preserves_independent_map_key_and_stroke_index_without_normalization() {
+        let text = r#"{"next_stroke_id":18446744073709551615,"strokes":{"4294967295":{"falloff":0.4,"height_ws":2.0,"index":17,"points":[[1.0,2.0,3.0]]}}}"#;
+        let section: TerrainSectionJson = serde_json::from_str(text).unwrap();
+        let editing = section.into_editing_data();
+        let stroke = &editing.strokes[&crate::resources::terrain_editing::StrokeId(u32::MAX)];
+        assert_eq!(stroke.index.0, 17);
+        assert_eq!(editing.next_index, u64::MAX);
+    }
+
+    #[test]
+    fn terrain_json_keeps_full_u64_counter_without_allowing_new_ids_after_native_limit() {
+        for counter in [0x3ffffeu64, 0x3fffff, u64::from(u32::MAX), u64::from(u32::MAX) + 1, u64::MAX] {
+            let text = format!(r#"{{"next_stroke_id":{counter},"strokes":{{}}}}"#);
+            let section: TerrainSectionJson = serde_json::from_str(&text).unwrap();
+            let mut editing = section.into_editing_data();
+            assert_eq!(u64::from(editing.next_index), counter);
+            let created = editing.new_stroke([1.0, 2.0, 3.0]).unwrap();
+            assert_eq!(created.map(|id| u64::from(id.0)), (counter <= 0x3ffffe).then_some(counter));
+            assert_eq!(u64::from(editing.next_index), counter + u64::from(created.is_some()));
+        }
     }
 }

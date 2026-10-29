@@ -1,0 +1,227 @@
+{
+  "scope": "Original update_rapier_colliders@1408d0490 full twelve-param contract and five Entity maps; exact native numerical leaves plus actual Bevy/Rapier World lifecycle; not full game acceptance",
+  "original_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "result": "passed",
+  "command": "CARGO_INCREMENTAL=0 cargo test -p country-core --lib systems::collision::world --features native-physics --offline",
+  "tests_passed": 63,
+  "tests_failed": 0,
+  "actual_native_physics": true,
+  "full_system_world_tests": 5,
+  "clean_frames": 64,
+  "simultaneous_live_instances": 9,
+  "native_differential": {
+    "floor_geometry_cases": 96,
+    "floor_count_cases": 256,
+    "auto_numeric_cases": 256,
+    "arch_cases_from_peer": 315,
+    "wall_get_geo_cases_from_peer": 345,
+    "trig_external_calls": 3272,
+    "trig_cross_arch_differences": 34
+  },
+  "corrected_interpretations": [
+    "Wall publication is required unwrap; missing Roof publication removes only Roof instances",
+    "raw65==1 selects typed parameter9 Lintel; otherwise parameter8 Arch; both populated counterexamples tested",
+    "Original floor circle count saturates cast; do not substitute a stronger try-sampling guard"
+  ],
+  "external_boundary": "Floor oracle explicitly replays true ARM64 libm returns at original x86 external CRT sites; preserves full first x86 output and trig call differences; does not establish Windows CRT bit equivalence",
+  "original_main_native_oracle": false,
+  "main_evidence": "Complete original ASM + original typed SystemParam binding + leaf native probes + real World Changed/Removed/Added/Reload/failure sequencing",
+  "decompiler_worker": {
+    "name": "m01-rapier-20261027",
+    "isolated": true,
+    "reopened_and_verified": true,
+    "final_live": false,
+    "full_c_bytes": 324941
+  },
+  "remaining": [
+    "Central production parent registration/stage ordering and full generator-to-main game integration",
+    "Whole game history/edit/window/GPU joint acceptance"
+  ],
+  "files": [
+    {
+      "path": "crates/country-core/src/systems/collision/world.rs",
+      "bytes": 250420,
+      "sha256": "8e8ee001a3d9537bc2ecf68bacfa39afb2f121f71cd87f21b6f9f2f7209bb1d0"
+    },
+    {
+      "path": "crates/country-core/src/resources/walls/arches.rs",
+      "bytes": 1695,
+      "sha256": "bf21999dcfec1ab0892bc74c9096065afa5308f5b10fc315c887b32c3af09ee0"
+    },
+    {
+      "path": "crates/country-core/src/resources/walls/wall_trigger_volume.rs",
+      "bytes": 28572,
+      "sha256": "57203a00a72758ca1181b5102cc0ac28b9330d7df0574edc85704df4846c0d16"
+    },
+    {
+      "path": "crates/country-core/src/resources/roofs/roof_trigger_volume.rs",
+      "bytes": 4294,
+      "sha256": "8e32d28cc9db4aadd6c5326ccc53d136f238c180bc49b4ac228e5e9e048bdd54"
+    },
+    {
+      "path": "crates/country-core/src/geometry/instanced_wall.rs",
+      "bytes": 19143,
+      "sha256": "8cb328b0a9abf5386a105bca7d47bc212a7a190def31f4e0a5a59dcdceed2b18"
+    },
+    {
+      "path": "crates/country-core/src/resources/walls/public_walls.rs",
+      "bytes": 15283,
+      "sha256": "81c65533047fd65118694714cb3f738b46837d0039edbcb67b7e6bb699d2f89f"
+    },
+    {
+      "path": "crates/utils/src/geometry/circle.rs",
+      "bytes": 13628,
+      "sha256": "c6370f380bad5cb5e48ac76c116a243f9d82f2f4625be092a6bfce128c12edec"
+    },
+    {
+      "path": "tests/fixtures/native/m01-floor-mesh.json",
+      "bytes": 95614,
+      "sha256": "bd76daa01ec59c20627e494c6c5ced57bd5c13750db176b6dc75be8dc8c1fdee"
+    },
+    {
+      "path": "tests/fixtures/native/m01-auto-clutter-collider.json",
+      "bytes": 33881,
+      "sha256": "68879b4a9de11bd6996671c830fd8ca2a3285e9bc03e73bd9775a7f75e9cca41"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-rapier-producer-identity.json",
+      "bytes": 954,
+      "sha256": "79c9b6d78e7211e03d7e6bfdc366979953ecee4870c988fa4c3d37f477e4db39"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-update-rapier-colliders-typed-params.json",
+      "bytes": 329404,
+      "sha256": "7aa6d11bc29f4d1c1b630cf240758f379ee334fc9b0d736db130fce27482bbab"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-rapier-producer-full.asm",
+      "bytes": 421154,
+      "sha256": "b1a1ff6b0928566429892f52ca64bf8fdfd0534c97958ed796b9d305062c05b5"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-rapier-producer-no-cleanup.c",
+      "bytes": 324941,
+      "sha256": "f495ef12e06c9d5785f15ac1919eef967722d9a2b7bcdfc61a1562f804894c93"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-rapier-producer-repair-job.json",
+      "bytes": 1803,
+      "sha256": "b8213b1ad1cb2d90a60cea3b7f15710c9ca8bebb74c18a3989eb1286c27f1c75"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-rapier-producer-abi-job.json",
+      "bytes": 1420,
+      "sha256": "7ba9b665f7ad332487cecab6284209913d88a8430a9e645cfe019038d3260426"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-rapier-producer-actions-job.json",
+      "bytes": 1632,
+      "sha256": "519cef9a44d1c0fba7ec200aba78a3074141a29a7f9328af53c745f47044c630"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-rapier-producer-actions-v2.json",
+      "bytes": 58043,
+      "sha256": "68fe0c56682ffbf594ae6999605362464e5df06e97d2c63bafe93ee5af08f6b0"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-rapier-producer-reopen-job.json",
+      "bytes": 1763,
+      "sha256": "3f48f764be2a5634fed7595569449bce05fc9981cb573f34a0074a1da0485296"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-rapier-producer-reopen-result.json",
+      "bytes": 24001,
+      "sha256": "45afb578dee323d21fa9b431ce9c3a7e2e4257b2209485ad0eeee5dbef43ddc5"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-rapier-worker-final-stop.json",
+      "bytes": 152,
+      "sha256": "766a65fe09eeaaf24fb800483105cbc6047568d78f1ab4217eaba9380ca5cdf1"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/probe_m01_floor_mesh_x86.c",
+      "bytes": 7619,
+      "sha256": "c22940466c845b06a11587070f1fb01330f8e14c0fd34fa2e3d14d95a6cd06f8"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/probe_m01_floor_mesh_native.py",
+      "bytes": 6559,
+      "sha256": "7fb63a6de8b8e26a1db713041b07f7c3a3a376c358c4969f5f5c04f64ce876ac"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-floor-mesh-native.json",
+      "bytes": 1527,
+      "sha256": "09b99997dbbe1febca91922bcbcc25b2818cb9c6bf649d89d80baf23eeda07b0"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-floor-mesh-x86-external.json",
+      "bytes": 85860,
+      "sha256": "9edab66803224d4496f83afda63d9b6c920c753297f329b9286274d3199d9de8"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-floor-mesh-external-trig.json",
+      "bytes": 170260,
+      "sha256": "1c245e0d4c7fad4c34249e0c0c2b94e283b401a6d62bfbbba1711aa70333c5f0"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-floor-mesh-probe-final.log",
+      "bytes": 79,
+      "sha256": "d6128aee9d1da692f6416dd8ba875cd962e507c65327be2305afffc645b90192"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/probe_m01_auto_clutter_collider_x86.c",
+      "bytes": 2515,
+      "sha256": "b6f51d75c37bb6736ebcfe15c2f281da7cbd42c3f117cb9104ba99e90210f9fe"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/probe_m01_auto_clutter_collider_native.py",
+      "bytes": 2464,
+      "sha256": "25779bfbfaae7a5b766519475b26e20b66a6a7c72a10099a6329190f8e415eb2"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-auto-clutter-collider-native.json",
+      "bytes": 785,
+      "sha256": "64725bacaa4bb1e71fe888ea6e11e0cd901e69b32d9a4cc705374d4b36482497"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-floor-collider-tests-x86-external-failure.log",
+      "bytes": 33314,
+      "sha256": "0460ae9d8924ede8f890902a3816096555264ad154cb2ac74ab3fbf81e6deffb"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-rapier-producer-world-tests-final.log",
+      "bytes": 38155,
+      "sha256": "d3cb1520f7d8a40fdc2bfa71a82bd760f33f55ba4cc16b1a8cbcb65956c03c32"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-rapier-producer-tests-initial-owner-labels.log",
+      "bytes": 30773,
+      "sha256": "93c972fdb355161de57ab0be301e4b1af753032dd60900cbcfed9a752f228434"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-entity-collider-tests-final.log",
+      "bytes": 30708,
+      "sha256": "dae82b59f7c0ad11b136783fccdc85f4770901087d4d6cb9f8e961144c1e8885"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-arch-collision-rosetta.json",
+      "bytes": 1179652,
+      "sha256": "577d620c4dfb7381752166fc1efcdc7e7f27233da1266d3f7069bf4b07cbe77b"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-wall-trigger-collision-recovery-2026-10-27.md",
+      "bytes": 4724,
+      "sha256": "5ea4a61e4a0ce7be122fba4d569721a932ddc0be85448e0922ee22e6b9889669"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-arch-lintel-collision-recovery-2026-10-27.md",
+      "bytes": 6698,
+      "sha256": "efd8a8f7927ca60136a80a9f265eaac6450c39c043df23927fae3cf1940794cb"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-rapier-producer-recovery-2026-10-27.md",
+      "bytes": 8369,
+      "sha256": "694d3d5ab70ab87dd7d180266ae22b6305acbf15121dae1c03e6d98cf9fbd57e"
+    }
+  ]
+}

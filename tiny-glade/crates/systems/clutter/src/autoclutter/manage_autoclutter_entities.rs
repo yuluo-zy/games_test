@@ -1,14 +1,13 @@
-//! B1422d04e0/10301B, accepted Window selector0/1/2 route.
-//! Use the one canonical AutoClutter and actual Nani/Transform components.
-//! Other current producers have erased their selected mesh/source ownership;
-//! their nonempty unresolved output fails explicitly, before any ECS mutation.
+//! B1422d04e0/10301B：使用唯一 canonical AutoClutter 和实际 Nani/Transform。
+//! Window selector0/1/2 与具备真实来源的 selector3/5/6 可消费；
+//! 被旧生产者抹去 owner 的输出仍在 ECS 修改前明确失败。
 
 use bevy_ecs::prelude::*;
 use country_core::{
-    components::drawable::{AutoClutter, NaniBundle, NaniInstanceDesc, NaniInstanceMeshDesc},
+    components::drawable::{AutoClutter, AutoClutterConvertableToDecoClutter, NaniBundle, NaniInstanceDesc, NaniInstanceMeshDesc},
     render::nani::{
         gpu_world::{GpuWorldSubsetKind, InstanceDataMarker},
-        instance_data::{SolidAlbedoMapEmissiveInstanceData, SolidAlbedoMapInstanceData,
+        instance_data::{PlantInstanceData, SolidAlbedoMapEmissiveInstanceData, SolidAlbedoMapInstanceData,
             SolidVertexColorInstanceData, SolidVertexColorWindowInstanceData},
     },
     resources::{clutter_meshes::ClutterMarkedForDeletion, color_id::ColorId,
@@ -21,14 +20,18 @@ use std::collections::{HashMap, HashSet};
 use super::{AutoClutterSpawn, AutoClutterState, ResolvedClutterMesh, SpawnShared, WindowShutter};
 
 fn resolved(spawn: &AutoClutterSpawn) -> (&ResolvedClutterMesh, Option<ColorId>) {
-    let SpawnShared::Mesh { metadata, color } = &spawn.shared else {
-        panic!("ORIGINAL_IMPLEMENTATION_PENDING: autoclutter selected mesh/source owner erased (kind={}, key={:#x})", spawn.kind, spawn.key);
-    };
-    assert!(spawn.marker <= 2,
-        "ORIGINAL_IMPLEMENTATION_PENDING: autoclutter selector {} needs its non-Window source/Convertable contract", spawn.marker);
-    assert!(spawn.marker == 2 || color.is_some(),
-        "autoclutter shutter output is missing its actual ColorId payload");
-    (metadata, *color)
+    match &spawn.shared {
+        SpawnShared::Mesh { metadata, color } => {
+            assert!(spawn.marker <= 2, "window source has invalid selector");
+            assert!(spawn.marker == 2 || color.is_some(), "autoclutter shutter output is missing its actual ColorId payload");
+            (metadata, *color)
+        }
+        SpawnShared::Object(object) => {
+            assert!(matches!(spawn.marker, 3 | 5 | 6), "ORIGINAL_IMPLEMENTATION_PENDING: non-window selector {}", spawn.marker);
+            (&object.metadata, None)
+        }
+        _ => panic!("ORIGINAL_IMPLEMENTATION_PENDING: autoclutter selected mesh/source owner erased (kind={}, key={:#x})", spawn.kind, spawn.key),
+    }
 }
 
 /// B1422d2d20: two normalized crosses, then Quat::from_mat3.
@@ -95,27 +98,44 @@ pub fn manage_autoclutter_entities(
         // Transform.scale belongs to the actual animation, not to this update.
     }
 
+    // 原版先完成差集及羊距离筛选，再按实际待建数量选择延迟区间。
+    let pending: Vec<_> = targets.iter().filter_map(|(&key, &spawn)| {
+        if live.contains(&key) { return None; }
+        let (metadata, _) = resolved(spawn);
+        sheep.iter().all(|transform|
+            metadata.radius_xz + 1.0 <= spawn.position.distance(transform.translation))
+            .then_some((key, spawn))
+    }).collect();
     let mut rng = fastrand::Rng::with_seed(utils::rng::init_rng(time.frame_count));
-    for (&key, spawn) in &targets {
-        if live.contains(&key) { continue; }
+    for (key, spawn) in &pending {
+        let key = *key;
         let (metadata, color) = resolved(spawn);
-        // The original guard measures full 3D distance and rejects unordered.
-        if !sheep.iter().all(|transform|
-            metadata.radius_xz + 1.0 <= spawn.position.distance(transform.translation)) {
-            continue;
-        }
         let r = rng.f32();
         let selector_offset = spawn.marker.wrapping_sub(3);
         let transform = Transform { rotation: orientation(spawn),
             translation: spawn.position, scale: Vec3::ZERO };
+        let timer = match spawn.marker {
+            6 => (1.0 - r) * 0.2 + r * 0.3,
+            3 | 5 if pending.len() > 4 => (1.0 - r) * 0.3 + r * 0.8,
+            3 | 5 => (1.0 - r) * 0.1 + r * 0.3,
+            _ => r * 0.1,
+        };
         let mut entity = commands.spawn(AutoClutter {
             key,
-            timer: (1.0 - r) * 0.0 + r * 0.1,
+            timer,
             progress: 0.0,
             target_scale: spawn.scale,
             native_group: metadata.native_group,
             native_flag_15: selector_offset >= 4 || selector_offset == 1,
         });
+        // B 1422d1be9：仅 marker >= 3 且 (marker & 6) != 4 插入。
+        if spawn.marker >= 3 && (spawn.marker & 6) != 4 {
+            let SpawnShared::Object(object) = &spawn.shared else { unreachable!() };
+            entity.insert(AutoClutterConvertableToDecoClutter {
+                source: object.source.clone(), destination: object.destination,
+                mesh_name: object.metadata.mesh_name, bounds: object.metadata.bounds,
+            });
+        }
         if let Some(texture) = metadata.solid_texture {
             if emissive(metadata) {
                 insert_nani::<SolidAlbedoMapEmissiveInstanceData>(&mut entity, metadata,
@@ -125,14 +145,17 @@ pub fn manage_autoclutter_entities(
                     transform, GpuWorldSubsetKind::SolidAlbedoMap);
             }
             entity.insert(texture);
-        } else if spawn.marker == 2 {
+        } else if spawn.marker == 5 {
+            insert_nani::<PlantInstanceData>(&mut entity, metadata,
+                transform, GpuWorldSubsetKind::Plant);
+        } else if matches!(spawn.marker, 2 | 3 | 6) {
             insert_nani::<SolidVertexColorInstanceData>(&mut entity, metadata,
                 transform, GpuWorldSubsetKind::SolidVertexColor);
         } else {
             insert_nani::<SolidVertexColorWindowInstanceData>(&mut entity, metadata,
                 transform, GpuWorldSubsetKind::SolidVertexColorWindow);
         }
-        if spawn.marker != 2 {
+        if spawn.marker <= 1 {
             entity.insert((WindowShutter { base_rotation: transform.rotation,
                 side: spawn.marker != 0 }, color.expect("preflight shutter ColorId")));
         }
@@ -150,6 +173,103 @@ mod tests {
         let mut schedule = Schedule::default();
         schedule.add_systems((add_autoclutter_on_windows, manage_autoclutter_entities).chain());
         schedule.run(world);
+    }
+
+    #[test]
+    fn resolved_candidate_reaches_nani_conversion_and_deletion() {
+        use crate::autoclutter::{AutoClutterCandidate, ResolvedAutoClutterObject,
+            process_autoclutter_candidates::process_autoclutter_candidates};
+        use country_core::{components::drawable::{AutoClutterDestination, AutoClutterSource},
+            resources::clutter_meshes::{ClutterMeshes, ClutterMeshTy},
+            systems::ui_clutter::DeletedAutoClutter};
+        let mut world = world(vec![]);
+        world.insert_resource(DeletedAutoClutter::default());
+        let metadata = ResolvedClutterMesh::from(world.resource::<ClutterMeshes>().mesh(ClutterMeshTy::DoorBell));
+        world.resource_mut::<AutoClutterState>().region_candidates.push(AutoClutterCandidate {
+            resolved: Some(ResolvedAutoClutterObject { metadata,
+                source: AutoClutterSource::None, destination: AutoClutterDestination::Terrain }),
+            kind: 5, forced: 6, f40: 0x1234_5678_8765_4321,
+            f48: u64::from(3.0f32.to_bits()) | (u64::from(7.0f32.to_bits()) << 32),
+            f50: (-2.0f32).to_bits(), f5c: 1.0f32.to_bits(), f60: 1.0f32.to_bits(),
+            ..Default::default()
+        });
+        let mut schedule = Schedule::default();
+        schedule.add_systems((process_autoclutter_candidates, manage_autoclutter_entities).chain());
+        schedule.run(&mut world);
+        let entity = entity(&mut world);
+        let source = world.get::<AutoClutterConvertableToDecoClutter>(entity).unwrap();
+        assert!(matches!(source.source, AutoClutterSource::None));
+        assert!(matches!(source.destination, AutoClutterDestination::Terrain));
+        assert_eq!(source.mesh_name, metadata.mesh_name);
+        assert_eq!(source.bounds, metadata.bounds);
+        assert!(world.get::<InstanceDataMarker<SolidVertexColorInstanceData>>(entity).is_some());
+        assert_eq!(world.get::<Transform>(entity).unwrap().translation, Vec3::new(3.0, 7.0, -2.0));
+        world.get_mut::<AutoClutter>(entity).unwrap().progress = 1.0;
+        {
+            let mut state = world.resource_mut::<AutoClutterState>();
+            state.region_candidates.clear();
+            state.spawn_candidates.clear();
+        }
+        schedule.run(&mut world);
+        assert!(world.get::<ClutterMarkedForDeletion>(entity).is_some());
+        world.resource_mut::<GameTime>().delta = 0.3;
+        let mut animation = Schedule::default();
+        animation.add_systems(autoclutter_animation);
+        animation.run(&mut world);
+        assert!(world.get_entity(entity).is_err());
+    }
+
+    #[test]
+    fn plant_selector_uses_plant_nani_and_is_not_convertible() {
+        use crate::autoclutter::ResolvedAutoClutterObject;
+        use country_core::{components::drawable::{AutoClutterDestination, AutoClutterSource},
+            resources::clutter_meshes::{ClutterMeshes, ClutterMeshTy}};
+        let mut world = world(vec![]);
+        let metadata = ResolvedClutterMesh::from(world.resource::<ClutterMeshes>().mesh(ClutterMeshTy::DoorBell));
+        world.resource_mut::<AutoClutterState>().spawn_candidates.push(AutoClutterSpawn {
+            key: 33, marker: 5, f5c: 1.0f32.to_bits(),
+            shared: SpawnShared::Object(ResolvedAutoClutterObject { metadata,
+                source: AutoClutterSource::None, destination: AutoClutterDestination::Terrain }),
+            ..Default::default()
+        });
+        run(&mut world);
+        let entity = entity(&mut world);
+        assert!(world.get::<InstanceDataMarker<PlantInstanceData>>(entity).is_some());
+        assert!(world.get::<AutoClutterConvertableToDecoClutter>(entity).is_none());
+        assert!(world.get::<WindowShutter>(entity).is_none());
+    }
+
+    #[test]
+    fn convertible_component_retains_and_releases_the_actual_arc() {
+        use crate::autoclutter::{AutoClutterCandidate, ResolvedAutoClutterObject,
+            process_autoclutter_candidates::process_autoclutter_candidates};
+        use country_core::{components::drawable::{AutoClutterDestination, AutoClutterSource},
+            resources::clutter_meshes::{ClutterMeshes, ClutterMeshTy},
+            systems::ui_clutter::DeletedAutoClutter};
+        let mut world = world(vec![]);
+        world.insert_resource(DeletedAutoClutter::default());
+        let mesh = ResolvedClutterMesh::from(world.resource::<ClutterMeshes>().mesh(ClutterMeshTy::DoorBell));
+        let points: std::sync::Arc<[Vec3]> = vec![Vec3::ZERO, Vec3::X].into();
+        let weak = std::sync::Arc::downgrade(&points);
+        world.resource_mut::<AutoClutterState>().region_candidates.push(AutoClutterCandidate {
+            resolved: Some(ResolvedAutoClutterObject { metadata: mesh,
+                source: AutoClutterSource::Points(points), destination: AutoClutterDestination::Terrain }),
+            kind: 4, forced: 3, f40: 59, f5c: 1.0f32.to_bits(), f60: 1.0f32.to_bits(),
+            ..Default::default()
+        });
+        let mut schedule = Schedule::default();
+        schedule.add_systems((process_autoclutter_candidates, manage_autoclutter_entities).chain());
+        schedule.run(&mut world);
+        let entity = entity(&mut world);
+        {
+            let mut state = world.resource_mut::<AutoClutterState>();
+            state.region_candidates.clear();
+            state.spawn_candidates.clear();
+        }
+        assert!(weak.upgrade().is_some());
+        assert!(world.get::<AutoClutterConvertableToDecoClutter>(entity).is_some());
+        world.despawn(entity);
+        assert!(weak.upgrade().is_none());
     }
     fn entity(world: &mut World) -> Entity {
         let mut query = world.query_filtered::<Entity, With<AutoClutter>>();

@@ -1,343 +1,441 @@
-//! `decoclutter_show_pins.rs` — 显示/隐藏已固定 deco-clutter 图钉（B 0x1412357c0）。
-//!
-//! 证据：fresh 反编译（restorer-terrain-clutter/jobs/decomp/1412357c0，1128 行）。逐语句对照：
-//! - 入口事件队列（stride 0x40）非空才处理；
-//! - 遍历 pinned 记录表（0x98 stride）：`d = record[+0xe] - 0x38`；
-//!   **仅当 `7 < d || d == 6` 继续**（即类型 <0x38、≥0x40、或 ==0x3e）；
-//! - 父记录 hash 探测（0x40 stride）→ `clutter_mesh_ty_data()`（足迹 Rectangle3d）；
-//! - **几何序列**：`Rectangle3d::expand({0.5,0.5,0.5})` → `set_orientation_xz(axis)` →
-//!   `translate(position)`；
-//! - 触发体积判别（`*local_1b0` 0/1/2）：
-//!   - 2 → GlobalId 哈希探测路径；
-//!   - 1 → 触发槽 `[10]==2` 时：标志字节 `[+0x28]&1` 且去重值 `+0x30` 相同则跳过；
-//!     然后 `Rectangle3d::intersects` → `Rectangle2d::intersects`；
-//!   - 0 → 触发槽 `[10]==2` 时：`[+0x20]&1` 且 `+0x28` 相同则跳过；
-//!     `Rectangle3d::intersects` →（`[+1]==0` → `Rectangle2d::intersects_circle`；
-//!     否则 `Circle2d::contains_point` OR 中心距 < `[+0xc]` → 命中，否则
-//!     `Rectangle2d::intersects_circle`）；
-//! - 命中 → SparseInstanceBuffer ChunkId 写入 + 每个图钉的淡入/淡出累加器
-//!   （stride 0x18：`[4]` 累加 delta、`[1]` 累加 `delta/period`，period = 0.3 或 −0.2
-//!   （`[4]>0.75`）、clamp[0,1]、`EasingFunction::apply`）→
-//!   `spawn<(DecoClutterLock, Ui2dWsExtent, Ui2dImage)>` / `EntityCommands::despawn`；
-//! - 维护双 Vec 缓冲（56 B union：`local_1d0/1c8/1c0` 与 `local_210`…，cap=4）。
-//!
-//! crate 无宿主实体/组件表与 SparseInstanceBuffer 写口；图钉几何由
-//! [`PinnedDecoGeometry`] 适配承载，几何/门控算法按 O 序列落地，实体 spawn/despawn/
-//! ChunkId 写口登记待接（不伪造实体）。`register_required_components`
-//! @0x141237200 与 `clone_behavior` @0x140002370 为 bevy 胶水。
+//! B decoclutter_show_pins（1412357c0）：真实装饰存储到世界空间锁定图钉。
+//! 原事件取最后一项；变换、网格、墙状态、遮挡与实体动画各用既有权威 owner。
 use bevy_ecs::prelude::*;
-use std::collections::HashSet;
-use utils::geometry::{Circle2d, Rectangle2d, Rectangle3d};
+use glam::{Vec2, Vec3, Vec3Swizzles};
+use utils::{easing_functions::EasingFunction, geometry::{Circle2d, Rectangle2d, Rectangle3d}};
+use crate::{
+    components::{Ui2dImage, Ui2dWsExtent},
+    resources::{
+        clutter_meshes::{ClutterMeshes, clutter_mesh_ty_data}, time::GameTime,
+        walls::{cached_decorator_transforms::{CachedDecoratorTransform, CachedDecoratorTransforms},
+            decorator::DecoratorInfo, decorator_storage::{DecoratorStorage, DecoratorStorageAddr},
+            public_walls::PublicWalls},
+    },
+    systems::{camera_rig::MainCamera, collision::world::RaycastWorld, mode_manager::ClutterMeshTy},
+};
 
-/// 已固定 deco-clutter 集合（I：pinned clutter；宿主维护）。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct PinnedDecoClutter(pub HashSet<u64>);
-
-/// 单图钉几何/触发数据（I：宿主从记录表/装饰存储/触发体积解析）。
-///
-/// O 字段对应：
-/// - `type_byte` = pinned 记录 `+0xe`；
-/// - `footprint` = `clutter_mesh_ty_data()` 输出；
-/// - `axis`/`position` = `set_orientation_xz`/`translate` 输入；
-/// - `trigger_kind` = `*local_1b0`（0/1/2）；
-/// - `trigger3d`/`trigger2d` = 两级 `intersects` 输入；
-/// - `circle`、`circle_2d`、`radius` = `[+1]`、`contains_point`、`[+0xc]`；
-/// - `discriminant`/`dedup` = `[+0x20]/[+0x28]/[+0x30]` 去重门。
-#[derive(Clone, Copy, Debug)]
-pub struct PinnedDecoGeometry {
-    pub type_byte: u8,
-    pub footprint: Rectangle3d,
-    pub axis: glam::Vec2,
-    pub position: glam::Vec3,
-    pub trigger_kind: u8,
-    pub trigger3d: Rectangle3d,
-    pub trigger2d: Rectangle2d,
-    pub circle: Circle2d,
-    pub circle_2d: bool,
-    pub radius: f32,
-    pub discriminant: [u8; 3],
-    pub dedup: u64,
+/// B 56 字节事件 union 的三个实际业务分支；保留语义，不复制私有 ABI。
+/// 原消费者的区间运算是闭相交，圆/矩形的两个标量不归一化或改成中心/高度。
+#[derive(Event, Clone, Copy, Debug)]
+pub enum ShowPinnedDecoClutter {
+    Circle {
+        circle: Circle2d,
+        vertical: [f32; 2],
+        containment: bool,
+        exclude_wall: Option<crate::resources::walls::WallId>,
+    },
+    Rectangle {
+        rectangle: Rectangle2d,
+        vertical: [f32; 2],
+        exclude_wall: Option<crate::resources::walls::WallId>,
+    },
+    Wall(crate::resources::walls::WallId),
 }
-
-impl Default for PinnedDecoGeometry {
-    fn default() -> Self {
-        Self {
-            type_byte: 0,
-            footprint: Rectangle3d {
-                footprint: Rectangle2d::new(glam::Vec2::ZERO, glam::Vec2::ZERO, glam::Vec2::X),
-                bottom: 0.0,
-                top: 0.0,
-            },
-            axis: glam::Vec2::X,
-            position: glam::Vec3::ZERO,
-            trigger_kind: 0,
-            trigger3d: Rectangle3d {
-                footprint: Rectangle2d::new(glam::Vec2::ZERO, glam::Vec2::ZERO, glam::Vec2::X),
-                bottom: 0.0,
-                top: 0.0,
-            },
-            trigger2d: Rectangle2d::new(glam::Vec2::ZERO, glam::Vec2::ZERO, glam::Vec2::X),
-            circle: Circle2d::new(glam::Vec2::ZERO, 0.0),
-            circle_2d: false,
-            radius: 0.0,
-            discriminant: [0; 3],
-            dedup: 0,
+impl ShowPinnedDecoClutter {
+    /// B tag2，活动墙 ID 在原载荷 +8；自由墙编辑/移动均使用此分支。
+    pub fn for_wall(wall: crate::resources::walls::WallId) -> Self {
+        Self::Wall(wall)
+    }
+    pub fn rectangle(
+        rectangle: Rectangle2d,
+        first: f32,
+        second: f32,
+        exclude_wall: Option<crate::resources::walls::WallId>,
+    ) -> Self {
+        Self::Rectangle { rectangle, vertical: [first, second], exclude_wall }
+    }
+    pub fn circle(
+        circle: Circle2d,
+        first: f32,
+        second: f32,
+        containment: bool,
+        exclude_wall: Option<crate::resources::walls::WallId>,
+    ) -> Self {
+        Self::Circle { circle, vertical: [first, second], containment, exclude_wall }
+    }
+    pub fn for_circle(
+        circle: Circle2d,
+        elevation: f32,
+        max_y: f32,
+        exclude_wall: Option<crate::resources::walls::WallId>,
+    ) -> Self {
+        Self::circle(circle, elevation, max_y, false, exclude_wall)
+    }
+    /// 原地表画笔0x100分支：区间[0,height]，同时允许中心包含与边缘命中。
+    pub fn brush_circle(circle: Circle2d, height: f32) -> Self {
+        Self::circle(circle, 0.0, height, true, None)
+    }
+    /// B ui_move_shapes：两种形状各自写自己的载荷及同一排除墙，不能共用原始偏移。
+    pub fn for_shape(
+        shape: crate::systems::wall::valid_enclosure::ShapeParameters,
+        elevation: f32,
+        max_y: f32,
+        wall: crate::resources::walls::WallId,
+    ) -> Self {
+        use crate::systems::wall::valid_enclosure::Shape;
+        match shape.get_shape().expect("图钉形状分支需要实际预制形状") {
+            Shape::Circle(circle) => Self::circle(circle, elevation, max_y, false, Some(wall)),
+            Shape::Rectangle(rectangle) => Self::rectangle(rectangle, elevation, max_y, Some(wall)),
         }
     }
 }
 
-/// 图钉几何源（I：宿主维护；对应 fresh 的 pinned/父/触发记录表）。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct PinnedDecoGeometryTable(pub hashbrown::HashMap<u64, PinnedDecoGeometry>);
-
-/// `ShowPinnedDecoClutter`（原版是 **Event**，56 B：`Events<T>` 的 `EventInstance` 步长 0x40 =
-/// 8 B EventId + 56 B 载荷；`ClutterPlugin::build` 第 8 个 `register_event`，水/路/园的画笔预览
-/// 圈写入它，见 `WaterPinnedClutterCircle` / `PathPinnedClutterCircle` /
-/// `GardenPinnedClutterCircle` 三个特化替身）。
-///
-/// 56 B 载荷的完整 union（圈/高/0x100 标志等变体）**未闭合**；本类型只保留本 crate
-/// `decoclutter_show_pins` 现用的可见性判别 `show`（原版读取队列**最后一个**事件，0x1412357c0
-/// 内 `last_event + 4/+0x1c` 取值），其余字段为此前遗留的缓冲占位，非原版载荷。
-#[derive(Event, Clone, Debug, Default)]
-pub struct ShowPinnedDecoClutter {
-    /// 遗留占位（非原版载荷）。
-    pub pinned: Vec<u64>,
-    /// 遗留占位（非原版载荷）。
-    pub hits: Vec<u64>,
-    /// 可见性判别：队列最后一个事件的值；无事件视为 false（与此前资源默认值一致）。
-    pub show: bool,
-}
-
-/// 每图钉动画状态（O：0x18 stride 记录：`+0x4` 累加 delta、`+0x4` clamp 进度、
-/// `+0x14` 显示周期 0.3/−0.2、`+0x14` scale 载荷）。
-#[derive(Clone, Copy, Debug, Default)]
-pub struct PinAnimation {
-    /// `[4]`：delta 累加器。
-    pub accumulator: f32,
-    /// `[1]`：淡入/淡出进度（clamp[0,1]）。
+/// 原24字节组件：命中键、进度、基础尺寸、出生后时间、淡出判别。
+#[derive(Component, Clone, Copy, Debug, Default)]
+pub struct DecoClutterLock {
+    pub id: u32,
     pub progress: f32,
-    /// `[5]`：当前是否显示（冷却判别）。
-    pub shown: bool,
+    pub base_extent: Vec2,
+    pub age: f32,
+    pub hiding: bool,
 }
-
-/// 双 Vec 缓冲（O：56 B union：`local_1d0/1c8/1c0` 与 `local_210`…，cap=4；
-/// 系统内 Local）。crate 以独立 Resource 承载（避免与 show 输入资源别名）。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct PinnedDecoClutterBuffers {
-    /// 可见 pinned 实体。
-    pub pinned: Vec<u64>,
-    /// raycast 命中实体。
-    pub hits: Vec<u64>,
+#[derive(Clone, Copy)]
+struct PinCandidate { id: u32, size: f32, position: Vec3 }
+/// 只复用帧内 scratch 容量，不建立平行权威状态表。
+#[derive(Default)]
+pub struct PinScratch {
+    candidates: Vec<PinCandidate>,
+    hits: hashbrown::HashSet<u32>,
+    existing: hashbrown::HashSet<u32>,
 }
-
-/// 动画状态表（I：宿主按实体维护；fresh 为 stride 0x18 的旁路记录）。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct PinAnimationTable(pub hashbrown::HashMap<u64, PinAnimation>);
-
-/// 图钉可见性切换事件（I：宿主按实体切换组件）。
-#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct PinVisibilityToggle {
-    pub entity: u64,
-    pub visible: bool,
+fn interval_intersects(a: [f32; 2], b: [f32; 2]) -> bool {
+    // 141762b90两个CMPLEPS；不得归一化或解释成中心/高度。
+    a[0] <= b[1] && b[0] <= a[1]
 }
-
-/// 命中去重表（O：`local_258` 与 `[+0x30]/[+0x28]` 比较；fresh 用局部槽保存上帧值）。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct PinHitDedup(pub hashbrown::HashMap<u64, (u8, u64)>);
-
-/// 图钉槽组件（O：`register_required_components` 注册；宿主在 pinned 实体上添加）。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct DecoClutterLock;
-
-/// 图钉足迹命中判定（O 序列：expand → set_orientation_xz → translate → 条件门）。
-///
-/// `trigger_kind`：
-/// - 1：`Rectangle3d::intersects(trigger3d)` ∧ `trigger2d.intersects(footprint)`；
-/// - 0：`Rectangle3d::intersects(trigger3d)` ∧（`circle_2d` →
-///   `footprint.intersects_circle(circle)`；否则 `circle.contains_point(center)` ∨
-///   `dist(center, circle.center) < radius` ∨ `footprint.intersects_circle(circle)`）；
-/// - 2：GlobalId 哈希探测路径（宿主提供 `global_hit`）。
-pub fn pinned_geometry_intersects(geo: &PinnedDecoGeometry, global_hit: bool) -> bool {
-    let mut rect = geo.footprint;
-    rect.expand(glam::Vec3::splat(0.5));
-    rect.set_orientation_xz(geo.axis);
-    rect.translate(geo.position);
-    match geo.trigger_kind {
-        1 => {
-            if !rect.overlaps_rectangle3d(geo.trigger3d) {
-                return false;
-            }
-            // 原生 `impl$6::intersects`（0x140c9b990 端口）在轴对齐零分量方向下含 NaN
-            // 除法；以同义的 2D 重叠谓词承载（几何语义等价，I）。
-            rect.footprint.overlaps_rectangle2d(geo.trigger2d)
+fn footprint(bounds: Rectangle3d, transform: CachedDecoratorTransform) -> Rectangle3d {
+    let mut rectangle = bounds;
+    rectangle.expand(Vec3::splat(0.5));
+    let direction = transform.rotation * Vec3::X;
+    rectangle.set_orientation_xz(direction.xz().normalize());
+    rectangle.translate(transform.translation);
+    rectangle
+}
+fn eligible_type(ty: u8) -> bool {
+    let delta = ty.wrapping_sub(0x38);
+    delta > 7 || delta == 6
+}
+fn intersects_request(
+    request: ShowPinnedDecoClutter, rectangle: Rectangle3d, info: &DecoratorInfo,
+    address: DecoratorStorageAddr, walls: &PublicWalls,
+) -> bool {
+    let vertical = [rectangle.bottom, rectangle.top];
+    match request {
+        ShowPinnedDecoClutter::Wall(id) => {
+            let Some(wall) = walls.get(id) else { return false; };
+            wall.height_outline().iter().any(|point| {
+                let range = if wall.authority.freehand_ty() == 0 {
+                    [point[1], wall.geometry.metrics.constrained_extra]
+                } else { [0.0, wall.max_y()] };
+                interval_intersects(vertical, range)
+                    && rectangle.footprint.contains_point(Vec2::new(point[0], point[2]))
+            })
         }
-        0 => {
-            if !rect.overlaps_rectangle3d(geo.trigger3d) {
-                return false;
-            }
-            if geo.circle_2d {
-                // `trigger+1 == 0` → Rectangle2d::intersects_circle。
-                rect.footprint.intersects_circle(geo.circle)
-            } else {
-                // Circle2d::contains_point OR 中心距 < radius，否则 intersects_circle。
-                let center = rect.footprint.center;
-                if geo.circle.contains_point(center) {
-                    true
-                } else {
-                    let delta = center - geo.circle.center;
-                    if (delta.y * delta.y + delta.x * delta.x).sqrt() < geo.radius {
-                        true
-                    } else {
-                        rect.footprint.intersects_circle(geo.circle)
-                    }
-                }
-            }
+        ShowPinnedDecoClutter::Rectangle { rectangle: trigger, vertical: range, exclude_wall } => {
+            if info.dst_tag() == 2 && exclude_wall == Some(address.as_wall()) { return false; }
+            interval_intersects(vertical, range) && trigger.intersects(rectangle.footprint)
         }
-        _ => global_hit,
+        ShowPinnedDecoClutter::Circle { circle, vertical: range, containment, exclude_wall } => {
+            if info.dst_tag() == 2 && exclude_wall == Some(address.as_wall()) { return false; }
+            if !interval_intersects(vertical, range) { return false; }
+            if containment {
+                let center = rectangle.footprint.center;
+                let delta = circle.center - center;
+                if circle.contains_point(center)
+                    || (delta.y * delta.y + delta.x * delta.x).sqrt() < circle.radius { return true; }
+            }
+            rectangle.footprint.intersects_circle(circle)
+        }
     }
 }
-
-/// `decoclutter_show_pins` @0x1412357c0。
-pub fn decoclutter_show_pins(
-    mut show_events: EventReader<ShowPinnedDecoClutter>,
-    pinned: Res<PinnedDecoClutter>,
-    geometry: Res<PinnedDecoGeometryTable>,
-    mut buffers: ResMut<PinnedDecoClutterBuffers>,
-    mut toggled: EventWriter<PinVisibilityToggle>,
-    mut animations: ResMut<PinAnimationTable>,
-    mut dedup: ResMut<PinHitDedup>,
+fn pin_size(size: Vec2) -> f32 {
+    // minnum保留第一个相等值、NaN取另一项；最终MINSS上限0.5。
+    let minimum = if size.x.is_nan() || size.y < size.x { size.y } else { size.x };
+    let half = minimum * 0.5;
+    if half < 0.5 { half } else { 0.5 }
+}
+#[allow(clippy::too_many_arguments)]
+fn collect_candidates(
+    request: ShowPinnedDecoClutter, storage: &DecoratorStorage,
+    transforms: &CachedDecoratorTransforms, meshes: &ClutterMeshes, walls: &PublicWalls,
+    camera: &MainCamera, collision: &RaycastWorld, scratch: &mut PinScratch,
 ) {
-    // O：读取事件队列并取最后一个事件（`EventReader` 全量消费）；无事件 → 不可见。
-    let show_visible = show_events.read().last().map_or(false, |event| event.show);
-    buffers.pinned.clear();
-    buffers.hits.clear();
-    for &entity in pinned.0.iter() {
-        let Some(geo) = geometry.0.get(&entity) else {
-            continue;
-        };
-        // 类型门（O：`d = [0xe]-0x38`；`7<d || d==6` 才处理）。
-        let d = geo.type_byte.wrapping_sub(0x38);
-        if d <= 7 && d != 6 {
-            continue;
-        }
-        // 去重门（O：判别字节匹配且 dedup 相同 → 跳过；仅 kind 1/0 有该门）。
-        let flags = if geo.trigger_kind == 1 {
-            geo.discriminant[1]
-        } else {
-            geo.discriminant[0]
-        };
-        if flags & 1 != 0 {
-            if let Some(&(last_flags, last_dedup)) = dedup.0.get(&entity) {
-                if last_flags == flags && last_dedup == geo.dedup {
-                    continue;
-                }
+    let groups = storage.iter_walls().map(|(id, values)| (DecoratorStorageAddr::Wall(id), values))
+        .chain(storage.iter_terrain_decorators().map(|values| (DecoratorStorageAddr::Terrain, values)))
+        .chain(storage.iter_stair_decorators().map(|values| (DecoratorStorageAddr::Stair, values)));
+    for (address, decorators) in groups {
+        for (&id, info) in &decorators.decorators {
+            if !eligible_type(info.ty) { continue; }
+            let transform = transforms.transform(id);
+            let ty = ClutterMeshTy::from_native_tag(info.ty).expect("图钉需要有效的原clutter mesh类型");
+            let rectangle = footprint(clutter_mesh_ty_data(ty, meshes).mesh.bounds, transform);
+            if !intersects_request(request, rectangle, info, address, walls) { continue; }
+            let origin = camera.eye_position();
+            let delta = transform.translation - origin;
+            let reciprocal = 1.0 / (delta.y * delta.y + delta.x * delta.x + delta.z * delta.z).sqrt();
+            let direction = delta * reciprocal;
+            let maximum = (delta.z * delta.z + (delta.x * delta.x + delta.y * delta.y)).sqrt()
+                + f32::from_bits(0xbe4c_cccd);
+            // 原mask3、截止装饰前0.2m；只有实际Rapier miss才显示。
+            #[cfg(feature = "native-physics")]
+            let visible = collision.raycast_simple_with_max_toi(origin, direction, maximum, 3).is_miss();
+            #[cfg(not(feature = "native-physics"))]
+            let visible: bool = {
+                let _ = (collision, direction, maximum);
+                panic!("世界图钉遮挡需要native-physics，不能用默认miss代理")
+            };
+            if visible {
+                scratch.hits.insert(id);
+                scratch.candidates.push(PinCandidate {
+                    id, size: pin_size(rectangle.footprint.size), position: transform.translation,
+                });
             }
-        }
-        // 条件门（O：kind 1/0 → intersects 链；kind 2 → GlobalId 哈希探测，宿主提供）。
-        let global_hit = false;
-        if !pinned_geometry_intersects(geo, global_hit) {
-            continue;
-        }
-        dedup.0.insert(entity, (flags, geo.dedup));
-        // O：命中 → ChunkId + 动画累加器（`[4] += delta`；`[1] += delta/period`，
-        // period = 0.3，`[4] > 0.75` 时 −0.2；clamp[0,1]；EasingFunction::apply）。
-        let animation = animations.0.entry(entity).or_default();
-        let delta = 0.0_f32; // GameTime delta 由宿主注入；此处保持记录结构。
-        animation.accumulator += delta;
-        let period = if animation.accumulator > 0.75 {
-            -0.2
-        } else {
-            0.3
-        };
-        let mut progress = delta / period + animation.progress;
-        if progress < 0.0 {
-            progress = 0.0;
-        }
-        if 1.0 < progress {
-            progress = 1.0;
-        }
-        animation.progress = progress;
-        // O：`[5] = 0.75 < [4]`（累加器门）；命中后 `0 < progress || [5]==0` → spawn/scale，
-        // 否则 despawn。crate 以 toggled 事件承载 spawn/despawn 消费面。
-        animation.shown = 0.75 < animation.accumulator;
-        if progress > 0.0 || !animation.shown {
-            buffers.pinned.push(entity);
-            toggled.write(PinVisibilityToggle {
-                entity,
-                visible: show_visible,
-            });
         }
     }
 }
-
-/// `register_required_components` @0x141237200（O：bevy 组件注册；`DecoClutterLock`）。
-pub fn register_required_components(world: &mut World) {
-    world.register_component::<DecoClutterLock>();
+fn animate(pin: &mut DecoClutterLock, extent: &mut Ui2dWsExtent, delta: f32, hit: bool) -> bool {
+    pin.age += delta;
+    pin.hiding = !hit && pin.age > 0.75;
+    let period = if pin.hiding { -0.2 } else { 0.3 };
+    pin.progress = delta / period + pin.progress;
+    if pin.progress > 0.0 || !pin.hiding {
+        // MAXSS(0,value)/MINSS(1,lower)取第二个NaN/等值操作数。
+        let lower = if pin.progress < 0.0 { 0.0 } else { pin.progress };
+        pin.progress = if lower > 1.0 { 1.0 } else { lower };
+        extent.extent = pin.base_extent * EasingFunction::BackOut.apply(pin.progress);
+        true
+    } else { false }
 }
+/// 无新事件仍按真实GameTime完成宽限、淡出与实体卸载。
+#[allow(clippy::too_many_arguments)]
+pub fn decoclutter_show_pins(
+    mut requests: EventReader<ShowPinnedDecoClutter>, storage: Res<DecoratorStorage>,
+    transforms: Option<Res<CachedDecoratorTransforms>>, meshes: Option<Res<ClutterMeshes>>,
+    walls: Option<Res<PublicWalls>>, camera: Option<Res<MainCamera>>,
+    collision: Option<Res<RaycastWorld>>, time: Res<GameTime>,
+    mut pins: Query<(Entity, &mut DecoClutterLock, &mut Ui2dWsExtent)>,
+    mut commands: Commands, mut scratch: Local<PinScratch>,
+) {
+    scratch.candidates.clear();
+    scratch.hits.clear();
+    scratch.existing.clear();
+    if let Some(request) = requests.read().last().copied() {
+        collect_candidates(request, &storage,
+            transforms.as_deref().expect("图钉变换owner尚未初始化"),
+            meshes.as_deref().expect("图钉网格资产尚未加载"),
+            walls.as_deref().expect("图钉墙发布owner尚未初始化"),
+            camera.as_deref().expect("图钉相机尚未初始化"),
+            collision.as_deref().expect("图钉碰撞世界尚未初始化"), &mut scratch);
+    }
+    for (entity, mut pin, mut extent) in &mut pins {
+        scratch.existing.insert(pin.id);
+        let hit = scratch.hits.contains(&pin.id);
+        if !animate(&mut pin, &mut extent, time.delta, hit) { commands.entity(entity).despawn(); }
+    }
+    for candidate in &scratch.candidates {
+        if scratch.existing.contains(&candidate.id) { continue; }
+        commands.spawn((
+            DecoClutterLock { id: candidate.id, base_extent: Vec2::splat(candidate.size), ..Default::default() },
+            Ui2dWsExtent { extent: Vec2::ZERO, position: candidate.position },
+            Ui2dImage::new("menu/tod/locked"),
+        ));
+    }
+}
+/// 原derive入口，tuple另两个组件由真实Bevy bundle注册。
+pub fn register_required_components(world: &mut World) { world.register_component::<DecoClutterLock>(); }
 
-/// `clone_behavior` @0x140002370（O：ICF 折叠单行；行为标记，无独立逻辑）。
-#[derive(Clone, Copy, Debug, Default)]
-pub struct CloneBehavior(pub u8);
+const _: () = assert!(std::mem::size_of::<DecoClutterLock>() == 24);
+const _: () = assert!(std::mem::offset_of!(DecoClutterLock, hiding) == 20);
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use glam::Quat;
     #[test]
-    fn pinned_geometry_expands_orients_translates_then_intersects() {
-        let footprint = Rectangle3d::new(
-            glam::Vec3::ZERO,
-            glam::Vec3::new(2.0, 2.0, 2.0),
-            glam::Vec2::X,
-        );
-        let trigger3d = Rectangle3d::new(
-            glam::Vec3::new(10.0, 0.0, 10.0),
-            glam::Vec3::new(1.0, 4.0, 1.0),
-            glam::Vec2::X,
-        );
-        let geo = PinnedDecoGeometry {
-            type_byte: 0x40,
-            footprint,
-            axis: glam::Vec2::X,
-            position: glam::Vec3::ZERO,
-            trigger_kind: 1,
-            trigger3d,
-            trigger2d: Rectangle2d::new(
-                glam::Vec2::new(10.0, 10.0),
-                glam::Vec2::new(1.0, 1.0),
-                glam::Vec2::X,
-            ),
-            ..Default::default()
-        };
-        assert!(!pinned_geometry_intersects(&geo, false));
-        let covering = PinnedDecoGeometry {
-            trigger3d: Rectangle3d::new(
-                glam::Vec3::new(1.0, 0.0, 1.0),
-                glam::Vec3::new(10.0, 4.0, 10.0),
-                glam::Vec2::X,
-            ),
-            trigger2d: Rectangle2d::new(
-                glam::Vec2::new(1.0, 1.0),
-                glam::Vec2::new(10.0, 10.0),
-                glam::Vec2::X,
-            ),
-            ..geo
-        };
-        assert!(pinned_geometry_intersects(&covering, false));
+    fn actual_event_variants_keep_independent_ranges_and_owner() {
+        let wall = crate::resources::walls::WallId(0x123456789);
+        assert!(matches!(ShowPinnedDecoClutter::for_wall(wall), ShowPinnedDecoClutter::Wall(id) if id == wall));
+        let circle = Circle2d::new(Vec2::new(3.0, 7.0), 2.0);
+        assert!(matches!(ShowPinnedDecoClutter::for_circle(circle, 8.0, 2.0, Some(wall)),
+            ShowPinnedDecoClutter::Circle { vertical: [8.0, 2.0], containment: false, exclude_wall: Some(id), .. } if id == wall));
+        assert!(matches!(ShowPinnedDecoClutter::brush_circle(circle, 4.0),
+            ShowPinnedDecoClutter::Circle { vertical: [0.0, 4.0], containment: true, exclude_wall: None, .. }));
+        assert!(interval_intersects([0.0, 1.0], [1.0, 2.0]));
+        assert!(!interval_intersects([0.0, 1.0], [2.0, 1.0]));
+        assert!(!interval_intersects([f32::NAN, 1.0], [0.0, 2.0]));
+    }
+    #[test]
+    fn derived_footprint_uses_actual_rotation_and_position_without_scale() {
+        let bounds = Rectangle3d::new(Vec3::ZERO, Vec3::splat(2.0), Vec2::X);
+        let rectangle = footprint(bounds, CachedDecoratorTransform {
+            rotation: Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
+            translation: Vec3::new(10.0, 3.0, 20.0), scale: Vec3::splat(50.0),
+        });
+        assert_eq!(rectangle.footprint.center, Vec2::new(10.0, 20.0));
+        assert_eq!(rectangle.footprint.size, Vec2::splat(2.5));
+        assert_eq!([rectangle.bottom, rectangle.top], [1.75, 4.25]);
+        assert!((rectangle.footprint.axis - Vec2::NEG_Y).length() < 1e-6);
+    }
+    #[test]
+    fn per_entity_grace_does_not_reset_age_and_fade_reaches_removal() {
+        let mut pin = DecoClutterLock { base_extent: Vec2::splat(0.5), ..Default::default() };
+        let mut extent = Ui2dWsExtent { position: Vec3::splat(11.0), ..Default::default() };
+        assert!(animate(&mut pin, &mut extent, 0.3, true));
+        assert_eq!(pin.progress, 1.0);
+        assert_eq!(extent.extent, Vec2::splat(0.5));
+        assert!(animate(&mut pin, &mut extent, 0.3, false));
+        assert!(!pin.hiding);
+        assert!(animate(&mut pin, &mut extent, 0.2, true));
+        assert!(pin.age > 0.75);
+        assert!(animate(&mut pin, &mut extent, 0.1, false));
+        assert!(pin.hiding);
+        assert_eq!(pin.progress, 0.5);
+        assert!(!animate(&mut pin, &mut extent, 0.1, false));
+        assert_eq!(extent.position, Vec3::splat(11.0));
     }
 
+    #[cfg(feature = "native-physics")]
+    fn fixture() -> (World, Schedule) {
+        use crate::resources::clutter_meshes::ClutterMesh;
+        let mut world = World::new();
+        super::super::registration::register_ui_clutter_resources(&mut world);
+        world.insert_resource(GameTime { delta: 0.3, ..Default::default() });
+        let fixed = std::array::from_fn(|_| {
+            let mut mesh = ClutterMesh::omitted_in_demo("pin_test", 0, None, false, false);
+            mesh.bounds = Rectangle3d::new(Vec3::ZERO, Vec3::splat(2.0), Vec2::X);
+            mesh
+        });
+        world.insert_resource(ClutterMeshes::from_parts(fixed, vec![]));
+        world.init_resource::<CachedDecoratorTransforms>();
+        world.init_resource::<PublicWalls>();
+        let mut camera = MainCamera::default();
+        camera.write_matrix(crate::systems::camera_rig::main_camera::INVERSE_VIEW_OFFSET,
+            &glam::Mat4::from_translation(Vec3::new(0.0, 0.0, -5.0)));
+        world.insert_resource(camera);
+        world.insert_resource(RaycastWorld::new());
+        let mut schedule = Schedule::default();
+        schedule.add_systems(decoclutter_show_pins);
+        (world, schedule)
+    }
+    #[cfg(feature = "native-physics")]
+    fn put(world: &mut World, id: u32, address: DecoratorStorageAddr, position: Vec3, ty: u8) {
+        use crate::resources::walls::decorator::DecoratorId;
+        let mut storage = world.resource_mut::<DecoratorStorage>();
+        storage.get_or_insert_default(address).insert(DecoratorId(id), DecoratorInfo { ty, ..Default::default() });
+        storage.decorator_to_storage.insert(DecoratorId(id), address);
+        world.resource_mut::<CachedDecoratorTransforms>().insert(id,
+            CachedDecoratorTransform { rotation: Quat::IDENTITY, translation: position, scale: Vec3::ONE });
+    }
+    #[cfg(feature = "native-physics")]
+    fn show(world: &mut World) {
+        world.send_event(ShowPinnedDecoClutter::brush_circle(Circle2d::new(Vec2::ZERO, 10.0), 4.0));
+    }
+    #[cfg(feature = "native-physics")]
     #[test]
-    fn type_gate_matches_native_d() {
-        // O：`d = type-0x38`；`7<d || d==6` 处理。
-        for (ty, expected) in [
-            (0x37u8, true),
-            (0x38, false),
-            (0x3e, true),
-            (0x3f, false),
-            (0x40, true),
-        ] {
-            let d = ty.wrapping_sub(0x38);
-            assert_eq!(d > 7 || d == 6, expected, "type {ty:#x}");
+    fn real_storage_last_event_render_components_and_unload_share_one_entity() {
+        let (mut world, mut schedule) = fixture();
+        put(&mut world, 10, DecoratorStorageAddr::Wall(crate::resources::walls::WallId(4)), Vec3::ZERO, 0);
+        put(&mut world, 20, DecoratorStorageAddr::Terrain, Vec3::new(2.0, 0.0, 0.0), 1);
+        put(&mut world, 30, DecoratorStorageAddr::Stair, Vec3::new(-2.0, 0.0, 0.0), 2);
+        put(&mut world, 40, DecoratorStorageAddr::Terrain, Vec3::ZERO, 0x38);
+        world.send_event(ShowPinnedDecoClutter::brush_circle(Circle2d::new(Vec2::splat(100.0), 1.0), 4.0));
+        show(&mut world);
+        schedule.run(&mut world);
+        let mut query = world.query::<(Entity, &DecoClutterLock, &Ui2dWsExtent, &Ui2dImage)>();
+        let mut spawned = query.iter(&world).map(|(entity, pin, extent, image)| {
+            assert_eq!(extent.extent, Vec2::ZERO);
+            assert_eq!(image.name, "menu/tod/locked");
+            assert_eq!(image.layer, 0);
+            (entity, pin.id)
+        }).collect::<Vec<_>>();
+        spawned.sort_by_key(|(_, id)| *id);
+        assert_eq!(spawned.iter().map(|(_, id)| *id).collect::<Vec<_>>(), [10, 20, 30]);
+        for _ in 0..3 { show(&mut world); schedule.run(&mut world); }
+        let mut actual = query.iter(&world).map(|(entity, pin, _, _)| (entity, pin.id)).collect::<Vec<_>>();
+        actual.sort_by_key(|(_, id)| *id);
+        assert_eq!(actual, spawned);
+        // 删除权威装饰和资产后，无新事件仍必须自行淡出并卸载实体。
+        *world.resource_mut::<DecoratorStorage>() = DecoratorStorage::default();
+        world.remove_resource::<ClutterMeshes>();
+        world.resource_mut::<GameTime>().delta = 0.1;
+        schedule.run(&mut world);
+        assert_eq!(query.iter(&world).count(), 3);
+        schedule.run(&mut world);
+        assert_eq!(query.iter(&world).count(), 0);
+    }
+    #[cfg(feature = "native-physics")]
+    #[test]
+    fn actual_rapier_occluder_blocks_and_near_target_cutoff_preserves_visibility() {
+        use crate::systems::collision::world::{RaycastGeoSource, RaycastMeshData, upsert_collider, remove_collider};
+        let (mut world, mut schedule) = fixture();
+        put(&mut world, 10, DecoratorStorageAddr::Terrain, Vec3::ZERO, 0);
+        let mut collision = world.remove_resource::<RaycastWorld>().unwrap();
+        let mut map = std::collections::HashMap::new();
+        upsert_collider(&mut collision, &mut map, 1_u32, RaycastGeoSource::Slot0,
+            std::sync::Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(0.5), Vec3::ZERO)),
+            Vec3::new(0.0, 0.0, -2.0), Quat::IDENTITY);
+        collision.flush_colliders();
+        world.insert_resource(collision);
+        show(&mut world); schedule.run(&mut world);
+        assert_eq!(world.query::<&DecoClutterLock>().iter(&world).count(), 0);
+        let mut collision = world.remove_resource::<RaycastWorld>().unwrap();
+        remove_collider(&mut collision, &mut map, &1).unwrap();
+        upsert_collider(&mut collision, &mut map, 2_u32, RaycastGeoSource::Slot0,
+            std::sync::Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(0.02), Vec3::ZERO)),
+            Vec3::new(0.0, 0.0, -0.1), Quat::IDENTITY);
+        collision.flush_colliders();
+        world.insert_resource(collision);
+        show(&mut world); schedule.run(&mut world);
+        assert_eq!(world.query::<&DecoClutterLock>().iter(&world).count(), 1);
+    }
+    #[cfg(feature = "native-physics")]
+    #[test]
+    fn actual_published_wall_points_drive_global_request_without_a_shadow_geometry_map() {
+        use crate::resources::walls::{InnerWalls, WallState,
+            public_walls::WallPublicationDirty, publication_source::TerrainHeightGrid512};
+        use crate::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash;
+        use crate::resources::roofs::geometry::surface::Curve2;
+        let (mut world, mut schedule) = fixture();
+        let source = Curve2::try_new(vec![[-1.0, 0.0], [1.0, 0.0]], false).unwrap();
+        let mut inner = InnerWalls::new();
+        let id = inner.new_wall(WallState::new(source, 4.0, 0, 0, false));
+        let terrain = TerrainHeightGrid512 { encoded: vec![0; 512 * 512].into(),
+            minimum_y: 0.0, maximum_y: 0.0, sampling_fix: false };
+        world.resource_mut::<PublicWalls>().consume_with_paths(&mut inner, &terrain, None,
+            &WallPublicationDirty::default(), &WallSpatialHash::default());
+        assert!(world.resource::<PublicWalls>().get(id).is_some());
+        put(&mut world, 10, DecoratorStorageAddr::Terrain, Vec3::ZERO, 0);
+        put(&mut world, 11, DecoratorStorageAddr::Terrain, Vec3::new(20.0, 0.0, 0.0), 0);
+        put(&mut world, 12, DecoratorStorageAddr::Terrain, Vec3::new(0.0, 10.0, 0.0), 0);
+        world.send_event(ShowPinnedDecoClutter::for_wall(id));
+        schedule.run(&mut world);
+        assert_eq!(world.query::<&DecoClutterLock>().iter(&world).map(|pin| pin.id).collect::<Vec<_>>(), [10]);
+    }
+    #[cfg(feature = "native-physics")]
+    #[test]
+    fn shape_requests_apply_native_owner_exclusion_and_vertical_ranges_before_occlusion() {
+        use crate::resources::walls::{WallId, decorator::DecoratorId};
+        let (mut world, mut schedule) = fixture();
+        let wall = WallId(4);
+        put(&mut world, 10, DecoratorStorageAddr::Wall(wall), Vec3::ZERO, 0);
+        put(&mut world, 20, DecoratorStorageAddr::Terrain, Vec3::ZERO, 0);
+        world.resource_mut::<DecoratorStorage>().decorator_info_mut(DecoratorId(10)).unwrap().u20 = 2 << 16;
+        // 原边相交函数在完全重合的轴对齐边上会遇到0/0并返回false（原fixture0）。
+        // 用真实非平行相交验证排除owner，不能以SAT补丁改变原几何行为。
+        let rectangle = Rectangle2d::new(Vec2::ZERO, Vec2::splat(2.5), Vec2::new(0.6, 0.8));
+        world.send_event(ShowPinnedDecoClutter::rectangle(rectangle, -1.0, 1.0, Some(wall)));
+        schedule.run(&mut world);
+        assert_eq!(world.query::<&DecoClutterLock>().iter(&world).map(|pin| pin.id).collect::<Vec<_>>(), [20]);
+        for _ in 0..3 {
+            world.send_event(ShowPinnedDecoClutter::for_circle(Circle2d::new(Vec2::ZERO, 1.5), -1.0, 1.0, Some(wall)));
+            schedule.run(&mut world);
         }
+        world.send_event(ShowPinnedDecoClutter::rectangle(rectangle, 2.0, 3.0, Some(wall)));
+        world.resource_mut::<GameTime>().delta = 0.1;
+        schedule.run(&mut world);
+        let mut pins = world.query::<&DecoClutterLock>();
+        let pin = pins.single(&world).unwrap();
+        assert_eq!(pin.id, 20);
+        assert!(pin.hiding);
+        assert_eq!(pin.progress, 0.5);
     }
 }

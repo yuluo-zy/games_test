@@ -91,10 +91,9 @@ pub fn draw_garden<C: Send + Sync + 'static>(
                 return;
             }
             if draw {
-                pins.write(GardenPinnedClutterCircle {
-                    circle: Circle2d::new(center, radius * 0.5),
-                    height: position.y + 1.5,
-                });
+                pins.write(GardenPinnedClutterCircle::brush_circle(
+                    Circle2d::new(center, radius * 0.5), position.y + 1.5,
+                ));
             }
             2
         } else {

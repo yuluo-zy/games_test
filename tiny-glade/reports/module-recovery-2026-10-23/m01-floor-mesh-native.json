@@ -1,0 +1,25 @@
+{
+  "original_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "source_sha256": "c22940466c845b06a11587070f1fb01330f8e14c0fd34fa2e3d14d95a6cd06f8",
+  "executable_sha256": "3d5d96d8c84368358a20adf0605356d1949fc43f4c343aaa1582038d650d2e5b",
+  "input_sha256": "2707f9beedcc6e81a9b60c5a7b87fdc8cc84ce1697923b0176e3931130e20e61",
+  "output_sha256": "58b94e1388227499a1503359687cf253807e4372545476e4398a85d844795866",
+  "x86_output_sha256": "7d4b533540335daf77f6aceea73f10223f3709f3e413ccb3cb894672a5b4ec44",
+  "fixture_sha256": "bd76daa01ec59c20627e494c6c5ced57bd5c13750db176b6dc75be8dc8c1fdee",
+  "cases": 96,
+  "stderr": "original floor branches 96 cases 0 panics; external allocator/CRT libm bridges\n",
+  "count_entry": "0x140c97bc0",
+  "count_cases": 256,
+  "count_input_sha256": "c00aae3853121a2dfa68fa9c58e5a2dc22a95e01f54c3e387026b2777d9fa833",
+  "count_output_sha256": "97c797e9e477b0c04e3b9b02a0b8306102943c61fb06882fcec77f839d9d3b99",
+  "blocks": [
+    "1408d3014..326a",
+    "1408d3585..398c"
+  ],
+  "bridges": [
+    "Rust alloc/dealloc/realloc/alloc_zeroed via tracked posix allocation",
+    "external CRT ceilf/cosf/sinf/fmodf via host float libm",
+    "external memcpy/memmove"
+  ],
+  "scope": "Complete original floor geometry/control flow through three output Vecs with explicitly replayed ARM64 external libm results. Original x86 host external outputs also retained separately; excludes original ECS/hashmap and Parry construction. Windows CRT numerical identity is not asserted."
+}

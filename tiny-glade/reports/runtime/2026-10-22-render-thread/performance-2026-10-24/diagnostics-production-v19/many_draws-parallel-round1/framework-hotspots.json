@@ -1,0 +1,265 @@
+{
+  "scope": "Diagnostic 10-second 997Hz CPU sampling. Deepest local source frame per sample includes native descendants; inclusive CPU sample shares are not direct wall time. Stage/GPU instrumentation is enabled. No formal FPS acceptance claim.",
+  "binary_sha256": "f95314589172c3e4a91e7989c978a3a58c943d3f1b69e4ee6bd3235570c6a55c",
+  "folded_sha256": "7cbbb41757b0b0af18719563e48016f6f18aca66c4974e6e81b5cc98d9184e2b",
+  "samples": 9346,
+  "samples_without_local_source": 1027,
+  "thread_samples": {
+    "6130315264": 3250,
+    "6103838720": 973,
+    "6099546112": 925,
+    "6101692416": 913,
+    "6108131328": 910,
+    "6105985024": 893,
+    "6097399808": 842,
+    "8741482624": 370,
+    "6133035008": 188,
+    "6123876352": 26,
+    "6113570816": 19,
+    "6114144256": 18,
+    "6112423936": 15,
+    "6110277632": 4
+  },
+  "hotspots": [
+    {
+      "location": "crates/rhapsody/src/raw/allocator.rs:766",
+      "function": "with_host<core::result::Result<(), rhapsody::error::Error>, rhapsody::raw::allocator::{impl#8}::reserve_cpu_bytes::{closure_env#0}>",
+      "samples": 2269,
+      "all_thread_percent": 24.277765889150437
+    },
+    {
+      "location": "crates/rhapsody/src/sync/timeline.rs:215",
+      "function": "submit<ash::device::Device, (), rhapsody::device::submission::{impl#0}::submit_prepared2::{closure_env#8}>",
+      "samples": 1773,
+      "all_thread_percent": 18.97068264498181
+    },
+    {
+      "location": "crates/rhapsody/src/raw/allocator.rs:766",
+      "function": "with_host<(), rhapsody::raw::allocator::{impl#5}::drop::{closure_env#0}>",
+      "samples": 702,
+      "all_thread_percent": 7.5112347528354375
+    },
+    {
+      "location": "crates/tiny-glade/tests/original_loading_present.rs:10",
+      "function": "__rust_alloc",
+      "samples": 547,
+      "all_thread_percent": 5.852771239032741
+    },
+    {
+      "location": "crates/rhapsody/src/raw/managed/resources.rs:243",
+      "function": "get<rhapsody::raw::buffer::Buffer>",
+      "samples": 395,
+      "all_thread_percent": 4.226407019045581
+    },
+    {
+      "location": "crates/tiny-glade/tests/original_loading_present.rs:47",
+      "function": "log",
+      "samples": 248,
+      "all_thread_percent": 2.653541622084314
+    },
+    {
+      "location": "crates/rhapsody/src/rg/parallel.rs:106",
+      "function": "{closure#1}<&[(country_core::render::pass_builder::draw_list::DrawListItem, fn(country_core::render::pass_builder::draw_builder::DrawBuilder, &country_core::render::pass_builder::draw_list::EntityDrawParams, &bevy_ecs::world::World))], country_core::render::pass_builder::draw_stream::DrawBatch, country_core::systems::render_loop::draw_passes::d_main_support::collect_list::{closure_env#0}>",
+      "samples": 199,
+      "all_thread_percent": 2.1292531564305586
+    },
+    {
+      "location": "third_party/winit-d03de0a0/src/platform_impl/macos/event_loop.rs:549",
+      "function": "send_event<()>",
+      "samples": 195,
+      "all_thread_percent": 2.0864540980098436
+    },
+    {
+      "location": "crates/tiny-glade/src/render_host.rs:2675",
+      "function": "{closure#4}<core::iter::adapters::map::Map<core::slice::iter::Iter<(u32, rhapsody::bindless::parameters::BindlessResource)>, tiny_glade::raster_host::bindless_parameters::{closure_env#5}>>",
+      "samples": 173,
+      "all_thread_percent": 1.8510592766959126
+    },
+    {
+      "location": "crates/tiny-glade/src/render_thread.rs:342",
+      "function": "start<tiny_glade::production_renderer::ProductionRenderer>",
+      "samples": 159,
+      "all_thread_percent": 1.7012625722234112
+    },
+    {
+      "location": "crates/tiny-glade/src/game_loop.rs:264",
+      "function": "{closure#0}",
+      "samples": 148,
+      "all_thread_percent": 1.5835651615664454
+    },
+    {
+      "location": "crates/tiny-glade/src/draw_constant_pool.rs:20",
+      "function": "take",
+      "samples": 119,
+      "all_thread_percent": 1.2732719880162637
+    },
+    {
+      "location": "crates/rhapsody/src/bindless.rs:1464",
+      "function": "prepare<tiny_glade::render_host::{impl#20}::prepare::{closure_env#3}<core::iter::adapters::map::Map<core::slice::iter::Iter<(u32, rhapsody::bindless::parameters::BindlessResource)>, tiny_glade::raster_host::bindless_parameters::{closure_env#5}>>>",
+      "samples": 117,
+      "all_thread_percent": 1.2518724588059063
+    },
+    {
+      "location": "crates/tiny-glade/src/raster_host.rs:892",
+      "function": "rg_texture",
+      "samples": 114,
+      "all_thread_percent": 1.2197731649903703
+    },
+    {
+      "location": "crates/rhapsody/src/device/lifetime.rs:79",
+      "function": "{closure#0}",
+      "samples": 105,
+      "all_thread_percent": 1.123475283543762
+    },
+    {
+      "location": "crates/rhapsody/src/rg/parallel.rs:106",
+      "function": "{closure#1}<(alloc::sync::Arc<(dyn core::ops::function::Fn<(), Output=alloc::boxed::Box<dyn country_core::render::pass_builder::draw_stream::PassHost, alloc::alloc::Global>> + core::marker::Send + core::marker::Sync), alloc::alloc::Global>, [u32: 2], country_core::render::pass_builder::draw_builder::CommonDrawParams), country_core::render::pass_builder::draw_stream::DrawBatch, country_core::systems::render_loop::draw_passes::d_main_support::collect_layer::{closure_env#1}>",
+      "samples": 74,
+      "all_thread_percent": 0.7917825807832227
+    },
+    {
+      "location": "crates/rhapsody/src/raw/allocator.rs:766",
+      "function": "with_host<core::result::Result<(), rhapsody::error::Error>, rhapsody::raw::allocator::{impl#4}::resize::{closure_env#0}>",
+      "samples": 52,
+      "all_thread_percent": 0.5563877594692916
+    },
+    {
+      "location": "crates/tiny-glade/src/draw_constant_pool.rs:36",
+      "function": "recycle",
+      "samples": 45,
+      "all_thread_percent": 0.4814894072330409
+    },
+    {
+      "location": "crates/tiny-glade/src/raster_host.rs:882",
+      "function": "texture_by_name",
+      "samples": 42,
+      "all_thread_percent": 0.4493901134175048
+    },
+    {
+      "location": "crates/rhapsody/src/rg/parallel.rs:106",
+      "function": "{closure#1}<rhapsody::rg::executor::ChunkWork<&mut dyn rhapsody::rg::executor::PassRecord>, rhapsody::rg::executor::ChunkResult, rhapsody::rg::executor::{impl#12}::record_chunked_batch::{closure_env#8}<&mut dyn rhapsody::rg::executor::PassRecord, rhapsody::rg::vulkan::VulkanGraphBackend>>",
+      "samples": 38,
+      "all_thread_percent": 0.40659105499679005
+    },
+    {
+      "location": "crates/country-core/src/render/declare_probe.rs:74",
+      "function": "start",
+      "samples": 35,
+      "all_thread_percent": 0.374491761181254
+    },
+    {
+      "location": "crates/rhapsody/src/bindless.rs:1467",
+      "function": "prepare<tiny_glade::render_host::{impl#20}::prepare::{closure_env#3}<core::iter::adapters::map::Map<core::slice::iter::Iter<(u32, rhapsody::bindless::parameters::BindlessResource)>, tiny_glade::raster_host::bindless_parameters::{closure_env#5}>>>",
+      "samples": 35,
+      "all_thread_percent": 0.374491761181254
+    },
+    {
+      "location": "crates/tiny-glade/src/render_host.rs:2284",
+      "function": "prepare",
+      "samples": 32,
+      "all_thread_percent": 0.34239246736571793
+    },
+    {
+      "location": "crates/rhapsody/src/bindless.rs:162",
+      "function": "record",
+      "samples": 30,
+      "all_thread_percent": 0.32099293815536056
+    },
+    {
+      "location": "crates/rhapsody/src/sync/timeline.rs:42",
+      "function": "wait_all",
+      "samples": 29,
+      "all_thread_percent": 0.3102931735501819
+    },
+    {
+      "location": "crates/tiny-glade/src/render_host.rs:2616",
+      "function": "{closure#1}<core::iter::adapters::map::Map<core::slice::iter::Iter<tiny_glade::render_host::ShaderResourceBinding>, tiny_glade::render_host::{impl#35}::add_compute::{closure#24}::{closure#11}::{closure_env#0}>>",
+      "samples": 25,
+      "all_thread_percent": 0.26749411512946714
+    },
+    {
+      "location": "crates/tiny-glade/src/frame_setup.rs:223",
+      "function": "prepare_page",
+      "samples": 17,
+      "all_thread_percent": 0.18189599828803765
+    },
+    {
+      "location": "crates/country-core/src/render/declare_probe.rs:79",
+      "function": "add",
+      "samples": 16,
+      "all_thread_percent": 0.17119623368285897
+    },
+    {
+      "location": "crates/rhapsody/src/raw/managed/resources.rs:243",
+      "function": "get<rhapsody::raw::texture::Texture>",
+      "samples": 15,
+      "all_thread_percent": 0.16049646907768028
+    },
+    {
+      "location": "crates/country-core/src/resources/rt/bvh_builder.rs:123",
+      "function": "bvh_builder_worker",
+      "samples": 15,
+      "all_thread_percent": 0.16049646907768028
+    },
+    {
+      "location": "crates/rhapsody/src/bindless.rs:1464",
+      "function": "prepare<tiny_glade::render_host::{impl#20}::prepare::{closure_env#3}<core::iter::adapters::map::Map<core::slice::iter::Iter<tiny_glade::render_host::ShaderResourceBinding>, tiny_glade::render_host::{impl#35}::add_compute::{closure#24}::{closure#11}::{closure_env#0}>>>",
+      "samples": 13,
+      "all_thread_percent": 0.1390969398673229
+    },
+    {
+      "location": "crates/tiny-glade/src/raster_host.rs:943",
+      "function": "rg_buffer_resource_typed",
+      "samples": 13,
+      "all_thread_percent": 0.1390969398673229
+    },
+    {
+      "location": "crates/tiny-glade/tests/original_loading_present.rs:10",
+      "function": "__rust_realloc",
+      "samples": 13,
+      "all_thread_percent": 0.1390969398673229
+    },
+    {
+      "location": "crates/rhapsody/src/raw/allocator.rs:771",
+      "function": "with_host<core::result::Result<(), rhapsody::error::Error>, rhapsody::raw::allocator::{impl#8}::reserve_cpu_bytes::{closure_env#0}>",
+      "samples": 12,
+      "all_thread_percent": 0.12839717526214423
+    },
+    {
+      "location": "crates/rhapsody/src/pipeline.rs:239",
+      "function": "poll",
+      "samples": 12,
+      "all_thread_percent": 0.12839717526214423
+    },
+    {
+      "location": "crates/country-core/src/render/pass_builder/draw_stream.rs:724",
+      "function": "commit_draw_batch",
+      "samples": 12,
+      "all_thread_percent": 0.12839717526214423
+    },
+    {
+      "location": "crates/rhapsody/src/rg/pass_builder.rs:64",
+      "function": "add_resource_access_range",
+      "samples": 11,
+      "all_thread_percent": 0.11769741065696554
+    },
+    {
+      "location": "crates/rhapsody/src/bindless.rs:1467",
+      "function": "prepare<tiny_glade::render_host::{impl#20}::prepare::{closure_env#3}<core::iter::adapters::map::Map<core::slice::iter::Iter<tiny_glade::render_host::ShaderResourceBinding>, tiny_glade::render_host::{impl#35}::add_compute::{closure#24}::{closure#11}::{closure_env#0}>>>",
+      "samples": 10,
+      "all_thread_percent": 0.10699764605178685
+    },
+    {
+      "location": "crates/rhapsody/src/rg/owner_storage.rs:42",
+      "function": "add_recorded",
+      "samples": 9,
+      "all_thread_percent": 0.09629788144660817
+    },
+    {
+      "location": "third_party/winit-d03de0a0/src/platform_impl/macos/event_loop.rs:310",
+      "function": "{closure#0}<(), original_loading_present::validate_gameplay_present::{closure_env#5}>",
+      "samples": 9,
+      "all_thread_percent": 0.09629788144660817
+    }
+  ]
+}

@@ -164,7 +164,7 @@ pub fn ui_draw_terrain(
     // B0x142adc498: resolved original new/continue/release/noop branches.
     match state {
         1 => {
-            if let Ok(Some(id)) = editing.new_stroke(position.to_array()) {
+            if let Some(id) = editing.new_stroke(position.to_array()).expect("original terrain stroke creation must not swallow failures") {
                 // B aa010f..aa011d: preserve the raw drag distance before any
                 // SSBO lookup or clamp/addition for the actual stroke height.
                 editing.cursor_height_override = Some(draw_state.drag_distance);
@@ -202,20 +202,15 @@ pub fn ui_draw_terrain(
                 // B 0x140aa0235..0x140aa02c2: the cursor keeps all XYZ
                 // coordinates; border failure skips mutation and notification.
                 stroke.insert_or_morph_last_point(position.to_array(), MORPH_SPACING);
-                let id = StrokeId(
-                    editing
-                        .next_index
-                        .checked_sub(1)
-                        .expect("original last terrain stroke counter assertion"),
-                );
+                let id = editing.last_stroke_id();
                 // The native caller publishes this even when the point helper
                 // returns without changing a point (near duplicate / 1024 cap).
                 effects.changed.write(EvTerrainStrokeChanged(id));
             }
         }
         3 => {
-            let id = editing.next_index.checked_sub(1).map(StrokeId);
-            if let (Some(id), Ok(stroke)) = (id, editing.get_last_mut_stroke()) {
+            let id = editing.last_stroke_id();
+            if let Ok(stroke) = editing.get_last_mut_stroke() {
                 pending.stage(TerrainEdit::NewTerrainStroke {
                     index: id,
                     height_ws: stroke.height_ws,
@@ -1033,7 +1028,7 @@ mod cursor_plane_lifecycle_tests {
         let mut world = world(12.0, 3);
         {
             let mut editing = world.resource_mut::<TerrainEditingData>();
-            editing.next_index = tg_terrain::stroke::ID_COUNTER_LIMIT;
+            editing.next_index = u64::from(tg_terrain::stroke::ID_COUNTER_LIMIT);
             editing.cursor_height_override = Some(7.25);
         }
         let mut schedule = Schedule::default();
@@ -1047,11 +1042,34 @@ mod cursor_plane_lifecycle_tests {
     fn release_without_a_last_stroke_still_clears_the_plane() {
         let mut world = world(12.0, 5);
         world.resource_mut::<TerrainDrawState>().state = 2;
-        world.resource_mut::<TerrainEditingData>().cursor_height_override = Some(7.25);
+        {
+            let mut editing = world.resource_mut::<TerrainEditingData>();
+            // 原get_last_mut_stroke先断言完整64位counter非零，再查counter低32位-1。
+            // 这里模拟最后笔画已被移除；counter=0属于另一条原失败分支。
+            editing.next_index = 1;
+            editing.cursor_height_override = Some(7.25);
+        }
         let mut schedule = Schedule::default();
         schedule.add_systems(ui_draw_terrain);
         schedule.run(&mut world);
         assert_eq!(world.resource::<TerrainEditingData>().cursor_height_override, None);
+        assert!(world.resource::<Events<NotifyHintSystemTerrain>>().is_empty());
+        assert!(world.resource::<Events<NotifyHintSystemToolWasJustUsed>>().is_empty());
+    }
+
+    #[test]
+    fn release_with_zero_counter_panics_before_clearing_the_plane() {
+        let mut world = world(12.0, 5);
+        world.resource_mut::<TerrainDrawState>().state = 2;
+        world.resource_mut::<TerrainEditingData>().cursor_height_override = Some(7.25);
+        let mut schedule = Schedule::default();
+        schedule.add_systems(ui_draw_terrain);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            schedule.run(&mut world);
+        }));
+        assert!(result.is_err());
+        // 原140aa02d9调用924900；counter零在9249f5失败，不能到aa06eb清除平面。
+        assert_eq!(world.resource::<TerrainEditingData>().cursor_height_override, Some(7.25));
         assert!(world.resource::<Events<NotifyHintSystemTerrain>>().is_empty());
         assert!(world.resource::<Events<NotifyHintSystemToolWasJustUsed>>().is_empty());
     }

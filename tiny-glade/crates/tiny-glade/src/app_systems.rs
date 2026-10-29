@@ -14,12 +14,8 @@ impl WallSystems for bevy_app::App {
     /// `add_wall_systems` 0x140493120：12 次 add_systems + 1 次 insert_resource，调度标签/set 号/成员
     /// 顺序取证见 reports/main-loop-render-recovery-2026-10-19/PLUGIN-WIRING-2026-10-20.md 附录 A。
     ///
-    /// **未闭合（本仓库对应系统仍是 `todo!` 或缺失，注册即会在运行时 panic，所以不注册，不用空函数
-    /// 冒充）**：set 24 链的 `detect_overhang_support_segments`、`construct_circle_supports`、
-    /// `construct_rectangle_columns`、`maintain_stone_column_colliders`；set 28 链的
-    /// `construct_platform_stairs`、`construct_floors`、`structure_outline`、`debug_viz_threshold_curve`
-    /// 之外的缺项；set 36 的 `construct_rectangle_brackets`；set 32 的 `create_plaster`、
-    /// `maintain_plaster`、`curved_halftimber_maintain_entities`。
+    /// 支撑三个入口分别位于 set24 与 set36；set28 的同一墙构造父链同步生成半木，
+    /// set32 消费抹灰、曲面半木与木塔结果。注册完成不替代原行为与联合运行验收。
     ///
     /// **宿主适配（原版链中没有，保持其原有相对位置）**：`synchronize_wall_publication_terrain`、
     /// `collect_wall_publication_dirty`、`prepare_wall_brick_assembly_owners`、
@@ -46,7 +42,7 @@ impl WallSystems for bevy_app::App {
             wall::wall_splitter::wall_splitter::<MaybePendingSnapshotId>,
             wall::eraser::ui_bulldozer::wall_eraser_bulldoze
                 .run_if(wall::eraser::ui_bulldozer::wall_eraser_bulldoze_condition),
-            wall::eraser::wall_eraser::wall_eraser,
+            wall::eraser::wall_eraser::wall_eraser::<MaybePendingSnapshotId>,
             wall::eraser::animate_wall_bulldoze::animate_wall_bulldoze,
             wall::ui_draw_wall::ui_draw_wall,
             wall::ui_continue_wall::suppress_continue_wall,
@@ -59,7 +55,7 @@ impl WallSystems for bevy_app::App {
             wall::snapping::snapping_maintain::snapping_signifiers,
             wall::snapping::snapping_maintain::snapping_maintain,
             wall::draw_wall::draw_wall,
-            wall::finish_wall::finish_wall,
+            wall::finish_wall::finish_wall::<MaybePendingSnapshotId>,
             wall::merge_walls::merge_walls,
             wall::snapping::telegraph_walls_are_merged::telegraph_walls_are_merged,
         )
@@ -74,7 +70,8 @@ impl WallSystems for bevy_app::App {
             wc::ui_arch_controls::do_ui_arch_controls,
             wc::ui_lintel_controls::ui_lintel_controls,
             wall::wall_highlight::wall_highlight,
-            wall::wall_state::publish_public_wall_state::publish_public_wall_state,
+            (wall::wall_state::publish_public_wall_state::publish_public_wall_state,
+                wc::gpu_output::retire_republished_half_timber).chain_ignore_deferred(),
             wall::delete_wall::delete_wall,
             // 宿主适配（原版没有）。
             country_core::geometry::runtime::prepare_wall_brick_assembly_owners,
@@ -93,26 +90,42 @@ impl WallSystems for bevy_app::App {
         // 0x1404932eb + 0x1404932f6（Startup）
         self.init_resource::<wc::construct_elevation_supports::OverhangSupportDirtySubscriptions>();
         self.add_systems(Startup, wc::construct_elevation_supports::overhang_subscribe_to_tabloids);
-        // set 24 链的可运行成员只有末位 flush_rapier_colliders；其余见上面的未闭合清单。
+        // 原set24顺序：脏区检测→圆支撑→矩形柱→柱碰撞→物理提交。
+        // 托架由原set36另行消费，保持其晚于柱与主体墙生成的调度。
         self.add_systems(
             Update,
-            country_core::systems::collision::world::flush_rapier_colliders.in_set(GameSystemSet(24)),
+            (
+                wc::construct_elevation_supports::detect_overhang_support_segments,
+                wc::construct_elevation_supports::construct_circle_supports,
+                wc::construct_elevation_supports::construct_rectangle_columns,
+                wc::construct_elevation_supports::maintain_stone_column_colliders::maintain_stone_column_colliders,
+                country_core::systems::collision::world::flush_rapier_colliders,
+            ).chain_ignore_deferred().in_set(GameSystemSet(24)),
         );
-        // 6. 0x140493414 set 28：gates → fences → (适配 finalize) → construct_walls。
+        // 6. 原set28保留chain_ignore_deferred；楼板紧随墙构造、先于debug与outline。
         self.add_systems(
             Update,
             (
                 wc::construct_gates::systems::update_gates_hashmap,
                 wc::construct_gates::systems::construct_gates,
                 wc::construct_fences::construct_fences,
+                // 原set28：通用柱消费set22的拱／过梁缓存，追加各自通用实例槽。
+                wc::place_pillars::place_pillars,
                 wall::construct_wall_bricks::finalize_wall_holes,
                 wc::construct_walls::construct_walls,
+                wc::construct_floors::construct_floors,
                 wall::wall_state::debug_viz_threshold_curve::debug_viz_threshold_curve,
                 wall::structure_outline::structure_outline,
             )
                 .chain_ignore_deferred()
                 .in_set(GameSystemSet(28)),
         );
+        // 原1404934e4/4e9：set32三项保持create→maintain→实体维护及ignore_deferred。
+        // 同一父链生成的曲面半木及圆塔由这里维护实体。
+        self.add_systems(Update,
+            (wc::plaster_systems::create_plaster, wc::plaster_systems::maintain_plaster,
+                wc::curved_halftimber::curved_halftimber_maintain_entities)
+                .chain_ignore_deferred().in_set(GameSystemSet(32)));
         // 8. 0x1404934bf set 34
         self.add_systems(
             Update,
@@ -120,8 +133,8 @@ impl WallSystems for bevy_app::App {
                 wall::adjust_wall_height::ui_adjust_wall_height_mode::history_record_adjust_wall_height::<
                     MaybePendingSnapshotId,
                 >,
-                wall::deferred_wall_history::history_record_wall_changed,
-                wall::deferred_wall_history::history_record_merge_walls,
+                wall::deferred_wall_history::history_record_wall_changed::<MaybePendingSnapshotId>,
+                wall::deferred_wall_history::history_record_merge_walls::<MaybePendingSnapshotId>,
                 country_core::systems::ui_clutter::defered_autoclutter_history::defered_autoclutter_history::<
                     MaybePendingSnapshotId,
                 >,
@@ -129,6 +142,9 @@ impl WallSystems for bevy_app::App {
                 .chain_ignore_deferred()
                 .in_set(GameSystemSet(34)),
         );
+        // 原140493423写0x24，140493425构造独立托架系统，140493430加入Update。
+        self.add_systems(Update,
+            wc::construct_elevation_supports::construct_rectangle_brackets.in_set(GameSystemSet(36)));
         // 9. 0x1404934db set 44：普通 tuple，非 chain。
         self.add_systems(
             Update,
@@ -161,7 +177,8 @@ impl WallSystems for bevy_app::App {
                 roofs::commands::{RecalculateWallHoles, RoofIsInvalid},
                 walls::{
                     EraserSizeMultiplier, WallHighlight,
-                    plaster::{AnimatedPlasterPeel, RecalculatePlasterCmd},
+                    plaster::{AnimatedPlasterPeel, RecalculatePlasterCmd, CreatePlasterCmd, DeletePlasterCmd,
+                        RecalculateHalfTimberMeshCmd, RecalculateWoodenTurretCmd},
                     public_walls::{OnWallChanged, OnWallDeleted},
                     wall_stone_columns::{StoneColumnCollisionStorage, StoneColumnsChanged},
                 },
@@ -195,6 +212,7 @@ impl WallSystems for bevy_app::App {
         self.init_resource::<PendingWallHistory>();
         self.init_resource::<PendingTerrainHistory>();
         self.init_resource::<StoneColumnCollisionStorage>();
+        self.init_resource::<country_core::resources::walls::curved_halftimber::CurvedHalfTimberDrawables>();
         self.insert_resource(EraserSizeMultiplier(1.0));
 
         self.add_event::<FinishWall>();
@@ -207,6 +225,13 @@ impl WallSystems for bevy_app::App {
         self.add_event::<AdjustWallHeightCmd>();
         self.add_event::<StoneColumnsChanged>();
         self.add_event::<RecalculatePlasterCmd>();
+        // 原add_wall_events调用14057bd00/140582c60注册这两个通道。
+        self.add_event::<CreatePlasterCmd>();
+        self.add_event::<DeletePlasterCmd>();
+        self.add_event::<RecalculateHalfTimberMeshCmd>();
+        self.add_event::<RecalculateWoodenTurretCmd>();
+        self.add_event::<system_wall_constructor::construct_elevation_supports::RecalculateRectangleSupports>();
+        self.add_event::<system_wall_constructor::construct_elevation_supports::RecalculateCircleSupports>();
         self.add_event::<HighlightWallCmd>();
         self.add_event::<OutlineWallCmd>();
         self.add_event::<OutlineStairsCmd>();
@@ -249,9 +274,12 @@ pub fn walls_on_glade_unload(
         system_wall_constructor::construct_platform_stairs::PlatformStairsStorage,
     >,
     mut gates: bevy_ecs::prelude::ResMut<country_core::resources::walls::wooden_gates::Gates>,
+    mut constructor: bevy_ecs::prelude::ResMut<system_wall_constructor::construct_arches::WallConstructorOutput>,
 ) {
     use country_core::resources::color_id::*;
     *public = Default::default();
+    // 原PublicWalls析构同时释放其分配；当前sidecar沿同一退出阶段退役。
+    constructor.gpu = Default::default();
     *entities = Default::default();
     *plasters = Default::default();
     // Original +10 byte only; retained id/entity payload is not zeroed.

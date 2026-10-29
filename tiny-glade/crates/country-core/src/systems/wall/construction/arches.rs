@@ -53,6 +53,51 @@ pub struct WallArchesOutput {
     /// Original ArchSegments map owns these full104B records after profiling
     /// (140762a58..140762a99), independently of generated brick instances.
     pub segments: Vec<MaterializedWallSegment>,
+    /// 按掩码顺序保存由原 arch 段端点生成的柱提案缓存。
+    pub pillar_caches: Vec<(Vec<[u8; 28]>, Vec<f32>, Vec<usize>)>,
+}
+/// B 140760c20..1407610f8：按原 104B 段端点顺序归并柱提案。
+pub fn collect_pillar_endpoints(
+    segment: &MaterializedWallSegment,
+    cache: &mut (Vec<[u8; 28]>, Vec<f32>, Vec<usize>),
+    touched_start: &mut bool,
+    lintel: bool,
+) {
+    let n = segment.heights.len();
+    assert!(n > 0 && segment.positions.len() >= n && segment.points_u.len() >= n);
+    let mut add = |key: usize, at: usize, adjacent: usize| {
+        let p = segment.positions[at];
+        let q = segment.positions[adjacent];
+        let (dx, dz) = if at == 0 { (q[0] - p[0], q[2] - p[2]) }
+                       else { (p[0] - q[0], p[2] - q[2]) };
+        let inv = 1.0 / (dz * dz + dx * dx).sqrt();
+        let score = if lintel { segment.heights[at] + f32::from_bits(0xbe666667) } else { segment.heights[at] };
+        let values = [dx * inv, dz * inv, p[0], p[1], p[2], score, segment.points_u[at]];
+        let mut proposal = [0u8; 28];
+        for (chunk, value) in proposal.chunks_exact_mut(4).zip(values) { chunk.copy_from_slice(&value.to_le_bytes()); }
+        if cache.2.last().copied() == Some(key) {
+            let old = cache.1.last_mut().expect("原柱提案缺少分数");
+            *old = if old.is_nan() || score < *old { score } else { *old };
+            let previous = cache.0.last_mut().expect("原柱提案缺少记录");
+            let previous_score = f32::from_le_bytes(previous[20..24].try_into().unwrap());
+            if score > previous_score { *previous = proposal; }
+        } else { cache.0.push(proposal); cache.1.push(score); cache.2.push(key); }
+    };
+    if lintel || segment.heights[0] > 0.3 {
+        assert!(n >= 2);
+        if !lintel { *touched_start |= segment.range.start.rem_euclid(segment.range.modulus) == 0; }
+        add(segment.source_indices[0], 0, 1);
+    }
+    let length = segment.positions.windows(2).fold(0.0f32, |sum, pair| {
+        let d = Vec3::from_array(pair[1]) - Vec3::from_array(pair[0]);
+        sum + ((d.y*d.y + d.x*d.x) + d.z*d.z).sqrt()
+    });
+    if lintel || (segment.heights[n - 1] > 0.3 && length > 0.3
+        && !(*touched_start && segment.range.end.rem_euclid(segment.range.modulus) == 1))
+    {
+        assert!(n >= 2);
+        add(segment.source_indices[1] - 1, n - 1, n - 2);
+    }
 }
 fn length_xyz(v: Vec3) -> f32 {
     ((v.x * v.x + v.y * v.y) + v.z * v.z).sqrt()
@@ -253,7 +298,9 @@ pub fn construct_regular_wall_arches(
         gate_commands: Vec::new(),
         segment_count: 0,
         segments: Vec::new(),
+        pillar_caches: Vec::new(),
     };
+    let mut touched_start = false;
     let mut all = Vec::new();
     for mask in input.masks {
         let mut segments = materialize_wall_segments(WallSegmentSource {
@@ -302,6 +349,11 @@ pub fn construct_regular_wall_arches(
                 &mut out.instances,
             );
         }
+        let mut cache = (mask.pillar_proposals.clone(), mask.pillar_scores.clone(), mask.pillar_keys.clone());
+        for segment in &segments {
+            collect_pillar_endpoints(segment, &mut cache, &mut touched_start, false);
+        }
+        out.pillar_caches.push(cache);
         all.extend(segments);
     }
     for s in &all {
@@ -315,4 +367,27 @@ pub fn construct_regular_wall_arches(
     arch[n - 1] = arch[0];
     out.segments = all;
     Ok(out)
+}
+
+#[cfg(test)]
+mod pillar_cache_tests {
+    use super::*;
+    use crate::systems::wall::construction::segmentation::WallLoopRange;
+
+    #[test]
+    fn arch_and_lintel_endpoint_caches_follow_distinct_original_gates() {
+        let segment = MaterializedWallSegment {
+            heights: vec![0.3, 1.0], positions: vec![[0.0, 0.0, 0.0], [0.3, 0.0, 0.0]],
+            points_u: vec![0.0, 0.5], source_indices: [0, 2],
+            range: WallLoopRange { start: 0, end: 2, modulus: 4 },
+        };
+        let mut arch = (Vec::new(), Vec::new(), Vec::new());
+        collect_pillar_endpoints(&segment, &mut arch, &mut false, false);
+        assert!(arch.0.is_empty());
+        let mut lintel = (Vec::new(), Vec::new(), Vec::new());
+        collect_pillar_endpoints(&segment, &mut lintel, &mut false, true);
+        assert_eq!(lintel.2, [0, 1]);
+        assert_eq!(lintel.1, [0.3 + f32::from_bits(0xbe666667), 1.0 + f32::from_bits(0xbe666667)]);
+        assert_eq!(f32::from_le_bytes(lintel.0[1][24..28].try_into().unwrap()), 0.5);
+    }
 }

@@ -95,7 +95,9 @@ impl ObservedStairEndpoint {
         u32::from_le_bytes(self.0[16..20].try_into().unwrap())
     }
     pub fn is_unset(&self) -> bool {
-        self.tag() == 3
+        // 原 continue_stairs14079c4d9 与端点消费者只比较32位判别；
+        // 紧随其后的4B不是活跃tag，不能把padding纳入状态判断。
+        u32::from_le_bytes(self.0[..4].try_into().unwrap()) == 3
     }
     fn unset(&mut self) {
         self.0[..8].copy_from_slice(&3u64.to_le_bytes());

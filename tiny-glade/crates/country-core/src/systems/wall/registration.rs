@@ -31,7 +31,7 @@ use crate::systems::wall::{
     eraser::{
         AnimateWallBulldozeCmd, WallBulldozeAudio, WallEraserStroke,
         animate_wall_bulldoze::{AnimateWallBulldozeBuffer, animate_wall_bulldoze},
-        archivist::{WallEraserArchivist, finish_wall_eraser},
+        archivist::WallEraserArchivist,
         ui_bulldozer::{BulldozerRayPick, enqueue_bulldoze_command, wall_eraser_bulldoze},
         wall_eraser::wall_eraser,
     },
@@ -83,15 +83,29 @@ pub fn register_wall_cpu_resources(world: &mut World) {
     world.init_resource::<WallHoles>();
     world.init_resource::<PrevWallHoles>();
     world.init_resource::<WallBrickBuildState>();
+    world.init_resource::<crate::resources::walls::elevation_support_stats::ElevationSupportStats>();
     world.init_resource::<Events<OnWallChanged>>();
     world.init_resource::<Events<OnWallDeleted>>();
     world.init_resource::<Events<WallBendChangedEvent>>();
     world.init_resource::<Events<RecalculateWallBricks>>();
+    world.init_resource::<Events<crate::resources::walls::plaster::RecalculatePlasterCmd>>();
+    world.init_resource::<Events<crate::resources::walls::plaster::RecalculateHalfTimberMeshCmd>>();
+    world.init_resource::<Events<crate::resources::walls::plaster::RecalculateWoodenTurretCmd>>();
     world.init_resource::<Events<WallBricksChanged>>();
     world.init_resource::<crate::resources::rt::RtWorld>();
     world.init_resource::<Events<crate::resources::rt::UpdateRtWorldEvent>>();
     // 装饰权威存储资源（卡5 decorator_storage；OnWallDeleted 消费链）。
     world.init_resource::<DecoratorStorage>();
+    // 擦除与分裂读取同一份真实碰撞归档源；兼容入口也必须提供这些 owner。
+    world.init_resource::<crate::systems::collision::world::RaycastWorld>();
+    #[cfg(feature = "native-physics")]
+    world.init_resource::<crate::resources::walls::decorator_collision::DecoratorPhysicsColliders>();
+    world.init_resource::<crate::resources::editing_highlight::EditingHighlight>();
+    world.init_resource::<crate::resources::walls::EraserSizeMultiplier>();
+    world.init_resource::<Events<crate::resources::onboarding::NotifyHintSystemSomethingWasErased>>();
+    world.init_resource::<Events<crate::systems::ivy::ivy_pruner::RemoveIvyCmd>>();
+    world.init_resource::<Events<crate::systems::audio::PlayWallAudio>>();
+    world.init_resource::<Events<crate::resources::events::ReanchorDecorators>>();
     register_wall_height_events(world);
     crate::resources::roofs::register_roof_events(world);
     // R4+R5: snapping / eraser / shapes (valid_enclosure is a pure type).
@@ -192,8 +206,8 @@ pub fn add_wall_drawing_cpu_systems<S: Send + Sync + 'static>(schedule: &mut Sch
             suppress_continue_wall,
             ui_continue_wall.before(history_start_recording::<S>),
             draw_wall.after(history_start_recording::<S>),
-            finish_wall.before(adjust_wall_height),
-            history_record_wall_changed,
+            finish_wall::<S>.before(adjust_wall_height),
+            history_record_wall_changed::<S>,
         )
             .chain()
             .in_set(WallCpuStage::Edit)
@@ -221,7 +235,7 @@ pub fn add_wall_cpu_systems(schedule: &mut Schedule) {
     );
     schedule.add_systems(
         adjust_wall_height
-            .after(super::finish_wall::finish_wall)
+            .after(super::finish_wall::finish_wall::<crate::resources::history::MaybePendingSnapshotId>)
             .in_set(WallCpuStage::Edit),
     );
     // R4+R5 edit systems: snapping candidates, eraser and shape creation/editing
@@ -233,7 +247,7 @@ pub fn add_wall_cpu_systems(schedule: &mut Schedule) {
             snapping_to_segments,
             check_for_disable_snapping,
             snapping_maintain,
-            wall_eraser,
+            wall_eraser::<crate::resources::history::MaybePendingSnapshotId>,
             calc_shape_height,
             create_circle,
             create_rectangle,
@@ -246,7 +260,6 @@ pub fn add_wall_cpu_systems(schedule: &mut Schedule) {
     schedule.add_systems(
         (
             animate_wall_bulldoze,
-            finish_wall_eraser,
             wall_eraser_bulldoze,
             // 归属核对（fresh）：缓冲入队是 native 跳表目标 handler，须在
             // ray-pick 生产者（wall_eraser_bulldoze）之后消费 AnimateWallBulldozeCmd。
@@ -336,6 +349,10 @@ mod tests {
             delta: 0.1,
             ..Default::default()
         });
+        // 矩形编辑音效读取原Time owner，GameTime不能替代它。
+        let mut time = bevy_time::Time::<()>::default();
+        time.advance_by(std::time::Duration::from_secs_f32(0.1));
+        world.insert_resource(time);
         // Explicit full-size input fixtures exercise the real named buffer path.
         world.insert_resource(WallPublicationTerrain(TerrainHeightGrid512 {
             encoded: vec![0u16; 512 * 512].into(),

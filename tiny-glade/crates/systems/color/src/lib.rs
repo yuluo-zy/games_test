@@ -246,7 +246,7 @@ pub fn build<S: Send + Sync + 'static>(world: &mut World, schedule: &mut Schedul
 ///
 /// 与重建 crate 旧 `add_color_cpu_systems` 的差异：原版有 `set_wall_style`、没有 `color_cursor_icon`。
 /// 未闭合：原版 `set_*_color_id` 内含 SSBO 上传段，重建版未恢复，宿主用独立的
-/// `write_wall_color_ids_to_gpu` 补这一段。
+/// 墙setter已恢复原地整表上传；门／半木尚由`write_gate_and_halftimber_color_ids_to_gpu`适配。
 pub trait ColorSystems {
     fn add_color(&mut self) -> &mut Self;
 }
@@ -293,7 +293,7 @@ impl ColorSystems for bevy_app::App {
                     set_decorator_color_id::set_decorator_color_id,
                     set_gate_color_id::set_gate_color_id,
                     set_halftimber_color_id::set_halftimber_color_id,
-                    country_core::systems::wall::set_wall_style::set_wall_style,
+                    country_core::systems::wall::set_wall_style::set_wall_style::<S>,
                     set_flag_connection_n_chimney_smoke::set_flag_connection_and_chimney_smoke,
                     set_window_light::set_window_light,
                     write_roof_color_id_to_gpu::write_roof_color_id_to_gpu,

@@ -19,7 +19,8 @@ fn close(a:f32,b:f32){assert!((a-b).abs()<0.00001 || a.to_bits()==b.to_bits(),"{
 
 #[test]
 fn actual_rotation_ecs_matches_all_native_phases_and_preserves_existing_info() {
- for case in NATIVE {
+ // 同一原事件合同在真实demo两种上下文执行；demo不属于原操作/事件union。
+ for (case,demo) in NATIVE.iter().flat_map(|case|[(case,false),(case,true)]) {
     let id=DecoratorId(71);
     let addr=if case.dst==4 {DecoratorStorageAddr::Stair} else {DecoratorStorageAddr::Terrain};
     let mut input=[0x91u8;72];
@@ -53,6 +54,7 @@ fn actual_rotation_ecs_matches_all_native_phases_and_preserves_existing_info() {
     world.init_resource::<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>();
     world.insert_resource(country_core::systems::collision::world::RaycastWorld::new());
     world.init_resource::<UiSignifierStream>();world.init_resource::<Events<PlayDecoratorSoundCmd>>();
+    world.insert_resource(country_core::systems::backend::input::translate_input::DemoModeEnabled(demo));
     world.init_resource::<DeferredDecoratorOpEvents>();world.init_resource::<Events<DecoratorOpEvent>>();world.init_resource::<DecoratorArchivist<()>>();
     world.init_resource::<DeferredDecoratorEditHistory>();world.init_resource::<DecoratorBackup>();
     let mut schedule=Schedule::default();schedule.add_systems((super::ui_decorator_affordance_dispatch::ui_dispatch_focused_decorator_requests,ui_rotate_decorator::<()>,unleash_decorator_op_events).chain());schedule.run(&mut world);
@@ -61,7 +63,7 @@ fn actual_rotation_ecs_matches_all_native_phases_and_preserves_existing_info() {
     if op.is_empty(){assert_eq!(after,before);} else {
         let mut expected=input;
         let in_place=u64::from_le_bytes(op[16..24].try_into().unwrap())==3;
-        if in_place {expected[0x2c..0x30].copy_from_slice(&before.decorator_id.wrapping_add(1).to_le_bytes());expected[0x45]=5;}
+        if in_place {expected[0x2c..0x30].copy_from_slice(&before.decorator_id.wrapping_add(1).to_le_bytes());expected[0x45]=if demo {0} else {5};}
         else {let at=if case.dst==4 {16} else {8};expected[at..at+4].copy_from_slice(&op[32+at..36+at]);}
         let actual=crate::apply_decorator_op::info_to_bytes(after);
         let yaw_at=if case.dst==4 {16} else {8};

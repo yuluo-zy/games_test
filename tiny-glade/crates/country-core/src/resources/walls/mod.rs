@@ -27,6 +27,26 @@ pub mod shape_alignment;
 pub use inner_wall_state::WallState;
 pub use inner_walls::{InnerWalls, WallChanges};
 
+/// 墙楼板的权威来源与形状；不暴露原版组件的内存布局。
+#[derive(bevy_ecs::component::Component, Clone, Debug)]
+pub struct Floor {
+    pub wall_id: WallId,
+    pub shape: publication_fields::WallShapeSnapshot,
+}
+
+impl Floor {
+    /// StoneFloor 消费者读取的 ID 与形状投影。
+    pub fn render_words(&self) -> [u32; 10] {
+        let mut words = [0; 10];
+        words[0] = self.wall_id.0 as u32;
+        words[1] = (self.wall_id.0 >> 32) as u32;
+        for (i, bytes) in self.shape.bytes().chunks_exact(4).enumerate() {
+            words[i + 2] = u32::from_le_bytes(bytes.try_into().unwrap());
+        }
+        words
+    }
+}
+
 /// B eraser multiplier read as one f32. Startup policy remains with its owner.
 #[derive(bevy_ecs::resource::Resource, Clone, Copy, Debug, Default, PartialEq)]
 pub struct EraserSizeMultiplier(pub f32);

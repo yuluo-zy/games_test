@@ -103,11 +103,13 @@ pub struct ClutterRegionId(pub u64);
 /// 本重建以 key/center/basis 承载载荷几何（近似），candidate_index/epoch 为状态字段。
 #[derive(Clone, Debug)]
 pub struct AutoClutterRegion {
+    /// 原区域来源 union；尚未恢复的生产者保留 None，而非伪造来源。
+    pub source: Option<country_core::components::drawable::AutoClutterSource>,
     /// +0x00：种类（3=门/预置、4=鸟巢、5=灯笼/树；add_region 判别==4 时释放 Arc）。
     pub kind: u32,
     /// +0x08..：区域键（hashbrown 表键；载荷内 +0x08 为 u64 段）。
     pub key: ClutterRegionId,
-    /// +0x10..：中心（3×f32；二进制 +0x18.. 近似）。
+    /// 原区域的角点（3×f32）；矩形中心由此点加旋转后半对角线得到。
     pub center: Vec3,
     /// +0x1c..：基向量（4×f32；二进制 +0x24.. 近似）。
     pub basis: [Vec2; 2],
@@ -125,6 +127,7 @@ pub struct AutoClutterRegion {
 impl Default for AutoClutterRegion {
     fn default() -> Self {
         Self {
+            source: None,
             kind: 3,
             key: ClutterRegionId(0),
             center: Vec3::ZERO,
@@ -154,18 +157,14 @@ impl AutoClutterRegion {
             && self.b39 == other.b39
     }
 
-    /// `rectangle2d`（L521；O add_region 内联 `local_dc = d*a + c*b; local_e0 = c*a - d*b`
-    /// → x0y → Rectangle2d::new → aabb）。精确 center/size/axis 组合为 I（U）；本重建以
-    /// 中心 XZ + 基向量归一化轴近似。
+    /// B 140ee432d..140ee43df：原点加旋转后的半对角线得到矩形中心。
     pub fn rectangle2d(&self) -> utils::geometry::rectangle::Rectangle2d {
-        // O：点积/叉积（d*a+c*b、c*a-d*b）→ x0y；此处用 center/basis 近似组合（U）。
-        let center = Vec2::new(self.center.x, self.center.z);
-        let axis = self.basis[0].normalize_or_zero();
-        if axis == Vec2::ZERO {
-            utils::geometry::rectangle::Rectangle2d::new_axis_aligned(center, Vec2::splat(1.0))
-        } else {
-            utils::geometry::rectangle::Rectangle2d::new(center, Vec2::splat(1.0), axis)
-        }
+        let axis = self.basis[0];
+        let size = self.basis[1];
+        let diagonal = Vec2::new(size.x * axis.x - size.y * axis.y,
+            size.y * axis.x + size.x * axis.y);
+        let center = Vec2::new(self.center.x, self.center.z) + diagonal * 0.5;
+        utils::geometry::rectangle::Rectangle2d::new(center, size, axis)
     }
 }
 
@@ -178,6 +177,8 @@ fn float_ieq(a: f32, b: f32) -> bool {
 /// 区域候选（stride 0x98；字段映射见 process 源→输出表）。
 #[derive(Clone, Debug)]
 pub struct AutoClutterCandidate {
+    /// 保留 producer 选中的原始 owner；缺失时消费端明确报错。
+    pub resolved: Option<ResolvedAutoClutterObject>,
     /// +0x00：种类判别（process 按 3/4/5 clone 共享字段）。
     pub kind: u8,
     /// +0x08：共享引用（Arc 强计数等；process 0x4 分支强计数++、0x5 分支裸指针语义）。
@@ -213,11 +214,14 @@ pub struct AutoClutterCandidate {
     pub rect: utils::geometry::rectangle::Rectangle3d,
     /// +0x88：键（flush swap_remove 换入后查区域表）。
     pub region_key: u64,
+    /// 原候选 +0x90 排序优先级。
+    pub priority: u32,
 }
 
 impl Default for AutoClutterCandidate {
     fn default() -> Self {
         Self {
+            resolved: None,
             kind: 0,
             shared: 0,
             key: 0,
@@ -239,6 +243,7 @@ impl Default for AutoClutterCandidate {
                 glam::Vec2::X,
             ),
             region_key: 0,
+            priority: 0,
         }
     }
 }
@@ -255,6 +260,8 @@ impl AutoClutterCandidate {
 /// values avoids a native pointer or a second asset/resource owner in Rust.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ResolvedClutterMesh {
+    pub mesh_name: &'static str,
+    pub bounds: utils::geometry::rectangle::Rectangle3d,
     pub name_hash: country_core::name_hash::NameHash,
     pub radius_xz: f32,
     pub native_group: u8,
@@ -264,6 +271,8 @@ pub struct ResolvedClutterMesh {
 impl From<&country_core::resources::clutter_meshes::ClutterMesh> for ResolvedClutterMesh {
     fn from(mesh: &country_core::resources::clutter_meshes::ClutterMesh) -> Self {
         Self {
+            mesh_name: mesh.mesh_name,
+            bounds: mesh.bounds,
             // Both NameHash types wrap the same unseeded XXH3-64 value.
             name_hash: country_core::name_hash::NameHash(mesh.name_hash.0),
             radius_xz: mesh.radius_xz,
@@ -274,7 +283,14 @@ impl From<&country_core::resources::clutter_meshes::ClutterMesh> for ResolvedClu
 }
 
 /// Rust semantic adapter, not a native source-enum/ABI representation.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
+pub struct ResolvedAutoClutterObject {
+    pub metadata: ResolvedClutterMesh,
+    pub source: country_core::components::drawable::AutoClutterSource,
+    pub destination: country_core::components::drawable::AutoClutterDestination,
+}
+
+#[derive(Clone, Debug)]
 pub enum SpawnShared {
     /// Legacy reconstruction erased the actual Arc owner. A number alone is
     /// not an Arc; the manager rejects this unresolved input before ECS writes.
@@ -286,6 +302,8 @@ pub enum SpawnShared {
         metadata: ResolvedClutterMesh,
         color: Option<country_core::resources::color_id::ColorId>,
     },
+    /// 来自区域的实际 mesh、来源和落点，不重建原版指针布局。
+    Object(ResolvedAutoClutterObject),
 }
 
 /// One per-frame output value. Native records have stride0x68, but this Rust
@@ -503,6 +521,20 @@ impl AutoClutterState {
         }
     }
 
+    /// B 140eecf00：删过期区域时先解除网格关联，并排队删除其候选。
+    pub fn remove_stale_regions(&mut self) {
+        let stale: Vec<_> = self.regions.iter()
+            .filter_map(|(&key, region)| (region.epoch != self.epoch).then_some(key))
+            .collect();
+        for key in stale {
+            self.remove_region_from_lazy_grid(&key);
+            let region = self.regions.remove(&key).expect("stale region disappeared");
+            if let Some(index) = region.candidate_index.get() {
+                self.push_pending(index);
+            }
+        }
+    }
+
     /// `flush_candidates_pending_removal`（0x140ee4bf0）：pending 升序（<0x15 用
     /// insertion_sort_shift_left 否则 driftsort_main，closure$0 比较器）→ 逐索引：
     /// `Vec::swap_remove`（memmove 末元素进槽、len-1）；判别==4 → Arc 释放；若新长度!=被删
@@ -598,10 +630,11 @@ pub fn reset_autoclutter_for_new_frame(
 fn world_rect_cells_from_aabb(aabb: utils::geometry::Aabb2) -> Vec<usize> {
     let min = aabb.center() - aabb.half_dims();
     let max = aabb.center() + aabb.half_dims();
-    let cells = country_core::utils::dirty_tiles::world_rect_cells([min.x, min.y, max.x, max.y]);
+    // 此迭代器与 BushGrid 共用原始 f32 FMA 和半开、上界 63 的裁剪。
+    let (minimum, end) = read_bush_positions_from_gpu::bush_rect_cells(min, max);
     let mut out = Vec::new();
-    for y in cells.minimum[1]..cells.end[1] {
-        for x in cells.minimum[0]..cells.end[0] {
+    for y in minimum[1]..end[1] {
+        for x in minimum[0]..end[0] {
             out.push(y as usize * 64 + x as usize);
         }
     }

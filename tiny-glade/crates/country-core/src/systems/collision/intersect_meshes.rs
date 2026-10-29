@@ -10,20 +10,207 @@
 //! - `should_intersect_collider_meshes`（0x140a9b3c0，284B）**已实现**（kind 字节判别 +
 //!   registry generation 校验）；
 //! - `intersect_mesh_mesh`（0x140a9afa0，908B）**已实现**（`Qbvh::traverse_bvtt` 包装）；
-//! - `find_mesh_mesh_intersections`（0x140a97b70，13359B）**域内装配已实现**（图剪枝
-//!   `Subscriber::take<ColliderDiff>` → `remove_node` + 逐句柄 AABB + 候选槽 Qbvh 遍历；
-//!   三角对相交 closure 本轮落地 `intersect_triangle_pair` / `intersect_mesh_mesh_segments`；
-//!   铺砖 `BrickTransformSsbo` 宿主缺失登记）；
+//! - `find_mesh_mesh_intersections`（0x140a97b70）：已有差量图剪枝和碰撞候选遍历，
+//!   原父体的交线加工、砖实例、图边和鸟巢生成尚未完整接入；
 //! - `merge_segments_into_polylines`（0x1408f2850，6057B）**已实现**（端点查表 + VecDeque
 //!   折线合并；端点 `roundf` 取整键 + `Segment` Vec3 端点本轮按 fresh 修正）；
-//! - `remove_invalid_polylines`（0x1412f3850 closure）**已实现**（空点折线删除；
-//!   同 closure 的逐点法线重写段未落地，登记）。
+//! - `remove_invalid_polylines`（0x1412f3850 closure）：空点删除及法线递推候选已恢复，
+//!   原指令逐位差分尚待执行。
 
 #[cfg(feature = "native-physics")]
 use crate::systems::collision::world::ColliderDiff;
 use crate::systems::collision::world::{RaycastWorld, SubworldColliderHandle};
 #[cfg(feature = "native-physics")]
 use rapier3d::geometry::ColliderHandle;
+
+/// 原 B line852：退出 Game 时清空同一份网格相交图并释放边载荷，保留表容量。
+/// collision::build@140b6878c 把本函数与 RaycastWorld::on_level_reload
+/// 作为未 chain 的二元 tuple 注册到 OnExit(AppLoadingState::Game)。
+pub fn on_exit_game_state(
+    mut graph: bevy_ecs::prelude::ResMut<crate::systems::collision::MeshIntersectionGraph>,
+) {
+    graph.inner_mut().clear();
+}
+
+/// 碰撞发布器的实际订阅，随系统读取一次差量；启动时由同一 RaycastWorld 创建。
+#[cfg(feature = "native-physics")]
+#[derive(bevy_ecs::prelude::Resource)]
+pub struct MeshMeshIntersectionSubscriber(pub tabloid::Subscriber<ColliderDiff>);
+
+#[cfg(feature = "native-physics")]
+pub fn initialize_mesh_intersection_subscriber(
+    mut world: bevy_ecs::prelude::ResMut<RaycastWorld>,
+    mut commands: bevy_ecs::prelude::Commands,
+) {
+    commands.insert_resource(MeshMeshIntersectionSubscriber(world.mesh_intersect_collider_diff_publisher().subscribe()));
+}
+
+/// 原六业务资源入口；当前资产库需要独占借用才能取得砖缓冲。
+#[cfg(feature = "native-physics")]
+pub fn find_mesh_mesh_intersections_system(
+    world: bevy_ecs::prelude::Res<RaycastWorld>,
+    mut library: bevy_ecs::prelude::ResMut<crate::asset_libraries::ssbo_library::AssetSsboLibrary>,
+    walls: bevy_ecs::prelude::Res<crate::resources::walls::public_walls::PublicWalls>,
+    mut subscriber: bevy_ecs::prelude::ResMut<MeshMeshIntersectionSubscriber>,
+    mut graph: bevy_ecs::prelude::ResMut<crate::systems::collision::MeshIntersectionGraph>,
+    mut candidates: bevy_ecs::prelude::ResMut<crate::systems::collision::BirdNestCandidateLocations>,
+) {
+    use crate::geometry::instanced_wall::BrickTransformSsbo;
+    let bricks = library.get_mut::<BrickTransformSsbo>().expect("原碰撞砖 SSBO 缺失");
+    let diff = subscriber.0.take();
+    let mut pending = Vec::new();
+    let no_preprocessed = std::collections::HashSet::new();
+    if let Some(diff) = diff {
+        for removed in &diff.removed { graph.inner_mut().remove_node(*removed); }
+        for added in &diff.added {
+            if added.slot >= 2 { continue; }
+            let handle = ColliderHandle::from_raw_parts(added.index, added.generation);
+            let collider = world.get_rapier_collider_ref(added.slot, handle)
+                .expect("原碰撞新增 collider 缺失");
+            let aabb = collider.compute_aabb();
+            let slots: &[usize] = if added.slot == 0 { &[1] } else { &[0, 1] };
+            for &slot in slots {
+                world.slot_query_pipeline(slot).colliders_with_aabb_intersecting_aabb(&aabb, |other| {
+                    let (index, generation) = other.into_raw_parts();
+                    let other = SubworldColliderHandle { index, generation, slot: slot as u8 };
+                    if other == *added { return true; }
+                    let other_collider = world.get_rapier_collider_ref(other.slot, ColliderHandle::from_raw_parts(other.index, other.generation))
+                        .expect("原碰撞候选 collider 缺失");
+                    if !should_intersect_collider_meshes(*added, other, &world) { return true; }
+                    if let (Some(a), Some(b)) = (collider.shape().as_trimesh(), other_collider.shape().as_trimesh()) {
+                        intersect_newly_added_collider(&world, *added, other, a, b, &no_preprocessed, &mut pending);
+                    }
+                    true
+                });
+            }
+        }
+    }
+    commit_intersection_edges(pending, &walls, bricks, &mut graph, &mut candidates);
+}
+
+/// 原 0x140a97b70 在 collider 差量阶段后清空候选，再依图边顺序克隆每条候选。
+/// Subscriber 无新差量时仍执行此刷新。
+pub fn refresh_bird_nest_candidates(
+    graph: &crate::systems::collision::MeshIntersectionGraph,
+    candidates: &mut crate::systems::collision::BirdNestCandidateLocations,
+) {
+    candidates.0.clear();
+    for (_, _, edge) in graph.inner().all_edges() {
+        candidates.0.extend(edge.bird_nests.iter().cloned());
+    }
+}
+
+/// 原父体 0x140a98ada 的折线步进。每条图边拥有一个真实砖分配；
+/// `allow_nests` 是调用方完成两侧原墙资格检查后的结果。
+pub fn build_intersection_edge(
+    pending: crate::systems::collision::PendingMeshIntersection,
+    bricks: &mut crate::render::sparse_instance_buffer::SparseInstanceBuffer<crate::geometry::instanced_wall::BrickTransformSsbo>,
+    allow_nests: bool,
+) -> crate::systems::collision::MeshIntersectionArtifacts {
+    use crate::geometry::instanced_wall::{BrickSourceId, BrickTransformSsbo};
+    use crate::resources::walls::publication_fields::WallId as ObservedWallId;
+    use crate::systems::collision::{BirdNestCandidateLocation, MeshIntersectionArtifacts};
+    let allocation = bricks.new_allocation();
+    let mut nests = Vec::new();
+    let mut writer = bricks.writer(&allocation);
+    let mut seed = 0u32;
+    for line in &pending.polylines {
+        let Some(first) = line.points.front() else { continue };
+        let mut previous_position = first.point;
+        let mut previous_normal = first.position;
+        let mut carry = 0.0f32;
+        let mut best = 0.0f32;
+        let mut best_pose = None;
+        for (a, b) in line.points.iter().zip(line.points.iter().skip(1)) {
+            let difference = b.point - a.point;
+            let length = (difference.z * difference.z + difference.y * difference.y + difference.x * difference.x).sqrt();
+            let mut travelled = 0.0f32;
+            while (length - travelled) + carry > 0.5 {
+                let next_carry = (carry - 0.5).max(0.0);
+                let normal_sum = previous_normal + a.position;
+                let normal_len = (normal_sum.z * normal_sum.z + normal_sum.x * normal_sum.x + normal_sum.y * normal_sum.y).sqrt();
+                let normal_inv = 1.0 / normal_len;
+                let normal = if normal_inv.is_finite() && normal_inv > 0.0 { normal_sum * normal_inv } else { glam::Vec3::ZERO };
+                travelled += (0.5 - carry).max(0.0);
+                let ratio = travelled / length;
+                let sample = b.point * ratio + a.point * (1.0 - ratio);
+                let displacement = sample - previous_position;
+                let tangent_len = (displacement.y * displacement.y + displacement.x * displacement.x + displacement.z * displacement.z).sqrt();
+                let tangent_inv = 1.0 / tangent_len;
+                let tangent = if tangent_inv.is_finite() && tangent_inv > 0.0 { displacement * tangent_inv } else { glam::Vec3::ZERO };
+                let center = (previous_position + sample) * 0.5;
+                let score = normal.z * 0.0 + normal.x * 0.0 + normal.y;
+                if best < score { best = score; best_pose = Some((center, tangent)); }
+                let source = if seed & 1 == 0 { pending.mesh_ref_a } else { pending.mesh_ref_b };
+                let brick = BrickTransformSsbo {
+                    affine_columns: [(tangent * 0.5 * 0.9).to_array(), (normal * 0.1).to_array(),
+                        (tangent.cross(normal) * 0.3).to_array(), center.to_array()],
+                    deformation: [0.; 4], surface: [-100.; 3], seed,
+                    material: BrickSourceId::from_wall_id(ObservedWallId(source)).0,
+                    wall_distance: [-0.1, 0.1], flags: 6,
+                };
+                // 原调用不检查 push 的返回值。
+                let _ = writer.push(&brick);
+                carry = next_carry;
+                seed = seed.wrapping_add(1);
+                previous_position = sample;
+                previous_normal = a.position;
+            }
+            carry = (length - travelled) + carry;
+            if carry < 0.0 { panic!("原折线剩余长度为负"); }
+        }
+        if allow_nests && best > 0.9 {
+            let (position, forward) = best_pose.expect("原鸟巢最佳位置缺失");
+            let scaled = position * 100.0;
+            let quantized = glam::IVec3::new(scaled.x as i32, scaled.y as i32, scaled.z as i32);
+            nests.push(BirdNestCandidateLocation {
+                points: line.points.iter().map(|p| p.point).collect::<Vec<_>>().into(),
+                global_id: utils::hash::calculate_hash(&quantized) ^ 0x08fa0408ab570bdd,
+                destination_wall: pending.mesh_ref_a, unknown_20: pending.mesh_ref_b, position, forward,
+            });
+        }
+    }
+    drop(writer);
+    MeshIntersectionArtifacts { bird_nests: nests, bricks: allocation }
+}
+
+/// 原父体两侧身份各自查 PublicWalls；缺墙或非圆/矩形墙不生成鸟巢，
+/// 已查到但曲线不合法时按原路径 panic。
+fn original_bird_nest_wall_eligible(
+    walls: &crate::resources::walls::public_walls::PublicWalls,
+    first: u64,
+    second: u64,
+) -> bool {
+    use crate::resources::walls::WallId;
+    for id in [first, second] {
+        let Some(wall) = walls.get(WallId(id)) else { return false };
+        let curve = &wall.authority.source().curve;
+        if curve.points.len() < 2 || curve.length <= 0.0 {
+            panic!("原碰撞候选墙曲线不合法");
+        }
+        if wall.shape().tag() > 1 { return false; }
+    }
+    true
+}
+
+/// 完成原临时交线列表后按顺序提交图边，再按图边刷新鸟巢候选。
+pub fn commit_intersection_edges(
+    mut pending: Vec<crate::systems::collision::PendingMeshIntersection>,
+    walls: &crate::resources::walls::public_walls::PublicWalls,
+    bricks: &mut crate::render::sparse_instance_buffer::SparseInstanceBuffer<crate::geometry::instanced_wall::BrickTransformSsbo>,
+    graph: &mut crate::systems::collision::MeshIntersectionGraph,
+    candidates: &mut crate::systems::collision::BirdNestCandidateLocations,
+) {
+    for item in &mut pending { remove_invalid_polylines(&mut item.polylines); }
+    bricks.take_out_waste();
+    for item in pending {
+        let allow_nests = original_bird_nest_wall_eligible(walls, item.mesh_ref_a, item.mesh_ref_b);
+        let (a, b) = (item.a, item.b);
+        let edge = build_intersection_edge(item, bricks, allow_nests);
+        graph.inner_mut().add_edge(a, b, edge);
+    }
+    refresh_bird_nest_candidates(graph, candidates);
+}
 
 /// B @140a9b3c0 (284 bytes) resolves actual Collider.user_data receipts,
 /// then compares source tags, payload+8 and the tag2 flag byte.
@@ -110,7 +297,7 @@ pub fn intersect_mesh_mesh<F: FnMut(u32, u32) -> bool>(
 /// - `spec_extend<BirdNestCandidateLocation, …>` 从图边收集鸟巢候选（类型已落位
 ///   [`crate::systems::collision::BirdNestCandidateLocation`]，边构造点/`closure_env_3`
 ///   来源待接线）；
-/// - `SparseInstanceBufferAllocation<SparkleSsbo>` drop_in_place（resources/sparkle 已有类型）。
+/// - 原边 allocation 由 BrickTransformSsbo 的 waste 创建；泛型折叠后的 drop 名称不能单独定类型。
 #[cfg(feature = "native-physics")]
 pub fn find_mesh_mesh_intersections(
     graph: &mut crate::systems::collision::MeshIntersectionGraph,
@@ -193,15 +380,15 @@ impl Default for VertexId {
     }
 }
 
-/// `PolylinePoint`（O：0x18 B；`{ grid: IVec3 @+0x00, position: Vec3 @+0x0c }`）。
+/// `PolylinePoint`（O：0x18 B；`{ point: Vec3 @+0x00, position: Vec3 @+0x0c }`）。
 ///
-/// `grid` 是段端点坐标**四舍五入后的整数键**（`merge_segments_into_polylines::closure$0`
-/// 0x1408f4670：`roundf(x/y/z)` 后饱和转 i32，NaN→0），用于跨段端点匹配；
+/// 查表键是段端点坐标**四舍五入后的整数键**（`merge_segments_into_polylines::closure$0`
+/// 0x1408f4670：`roundf(x/y/z)` 后饱和转 i32，NaN→0），用于跨段端点匹配；`point` 保留原始浮点端点。
 /// `position` 是段携带的浮点向量（三角对的 `normal_a + normal_b`）与其平均值。
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PolylinePoint {
-    /// 端点网格坐标（O：+0x00，`roundf` 取整；用于两端匹配）。
-    pub grid: glam::IVec3,
+    /// 原始端点（O：+0x00，从相交段原样复制）。
+    pub point: glam::Vec3,
     /// 顶点位置/法线（O：+0x0c；两折线共享端点时中点平均）。
     pub position: glam::Vec3,
 }
@@ -325,7 +512,7 @@ pub fn intersect_newly_added_collider(
     mesh_added: &rapier3d::parry::shape::TriMesh,
     mesh_candidate: &rapier3d::parry::shape::TriMesh,
     processed: &std::collections::HashSet<SubworldColliderHandle>,
-    artifacts: &mut Vec<crate::systems::collision::MeshIntersectionArtifacts>,
+    artifacts: &mut Vec<crate::systems::collision::PendingMeshIntersection>,
 ) {
     // 1. O：HashSet 探针命中候选句柄 → 返回。
     if processed.contains(&candidate) {
@@ -362,7 +549,7 @@ pub fn intersect_newly_added_collider(
         panic!("intersect_newly_added_collider: invalid collider kind");
     }
     // 8. O：push 0x40 B 载荷（Vec<Polyline> + 两个 mesh qword + 两个 12 B 句柄）。
-    artifacts.push(crate::systems::collision::MeshIntersectionArtifacts {
+    artifacts.push(crate::systems::collision::PendingMeshIntersection {
         polylines,
         mesh_ref_a: u64::from_le_bytes(source_a.0[8..16].try_into().unwrap()),
         mesh_ref_b: u64::from_le_bytes(source_b.0[8..16].try_into().unwrap()),
@@ -386,62 +573,70 @@ pub fn merge_segments_into_polylines(
     segments: &[Segment],
     out: &mut Vec<Polyline>,
 ) -> HashMap<glam::IVec3, VertexId> {
-    let mut vertex_ids: HashMap<glam::IVec3, VertexId> = HashMap::new();
-    // O：`reserve_rehash` 预分配（段数 × 2）。
+    let mut vertex_ids = HashMap::new();
+    let mut endpoints: Vec<Option<usize>> = Vec::new();
     vertex_ids.reserve(segments.len() * 2);
     for seg in segments {
-        let grid_a = round_ivec3(seg.a);
-        let grid_b = round_ivec3(seg.b);
-        let vid_a = lookup_or_insert(&mut vertex_ids, grid_a);
-        let vid_b = lookup_or_insert(&mut vertex_ids, grid_b);
-        // 查找 vid 所在折线（O：每个 VertexId 对应一个折线端点）。
-        let pl_a = find_polyline(out, vid_a);
-        let pl_b = find_polyline(out, vid_b);
-        match (pl_a, pl_b) {
-            // 两端都在同一折线 → 闭环（O：`uVar17==uVar9` 分支语义 —— 读首尾点、
-            // 中点平均后 push 一个新点；Rust 以相同语义 + 封闭标记登记）。
-            (Some(idx), Some(j)) if idx == j => {
-                let polyline = &mut out[idx];
-                let closes_forward = polyline.first == vid_a && polyline.last == vid_b;
-                let closes_back = polyline.first == vid_b && polyline.last == vid_a;
-                if closes_forward || closes_back {
-                    let (new_pos, grid) = average_endpoints(polyline, closes_forward, seg);
-                    polyline.points.push_back(PolylinePoint {
-                        grid,
-                        position: new_pos,
-                    });
-                }
-            }
-            // 两端都不在折线 → 新建 2 点折线。
+        let a = lookup_or_insert(&mut vertex_ids, round_ivec3(seg.a));
+        let b = lookup_or_insert(&mut vertex_ids, round_ivec3(seg.b));
+        endpoints.resize(vertex_ids.len(), None);
+        if a == b { continue; }
+        let ai = endpoints[a.0 as usize];
+        let bi = endpoints[b.0 as usize];
+        match (ai, bi) {
             (None, None) => {
-                let new = Polyline {
-                    points: VecDeque::from([
-                        PolylinePoint {
-                            grid: grid_a,
-                            position: seg.position,
-                        },
-                        PolylinePoint {
-                            grid: grid_b,
-                            position: seg.position,
-                        },
-                    ]),
-                    first: vid_a,
-                    last: vid_b,
-                };
-                out.push(new);
+                let idx = out.len();
+                out.push(Polyline { points: VecDeque::from([
+                    PolylinePoint { point: seg.a, position: seg.position },
+                    PolylinePoint { point: seg.b, position: seg.position },
+                ]), first: a, last: b });
+                endpoints[a.0 as usize] = Some(idx);
+                endpoints[b.0 as usize] = Some(idx);
             }
-            // 一端在折线 → 追加到该折线对应端（O：匹配端首 → 前插，尾 → 追加）。
-            (Some(idx), None) => {
-                append_to_polyline(out, idx, vid_a, vid_b, seg, grid_b, grid_a);
+            (Some(idx), None) | (None, Some(idx)) => {
+                let (old, new, point) = if ai.is_some() { (a, b, seg.b) } else { (b, a, seg.a) };
+                let line = &mut out[idx];
+                let front = line.first == old;
+                let shared = if front { line.points.front_mut() } else { line.points.back_mut() }.unwrap();
+                shared.position = (shared.position + seg.position) * 0.5;
+                let point = PolylinePoint { point, position: seg.position };
+                if front { line.points.push_front(point); line.first = new; }
+                else { line.points.push_back(point); line.last = new; }
+                endpoints[old.0 as usize] = None;
+                endpoints[new.0 as usize] = Some(idx);
             }
-            (None, Some(idx)) => {
-                append_to_polyline(out, idx, vid_b, vid_a, seg, grid_a, grid_b);
+            (Some(i), Some(j)) if i == j => {
+                let line = &mut out[i];
+                let first = *line.points.front().unwrap();
+                let last = *line.points.back().unwrap();
+                line.points.push_back(PolylinePoint { point: first.point, position: (last.position + first.position) * 0.5 });
+                endpoints[a.0 as usize] = None;
+                endpoints[b.0 as usize] = None;
             }
-            // 两端在不同折线 → 拼接（O：跨 polyline 拼接 + 中点平均）。
-            (Some(ia), Some(ib)) if ia != ib => {
-                join_polylines(out, ia, ib);
+            (Some(i), Some(j)) => {
+                // 原实现保留被搬空的槽，端点表因而始终引用稳定索引。
+                let mut other = std::mem::take(&mut out[j]);
+                let line = &mut out[i];
+                let line_front = line.first == a;
+                let other_front = other.first == b;
+                let shared = if line_front { line.points.front_mut() } else { line.points.back_mut() }.unwrap();
+                shared.position = (shared.position + seg.position) * 0.5;
+                let shared = if other_front { other.points.front_mut() } else { other.points.back_mut() }.unwrap();
+                shared.position = (shared.position + seg.position) * 0.5;
+                let remaining = if other_front { other.last } else { other.first };
+                if line_front {
+                    if other_front { while let Some(p) = other.points.pop_front() { line.points.push_front(p); } }
+                    else { while let Some(p) = other.points.pop_back() { line.points.push_front(p); } }
+                    line.first = remaining;
+                } else {
+                    if other_front { line.points.extend(other.points); }
+                    else { line.points.extend(other.points.into_iter().rev()); }
+                    line.last = remaining;
+                }
+                endpoints[a.0 as usize] = None;
+                endpoints[b.0 as usize] = None;
+                endpoints[remaining.0 as usize] = Some(i);
             }
-            (Some(_), Some(_)) => unreachable!(),
         }
     }
     vertex_ids
@@ -463,92 +658,23 @@ fn lookup_or_insert(map: &mut HashMap<glam::IVec3, VertexId>, grid: glam::IVec3)
     }
 }
 
-fn find_polyline(polylines: &[Polyline], vid: VertexId) -> Option<usize> {
-    polylines
-        .iter()
-        .position(|p| p.first == vid || p.last == vid)
-}
-
-/// 追加段到折线（O：一端匹配折线首/尾，中点平均 + 翻转视方向）。
-fn append_to_polyline(
-    polylines: &mut [Polyline],
-    idx: usize,
-    matched: VertexId,
-    new_vid: VertexId,
-    seg: &Segment,
-    new_grid: glam::IVec3,
-    shared_grid: glam::IVec3,
-) {
-    let polyline = &mut polylines[idx];
-    // O：匹配端点位于折线首 → 新端插入前；位于尾 → 追加后。
-    let at_front = polyline.first == matched;
-    let new_point = PolylinePoint {
-        grid: new_grid,
-        position: seg.position,
-    };
-    // O：共享端点中点平均。
-    if at_front {
-        if let Some(front) = polyline.points.front_mut() {
-            if front.grid == shared_grid {
-                front.position = (front.position + seg.position) * 0.5;
-            }
-        }
-        polyline.points.push_front(new_point);
-        polyline.first = new_vid;
-    } else {
-        if let Some(back) = polyline.points.back_mut() {
-            if back.grid == shared_grid {
-                back.position = (back.position + seg.position) * 0.5;
-            }
-        }
-        polyline.points.push_back(new_point);
-        polyline.last = new_vid;
-    }
-}
-
-/// 拼接两个折线（O：跨 polyline 拼接 + 中点平均；Rust 以朝向整理 + 转移点近似，
-/// 共享端点中点平均登记）。
-fn join_polylines(polylines: &mut Vec<Polyline>, ia: usize, ib: usize) {
-    // A 含甲端、B 含乙端（调用方由 vid_a/vid_b 匹配保证）。B 追加到 A：
-    // first = A.first、last = B.last（朝向整理与反向登记为结构近似）。
-    let mut points_a = polylines[ia].points.clone();
-    let points_b = polylines[ib].points.clone();
-    let first = polylines[ia].first;
-    let last = polylines[ib].last;
-    points_a.extend(points_b);
-    polylines[ia].points = points_a;
-    polylines[ia].first = first;
-    polylines[ia].last = last;
-    polylines.remove(ib);
-}
-
-/// 闭环时对首尾共享端点做中点平均（O：`uVar17==uVar9` 分支的端点平均；
-/// `grid` = 闭环新点落回的端点网格坐标，取 `roundf` 后的端点）。
-fn average_endpoints(
-    polyline: &Polyline,
-    closes_forward: bool,
-    seg: &Segment,
-) -> (glam::Vec3, glam::IVec3) {
-    let front = polyline.points.front().copied().unwrap_or(PolylinePoint {
-        grid: glam::IVec3::ZERO,
-        position: glam::Vec3::ZERO,
-    });
-    let back = polyline.points.back().copied().unwrap_or(front);
-    // O：`(last.pos + first.pos) * 0.5`；grid 取回落的端点（closes_forward → seg.b，否则 seg.a）。
-    (
-        (front.position + back.position) * 0.5,
-        round_ivec3(if closes_forward { seg.b } else { seg.a }),
-    )
-}
-
 /// `remove_invalid_polylines`（O：`retain_mut<Polyline, ..., remove_invalid_polylines::closure_env$0>`
 /// 0x1412f3850）：删除 `points` 为空的折线。
 ///
-/// fresh 逐语句：`VecDeque::len`（polyline+0x18）为 0 → 丢弃该折线；否则对每个点保留。
-/// 同一 closure 内另有逐点向量重写（`normalize(p_i - f(p_{i-1}))` 形态，0x1412f38…，
-/// 反编译对前一点寄存器更新不完整）；该归一化段**未落地**，登记见报告。
+/// 非空折线先以首个法线的一半初始化累积量；依序计算当前法线减累积量，
+/// 将这个差留作下一次累积量，并把其归一化结果写回当前点。非有限倒数写零。
 pub fn remove_invalid_polylines(polylines: &mut Vec<Polyline>) {
     polylines.retain(|p| !p.points.is_empty());
+    for polyline in polylines {
+        let mut previous = polyline.points.front().unwrap().position * 0.5;
+        for point in &mut polyline.points {
+            let difference = point.position - previous;
+            previous = difference;
+            let inv = 1.0 / ((difference.y * difference.y + difference.x * difference.x)
+                + difference.z * difference.z).sqrt();
+            point.position = if inv.is_finite() && inv > 0.0 { difference * inv } else { glam::Vec3::ZERO };
+        }
+    }
 }
 
 #[cfg(test)]
@@ -564,6 +690,20 @@ mod tests {
             b: bf,
             position: Vec3::new((af.x + bf.x) * 0.5, 1.0, (af.z + bf.z) * 0.5),
         }
+    }
+
+    #[test]
+    fn collider_order_canonicalizes_same_slot_edges() {
+        let a = SubworldColliderHandle { slot: 1, index: 2, generation: 9 };
+        let b = SubworldColliderHandle { slot: 1, index: 4, generation: 1 };
+        let c = SubworldColliderHandle { slot: 1, index: 2, generation: 10 };
+        let mut graph = petgraph::graphmap::UnGraphMap::<SubworldColliderHandle, u32>::new();
+        graph.add_edge(b, a, 7);
+        assert_eq!(graph.edge_weight(a, b), Some(&7));
+        graph.add_edge(a, b, 8);
+        assert_eq!(graph.edge_count(), 1);
+        assert_eq!(graph.edge_weight(b, a), Some(&8));
+        assert!(a < c && c < b);
     }
 
     #[test]
@@ -592,6 +732,36 @@ mod tests {
         // 共享端点中点平均：两段位置 (0.5,0) 与 (1.5,0) 不冲突，首点 (0,0)。
         assert_eq!(out[0].first.0, 0);
         assert_eq!(out[0].last.0, 2);
+    }
+
+    #[test]
+    fn joins_all_endpoint_orientations_and_keeps_stable_empty_slot() {
+        for reverse_a in [false, true] {
+            for reverse_b in [false, true] {
+                let point = |x| glam::IVec3::new(x, 0, 0);
+                let (a, b) = if reverse_a { (point(1), point(0)) } else { (point(0), point(1)) };
+                let (c, d) = if reverse_b { (point(3), point(2)) } else { (point(2), point(3)) };
+                let mut out = Vec::new();
+                merge_segments_into_polylines(&[seg(a, b), seg(c, d), seg(point(1), point(2))], &mut out);
+                assert_eq!(out.len(), 2);
+                assert!(out[1].points.is_empty());
+                let xs: Vec<_> = out[0].points.iter().map(|p| p.point.x as i32).collect();
+                let expected = if reverse_a { vec![3, 2, 1, 0] } else { vec![0, 1, 2, 3] };
+                assert_eq!(xs, expected);
+                assert_eq!(out[0].points[1].position.x, if reverse_a { 2.0 } else { 1.0 });
+                assert_eq!(out[0].points[2].position.x, if reverse_a { 1.0 } else { 2.0 });
+            }
+        }
+    }
+
+    #[test]
+    fn consumed_and_closed_endpoints_can_start_new_lines() {
+        let p = |x| glam::IVec3::new(x, 0, 0);
+        let mut out = Vec::new();
+        merge_segments_into_polylines(&[seg(p(0), p(1)), seg(p(1), p(2)), seg(p(1), p(3)), seg(p(4), p(4))], &mut out);
+        assert_eq!(out.len(), 2);
+        assert_eq!(out[0].points.len(), 3);
+        assert_eq!(out[1].points.len(), 2);
     }
 
     #[test]
@@ -659,12 +829,37 @@ mod tests {
 
     /// O：`remove_invalid_polylines` 0x1412f3850 —— 空点折线被删除。
     #[test]
+    fn merge_keeps_unrounded_segment_positions() {
+        let segment = Segment { a: Vec3::new(0.2, 0.3, 0.4), b: Vec3::new(2.2, 0.3, 0.4), position: Vec3::Y };
+        let mut polylines = Vec::new();
+        let keys = merge_segments_into_polylines(&[segment], &mut polylines);
+        assert_eq!(keys.len(), 2);
+        assert_eq!(polylines[0].points[0].point, segment.a);
+        assert_eq!(polylines[0].points[1].point, segment.b);
+    }
+
+    #[test]
+    fn normalize_polyline_uses_original_difference_recurrence() {
+        let mut lines = vec![Polyline { points: VecDeque::from([
+            PolylinePoint { point: Vec3::ZERO, position: Vec3::new(2., 0., 0.) },
+            PolylinePoint { point: Vec3::X, position: Vec3::new(1., 2., 0.) },
+            PolylinePoint { point: Vec3::Y, position: Vec3::new(0., 2., 0.) },
+        ]), ..Default::default() }];
+        remove_invalid_polylines(&mut lines);
+        let points = &lines[0].points;
+        assert_eq!(points[0].position, Vec3::X);
+        assert_eq!(points[1].position, Vec3::Y);
+        assert_eq!(points[2].position, Vec3::ZERO);
+    }
+
+    /// O：`remove_invalid_polylines` 0x1412f3850 —— 空点折线被删除。
+    #[test]
     fn empty_polylines_are_removed() {
         let mut polylines = vec![
             Polyline::default(),
             Polyline {
                 points: VecDeque::from([PolylinePoint {
-                    grid: glam::IVec3::ZERO,
+                    point: glam::Vec3::ZERO,
                     position: Vec3::ZERO,
                 }]),
                 first: VertexId(0),
@@ -724,8 +919,7 @@ mod find_mesh_tests {
         assert_eq!(calls, 0);
     }
 
-    /// `ColliderDelta` 的 `apply_to`：removed=true 推入 removed 列表、false 推入 added 列表
-    /// （O：dispose 发布 removed 增量 / upsert 发布 added 增量）。
+    /// 原 HashSet 对重复及两种先后顺序的处理。
     #[test]
     fn collider_delta_accumulates_removed_and_added() {
         let mut state = ColliderDiff::empty();
@@ -744,15 +938,25 @@ mod find_mesh_tests {
             removed: false,
         }
         .apply_to(&mut state);
-        assert_eq!(state.removed, vec![h]);
-        assert_eq!(state.added, vec![h]);
+        assert_eq!(state.removed.len(), 1);
+        assert!(state.removed.contains(&h));
+        assert_eq!(state.added.len(), 1);
+        assert!(state.added.contains(&h));
         // None 载荷为空增量。
         ColliderDelta {
             handle: None,
             removed: true,
         }
         .apply_to(&mut state);
-        assert_eq!(state.removed, vec![h]);
+        assert_eq!(state.removed.len(), 1);
+        let mut fresh = ColliderDiff::empty();
+        ColliderDelta { handle: Some(h), removed: false }.apply_to(&mut fresh);
+        ColliderDelta { handle: Some(h), removed: false }.apply_to(&mut fresh);
+        assert_eq!(fresh.added.len(), 1);
+        ColliderDelta { handle: Some(h), removed: true }.apply_to(&mut fresh);
+        assert!(fresh.added.is_empty() && fresh.removed.is_empty());
+        ColliderDelta { handle: Some(h), removed: true }.apply_to(&mut fresh);
+        assert_eq!(fresh.removed.len(), 1);
     }
 }
 
@@ -931,5 +1135,137 @@ mod actual_receipt_consumer_tests {
             }))
             .is_err()
         );
+    }
+}
+
+#[cfg(all(test, feature = "native-physics"))]
+mod reload_owner_boundary_tests {
+    use super::{build_intersection_edge, on_exit_game_state, refresh_bird_nest_candidates,
+        remove_invalid_polylines, Polyline, PolylinePoint};
+    use std::collections::VecDeque;
+    use crate::{
+        app_loading_state::AppLoadingState,
+        resources::walls::{decorator::DecoratorId, decorator_storage::DecoratorStorageAddr},
+        systems::collision::{MeshIntersectionArtifacts, MeshIntersectionGraph, world::{RaycastGeoSource, RaycastMeshData, RaycastWorld, SubworldColliderHandle, upsert_collider}},
+    };
+    use bevy_ecs::prelude::*;
+    use bevy_state::{app::AppExtStates, prelude::*};
+    use std::{collections::HashMap, sync::Arc};
+
+    #[derive(Resource, Default)]
+    struct ExitCount(u32);
+
+    #[test]
+    fn refresh_candidates_replaces_old_values_and_clones_graph_arc() {
+        use crate::systems::collision::{BirdNestCandidateLocation, BirdNestCandidateLocations};
+        use crate::render::{sparse_instance_buffer::SparseInstanceBuffer, ssbo::tests::MockDevice};
+        use crate::geometry::instanced_wall::BrickTransformSsbo;
+        let device = MockDevice::default();
+        let bricks = SparseInstanceBuffer::<BrickTransformSsbo>::new_storage_buffer(&device, None);
+        let points: Arc<[glam::Vec3]> = vec![glam::Vec3::X, glam::Vec3::Y].into();
+        let mut graph = MeshIntersectionGraph::default();
+        graph.inner_mut().add_edge(SubworldColliderHandle::new(1, 1, 0), SubworldColliderHandle::new(2, 1, 1),
+            MeshIntersectionArtifacts { bird_nests: vec![BirdNestCandidateLocation {
+                points: points.clone(), global_id: 42, ..Default::default()
+            }], bricks: bricks.new_allocation() });
+        let mut candidates = BirdNestCandidateLocations(vec![BirdNestCandidateLocation::default()]);
+        refresh_bird_nest_candidates(&graph, &mut candidates);
+        assert_eq!(candidates.0.len(), 1);
+        assert_eq!(candidates.0[0].global_id, 42);
+        assert!(Arc::ptr_eq(&candidates.0[0].points, &points));
+        graph.inner_mut().clear();
+        refresh_bird_nest_candidates(&graph, &mut candidates);
+        assert!(candidates.0.is_empty());
+    }
+
+    #[test]
+    fn nonempty_intersection_creates_real_brick_owner_and_candidate() {
+        use crate::systems::collision::PendingMeshIntersection;
+        use crate::render::{sparse_instance_buffer::SparseInstanceBuffer, ssbo::tests::MockDevice};
+        use crate::geometry::instanced_wall::BrickTransformSsbo;
+        let device = MockDevice::default();
+        let mut bricks = SparseInstanceBuffer::<BrickTransformSsbo>::new_storage_buffer(&device, None);
+        let mut pending = PendingMeshIntersection { mesh_ref_a: 7, mesh_ref_b: 8,
+            polylines: vec![Polyline { points: VecDeque::from([
+                PolylinePoint { point: glam::Vec3::ZERO, position: glam::Vec3::Y },
+                PolylinePoint { point: glam::Vec3::X * 4., position: glam::Vec3::Y },
+            ]), ..Default::default() }], ..Default::default() };
+        remove_invalid_polylines(&mut pending.polylines);
+        let edge = build_intersection_edge(pending, &mut bricks, true);
+        assert!(bricks.owns_allocation(&edge.bricks));
+        assert_eq!(edge.bird_nests.len(), 1);
+        assert_eq!((edge.bird_nests[0].destination_wall, edge.bird_nests[0].unknown_20), (7, 8));
+        assert_eq!(edge.bird_nests[0].points.as_ref(), &[glam::Vec3::ZERO, glam::Vec3::X * 4.]);
+        assert_eq!(bricks.to_draw_multi_instanced().iter().map(|x| x.1).sum::<u32>(), 7);
+    }
+
+    fn reset_world(mut world: ResMut<RaycastWorld>, mut count: ResMut<ExitCount>) {
+        world.on_level_reload();
+        count.0 += 1;
+    }
+
+    fn advance_reload(state: Res<State<AppLoadingState>>, mut next: ResMut<NextState<AppLoadingState>>) {
+        if *state.get() == AppLoadingState::Reload { next.set(AppLoadingState::Game); }
+    }
+
+    #[test]
+    fn same_app_reload_requires_original_exit_pair_while_whole_app_drop_also_releases_world() {
+        for install_original_pair in [false, true] {
+            let mut app = bevy_app::App::new();
+            app.add_plugins(bevy_state::app::StatesPlugin);
+            app.init_state::<AppLoadingState>();
+            app.init_resource::<ExitCount>();
+            app.insert_resource(RaycastWorld::new());
+            app.init_resource::<MeshIntersectionGraph>();
+            app.add_systems(bevy_app::PostUpdate, advance_reload);
+            if install_original_pair {
+                // 原 plain tuple，不添加原版没有的 chain 或 run_if。
+                app.add_systems(OnExit(AppLoadingState::Game), (on_exit_game_state, reset_world));
+            }
+            app.world_mut().resource_mut::<NextState<AppLoadingState>>().set(AppLoadingState::Game);
+            app.update();
+            let identity = app.world().id();
+            let mesh = Arc::new(RaycastMeshData::new_cuboid_at(glam::Vec3::splat(2.0), glam::Vec3::ZERO));
+            let weak = Arc::downgrade(&mesh);
+            let source = RaycastGeoSource::decorator(DecoratorId(7), DecoratorStorageAddr::Terrain);
+            let mask = 1u32 << source.subworld();
+            let mut registry = HashMap::new();
+            {
+                let mut physics = app.world_mut().resource_mut::<RaycastWorld>();
+                upsert_collider(&mut physics, &mut registry, DecoratorId(7), source, mesh,
+                    glam::Vec3::ZERO, glam::Quat::IDENTITY);
+                physics.flush_colliders();
+                assert!(!physics.raycast_simple_with_max_toi(glam::Vec3::Y * 10.0, -glam::Vec3::Y, 20.0, mask).is_miss());
+            }
+            // 装饰物/楼梯卸载只清注册凭据，不拥有全局 collider/mesh。
+            registry.clear();
+            let a = SubworldColliderHandle::new(1, 1, 0);
+            let b = SubworldColliderHandle::new(2, 1, 1);
+            {
+                let mut graph = app.world_mut().resource_mut::<MeshIntersectionGraph>();
+                let device = crate::render::ssbo::tests::MockDevice::default();
+                let bricks = crate::render::sparse_instance_buffer::SparseInstanceBuffer::<crate::geometry::instanced_wall::BrickTransformSsbo>::new_storage_buffer(&device, None);
+                graph.inner_mut().add_edge(a, b, MeshIntersectionArtifacts { bird_nests: Vec::new(), bricks: bricks.new_allocation() });
+            }
+            let capacity = app.world().resource::<MeshIntersectionGraph>().inner().capacity();
+            app.world_mut().resource_mut::<NextState<AppLoadingState>>().set(AppLoadingState::Reload);
+            app.update();
+            assert_eq!(*app.world().resource::<State<AppLoadingState>>().get(), AppLoadingState::Reload);
+            app.update();
+            assert_eq!(*app.world().resource::<State<AppLoadingState>>().get(), AppLoadingState::Game);
+            assert_eq!(app.world().id(), identity, "菜单 Reload 复用原 World，启动 App handoff 不会重演");
+            let physics = app.world().resource::<RaycastWorld>();
+            let miss = physics.raycast_simple_with_max_toi(glam::Vec3::Y * 10.0, -glam::Vec3::Y, 20.0, mask).is_miss();
+            assert_eq!(miss, install_original_pair);
+            assert_eq!(weak.upgrade().is_none(), install_original_pair);
+            assert_eq!(app.world().resource::<MeshIntersectionGraph>().inner().edge_count(), usize::from(!install_original_pair));
+            assert_eq!(app.world().resource::<MeshIntersectionGraph>().inner().capacity(), capacity, "原 graph.clear 保留容量");
+            assert_eq!(app.world().resource::<ExitCount>().0, u32::from(install_original_pair));
+            // 新关卡初始帧不会重复 reset，不能把清理错误接成每帧执行。
+            app.update();
+            assert_eq!(app.world().resource::<ExitCount>().0, u32::from(install_original_pair));
+            drop(app);
+            assert!(weak.upgrade().is_none(), "真实整个 App 析构也会释放 world；不能只凭rg无调用认定残留");
+        }
     }
 }

@@ -837,14 +837,21 @@ pub fn cloth_key_c(bytes: &[u8]) -> u64 {
 pub struct Env23In {
     pub color: u32,
     pub cloth: RoofFlagClothView,
-    pub session: Vec<u8>,
+    pub cloth_texture: u64,
+}
+
+/// 原 1409b2b9x/1409b4c9x 遍历 ActiveSession.meta 的 mutators，
+/// 字节 0/1 分别是 Halloween2024/2025。直接读权威会话，不另造镜像，
+/// 也不为每面旗帜克隆整个 mutator Vec。
+pub(super) fn session_cloth_texture(session: &ActiveSession) -> u64 {
+    if session.meta.is_halloween_any() { CLOTH_KEY_C_FOUND } else { CLOTH_KEY_C_DEFAULT }
 }
 
 pub fn read_env23(w: &World, e: Entity) -> Env23In {
     Env23In {
         cloth: *comp::<RoofFlagClothView>(w, e),
         color: comp::<ColorId>(w, e).0,
-        session: res::<ActiveSessionView>(w).glade_bytes.clone(),
+        cloth_texture: session_cloth_texture(res::<ActiveSession>(w)),
     }
 }
 
@@ -853,7 +860,7 @@ pub fn env23_body<'p>(b: DrawBuilder<'p>, i: &Env23In, end: impl FnOnce(DrawBuil
     let b = b.uniform(COLOR_ID_UNIFORM, i.color as i32);
     let b = bind_disk(b, E23_KEY_A, CLOTH_NAME_A);
     let b = bind_disk(b, CLOTH_KEY_B, CLOTH_NAME_B);
-    let b = bind_disk(b, cloth_key_c(&i.session), CLOTH_NAME_C);
+    let b = bind_disk(b, i.cloth_texture, CLOTH_NAME_C);
     end(b.uniform(CLOTH_ID_UNIFORM, i.cloth.0 as i32));
 }
 
@@ -866,14 +873,14 @@ pub fn env23(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
 pub struct Env22In {
     pub cloth: WallFlagClothView,
     pub color: u32,
-    pub session: Vec<u8>,
+    pub cloth_texture: u64,
 }
 
 pub fn read_env22(w: &World, e: Entity) -> Env22In {
     Env22In {
         cloth: *comp::<WallFlagClothView>(w, e),
         color: comp::<ColorId>(w, e).0,
-        session: res::<ActiveSessionView>(w).glade_bytes.clone(),
+        cloth_texture: session_cloth_texture(res::<ActiveSession>(w)),
     }
 }
 
@@ -888,7 +895,7 @@ pub fn env22_body<'p>(b: DrawBuilder<'p>, i: &Env22In, end: impl FnOnce(DrawBuil
         .uniform(COLOR_ID_UNIFORM, i.color as i32);
     let b = bind_disk(b, E22_KEY_A, CLOTH_NAME_A);
     let b = bind_disk(b, CLOTH_KEY_B, CLOTH_NAME_B);
-    end(bind_disk(b, cloth_key_c(&i.session), CLOTH_NAME_C));
+    end(bind_disk(b, i.cloth_texture, CLOTH_NAME_C));
 }
 
 pub fn env22(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
@@ -1169,16 +1176,16 @@ pub const E14_GATE_COLOR_BINDING: u64 = 0x3136_164b_8111_4f7f;
 /// 磁盘 0x5b9a… → `i32(q18)` → `GateColorIdSsbo` → 磁盘 0x3c67… → 磁盘 0x3487… → `i32(d30)`。
 pub fn env14_body<'p>(b: DrawBuilder<'p>, g: &WoodenGateView, end: impl FnOnce(DrawBuilder<'p>)) {
     let b = bind_disk(b, E14_DISK_A, DISK_COMMON_A.1);
-    let b = b.uniform(E14_I32_A, g.q18 as i32);
+    let b = b.uniform(E14_I32_A, g.wall.0 as i32);
     let b = b.read_ssbo::<GateColorIdTag>(E14_GATE_COLOR_BINDING);
     let b = bind_disk(b, E14_DISK_B.0, E14_DISK_B.1);
     let b = bind_disk(b, E14_DISK_C.0, E14_DISK_C.1);
-    end(b.uniform(CLOTH_ID_UNIFORM, g.d30));
+    end(b.uniform(CLOTH_ID_UNIFORM, g.seed as i32));
 }
 
 pub fn env14(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
-    let g = *comp::<WoodenGateView>(w, p.entity);
-    env14_body(b, &g, |b| b.draw());
+    let g = comp::<WoodenGateView>(w, p.entity);
+    env14_body(b, g, |b| b.draw());
 }
 
 #[cfg(test)]
@@ -1202,7 +1209,6 @@ pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
     m.asset_library::<AssetMeshLibrary>();
     m.resource::<crate::resources::logo_animation::LogoAnimation>();
     m.resource::<LoadingScreenProgressView>();
-    m.resource::<ActiveSessionView>();
     m.resource::<ActiveSession>();
     m.resource::<RoofHighlight>();
     m.resource::<Weather>();

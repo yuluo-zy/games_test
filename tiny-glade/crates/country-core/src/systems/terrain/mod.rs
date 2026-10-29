@@ -101,18 +101,14 @@ pub fn register_terrain_events(world: &mut World) {
     world.init_resource::<ui_edit_terrain::StairsPlacementBucket>();
     // 地形编辑历史 pending（ui_edit_terrain case 3 写 TerrainEdit 哨兵 0x…0001）。
     world.init_resource::<ui_edit_terrain::TerrainEditHistoryPending>();
+    // 宿主兼容注册：保留已存在的原计时资源。
+    world.init_resource::<ui_edit_terrain::MouseActivityTimer>();
     world.init_resource::<ui_edit_terrain::TerrainEditUiState>();
     world.init_resource::<ui_edit_terrain::TerrainWidgetResponseTable>();
     // 宿主 UI 悬停/交互适配（ui_edit 的 cursor tag / hovered id 由宿主写入）。
     world.init_resource::<ui_draw_terrain::TerrainHoverInput>();
     world.init_resource::<ui_draw_terrain::TerrainDrawState>();
-    // 聚焦模式适配（raycast/hover/selection 由宿主写入）。
-    world.init_resource::<ui_terrain_focus_mode::TerrainFocusRaycast>();
-    world.init_resource::<ui_terrain_focus_mode::TerrainFocusHover>();
-    world.init_resource::<ui_terrain_focus_mode::TerrainFocusSelection>();
     world.init_resource::<Events<ui_edit_terrain::TerrainWindowFocus>>();
-    world.init_resource::<Events<ui_terrain_focus_mode::SignifierDrawTopology>>();
-    world.init_resource::<Events<ui_terrain_focus_mode::TerrainFocusTrigger>>();
 }
 
 /// Local CPU order; requires the actual editing state, game clock, readback
@@ -195,8 +191,8 @@ pub fn add_terrain_tool_systems<S: Send + Sync + 'static>(schedule: &mut Schedul
 /// replay_terrain / ui_edit_focus / arrow_gizmo_animation（本仓库 `add_terrain_tool_systems`
 /// 另行挂载，原版挂载点未定位，见报告）。
 ///
-/// `insert_terrain_resources`（顺序）：MouseActivityTimer（0x1409457f2，**本仓库无此类型，未闭合**）、
-/// TerrainStrokeParamsCache（0x14094580c，**本仓库无此类型，未闭合**）、
+/// `insert_terrain_resources`（顺序）：MouseActivityTimer（0x1409457f2，原初始值已恢复；消费者未定位）、
+/// TerrainStrokeParamsCache（0x14094580c，由 TerrainEditUiState 承载编辑参数）、
 /// `TerrainHeightsData<TerrainHeightSsbo>`（0x1409458a5）、`TerrainHeightsData<VisualTerrainHeightSsbo>`
 /// （0x140945936）、`HoveredTerrainStrokeId`（0x140945940，全零）、`ScheduledTerrainReadback`（0x140945958，全零）。
 ///
@@ -233,8 +229,10 @@ impl TerrainSystems for bevy_app::App {
 
     fn insert_terrain_resources(&mut self) -> &mut Self {
         use crate::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData, VisualTerrainHeightSsbo};
-        // 未闭合：原版先 insert MouseActivityTimer（初值 {f32 0.0, f32 1000.0}, u8 0）与
-        // TerrainStrokeParamsCache（全零 20B）；本仓库无对应类型，不伪造。
+        // 原构造先插入计时资源；字段语义及消费者尚未确认。
+        self.insert_resource(ui_edit_terrain::MouseActivityTimer::default());
+        // 原参数缓存由现有编辑状态承载。
+        self.insert_resource(ui_edit_terrain::TerrainEditUiState::default());
         self.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
         self.insert_resource(TerrainHeightsData::<VisualTerrainHeightSsbo>::new());
         self.insert_resource(terrain_hover_idx::HoveredTerrainStrokeId::default());

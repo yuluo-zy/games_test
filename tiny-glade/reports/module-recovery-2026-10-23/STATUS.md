@@ -1,6 +1,95 @@
 # 业务流恢复台账
 
-当前模块：**1 公共交互／toolbar，已恢复实施，未验收**。2026-10-24 用户确认按模块推进，并要求每轮记录过程与经验。先收口当前模块，后序模块只列实施范围和进入条件，不提前展开实现。本文件合并维护状态与业务流合同，优先增量修改现有文件，不为模板拆出多套文档。旧报告、候选代码及临时日志只作为指定版本的历史证据，不是平行进度表。
+当前模块：**M01 公共交互／toolbar 收口，同时开始 M02 地形；两者均未验收**。2026-10-27 用户要求中央也推进地形，明确调整此前串行进入条件；继续完成M01复杂装配，已冻结任务的owner转入M02，不增加agent数量。本文件合并维护状态与业务流合同，优先增量修改现有文件，不为模板拆出多套文档。旧报告、候选代码及临时日志只作为指定版本的历史证据，不是平行进度表。
+
+### 2026-10-29 流程收敛与M06启动（进行中）
+
+用户要求先核完整函数集合、复用已逆向内容、批量补缺后再复写；现将该流程固化到[工具经验6.2](../../../reverse-engineering/tiny-glade/docs/current/AI_REVERSE_TOOLS.md)。证据、算法、生产接线和验证四列分别判定，未知不算完成；不再按临时发现的零散函数反复取证。
+
+中央已从B装饰UI原PDB读取16份源码归属、65条业务procedure记录，按VA合并为63个入口，生成[函数盘点基线](m01-ui-function-inventory-2026-10-29.json)。当前仅5个入口作了独立合同核验，其余明确为未核；PDB procedure不是全部内联／动态派发集合，须继续由caller补全，不能把63当作整个模块的完成分母。`insert_point_ui`原为几何helper而当前误作ECS system；reset原为AppMode/StairsState而当前读错owner；focus／viz仍有伪控件和位置。既有continue_stairs差分证据直接复用，尚待生产父链接线复验。
+
+现为中央加三个子agent：原装饰／楼梯阻断owner与地形owner完成当前候选验证后各交全函数清单；新增`m06_walls_recovery`使用用户指定的`gpt-6.1-terra`，先调查墙体、楼板、支撑、抹灰、半木。M06业务主体原归属`systems/wall-constructor`与`systems/timberframe`；共享walls资源、楼梯、碰撞和渲染文件必须先协调owner，再申请写入。当前M06只读盘点，未声明实现或验收完成；不新增下级agent。后续新增／接替子任务优先同款Terra，当前批次交付后交接以免重复分析。
+
+### 2026-10-29 两条实施线与中央独立复核（进行中）
+
+按用户新分工收敛为中央加两个agent，不再新增子agent：
+
+| owner | 本轮职责 | 当前首个交付条件 |
+| --- | --- | --- |
+| m01_blocker_recovery | 装饰父链所需完整楼梯装配、结构变形、自动杂物selected mesh/source真实所有权 | 先恢复原结构变形6资源合同与aux输出，再接true/false装配，随后补clutter producer→consumer；每段给中央稳定typed API |
+| m02_terrain_recovery | 地形交互／历史／数据／GPU读回闭环 | 原release失败顺序与有效夹具；W5实际双u16高度SSBO→完成反馈→两帧延迟→CPU高度和脏块 |
+| root | 独立原证review、原注册树、共享宿主、统一验收和动态派发 | 不挂空系统、不挂历史错误聚合installer；待稳定API到达后按原边界集成，逐段复验 |
+
+code-map入口已实际读取并只读查询：[工具入口](../../../reverse-engineering/tiny-glade/tools/code-map/README.md)。当前已发布snapshot `053060f0c5d388b353567d8b`，回包B RNE/PDB指纹与既有原证相同；本机socket受沙箱限制时改用受审查的只读查询权限，未重启数据库／重建inventory／import。`tools/code-map-runtime`继续只留本机。完整汇编可用于导航和原字节核查，图里的curated语义、静态CALLS、源码SHA与`current_implementation_revalidated=false`不证明业务已恢复或测试已执行。
+
+中央已实际核原结构变形范围：PDB `1407d49d0..1407d8fde`，PE unwind首段到`1407d7de9`，旧Ghidra首片却只有`1407d49d0..1407d4b63`。后续有多片equal-bytes candidate；不能把403B首片当完整17934B函数，或凭范围覆盖认完整CFG。地址search须带`0x`，否则是名字查询，空结果不说明原函数缺失。
+
+父链review追加实质依赖：当前`ui_focus_stairs`仍注册默认零体积控件且事件writer不使用；`visualize_ui_stairs`按索引伪造`(i,0,0)`点位。这两处已通知M01 owner纳入原交互恢复，不能仅把旧`register_ui_systems`全部挂上来冒称父链完成。原多次cache／flush和普通tuple／chain／IgnoreDeferred边界按已有原证保留，不做推测去重。本轮尚未取得新的模块验收结果。
+
+### 2026-10-28 最新主分支合并与独立复核
+
+按用户要求已fetch并快进主分支至`9028e2db4`（此前`8408f140f`，新增87个提交），本地恢复工作完整备份后合并。沿用最新rhapsody拆分目录，原常量页修复迁到新session/frame_imports；消除自动合并带来的重复高度注册、事件／模块／边界函数定义，保留远端实际输入→高度历史→undo/redo测试。完整合并决定、当前源代码断点与测试边界见[本轮复核](MAIN-SYNC-REVIEW-2026-10-28.md)及[指纹／日志](main-sync-review-2026-10-28.json)。
+
+**M01仍未完成**：生产App只调用装饰物startup资源入口，完整交互／视觉／validator父链未挂；`playermade_stairs_assemble<true/false>`仍空body，`calculate_distortion_from_structural_graph`仍空Vec。完整场景另受自动杂物selected mesh/source丢失的显式未实现分支阻碍。此结论来自最新合并源码与调用点，非继承旧统计。
+
+本轮实跑：tiny-glade含tests构建检查通过；toolbar 109通过／9忽略；形状54通过；高度52通过（含保留的远端输入历史测试）；原形状注册顺序1通过；toolbar模块链8、focus链2通过；迁入新渲染结构的常量页Arc/Weak退役在本机真实Vulkan 1通过。各范围独立，不将数字合计作为模块完成率。原注册顺序测试手工挂cache，不证明生产视觉父链已经安装。未做真实OS输入或完整窗口／性能验收，本轮工作区未提交推送。
+
+### 2026-10-27 地形并行轮（中央直接实施，尚未验收）
+
+- 实际生产入口是`run_game::add_original_plugins`调用原`TerrainSystems`，CPU权威为core `TerrainEditingData`持有的既有tg-terrain stroke map；继续复用已恢复的数值层，不重建一套地形实现。B目录归属已核对`country-core/src/systems/terrain/*`。
+- 聚焦交互owner负责原`ui_terrain_focus_mode@1409a4fb0`。当前真实Mode5仍读无生产者的FocusRaycast/Hover/Selection，且用HashMap遍历尾项代替选中笔画；完整原函数与三跳表恢复中。PDB函数体13202B与共享Ghidra2837B不符且后者越入邻函数，先在独占worker修CFG，不凭截断C补猜测逻辑。
+- 中央负责权威stroke→原W3/W5/W6→真实GPU反馈→CPU高度/脏块及宿主接线。本轮已用实际`delayed_terrain_changed_msg`复现：extract后游戏线程多运行一帧，资源changed tick改变，现反馈分支会扣掉请求却丢弃已提交的copy_issued确认。失败日志`/tmp/m02-root-readback-before-exact.log`（1项实际执行失败），不是静态搜索推断。正在验证修复：保留World和资源added身份检查，同实例采用OR合并提交确认、原子扣除本帧已消费请求，避免吞掉期间新增编辑。
+- 原延迟系统`140aabdd0`与原注册`1409455f0`已从共享只读库取回，存[m02-root-terrain-readback-original.json](m02-root-terrain-readback-original.json)。保留原两帧软件延迟和一次双高度拷贝上限；异步重构使用真正GPU完成的owned读回，不通过加idle等待回退渲染架构。CPU回归与GPU、保存重启的验收分别记录。
+- M01必要碰撞依赖已按原`collision::build140b68623/628`接Update/set30：完整`update_rapier_colliders→flush`保留IgnoreDeferred，另保留WallSystems/set24原flush；初始化真实LintelSegments供原构造写者和碰撞读者共用。完整GPU/主App复验仍在进行，不能以63项碰撞World测试代替生产联合验收。
+
+中央实测追加：提交确认修复后**8项反馈回归通过**，其中新反例继续运行原两帧延迟系统，核两份CPU高度各自真实写入和单次OnTerrainChange。真实GPU整App第一次停在自动杂物的空RockMaskData；中央删除无生产者的镜像，借用注册表校验后的canonical TerrainRockMaskSsbo完成反馈，相关真实World **3项通过**，没有取消原采样越界检查。第二次真实GPU整App已越过此处，现明确失败于`manage_autoclutter_entities`的`ORIGINAL_IMPLEMENTATION_PENDING: selected mesh/source owner erased`。这是M11跨模块依赖，未填占位网格、未禁用系统，也没有把失败算GPU验收通过；该二进制尚早于新Mode5/u64 counter变更。日志、各自边界和源码快照见[m02-root-readback-validation.json](m02-root-readback-validation.json)。
+
+M02继续分工：rectangle恢复Mode5三阶段聚焦编辑，height恢复Mode10真实widget/预览/hover合同，move恢复原u64发号计数和严格地形存档字段；中央统一宿主和反馈接线。M01 rails、主楼梯装配与原distortion中间阶段继续按原函数推进。仍总计8个agent。
+
+中央M02原着色器实测已通过：[地形GPU有界证据](m02-root-terrain-gpu-validation.json)。真实M3 Vulkan执行原W3，空地形/稳定帧/新增三点笔画依次4/0/4个pass；前两次实际纹理读回checksum同为91001741，编辑后91002950，检查稳定输出复用及编辑后确有变化，不假设原噪声图像数值。scope是同一个真实World/CoreRenderBridge/rhapsody，不是整App；W5双u16高度SSBO→完成反馈→延迟CPU拷贝的真实GPU闭环另行补验，完整App仍停于上述M11所有权缺口。
+
+本轮经验：异步反馈要区分“权威数据被替换”和“消费者正常改变了资源tick”。copy_issued是取走式提交确认，CPU正常消费不能使之后到达的同实例确认失效；应以World/资源实例身份隔离Reload，并原子合并请求，不把通用changed tick当作全部字段的事务版本。逆向函数先核PDB物理body、跳表及CFG，防止截断反编译把复杂业务伪装成小函数。实际GPU启动须保留原失败位置，接通上游后暴露下一个业务所有权缺口不能通过空网格或省略系统消除。
+
+### 2026-10-26 最新主线同步与源码复核（858da5891）
+
+已fetch远端，原渲染分支从704f6857b快进到8fd2a3c2c并保留。按用户要求现已切到跟踪origin/main的本地main，起点858da5891；旧本地main的两个独立提交完整保留到backup/local-main-before-sync-20261026。该主线已含7fe7a71aa的渲染CPU改造和最新toolbar/onboarding修复；同步时rhapsody/src、production_renderer.rs、render_cpu_probe.rs与8fd2a3c2c逐文件比较无差异。以下同步基线与本轮工作区修改分别记录，不能当作全项目完成率。
+
+本机新增验证：`cargo check --offline -p tiny-glade --tests`通过（3m41s）；`system-onboarding --lib`74通过/2忽略，随后带原B资产显式运行2项ignored，2通过/0忽略。日志、命令、源码指纹和问题边界见[sync-review-2026-10-26.json](sync-review-2026-10-26.json)。本次没有GPU、OS输入、性能或长稳验收。
+
+- **实际新增**：ui_edit_focus已恢复对象有效性、工具取消、画布与几何选取分支，真实history_runtime注册并产生ToolSelectionCancelled；undo/deselect/stairs/roof/unlink提示已替换多处常量seam。主线还保留真实设置、新建/每日、保存错误、摄影/过山车与Demo恢复。Windows基线的实际world graph/对焦读回等结果只按其对应日志边界引用，不能升级为本轮Mac验证。
+- **M01仍未完成，但旧接口已被替换**：原同步快照只有10项子链；本轮已接原A/B/C的25个Update业务系统与1个is_gameplay_active条件，删除圆形假命令、矩形替代输入及SelectedWallShape。圆/矩形/移动/自由墙/高度定向链已分别取得原证与本地World结果。中央仍在收口生产装饰缓存、验证器、重锚及整场景退出、编辑与保存重启联合验收，不能以这些局部结果升级为M01完成。
+- **提示复核纠错及已修范围**：原三类条件消费者实际Query为HintType，先前“FocusSubjectByte缺生产者”应修消费者类型，不能新造producer；原HintAnimation确实为12B单实体组件，“缺属性数组”属于误报。现已删除伪组件，恢复真实HintType与Time<()>动画/冷却；77项普通测试、2项原资产CPU测试及2720组原指令动画差分通过，范围见[m01-public-hints-repair-review.md](m01-public-hints-repair-review.md)。WorldPoint/Bounds旧零负载也不证明当前提示位置为零：实际consumer读取权威Preview几何。
+- **整游戏仍有业务缺口**：楼板、支撑/柱与抹灰等构造入口仍有真实todo并被宿主省略；有默认世界图不代表全建筑业务完成。
+- **渲染验收边界**：Windows基线记录常量页cancel/completion后allocate Timeout仍待复验；UHD630缺swapchainMaintenance1阻碍其Strict窗口呈现（AcquireOnly不能代替present），不泛化到所有硬件。旧V31静态8.24ms/大量绘制22.66ms仅是旧冻结构建均值，不能当858da5891的性能或60FPS结论。
+
+建议依赖顺序：先收口M01原形状编辑生产者/权威历史/完整调度 → 补提示的真实组件来源与动画合同 → 本机GPU复验常量页、编辑/保存/重启/Reload → 获准后真实OS输入及窗口长稳 → 再按既定业务模块顺序推进。Steam SDK、Credits和许可证继续排除。下方旧轮次与M01复审文档含修复前/中途结论，若与当前源码矛盾，以本节证据边界及当前源码为准。
+
+### 2026-10-26 main 实施轮（进行中，M01未验收）
+
+- 中央加7个业务owner共8个agent，按圆编辑/旋转、矩形、形状移动、自由墙、高度、公共提示及GPU必要依赖分配已有模块；不重建rhapsody。共享lib/events/生产调度由中央统一，逆向数据库保持共享只读，修正跳表使用独占worker。
+- 原B A/B/C调度树已接入：**25个Update业务叶，另1个条件**；旧文档的26条FnSystem名字含条件，不是26个业务系统。原4+2的B组保留chain同步点，A/C及外层保留IgnoreDeferred，五编辑消费者保留普通tuple。set25已接auto_allow→五tuple→原九参move_follow，并约束在cache之前；实际cache/visual/validator调用仍需生产接通，不能以phantom系统集合替代执行。
+- 固定装饰物提示已删除delta=0/global_hit=false/人工几何表，恢复真实Storage/Transforms/ClutterMeshes/墙/Rapier/UI实体/动画删除；native-physics下7项实际World测试、三画笔实际writer和5111例原矩形相交函数差分通过，详见[m01-pins-recovery-2026-10-27.md](m01-pins-recovery-2026-10-27.md)。这不代替生产GPU像素、原整ECS函数等价或长稳。
+- GPU常量页退役已通过原严格BDA 1项、managed projection 6项、frame imports 5项及CPU常量环15项；外部Arc/Weak不可变快照仍阻止复用，最后Weak释放后完成收集即可复用同页，不增加idle等待。详见[m01-constants-page-retirement-2026-10-26.md](m01-constants-page-retirement-2026-10-26.md)。这不替代窗口present、整游戏性能或编辑联合验收。
+- 中央已修共享矩形expand的下界遗漏，补原方向插值和20步边界搜索，恢复WidgetParams真实默认声音槽（原1409a8e30..4d为1/2/3/3，旧fields记录正确但实际sounds全零）。共享几何取得expand2612、lerp1427、完整search465严格差分及既有20项回归；直接执行原RNE的Rosetta探针排除了Unicorn双NaN错误，未迎合模拟器误差。详见[m01-shared-geometry-independent-review.md](m01-shared-geometry-independent-review.md)。声音与完整生产调度的最终统一测试仍待本轮冻结。
+- 原set25普通五成员组含move_shape、rectangle_edited、wall_height_changed、freehand_edited、circle_rotated；本轮已逐项替换旧本地event，生产者与消费者使用同一TypeId，并完成各叶子归档、几何、音频和历史定向验证。生产19组父链、视觉和保存重入仍需联合验收，不能把这些叶子结果写成整模块完成。
+
+2026-10-27持续实施：本机生产App/原场景→真实GPU世界图→physical export已通过一次无窗口探针（502砖实例、174 draw-list条目、480×270读回），日志暂存/tmp/m01-main-production-gpu.log；该二进制构建于后续anchors/visual整合之前，**只作为前一阶段探针，不代表最终源码或编辑保存闭环**。无OS输入。磁盘曾耗尽；确认无cargo/rustc后只清24GiB可再生incremental缓存，保留deps/源码/原始程序/数据库/证据；后续同target统一CARGO_INCREMENTAL=0，未更改debug profile。
+
+独立review又发现：实际build_recovered_visual_systems未调用，cache.before约束只有phantom目标；validator是原正常帧清modified/removed的唯一owner；只挂生成而漏validator会每帧重建Arc/碰撞。正在核原19组父链顺序并补真实调用。原decorator退出函数已按两组20owner恢复并接OnExit(Game)，同时接原碰撞世界/交集图退出pair；真实同App联合Reload仍待验，不能以只清窗灯或World.clear替代。ivy原调度也已更正为8节点/9系统，数字22是spawner.after(GameSystemSet22)，不是系统数；未据错误反编译空参假设重排。
+
+2026-10-27依赖收口追加（仍未完成M01）：
+
+- 原insert@1408258b0的返回值是Arc allocation+0x10，原140825e09把Info.state写allocation+0x138；楼梯1408047bd另外写data+0x129，即allocation+0x139交互来源flags。中央已纠正共享insert_for第三参写u138，保留flags独立。两字段混淆会让预览态错误生成碰撞，旧“state1仍有collider”测试必须按原证更正，不能回退生产修复。clutter原调用1407e3bb1显式传0，须保留它与其它生成器的差异。
+- 备份真实九owner已补齐三关联map与延迟队列；烟囱正式/预览两状态已完成World→fullvisual→真实砖稀疏分配→Smoke Query→typed Nani→删除回收。烟柱厚度实际接set36普通组；Nani helper已由原gameplay_startup调用，不另注册重复系统。各原证、数值和验证边界见对应owner报告。
+- 旗帜三条实际draw callback（1409b28c0、1409b4860、1409b8b60）仍读无生产者ActiveSessionView，被生产核验发现。中央已统一读权威ActiveSession.meta.mutators，按原0/1判断Halloween布面，删除两地方镜像和多余extract，并移除每旗Vec克隆。真实World覆盖5主题×8mutator组合；draw_callbacks_组92项通过，见[m01-root-flag-session-callback-tests.log](m01-root-flag-session-callback-tests.log)。该结果验证CPU draw builder/资源读取，不冒称旗布GPU像素或整个模块通过。
+- slot3独立核实还包含真实楼梯六阶段chain，不能将其从父链删除：maintain_graph→edge-cull→requests(false)→interpolate→invalid-cull→cache。当前图维护、两剔除wrapper与原后端仍有未闭合处，正按各原函数逐项恢复。slot1第二叶原名是continue_stairs（14079c3a0），不是此前误称apply_stairs_op_events；中央已改回AppMode/StairsState/活DeferredEvents三参数，修正按当前endpoint连接、32位事件tag与24B locator载荷，原侧差分和定向验证进行中。
+- 老虎窗完整瓦片仍在恢复，原屋顶截面与旧surface.section含eave路径存在实测尺寸差异，正在原owner函数纠正；不能给瓦片减padding掩盖。实际生产App/GPU联合验收等待这些必要消费者，不以空body或asset_exists条件跳过。
+
+中央本轮定向结果已存[m01-root-source-contracts-2026-10-27.json](m01-root-source-contracts-2026-10-27.json)：真实picker默认声音1项、原25叶/五消费者注册图1项、draw callbacks 92项、continue_stairs真实World4项通过。continue原侧完整执行324例，其中317例是合法Rust枚举输入并逐项对照真实World的图、端点前20B、backup标志和changed tick；7例原始非法枚举不在Rust里构造UB，不算Rust差分通过。此注册图测试显式手动添加cache核顺序，**仍不证明生产19组已安装**。源码指纹是该定向轮快照，后续共享owner修改须按受影响范围复验。
+
+本轮新增经验：①Arc分配指针与数据指针有16B差，字段必须同时核writer、返回地址和consumer；②逐生成器核state传参，不将clutter的原固定0统一成Info.state；③事件有原32位tag时不能把未活跃padding也作为过滤条件；④队列应核活队列还是backup、是否排空及锁的作用域；⑤测试需区分正式/预览，旧测试依赖错误共享API时保留失败记录再按原合同重验；⑥注册树的普通tuple/chain边界必须包含传入配置，不能只看父构造器里的直接call数量。
+
+本轮即时经验：①反编译比较伪代码会隐藏MAXSS/MINSS的NaN传播，必须回查指令；②PublicWall投影经WallPublicationCore写入，不能只搜building_projection函数体就判字段遗漏（+284为constrained_extra）；③非易失XMM可能在Held分支被覆盖，不能从最近一次地形采样猜最终height；④错误间接跳表会让Ghidra吞邻函数，先在独占worker修CFG再复原完整分支；⑤注册顺序需区分普通tuple、chain与IgnoreDeferred，事件的Bevy维护必须早于World资源初始化。
 
 ### 2026-10-26 Windows 新渲染框架基线（Task 1，M01 计划起点）
 

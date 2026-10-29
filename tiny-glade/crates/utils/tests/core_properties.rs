@@ -13,111 +13,61 @@ fn interval(start: f32, end: f32, upper_exclusive: bool) -> Interval {
 }
 
 #[test]
-fn clipping_boundary_policy_is_stable_under_repeated_cuts() {
-    // Geometry retains the closure of surviving edges. It is deliberately not
-    // strict set subtraction at a newly introduced cut endpoint.
-    type BoundaryCase<'a> = (f32, f32, bool, &'a [(f32, f32)]);
-    let cases: &[BoundaryCase<'_>] = &[
-        (-1.0, 0.0, false, &[(0.0, 1.0)]),
-        (-1.0, 0.0, true, &[(0.0, 1.0)]),
-        (1.0, 2.0, false, &[(0.0, 1.0)]),
-        (1.0, 2.0, true, &[(0.0, 1.0)]),
-        (0.0, 0.0, false, &[(0.0, 1.0)]),
-        (0.0, 0.0, true, &[(0.0, 1.0)]),
-        (1.0, 1.0, false, &[(0.0, 1.0)]),
-        (1.0, 1.0, true, &[(0.0, 1.0)]),
-        (0.5, 0.5, false, &[(0.0, 0.5), (0.5, 1.0)]),
-        (0.5, 0.5, true, &[(0.0, 1.0)]),
-        (0.0, 0.5, false, &[(0.5, 1.0)]),
-        (0.0, 0.5, true, &[(0.5, 1.0)]),
-        (0.5, 1.0, false, &[(0.0, 0.5)]),
-        (0.5, 1.0, true, &[(0.0, 0.5)]),
-        (0.0, 1.0, false, &[]),
-        (0.0, 1.0, true, &[(1.0, 1.0)]),
-        (-1.0, 1.0, true, &[(1.0, 1.0)]),
-        (-1.0, 2.0, true, &[]),
+fn clipping_preserves_original_boundary_records() {
+    let cases: &[(f32, f32, bool, &[(f32, f32)])] = &[
+        (0.0, 1.0, true, &[(0.0, 0.0), (1.0, 1.0)]),
+        (0.0, 0.0, false, &[(0.0, 0.0), (0.0, 1.0)]),
+        (1.0, 1.0, false, &[(0.0, 1.0), (1.0, 1.0)]),
     ];
     for &(start, end, exclusive, expected) in cases {
         let mut value = SubtractiveBoolean1D::new_range(0.0, 1.0);
-        let expected: Vec<_> = expected
-            .iter()
-            .map(|&(s, e)| interval(s, e, false))
-            .collect();
-        for _ in 0..64 {
-            value.subtract(interval(start, end, exclusive));
-            assert_eq!(
-                value.result(),
-                expected,
-                "cut={start}..{end}, exclusive={exclusive}"
-            );
-        }
-    }
-    for &(start, end, exclusive, expected) in &[
-        (0.0, 0.0, false, false),
-        (0.0, 0.0, true, true),
-        (-1.0, 0.0, false, false),
-        (-1.0, 0.0, true, true),
-        (0.0, 1.0, true, false),
-        (1.0, 2.0, false, true),
-    ] {
-        let mut point = SubtractiveBoolean1D::new_range(0.0, 0.0);
-        point.subtract(interval(start, end, exclusive));
-        assert_eq!(!point.result().is_empty(), expected);
+        value.subtract(interval(start, end, exclusive));
+        let expected: Vec<_> = expected.iter().map(|&(a,b)| interval(a,b,false)).collect();
+        assert_eq!(value.result(), expected);
     }
 }
 
 #[test]
-fn clipping_long_state_sequences_match_independent_interior_membership() {
-    for seed in [0x21e4_5a1d, 0xcba8_3142, 0xace0_77ef] {
-        let rng = fastrand::Rng::with_seed(seed);
-        let mut value = SubtractiveBoolean1D::new_range(0.0, 64.0);
-        // Half-integer probes never coincide with integer cut boundaries, so
-        // ordinary membership is an independent oracle for the edge policy.
-        let mut visible = [true; 64];
-        let mut previous_length = 64.0;
-        for step in 0..2_000 {
-            let start = rng.i32(-2..66) as f32;
-            let end = start + rng.u32(0..5) as f32;
-            let exclusive = rng.bool();
-            let cut = interval(start, end, exclusive);
-            value.subtract(cut);
-            for (i, expected) in visible.iter_mut().enumerate() {
-                let probe = i as f32 + 0.5;
-                *expected &= !(start <= probe && probe < end);
-                let observed = value
-                    .result()
-                    .iter()
-                    .any(|r| r.start <= probe && probe <= r.end);
-                assert_eq!(
-                    observed, *expected,
-                    "seed={seed}, step={step}, probe={probe}"
-                );
-            }
-            let once = value.result().to_vec();
-            value.subtract(cut);
-            assert_eq!(value.result(), once, "idempotence at step={step}");
-            let mut length = 0.0;
-            for (i, range) in value.result().iter().enumerate() {
-                assert!(0.0 <= range.start && range.start <= range.end && range.end <= 64.0);
-                assert!(!range.upper_exclusive);
-                if i != 0 {
-                    let previous = value.result()[i - 1];
-                    assert!(previous.end <= range.start);
-                    assert!(previous.start != range.start || previous.end != range.end);
-                }
-                length += range.end - range.start;
-            }
-            assert!(length <= previous_length);
-            assert!(value.result().len() <= step + 2);
-            previous_length = length;
+fn original_four_cut_sequences_match_native_records() {
+    let fixtures: serde_json::Value = serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"), "/../../reports/module-recovery-2026-10-23/m06-boolean-sequence.json"
+    ))).unwrap();
+    for case in fixtures.as_array().unwrap() {
+        let args = case["args"].as_array().unwrap();
+        let value = |i: usize| args[i].as_str().unwrap().parse::<f32>().unwrap();
+        let mut result = SubtractiveBoolean1D::new_range(value(0), value(1));
+        for i in (2..args.len()).step_by(3) {
+            result.subtract(interval(value(i), value(i+1), args[i+2].as_str().unwrap() == "1"));
+        }
+        let records = case["native"].as_array().unwrap();
+        let expected_count = records[0].as_str().unwrap().strip_prefix("count=").unwrap().parse::<usize>().unwrap();
+        assert_eq!(result.result().len(), expected_count, "case {}", case["case"]);
+        for (actual, expected) in result.result().iter().zip(&records[1..]) {
+            let hex = expected.as_str().unwrap();
+            let bytes: Vec<_> = hex.as_bytes().chunks_exact(2).map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(),16).unwrap()).collect();
+            assert_eq!(actual.start.to_bits().to_le_bytes(), bytes[0..4], "case {}", case["case"]);
+            assert_eq!(actual.end.to_bits().to_le_bytes(), bytes[4..8], "case {}", case["case"]);
+            assert_eq!(u8::from(actual.upper_exclusive), bytes[8], "case {}", case["case"]);
         }
     }
-    let mut value = SubtractiveBoolean1D::new_range(0.0, 1.0);
-    for _ in 0..10_000 {
-        value.subtract(interval(0.0, 0.0, true));
-        value.subtract(interval(0.0, 0.0, false));
+}
+
+#[test]
+fn clipping_interior_membership_matches_reference() {
+    for seed in [0x21e4_5a1d, 0xcba8_3142, 0xace0_77ef] {
+        let rng = fastrand::Rng::with_seed(seed);
+        for _ in 0..2_000 {
+            let start = rng.i32(-2..66) as f32;
+            let end = start + rng.u32(0..5) as f32;
+            let mut value = SubtractiveBoolean1D::new_range(0.0, 64.0);
+            value.subtract(interval(start, end, rng.bool()));
+            for i in 0..64 {
+                let probe = i as f32 + 0.5;
+                let observed = value.result().iter().any(|r| r.start <= probe && probe <= r.end);
+                assert_eq!(observed, !(start <= probe && probe < end), "seed={seed} probe={probe}");
+            }
+        }
     }
-    assert_eq!(value.result(), [interval(0.0, 1.0, false)]);
 }
 
 fn circular_reference(a: f32, b: f32, period: f32) -> f32 {

@@ -5,7 +5,7 @@
 use bevy_ecs::prelude::*;
 use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
 pub use country_core::systems::render_loop::compute_passes::read_bush_positions_for_cpu::BushCpuSsbo;
-use country_core::utils::dirty_tiles::{DirtyTiles, world_rect_cells};
+use country_core::utils::dirty_tiles::DirtyTiles;
 use glam::Vec2;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -31,7 +31,7 @@ pub struct BushGridCell {
     pub hash: u64,
 }
 
-/// 懒网格（64×64；记录下标 = `x*64 + y`，O 0x140aac630）+ 脏格发布者。
+/// 懒网格（64×64；记录下标 = `x + 64*y`，O 0x140aac630）+ 脏格发布者。
 ///
 /// 机器码证据：`read_bush_positions_from_gpu`（0x140eebaa0）最后对 `*BushGrid + 0x18` 调
 /// `Publisher<DirtyTiles>::publish`；`autoclutter_subscribe_to_tabloids`（0x1422d6930）对其第 3 个
@@ -41,6 +41,14 @@ pub struct BushGridCell {
 pub struct BushGrid {
     pub cells: Vec<BushGridCell>,
     pub publisher: tabloid::Publisher<DirtyTiles>,
+}
+
+/// B 141cf3ee0/141cf3900 共用的 FMA、floor/ceil 和 [0,63] 格范围。
+pub(crate) fn bush_rect_cells(min: Vec2, max: Vec2) -> ([u32; 2], [u32; 2]) {
+    let scale = f32::from_bits(0x3efc0fc1);
+    let lower = |x: f32| x.mul_add(scale, 32.0).floor().max(0.0).min(63.0) as u32;
+    let upper = |x: f32| x.mul_add(scale, 32.0).ceil().max(0.0).min(63.0) as u32;
+    ([lower(min.x), lower(min.y)], [upper(max.x), upper(max.y)])
 }
 
 impl std::fmt::Debug for BushGrid {
@@ -119,19 +127,14 @@ pub fn read_bush_positions_from_gpu(
     // 3. 逐 bush：Aabb2::from_center_radius(center, 0.7) → 每覆盖格追加 bush 位置。
     for row in &rows[1..count + 1] {
         let pos = Vec2::new(f32::from_bits(row.0[0]), f32::from_bits(row.0[1]));
-        let rect = [
-            pos.x - BUSH_CELL_RADIUS,
-            pos.y - BUSH_CELL_RADIUS,
-            pos.x + BUSH_CELL_RADIUS,
-            pos.y + BUSH_CELL_RADIUS,
-        ];
-        let cells = world_rect_cells(rect);
-        if cells.is_empty() {
+        let radius = Vec2::splat(BUSH_CELL_RADIUS);
+        let (minimum, end) = bush_rect_cells(pos - radius, pos + radius);
+        if minimum[0] >= end[0] || minimum[1] >= end[1] {
             continue;
         }
-        for y in cells.minimum[1]..cells.end[1] {
-            for x in cells.minimum[0]..cells.end[0] {
-                let idx = x as usize * 64 + y as usize;
+        for y in minimum[1]..end[1] {
+            for x in minimum[0]..end[0] {
+                let idx = x as usize + y as usize * 64;
                 grid.cells[idx].positions.push(pos);
             }
         }
@@ -240,6 +243,32 @@ mod tests {
                 .all(|cell| cell.hash == 0 && cell.positions.is_empty())
         );
         assert!(subscriber.take().is_none());
+    }
+
+    #[test]
+    fn asymmetric_position_uses_native_xy_cell_order() {
+        let position = Vec2::new(10.0, -10.0);
+        let (mut world, mut schedule, _) = fixture(Some(vec![[1, 0], bits(position)]));
+        schedule.run(&mut world);
+        let (min, _) = bush_rect_cells(position - Vec2::splat(BUSH_CELL_RADIUS),
+            position + Vec2::splat(BUSH_CELL_RADIUS));
+        assert_ne!(min[0], min[1]);
+        let grid = world.resource::<BushGrid>();
+        assert_eq!(grid.cells[min[0] as usize + min[1] as usize * 64].positions, [position]);
+        assert!(grid.cells[min[1] as usize + min[0] as usize * 64].positions.is_empty());
+    }
+
+    #[test]
+    fn bush_grid_cells_match_original_x86() {
+        let cases: &[([u32; 4], &[usize])] = include!(concat!(env!("CARGO_MANIFEST_DIR"),
+            "/../../../reports/module-recovery-2026-10-23/m06-clutter-bush-grid-native-cases.rs"));
+        for (bits, expected) in cases {
+            let f = bits.map(f32::from_bits);
+            let (min, end) = bush_rect_cells(Vec2::new(f[0], f[1]), Vec2::new(f[2], f[3]));
+            let actual: Vec<usize> = (min[1]..end[1]).flat_map(|y|
+                (min[0]..end[0]).map(move |x| x as usize + y as usize * 64)).collect();
+            assert_eq!(actual, *expected, "输入 {bits:?}");
+        }
     }
     #[test]
     fn actual_mapped_reader_preserves_raw_sort_reordering_and_dirty_clear_lifecycle() {

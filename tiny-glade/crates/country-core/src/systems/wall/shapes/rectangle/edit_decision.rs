@@ -86,8 +86,9 @@ pub fn finish_rectangle_edit_decision(
     let orientation = dot.acos().abs() * f32::from_bits(0x42652ee1);
     let x = f(old_at + 16) - f(dims_at);
     let y = f(old_at + 20) - f(dims_at + 4);
-    let dimensions = ((x * x) + (y * y)).sqrt();
-    if orientation > f32::from_bits(0x3c23d70a) || dimensions > f32::from_bits(0x3c23d70a) {
+    // B先算y²再加x²；只有两个有序<=同时成立才取消，NaN走提交。
+    let dimensions = ((y * y) + (x * x)).sqrt();
+    if !(orientation <= f32::from_bits(0x3c23d70a) && dimensions <= f32::from_bits(0x3c23d70a)) {
         let source = current_source.ok_or(RectangleFinishError::MissingSource)?;
         if source.shape.tag() != 1 {
             return Err(RectangleFinishError::NonRectangleSource);
@@ -128,9 +129,8 @@ mod tests {
 
     #[test]
     fn finish_produces_the_morph_premade_shape_payload() {
-        // Rectangle dims-edit state: variant 1 (+0 wall id @16, old axes @32,
-        // old dimensions @48). The new source has rotated axes, so the
-        // orientation criterion crosses the 0.01° guard.
+        // 原旋转状态tag1：wall@16、before axes@32、before dims@48。
+        // 新朝向跨过0.01°守卫，必须记录MorphPremadeShape。
         let mut state = RectangleEditState([0; 80]);
         state.0[..4].copy_from_slice(&1u32.to_le_bytes());
         state.0[16..24].copy_from_slice(&7u64.to_le_bytes());
@@ -167,6 +167,14 @@ mod tests {
             clutter_version: 0,
             observed_source_flag_64: 0,
         };
+        let mut unordered = state.clone();
+        unordered.0[32..36].copy_from_slice(&f32::NAN.to_le_bytes());
+        let unordered =
+            finish_rectangle_edit_decision(&mut unordered, true, Some(&source)).unwrap();
+        assert!(
+            unordered.history.is_some(),
+            "原有序<=守卫不能将NaN误判为未变更"
+        );
         let decision = finish_rectangle_edit_decision(&mut state, true, Some(&source)).unwrap();
         let compound = decision.history.expect("changed rectangle records history");
         assert_eq!(compound.groups.len(), 1);

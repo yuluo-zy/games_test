@@ -11,6 +11,7 @@
 | 渲染 / rhapsody | [`render-recovery/RHAPSODY_PROGRESS.md`](render-recovery/RHAPSODY_PROGRESS.md)、[`render-recovery/findings.md`](render-recovery/findings.md) |
 | 基础库复核 | [`foundation-review-fixes-2026-10-14/REPORT.md`](foundation-review-fixes-2026-10-14/REPORT.md) |
 | Shader 来源审计 | [`shader-origin-audit-2026-10-14/REPORT.md`](shader-origin-audit-2026-10-14/REPORT.md) |
+| Neo4j 汇编图谱、真实链查询与性能验收 | [`code-map-2026-10-28/REPORT.md`](code-map-2026-10-28/REPORT.md) |
 
 ## 主题分组
 

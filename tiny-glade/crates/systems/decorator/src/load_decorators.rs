@@ -241,6 +241,16 @@ pub fn load_decorators(
                         DecoratorOutline::Sphere(0.4),
                         collision_outline,
                     );
+                    // B 1407b8e90..8f43：紧接Subtype18，Demo也必需，失败保留此处之前的键。
+                    let rotation_name = "decorators/lantern_terrain_rotate_collision";
+                    let rotation_collision = indexed_collision(required_mesh(assets, rotation_name));
+                    let rotation_outline = DecoratorCollisionOutline::Lines(load_lines(root, rotation_name));
+                    library.insert_collision_and_interaction_as_same(
+                        DecoratorLibKey::LANTERN_TERRAIN_ROTATION,
+                        rotation_collision,
+                        DecoratorOutline::None,
+                        rotation_outline,
+                    );
                 }
                 19..=21 | 25 => {
                     let sphere = Mesh::try_from(Sphere::new(0, 0.5)).unwrap();
@@ -882,6 +892,7 @@ mod tests {
         },
     ];
     const ASSET_NAMES: &[&str] = &[
+        "decorators/lantern_terrain_rotate_collision",
         "decorators/arrow_slit_1x1_collision",
         "decorators/arrow_slit_1x1_interaction",
         "decorators/arrow_slit_1x1_outline",
@@ -1129,11 +1140,23 @@ mod tests {
             let watch = MeshWatch::new(false);
             let mut library = DecoratorMeshLibrary::default();
             load_decorators(&fixture.0, &mut library, &assets, &watch, demo);
-            let count = if demo { 34 } else { 52 };
+            let count = if demo { 35 } else { 53 };
             assert_eq!(library.collision.len(), count);
             assert_eq!(library.interaction.len(), count);
             assert_eq!(library.outline.len(), count);
             assert_eq!(library.collision_outline.len(), count);
+            let rotation_key = DecoratorLibKey::LANTERN_TERRAIN_ROTATION;
+            let rotation = library.collision_record(rotation_key);
+            let interaction = library.interaction_record(rotation_key);
+            check_collision(rotation, Source::Indexed("decorators/lantern_terrain_rotate_collision"));
+            assert!(Arc::ptr_eq(&rotation.mesh, &interaction.mesh));
+            assert_eq!(rotation.triangles, interaction.triangles);
+            assert_ne!(rotation.triangles.as_ptr(), interaction.triangles.as_ptr());
+            assert_eq!(library.get_outline(rotation_key), &DecoratorOutline::None);
+            let DecoratorCollisionOutline::Lines(points) = library.get_collision_outline(rotation_key) else {
+                panic!("原unit key必须保留真实轮廓线");
+            };
+            check_lines(points, "decorators/lantern_terrain_rotate_collision");
             for expected in EXPECTED {
                 let key = DecoratorLibKey::new(expected.subtype, expected.rank);
                 if demo && matches!(expected.subtype, 6..=9 | 22 | 23) {
@@ -1217,6 +1240,30 @@ mod tests {
                 .try_get_handle_by_name("decorators/window_cottage_1x1_collision")
                 .is_some()
         );
+    }
+
+    #[test]
+    fn missing_rotation_unit_asset_keeps_exact_subtype18_prefix_in_both_demo_modes() {
+        for demo in [false, true] {
+            let fixture = Fixture::new();
+            std::fs::remove_file(fixture.path("decorators/lantern_terrain_rotate_collision")).unwrap();
+            let assets = AssetMeshLibrary::new();
+            let mut library = DecoratorMeshLibrary::default();
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                load_decorators(&fixture.0, &mut library, &assets, &MeshWatch::new(false), demo);
+            }));
+            assert!(result.is_err());
+            let expected: Vec<_> = EXPECTED.iter().filter(|e| e.subtype <= 18
+                && !(demo && matches!(e.subtype, 6..=9 | 22 | 23)))
+                .map(|e| DecoratorLibKey::new(e.subtype, e.rank)).collect();
+            assert_eq!(library.collision.len(), expected.len());
+            assert_eq!(library.interaction.len(), expected.len());
+            assert_eq!(library.outline.len(), expected.len());
+            assert_eq!(library.collision_outline.len(), expected.len());
+            for key in expected { assert!(library.collision.contains_key(&key)); }
+            assert!(!library.collision.contains_key(&DecoratorLibKey::LANTERN_TERRAIN_ROTATION));
+            assert!(!library.collision.contains_key(&DecoratorLibKey::new(19, 1)));
+        }
     }
 
     #[test]
@@ -1485,13 +1532,14 @@ mod tests {
         let mut library = DecoratorMeshLibrary::default();
         // 完整执行生产入口，不生成 JSON，也不预填四表或替换资产库。
         load_decorators(&root, &mut library, &assets, &watch, demo);
-        let count = if demo { 34 } else { 52 };
+        let count = if demo { 35 } else { 53 };
         assert_eq!(EXPECTED.len(), 52);
         let mut expected_keys: Vec<_> = EXPECTED
             .iter()
             .filter(|e| !(demo && matches!(e.subtype, 6..=9 | 22 | 23)))
             .map(|e| (e.subtype, e.rank))
             .collect();
+        expected_keys.push((DecoratorLibKey::LANTERN_TERRAIN_ROTATION.subtype, 0));
         expected_keys.sort_unstable();
         assert_eq!(expected_keys.len(), count);
         for (table, keys) in [
@@ -1532,6 +1580,18 @@ mod tests {
             keys.sort_unstable();
             assert_eq!(keys, expected_keys, "真实 B 四表 {table}, demo={demo}");
         }
+        let unit = DecoratorLibKey::LANTERN_TERRAIN_ROTATION;
+        let collision = library.collision_record(unit);
+        let interaction = library.interaction_record(unit);
+        assert_original_asset_collision(&root, &assets, collision,
+            Source::Indexed("decorators/lantern_terrain_rotate_collision"));
+        assert!(Arc::ptr_eq(&collision.mesh, &interaction.mesh));
+        assert_eq!(collision.triangles, interaction.triangles);
+        assert_eq!(library.get_outline(unit), &DecoratorOutline::None);
+        let DecoratorCollisionOutline::Lines(points) = library.get_collision_outline(unit) else {
+            panic!("原unit旋转碰撞描边必须来自同一真实资产");
+        };
+        assert_original_asset_lines(&root, "decorators/lantern_terrain_rotate_collision", points);
         for expected in EXPECTED {
             let key = DecoratorLibKey::new(expected.subtype, expected.rank);
             if demo && matches!(expected.subtype, 6..=9 | 22 | 23) {
@@ -1599,13 +1659,13 @@ mod tests {
 
     #[test]
     #[ignore = "必须显式提供 TG_INSTALL_ROOT 原版 B 完整安装树"]
-    fn original_b_asset_tree_full_populates_52_keys_in_all_four_tables() {
+    fn original_b_asset_tree_full_populates_53_keys_in_all_four_tables() {
         assert_original_b_catalog(false);
     }
 
     #[test]
     #[ignore = "必须显式提供 TG_INSTALL_ROOT 原版 B 完整安装树"]
-    fn original_b_asset_tree_demo_populates_34_keys_in_all_four_tables() {
+    fn original_b_asset_tree_demo_populates_35_keys_in_all_four_tables() {
         assert_original_b_catalog(true);
     }
 }

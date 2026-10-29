@@ -42,6 +42,57 @@ pub use crate::systems::prefab::PrefabInstanceData;
 /// Canonical material normal map used by startup and draw consumers.
 pub use rendering::NormalMap;
 
+/// 原WoodenGate的完整业务值：constructor写入、clutter与描边查询和绘制共用。
+/// B原56B包含顶边点、墙ID、两端方向、seed和版本，不再拆成互不相通的组件。
+#[derive(bevy_ecs::component::Component, Clone, Debug, PartialEq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
+pub struct WoodenGate {
+    pub top_positions: Vec<[f32; 3]>,
+    pub wall: crate::resources::walls::WallId,
+    pub endpoint_directions: [[f32; 2]; 2],
+    pub seed: u32,
+    pub clutter_version: u8,
+}
+
+impl crate::render::extract::JournaledComponent for WoodenGate {}
+
+/// 原Smoke注册140854230：size16、align8；builder1412ab270写0/8/12/13，
+/// 厚度系统140818df0读key与enabled并回写thickness，Nani14207cd60读kind/id/厚度。
+/// 尾部两字节是repr(C)对齐，不是额外业务载荷，不复用旧14B旁路组件。
+#[repr(C)]
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq)]
+pub struct Smoke {
+    pub key: usize,
+    pub thickness: f32,
+    pub kind: u8,
+    pub enabled: u8,
+}
+
+const _: () = assert!(core::mem::size_of::<Smoke>() == 16);
+const _: () = assert!(core::mem::align_of::<Smoke>() == 8);
+
+/// 原BrickColor的24B活载荷；前两word为整数，+8/+12/+16为浮点，+20为标志字节。
+/// 与窗口builder和两种砖实例Query共用TypeId，不声明原Rust ABI。
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug)]
+pub struct BrickColor(pub [u8; 24]);
+
+impl BrickColor {
+    pub fn words(&self) -> [u32; 6] {
+        core::array::from_fn(|index| u32::from_le_bytes(self.0[index * 4..index * 4 + 4].try_into().unwrap()))
+    }
+}
+
+/// 原GothicWindowBrickDeformation完整60B；六个边向量值和三组真实世界点由原producer写入。
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug)]
+pub struct GothicWindowBrickDeformation(pub [u8; 60]);
+
+impl GothicWindowBrickDeformation {
+    pub fn words(&self) -> [u32; 15] {
+        core::array::from_fn(|index| u32::from_le_bytes(self.0[index * 4..index * 4 + 4].try_into().unwrap()))
+    }
+}
+
 pub mod brush_previews;
 pub use brush_previews::{SnappingToEndPreview, SnappingToSegmentPreview};
 

@@ -135,7 +135,10 @@ fn populated_owners_reset_without_despawning_or_sending_audio_and_remove_mesh_is
     world
         .resource_mut::<DecoratorIdGen>()
         .reserve(DecoratorId(97));
-    world.resource_mut::<PlaceDecoratorInteractionState>().id = Some(DecoratorId(9));
+    *world.resource_mut::<PlaceDecoratorInteractionState>() = PlaceDecoratorInteractionState {
+        height_constraint: Some(3.5), height_offset: 0.75, last_height: 2.0,
+        native_flag_10: true, fixed_height: true, progress: 2,
+    };
     let key = AudioEventKey {
         decorator_type: DecoratorType(1),
         flag: 2,
@@ -171,7 +174,7 @@ fn populated_owners_reset_without_despawning_or_sending_audio_and_remove_mesh_is
     world
         .resource_mut::<StoneColumnCollisionStorage>()
         .clear_and_get_mut(WallId(7))
-        .push(StoneColumn { handle: 19 });
+        .push(StoneColumn { bounds: utils::geometry::rectangle::Rectangle3d::new(glam::Vec3::new(1.0, 2.0, 3.0), glam::Vec3::ONE, glam::Vec2::X) });
     let mut stairs = world.resource_mut::<StairsState>();
     stairs.add_edge(1, 2);
     stairs.make_backup();
@@ -239,12 +242,7 @@ fn populated_owners_reset_without_despawning_or_sending_audio_and_remove_mesh_is
         world.resource_mut::<DecoratorIdGen>().generate(),
         DecoratorId(0)
     );
-    assert!(
-        world
-            .resource::<PlaceDecoratorInteractionState>()
-            .id
-            .is_none()
-    );
+    assert_eq!(*world.resource::<PlaceDecoratorInteractionState>(), PlaceDecoratorInteractionState::default());
     assert_eq!(world.resource::<DecoratorAudioEvents>().sounds().count(), 0);
     assert_eq!(
         world

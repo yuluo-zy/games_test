@@ -1,427 +1,621 @@
-//! B `systems/ui_move_shapes.rs` — `ui_move_shapes` (VA `0x14097a060`, 12832 B, 30 params).
+//! B `ui_move_shapes.rs`：预制建筑移动及与自由墙共用的真实移动手柄。
 //!
-//! Spec §3. This file lands the evidence-backed **structure**: the true 30-param FnSystem
-//! signature (PDB order), the `MoveShapeCache`/`MoveShapeEntry` types, and the 4-way jump
-//! dispatch (`0x142ab7514`). The **case bodies** (case1 rectangle/line drag, case2 hover/snap,
-//! case3 commit) and the `ActionSetStates.digital[..]` slot/phase decision are `TODO(evidence)`
-//! — the analysis line is still resolving the concrete digital slots and the per-push writer
-//! binding. Nothing here is claimed complete.
+//! 原函数边界由 B PDB module 519 裁定：主系统 14097a060/12822 B，
+//! 手柄 14097d280/2618 B、闭包 14097dcc0/1488 B 和 14097e290/709 B。
+//! 旧反编译跨过这些边界，不能按其错误的 void 签名或邻接代码恢复调用。
+
+use std::sync::Arc;
 
 use bevy_ecs::prelude::*;
-use std::collections::HashMap;
+use glam::{Quat, Vec2, Vec3};
 
-use crate::input::action_set::ActionSetStates;
-use crate::resources::critters::sheep::CmdCheckForSheepInsideBuilding;
-use crate::resources::cursor_terrain_raycast::CursorTerrainRaycast;
-use crate::resources::events::OnShapeMoved;
-use crate::resources::glade_border::{DisplayOutOfBorder, FeedbackInputOutOfBorder, GladeBorder};
-use crate::resources::history::History;
-use crate::resources::mouse_terrain_raycast::CameraCursorRay;
-use crate::resources::roofs::Roof;
-use crate::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData};
-use crate::resources::time::GameTime;
-use crate::resources::tree_storage::HideTreesinAreaCmd;
-use crate::resources::walls::decorator_archivist::{
-    DecoratorArchivalResources, LiveDecoratorArchivist,
-};
-use crate::resources::walls::decorator_storage::DecoratorStorage;
-use crate::resources::walls::public_walls::PublicWalls;
-use crate::resources::walls::{InnerWalls, WallId};
-use crate::resources::window::AudioCursorMoved;
-use crate::resources::shape_intersections::ShapeIntersections;
-use crate::systems::audio::{PlayBuildingAudio, PlayWallUiSound, RequestWallMaterialAudio};
-use crate::systems::backend::input::mod_key::Modifiers;
-use crate::systems::collision::world::RaycastWorld;
-use crate::systems::mode_manager::{AppMode, EditSubject};
-use crate::systems::ui::resources::ui_state::UiState;
-use crate::systems::ui::signifiers::signifier_create::UiSignifierStream;
-use crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter;
-use crate::systems::wall::shapes::shape_placement::{nearest_proposal, snap_to_roof_ridge, SnapProposal};
-use crate::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash;
-use crate::utils::debug_viz::{DebugColor, DebugLine, DebugSphere};
-
-/// B `MoveShapeEntry` (per hashbrown bucket, stride `0x2a8`, negative offsets). Field names
-/// synthesized from the offsets; the key (`WallId`) is the map key.
-#[derive(Clone, Debug)]
-pub struct MoveShapeEntry {
-    /// `-0x290` u64; `< 2 → assert panic`.
-    pub state: u64,
-    /// `-0x270` f32; `<= 0.0 → assert panic` (also `shape_rec+0x30` height source).
-    pub activation: f32,
-    /// `-0x2a0 [u8; 0x280]` authoritative shape record (only `+0x30`/`+0x280` read).
-    pub shape_rec: [u8; 0x280],
-    /// `-0x48` u32 jump-table index (`0x142ab7514`).
-    pub variant: u32,
-    /// In-transit moved curve (native `entry-0x53` points). Typed field: written by case1
-    /// (deferred), consumed by case3 commit. `None` = no move recorded.
-    pub curve: Option<crate::resources::roofs::geometry::surface::Curve2>,
-    /// Commit sentinel (native `entry[-0x20] = 0x8000…`): case3 sets it once.
-    pub committed: bool,
-    /// case1 decorator triples `{DecoratorId u32, d[-0x34]-cx f32, d[-0x2c]-cz f32}` written into
-    /// the shape record's Vec payload (`+0x08` ptr); typed here so the Vec is owned rather than
-    /// modelled by a raw pointer.
-    pub decorator_triples: Vec<(u32, f32, f32)>,
-}
-
-impl Default for MoveShapeEntry {
-    fn default() -> Self {
-        Self {
-            state: 0,
-            activation: 0.0,
-            shape_rec: [0; 0x280],
-            variant: 0,
-            curve: None,
-            committed: false,
-            decorator_triples: Vec::new(),
-        }
-    }
-}
-
-/// B `MoveShapeCache` (`Local`). Native holds multiple hashbrown SwissTables + hashers; here
-/// modelled as the two `WallId → MoveShapeEntry` maps decoded from the offsets (map1 @+0x00,
-/// map3 @+0x30). Empty (both maps empty) = native `items == 0` → skip queries.
-#[derive(Default, Debug)]
-pub struct MoveShapeCache {
-    /// Primary map (`HashMap<WallId, MoveShapeEntry>`).
-    pub map1: HashMap<WallId, MoveShapeEntry>,
-    /// Secondary map (`HashMap<WallId, MoveShapeEntry>`).
-    pub map3: HashMap<WallId, MoveShapeEntry>,
-}
-
-impl MoveShapeCache {
-    fn get(&self, wall: WallId) -> Option<&MoveShapeEntry> {
-        self.map1.get(&wall).or_else(|| self.map3.get(&wall))
-    }
-    fn is_empty(&self) -> bool {
-        self.map1.is_empty() && self.map3.is_empty()
-    }
-}
-
-/// Outcome of the case3 commit (variant == 3); the system writes these events after the helper
-/// mutates `InnerWalls`/`History` (kept out of the helper so it stays unit-testable).
-struct CommitMoveOutcome {
-    emit_on_shape_moved: bool,
-    emit_show_pins: bool,
-}
-
-/// B case3 commit (`code_0x14097af78`, recon 849-987). Applies the in-transit moved curve to
-/// `InnerWalls`, records one Wall `StateChange` compound edit (native `edit_type = 7`), and
-/// reports the follow-up events. Native step 3 (0x30 ring row) → `OnShapeMoved`; step 8 (0x18
-/// row) → `ShowPinnedDecoClutter` (offset layout known; per-push target still under review).
-fn commit_move_shape<S: Send + Sync + 'static>(
-    entry: &mut MoveShapeEntry,
-    wall: WallId,
-    inner: &mut InnerWalls,
-    history: &mut History<S>,
-) -> CommitMoveOutcome {
-    // 1: update_wall_state(curve) once (native skips when the commit sentinel is already set).
-    if !entry.committed {
-        if let Some(curve) = entry.curve.clone() {
-            inner.update_wall_state_curve(wall, curve);
-        }
-        entry.committed = true;
-    }
-    // 5-7: CompoundEditBuilder::new_edit_sequence → next → build → History::add(type 7).
-    // Native case3 single edit is `ChangeSupports` (variant disc 0x8000…000b; payload
-    // {wall@+8, supports=1}) — NOT `StateChange`.
-    let mut builder = crate::resources::history::wall_edit::CompoundEditBuilder::default();
-    builder.new_edit_sequence();
-    builder.next(crate::resources::history::wall_edit::WallHistoryEdit::ChangeSupports(
-        crate::resources::history::wall_edit::WallValueEdit {
-            wall_index: wall.0,
-            before: true,
-            after: true,
+use crate::{
+    components::DashedLineLength,
+    input::action_set::ActionSetStates,
+    resources::{
+        critters::sheep::CmdCheckForSheepInsideBuilding,
+        cursor_terrain_raycast::CursorTerrainRaycast,
+        glade_border::{BorderShape, DisplayOutOfBorder, FeedbackInputOutOfBorder, GladeBorder},
+        history::{
+            EditType, History,
+            wall_edit::{
+                CompoundEditBuilder, MorphPremadeShapeEdit, WallHistoryEdit, WallValueEdit,
+            },
         },
-    ));
-    let compound = builder.build();
-    let _ = history.add(crate::resources::history::EditType::Wall(std::sync::Arc::new(compound)));
-    CommitMoveOutcome {
-        emit_on_shape_moved: true,
-        emit_show_pins: true,
-    }
+        mouse_terrain_raycast::CameraCursorRay,
+        roofs::Roof,
+        shape_intersections::ShapeIntersections,
+        terrain_height::{TerrainHeightSsbo, TerrainHeightsData},
+        time::GameTime,
+        tree_storage::{HideTreesinAreaCmd, TreeHideArea},
+        walls::{
+            InnerWalls, WallId, WallState,
+            decorator_archivist::{DecoratorArchivalResources, LiveDecoratorArchivist},
+            decorator_storage::DecoratorStorage,
+            public_wall_state::PublicWallState,
+            public_walls::PublicWalls,
+        },
+        window::AudioCursorMoved,
+    },
+    systems::{
+        audio::{PlayBuildingAudio, PlayWallUiSound, RequestWallMaterialAudio},
+        backend::input::mod_key::Modifiers,
+        backend::input::translate_input::DemoModeEnabled,
+        collision::world::RaycastWorld,
+        mode_manager::{AppMode, EditSubject},
+        ui::{
+            resources::{
+                ui_state::{UiState, UiWidgetContext},
+                widget_params::{WidgetGeometry, WidgetParams},
+            },
+            signifiers::{SignifierEntityBuilder, SignifierFactory, UiSignifierStream},
+        },
+        ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter,
+        ui_move_freehand_walls::{
+            MoveShapeOffset, OnShapeMoved, anchor_xz, archive_freehand, wall_anchor,
+        },
+        wall::shapes::rectangle::ui_edit_rectangle_orientation::box_trigger_volume,
+        wall::{
+            shapes::shape_placement::{RoofRidgeSnap, snap_to_roof_ridge},
+            valid_enclosure::{Shape, ShapeParameters},
+        },
+    },
+    utils::{
+        components::transform::Transform,
+        debug_viz::{DebugLine, DebugSphere},
+    },
+};
+
+/// 14097d2c4..14097d322：小建筑的手柄缩到一半，三米以上恢复全尺寸。
+fn move_gizmo_scale(length: f32) -> f32 {
+    let value = (length + -0.5) / 2.5;
+    // MAXSS/MINSS 相等或无序时取第二操作数；保留 NaN 与负零。
+    let lower = if value < 0.0 { 0.0 } else { value };
+    let t = if lower > 1.0 { 1.0 } else { lower };
+    let square = t * t;
+    let smooth = (3.0 - (t + t)) * square;
+    (1.0 - smooth) * 0.5 + smooth
 }
 
-/// B case1 drag (`code_0x14097ad4c..b046`): archive/cull wall+terrain decorators, collect the
-/// moved-shape working record into the shape `rec` (`param_6` = entry value), and stash the
-/// decorator triples. `entry[-X] ≡ shape_rec[0x2a0-X]`; ShapeParameters at `shape_rec[0x258..0x274]`.
-#[allow(clippy::too_many_arguments)]
-fn case1_drag(
-    entry: &mut MoveShapeEntry,
-    wall: WallId,
-    ray: &CameraCursorRay,
-    terrain: &TerrainHeightsData<TerrainHeightSsbo>,
-    storage: &mut DecoratorStorage,
-    archivist: &mut LiveDecoratorArchivist,
-    archival: &DecoratorArchivalResources,
-) {
-    use crate::resources::walls::decorator_storage::DecoratorStorageAddr;
-    use crate::resources::walls::publication_fields::WallShapeSnapshot;
-    use crate::systems::wall::valid_enclosure::ShapeParameters;
-
-    // step1 archive "move_shape" (wall+terrain); step2 cull allow wall.
-    archivist.archive_current_decorators_in_storages_with_resources(
-        &[DecoratorStorageAddr::Wall(wall), DecoratorStorageAddr::Terrain],
-        storage,
-        archival,
-        "move_shape",
-    );
-    archivist.decorator_cull_allow_wall(wall, storage);
-
-    // ShapeParameters (28B) at shape_rec[0x258..0x274]; center() per tag.
-    let sp_bytes: [u8; 28] = entry.shape_rec[0x258..0x274].try_into().unwrap();
-    let sp = ShapeParameters::from_snapshot(&WallShapeSnapshot::from_observed(sp_bytes));
-    let center = sp.center();
-
-    // step3 collect decorator triples {id, d[-0x34]-cx, d[-0x2c]-cz}; d[+0x1c]=hi(u18), d[+0x24]=u24.
-    let mut triples: Vec<(u32, f32, f32)> = Vec::new();
-    if let Some(decorators) = storage.wall_decorators_mut(wall) {
-        for (id, info) in decorators.iter_maybe_mut() {
-            let dx = f32::from_bits((info.u18 >> 32) as u32) - center.x;
-            let dz = f32::from_bits(info.u24) - center.y;
-            triples.push((id, dx, dz));
-        }
-    }
-
-    // anchor = Vec3(center.x, terrain_height, center.y).
-    let terrain_y = terrain.sample_at_world_xz(center.x, center.y);
-    let anchor = glam::Vec3::new(center.x, terrain_y, center.y);
-
-    // +0x18: cursor-ray ∩ y=anchor.y → world xz − anchor xz.
-    let t = (anchor.y - ray.origin.y) / ray.dir.y;
-    let projected = glam::Vec2::new(ray.origin.x + t * ray.dir.x, ray.origin.z + t * ray.dir.z);
-    let delta = projected - glam::Vec2::new(anchor.x, anchor.z);
-
-    // step5 write the working record (`param_6` = shape_rec value).
-    let rec = &mut entry.shape_rec;
-    rec[0x00..0x04].copy_from_slice(&(triples.capacity() as u32).to_le_bytes());
-    rec[0x04..0x08].copy_from_slice(&0u32.to_le_bytes());
-    rec[0x08..0x10].copy_from_slice(&0u64.to_le_bytes()); // ptr (Vec owned on the entry)
-    rec[0x10..0x14].copy_from_slice(&(triples.len() as u32).to_le_bytes());
-    rec[0x14..0x18].copy_from_slice(&0u32.to_le_bytes());
-    rec[0x18..0x1c].copy_from_slice(&delta.x.to_le_bytes());
-    rec[0x1c..0x20].copy_from_slice(&delta.y.to_le_bytes());
-    // +0x20..0x3c = 28B ShapeParameters copy (param_6+0x20..0x3b).
-    let sp_copy: [u8; 28] = rec[0x258..0x274].try_into().unwrap();
-    rec[0x20..0x3c].copy_from_slice(&sp_copy);
-    rec[0x3c..0x40].copy_from_slice(&anchor.y.to_le_bytes());
-
-    entry.decorator_triples = triples;
-}
-
-/// B `ui_move_shapes` (`0x14097a060`, 30 params, PDB order).
+/// B 14097d280：创建拾取盒、地面虚线、实体与描边，返回同一个真实 Widget。
 ///
-/// SKELETON: mode gate, cache-empty/entry probe, and the `0x142ab7514` 4-way dispatch are
-/// wired; the case bodies + `digital[..]` decision are `TODO(evidence)`.
-#[allow(clippy::too_many_arguments, unused_variables)]
-pub fn ui_move_shapes<S: Send + Sync + 'static>(
-    app_mode: Res<AppMode>,                                   // 1
-    public: Res<PublicWalls>,                                 // 2
-    mut inner: ResMut<InnerWalls>,                            // 3
-    roofs: Query<&Roof>,                                      // 4
-    camera_cursor_ray: Res<CameraCursorRay>,                  // 5
-    cursor_terrain: Res<CursorTerrainRaycast>,                // 6
-    mut audio_cursor: EventReader<AudioCursorMoved>,          // 7
-    raycast_world: Res<RaycastWorld>,                         // 8
-    mut decorator_storage: ResMut<DecoratorStorage>,          // 9
-    mut archivist: ResMut<LiveDecoratorArchivist>,            // 10
-    ui_state: Res<UiState>,                                   // 11
-    mut signifiers: ResMut<UiSignifierStream>,                // 12
-    mut cache: Local<MoveShapeCache>,                         // 13
-    mut history: ResMut<History<S>>,                          // 14
-    actions: Res<ActionSetStates>,                            // 15
-    mut material_audio: EventWriter<RequestWallMaterialAudio>, // 16
-    mut building_audio: EventWriter<PlayBuildingAudio>,       // 17
-    mut wall_ui_sound: EventWriter<PlayWallUiSound>,          // 18
-    mut on_shape_moved: EventWriter<OnShapeMoved>,            // 19
-    mut sheep_check: EventWriter<CmdCheckForSheepInsideBuilding>, // 20
-    mut hide_trees: EventWriter<HideTreesinAreaCmd>,          // 21
-    mut show_pins: EventWriter<ShowPinnedDecoClutter>,        // 22
-    archival: DecoratorArchivalResources,                     // 23
-    terrain: Res<TerrainHeightsData<TerrainHeightSsbo>>,      // 24
-    border: Res<GladeBorder>,                                 // 25
-    mut out_of_border: EventWriter<DisplayOutOfBorder>,       // 26
-    mut feedback_out_of_border: EventWriter<FeedbackInputOutOfBorder>, // 27
-    time: Res<GameTime>,                                      // 28
-    modifiers: Res<Modifiers>,                                // 29
-    intersections: Res<ShapeIntersections>,                   // 30
-    // SEAM (non-PDB top-level param): CF maps native `param_2[4]` to `WallSpatialHash`; case2
-    // (hover-snap) queries it via `nearest_proposal`. PublicWalls is NOT extended.
-    spatial: Res<WallSpatialHash>,
-) {
-    // Mode gate (`/…/*param_1 <= 5 && (==1||==2)/`): only Editing(Wall/Roof) proceed.
-    let tag = app_mode.native_tag();
-    if tag > 5 {
-        return;
+/// `ground_y` 来自调用者的真实地形采样，不能拿零或光标的屏幕坐标替代。
+/// 参数次序对应原八实参；返回值对应 RAX/RDX 的 UiWidgetContext。
+pub fn move_gizmo_and_trigger_vol<'ui>(
+    position: &Vec3,
+    orientation: &Quat,
+    actions: &ActionSetStates,
+    ui: &'ui UiState,
+    wall: WallId,
+    state: &PublicWallState,
+    ground_y: f32,
+    stream: &mut UiSignifierStream,
+) -> UiWidgetContext<'ui> {
+    let scale = move_gizmo_scale(state.simplified_curve_2d().length);
+    let dimension = 1.5 * scale;
+    let volume = box_trigger_volume(
+        dimension,
+        // 原XMM2保持0.5；只有XMM1/XMM3随建筑长度缩放。
+        0.5,
+        dimension,
+        &Transform {
+            rotation: *orientation,
+            translation: *position,
+            scale: Vec3::ONE,
+        },
+    );
+    let mut params = WidgetParams::default()
+        .mesh_volume(volume)
+        .occlude_by_world(false);
+    // 原 ActionSetStates +0x10 为 camera_rotate_mode；旋转镜头时清掉四个 UI 声音。
+    let sounds_enabled = actions.digital[2].phase as u32 >= 3;
+    for (slot, tag) in params.sounds.slots.iter_mut().zip([1u32, 2, 3, 3]) {
+        slot[..4].copy_from_slice(&(if sounds_enabled { tag } else { 0 }).to_le_bytes());
     }
-    let wall = match *app_mode {
-        AppMode::Editing(EditSubject::Wall(id)) | AppMode::Editing(EditSubject::Roof(id)) => {
-            WallId(id)
+    let context = ui.add(&format!("move_shape{wall}"), params);
+
+    if state.authority.elevation() > 0.0 {
+        let start = *position;
+        let end = Vec3::new(position.x, ground_y, position.z);
+        stream.write_factory(&SignifierFactory::from_closure(
+            &format!("move_shape_line{wall}{position}{end}{position}"),
+            Arc::new(move |meshes, shaders, commands| {
+                let entity = SignifierEntityBuilder::from_points(vec![end, start])
+                    .animation_duration(0.0)
+                    .custom_shader("dashed_line")
+                    .build(meshes, shaders, commands);
+                let delta = end - start;
+                let length = (delta.z * delta.z + delta.y * delta.y + delta.x * delta.x).sqrt();
+                commands.entity(entity).insert((
+                    crate::render::pass_builder::draw_list::DrawTopology::Alt(1.0),
+                    DashedLineLength(length),
+                ));
+                vec![entity]
+            }),
+        ));
+    }
+
+    // 原放大条件不读 intersection tag，与 UiWidgetContext::is_active 不等价。
+    let active = ui.interaction();
+    let enlarge = active.native_tag != 0
+        && active.widget == context.id
+        && if active.native_tag == 1 {
+            active.native_phase != 0
+        } else {
+            active.native_phase != 2
+        };
+    let display_scale = scale * if enlarge { 1.2 } else { 1.0 };
+    for (pass, mesh) in [(0, "move_shape"), (1, "move_shape_outline")] {
+        let position = *position;
+        let rotation = *orientation;
+        stream.write_factory(&SignifierFactory::from_closure(
+            &format!("move_shape{wall}{position}{mesh}{display_scale}{rotation}"),
+            Arc::new(move |meshes, shaders, commands| {
+                vec![
+                    SignifierEntityBuilder::from_mesh_name(mesh)
+                        .rotation(rotation)
+                        .position(position)
+                        .scale(display_scale * 1.5)
+                        .animation_duration(0.0)
+                        .set_ui_pass(pass)
+                        .build(meshes, shaders, commands),
+                ]
+            }),
+        ));
+    }
+    context
+}
+
+/// 原 Local 的向量、抓取差、初始28B形状、抓取平面高度与吸附边沿。
+#[derive(Default)]
+pub struct MoveShapeCache {
+    pub affected: Vec<MoveShapeOffset>,
+    pub cursor_offset: Vec2,
+    pub before: Option<ShapeParameters>,
+    pub grab_height: f32,
+    pub snapped: bool,
+}
+
+fn with_center(shape: Shape, center: Vec2) -> Shape {
+    match shape {
+        Shape::Circle(mut circle) => {
+            circle.center = center;
+            Shape::Circle(circle)
         }
+        Shape::Rectangle(mut rectangle) => {
+            rectangle.center = center;
+            Shape::Rectangle(rectangle)
+        }
+    }
+}
+
+fn boundary(shape: Shape) -> BorderShape {
+    match shape {
+        Shape::Circle(circle) => BorderShape::Circle(circle),
+        Shape::Rectangle(rectangle) => BorderShape::Rectangle(rectangle),
+    }
+}
+
+fn numeric_max(a: f32, b: f32) -> f32 {
+    if b.is_nan() || a > b { a } else { b }
+}
+
+fn numeric_min_first(a: f32, b: f32) -> f32 {
+    // 原97bf9d..bfb7：第一距离NaN时选第二，否则相等保留第一。
+    if a.is_nan() || b < a { b } else { a }
+}
+
+fn smooth_position(current: Vec2, target: Vec2, delta: f32) -> Vec2 {
+    // 原140c90570向量路径共享一个expf，不分别计算两个分量的因子。
+    let factor = ::utils::time_continuous_lerp_factor(delta, 100.0);
+    (target - current) * factor + current
+}
+
+/// 原圆形谷地的滑边算法：矩形需同时裁定面对光标的一条边的两个端点。
+fn constrain_to_border(border: &GladeBorder, current: Shape, target: Shape, delta: f32) -> Shape {
+    match border.0 {
+        BorderShape::Rectangle(_) => border
+            .search_lerped_shape_that_fits_into_glade(
+                ShapeParameters::from_shape(current),
+                ShapeParameters::from_shape(target),
+            )
+            .get_shape()
+            .expect("原边界插值返回预制形状"),
+        BorderShape::Circle(circle) => {
+            let offset = target.center() - circle.center;
+            let inverse = 1.0 / (offset.y * offset.y + offset.x * offset.x).sqrt();
+            let direction = offset * inverse;
+            let destination = match current {
+                Shape::Circle(shape) => direction * (circle.radius - shape.radius) + circle.center,
+                Shape::Rectangle(mut shape) => {
+                    // 原先将矩形中心移到谷地中心，选择最近边，再对两端点沿同一单位方向求圆交。
+                    shape.center = circle.center;
+                    let edge = shape.get_closest_edge_id(target.center());
+                    let (first, second) = shape.get_edge_pts(edge);
+                    let far = |origin| {
+                        circle
+                            .intersect_ray(::utils::geometry::Ray2 { origin, direction })
+                            .map_or(0.0, |(_, far)| far)
+                    };
+                    let distance = numeric_min_first(far(first), far(second));
+                    direction * distance + circle.center
+                }
+            };
+            with_center(
+                target,
+                smooth_position(current.center(), destination, delta),
+            )
+        }
+    }
+}
+
+fn add_history(history: &mut History, edit: WallHistoryEdit) {
+    let mut edits = CompoundEditBuilder::default();
+    edits.new_edit_sequence();
+    edits.next(edit);
+    history
+        .add(EditType::Wall(Arc::new(edits.build())))
+        .unwrap_or_else(|error| panic!("移动建筑历史写入失败: {error:?}"));
+}
+
+fn shape_curve(shape: Shape) -> crate::resources::roofs::geometry::surface::Curve2 {
+    let curve = match shape {
+        // 原97c237明确传0.5，不用通用Shape::as_curve2的0.2。
+        Shape::Circle(circle) => circle.as_curve2(0.5),
+        Shape::Rectangle(rectangle) => rectangle.as_curve2(),
+    };
+    crate::resources::roofs::geometry::surface::Curve2 {
+        points: curve
+            .points
+            .into_iter()
+            .map(|point| point.to_array())
+            .collect(),
+        points_u: curve.points_u,
+        length: curve.length,
+    }
+}
+
+fn moved_wall_state(previous: &WallState, shape: Shape, demo: bool) -> WallState {
+    use crate::resources::{
+        history::wall_edit::WallAuthoritySnapshot,
+        walls::publication_source::RawWallPublicationSource,
+    };
+    let source = previous.source();
+    let mut metadata = previous.snapshot().metadata;
+    metadata.source_69 = if demo { 0 } else { 5 };
+    // 原只构造新曲线并拷贝标量；不要先clone旧曲线，再立刻用新曲线覆盖并释放。
+    WallState::from_snapshot(
+        WallAuthoritySnapshot {
+            source: RawWallPublicationSource {
+                curve: shape_curve(shape),
+                curve_kind_tag: shape.tag(),
+                terrain_floor: source.terrain_floor,
+                shape: ShapeParameters::from_shape(shape).to_snapshot(),
+                style: source.style,
+                extra: source.extra,
+                special: source.special,
+                observed_path_scalar: source.observed_path_scalar,
+                clutter_version: source.clutter_version,
+                observed_source_flag_64: source.observed_source_flag_64,
+            },
+            metadata,
+        },
+        previous.freehand_ty(),
+    )
+}
+
+fn show_snap_line(stream: &mut UiSignifierStream, a: Vec3, b: Vec3) {
+    DebugLine::new(vec![a, b])
+        .line_width(3.0)
+        .dashed()
+        .show(stream);
+}
+
+/// 原B 14097a060：15组SystemParam，完整30个实际资源/事件合同。
+/// 同组附带现宿主DemoModeEnabled，用它承接原本不占SystemParam的进程全局门禁。
+pub fn ui_move_shapes(
+    mode: Res<AppMode>,
+    (public, mut inner, roofs): (Res<PublicWalls>, ResMut<InnerWalls>, Query<&Roof>),
+    (ray, cursor, mut audio_cursor, collision): (
+        Res<CameraCursorRay>,
+        Res<CursorTerrainRaycast>,
+        EventReader<AudioCursorMoved>,
+        Res<RaycastWorld>,
+    ),
+    (mut storage, mut archivist): (ResMut<DecoratorStorage>, ResMut<LiveDecoratorArchivist>),
+    (ui, mut stream): (Res<UiState>, ResMut<UiSignifierStream>),
+    mut cache: Local<MoveShapeCache>,
+    mut history: ResMut<History>,
+    actions: Res<ActionSetStates>,
+    (mut material_audio, mut building_audio, mut wall_audio): (
+        EventWriter<RequestWallMaterialAudio>,
+        EventWriter<PlayBuildingAudio>,
+        EventWriter<PlayWallUiSound>,
+    ),
+    (mut moved, mut sheep, mut trees, mut pins): (
+        EventWriter<OnShapeMoved>,
+        EventWriter<CmdCheckForSheepInsideBuilding>,
+        EventWriter<HideTreesinAreaCmd>,
+        EventWriter<ShowPinnedDecoClutter>,
+    ),
+    archival: DecoratorArchivalResources,
+    (terrain, demo): (
+        Res<TerrainHeightsData<TerrainHeightSsbo>>,
+        Option<Res<DemoModeEnabled>>,
+    ),
+    (border, mut display, mut feedback, time): (
+        Res<GladeBorder>,
+        EventWriter<DisplayOutOfBorder>,
+        EventWriter<FeedbackInputOutOfBorder>,
+        Res<GameTime>,
+    ),
+    modifiers: Res<Modifiers>,
+    intersections: Res<ShapeIntersections>,
+) {
+    let wall = match *mode {
+        AppMode::Editing(EditSubject::Wall(id) | EditSubject::Roof(id)) => WallId(id),
         _ => return,
     };
-    // AudioCursorMoved: consume the channel for this frame.
-    let _ = audio_cursor.read().last();
-
-    // Cache empty → public tail (`move_gizmo_and_trigger_vol`).
-    if cache.is_empty() {
-        // TODO(evidence): move_gizmo_and_trigger_vol public tail (0x14097d280, §2).
-        return;
-    }
-    let Some((variant, state, activation)) = cache
-        .get(wall)
-        .map(|entry| (entry.variant, entry.state, entry.activation))
-    else {
-        // TODO(evidence): public tail gizmo when the wall is not in the cache.
+    let published = public.get(wall).expect("移动建筑的公开墙不存在");
+    let parameters = ShapeParameters::from_snapshot(published.shape());
+    let Some(shape) = parameters.get_shape() else {
         return;
     };
-    // Native assertions (`state>=2`, `activation>0`).
-    assert!(state >= 2, "assertion failed: MoveShapeEntry state >= 2");
-    assert!(activation > 0.0, "assertion failed: MoveShapeEntry activation > 0");
+    let center = shape.center();
+    let elevation = published.authority.elevation();
+    let ground = terrain.sample_at_world_xz(center.x, center.y);
+    let position = Vec3::new(center.x, numeric_max(elevation, ground), center.y);
 
-    // Jump table `0x142ab7514`: 0→return, 1→case1, 2→case2, 3→case3, else native halt_baddata.
-    match variant {
-        0 => {}
-        1 => {
-            // case1 drag: archive/cull decorators + write the move-shape working record.
-            let entry = if cache.map1.contains_key(&wall) {
-                cache.map1.get_mut(&wall)
-            } else {
-                cache.map3.get_mut(&wall)
-            };
-            if let Some(entry) = entry {
-                case1_drag(
-                    entry,
-                    wall,
-                    &camera_cursor_ray,
-                    &terrain,
-                    &mut decorator_storage,
-                    &mut archivist,
-                    &archival,
-                );
-            }
+    if published.authority.removed_supports() != 0 {
+        // 原地面/悬空高度的较大者下方两米，单独注册恢复支撑的真实球体。
+        let support_position = Vec3::new(center.x, numeric_max(elevation, ground) + -2.0, center.y);
+        let widget = ui.add(
+            &format!("add_support_{wall}"),
+            WidgetParams::default()
+                .geometry(WidgetGeometry::Sphere {
+                    center: support_position,
+                    radius: 0.4,
+                })
+                .occlude_by_world(false),
+        );
+        DebugSphere::new(support_position)
+            .radius(if widget.is_active() { 0.4 } else { 0.3 })
+            .solid()
+            .show(&mut stream);
+        if widget.clicked() {
+            inner.update_supports(wall, 0);
+            add_history(
+                &mut history,
+                WallHistoryEdit::ChangeSupports(WallValueEdit {
+                    wall_index: wall.0,
+                    before: true,
+                    after: false,
+                }),
+            );
+            wall_audio.write(PlayWallUiSound {
+                kind: if published.authority.style() > 1 {
+                    0x13
+                } else {
+                    0x11
+                },
+                selector: 0,
+                value: 0.0,
+                position: support_position,
+            });
         }
-        2 => {
-            // case2 hover-snap: candidate segment → SnapProposal → roof-ridge offset →
-            // DebugSphere + DebugLine signifiers (NO InnerWalls write).
-            let cursor_world = cursor_terrain.pos;
-            if let Some((proposal, snap_point)) =
-                hover_snap(&public, &spatial, cursor_world, |entity| roofs.get(entity).ok())
-            {
-                let sphere = DebugSphere {
-                    color: DebugColor::White,
-                    radius: 0.2,
-                    center: snap_point,
-                    alpha: 1.0,
-                    solid: false,
-                };
-                sphere.show(&mut *signifiers);
-                let line = DebugLine::new(vec![
-                    snap_point,
-                    snap_point + glam::Vec3::new(proposal.normal.x, 0.0, proposal.normal.y),
-                ]);
-                line.show(&mut *signifiers);
-            }
-        }
+    }
+    let rotation = match shape {
+        Shape::Circle(_) => Quat::IDENTITY,
+        Shape::Rectangle(rectangle) => Quat::from_mat3(&rectangle.orientation_mat3()),
+    };
+    let widget = move_gizmo_and_trigger_vol(
+        &position,
+        &rotation,
+        &actions,
+        &ui,
+        wall,
+        published,
+        ground,
+        &mut stream,
+    );
+    let intersecting = intersections.0.keys().any(|pair| pair.contains(&wall));
+    let mut is_inside = true;
+    match widget.dragged() {
+        2 => return,
         3 => {
-            // case3 commit: update wall state → StateChange compound edit → History::add(type 7)
-            // → OnShapeMoved (0x30 row) + ShowPinnedDecoClutter (0x18 row).
-            let entry = if cache.map1.contains_key(&wall) {
-                cache.map1.get_mut(&wall)
-            } else {
-                cache.map3.get_mut(&wall)
-            };
-            if let Some(entry) = entry {
-                let outcome = commit_move_shape(entry, wall, &mut inner, &mut history);
-                if outcome.emit_on_shape_moved {
-                    on_shape_moved.write(OnShapeMoved(wall));
-                }
-                if outcome.emit_show_pins {
-                    show_pins.write(ShowPinnedDecoClutter::default());
+            archive_freehand(&mut archivist, &storage, &archival, wall, "move_shape");
+            cache.affected.clear();
+            if let Some(decorators) = storage.wall_decorators_mut(wall) {
+                for (&id, info) in decorators.decorators() {
+                    if wall_anchor(info) {
+                        cache.affected.push(MoveShapeOffset {
+                            id,
+                            offset: anchor_xz(info) - center,
+                        });
+                    }
                 }
             }
+            cache.before = Some(parameters);
+            cache.grab_height = position.y;
+            let factor = (position.y - ray.origin.y) / ray.dir.y;
+            cache.cursor_offset = Vec2::new(
+                factor * ray.dir.x + ray.origin.x,
+                factor * ray.dir.z + ray.origin.z,
+            ) - center;
+        }
+        4 => {
+            let authority = inner.get(wall).expect("移动建筑的权威墙不存在");
+            let cursor = if elevation != 0.0 {
+                let factor = (cache.grab_height - ray.origin.y) / ray.dir.y;
+                Vec2::new(
+                    factor * ray.dir.x + ray.origin.x,
+                    factor * ray.dir.z + ray.origin.z,
+                )
+            } else {
+                let point = cursor.position();
+                Vec2::new(point.x, point.z)
+            };
+            let mut destination = cursor - cache.cursor_offset;
+            let mut snapped = false;
+            if !modifiers.disable_snapping() {
+                if let Some(roof) = public
+                    .roof_entity(wall)
+                    .and_then(|entity| roofs.get(entity).ok())
+                {
+                    let mut projected_height = terrain
+                        .sample_at_world_xz(destination.x, destination.y)
+                        + authority.elevation();
+                    if roof.height_01() > 0.1 {
+                        projected_height += roof.height();
+                    }
+                    let hit = collision.raycast_simple_excluding_wall_id(
+                        Vec3::new(destination.x, -0.5 + projected_height, destination.y),
+                        Vec3::new(-0.0, -1.0, -0.0),
+                        0x202,
+                        wall,
+                    );
+                    if matches!(hit.handle[0] as u8, 1 | 2) {
+                        let target_wall = WallId(hit.handle[1]);
+                        if let (Some(target), Some(roof)) = (
+                            public.get(target_wall),
+                            public
+                                .roof_entity(target_wall)
+                                .and_then(|entity| roofs.get(entity).ok()),
+                        ) {
+                            let top = roof.height() + roof.floor_y();
+                            if target.authority.elevation() <= projected_height
+                                && authority.elevation() <= top
+                            {
+                                let point = Vec3::new(hit.position.x, top, hit.position.z);
+                                let snap = snap_to_roof_ridge(roof, point, 1.0);
+                                let snap_point = match snap {
+                                    RoofRidgeSnap::None => None,
+                                    RoofRidgeSnap::Point(point) => Some(point),
+                                    RoofRidgeSnap::Segment { a, b, t } => {
+                                        show_snap_line(
+                                            &mut stream,
+                                            a + Vec3::new(0., 0.2, 0.),
+                                            b + Vec3::new(0., 0.2, 0.),
+                                        );
+                                        Some(b * t + a * (1.0 - t))
+                                    }
+                                };
+                                if let Some(point) = snap_point {
+                                    destination = Vec2::new(point.x, point.z);
+                                    show_snap_line(
+                                        &mut stream,
+                                        Vec3::new(point.x, numeric_max(ground, point.y), point.z),
+                                        Vec3::new(point.x, position.y, point.z),
+                                    );
+                                    if !cache.snapped {
+                                        wall_audio.write(PlayWallUiSound {
+                                            kind: 3,
+                                            selector: 0,
+                                            value: 0.0,
+                                            position,
+                                        });
+                                    }
+                                    snapped = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            cache.snapped = snapped;
+            let proposed = with_center(shape, destination);
+            pins.write(ShowPinnedDecoClutter::for_shape(
+                ShapeParameters::from_shape(proposed),
+                elevation,
+                published.max_y(),
+                wall,
+            ));
+            let tree_area = |shape| match shape {
+                Shape::Circle(circle) => TreeHideArea::Circle(circle),
+                Shape::Rectangle(rectangle) => TreeHideArea::Rectangle(rectangle),
+            };
+            trees.write(HideTreesinAreaCmd {
+                area: tree_area(proposed),
+                height_limit: elevation,
+                expansion: 1.5,
+                finished: false,
+            });
+            is_inside = border.is_shape_inside(boundary(proposed));
+            let next = if is_inside {
+                proposed
+            } else {
+                display.write(DisplayOutOfBorder);
+                feedback.write(FeedbackInputOutOfBorder);
+                constrain_to_border(&border, shape, proposed, time.delta)
+            };
+            moved.write(OnShapeMoved {
+                affected: cache.affected.clone(),
+                wall,
+                offset: next.center(),
+            });
+            // 原97c259..265及97c2ea读取进程全局；复用现输入/边界共用门禁。
+            // 无宿主配置时是原B发布入口的false，与setup_glade_border相同。
+            let next =
+                moved_wall_state(authority, next, demo.as_deref().is_some_and(|demo| demo.0));
+            // 原97b70b重新读权威height覆盖入口terrain，完整保存建筑高度及其他字段。
+            inner.update_wall_state(wall, next);
         }
         _ => {
-            // Native `0x14097ffb0` = halt_baddata (out of the 4-entry table); unreachable by contract.
+            moved.write(OnShapeMoved {
+                affected: cache.affected.clone(),
+                wall,
+                offset: center,
+            });
+            sheep.write(CmdCheckForSheepInsideBuilding { wall });
+            if let Some(before) = cache.before.take() {
+                add_history(
+                    &mut history,
+                    WallHistoryEdit::MorphPremadeShape(MorphPremadeShapeEdit::new(
+                        crate::resources::walls::publication_fields::WallId(wall.0),
+                        before,
+                        parameters,
+                    )),
+                );
+            }
+            trees.write(HideTreesinAreaCmd {
+                area: match shape {
+                    Shape::Circle(circle) => TreeHideArea::Circle(circle),
+                    Shape::Rectangle(rectangle) => TreeHideArea::Rectangle(rectangle),
+                },
+                height_limit: elevation,
+                expansion: 1.5,
+                finished: true,
+            });
         }
     }
-
-    // Public tail: move gizmo / trigger volume (§2). Reads `ActionSetStates.digital[2]`
-    // (camera-rotate, phase<3) inside the helper. anchor/rotation/focus come from case1/2
-    // (deferred); placeholder values here, return ignored until those land.
-    let _ = move_gizmo_and_trigger_vol(
-        glam::Vec3::ZERO,
-        glam::Quat::IDENTITY,
-        0,
-        activation,
-        activation,
-        &*actions,
-    );
-}
-
-/// `ActionSetStates.digital[2].pressed()` = `phase < 3` — the mouse Rotate binding
-/// (`DIGITAL_TARGETS (37,2)`, camera_rotate_mode) read inline by `move_gizmo_and_trigger_vol`
-/// (0x14097D382 `[rax+0x10]`; 0x14097D3EF `cmp ebx,3; setae`).
-pub fn camera_rotate_pressed(actions: &ActionSetStates) -> bool {
-    (actions.digital[2].phase as u8) < 3
-}
-
-/// case2 hover-snap core (§3): candidate segment → `SnapProposal` → roof-ridge height offset.
-/// Read-only (no `InnerWalls`). `resolve_roof` yields the candidate wall's roof (if any).
-fn hover_snap<'a>(
-    public: &PublicWalls,
-    spatial: &WallSpatialHash,
-    cursor_world: glam::Vec3,
-    resolve_roof: impl Fn(Entity) -> Option<&'a Roof>,
-) -> Option<(SnapProposal, glam::Vec3)> {
-    let proposal = nearest_proposal(public, spatial, cursor_world)?;
-    let mut point = proposal.point;
-    if let Some(entity) = public.roof_entity(proposal.wall) {
-        if let Some(roof) = resolve_roof(entity) {
-            let tag = public
-                .get(proposal.wall)
-                .map(|state| state.shape().tag())
-                .unwrap_or(0);
-            let offset = match tag {
-                2 => -6.0f32, // freehand
-                1 => -8.0f32, // rectangle
-                _ => 0.0,
-            };
-            // Roof-ridge snap (visual) — result consumed by the gizmo signifier only.
-            let _ = snap_to_roof_ridge(roof, proposal.point, 0.1);
-            let _ = roof.height();
-            point = glam::Vec3::new(point.x, point.y + offset, point.z);
+    if !is_inside {
+        return;
+    }
+    if audio_cursor.read().last().is_some() {
+        material_audio.write(RequestWallMaterialAudio {
+            id: wall.0,
+            position,
+            kind: 4,
+            flag: 0,
+        });
+        let ratio = cursor.speed / 250.0;
+        let ratio = if ratio < 0.0 { 0.0 } else { ratio };
+        let speed = if ratio > 1.0 { 1.0 } else { ratio };
+        building_audio.write(PlayBuildingAudio {
+            id: wall.0,
+            position,
+            editing_speed: speed,
+            kind: 4,
+        });
+        if intersecting && widget.dragged() == 4 {
+            building_audio.write(PlayBuildingAudio {
+                id: wall.0,
+                position,
+                editing_speed: speed,
+                kind: 5,
+            });
         }
     }
-    Some((proposal, point))
-}
-
-/// B `move_gizmo_and_trigger_vol` (`0x14097d280`, §2). Constant handle + trigger volume.
-/// Implemented: camera-rotate gate (`digital[2].phase<3`) and the smoothstep `base` from the
-/// shape height. TODO(evidence): `box_trigger_volume(base*1.5, 0.5, base*1.5, Transform)`,
-/// `UiState::add` widget, and the `move_shape` / `move_shape_outline` axis signifier records.
-#[allow(clippy::too_many_arguments)]
-pub fn move_gizmo_and_trigger_vol(
-    anchor: glam::Vec3,
-    rotation: glam::Quat,
-    focus_count: u32,
-    shape_height: f32,
-    activation: f32,
-    actions: &ActionSetStates,
-) -> Vec<[[f32; 3]; 3]> {
-    let _ = (anchor, rotation, focus_count, activation);
-    // Camera-rotate held → suppress the move gizmo while rotating the camera.
-    let camera_rotate = camera_rotate_pressed(actions);
-    // base = smoothstep((h + (-0.5)) / 2.5): §2 constants -0.5/2.5/3.0/0.5/1.0.
-    let t = ((shape_height - 0.5) / 2.5).clamp(0.0, 1.0);
-    let smooth = (3.0 - 2.0 * t) * t * t;
-    let base = (1.0 - smooth) * 0.5 + smooth;
-    let _ = base;
-    if camera_rotate {
-        return Vec::new();
-    }
-    // TODO(evidence): box_trigger_volume(base*1.5, 0.5, base*1.5, Transform); UiState::add;
-    // axis signifier records (move_shape / move_shape_outline).
-    Vec::new()
 }
 
 #[cfg(test)]
@@ -429,209 +623,622 @@ mod tests {
     use super::*;
 
     #[test]
-    fn cache_default_is_empty_and_lookup_none() {
-        let cache = MoveShapeCache::default();
-        assert!(cache.is_empty());
-        assert!(cache.get(WallId(1)).is_none());
-    }
-
-    #[test]
-    fn cache_entry_roundtrips() {
-        let mut cache = MoveShapeCache::default();
-        cache.map1.insert(
-            WallId(7),
-            MoveShapeEntry {
-                state: 2,
-                activation: 1.0,
-                variant: 3,
-                ..MoveShapeEntry::default()
-            },
-        );
-        assert!(!cache.is_empty());
-        let entry = cache.get(WallId(7)).unwrap();
-        assert_eq!(entry.state, 2);
-        assert_eq!(entry.variant, 3);
-    }
-
-    #[test]
-    fn case3_commit_updates_wall_and_records_undoable_history() {
-        use crate::resources::history::History;
-        use crate::resources::roofs::geometry::surface::Curve2;
-        use crate::resources::walls::{InnerWalls, WallState};
-
-        let mut inner = InnerWalls::new();
-        let curve = Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap();
-        let wall = inner.new_wall_from_curve(WallState::new(curve, 2.0, 0, 0, false));
-        let mut history = History::<()>::after_observed_future_clear();
-        history.start_input_recording(0).unwrap();
-
-        // In-transit moved curve (as case1 would have written).
-        let moved = Curve2::try_new(vec![[0.0, 0.0], [6.0, 0.0]], false).unwrap();
-        let mut entry = MoveShapeEntry {
-            state: 2,
-            activation: 1.0,
-            variant: 3,
-            curve: Some(moved),
-            ..MoveShapeEntry::default()
-        };
-        let outcome = commit_move_shape(&mut entry, wall, &mut inner, &mut history);
-        assert!(entry.committed, "case3 sets the commit sentinel");
-        assert!(outcome.emit_on_shape_moved && outcome.emit_show_pins);
-        // History holds one committed-able Wall `ChangeSupports` edit (undoable entry).
-        let pending = history.pending().expect("recording pending");
-        assert!(!pending.edits.is_empty(), "case3 records a Wall edit");
-        let crate::resources::history::EditType::Wall(compound) = &pending.edits[0] else {
-            panic!("expected EditType::Wall")
-        };
-        assert!(
-            matches!(
-                &compound.groups[0][0],
-                crate::resources::history::wall_edit::WallHistoryEdit::ChangeSupports(_)
-            ),
-            "case3 single edit must be ChangeSupports"
-        );
-    }
-
-    #[test]
-    fn camera_rotate_reads_digital_slot_2_phase() {
-        use crate::input::action_set::{ActionSetStates, DigitalActionPhase};
-        let mk = |phase: DigitalActionPhase| {
-            let mut actions = ActionSetStates::default();
-            actions.digital[2].phase = phase;
-            actions
-        };
-        assert!(camera_rotate_pressed(&mk(DigitalActionPhase::JustPressed)));
-        assert!(camera_rotate_pressed(&mk(DigitalActionPhase::Held)));
-        assert!(camera_rotate_pressed(&mk(DigitalActionPhase::Repeating)));
-        assert!(!camera_rotate_pressed(&mk(DigitalActionPhase::JustReleased)));
-        assert!(!camera_rotate_pressed(&mk(DigitalActionPhase::Idle)));
-    }
-
-    #[test]
-    fn case2_hover_snap_finds_candidate_near_wall() {
-        use crate::resources::roofs::geometry::surface::Curve2;
-        use crate::resources::walls::public_walls::{PublicWalls, WallPublicationDirty};
-        use crate::resources::walls::publication_source::TerrainHeightGrid512;
-        use crate::systems::wall::wall_state::wall_spatial_hash::WallSpatialSegment;
-        use crate::resources::walls::{InnerWalls, WallState};
-
-        let mut inner = InnerWalls::new();
-        let curve = Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap();
-        let wall = inner.new_wall_from_curve(WallState::new(curve, 2.0, 0, 0, false));
-        let terrain = TerrainHeightGrid512 {
-            encoded: vec![0u16; 512 * 512].into(),
-            minimum_y: 0.0,
-            maximum_y: 0.0,
-            sampling_fix: true,
-        };
-        let mut spatial = WallSpatialHash::default();
-        let mut public = PublicWalls::default();
-        public.consume_with_paths(
-            &mut inner,
-            &terrain,
-            None,
-            &WallPublicationDirty::default(),
-            &spatial,
-        );
-        // Populate the spatial index from the published outline.
-        let outline = public.get(wall).unwrap().geometry.outline.clone();
-        for seg in outline.windows(2) {
-            spatial.add_segment(WallSpatialSegment {
-                endpoints: [[seg[0][0], seg[0][2]], [seg[1][0], seg[1][2]]],
-                source_u: [0.0, 1.0],
-                relative_heights: [0.0, 0.0],
-                terrain_heights: [0.0, 0.0],
-                wall,
-            });
+    fn gizmo_scale_matches_original_sse_bits() {
+        // 原 RNE 14097d2c4..326 实际执行的146个输出，不由本实现生成。
+        let cases: &[(u32, u32)] = &[
+            (0x00000000, 0x3f000000),
+            (0x80000000, 0x3f000000),
+            (0x3f000000, 0x3f000000),
+            (0x3f000001, 0x3f000000),
+            (0x3effffff, 0x3f000000),
+            (0x40400000, 0x3f800000),
+            (0x403fffff, 0x3f800000),
+            (0x40400001, 0x3f800000),
+            (0x3f800000, 0x3f0d4fe0),
+            (0x40000000, 0x3f52f1aa),
+            (0x7f800000, 0x3f800000),
+            (0xff800000, 0x3f000000),
+            (0x7fc12345, 0x7fc12345),
+            (0xffc12345, 0xffc12345),
+            (0x7f812345, 0x7fc12345),
+            (0xff812345, 0xffc12345),
+            (0x7f7fffff, 0x3f800000),
+            (0xff7fffff, 0x3f000000),
+            (0x71d0708a, 0x3f800000),
+            (0xcf2ea453, 0x3f000000),
+            (0xd9696e0e, 0x3f000000),
+            (0x8f87460c, 0x3f000000),
+            (0x722be155, 0x3f800000),
+            (0x45871ede, 0x3f800000),
+            (0x5fac20bd, 0x3f800000),
+            (0xa7109eb0, 0x3f000000),
+            (0xc73e6bbc, 0x3f000000),
+            (0x6a01cc81, 0x3f800000),
+            (0x0f2e9787, 0x3f000000),
+            (0xe184521d, 0x3f000000),
+            (0xcf8ee744, 0x3f000000),
+            (0x68eedf9a, 0x3f800000),
+            (0x8b8ab6c8, 0x3f000000),
+            (0xd967d6d8, 0x3f000000),
+            (0x9de2215c, 0x3f000000),
+            (0xd312c6dc, 0x3f000000),
+            (0xa14e0727, 0x3f000000),
+            (0x42ffc8cf, 0x3f800000),
+            (0x39c5b709, 0x3f000000),
+            (0xf6541954, 0x3f000000),
+            (0x4036a401, 0x3f7ebcbe),
+            (0x2d108cc6, 0x3f000000),
+            (0x5097584d, 0x3f800000),
+            (0x8eb5eb16, 0x3f000000),
+            (0xb67e6f20, 0x3f000000),
+            (0x898f4506, 0x3f000000),
+            (0x6dd9747c, 0x3f800000),
+            (0xcb96f3cd, 0x3f000000),
+            (0xb880aa7b, 0x3f000000),
+            (0x68b4b173, 0x3f800000),
+            (0x1138a737, 0x3f000000),
+            (0x389063e2, 0x3f000000),
+            (0x25236f62, 0x3f000000),
+            (0xa5afc978, 0x3f000000),
+            (0x52dc4464, 0x3f800000),
+            (0x1f3e5407, 0x3f000000),
+            (0x7d620a4a, 0x3f800000),
+            (0x6e722360, 0x3f800000),
+            (0x2239c44e, 0x3f000000),
+            (0xe730cbfc, 0x3f000000),
+            (0x46878d93, 0x3f800000),
+            (0x3e7181a0, 0x3f000000),
+            (0xb13c6b9d, 0x3f000000),
+            (0x75b82b84, 0x3f800000),
+            (0x1d303249, 0x3f000000),
+            (0x6cc02282, 0x3f800000),
+            (0x2cde579c, 0x3f000000),
+            (0x9bd45682, 0x3f000000),
+            (0x4c25262c, 0x3f800000),
+            (0xd7f6d76a, 0x3f000000),
+            (0xf1855f22, 0x3f000000),
+            (0x6c821f23, 0x3f800000),
+            (0x1e4f9394, 0x3f000000),
+            (0x6446b1bd, 0x3f800000),
+            (0x976ef76a, 0x3f000000),
+            (0xa84f58c6, 0x3f000000),
+            (0x8c0af120, 0x3f000000),
+            (0x8499e6ec, 0x3f000000),
+            (0x9f647b02, 0x3f000000),
+            (0x21581837, 0x3f000000),
+            (0x53a985e0, 0x3f800000),
+            (0xa543db15, 0x3f000000),
+            (0x1e49ea48, 0x3f000000),
+            (0xf23e1798, 0x3f000000),
+            (0x916e96f9, 0x3f000000),
+            (0xe86881a3, 0x3f000000),
+            (0xda875d69, 0x3f000000),
+            (0x42ecc77c, 0x3f800000),
+            (0xe3b7f631, 0x3f000000),
+            (0xc8006b1c, 0x3f000000),
+            (0x92c0ffcb, 0x3f000000),
+            (0x7edfd265, 0x3f800000),
+            (0xb61379f5, 0x3f000000),
+            (0x502b5725, 0x3f800000),
+            (0x0f4a8bee, 0x3f000000),
+            (0x9ce3190a, 0x3f000000),
+            (0x24786efa, 0x3f000000),
+            (0xb3780cab, 0x3f000000),
+            (0x9e383b55, 0x3f000000),
+            (0xb69db5d4, 0x3f000000),
+            (0xef340edc, 0x3f000000),
+            (0x63ce80d3, 0x3f800000),
+            (0x361fe77b, 0x3f000000),
+            (0x871373d4, 0x3f000000),
+            (0x1e6ce84a, 0x3f000000),
+            (0xafa81e7a, 0x3f000000),
+            (0xa71928ab, 0x3f000000),
+            (0x406541cb, 0x3f800000),
+            (0xdff83a05, 0x3f000000),
+            (0xfc425101, 0x3f000000),
+            (0x6337f566, 0x3f800000),
+            (0x8fa4bfad, 0x3f000000),
+            (0xbe5df5b6, 0x3f000000),
+            (0x2cf87cce, 0x3f000000),
+            (0x116b16f8, 0x3f000000),
+            (0x99055f47, 0x3f000000),
+            (0xa041ccb9, 0x3f000000),
+            (0xb6122fe7, 0x3f000000),
+            (0x21518135, 0x3f000000),
+            (0x47c1532f, 0x3f800000),
+            (0x984680d5, 0x3f000000),
+            (0x9311e49b, 0x3f000000),
+            (0x3ddab18c, 0x3f000000),
+            (0xcfd8f999, 0x3f000000),
+            (0x15c88482, 0x3f000000),
+            (0x4f6b5298, 0x3f800000),
+            (0x8da4f781, 0x3f000000),
+            (0x8060223d, 0x3f000000),
+            (0x0b9e80be, 0x3f000000),
+            (0x4166461c, 0x3f800000),
+            (0x2f85bfd1, 0x3f000000),
+            (0xb8f547b3, 0x3f000000),
+            (0xf764a09d, 0x3f000000),
+            (0x8042bd26, 0x3f000000),
+            (0x88cfc386, 0x3f000000),
+            (0xce0a1183, 0x3f000000),
+            (0x6c458109, 0x3f800000),
+            (0x9613da81, 0x3f000000),
+            (0x6672b7ac, 0x3f800000),
+            (0xe2b8e1ab, 0x3f000000),
+            (0xfb012d2e, 0x3f000000),
+            (0x1d5647a6, 0x3f000000),
+            (0x5679d2f6, 0x3f800000),
+            (0x8bee5ec1, 0x3f000000),
+            (0x2b32f15a, 0x3f000000),
+            (0xe9d95d6f, 0x3f000000),
+        ];
+        for &(length, expected) in cases {
+            assert_eq!(
+                move_gizmo_scale(f32::from_bits(length)).to_bits(),
+                expected,
+                "length={length:08x}"
+            );
         }
-        let cursor = glam::Vec3::new(2.0, 2.0, 0.0);
-        let snapped = hover_snap(&public, &spatial, cursor, |_| None);
-        assert!(snapped.is_some(), "expected a snap candidate near the wall");
     }
 
     #[test]
-    fn case1_drag_writes_working_record_and_decorator_triples() {
-        use crate::resources::mouse_terrain_raycast::CameraCursorRay;
-        use crate::resources::terrain_height::{TerrainHeightSsbo, TerrainHeightsData};
-        use crate::resources::walls::decorator::{DecoratorId, DecoratorInfo};
-        use crate::resources::walls::decorator_archivist::LiveDecoratorArchivist;
-        use crate::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
-        use crate::systems::collision::world::RaycastWorld;
-        use crate::systems::wall::valid_enclosure::{Shape, ShapeParameters};
-        use bevy_ecs::system::RunSystemOnce;
-
-        #[derive(bevy_ecs::resource::Resource)]
-        struct TestEntry(MoveShapeEntry);
-
-        let wall = WallId(7);
-        // Preset ShapeParameters (circle center (2,3), r 4) at shape_rec[0x258..0x274].
-        let circle = ::utils::geometry::Circle2d::new(glam::Vec2::new(2.0, 3.0), 4.0);
-        let sp = ShapeParameters::from_shape(Shape::Circle(circle)).to_record();
-        let mut entry = MoveShapeEntry {
-            state: 2,
-            activation: 1.0,
-            variant: 1,
-            ..MoveShapeEntry::default()
-        };
-        entry.shape_rec[0x258..0x274].copy_from_slice(&sp);
-
-        let mut world = World::new();
-        world.insert_resource(TestEntry(entry));
-        world.insert_resource(CameraCursorRay {
-            origin: glam::Vec3::new(2.0, 10.0, 3.0),
-            dir: glam::Vec3::new(0.0, -1.0, 0.0),
-        });
-        world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::default());
-        let mut storage = DecoratorStorage::default();
-        let mut info = DecoratorInfo::default();
-        info.u18 = (1.0f32.to_bits() as u64) << 32; // field @+0x1c = 1.0
-        info.u24 = 2.0f32.to_bits(); // field @+0x24 = 2.0
-        storage
-            .get_or_insert_default(DecoratorStorageAddr::Wall(wall))
-            .insert(DecoratorId(11), info);
-        world.insert_resource(storage);
-        world.insert_resource(LiveDecoratorArchivist::default());
-        world.insert_resource(RaycastWorld::default());
-        #[cfg(feature = "native-physics")]
-        world.init_resource::<crate::resources::walls::decorator_collision::DecoratorPhysicsColliders>();
-
-        world
-            .run_system_once(
-                move |ray: Res<CameraCursorRay>,
-                      terrain: Res<TerrainHeightsData<TerrainHeightSsbo>>,
-                      mut storage: ResMut<DecoratorStorage>,
-                      mut archivist: ResMut<LiveDecoratorArchivist>,
-                      archival: DecoratorArchivalResources,
-                      mut entry: ResMut<TestEntry>| {
-                    case1_drag(
-                        &mut entry.0,
-                        wall,
-                        &ray,
-                        &terrain,
-                        &mut storage,
-                        &mut archivist,
-                        &archival,
-                    );
+    fn picked_gizmo_moves_authority_commits_history_and_releases_capture() {
+        use crate::{
+            input::action_set::DigitalActionPhase,
+            resources::{
+                events::{EscapeMenuJustOpened, ShutdownGameCmd},
+                history::MaybePendingSnapshotId,
+                mouse_capture::OsCursorVisibilityCmd,
+                mouse_terrain_raycast::CursorPositionSS,
+                read_mouse_depth_value::MouseDepthValue,
+                walls::{
+                    public_walls::WallPublicationDirty, publication_source::TerrainHeightGrid512,
                 },
+                window::{WindowFocusEvent, WindowSize},
+            },
+            systems::{
+                brush_preview::OverwriteBrushPreview,
+                camera_rig::MainCamera,
+                history::{
+                    recording::{
+                        history_finish_recording_system, history_start_recording,
+                        register_recording_events,
+                    },
+                    wall_replay_interpreter::WallReplayCommand,
+                },
+                ui::{
+                    hover_intersection::hover_intersection,
+                    resources::{ui_state::WidgetId, widget_params::PlayUiSound},
+                    ui_update::ui_update,
+                },
+                wall::wall_state::{
+                    path_preparation::PathRasters512, wall_spatial_hash::WallSpatialHash,
+                },
+            },
+        };
+        use bevy_ecs::system::RunSystemOnce;
+        bevy_tasks::ComputeTaskPool::get_or_init(|| {
+            bevy_tasks::TaskPoolBuilder::new().num_threads(2).build()
+        });
+        for shape in [
+            Shape::Circle(::utils::geometry::Circle2d::new(Vec2::ZERO, 2.0)),
+            Shape::Rectangle(::utils::geometry::Rectangle2d::new_centered_axis_aligned(
+                Vec2::new(4.0, 3.0),
+            )),
+        ] {
+            let mut authority = WallState::new(shape_curve(shape), 7.125, 0, 0, false);
+            authority.snapshot.source.shape = ShapeParameters::from_shape(shape).to_snapshot();
+            authority.snapshot.source.terrain_floor = 0.0;
+            let mut inner = InnerWalls::new();
+            let wall = inner.new_wall(authority);
+            let terrain_grid = TerrainHeightGrid512 {
+                encoded: vec![0; 512 * 512].into(),
+                minimum_y: 0.,
+                maximum_y: 0.,
+                sampling_fix: false,
+            };
+            let paths = PathRasters512::from_encoded(
+                std::array::from_fn(|_| vec![0u8; 512 * 512].into()),
+                false,
             )
             .unwrap();
+            let publish = |world: &mut World| {
+                let mut inner = world.remove_resource::<InnerWalls>().unwrap();
+                world.resource_mut::<PublicWalls>().consume_with_paths(
+                    &mut inner,
+                    &terrain_grid,
+                    Some(&paths),
+                    &WallPublicationDirty::default(),
+                    &WallSpatialHash::default(),
+                );
+                world.insert_resource(inner);
+            };
+            let mut world = World::new();
+            world.insert_resource(inner);
+            world.init_resource::<PublicWalls>();
+            publish(&mut world);
+            world.insert_resource(AppMode::Editing(EditSubject::Wall(wall.0)));
+            world.insert_resource(UiState::at_startup());
+            world.init_resource::<UiSignifierStream>();
+            world.insert_resource(CameraCursorRay {
+                origin: Vec3::new(0., 10., 0.),
+                dir: -Vec3::Y,
+            });
+            world.insert_resource(CursorTerrainRaycast {
+                tag: 1,
+                pos: Vec3::ZERO,
+                delta: Vec3::ZERO,
+                speed: 125.,
+            });
+            world.init_resource::<RaycastWorld>();
+            #[cfg(feature = "native-physics")]
+            world.init_resource::<crate::resources::walls::decorator_collision::DecoratorPhysicsColliders>();
+            world.init_resource::<ActionSetStates>();
+            world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
+            world.insert_resource(GladeBorder(BorderShape::Rectangle(
+                ::utils::geometry::Rectangle2d::new_centered_axis_aligned(Vec2::splat(130.)),
+            )));
+            world.init_resource::<Modifiers>();
+            world.insert_resource(DemoModeEnabled(shape.tag() == 1));
+            world.init_resource::<ShapeIntersections>();
+            world.init_resource::<GameTime>();
+            let mut camera = MainCamera::new(1.0);
+            for offset in [0x40, 0x80, 0xc0] {
+                camera.write_matrix(offset, &glam::Mat4::IDENTITY);
+            }
+            world.insert_resource(camera);
+            world.insert_resource(CursorPositionSS(Vec2::splat(50.)));
+            world.insert_resource(WindowSize::new(100, 100));
+            world.init_resource::<MouseDepthValue>();
+            world.insert_resource(History::<MaybePendingSnapshotId>::empty_glade());
+            register_recording_events(&mut world);
+            macro_rules! event { ($($ty:ty),* $(,)?) => { $(world.init_resource::<Events<$ty>>();)* }; }
+            event!(
+                AudioCursorMoved,
+                RequestWallMaterialAudio,
+                PlayBuildingAudio,
+                PlayWallUiSound,
+                OnShapeMoved,
+                CmdCheckForSheepInsideBuilding,
+                HideTreesinAreaCmd,
+                ShowPinnedDecoClutter,
+                DisplayOutOfBorder,
+                FeedbackInputOutOfBorder,
+                WindowFocusEvent,
+                EscapeMenuJustOpened,
+                ShutdownGameCmd,
+                OverwriteBrushPreview,
+                OsCursorVisibilityCmd,
+                PlayUiSound
+            );
+            // 先让真正业务producer注册拾取盒；不手造UiInteraction或编辑事件。
+            world.run_system_once(ui_move_shapes).unwrap();
+            let widget = WidgetId::from_name(&format!("move_shape{wall}"));
+            let params = world.resource::<UiState>().widget(widget).unwrap();
+            assert!(
+                matches!(params.geometry, Some(WidgetGeometry::TriangleMesh(ref triangles)) if triangles.len()==12)
+            );
+            let Some(WidgetGeometry::TriangleMesh(triangles)) = &params.geometry else {
+                unreachable!()
+            };
+            for point in triangles.iter().flat_map(|triangle| triangle.points) {
+                assert_eq!(
+                    point.y.abs(),
+                    0.25,
+                    "原手柄拾取盒固定高度0.5，不能误跟随宽深缩放"
+                );
+                assert_eq!(point.x.abs(), 0.75);
+                assert_eq!(point.z.abs(), 0.75);
+            }
+            let weak = Arc::downgrade(&params);
+            drop(params);
+            let mut schedule = Schedule::default();
+            schedule.add_systems(
+                (
+                    hover_intersection,
+                    ui_update,
+                    history_start_recording::<MaybePendingSnapshotId>,
+                    ui_move_shapes,
+                    history_finish_recording_system::<MaybePendingSnapshotId>,
+                )
+                    .chain(),
+            );
+            world.resource_mut::<ActionSetStates>().digital[0].phase =
+                DigitalActionPhase::JustPressed;
+            schedule.run(&mut world);
+            assert_eq!(world.resource::<UiState>().interaction().widget, widget);
+            assert_eq!(world.resource::<UiState>().click_byte(), 3);
+            assert!(world.resource::<History>().is_recording());
+            assert!(
+                world
+                    .resource::<LiveDecoratorArchivist>()
+                    .special1
+                    .is_some()
+            );
+            world.resource_mut::<CursorTerrainRaycast>().pos = Vec3::new(3., 0., 4.);
+            world.resource_mut::<ActionSetStates>().digital[0].phase = DigitalActionPhase::Held;
+            schedule.run(&mut world);
+            let moved_shape = ShapeParameters::from_snapshot(
+                &world
+                    .resource::<InnerWalls>()
+                    .get(wall)
+                    .unwrap()
+                    .source()
+                    .shape,
+            );
+            assert_eq!(moved_shape.center(), Vec2::new(3., 4.));
+            assert_eq!(
+                world
+                    .resource::<InnerWalls>()
+                    .get(wall)
+                    .unwrap()
+                    .height()
+                    .to_bits(),
+                7.125f32.to_bits()
+            );
+            assert_eq!(
+                world
+                    .resource::<InnerWalls>()
+                    .get(wall)
+                    .unwrap()
+                    .snapshot()
+                    .metadata
+                    .source_69,
+                if shape.tag() == 1 { 0 } else { 5 }
+            );
+            publish(&mut world);
+            world.resource_mut::<ActionSetStates>().digital[0].phase =
+                DigitalActionPhase::JustReleased;
+            schedule.run(&mut world);
+            assert!(!world.resource::<History>().is_recording());
+            assert!(
+                world
+                    .resource::<LiveDecoratorArchivist>()
+                    .special1
+                    .is_none()
+            );
+            let edits = &world
+                .resource::<History>()
+                .ledger()
+                .entries
+                .last()
+                .unwrap()
+                .edits;
+            assert_eq!(edits.len(), 1);
+            let EditType::Wall(compound) = &edits[0] else {
+                panic!("必须写真实墙复合历史")
+            };
+            let WallHistoryEdit::MorphPremadeShape(change) = &compound.groups[0][0] else {
+                panic!("必须保存原预制形状变换")
+            };
+            assert_eq!(change.before, ShapeParameters::from_shape(shape));
+            assert_eq!(change.after, moved_shape);
+            let edit = compound.groups[0][0].clone();
+            let mut sources = std::collections::HashMap::from([(
+                crate::resources::walls::publication_fields::WallId(wall.0),
+                world
+                    .resource::<InnerWalls>()
+                    .get(wall)
+                    .unwrap()
+                    .snapshot()
+                    .clone(),
+            )]);
+            for undo in [true, false] {
+                let mut command = WallReplayCommand {
+                    edit: edit.clone(),
+                    timed: false,
+                    duration: 1.,
+                    elapsed: 0.,
+                    undo,
+                    finished: false,
+                };
+                command.advance(&mut sources, 0.1, &terrain_grid).unwrap();
+                let restored = ShapeParameters::from_snapshot(
+                    &sources[&crate::resources::walls::publication_fields::WallId(wall.0)]
+                        .source
+                        .shape,
+                );
+                assert_eq!(restored, if undo { change.before } else { change.after });
+            }
+            assert_eq!(
+                world
+                    .resource::<Events<CmdCheckForSheepInsideBuilding>>()
+                    .len(),
+                1
+            );
+            let tree_events = world
+                .resource_mut::<Events<HideTreesinAreaCmd>>()
+                .drain()
+                .collect::<Vec<_>>();
+            assert_eq!(tree_events.len(), 2);
+            assert!(!tree_events[0].finished && tree_events[1].finished);
+            assert_eq!(world.resource::<Events<OnShapeMoved>>().len(), 2);
+            // 在同一真实输入链点击恢复支撑；相机实际移到原球体所在的-2高度。
+            world.resource_mut::<InnerWalls>().update_supports(wall, 1);
+            publish(&mut world);
+            world
+                .resource_mut::<MainCamera>()
+                .write_matrix(0xc0, &glam::Mat4::from_translation(Vec3::new(3., -2., 4.)));
+            for phase in [
+                DigitalActionPhase::Idle,
+                DigitalActionPhase::JustPressed,
+                DigitalActionPhase::JustReleased,
+            ] {
+                world.resource_mut::<ActionSetStates>().digital[0].phase = phase;
+                schedule.run(&mut world);
+            }
+            assert_eq!(
+                world
+                    .resource::<InnerWalls>()
+                    .get(wall)
+                    .unwrap()
+                    .removed_supports(),
+                0
+            );
+            assert!(!world.resource::<History>().is_recording());
+            let EditType::Wall(support) = &world
+                .resource::<History>()
+                .ledger()
+                .entries
+                .last()
+                .unwrap()
+                .edits[0]
+            else {
+                panic!("恢复支撑必须写真实墙历史")
+            };
+            assert!(
+                matches!(&support.groups[0][0],WallHistoryEdit::ChangeSupports(change) if change.wall_index==wall.0 && change.before && !change.after)
+            );
+            // 真实picker已消费原注册表；退出模式后清空最后一帧注册和捕获Arc。
+            world.insert_resource(AppMode::Editing(EditSubject::None));
+            world.resource_mut::<ActionSetStates>().digital[0].phase = DigitalActionPhase::Idle;
+            schedule.run(&mut world);
+            world.resource_mut::<UiSignifierStream>().take_entries();
+            drop(schedule);
+            drop(world);
+            assert!(weak.upgrade().is_none());
+        }
+    }
 
-        let e = &world.resource::<TestEntry>().0;
-        // Vec header len == 1 (one wall decorator).
-        let len = u32::from_le_bytes(e.shape_rec[0x10..0x14].try_into().unwrap());
-        assert_eq!(len, 1, "one decorator triple");
-        // +0x20..0x3c is a verbatim copy of the 28B ShapeParameters.
-        assert_eq!(&e.shape_rec[0x20..0x3c], &e.shape_rec[0x258..0x274]);
-        // Decorator triples: {id, d[-0x34]-cx, d[-0x2c]-cz} = {11, 1.0-2.0, 2.0-3.0}.
-        assert_eq!(e.decorator_triples.len(), 1);
-        let (id, dx, dz) = e.decorator_triples[0];
-        assert_eq!(id, 11);
-        assert!((dx - (1.0 - 2.0)).abs() < 1e-5, "dx {dx}");
-        assert!((dz - (2.0 - 3.0)).abs() < 1e-5, "dz {dz}");
-        // +0x3c = anchor.y = terrain height sampled at center (default grid min).
-        let anchor_y = f32::from_le_bytes(e.shape_rec[0x3c..0x40].try_into().unwrap());
-        let expected_y = TerrainHeightsData::<TerrainHeightSsbo>::default()
-            .sample_at_world_xz(2.0, 3.0);
-        assert_eq!(anchor_y, expected_y);
+    #[test]
+    fn elevated_gizmo_factories_spawn_real_meshes_line_passes_and_release() {
+        use crate::{
+            asset_libraries::{
+                mesh_library::{AssetMeshLibrary, MeshAsset},
+                shader_library::AssetShaderLibrary,
+            },
+            render::{
+                mesh::Mesh, pass_builder::draw_list::DrawTopology, shader::RasterShaderProgram,
+                test_device::TestDevice,
+            },
+            resources::walls::publication_source::TerrainHeightGrid512,
+            systems::ui::signifiers::{
+                animation::SignifierAnimation, signifier_create::UiSignifierEntry,
+            },
+        };
+        use bevy_ecs::world::CommandQueue;
+        let shape = Shape::Circle(::utils::geometry::Circle2d::new(Vec2::new(2., 3.), 2.));
+        let mut authority = WallState::new(shape_curve(shape), 7., 0, 0, false);
+        authority.snapshot.source.shape = ShapeParameters::from_shape(shape).to_snapshot();
+        authority.snapshot.source.terrain_floor = 5.;
+        let grid = TerrainHeightGrid512 {
+            encoded: vec![0; 512 * 512].into(),
+            minimum_y: 2.,
+            maximum_y: 2.,
+            sampling_fix: false,
+        };
+        let public = PublicWallState::collect(&authority, &grid).unwrap();
+        let ui = UiState::at_startup();
+        let mut stream = UiSignifierStream::default();
+        let position = Vec3::new(2., 7., 3.);
+        let rotation = Quat::IDENTITY;
+        let widget = move_gizmo_and_trigger_vol(
+            &position,
+            &rotation,
+            &ActionSetStates::default(),
+            &ui,
+            WallId(41),
+            &public,
+            2.,
+            &mut stream,
+        );
+        assert_eq!(widget.dragged(), 2);
+        let factories = stream.take_entries();
+        assert_eq!(factories.len(), 3);
+        let mut meshes = AssetMeshLibrary::new();
+        for name in ["move_shape", "move_shape_outline"] {
+            meshes.add(MeshAsset::new(Mesh::new(name), Some(name.to_owned())));
+        }
+        let shaders = AssetShaderLibrary::new();
+        for name in ["vertex_color_shader", "dashed_line"] {
+            shaders.add_raster(
+                RasterShaderProgram::new_draw(name, Default::default(), &TestDevice(1)),
+                false,
+            );
+        }
+        let mut world = World::new();
+        let mut queue = CommandQueue::default();
+        let entities = factories
+            .iter()
+            .flat_map(|entry| {
+                let UiSignifierEntry::Factory(factory) = entry else {
+                    panic!("手柄不接受不可唤醒raw占位")
+                };
+                factory.wake(&meshes, &shaders, &mut Commands::new(&mut queue, &world))
+            })
+            .collect::<Vec<_>>();
+        queue.apply(&mut world);
+        assert_eq!(entities.len(), 3);
+        let transient = world
+            .get::<crate::asset_libraries::transient_mesh::TransientMesh>(entities[0])
+            .unwrap()
+            .mesh_handle();
+        assert_eq!(world.get::<DashedLineLength>(entities[0]).unwrap().0, 5.);
+        assert!(
+            matches!(world.get::<DrawTopology>(entities[0]),Some(DrawTopology::Alt(width)) if *width==1.)
+        );
+        for entity in &entities[1..] {
+            assert_eq!(
+                world.get::<Transform>(*entity).unwrap().translation,
+                position
+            );
+            let animation = world.get::<SignifierAnimation>(*entity).unwrap();
+            assert_eq!(animation.value, 1.5);
+            assert_eq!(animation.duration, 0.);
+        }
+        assert!(
+            world
+                .get::<crate::systems::render_loop::draw_passes::draw_lists::UiPass>(entities[1])
+                .is_none()
+        );
+        assert!(
+            world
+                .get::<crate::systems::render_loop::draw_passes::draw_lists::UiPass>(entities[2])
+                .is_some()
+        );
+        // 工厂消费者按既有record_id合同附加身份；实际生产由signifier_create负责。
+        // 再接真正mark/反向动画/despawn调度验证卸载，不手工清空实体或跳过删除动画。
+        let widget_id = widget.id;
+        for (entity, entry) in entities.into_iter().zip(&factories) {
+            let UiSignifierEntry::Factory(factory) = entry else {
+                unreachable!()
+            };
+            world
+                .entity_mut(entity)
+                .insert(crate::systems::ui::signifiers::SignifierId(
+                    crate::systems::ui::signifiers::signifier_create::record_id(
+                        widget_id,
+                        factory.name(),
+                    ),
+                    widget_id,
+                ));
+        }
+        world.insert_resource(ui);
+        world.insert_resource(GameTime {
+            delta: 0.1,
+            ..Default::default()
+        });
+        let mut cleanup = Schedule::default();
+        cleanup.add_systems(
+            (
+                crate::systems::ui::signifiers::signifier_mark_for_delete::signfier_mark_for_delete,
+                crate::systems::ui::signifiers::animation::signifier_animation_t,
+                crate::systems::ui::signifiers::signifier_mark_for_delete::despawn_marked,
+            )
+                .chain(),
+        );
+        cleanup.run(&mut world);
+        assert_eq!(world.entities().len(), 0);
+        assert_eq!(*meshes.transient_meshes().lock().unwrap(), vec![transient]);
+        crate::asset_libraries::transient_mesh::delete_dropped_transient_meshes(
+            &TestDevice(1),
+            &mut meshes,
+            &mut crate::asset_libraries::vao_library::AssetVAOLibrary::new(),
+        );
+        assert!(meshes.get(transient).is_none());
+        assert!(meshes.transient_meshes().lock().unwrap().is_empty());
+        drop(factories);
+        drop(world);
     }
 }

@@ -51,6 +51,11 @@ mod history_runtime;
 /// every plugin (including those in the `system_*` crates) shares one set identity.
 pub use country_core::systems::GameSystemSet;
 
+/// 注册游戏App的真实事件维护，必须先于仅初始化World资源的helper。
+pub fn register_gameplay_events(app: &mut App) {
+    startup_event_runtime::install(app);
+}
+
 /// Actual current-host World role, set by the gameplay App constructor and
 /// retained when its SubApp moves. The independent loading App never copies
 /// this marker. It is not an asset/load-completion flag.
@@ -270,7 +275,9 @@ pub fn run_game_thread(
     let mut app = App::new();
     app.add_systems(bevy_app::PreUpdate, crate::frame_resolution::update);
     app.insert_resource(GameplayApplication);
-    startup_event_runtime::install(&mut app);
+    register_gameplay_events(&mut app);
+    // 原run_game_thread 1405a1e45构造统计owner；跨会话重置须另按原生命周期处理。
+    app.init_resource::<country_core::resources::walls::elevation_support_stats::ElevationSupportStats>();
     // Original plugin/extension-trait registrations. They run right after the
     // App-level event list so that their add_event calls precede any helper that
     // would init_resource<Events<T>> (which would make add_event skip).
@@ -501,15 +508,8 @@ pub fn run_game_thread(
     app.add_event::<country_core::resources::photo_mode::PhotoModeCmd>();
     app.add_event::<country_core::systems::backend::photomode::PhotoModeAudioParameter>();
     app.add_event::<toolbar::ui_interaction::UiClickEvent>();
-    // Original toolbar::impl1::build @14068dd10..dd96: the photo tuple is
-    // chain_ignore_deferred, set8, gated by AppLoadingState::Game.
-    app.add_systems(bevy_app::Update, (
-        country_core::systems::backend::photomode::update_photomode_visibility,
-        country_core::systems::backend::photomode::process_photomode_transitions,
-        toolbar::photomode::timelapse::restore_after_timelapse,
-        country_core::systems::backend::photomode::finish_photomode_frame,
-    ).chain_ignore_deferred().in_set(GameSystemSet(8)).run_if(
-        bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game)));
+    // 摄影宿主组与工具栏共用原注册体，保持set8、Game门控及延迟命令边界。
+    crate::toolbar_plugin::install_photomode_host_systems(&mut app);
     app.init_resource::<EscMenuState>();
     app.init_resource::<country_core::resources::onboarding::WelcomeScreenState>();
     app.init_resource::<NextEscMenuState>();
@@ -842,7 +842,8 @@ fn apply_ecs_executor_policy_to(schedule: &mut Schedule) {
 }
 
 /// Original device-input slices in the actual gameplay App's numbered sets.
-fn install_gameplay_device_input(app: &mut App) {
+/// 在游戏App安装原设备输入链，供生产宿主与嵌入式验收共用。
+pub fn install_gameplay_device_input(app: &mut App) {
     use country_core::systems::backend::input::{
         calculate_input_delta, input_record_replay, input_replay_for_trailers,
         mod_key, translate_input, translate_input_to_cursor_moved, update_cursor_position,
@@ -994,12 +995,16 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     // 窗灯控制与组件由装饰物生产者、逐帧系统和 Nani 玻璃共同使用。
     app.init_resource::<country_core::resources::window_lights::GlobalWindowLightsControl>();
     app.add_event::<country_core::resources::events::LightWindowCmd>();
-    app.add_systems(bevy_app::Update,
-        system_decorator::window_lights::window_lights.in_set(GameSystemSet(36)));
-    // 仅安装原卸载函数中窗灯资源的重建片段，不代替其余 owner 的完整清理。
+    // 原八成员普通组中窗灯与烟柱厚度分别独立运行；不增加组内 chain。
+    app.init_resource::<system_decorator::chimney_smoke_anim_thickness::ChimneySmokeThickness>();
+    app.add_systems(bevy_app::Update, (
+        system_decorator::window_lights::window_lights,
+        system_decorator::chimney_smoke_anim_thickness::chimney_smoke_anim_thickness,
+    ).in_set(GameSystemSet(36)));
+    // 原140345374/1403453bd以Game(1)注册完整20-owner退出系统。
     app.add_systems(
         bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),
-        system_decorator::window_lights::window_lights_on_glade_unload,
+        crate::decorator_plugin::decorators_on_glade_unload,
     );
     // Original native assembly uses this canonical event; it is not PlayClutterSoundCmd.
     app.add_event::<country_core::systems::audio::PlayDecoratorSoundCmd>();
@@ -1017,6 +1022,34 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     app.init_resource::<DecoratorPhysicsColliders>();
     app.init_resource::<country_core::resources::stairs::stairs_state::StairsState>();
     app.init_resource::<country_core::systems::collision::world::RaycastWorld>();
+    app.init_resource::<country_core::systems::collision::MeshIntersectionGraph>();
+    // 原 collision::build 的 Startup 建立真实差量订阅。
+    app.add_systems(bevy_app::Startup,
+        country_core::systems::collision::intersect_meshes::initialize_mesh_intersection_subscriber);
+    // 原collision::build140b68623/628：Update/set30，先更新实体碰撞再flush；
+    // 与WallSystems/set24的独立flush并存，不替换、不添加Commands同步点。
+    app.add_systems(
+        bevy_app::Update,
+        (
+            country_core::systems::collision::world::update_rapier_colliders,
+            country_core::systems::collision::world::flush_rapier_colliders,
+        ).chain_ignore_deferred().in_set(GameSystemSet(30)),
+    );
+    // 原 collision::build 的交线生产位于 set36，与碰撞提交 set30 分开。
+    // 鸟巢消费者读取该入口写出的真实图边和候选，不从脏瓦片合成来源。
+    app.add_systems(bevy_app::Update,
+        country_core::systems::collision::intersect_meshes::find_mesh_mesh_intersections_system
+            .in_set(GameSystemSet(36)));
+    // 原collision::build140b6878a/8c：两个独立退出owner，无额外条件或先后边。
+    app.add_systems(
+        bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),
+        (
+            country_core::systems::collision::intersect_meshes::on_exit_game_state,
+            |mut world: bevy_ecs::prelude::ResMut<country_core::systems::collision::world::RaycastWorld>| {
+                world.on_level_reload();
+            },
+        ),
+    );
     // Actual UI constructor @140945d25..d70, followed by a derived mode view.
     let ui = country_core::systems::ui::resources::ui_state::UiState::at_startup();
     app.insert_resource(mode_manager::ModeManagerUiContext::from_ui_state(&ui));
@@ -1051,18 +1084,8 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     app.add_event::<mode_manager::ClearCanvasCmd>();
     app.add_event::<mode_manager::AppModeChanged>();
     app.add_event::<history::finish_replay::CmdUnfreezeSheep>();
-    // run_game_thread @14059fb02 selects set10 for the UI/mode tuple.
-    app.add_systems(
-        bevy_app::Update,
-        (
-            mode_manager::synchronize_mode_manager_ui_context,
-            mode_manager::mode_manager::<country_core::resources::history::EditType, country_core::resources::history::MaybePendingSnapshotId>,
-            country_core::systems::timelapse_replay::start_timelapse,
-            mode_manager::send_mode_just_changed_event.in_set(mode_manager::ModeChangePublication),
-        )
-            .chain_ignore_deferred()
-            .in_set(GameSystemSet(10)),
-    );
+    // 原set10请求消费者与工具栏验收使用同一个生产注册体。
+    crate::toolbar_plugin::install_mode_consumers(app);
     // add_wall_systems 0x140493120：set 19/28/34/44、OnExit(Game) 等墙系统注册统一由
     // `WallSystems::add_wall_systems`（app_systems.rs）承担。
     crate::app_systems::WallSystems::add_wall_systems(app);
@@ -1075,8 +1098,9 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     //                  .chain_ignore_deferred().in_set(35)（tuple 0x141737fb0，in_set 0x1409438e1..390f）
     //   C 0x140943981  十元组 replay_path<Dirt/Cobble1/2/3>、replay_water、replay_garden、
     //                  replay_terrain、replay_wall、replay_auto_clutter、replay_stairs .in_set(40)
-    //   D 0x140943a04  (finish_timelapse.run_if(resource_exists<ActiveSession>)@0x14094398f,
-    //                  replay_pop_bucket, finish_replay).chain_ignore_deferred().in_set(41)
+    //   D 0x140943a04  (replay_pop_bucket, finish_replay,
+    //                  finish_timelapse.run_if(resource_exists<ActiveSession>)@0x14094398f)
+    //                  .chain_ignore_deferred().in_set(41)；先构造条件不表示其系统先执行。
     // 记录系统在此（set14 / set35 头）；其余成员见下方各自注册（C 里 replay_path/replay_water/
     // replay_garden 在本仓库尚无对应系统，见 PLUGIN-WIRING 未闭合清单）。
     // add_history_systems 尾部 0x140943c83：register_event<FinishInputRecordingCmd>
@@ -1128,20 +1152,26 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     );
 }
 
-/// toolbar空间/高度反馈需要真实创建和抬升生产链。这里只安装已经恢复并核验的
-/// 原add_wall_shape_ux子链，保持set17内的相对次序；圆形/矩形编辑等其余叶子
-/// 仍属于后续建筑模块，不能将旧raw signifier壳注册后冒称完整26项UX已恢复。
+/// 原add_wall_shape_ux的25个业务系统与1个条件。普通并列组、chain与IgnoreDeferred
+/// 必须分别保留；叶子算法、交互与持久化的验收状态另记业务台账。
 fn install_toolbar_shape_dependencies(app: &mut bevy_app::App) {
     use bevy_ecs::schedule::IntoScheduleConfigs;
     use country_core::{resources, systems::{ui_raise_shape, ui_focus_mode_shape_height, wall::shapes}};
     app.init_resource::<shapes::ShapePlacement>()
+        .init_resource::<resources::shape_intersections::ShapeIntersections>()
         .init_resource::<shapes::SnapMode>()
         .init_resource::<shapes::PreviewCircle>()
         .init_resource::<shapes::PreviewRectangle>()
+        .init_resource::<shapes::rectangle::WipRectangle>()
+        .init_resource::<shapes::rectangle::ui_edit_rectangle_dims::UiEditRectangleActiveWidgetResource>()
+        .init_resource::<shapes::circle::ui_edit_circle::AnimatedCircleSignifierResource>()
         .init_resource::<shapes::calc_shape_height::TimberframeConstructionParamsCache>()
         .init_resource::<shapes::rectangle::ui_create_rectangle::ShapesDragMouseMoved>()
         .add_event::<shapes::CreateCircleCmd>()
         .add_event::<shapes::CreateRectangleCmd>()
+        .add_event::<shapes::EditRectangleCmd>()
+        .add_event::<shapes::FinishEditRectangleCmd>()
+        .add_event::<shapes::rectangle::OnRectangleEdited>()
         .add_event::<shapes::DontRecalculateShapePlacement>()
         .add_event::<ui_raise_shape::HandleRaiseShapeUiInteraction>()
         .add_event::<resources::glade_border::MaxDemoElevationReached>()
@@ -1154,31 +1184,60 @@ fn install_toolbar_shape_dependencies(app: &mut bevy_app::App) {
         .add_event::<country_core::systems::audio::PlayBuildingAudio>()
         .add_event::<country_core::systems::audio::PlayTimberframeSound>()
         .add_event::<country_core::systems::audio::RequestWallMaterialAudio>();
-    // Producer of the AdjustWallHeightUi / InitAdjWallHeightMode / FinishAdjWallHeightMode
-    // events consumed by ui_adjust_wall_height_mode + history_record_adjust_wall_height.
-    // Native home is the shapes set (17), before the wall publish set (19) / history set (34).
-    app.add_systems(
-        bevy_app::Update,
-        country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height::ui_adjust_wall_height
-            .in_set(GameSystemSet(17))
-            .run_if(is_gameplay_active),
-    );
+    // 高度控件生产者在下方原B组只挂一次，避免合并后的独立注册重复发送事件。
     app.add_systems(bevy_app::Update, (
         (
             shapes::shape_placement::shape_placement_params,
             shapes::shape_placement_signifiers::shape_placement_signifiers,
             shapes::calc_shape_height::calc_shape_height,
+            shapes::circle::ui_edit_circle::ui_edit_circle,
+            shapes::circle::signifiers::edit_arrow::signifier_edit_circle_arrow,
+            shapes::circle::signifiers::edit_line::signifier_edit_circle_line,
+            shapes::circle::ui_rotate_circle::ui_rotate_circle,
             shapes::circle::ui_create_circle::ui_create_circle,
             shapes::circle::create_circle::create_circle,
         ).chain_ignore_deferred(),
         (
-            ui_raise_shape::ui_raise_shape,
+            country_core::systems::ui_move_shapes::ui_move_shapes,
+            country_core::systems::ui_move_freehand_walls::ui_move_freehand_walls,
+            country_core::systems::ui_edit_freehand_walls::ui_edit_freehand_walls,
+            (
+                (
+                    shapes::rectangle::ui_edit_rectangle_dims::ui_edit_rectangle_dims,
+                    shapes::rectangle::ui_edit_rectangle_orientation::ui_edit_rectangle_orientation,
+                    ui_raise_shape::ui_raise_shape,
+                    country_core::systems::wall::adjust_wall_height::ui_adjust_wall_height::ui_adjust_wall_height,
+                ),
+                (
+                    shapes::rectangle::ui_edit_rectangle_dims::do_ui_edit_rectangle_dims,
+                    shapes::rectangle::ui_edit_rectangle_orientation::do_ui_edit_rectangle_rotate,
+                ),
+            ).chain(),
             ui_focus_mode_shape_height::ui_focus_mode_shape_height,
             ui_raise_shape::impl_raise_shape,
             shapes::rectangle::ui_create_rectangle::ui_create_rectangle,
+            shapes::rectangle::signifier_edit_dims_line::signifier_edit_dims,
             shapes::rectangle::create_rectangle::create_rectangle,
+            shapes::rectangle::edit_rectangle::edit_rectangle,
+            shapes::rectangle::finish_edit_rectangle::finish_edit_rectangle,
         ).chain_ignore_deferred(),
     ).chain_ignore_deferred().in_set(GameSystemSet(17)).run_if(is_gameplay_active));
+    // 原DecoratorPlugin的普通五成员组（1400c5cc0），外链在
+    // move_decorators_following_anchors与cache_decorator_transforms之前。
+    // 各成员不能人为chain；它们分别消费原跨域事件，保持独立reader。
+    type CollisionPayload = country_core::resources::walls::decorator_archivist::LiveColliderPayload;
+    app.add_systems(bevy_app::Update, (
+        system_decorator::cull_oob_decorators::auto_allow_decorator_culling::<CollisionPayload>,
+        (
+            system_decorator::decorator_on_move_shape::decorator_on_move_shape,
+            system_decorator::decorator_on_rectangle_edited::decorator_on_rectangle_edited,
+            system_decorator::decorator_on_wall_height_changed::decorator_on_wall_height_changed,
+            system_decorator::decorator_on_freehand_wall_edited::decorator_on_freehand_wall_edited,
+            system_decorator::decorator_on_freehand_wall_edited::decorator_on_circle_edited,
+        ),
+        system_decorator::move_decorators_following_anchors::move_decorators_following_anchors,
+    ).chain().in_set(GameSystemSet(25))
+        .before(system_decorator::cache_decorator_transforms::cache_decorator_transforms));
 }
 
 /// Original country_core::systems::is_gameplay_active @140a90e00,22B.
@@ -1756,6 +1815,9 @@ pub fn make_temp_window(
 /// fixture must own the production buffers too. No production system is skipped.
 #[cfg(test)]
 fn install_history_gpu_fixture(app: &mut bevy_app::App) {
+    // 本夹具包含真实ui_edit_focus；复用生产toolbar资源构造器，
+    // 不跳过缺UiNavState的系统或另造可绕过导航门的输入。
+    toolbar::configure_app(app);
     let device = rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless())
         .expect("production history integration requires a headless Vulkan device");
     let bridge = crate::render_bridge::CoreRenderBridge::new(
@@ -1800,6 +1862,70 @@ mod intro_history_integration {
             mode_manager::{AppMode, HistoryCommand},
         },
     };
+
+    /// 用真实宿主安装器检查原A/B/C和set25消费者，防止漏注册与错误同步边。
+    #[test]
+    fn original_shape_tree_and_decorator_consumers_are_present_once_in_order() {
+        use bevy_state::app::AppExtStates;
+        let mut app = App::new();
+        app.add_plugins(bevy_state::app::StatesPlugin);
+        app.insert_state(country_core::app_loading_state::AppLoadingState::Game);
+        for stage in 0..44 {
+            app.configure_sets(bevy_app::Update,
+                GameSystemSet(stage).before(GameSystemSet(stage + 1)));
+        }
+        startup_event_runtime::install(&mut app);
+        install_toolbar_shape_dependencies(&mut app);
+        app.add_systems(bevy_app::Update,
+            system_decorator::cache_decorator_transforms::cache_decorator_transforms
+                .in_set(GameSystemSet(25)));
+        let names: Vec<String> = app.world_mut().schedule_scope(bevy_app::Update, |world, schedule| {
+            schedule.initialize(world).expect("原形状与装饰调度必须无环");
+            schedule.systems().unwrap().map(|(_, system)| system.name().to_string()).collect()
+        });
+        let position = |name: &str| {
+            let found: Vec<_> = names.iter().enumerate()
+                .filter(|(_, candidate)| candidate.ends_with(name)).map(|(i, _)| i).collect();
+            assert_eq!(found.len(), 1, "{name}必须恰好注册一次");
+            found[0]
+        };
+        let a = ["shape_placement::shape_placement_params",
+            "shape_placement_signifiers::shape_placement_signifiers", "calc_shape_height::calc_shape_height",
+            "ui_edit_circle::ui_edit_circle", "edit_arrow::signifier_edit_circle_arrow",
+            "edit_line::signifier_edit_circle_line", "ui_rotate_circle::ui_rotate_circle",
+            "ui_create_circle::ui_create_circle", "create_circle::create_circle"];
+        let first_c = ["ui_move_shapes::ui_move_shapes", "ui_move_freehand_walls::ui_move_freehand_walls",
+            "ui_edit_freehand_walls::ui_edit_freehand_walls"];
+        let b_producers = ["ui_edit_rectangle_dims::ui_edit_rectangle_dims",
+            "ui_edit_rectangle_orientation::ui_edit_rectangle_orientation", "ui_raise_shape::ui_raise_shape",
+            "ui_adjust_wall_height::ui_adjust_wall_height"];
+        let b_consumers = ["ui_edit_rectangle_dims::do_ui_edit_rectangle_dims",
+            "ui_edit_rectangle_orientation::do_ui_edit_rectangle_rotate"];
+        let last_c = ["ui_focus_mode_shape_height::ui_focus_mode_shape_height", "ui_raise_shape::impl_raise_shape",
+            "ui_create_rectangle::ui_create_rectangle", "signifier_edit_dims_line::signifier_edit_dims",
+            "create_rectangle::create_rectangle", "edit_rectangle::edit_rectangle",
+            "finish_edit_rectangle::finish_edit_rectangle"];
+        let chain = |group: &[&str]| {
+            for pair in group.windows(2) { assert!(position(pair[0]) < position(pair[1]), "原链顺序{pair:?}"); }
+        };
+        chain(&a); chain(&first_c); chain(&last_c);
+        assert!(position(a.last().unwrap()) < position(first_c[0]));
+        for producer in b_producers {
+            assert!(position(first_c.last().unwrap()) < position(producer));
+            for consumer in b_consumers { assert!(position(producer) < position(consumer)); }
+        }
+        for consumer in b_consumers { assert!(position(consumer) < position(last_c[0])); }
+        assert_eq!(a.len() + first_c.len() + b_producers.len() + b_consumers.len() + last_c.len(), 25);
+        let cache = position("cache_decorator_transforms::cache_decorator_transforms");
+        for consumer in ["decorator_on_move_shape::decorator_on_move_shape",
+            "decorator_on_rectangle_edited::decorator_on_rectangle_edited",
+            "decorator_on_wall_height_changed::decorator_on_wall_height_changed",
+            "decorator_on_freehand_wall_edited::decorator_on_freehand_wall_edited",
+            "decorator_on_freehand_wall_edited::decorator_on_circle_edited"] {
+            assert!(position(last_c.last().unwrap()) < position(consumer));
+            assert!(position(consumer) < cache);
+        }
+    }
 
     /// Original shipped intro has 13 entries, 26 internal groups (including
     /// empty and concurrent groups), and ends with exactly these three walls.

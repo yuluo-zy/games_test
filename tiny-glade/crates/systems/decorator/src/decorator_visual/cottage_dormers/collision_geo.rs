@@ -62,7 +62,7 @@ impl DormerCollisionCache {
 }
 
 /// 真实Roof截面的字段桥；只投影已有字段，不另造几何或默认截面。
-fn roof_section(roof: &Roof, position: Vec3) -> ShapeParameters {
+pub(super) fn roof_section(roof: &Roof, position: Vec3) -> ShapeParameters {
     ShapeParameters::from_shape(match roof.get_roof_shape_from_pos_ws_clamped(position) {
         RoofSection::Circle { frame, radius, word_0x18 } => Shape::Circle(Circle2d {
             center: Vec2::from_array(frame), radius, rotation: f32::from_bits(word_0x18),

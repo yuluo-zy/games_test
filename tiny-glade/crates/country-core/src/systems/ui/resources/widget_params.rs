@@ -198,6 +198,15 @@ pub struct UiSounds {
 }
 
 impl UiSounds {
+    /// 原 WidgetParams::new 1409a8e30..4d 写入的四个声音变体。
+    /// 与 empty 不同；保留这一区别，真实 ui_update 才能发出 hover/抓取/释放声音。
+    pub fn widget_default() -> Self {
+        let mut sounds = Self::empty();
+        for (slot, tag) in sounds.slots.iter_mut().zip([1u32, 2, 3, 3]) {
+            slot[..4].copy_from_slice(&tag.to_le_bytes());
+        }
+        sounds
+    }
     /// 0x1409a8fb0：清 4 槽首 u32（偏移 0/0x18/0x30/0x48）。
     pub fn empty() -> Self {
         Self { slots: [[0; 24]; 4] }
@@ -363,7 +372,7 @@ impl WidgetParams {
         Self {
             signifiers: Vec::new(),
             fields: DEFAULT_U32S,
-            sounds: UiSounds::empty(),
+            sounds: UiSounds::widget_default(),
             extra_78,
             volume,
             occlude_by_world: true,
@@ -437,6 +446,10 @@ mod tests {
         };
         let params = WidgetParams::new(volume, [0x11, 0x22]);
         assert_eq!(params.fields, [0, 8, 0, 1, 0, 2, 3, 3]);
+        // 原构造器真实写声音区；fields 只记录观察值，运行时读取的是 sounds。
+        assert_eq!(params.sounds.slots.map(|slot| PlayUiSound::from_native_slot(slot).kind),
+            [1, 2, 3, 3]);
+        assert_eq!(&params.sounds.slots[0][8..16], &[0; 8]);
         assert_eq!(params.volume, volume);
         assert_eq!(params.extra_78, [0x11, 0x22]);
         // O: word@0xa8 = 0x101 → occlude byte 0x01 + flags 0x01。

@@ -22,13 +22,8 @@ pub struct GardenEraseEvent {
     pub observed_flag: bool,
 }
 
-/// Garden's known circle/height specialization of ShowPinnedDecoClutter. The
-/// full 56-byte event union and its renderer are not restored by this type.
-#[derive(Event, Clone, Copy, Debug)]
-pub struct GardenPinnedClutterCircle {
-    pub circle: Circle2d,
-    pub height: f32,
-}
+/// 保留旧公开名称，但事件身份、队列及消费者均是唯一的原ShowPinned事件。
+pub use crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter as GardenPinnedClutterCircle;
 
 #[derive(SystemSet, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum GardenCpuStage {

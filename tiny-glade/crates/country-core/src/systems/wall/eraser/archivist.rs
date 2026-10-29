@@ -52,7 +52,8 @@ use crate::resources::{
     roofs::{Roof, commands::RecordRoofHistory},
     walls::{InnerWalls, WallId, public_walls::PublicWalls},
 };
-use crate::systems::wall::history_recording::RecordWallHistory;
+use crate::systems::wall::history_recording::{RecordWallHistory, record_wall_immediately};
+use crate::resources::history::History;
 use crate::utils::child_wall::ChildWall;
 
 /// 原生 `OriginalWallId`（archivist map1/map2 key；u64 newtype，Ghidra 常折叠为
@@ -93,6 +94,8 @@ pub struct ChildWalls {
     pub original: WallAuthoritySnapshot,
     pub children: Vec<ChildWall>,
     pub fully_erased: bool,
+    /// 原空桶变体的 8 字节参数区间，不包含被移除 child 的 ID。
+    pub erased_range: Option<ErasedRange>,
 }
 
 impl ChildWalls {
@@ -141,6 +144,16 @@ impl WallEraserArchivist {
         !self.map2.is_empty()
     }
 
+    /// 原活动帧遍历 map1 的 key，只对仍存在的活墙发 reanchor。
+    pub fn rewired_wall_ids(&self) -> impl Iterator<Item = WallId> + '_ {
+        self.map1.keys().map(|id| WallId(id.0))
+    }
+
+    /// 原 UI 结束分支按 map3 当前条目数决定是否发擦除提示。
+    pub fn has_pending_child_walls(&self) -> bool {
+        !self.map3.is_empty()
+    }
+
     /// B record_rewiring_event（0x14092e8e0）：map1 insert（旧值 drop）。
     pub fn record_rewiring_event(&mut self, wall: OriginalWallId, target: RewireEnclosedWall) {
         self.map1.insert(wall, target);
@@ -182,6 +195,7 @@ impl WallEraserArchivist {
                 original: snapshot.clone(),
                 children: vec![ChildWall::new(wall.0, 0.0, 1.0)],
                 fully_erased: false,
+                erased_range: None,
             },
         );
         self.map1.insert(id, RewireEnclosedWall(wall.0));
@@ -270,6 +284,7 @@ impl WallEraserArchivist {
             // +0x78 = 被移除 child 值、+0x80 = 0。本重建以 `fully_erased = true` 为
             // 判别最近拟（编码登记缺类型）。
             child_walls.fully_erased = true;
+            child_walls.erased_range = Some(ErasedRange { low: removed.a, high: removed.b });
         }
         Some(removed)
     }
@@ -286,24 +301,44 @@ impl WallEraserArchivist {
     ///      `mid = cur.a·0.5 + prev.b·0.5`（[0,1] 断言 + NaN panic）→ 末位 end=1.0 或
     ///      `next.a·0.5 + cur.b·0.5` → `mid < end` 断言 → `crashy_slice` →
     ///      `inverse_lerp`×2（NAN/INF panic）→ clamp → 装配变体 0。
-    ///    - 全擦除：`children.len() < 2 || height <= 0` → panic；child 排序；逐段改写
-    ///      变体 1 桶 local_588 + 变体 2 桶 local_5a0。
+    ///    - 全擦除：保存的区间生成收尾切片；完整区间按墙高缩至中心短段，
+    ///      写入 StateChange 桶 local_570 和 Delete 桶 local_558。
     /// 3. Sip13 inner-walls 探针（命中改写 local_570）——**缺类型登记**（需 inner-walls
     ///    map + SipHash13），本重建不实现。
     /// 4. 5 桶 → `WallCompoundHistoryEdit{groups}`（history 侧 5 组 ConcurrentEdits，
     ///    空桶保留为空组）→ 清 map1 + map2。
     ///
-    /// 返回复合编辑，由 `finish_wall_eraser` 经 `RecordWallHistory` 交 history 域
+    /// 返回复合编辑，由 `finish_wall_eraser` 同步写入 history 域
     /// （等价原生 `History::add(tag 0x7)`）。
     pub fn finish(
         &mut self,
         wall_colors: &WallColorIds,
         fence_colors: &HalftimberColorIds,
+        inner: &InnerWalls,
     ) -> WallCompoundHistoryEdit {
-        let edits = self.compile_eraser_buckets(wall_colors, fence_colors);
+        let edits = self.compile_eraser_buckets(wall_colors, fence_colors, inner);
         self.map1.clear();
         self.map2.clear();
         edits
+    }
+
+    /// 原 finish 在拆分/擦除调用点直接写 History，成功返回后清剩余表。
+    /// 编译桶期间的 drain 与验证 panic 仍发生在原调用栈内。
+    pub fn finish_recorded<S>(
+        &mut self,
+        wall_colors: &WallColorIds,
+        fence_colors: &HalftimberColorIds,
+        history: &mut History<S>,
+        inner: &InnerWalls,
+    ) -> Result<(), crate::resources::history::transactions::HistoryTransactionError> {
+        let edits = self.compile_eraser_buckets(wall_colors, fence_colors, inner);
+        let edit = crate::resources::history::EditType::Wall(Arc::new(edits));
+        history.add(edit.clone()).unwrap_or_else(|_| {
+            panic!("Tried writing {edit:?} to History when the input recording is finished")
+        });
+        self.map1.clear();
+        self.map2.clear();
+        Ok(())
     }
 
     /// finish 的 5 桶装配（record_erase_original_wall / finish_shrink_or_split_event /
@@ -312,12 +347,13 @@ impl WallEraserArchivist {
         &mut self,
         wall_colors: &WallColorIds,
         fence_colors: &HalftimberColorIds,
+        inner: &InnerWalls,
     ) -> WallCompoundHistoryEdit {
         let mut bucket_5b8 = Vec::new(); // drain map2 → 变体 0
         let mut bucket_570 = Vec::new(); // map3 shrink/split → 变体 0
         let mut bucket_558 = Vec::new(); // map3 shrink/split → 变体 2 Delete
-        let mut bucket_588 = Vec::new(); // map3 全擦除 → 变体 1 Create
-        let mut bucket_5a0 = Vec::new(); // map3 全擦除 → 变体 2 Delete
+        let mut bucket_588 = Vec::new(); // 新子墙 Create
+        let mut bucket_5a0 = Vec::new(); // 原墙消失时 Delete
 
         // 1. drain map2：每 EraserWallState → 变体 0（op=2）。
         for (id, state) in self.map2.drain() {
@@ -332,21 +368,22 @@ impl WallEraserArchivist {
                     wall_colors,
                     fence_colors,
                     &mut bucket_570,
-                    &mut bucket_588,
-                    &mut bucket_5a0,
+                    &mut bucket_558,
                 );
             } else {
                 finish_shrink_or_split_event(
                     &child_walls,
                     wall_colors,
                     fence_colors,
+                    inner,
                     &mut bucket_570,
-                    &mut bucket_558,
+                    &mut bucket_588,
+                    &mut bucket_5a0,
                 );
             }
         }
 
-        // 3. Sip13 inner-walls 探针：登记缺类型（不实现，见模块头）。
+        // 3. 活墙查询在子墙循环中借用 InnerWalls 权威 owner。
 
         // 4. 5 桶 → groups（插入序保留；空桶保留为空组）。
         WallHistoryEdits {
@@ -431,10 +468,10 @@ impl WallHistoryEdits {
         WallCompoundHistoryEdit {
             groups: vec![
                 self.bucket_5b8,
+                self.bucket_5a0,
+                self.bucket_588,
                 self.bucket_570,
                 self.bucket_558,
-                self.bucket_588,
-                self.bucket_5a0,
             ],
         }
     }
@@ -487,7 +524,7 @@ fn child_color_id(
     wall_colors: &WallColorIds,
     fence_colors: &HalftimberColorIds,
 ) -> u32 {
-    let table = if original.source.clutter_version != 0 {
+    let table = if original.source.clutter_version & 1 != 0 {
         &fence_colors.0
     } else {
         &wall_colors.0
@@ -504,178 +541,147 @@ fn finish_shrink_or_split_event(
     child_walls: &ChildWalls,
     wall_colors: &WallColorIds,
     fence_colors: &HalftimberColorIds,
-    bucket_570: &mut Vec<WallHistoryEdit>,
-    bucket_558: &mut Vec<WallHistoryEdit>,
-) {
-    let curve = &child_walls.original.source.curve;
-    let mut children = child_walls.children.clone();
-    children.sort_by(|a, b| a.a.total_cmp(&b.a));
-
-    for (i, child) in children.iter().enumerate() {
-        let start = if i == 0 {
-            0.0
-        } else {
-            let mid = child.a * 0.5 + children[i - 1].b * 0.5;
-            if !(0.0..=1.0).contains(&mid) || mid.is_nan() {
-                panic!("eraser shrink: child midpoint outside [0, 1]");
-            }
-            mid
-        };
-        let end = if i + 1 == children.len() {
-            1.0
-        } else {
-            let mid = children[i + 1].a * 0.5 + child.b * 0.5;
-            if !(0.0..=1.0).contains(&mid) || mid.is_nan() {
-                panic!("eraser shrink: child midpoint outside [0, 1]");
-            }
-            mid
-        };
-        if end <= start {
-            panic!("eraser shrink: child interval start_u must be smaller than end_u");
-        }
-        // `Curve::crashy_slice`（native）→ 本域 `slice_source_curve`。
-        let Ok(sliced) = slice_source_curve(curve, start, end) else {
-            continue;
-        };
-        let (a, b) = inverse_lerp_pair(curve, &sliced, start, end);
-        let mut next = child_walls.original.clone();
-        next.source.curve = sliced;
-        bucket_570.push(WallHistoryEdit::StateChange {
-            wall: RecoveredWallId(child.id),
-            previous: child_walls.original.clone(),
-            next,
-            observed_operation: observed_operation(1, a, b),
-        });
-        // 被拆掉的 child → 变体 2 Delete（桶 558）。
-        bucket_558.push(WallHistoryEdit::Delete {
-            wall: RecoveredWallId(child.id),
-            source: child_walls.original.clone(),
-            color_id: child_color_id(&child_walls.original, child.id, wall_colors, fence_colors),
-            restored_height: child_walls.original.source.extra,
-        });
-    }
-}
-
-/// 原生 `utils::inverse_lerp`×2 + clamp：把 child 边界映射到切片后曲线的 u 域。
-/// 逐次调用均 NAN/INF panic（fresh）。
-fn inverse_lerp_pair(
-    original: &crate::resources::roofs::geometry::surface::Curve2,
-    sliced: &crate::resources::roofs::geometry::surface::Curve2,
-    start: f32,
-    end: f32,
-) -> (f32, f32) {
-    // 原生以切片前后曲线的 `coord_at_u` 对 `inverse_lerp`（`(v-a)/(b-a)`）映射
-    // start/end。切片保持端点，因此新 u = 原曲线逆插到切片曲线的两端坐标。
-    let remap = |u: f32| -> f32 {
-        let (_, coord) = original.coord_at_u(u);
-        let (_, c0) = sliced.coord_at_u(0.0);
-        let (_, c1) = sliced.coord_at_u(1.0);
-        let t = (coord - c0) / (c1 - c0);
-        if t.is_nan() {
-            panic!("eraser inverse_lerp produced NaN");
-        }
-        if !t.is_finite() {
-            panic!("eraser inverse_lerp produced INF");
-        }
-        t.clamp(0.0, 1.0)
-    };
-    let a = remap(start);
-    let b = remap(end);
-    if b < a {
-        panic!("eraser inverse_lerp bounds inverted");
-    }
-    (a, b)
-}
-
-/// `finish_erase_event`（inventory line 540）：全擦除/重建分支。
-///
-/// fresh：`children.len() < 2 || height <= 0` → panic；child 排序；逐段改写变体 2
-/// 桶 5a0（Delete）+ 变体 1 桶 588（Create）；原生同一分支的 remap 循环（LAB_140930c32，
-/// 中点 + crashy_slice + inverse_lerp）还产出变体 0 桶 570（StateChange）——本重建
-/// 一并装配（判别字段编码登记缺类型）。
-fn finish_erase_event(
-    child_walls: &ChildWalls,
-    wall_colors: &WallColorIds,
-    fence_colors: &HalftimberColorIds,
+    inner: &InnerWalls,
     bucket_570: &mut Vec<WallHistoryEdit>,
     bucket_588: &mut Vec<WallHistoryEdit>,
     bucket_5a0: &mut Vec<WallHistoryEdit>,
 ) {
-    if child_walls.children.len() < 2 || child_walls.original.source.extra <= 0.0 {
-        panic!("eraser full-erase requires at least two children and positive height");
-    }
-    let curve = &child_walls.original.source.curve;
+    let original = &child_walls.original;
+    let curve = &original.source.curve;
+    assert!(curve.points.len() >= 2 && curve.length > 0.0,
+        "擦除历史要求至少两点和正曲线长度");
     let mut children = child_walls.children.clone();
     children.sort_by(|a, b| a.a.total_cmp(&b.a));
-
-    for (i, child) in children.iter().enumerate() {
-        // 被移除的 child → 变体 2 Delete（桶 5a0）。
+    let parent = child_walls.wall.0;
+    if !children.iter().any(|child| child.id == parent) {
         bucket_5a0.push(WallHistoryEdit::Delete {
-            wall: RecoveredWallId(child.id),
-            source: child_walls.original.clone(),
-            color_id: child_color_id(&child_walls.original, child.id, wall_colors, fence_colors),
-            restored_height: child_walls.original.source.extra,
+            wall: RecoveredWallId(parent),
+            source: original.clone(),
+            color_id: child_color_id(original, parent, wall_colors, fence_colors),
+            restored_height: original.source.extra,
         });
-        // 重建段 → 变体 1 Create（桶 588；source 非 None，过 History::add 校验）。
-        bucket_588.push(WallHistoryEdit::Create {
-            wall: RecoveredWallId(child.id),
-            source: child_walls.original.clone(),
-            color_id: child_color_id(&child_walls.original, child.id, wall_colors, fence_colors),
-            restored_height: child_walls.original.source.extra,
-            restored_elevation: child_walls.original.source.terrain_floor,
-        });
-        // 变体 0 StateChange（桶 570）：remap 循环对墙态的中段改写。
-        let start = if i == 0 {
-            0.0
-        } else {
-            let mid = child.a * 0.5 + children[i - 1].b * 0.5;
-            if !(0.0..=1.0).contains(&mid) || mid.is_nan() {
-                panic!("eraser rebuild: child midpoint outside [0, 1]");
-            }
-            mid
+    }
+    for (i, child) in children.iter().enumerate() {
+        let start = if i == 0 { 0.0 } else {
+            child.a * 0.5 + children[i - 1].b * 0.5
         };
-        let end = if i + 1 == children.len() {
-            1.0
-        } else {
-            let mid = children[i + 1].a * 0.5 + child.b * 0.5;
-            if !(0.0..=1.0).contains(&mid) || mid.is_nan() {
-                panic!("eraser rebuild: child midpoint outside [0, 1]");
-            }
-            mid
+        let end = if i + 1 == children.len() { 1.0 } else {
+            children[i + 1].a * 0.5 + child.b * 0.5
         };
-        if end <= start {
-            panic!("eraser rebuild: child interval start_u must be smaller than end_u");
+        assert!((0.0..=1.0).contains(&start) && (0.0..=1.0).contains(&end) && start < end,
+            "擦除历史子墙中点区间无效");
+        let sliced = slice_source_curve(curve, start, end)
+            .expect("擦除历史原曲线切片失败");
+        if child.id != parent {
+            bucket_588.push(WallHistoryEdit::Create {
+                wall: RecoveredWallId(child.id),
+                source: original.clone(),
+                color_id: child_color_id(original, parent, wall_colors, fence_colors),
+                restored_height: original.source.extra,
+                restored_elevation: original.source.terrain_floor,
+            });
         }
-        if let Ok(sliced) = slice_source_curve(curve, start, end) {
-            let (a, b) = inverse_lerp_pair(curve, &sliced, start, end);
-            let mut next = child_walls.original.clone();
-            next.source.curve = sliced;
+        let (a, b) = inverse_lerp_pair(start, end, child.a, child.b);
+        {
+            // 原哈希探针找不到活墙时走 expect，而不是跳过历史项。
+            let live = inner.get_unwrapped(WallId(child.id));
+            let mut previous = original.clone();
+            previous.source.curve = sliced;
+            if child.id != parent {
+                previous.source.shape = WallShapeSnapshot::from_observed({
+                    let mut bytes = [0u8; 28];
+                    bytes[..4].copy_from_slice(&2u32.to_le_bytes());
+                    bytes
+                });
+                previous.source.curve_kind_tag = 2;
+                previous.source.style = u8::from(original.source.style == 1);
+            }
             bucket_570.push(WallHistoryEdit::StateChange {
                 wall: RecoveredWallId(child.id),
-                previous: child_walls.original.clone(),
-                next,
+                previous,
+                next: live.snapshot().clone(),
                 observed_operation: observed_operation(1, a, b),
             });
         }
     }
 }
 
-/// B archivist finish（0x14092f990）的 Bevy 系统面：装配 `WallCompoundHistoryEdit`
-/// 经 `RecordWallHistory` 交 history 域（原生 `History::add(tag 0x7)`），并保留本
+/// 原生 `utils::inverse_lerp`×2 + clamp：把 child 边界映射到切片后曲线的 u 域。
+/// 逐次调用均 NAN/INF panic（fresh）。
+fn inverse_lerp_pair(start: f32, end: f32, low: f32, high: f32) -> (f32, f32) {
+    // 140931218..1409312a7：两次 inverse_lerp(start,end,child.a/b)。
+    let remap = |u: f32| -> f32 {
+        let t = (u - start) / (end - start);
+        assert!(t.is_finite(), "擦除历史逆插值非有限");
+        t.clamp(0.0, 1.0)
+    };
+    let a = remap(low);
+    let b = remap(high);
+    assert!(b >= a, "擦除历史逆插值区间倒置");
+    (a, b)
+}
+
+/// 原 14093010a..14093016b：完整擦除时保留原曲线中间 0.2 米。
+/// MAXSS 以 0.2 为源操作数，长度为 NaN 时也选 0.2。
+fn fully_erased_center_range(length: f32) -> ErasedRange {
+    let length = if length.is_nan() || length <= 0.2 { 0.2 } else { length };
+    let ratio = 0.2 / length;
+    assert!(ratio > 0.0, "完全擦除长度不能生成正区间");
+    let half = ratio * 0.5;
+    let low = 0.5 - half;
+    let high = half + 0.5;
+    ErasedRange {
+        low: if low <= 0.0 { 0.0 } else { low },
+        high: if 1.0 <= high { 1.0 } else { high },
+    }
+}
+
+/// 原 finish 的空桶变体（0x1409300d1 起）：保存的区间用于生成收尾切片。
+/// 完整 [0,1] 使用曲线长度计算中心短段；输出 StateChange 和 Delete 两桶。
+fn finish_erase_event(
+    child_walls: &ChildWalls,
+    wall_colors: &WallColorIds,
+    fence_colors: &HalftimberColorIds,
+    bucket_570: &mut Vec<WallHistoryEdit>,
+    bucket_558: &mut Vec<WallHistoryEdit>,
+) {
+    let mut range = child_walls.erased_range.expect("完全擦除缺少原区间");
+    if range.low == 0.0 && range.high == 1.0 {
+        range = fully_erased_center_range(child_walls.original.source.curve.length);
+    }
+    let sliced = erased_snapshot(&child_walls.original, range)
+        .expect("完全擦除的原曲线切片失败");
+    let wall = RecoveredWallId(child_walls.wall.0);
+    bucket_570.push(WallHistoryEdit::StateChange {
+        wall,
+        previous: child_walls.original.clone(),
+        next: sliced.clone(),
+        observed_operation: observed_operation(1, range.low, range.high),
+    });
+    bucket_558.push(WallHistoryEdit::Delete {
+        wall,
+        source: sliced,
+        color_id: child_color_id(&child_walls.original, wall.0, wall_colors, fence_colors),
+        restored_height: child_walls.original.source.extra,
+    });
+}
+
+/// B archivist finish（0x14092f990）的宿主适配：装配 `WallCompoundHistoryEdit`
+/// 后同步写 history 域（原生 `History::add(tag 0x7)`），并保留本
 /// walls 域的既有 roof 输出（原生 finish 本体不含 roof；roof 删除路径单独锚定登记）。
-pub fn finish_wall_eraser(
+pub fn finish_wall_eraser<S: Send + Sync + 'static>(
     mut archivist: ResMut<WallEraserArchivist>,
-    _inner: Res<InnerWalls>,
+    inner: Res<InnerWalls>,
     wall_colors: Res<WallColorIds>,
     fence_colors: Res<HalftimberColorIds>,
     public: Res<PublicWalls>,
     roofs: Query<&Roof>,
-    mut wall_history: EventWriter<RecordWallHistory>,
+    mut wall_history: ResMut<History<S>>,
     mut roof_history: EventWriter<RecordRoofHistory>,
 ) {
     // 受影响墙在 finish drain map2 前快照（finish 会清空 map1/map2）。
     let affected: Vec<WallId> = archivist.affected_walls().collect();
-    let compound = archivist.finish(&wall_colors, &fence_colors);
+    let compound = archivist.compile_eraser_buckets(&wall_colors, &fence_colors, &inner);
     // 既有 walls 域 roof 输出：每受影响墙的屋顶删除记录（finish 本体外）。
     for wall in affected {
         let roof = public
@@ -687,7 +693,10 @@ pub fn finish_wall_eraser(
             roof_history.write(RecordRoofHistory(edit));
         }
     }
-    wall_history.write(RecordWallHistory(Arc::new(compound)));
+    record_wall_immediately(RecordWallHistory(Arc::new(compound)), &mut wall_history);
+    // 原 14092f990 在 History::add 返回后才清剩余两张表。
+    archivist.map1.clear();
+    archivist.map2.clear();
 }
 
 #[cfg(test)]
@@ -704,6 +713,21 @@ mod tests {
         WallState::new(curve(), height, 2, 5, false)
             .snapshot()
             .clone()
+    }
+
+    #[test]
+    fn finish_preserves_original_five_nonempty_bucket_order() {
+        let edit = |id| WallHistoryEdit::StateChange {
+            wall: RecoveredWallId(id), previous: snapshot(3.0), next: snapshot(3.0),
+            observed_operation: observed_operation(2, 0.0, 0.0),
+        };
+        let compound = WallHistoryEdits {
+            bucket_5b8: vec![edit(1)], bucket_5a0: vec![edit(2)],
+            bucket_588: vec![edit(3)], bucket_570: vec![edit(4)],
+            bucket_558: vec![edit(5)],
+        }.compile_history_edit();
+        let ids: Vec<_> = compound.groups.iter().map(|group| group[0].wall_id().unwrap().0).collect();
+        assert_eq!(ids, [1, 2, 3, 4, 5]);
     }
 
     fn archivist_with(children: ChildWalls) -> WallEraserArchivist {
@@ -727,6 +751,7 @@ mod tests {
             original: snapshot(3.0),
             children: vec![ChildWall::new(1, 0.0, 1.0), ChildWall::new(9, 0.0, 0.0)],
             fully_erased: false,
+            erased_range: None,
         });
         assert!(archivist.has_split_target(WallId(1)));
         archivist.add_split_event_pieces(WallId(1), &[(2, 0.0, 0.25), (3, 0.25, 1.0)]);
@@ -773,6 +798,7 @@ mod tests {
                 original: snapshot(3.0),
                 children: Vec::new(),
                 fully_erased: false,
+                erased_range: None,
             },
         );
         archivist.cache_if_original_wall(WallId(7), &snapshot(3.0), ErasedRange { low: 0.0, high: 1.0 });
@@ -795,6 +821,7 @@ mod tests {
             original: snapshot(3.0),
             children: vec![ChildWall::new(1, 0.25, 0.75)],
             fully_erased: false,
+            erased_range: None,
         };
         let mut archivist = archivist_with(children);
         archivist.shrink_wall(OriginalWallId(1), 0.0, 1.0);
@@ -819,6 +846,7 @@ mod tests {
                 ChildWall::new(2, 0.5, 1.0),
             ],
             fully_erased: false,
+            erased_range: None,
         };
         let mut archivist = archivist_with(children);
         archivist.add_split_event(OriginalWallId(1), 0.0, 1.0, 2);
@@ -843,6 +871,7 @@ mod tests {
             original: snapshot(3.0),
             children: vec![ChildWall::new(1, 0.0, 1.0)],
             fully_erased: false,
+            erased_range: None,
         };
         let mut archivist = archivist_with(children);
         let removed = archivist.add_fully_erased_event(OriginalWallId(1)).unwrap();
@@ -850,6 +879,7 @@ mod tests {
         let child_walls = &archivist.map3[&RewireEnclosedWall(5)];
         assert!(child_walls.children.is_empty());
         assert!(child_walls.fully_erased);
+        assert_eq!(child_walls.erased_range, Some(ErasedRange { low: removed.a, high: removed.b }));
     }
 
     /// finish：drain map2 + map3 → 5 组（ConcurrentEdits），空桶保留为空组。
@@ -871,6 +901,7 @@ mod tests {
                 original: snapshot(3.0),
                 children: vec![ChildWall::new(20, 0.0, 0.5), ChildWall::new(21, 0.5, 1.0)],
                 fully_erased: false,
+                erased_range: None,
             },
         );
         // map3：一个全擦除的 child 列表。
@@ -880,50 +911,119 @@ mod tests {
             ChildWalls {
                 wall: RewireEnclosedWall(40),
                 original: snapshot(3.0),
-                children: vec![ChildWall::new(22, 0.0, 0.5), ChildWall::new(23, 0.5, 1.0)],
+                children: vec![],
                 fully_erased: true,
+                erased_range: Some(ErasedRange { low: 0.0, high: 1.0 }),
             },
         );
 
         // snapshot() 的 source +0x65 非 0 → 取半木表；颜色按 child 墙 id 下标。
         let wall_colors = WallColorIds::new();
         let mut fence_colors = HalftimberColorIds::new();
-        fence_colors.0[22] = 7;
-        fence_colors.0[23] = 8;
-        let compound = archivist.finish(&wall_colors, &fence_colors);
+        fence_colors.0[40] = 7;
+        let mut inner = InnerWalls::new();
+        for id in [10, 20, 21] {
+            inner.new_wall_with_id(WallId(id), WallState::new(curve(), 3.0, 2, 5, false));
+        }
+        let compound = archivist.finish(&wall_colors, &fence_colors, &inner);
         assert_eq!(compound.groups.len(), 5);
-        let colors = |group: &Vec<WallHistoryEdit>| -> Vec<u32> {
-            group
-                .iter()
-                .map(|edit| match edit {
-                    WallHistoryEdit::Create { color_id, .. }
-                    | WallHistoryEdit::Delete { color_id, .. } => *color_id,
-                    _ => unreachable!(),
-                })
-                .collect()
-        };
-        assert_eq!(colors(&compound.groups[3]), vec![7, 8]);
-        assert_eq!(colors(&compound.groups[4]), vec![7, 8]);
+        assert!(compound.groups[4].iter().any(|edit| matches!(edit,
+            WallHistoryEdit::Delete { wall, color_id: 7, .. } if wall.0 == 40)));
         // 组 0 = drain map2 → 变体 0（WallChanged / StateChange）。
         assert!(compound.groups[0]
             .iter()
             .all(|e| matches!(e, WallHistoryEdit::StateChange { .. })));
-        // 组 1 = shrink/split → 变体 0；组 2 = shrink/split → 变体 2（Delete）。
-        assert!(compound.groups[1]
-            .iter()
-            .all(|e| matches!(e, WallHistoryEdit::StateChange { .. })));
-        assert!(compound.groups[2]
-            .iter()
-            .all(|e| matches!(e, WallHistoryEdit::Delete { .. })));
-        // 组 3 = 全擦除 → 变体 1（Create）；组 4 = 全擦除 → 变体 2（Delete）。
+        // 原 14092f990 末段五个三槽依次以 5b8、5a0、588、570、558 为长度。
         assert!(compound.groups[3]
             .iter()
-            .all(|e| matches!(e, WallHistoryEdit::Create { .. })));
+            .all(|e| matches!(e, WallHistoryEdit::StateChange { .. })));
         assert!(compound.groups[4]
+            .iter()
+            .all(|e| matches!(e, WallHistoryEdit::Delete { .. })));
+        // 这组没有原生其他来源的 Create 桶。
+        assert!(compound.groups[2]
+            .iter()
+            .all(|e| matches!(e, WallHistoryEdit::Create { .. })));
+        assert!(compound.groups[1]
             .iter()
             .all(|e| matches!(e, WallHistoryEdit::Delete { .. })));
         // finish 清空 map1 + map2。
         assert!(archivist.map1.is_empty());
         assert!(archivist.map2.is_empty());
+    }
+
+    #[test]
+    fn finish_color_table_uses_original_low_bit() {
+        let mut original = snapshot(3.0);
+        let mut walls = WallColorIds::new();
+        let mut fences = HalftimberColorIds::new();
+        walls.0[10] = 17;
+        fences.0[10] = 29;
+        for (flag, expected) in [(0, 17), (1, 29), (2, 17), (3, 29)] {
+            original.source.clutter_version = flag;
+            assert_eq!(child_color_id(&original, 10, &walls, &fences), expected);
+        }
+    }
+
+    #[test]
+    fn erased_center_range_matches_original_length_and_nan_bits() {
+        // 原 RNE 14093010a..16b：输出为两个 f32 的原生位模式。
+        for (length, low, high) in [
+            (0x00000000, 0x00000000, 0x3f800000),
+            (0x3e4ccccd, 0x00000000, 0x3f800000),
+            (0x3f800000, 0x3ecccccd, 0x3f19999a),
+            (0x40000000, 0x3ee66666, 0x3f0ccccd),
+            (0x40400000, 0x3eeeeeef, 0x3f088889),
+            (0x7fc12345, 0x00000000, 0x3f800000),
+        ] {
+            let range = fully_erased_center_range(f32::from_bits(length));
+            assert_eq!((range.low.to_bits(), range.high.to_bits()), (low, high));
+        }
+        // 原曲线长度为 2，墙高为 3；结束分支必须取长度而不是墙高。
+        let item = ChildWalls {
+            wall: RewireEnclosedWall(10), original: snapshot(3.0), children: vec![],
+            fully_erased: true, erased_range: Some(ErasedRange { low: 0.0, high: 1.0 }),
+        };
+        let mut states = Vec::new();
+        let mut deletes = Vec::new();
+        finish_erase_event(&item, &WallColorIds::new(), &HalftimberColorIds::new(),
+            &mut states, &mut deletes);
+        let WallHistoryEdit::StateChange { observed_operation, .. } = &states[0] else { panic!() };
+        assert_eq!(&observed_operation[4..8], &0x3ee66666u32.to_le_bytes());
+        assert_eq!(&observed_operation[8..12], &0x3f0ccccdu32.to_le_bytes());
+        assert_eq!(deletes.len(), 1);
+    }
+
+    #[test]
+    fn finish_recorded_writes_the_live_transaction_and_clears_the_original_owners() {
+        use crate::resources::history::{EditType, History};
+        let mut archivist = WallEraserArchivist::new();
+        archivist.cache_if_original_wall(WallId(10), &snapshot(3.0), ErasedRange { low: 0.2, high: 0.8 });
+        let mut history = History::<()>::empty_glade();
+        history.start_input_recording(12).unwrap();
+        let mut inner = InnerWalls::new();
+        inner.new_wall_with_id(WallId(10), WallState::new(curve(), 3.0, 2, 5, false));
+        archivist.finish_recorded(&WallColorIds::new(), &HalftimberColorIds::new(), &mut history, &inner).unwrap();
+        let edits = &history.pending().unwrap().edits;
+        assert_eq!(edits.len(), 1);
+        let EditType::Wall(compound) = &edits[0] else { panic!("必须写入墙历史") };
+        assert_eq!(compound.groups.len(), 5);
+        assert_eq!(compound.groups[0].len(), 1);
+        assert!(archivist.map1.is_empty() && archivist.map2.is_empty() && archivist.map3.is_empty());
+    }
+
+    #[test]
+    fn finish_recorded_panics_before_clearing_rewire_map_when_not_recording() {
+        let mut archivist = WallEraserArchivist::new();
+        archivist.cache_if_original_wall(WallId(10), &snapshot(3.0), ErasedRange { low: 0.2, high: 0.8 });
+        let mut history = History::<()>::empty_glade();
+        let mut inner = InnerWalls::new();
+        inner.new_wall_with_id(WallId(10), WallState::new(curve(), 3.0, 2, 5, false));
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = archivist.finish_recorded(&WallColorIds::new(), &HalftimberColorIds::new(), &mut history, &inner);
+        })).is_err());
+        // map2/map3 已经按原入口 drain；map1 的最终 clear 在 History::add 之后。
+        assert!(!archivist.map1.is_empty());
+        assert!(archivist.map2.is_empty() && archivist.map3.is_empty());
     }
 }

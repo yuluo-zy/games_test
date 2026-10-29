@@ -1,0 +1,51 @@
+{
+  "ok": true,
+  "semantic_acceptance": false,
+  "identity_scope": "artifact hashes are ledger declarations with format checks, not binary-file rehashes",
+  "module": "M01 wall-height UI, height decorator consumer, and anchor-follow consumer",
+  "target_version": "B",
+  "errors": [],
+  "warnings": [],
+  "ledger_sha256": "cc8f0cfec59d5a38311f22efddc338b48ca1cd14a7b5e52a1e10651ced10db96",
+  "auditor_sha256": "0bd23f0749abe4957699d738beda4f7cec7d9d9f6475ed39b59c8de755d236b6",
+  "fact_count": 17,
+  "link_count": 4,
+  "unresolved_links": [
+    {
+      "name": "production host schedule and complete M01 GPU/input/save acceptance",
+      "status": "implemented_unverified",
+      "gaps": [
+        "Central has mounted auto_allow→five consumers→move_follow in set25 before cache; production schedule validation and complete M01 GPU/input/save acceptance remain central-owned.",
+        "No OS-input or GPU-window acceptance is claimed by these isolated/native and World tests."
+      ]
+    }
+  ],
+  "rust_sha256": {
+    "tiny-glade/crates/country-core/src/systems/wall/adjust_wall_height.rs": "9423a28f8c47a8f8b5784611be09d3f6417facda33f236c1f1b47db382e00b47",
+    "tiny-glade/crates/country-core/src/systems/wall/adjust_wall_height/ui_adjust_wall_height.rs": "5499e019c55bab62a4af95b8318341c4b097975a82a2b305f41063e0740dc227",
+    "tiny-glade/crates/country-core/src/systems/wall/adjust_wall_height/signifier_animation.rs": "bb025b008d2bf23eb110c5639ec80145d8a2d94a86768b3fff01e95a37132431",
+    "tiny-glade/crates/country-core/src/systems/wall/adjust_wall_height/ui_adjust_wall_height_mode.rs": "12ef31f705870861010865bac177094b6a500b840c7a0eadd1df43dbaede6173",
+    "tiny-glade/crates/country-core/src/resources/walls/decorator/anchors.rs": "d5b29fb5e80d73fc0e7d794a1c6e21b0bb7931abdaa8fab2555625f7c4ba08ff",
+    "tiny-glade/crates/systems/decorator/src/decorator_on_wall_height_changed.rs": "f852aff72199851852374bee52c9a9be19bbdf425740d8318ee6cf543912d3e9",
+    "tiny-glade/crates/systems/decorator/src/move_decorators_following_anchors.rs": "0e5ad8f8b4813408a539389a58739be8997e3c69ba97347c2bf3fb4577247151",
+    "tiny-glade/crates/systems/decorator/tests/core_paths_integration.rs": "0fd47fd2b07faa886987098e421c1d75f83e935f27ba5e9aa38e2300f259f872"
+  },
+  "dependencies": [
+    {
+      "name": "core DecoratorAnchorContext and ordinary projection math",
+      "status": "reused; new base only preserves old guard and original common-first ordering"
+    },
+    {
+      "name": "utils CurveSlice original1412898e0",
+      "status": "reused without per-door point cloning"
+    },
+    {
+      "name": "canonical DecoratorStorage, DerivedDecoratorSubtypes/DecoratorMeshLibrary, two WallAttachedDecoTracker resources",
+      "status": "actual ECS owners; no substitute dirty Vec/cache resources"
+    },
+    {
+      "name": "A/C comparisons",
+      "status": "not claimed as complete by this B-scoped handoff"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 //!
 //! 真逻辑（fresh 0x142284220）：`DigitalActionState::just_pressed()`（动作 U）→ 写
 //! TutorialHintComplete(id 2)。读 `NotifyHintSystemSomethingWasErased`（0x10B）有事件
-//! → state.flag=1。Query 焦点字节==2 → timer+=dt；timer>10.0 → 完成；再 just_pressed
+//! → state.flag=1。Query 当前提示 HintType==Undo → timer+=dt；timer>10.0 → 完成；再 just_pressed
 //! → 完成。末尾：state.flag==1 且 profile 0x1fe!=1 → `Steam(q1).adjacent(Steam(q2))`
 //! → `adjacent(Option<KeyCode>)` → `alternate` 写 DisplayHintRequest（+0x48 u16 =
 //! 0x0200 → id **2** Undo、flags 0、placement Cursor(6)）。常量：+0xfc/+0x104 键码
@@ -38,7 +38,7 @@ const AUTO_COMPLETE_SECONDS: f32 = 10.0;
 /// hint_undo（O 0x142284220，1280B，8 参数）。逐语句对应反编译：
 /// 1. `just_pressed(MainActionSet+0x80 = undo)` → `TutorialHintComplete{id:2}`；
 /// 2. `SomethingWasErased` 读者有未读事件 → 整个读者推进到末尾，`state.flag=1`；
-/// 3. 焦点主体字节 == 2 → `timer += GameTime.delta`，`timer > 10.0` → 完成；再
+/// 3. 当前提示 HintType == Undo → `timer += GameTime.delta`，`timer > 10.0` → 完成；再
 ///    `just_pressed(MainActionSet+0x88 = redo)` → 完成（**不是**再读 undo）；
 /// 4. `flag==1 && profile+0x1fe != 1` → 展示：`Alternate[Adjacent[Steam(set2+1),
 ///    Steam(set3+1)], Adjacent[Key(bindings[21]), Key(bindings[22])]]`，placement
@@ -53,7 +53,7 @@ pub fn hint_undo(
     time: Res<country_core::resources::time::GameTime>,
     mut completed: EventWriter<crate::tutorial_completion::TutorialHintComplete>,
     mut request: EventWriter<crate::DisplayHintRequest>,
-    query: Query<&crate::hint_focused_edit::FocusSubjectByte>,
+    query: Query<&crate::HintType>,
 ) {
     if actions.digital[UNDO_SLOT].just_pressed() {
         completed.write(crate::tutorial_completion::TutorialHintComplete { id: 2 });
@@ -62,7 +62,7 @@ pub fn hint_undo(
     if erased.read().count() != 0 {
         state.flag = 1;
     }
-    if query.iter().next().is_some_and(|b| b.0 == 2) {
+    if query.iter().next() == Some(&crate::HintType::Undo) {
         state.timer += time.delta;
         if AUTO_COMPLETE_SECONDS < state.timer {
             completed.write(crate::tutorial_completion::TutorialHintComplete { id: 2 });
@@ -141,11 +141,11 @@ mod tests {
         assert_eq!(completions(&mut world), 0);
     }
 
-    /// 焦点主体字节==2：计时 `> 10.0`（严格大于）完成；分支内第二次判定读 **redo** 槽。
+    /// 当前提示 HintType==Undo：计时 `> 10.0`（严格大于）完成；分支内第二次判定读 **redo** 槽。
     #[test]
     fn focus_branch_times_out_after_ten_seconds_and_completes_on_redo() {
         let mut world = world();
-        world.spawn(crate::hint_focused_edit::FocusSubjectByte(2));
+        world.spawn(crate::HintType::Undo);
         world.resource_mut::<country_core::resources::time::GameTime>().delta = 5.0;
         run(&mut world);
         run(&mut world);
@@ -161,9 +161,9 @@ mod tests {
     }
 
     #[test]
-    fn focus_byte_other_than_two_never_advances_the_timer() {
+    fn other_hint_type_never_advances_the_timer() {
         let mut world = world();
-        world.spawn(crate::hint_focused_edit::FocusSubjectByte(1));
+        world.spawn(crate::HintType::FocusedEdit);
         world.resource_mut::<country_core::resources::time::GameTime>().delta = 60.0;
         press(&mut world, REDO_SLOT, DigitalActionPhase::JustPressed, 0.0);
         run(&mut world);

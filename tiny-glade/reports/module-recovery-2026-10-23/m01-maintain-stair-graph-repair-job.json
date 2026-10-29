@@ -1,0 +1,20 @@
+[
+  {
+    "tool": "set-function-prototype",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "location": "140806110",
+      "signature": "void maintain_stair_graph(void *history, void *decorator_physics, void *storage, void *archivist, void *stairs, void *structural_graph, void *raycast_world, void *stair_colliders, void *deferred_events)",
+      "createIfNotExists": false
+    }
+  },
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json,hashlib,base64,zlib\nfrom ghidra.program.model.address import AddressSet\nfrom ghidra.app.decompiler import DecompInterface\nfrom ghidra.program.flatapi import FlatProgramAPI\np=currentProgram;fm=p.getFunctionManager();api=FlatProgramAPI(p,monitor);af=p.getAddressFactory()\nstart=af.getAddress(\"140806110\");end=af.getAddress(\"14080708b\")\nraw=bytes(x&255 for x in api.getBytes(start,int(end.subtract(start))))\nif hashlib.sha256(raw).hexdigest()!=\"484f17650dcc83848e71d7ec59e57d661478804567ae43c9b8b1a4351f675896\":raise RuntimeError(\"native code identity mismatch\")\nf=fm.getFunctionAt(start);before=int(f.getBody().getNumAddresses());overlaps=[]\ntx=p.startTransaction(\"M01 maintain stair graph bounded original physical body\")\ntry:\n body=AddressSet(start,end.subtract(1))\n for other in fm.getFunctionsOverlapping(body):\n  monitor.checkCancelled()\n  if other.getEntryPoint()!=start:overlaps.append(dict(address=str(other.getEntryPoint()),name=other.getName(),size=int(other.getBody().getNumAddresses())));body.delete(other.getBody())\n f.setBody(body);p.endTransaction(tx,True)\nexcept:\n p.endTransaction(tx,False);raise\ndi=DecompInterface()\ntry:\n di.openProgram(p);r=di.decompileFunction(f,50,monitor)\n print(json.dumps(dict(program_sha256=p.getExecutableSHA256(),code_sha256=hashlib.sha256(raw).hexdigest(),address=str(start),physical_span=3963,before_body=before,after_body=int(f.getBody().getNumAddresses()),overlaps=overlaps,signature=str(f.getSignature()),complete=r.decompileCompleted(),error=str(r.getErrorMessage()),gz=base64.b64encode(zlib.compress(r.getDecompiledFunction().getC().encode())).decode() if r.decompileCompleted() else None)))\nfinally:di.dispose()\n",
+      "timeoutSeconds": 90
+    },
+    "timeout_seconds": 120
+  }
+]

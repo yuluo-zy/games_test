@@ -416,6 +416,10 @@ fn wait_oldest_pending(
 }
 
 fn boot_shipped_session() -> Result<BootedSession> {
+    boot_shipped_session_with_nani_readback(false)
+}
+
+fn boot_shipped_session_with_nani_readback(diagnostic_nani: bool) -> Result<BootedSession> {
     struct Diagnostics;
     impl log::Log for Diagnostics {
         fn enabled(&self, metadata: &log::Metadata<'_>) -> bool { metadata.level() <= log::Level::Error }
@@ -507,12 +511,23 @@ fn boot_shipped_session() -> Result<BootedSession> {
         backend: bridge.shader_backend(),
     });
     bridge.install_asset_libraries(app.world_mut())?;
+    // 独立诊断用例仅追加读回capability；仍使用同一BufferHost和真实GPU owner。
+    let diagnostic = diagnostic_nani.then(|| std::sync::Arc::new(
+        M6NaniDiagnosticDevice(bridge.hosts().buffers.clone())));
+    if let Some(device) = diagnostic.as_ref() {
+        app.insert_resource(country_core::render::nani::gpu_world::GpuWorld::new(device.as_ref()));
+    }
     tiny_glade::gameplay_startup::install_gameplay_device_runtime(
         &mut app,
         device.clone(),
         bridge.hosts().clone(),
         installed,
     )?;
+    if let Some(diagnostic) = diagnostic {
+        app.insert_resource(country_core::render::device::GraphicsDeviceResource::new(
+            country_core::rhapsody_contract::GraphicsDevice::new(device.clone())
+                .with_buffer_host(diagnostic)));
+    }
     // The window path uses this driver to install the same asset maintenance
     // and canonical egui Context before its first App::update.
     let context = egui::Context::default();
@@ -559,10 +574,140 @@ fn boot_shipped_session() -> Result<BootedSession> {
 
 #[test]
 fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()> {
-    let BootedSession { mut driver, context, mut bridge, shaders, device, _boot } = boot_shipped_session()?;
+    shipped_session_production_graph(false, false)
+}
+
+#[test]
+fn m06_wall_color_edit_reaches_plaster_and_actual_production_graph() -> Result<()> {
+    shipped_session_production_graph(true, false)
+}
+
+#[test]
+fn m06_diagnostic_plaster_indirect_command_contains_edited_wall() -> Result<()> {
+    shipped_session_production_graph(true, true)
+}
+
+fn shipped_session_production_graph(edit_plaster: bool, diagnostic_nani: bool) -> Result<()> {
+    shipped_session_production_graph_with_building(edit_plaster, diagnostic_nani, false)
+}
+
+#[test]
+fn m06_created_building_reaches_half_timber_plaster_and_production_frame() -> Result<()> {
+    shipped_session_production_graph_with_building(true, true, true)
+}
+
+fn shipped_session_production_graph_with_building(
+    edit_plaster: bool, diagnostic_nani: bool, create_building: bool,
+) -> Result<()> {
+    let BootedSession { mut driver, context, mut bridge, shaders, device, _boot } =
+        boot_shipped_session_with_nani_readback(diagnostic_nani)?;
+    let created_wall = if create_building {
+        use country_core::{resources::{history::History, walls::public_walls::PublicWalls},
+            systems::wall::{shapes::CreateRectangleCmd, SetWallStyleCmd}};
+        let before: std::collections::HashSet<_> = driver.app().world()
+            .resource::<InnerWalls>().wall_ids().collect();
+        // 创建命令来自正式工具的同一事件类型；这里只建立其输入事务，
+        // 不声称覆盖矩形工具的真实OS交互，也不直接写入公开墙/网格/屋顶。
+        driver.app_mut().world_mut().resource_mut::<History>().start_input_recording(0)
+            .map_err(|error| anyhow::anyhow!("建筑验收事务不能开始: {error:?}"))?;
+        driver.app_mut().world_mut().send_event(CreateRectangleCmd {
+            center: glam::Vec2::ZERO, dimensions: glam::Vec2::new(6.0, 4.0),
+            orientation: glam::Vec2::X, previous_wall: None, height: 4.0, elevation: 1.5,
+        });
+        for _ in 0..20 {
+            context.begin_frame(egui::RawInput::default());
+            driver.app_mut().update();
+            let _ = context.end_frame();
+        }
+        let id = driver.app().world().resource::<InnerWalls>().wall_ids()
+            .find(|id| !before.contains(id)).context("正式矩形命令没有创建墙")?;
+        let from = driver.app().world().resource::<InnerWalls>().get_unwrapped(id).snapshot().source.style;
+        driver.app_mut().world_mut().send_event(SetWallStyleCmd {
+            wall_id: id, from, to: 3, record_history: 0, play_sound: 0,
+        });
+        for _ in 0..20 {
+            context.begin_frame(egui::RawInput::default());
+            driver.app_mut().update();
+            let _ = context.end_frame();
+        }
+        let world = driver.app().world();
+        let public = world.resource::<PublicWalls>();
+        anyhow::ensure!(public.roof_entity(id).is_some(), "矩形创建没有形成真实屋顶关联");
+        let library = world.resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
+        let storage = library.get::<country_core::resources::roofs::roof_buffers::WoodenPlankSsbo>()
+            .context("正式半木木板SSBO缺失")?;
+        let output = world.resource::<system_wall_constructor::construct_arches::WallConstructorOutput>();
+        let allocation = output.gpu.half_timber_allocation(id.0).context("正式半木父链没有创建独立owner")?;
+        let ranges = storage.allocation_to_draw_multi_instanced(allocation);
+        let count: u64 = ranges.iter().map(|(_, count)| u64::from(*count)).sum();
+        anyhow::ensure!(count > 0, "正式半木owner没有非空GPU可绘制范围");
+        eprintln!("M06 created building: wall={} half_timber_instances={count} ranges={}", id.0, ranges.len());
+        Some(id)
+    } else { None };
+    let plaster_wall = if edit_plaster {
+        use country_core::resources::{color_id::{SetWallColorIdCmd, WallColorIds},
+            walls::{plaster::Plaster, public_walls::{PublicWalls, WallPlasters}}};
+        let wall = {
+            let world = driver.app().world();
+            created_wall.or_else(|| world.resource::<InnerWalls>().wall_ids().find(|id| world.resource::<PublicWalls>()
+                .get(*id).is_some_and(|wall| !wall.authority.is_special()))
+            )
+                .context("原会话没有可用于抹灰编辑验收的墙")?
+        };
+        // 合成命令走正式setter／事件／生成器；不手造网格、颜色表或实体。
+        if create_building { m6_observe_plaster_owners(driver.app_mut().world_mut(), "before-color"); }
+        driver.app_mut().world_mut().send_event(SetWallColorIdCmd::new(wall, 4, 1));
+        for _ in 0..16 {
+            context.begin_frame(egui::RawInput::default());
+            driver.app_mut().update();
+            let _ = context.end_frame();
+        }
+        if create_building { m6_observe_plaster_owners(driver.app_mut().world_mut(), "after-color"); }
+        let world = driver.app().world();
+        assert_eq!(world.resource::<WallColorIds>().0[wall.0 as usize], 4);
+        let entities = world.resource::<WallPlasters>().0.get(&wall)
+            .context("正式颜色命令没有到达抹灰owner")?;
+        let count = entities.iter().flatten().filter(|entity| world.get::<Plaster>(**entity).is_some()).count();
+        anyhow::ensure!(count > 0, "抹灰owner没有实际非空生成实体");
+        eprintln!("M06 actual color command -> plaster entities: wall={} count={count}", wall.0);
+        Some(wall)
+    } else { None };
+    if let Some(id) = created_wall {
+        use country_core::{resources::color_id::{HalftimberColorIds, SetHalftimberColorIdCmd},
+            systems::save::save_game::{SaveGameCmd, SavingGameComplete}};
+        // This tests the actual setter and snapshot persistence only. A setter event
+        // does not record color history; the real menu path must cover undo/redo.
+        driver.app_mut().world_mut().send_event(SetHalftimberColorIdCmd::new(id, 5, 1));
+        for _ in 0..8 {
+            context.begin_frame(egui::RawInput::default()); driver.app_mut().update(); let _ = context.end_frame();
+        }
+        anyhow::ensure!(driver.app().world().resource::<HalftimberColorIds>().0[id.0 as usize] == 5,
+            "正式半木颜色命令没有更新权威颜色表");
+        let session = driver.app().world().resource::<ActiveSession>().id;
+        driver.app_mut().world_mut().send_event(SaveGameCmd);
+        let mut saved = false;
+        for _ in 0..600 {
+            context.begin_frame(egui::RawInput::default()); driver.app_mut().update(); let _ = context.end_frame();
+            if driver.app_mut().world_mut().resource_mut::<bevy_ecs::event::Events<SavingGameComplete>>()
+                .drain().any(|event| event.path == session.save_folder_path()) { saved = true; break; }
+        }
+        anyhow::ensure!(saved, "半木颜色生产存档worker未完成");
+    }
     let world = driver.app_mut().world_mut();
-    assert_eq!(world.resource::<InnerWalls>().wall_ids().count(), 3);
-    assert_nonempty_original_walls(world, shaders.as_ref(), &bridge);
+    if let Some(id) = created_wall {
+        use country_core::{resources::walls::{Floor, public_walls::PublicWalls},
+            render::nani::gpu_world::{InstanceKey, GpuWorldSubsetKind}};
+        let published = world.resource::<PublicWalls>().get(id).context("建筑公开墙缺失")?;
+        anyhow::ensure!(published.authority.elevation() == 1.5, "建筑权威海拔不一致");
+        let mut floors = world.query::<(&Floor, &InstanceKey)>();
+        let matching: Vec<_> = floors.iter(world).filter(|(floor, _)| floor.wall_id == id).collect();
+        anyhow::ensure!(matching.len() == 1 && matching[0].1.kind == GpuWorldSubsetKind::RoofFloor,
+            "建筑楼板未进入真实RoofFloor Nani owner");
+        eprintln!("M06 building wall={} elevation=1.5 floor EntityKey={:?}", id.0, matching[0].1);
+    }
+    let expected_walls = if create_building { 4 } else { 3 };
+    assert_eq!(world.resource::<InnerWalls>().wall_ids().count(), expected_walls);
+    assert_nonempty_wall_owners(world, shaders.as_ref(), &bridge, expected_walls);
     // Preserve downstream failures in the acceptance log. A successful graph
     // export alone cannot establish visible wall construction or full play.
     eprintln!(
@@ -571,6 +716,14 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
             .resource::<country_core::systems::wall::construct_wall_bricks::WallBrickBuildState>()
             .failures
     );
+    {
+        let clutter = world.resource::<system_clutter::autoclutter::AutoClutterState>();
+        eprintln!("actual App clutter: regions={} region_candidates={} output_candidates={}",
+            clutter.regions.len(), clutter.region_candidates.len(), clutter.spawn_candidates.len());
+        // 初始场景可以没有杂物；明确记录实际owner，不能由墙砖／像素推断杂物已验收。
+        let mut live = world.query::<&country_core::components::drawable::AutoClutter>();
+        eprintln!("actual App clutter entities={}", live.iter(world).count());
+    }
     // Original "register shader + spawn entity" Startup / OnEnter(Game) producers must have run on this App.
     for name in [
         "cloud_shader", "star_shader", "billboard_forest_shader", "loading_screen", "sparkles_shader",
@@ -608,6 +761,28 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
     bridge.accept_gameplay_warmup(
         world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>(),
     )?;
+    if let Some(id) = created_wall {
+        // Exercise the production frame and its actual owners without a performance loop.
+        for index in 0..3 {
+            context.begin_frame(egui::RawInput::default());
+            driver.app_mut().update();
+            let _ = context.end_frame();
+            let world = driver.app_mut().world_mut();
+            let frame = tiny_glade::production_renderer::prepare_headless_gameplay_frame(&mut bridge, world)
+                .with_context(|| format!("M06建筑功能帧{index}"))?;
+            bridge.prepare_test_execution()?;
+            let completed = frame.execute(&mut bridge, world)?;
+            world.resource_mut::<country_core::render::RenderTemporalState>().frame_render_returned();
+            bridge.with_session(|session| session.wait_frame(completed.receipt.frame, 120_000_000_000))?;
+            drop(completed);
+            bridge.collect_completed_frames()?;
+            anyhow::ensure!(world.resource::<system_wall_constructor::construct_arches::WallConstructorOutput>()
+                .gpu.half_timber_allocation(id.0).is_some(), "建筑功能帧丢失半木owner");
+            anyhow::ensure!(world.resource::<country_core::resources::walls::public_walls::WallPlasters>()
+                .0.get(&id).is_some_and(|entities| entities.iter().flatten().next().is_some()),
+                "建筑功能帧丢失抹灰owner");
+        }
+    }
     context.begin_frame(egui::RawInput::default());
     driver.app_mut().update();
     let _ = context.end_frame();
@@ -642,6 +817,15 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
     bridge.with_session(|session| session.wait_frame(frame.receipt.frame, 120_000_000_000))?;
     drop(frame);
     bridge.collect_completed_frames()?;
+    if diagnostic_nani {
+        let observed = observe_plaster_indirect(&device, bridge.hosts().buffers.as_ref(), world,
+            plaster_wall.expect("抹灰诊断必须包含正式颜色编辑"))?;
+        eprintln!("M06 diagnostic descriptor variant: {observed:?}");
+        let initial = probe_plaster_initial_cull(&mut bridge, &device, world,
+            plaster_wall.expect("抹灰诊断必须包含正式颜色编辑"))?;
+        eprintln!("M06 independent initial-cull diagnostic, no raster: {initial:?}");
+        if create_building { probe_plaster_raster_depth(&mut bridge, &device, world, shaders.as_ref())?; }
+    }
     // The capture retires after its original frame budget (3); drive the owner past it.
     for _ in 0..8 {
         tiny_glade::screenshot::shared_texture_capture::finish(world)?;
@@ -684,6 +868,85 @@ fn shipped_session_through_actual_app_and_production_world_graph() -> Result<()>
     eprintln!(
         "PASS: shipped session -> actual gameplay App -> production graph -> physical export"
     );
+    if create_building {
+        use country_core::{components::KeepOnLevelUnload,
+            resources::walls::plaster::Plaster,
+            render::nani::gpu_world::{GpuWorld, GpuWorldSubsetKind},
+            meta_commander::{MetaCommand, MetaCommander}};
+        // 包括原重复Create后已不在WallPlasters表中的实体；最终卸载必须走
+        // 原全局Without<KeepOnLevelUnload>查询，不能只检查当前映射。
+        let mut query = world.query_filtered::<bevy_ecs::entity::Entity,
+            bevy_ecs::query::Or<(bevy_ecs::query::With<Plaster>,
+                bevy_ecs::query::With<system_wall_constructor::plaster_systems::PlasterBufferOwner>)>>();
+        let old: Vec<_> = query.iter(world).collect();
+        anyhow::ensure!(!old.is_empty(), "建筑卸载验收没有真实抹灰owner");
+        for entity in &old {
+            anyhow::ensure!(world.get::<KeepOnLevelUnload>(*entity).is_none(),
+                "抹灰实体带有跨关卡保留标记: {entity:?}");
+        }
+        let session = world.resource::<ActiveSession>().id;
+        world.resource_mut::<MetaCommander>().extend_script([MetaCommand::load_session(session, false)]);
+        let mut unloaded = false;
+        let mut reentered = false;
+        for _ in 0..1200 {
+            context.begin_frame(egui::RawInput::default());
+            driver.app_mut().update();
+            let _ = context.end_frame();
+            let world = driver.app_mut().world_mut();
+            if !unloaded && *world.resource::<bevy_state::prelude::State<country_core::app_loading_state::AppLoadingState>>()
+                .get() == country_core::app_loading_state::AppLoadingState::Reload {
+                for entity in &old {
+                    anyhow::ensure!(world.get_entity(*entity).is_err(),
+                        "正式卸载遗漏旧抹灰实体/缓冲owner: {entity:?}");
+                }
+                anyhow::ensure!(world.resource::<GpuWorld>().owned_subset_mut(GpuWorldSubsetKind::Plaster)
+                    .instance_count() == 0, "正式卸载后仍保留抹灰GPU实例");
+                anyhow::ensure!(world.resource::<system_wall_constructor::construct_arches::WallConstructorOutput>()
+                    .gpu.half_timber_allocation(created_wall.unwrap().0).is_none(),
+                    "正式卸载遗漏半木独立owner");
+                eprintln!("M06 actual reload retired all {} plaster/owner entities and cleared plaster/half timber GPU owners", old.len());
+                unloaded = true;
+            }
+            if unloaded && *world.resource::<bevy_state::prelude::State<country_core::app_loading_state::AppLoadingState>>()
+                .get() == country_core::app_loading_state::AppLoadingState::Game
+                && world.resource::<LoadGameManager>().options.is_none()
+                && world.resource::<country_core::resources::history::ReplayBuffer>().is_empty()
+                && world.resource::<InnerWalls>().wall_ids().next().is_some() {
+                reentered = true;
+                break;
+            }
+        }
+        anyhow::ensure!(unloaded, "正式会话命令未进入Reload卸载阶段");
+        anyhow::ensure!(reentered, "正式Reload后未恢复新会话");
+        for index in 0..8 {
+            context.begin_frame(egui::RawInput::default());
+            driver.app_mut().update();
+            let _ = context.end_frame();
+            let world = driver.app_mut().world_mut();
+            let frame = tiny_glade::production_renderer::prepare_headless_gameplay_frame(&mut bridge, world)
+                .with_context(|| format!("M06卸载重入后生产渲染帧{index}"))?;
+            bridge.prepare_test_execution()?;
+            let completed = frame.execute(&mut bridge, world)?;
+            world.resource_mut::<country_core::render::RenderTemporalState>().frame_render_returned();
+            bridge.with_session(|session| session.wait_frame(completed.receipt.frame, 120_000_000_000))?;
+            drop(completed);
+            bridge.collect_completed_frames()?;
+        }
+        let world = driver.app().world();
+        let id = created_wall.expect("created building must have a wall");
+        anyhow::ensure!(world.resource::<country_core::resources::color_id::HalftimberColorIds>()
+            .0[id.0 as usize] == 5, "正式重载未恢复半木颜色");
+        let output = world.resource::<system_wall_constructor::construct_arches::WallConstructorOutput>();
+        let allocation = output.gpu.half_timber_allocation(id.0)
+            .context("正式重载后半木owner缺失")?;
+        let storage = world.resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>()
+            .get::<country_core::resources::roofs::roof_buffers::WoodenPlankSsbo>()
+            .context("正式重载后半木SSBO缺失")?;
+        anyhow::ensure!(storage.allocation_to_draw_multi_instanced(allocation).iter()
+            .any(|(_, count)| *count > 0), "正式重载后半木几何为空");
+        eprintln!("M06 saved half-timber color and nonempty geometry restored after Reload");
+        eprintln!("M06 actual Reload->Game resumed 8 production GPU frames");
+    }
     Ok(())
 }
 
@@ -693,6 +956,15 @@ fn assert_nonempty_original_walls(
     world: &mut bevy_ecs::world::World,
     shaders: &country_core::asset_libraries::shader_library::AssetShaderLibrary,
     bridge: &CoreRenderBridge,
+) {
+    assert_nonempty_wall_owners(world, shaders, bridge, 3);
+}
+
+fn assert_nonempty_wall_owners(
+    world: &mut bevy_ecs::world::World,
+    shaders: &country_core::asset_libraries::shader_library::AssetShaderLibrary,
+    bridge: &CoreRenderBridge,
+    expected_walls: usize,
 ) {
     use country_core::{
         geometry::instanced_wall::{InstancedWall, WallBrickInstancedDrawProxy},
@@ -707,7 +979,7 @@ fn assert_nonempty_original_walls(
     assert!(public.failures().is_empty(), "publication failed: {:?}", public.failures());
     assert!(public.path_failures().is_empty(), "path preparation failed: {:?}", public.path_failures());
     let walls: Vec<_> = world.resource::<InnerWalls>().wall_ids().collect();
-    assert_eq!(walls.len(), 3, "original intro has three authoritative walls");
+    assert_eq!(walls.len(), expected_walls, "权威墙数量与验收场景不一致");
     let mut nonempty_allocations = 0;
     for id in walls {
         let entity = world.resource::<WallEntities>().0.get(&id)
@@ -1435,5 +1707,823 @@ fn menu_save_request_reaches_disk_through_the_production_save_system() -> Result
     names.sort();
     eprintln!("SAVE folder contents: {names:?}");
     assert!(names.len() > 1, "session meta/snapshot files were not written next to history.json: {names:?}");
+    Ok(())
+}
+
+/// 仅诊断运行使用：保留实际 BufferHost 的所有能力，并额外允许传输读取。
+/// 描述符与原生产运行不同，不能把它当成原生产路径的原样证据。
+#[derive(Clone)]
+struct M6NaniDiagnosticDevice(pub std::sync::Arc<tiny_glade::render_host::BufferHost>);
+impl country_core::render::ssbo::rhapsody_boundary::GraphicsDevice for M6NaniDiagnosticDevice {
+    fn create_buffer(&self, desc: &country_core::render::ssbo::rhapsody_boundary::BufferDesc, name: &str, data: Option<&[u8]>)
+        -> std::result::Result<country_core::render::ssbo::rhapsody_boundary::Buffer, country_core::render::ssbo::rhapsody_boundary::BackendError> {
+        use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
+        let mut desc = *desc;
+        desc.usage |= ash::vk::BufferUsageFlags::TRANSFER_SRC.as_raw();
+        self.0.create_buffer(&desc, name, data)
+    }
+    fn release_buffer(&self, buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer) {
+        use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
+        self.0.release_buffer(buffer)
+    }
+    fn update_buffer_bytes(&self, buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer, data: &[u8],
+        ranges: &[std::ops::Range<usize>], offset: usize) -> std::result::Result<(), country_core::render::ssbo::rhapsody_boundary::BackendError> {
+        use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
+        self.0.update_buffer_bytes(buffer, data, ranges, offset)
+    }
+    unsafe fn register_cpu_authoritative_buffer(&self, buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer) {
+        use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
+        unsafe { self.0.register_cpu_authoritative_buffer(buffer) }
+    }
+    fn update_cpu_buffer_bytes(&self, buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer, data: &[u8],
+        ranges: &[std::ops::Range<usize>]) -> std::result::Result<(), country_core::render::ssbo::rhapsody_boundary::BackendError> {
+        use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
+        self.0.update_cpu_buffer_bytes(buffer, data, ranges)
+    }
+    fn mapped_slice_mut(&self, buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer) -> Option<&mut [u8]> {
+        use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
+        self.0.mapped_slice_mut(buffer)
+    }
+    fn mapped_upload_writer(&self, buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer)
+        -> Option<std::sync::Arc<dyn country_core::render::ssbo::rhapsody_boundary::MappedUploadWriter>> {
+        use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
+        self.0.mapped_upload_writer(buffer)
+    }
+    fn device_address(&self, buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer) -> u64 {
+        use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
+        self.0.device_address(buffer)
+    }
+    fn ivy_leaf_scale(&self) -> f32 {
+        use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
+        self.0.ivy_leaf_scale()
+    }
+}
+
+/// 必须在诊断帧已完成且当前owner未轮换时调用；只读取当前真实物理缓冲。
+fn m6_read_diagnostic_range(device: &std::sync::Arc<rhapsody::device::Device>,
+    host: &tiny_glade::render_host::BufferHost,
+    buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer,
+    offset: usize, size: usize) -> Result<Vec<u8>> {
+    use ash::vk;
+    use rhapsody::{command::buffer_access, native::AccessScope,
+        resource::{Buffer as NativeBuffer, BufferDesc as NativeBufferDesc}, transfer::with_setup_command};
+    let source = host.managed_buffer(buffer).context("诊断源buffer句柄已失效")?;
+    anyhow::ensure!(source.usage.contains(vk::BufferUsageFlags::TRANSFER_SRC), "此owner不是可读的诊断描述符");
+    anyhow::ensure!(size > 0 && offset.checked_add(size).is_some_and(|end| end as u64 <= source.size), "诊断读取超出真实buffer");
+    let output = std::sync::Arc::new(NativeBuffer::new(device.clone(),
+        &NativeBufferDesc::new_gpu_to_cpu(size as u64, vk::BufferUsageFlags::TRANSFER_DST))?);
+    let queue = device.queue(rhapsody::device::QueueClass::Graphics).context("缺少graphics队列")?;
+    with_setup_command(device, &[], |command| unsafe {
+        buffer_access(command, &source.shared(), queue, offset as u64, size as u64,
+            AccessScope { stages:vk::PipelineStageFlags::TRANSFER, access:vk::AccessFlags::TRANSFER_READ, write:false })?;
+        buffer_access(command, &output, queue, 0, size as u64,
+            AccessScope { stages:vk::PipelineStageFlags::TRANSFER, access:vk::AccessFlags::TRANSFER_WRITE, write:true })?;
+        device.raw_device().cmd_copy_buffer(command.raw_handle(), source.raw_handle(), output.raw_handle(),
+            &[vk::BufferCopy::default().src_offset(offset as u64).size(size as u64)]);
+        buffer_access(command, &output, queue, 0, size as u64,
+            AccessScope { stages:vk::PipelineStageFlags::HOST, access:vk::AccessFlags::HOST_READ, write:false })
+    })?.wait(rhapsody::transfer::SETUP_WAIT_TIMEOUT_NS)?;
+    let mut result = vec![0; size];
+    output.read_bytes(0, &mut result)?;
+    Ok(result)
+}
+
+/// 只说明诊断描述符下最终可读的间接命令；不声称已观测 raster packet 或像素因果。
+#[derive(Debug)]
+enum M6PlasterPhase { FinalPhaseEmpty, FinalPhaseNoTarget, TargetVisible }
+
+#[derive(Debug)]
+struct M6PlasterIndirectObservation {
+    phase: M6PlasterPhase,
+    target_entities: usize,
+    active_plaster_instances: usize,
+    target_dense: Vec<u32>,
+    commands: Vec<[u32; 5]>,
+    matched_dense: Vec<u32>,
+}
+
+/// 将真实实体归属与dense数量分开，重复创建的原行为不能由总数臆断为候选泄漏。
+fn m6_observe_plaster_owners(world: &mut bevy_ecs::world::World, stage: &str) {
+    use country_core::{resources::walls::{plaster::Plaster, public_walls::WallPlasters},
+        render::nani::gpu_world::InstanceKey};
+    let registered: std::collections::HashSet<_> = world.resource::<WallPlasters>().0.values()
+        .flat_map(|entities| entities.iter().flatten().copied()).collect();
+    let mut by_wall = std::collections::BTreeMap::<u64, [usize; 3]>::new();
+    let mut query = world.query::<(bevy_ecs::entity::Entity, &Plaster, Option<&InstanceKey>)>();
+    for (entity, plaster, key) in query.iter(world) {
+        let count = by_wall.entry(plaster.wall.0).or_default();
+        count[usize::from(!registered.contains(&entity))] += 1;
+        count[2] += usize::from(key.is_some());
+    }
+    let mut owners = world.query_filtered::<bevy_ecs::entity::Entity,
+        bevy_ecs::query::With<system_wall_constructor::plaster_systems::PlasterBufferOwner>>();
+    let owner_ids: Vec<_> = owners.iter(world).map(|id| (id, registered.contains(&id))).collect();
+    eprintln!("M06 plaster entity ownership {stage}: per_wall[registered,unregistered,with_key]={by_wall:?} buffer_owners[entity,registered]={owner_ids:?}");
+}
+
+fn observe_plaster_indirect(device: &std::sync::Arc<rhapsody::device::Device>,
+    host: &tiny_glade::render_host::BufferHost, world: &mut bevy_ecs::world::World,
+    wall: country_core::resources::walls::WallId) -> Result<M6PlasterIndirectObservation> {
+    use country_core::{asset_libraries::ssbo_library::AssetSsboLibrary,
+        render::nani::{buffers::{NaniDrawListSsbo, NaniInstanceIndirectionSsbo},
+            draw_ext::nani_list_index,
+            gpu_world::{GpuWorld, GpuWorldSubsetKind, InstanceDataBuffer},
+            instance_data::PlasterInstanceData,
+            instance_updates::{build_plaster, PlasterWallInputs}},
+        resources::walls::{plaster::{AnimatedPlasterPeel, Plaster}, public_walls::{PublicWalls, WallPlasters}}};
+    m6_observe_plaster_owners(world, "after-production-frame");
+    let gpu = world.resource::<GpuWorld>();
+    anyhow::ensure!(!gpu.instance_uploads_pending(), "Nani实例上传尚未完成");
+    let public = world.resource::<PublicWalls>().get(wall).context("抹灰所属墙已不存在")?;
+    let curve = public.simplified_curve_2d();
+    let inputs = PlasterWallInputs { simplified_point_count: curve.points.len() as u64,
+        simplified_length: curve.length, shape_tag: public.shape().tag(),
+        default_peel: public.authority.plaster_peel_amount() };
+    let peel = world.resource::<AnimatedPlasterPeel>().get(wall);
+    let entities = world.resource::<WallPlasters>().0.get(&wall).context("抹灰owner缺失")?;
+    let expected: Vec<_> = entities.iter().flatten().filter_map(|id| world.get::<Plaster>(*id))
+        .map(|plaster| build_plaster(plaster.nani_view(), inputs, peel).words).collect();
+    anyhow::ensure!(!expected.is_empty(), "抹灰owner没有实际条带");
+    let kind = GpuWorldSubsetKind::Plaster;
+    let subset = gpu.owned_subset_mut(kind);
+    let count = subset.instance_count();
+    let typed = subset.data().as_any().downcast_ref::<InstanceDataBuffer<PlasterInstanceData>>()
+        .context("Plaster subset 实例类型不匹配")?;
+    anyhow::ensure!(count <= typed.shadow.data.len(), "Plaster active prefix越界");
+    let mut used = vec![false; count];
+    let mut target_dense = Vec::with_capacity(expected.len());
+    for record in &expected {
+        let index = typed.shadow.data[..count].iter().enumerate()
+            .find(|(i, value)| !used[*i] && value.raw == *record)
+            .map(|(i, _)| i).context("真实Plaster载荷没有唯一active dense槽")?;
+        used[index] = true;
+        target_dense.push(u32::try_from(index)?);
+    }
+    let parts = subset.mesh_part_count();
+    anyhow::ensure!(parts > 0 && parts <= 4096, "Plaster图集分片数无效");
+    drop(subset);
+    let list = nani_list_index(kind, 0) as usize;
+    anyhow::ensure!(list == 76, "Plaster主绘制列表偏移异常");
+    let command_slot = gpu.list_index_to_cmd_offset(list) as usize;
+    let parameters = gpu.draw_list_params();
+    let start = parameters.cmd_offsets[list] as u64;
+    let end = parameters.cmd_offsets.get(list + 1).copied().unwrap_or(parameters.total_cmd_offset) as u64;
+    let library = world.resource::<AssetSsboLibrary>();
+    let commands_buffer = library.get_buffer::<NaniDrawListSsbo>().context("缺少真实Nani draw list")?;
+    let indirection_buffer = library.get_buffer::<NaniInstanceIndirectionSsbo>().context("缺少真实Nani indirection")?;
+    let raw = m6_read_diagnostic_range(device, host, commands_buffer,
+        command_slot.checked_mul(20).context("间接命令偏移溢出")?, parts.checked_mul(20).context("间接命令长度溢出")?)?;
+    let mut commands = Vec::new();
+    let mut matched_dense = Vec::new();
+    for chunk in raw.chunks_exact(20) {
+        let words: [u32; 5] = std::array::from_fn(|i| u32::from_le_bytes(chunk[i*4..i*4+4].try_into().unwrap()));
+        commands.push(words);
+        if words[0] == 0 || words[1] == 0 { continue; }
+        let first = u64::from(words[4]);
+        let last = first.checked_add(u64::from(words[1])).context("实例区间溢出")?;
+        anyhow::ensure!(first >= start && last <= end, "间接实例区间超出该draw list");
+        let offset = usize::try_from(first.checked_mul(4).context("间接索引偏移溢出")?)?;
+        let size = usize::try_from(u64::from(words[1]).checked_mul(4).context("间接索引长度溢出")?)?;
+        let raw = m6_read_diagnostic_range(device, host, indirection_buffer, offset, size)?;
+        for chunk in raw.chunks_exact(4) {
+            let dense = u32::from_le_bytes(chunk.try_into().unwrap());
+            if target_dense.contains(&dense) && !matched_dense.contains(&dense) { matched_dense.push(dense); }
+        }
+    }
+    eprintln!("M06 diagnostic descriptor variant: wall={} target_entities={} active_plaster_instances={} target_dense={target_dense:?} commands={commands:?} matched_dense={matched_dense:?}",
+        wall.0, expected.len(), count);
+    let phase = if !matched_dense.is_empty() { M6PlasterPhase::TargetVisible }
+        else if commands.iter().any(|words| words[0] > 0 && words[1] > 0) { M6PlasterPhase::FinalPhaseNoTarget }
+        else { M6PlasterPhase::FinalPhaseEmpty };
+    Ok(M6PlasterIndirectObservation { phase, target_entities:expected.len(), active_plaster_instances:count,
+        target_dense, commands, matched_dense })
+}
+
+/// 独立诊断首轮剔除；不执行 raster，且额外使用 TRANSFER_SRC 描述符。
+fn probe_plaster_initial_cull(bridge: &mut CoreRenderBridge,
+    device: &std::sync::Arc<rhapsody::device::Device>, world: &mut bevy_ecs::world::World,
+    wall: country_core::resources::walls::WallId) -> Result<M6PlasterIndirectObservation> {
+    use test_support::ShaderTestDriver as _;
+    use country_core::{asset_libraries::ssbo_library::AssetSsboLibrary,
+        render::nani::buffers::{NaniDrawListSsbo, NaniInstanceIndirectionSsbo}};
+    let (_, built) = bridge.build_frame(|frame| {
+        frame.import_gpu_world(world)?;
+        let result = tiny_glade::frame_setup::with_frame_resources(frame, world, |frame, world| {
+            tiny_glade::scene_compute::generate_nani_draw_lists(frame, world, None)?;
+            Ok(())
+        });
+        let export = frame.export_gpu_world(world);
+        result.and(export)
+    })?;
+    bridge.shader_backend().prepare_test_pipelines(std::time::Duration::from_secs(60))?;
+    let compiled = bridge.compile_built(built)?;
+    anyhow::ensure!(compiled.snapshot().pass_order.iter().any(|s| s == "Nani cull & bucket"),
+        "独立诊断剔除pass未保留");
+    anyhow::ensure!(compiled.snapshot().pass_order.iter().any(|s| s == "Nani generate draws"),
+        "独立诊断命令生成pass未保留");
+    let receipt = bridge.execute_after_uploads(compiled)?;
+    // 在等待/退役前关联receipt：完成回收后token可能已经注销。
+    let ssbos = world.resource::<AssetSsboLibrary>();
+    for (name, handle) in [("commands", ssbos.get_buffer::<NaniDrawListSsbo>().context("缺少命令owner")?),
+        ("indirection", ssbos.get_buffer::<NaniInstanceIndirectionSsbo>().context("缺少实例间接owner")?)] {
+        let owner = bridge.hosts().buffers.managed_buffer(handle).context("诊断owner失效")?.shared();
+        let present = bridge.with_session(|session| receipt.snapshot.physical_mapping.iter().any(|mapping|
+            matches!(mapping.token.and_then(|token| session.backend.resource_clone(token)),
+                Some(rhapsody::rg::GpuResource::Buffer(actual)) if std::sync::Arc::ptr_eq(&actual, &owner))));
+        anyhow::ensure!(present, "诊断帧receipt未保留当前 {name} 真实buffer owner");
+    }
+    bridge.wait_submits_done(10_000_000_000)?;
+    let observed = observe_plaster_indirect(device, bridge.hosts().buffers.as_ref(), world, wall)?;
+    anyhow::ensure!(matches!(observed.phase, M6PlasterPhase::TargetVisible),
+        "独立首轮剔除无目标抹灰实例: {:?}", observed);
+    Ok(observed)
+}
+
+/// 有界诊断：仅用真实 nani_plaster draw entry 与生产 main_pass，读回深度。
+/// 诊断目标额外启用 TRANSFER_SRC；它不是完整生产帧的最终颜色对照。
+fn probe_plaster_raster_depth(
+    bridge: &mut CoreRenderBridge,
+    device: &std::sync::Arc<rhapsody::device::Device>,
+    world: &mut bevy_ecs::world::World,
+    shaders: &country_core::asset_libraries::shader_library::AssetShaderLibrary,
+) -> Result<()> {
+    use ash::vk::{self, Handle as _};
+    use test_support::ShaderTestDriver as _;
+    use country_core::{render::pass_builder::framebuffer_binding::AttachmentTexture,
+        systems::render_loop::{draw_passes::{draw_lists::{self, DrawLists}, main_pass::MainPassTargets},
+            render_world::formats}};
+    let extent = world.resource::<country_core::render::render_config::FrameRenderConfig>().extent_0;
+    let mut original = DrawLists::new();
+    draw_lists::build_draw_lists(world, shaders, &mut original);
+    let mut only_plaster = DrawLists::new();
+    for index in 0..draw_lists::DRAW_LIST_COUNT {
+        only_plaster.list_mut(index).extend(original.list(index).iter()
+            .filter(|entry| entry.0.params.shader_name == "nani_plaster").cloned());
+    }
+    anyhow::ensure!(!only_plaster.list(draw_lists::list::GBUFFER).is_empty(),
+        "真实主G-buffer列表没有nani_plaster");
+    let empty = DrawLists::new();
+    let mut observations = Vec::new();
+    for lists in [&empty, &only_plaster] {
+        let make_color = |format| std::sync::Arc::new(rhapsody::resource::Texture::new(
+            device.clone(), &rhapsody::resource::TextureDesc::new_2d(extent[0], extent[1], format)
+                .usage(vk::ImageUsageFlags::COLOR_ATTACHMENT | vk::ImageUsageFlags::SAMPLED)).unwrap());
+        let gbuffer = make_color(vk::Format::from_raw(formats::GBUFFER as i32));
+        let velocity = make_color(vk::Format::from_raw(formats::VELOCITY as i32));
+        let emissive = make_color(vk::Format::from_raw(formats::COLOR_HDR as i32));
+        let depth = std::sync::Arc::new(rhapsody::resource::Texture::new(device.clone(),
+            &rhapsody::resource::TextureDesc::new_2d(extent[0], extent[1], vk::Format::D32_SFLOAT_S8_UINT)
+                .usage(vk::ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT | vk::ImageUsageFlags::SAMPLED | vk::ImageUsageFlags::TRANSFER_SRC))?);
+        let output = std::sync::Arc::new(rhapsody::resource::Buffer::new(device.clone(),
+            &rhapsody::resource::BufferDesc::new_gpu_to_cpu(u64::from(extent[0] * extent[1] * 4),
+                vk::BufferUsageFlags::TRANSFER_DST))?);
+        let (_, built) = bridge.build_frame(|frame| frame.with_main_prelude(world, |frame, world| {
+            tiny_glade::scene_compute::generate_nani_draw_lists(frame, world, None)?;
+            let g = frame.import_native_texture(gbuffer.clone(), 0)?;
+            let v = frame.import_native_texture(velocity.clone(), 0)?;
+            let e = frame.import_native_texture(emissive.clone(), 0)?;
+            let d = frame.import_native_texture(depth.clone(), 0)?;
+            let out = frame.import_native_buffer(output.clone(), 0)?;
+            let attachment = |id: u32, format: u32| AttachmentTexture {
+                id, extent: (extent[0], extent[1]), format, sample_count: 1,
+            };
+            let targets = MainPassTargets { gbuffer: attachment(g.raw(), formats::GBUFFER),
+                velocity: attachment(v.raw(), formats::VELOCITY), depth: attachment(d.raw(), 130) };
+            let _vao = frame.raster_resources().begin_vao_scope(world, lists)?;
+            tiny_glade::scene_raster::SceneRasterHost::new(frame, world, lists)?
+                .main_pass(&targets, &attachment(e.raw(), formats::COLOR_HDR))?;
+            frame.with_graph(|graph| {
+                let mut copy = graph.add_pass("M06 diagnostic plaster depth readback");
+                copy.add_resource_access(d, 0x25, 0)?;
+                copy.add_resource_access(out, 0x34, 0)?;
+                let image = depth.clone(); let buffer = output.clone(); let device = device.clone();
+                copy.render_with_result_context(move |ctx| {
+                    unsafe { device.raw_device().cmd_copy_image_to_buffer(
+                        vk::CommandBuffer::from_raw(ctx.command.handle()), image.raw_handle(),
+                        vk::ImageLayout::TRANSFER_SRC_OPTIMAL, buffer.raw_handle(),
+                        &[vk::BufferImageCopy::default().image_subresource(
+                            vk::ImageSubresourceLayers::default().aspect_mask(vk::ImageAspectFlags::DEPTH).layer_count(1))
+                            .image_extent(vk::Extent3D { width: extent[0], height: extent[1], depth: 1 })]); }
+                    Ok(())
+                });
+                graph.export(out, 0x26)?;
+                Ok(())
+            })?;
+            Ok(())
+        }))?;
+        bridge.shader_backend().prepare_test_pipelines(Duration::from_secs(60))?;
+        let compiled = bridge.compile_built(built)?;
+        bridge.execute_after_uploads(compiled)?;
+        bridge.wait_submits_done(10_000_000_000)?;
+        let mut bytes = vec![0u8; (extent[0] * extent[1] * 4) as usize];
+        output.read_bytes(0, &mut bytes)?;
+        let depths: Vec<f32> = bytes.chunks_exact(4)
+            .map(|p| f32::from_le_bytes(p.try_into().unwrap())).collect();
+        anyhow::ensure!(depths.iter().all(|value| value.is_finite() && (0.0..=1.0).contains(value)),
+            "抹灰诊断深度包含非有限值或超出[0,1]的样本");
+        observations.push(depths.iter().filter(|value| **value > 0.0).count());
+    }
+    anyhow::ensure!(observations[0] == 0, "空抹灰列表深度未清零: {}", observations[0]);
+    anyhow::ensure!(observations[1] > 0, "真实抹灰列表未产生深度覆盖");
+    eprintln!("M06 bounded production plaster raster depth control={} covered={}", observations[0], observations[1]);
+    Ok(())
+}
+
+/// 验收注入的是合成输入和地形命中；拾取、UI相位、历史与墙系统仍使用生产调度。
+#[derive(bevy_ecs::prelude::Resource)]
+struct M6SyntheticEraserInput {
+    position: glam::Vec3,
+    click: country_core::input::action_set::DigitalActionPhase,
+    undo: country_core::input::action_set::DigitalActionPhase,
+    redo: country_core::input::action_set::DigitalActionPhase,
+}
+
+fn m6_inject_before_picker(
+    input: bevy_ecs::prelude::Res<M6SyntheticEraserInput>,
+    mut actions: bevy_ecs::prelude::ResMut<country_core::input::action_set::ActionSetStates>,
+    mut terrain: bevy_ecs::prelude::ResMut<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,
+) {
+    use country_core::input::action_set::DigitalActionState;
+    for (slot, phase) in [(0, input.click), (16, input.undo), (17, input.redo)] {
+        actions.digital[slot] = DigitalActionState { phase, timer_seconds: 0.0 };
+    }
+    terrain.update(Some(input.position));
+}
+
+fn m6_inject_before_eraser(
+    input: bevy_ecs::prelude::Res<M6SyntheticEraserInput>,
+    mut terrain: bevy_ecs::prelude::ResMut<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>,
+) {
+    terrain.update(Some(input.position));
+}
+
+#[test]
+fn m06_shipped_wall_synthetic_input_uses_real_ui_and_history() -> Result<()> {
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{
+        input::action_set::DigitalActionPhase as Phase,
+        resources::{history::History, walls::EraserSizeMultiplier},
+        systems::{mode_manager::{AppMode, EraserLayer}, ui::hover_intersection::hover_intersection,
+            wall::eraser::wall_eraser::wall_eraser},
+    };
+    if std::env::var_os("TG_M6_ERASER_CHILD").is_some() { return m6_eraser_child_recovery(); }
+    let BootedSession { mut driver, context, bridge: _bridge, shaders: _shaders, device: _device, _boot } = boot_shipped_session()?;
+    let world = driver.app().world();
+    let inner = world.resource::<InnerWalls>();
+    // 在真实长墙段中点使用小刷，保留至少一面墙供跨进程核验。
+    let (wall, point) = inner.wall_ids().filter_map(|id| {
+        let state = inner.get_unwrapped(id);
+        state.snapshot().source.curve.points.windows(2).filter_map(|points| {
+            let a = glam::Vec2::from_array(points[0]);
+            let b = glam::Vec2::from_array(points[1]);
+            let length = a.distance(b);
+            (length > 1.5).then_some((id, (a + b) * 0.5, length))
+        }).max_by(|a, b| a.2.total_cmp(&b.2))
+    }).max_by(|a, b| a.2.total_cmp(&b.2)).map(|(id, p, _)| (id, p.to_array()))
+        .context("初始会话没有可局部擦除的长墙段")?;
+    let original = m6_authority_map(world);
+    let before = world.resource::<History>().ledger().entries.len();
+    driver.app_mut().insert_resource(AppMode::Eraser(EraserLayer::Wall));
+    driver.app_mut().insert_resource(EraserSizeMultiplier(0.4));
+    driver.app_mut().insert_resource(M6SyntheticEraserInput {
+        position: glam::Vec3::new(point[0], 0.0, point[1]),
+        click: Phase::Idle, undo: Phase::Idle, redo: Phase::Idle,
+    });
+    driver.app_mut().add_systems(bevy_app::Update, m6_probe_height_requests.before(
+        country_core::systems::wall::adjust_wall_height::adjust_wall_height_impl::adjust_wall_height_impl));
+    driver.app_mut().add_systems(bevy_app::Update, m6_inject_before_picker.before(hover_intersection));
+    driver.app_mut().add_systems(bevy_app::Update, m6_inject_before_eraser.before(wall_eraser::<country_core::resources::history::MaybePendingSnapshotId>));
+    let step = |driver: &mut tiny_glade::game_loop::GameFrameDriver| {
+        context.begin_frame(egui::RawInput::default());
+        driver.app_mut().update();
+        let _ = context.end_frame();
+    };
+    // 第一帧注册真实画布，第二帧由生产拾取和ui_update产生按下相位。
+    eprintln!("M6_STAGE register target={wall:?} point={point:?}");
+    step(&mut driver);
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().click = Phase::JustPressed;
+    step(&mut driver);
+    eprintln!("M6_STAGE after_press walls={:?}", driver.app().world().resource::<InnerWalls>().wall_ids().collect::<Vec<_>>());
+    anyhow::ensure!(!driver.app().world().resource::<InnerWalls>().contains(wall), "真实UI未拆分所选墙");
+    anyhow::ensure!(driver.app().world().resource::<InnerWalls>().wall_ids().count() > 0, "擦除后没有保留墙");
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().click = Phase::JustReleased;
+    step(&mut driver);
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().click = Phase::Idle;
+    for _ in 0..5 { step(&mut driver); }
+    anyhow::ensure!(driver.app().world().resource::<History>().ledger().entries.len() > before, "擦除未提交历史");
+    let committed_cursor = driver.app().world().resource::<History>().ledger().cursor;
+    eprintln!("M6_STAGE before_undo history_entries={} cursor={committed_cursor}",
+        driver.app().world().resource::<History>().ledger().entries.len());
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().undo = Phase::JustPressed;
+    step(&mut driver);
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().undo = Phase::Idle;
+    m6_wait_replay_completion(&mut driver, &context, committed_cursor - 1, "撤销")?;
+    anyhow::ensure!(driver.app().world().resource::<InnerWalls>().contains(wall), "真实撤销未恢复所选墙");
+    for _ in 0..10 { step(&mut driver); }
+    anyhow::ensure!(m6_authority_map(driver.app().world()) == original, "撤销后的墙曲线、字段、颜色、屋顶关联或装饰ID不同");
+    let restored_entity = driver.app().world().resource::<country_core::resources::walls::public_walls::WallEntities>()
+        .wall_entity(wall).context("撤销后的墙缺少实体/GPU owner")?;
+    m6_log_constructor_ranges(driver.app().world(), wall, "重做前")?;
+    eprintln!("M6_STAGE before_redo");
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().redo = Phase::JustPressed;
+    step(&mut driver);
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().redo = Phase::Idle;
+    m6_wait_replay_completion(&mut driver, &context, committed_cursor, "重做")?;
+    anyhow::ensure!(!driver.app().world().resource::<InnerWalls>().contains(wall), "真实重做未删除所选墙");
+    use country_core::systems::save::save_game::{SaveGameCmd, SavingGameComplete};
+    for _ in 0..30 { step(&mut driver); }
+    let world = driver.app().world();
+    let remaining = m6_authority_map(world);
+    anyhow::ensure!(remaining.as_array().is_some_and(|walls| !walls.is_empty()), "重做后必须保留真实墙");
+    m6_assert_removed_owners(world, wall)?;
+    m6_log_constructor_ranges(world, wall, "重做后")?;
+    anyhow::ensure!(world.get::<country_core::geometry::instanced_wall::InstancedWall<
+        country_core::systems::wall::construction::bricks::WallBrickInstance>>(restored_entity).is_none(),
+        "原墙实体仍持有GPU实例分配");
+    let history_entry = serde_json::to_string(&country_core::resources::history::serialized::SavedMultiEdit(
+        world.resource::<History>().ledger().entries.last().context("擦除历史为空")?.clone()))?;
+    let session = world.resource::<ActiveSession>().id;
+    driver.app_mut().world_mut().send_event(SaveGameCmd);
+    let mut saved = false;
+    for _ in 0..600 {
+        step(&mut driver);
+        if driver.app_mut().world_mut().resource_mut::<bevy_ecs::event::Events<SavingGameComplete>>()
+            .drain().any(|event| event.path == session.save_folder_path()) { saved = true; break; }
+    }
+    anyhow::ensure!(saved, "生产存档 worker 未完成");
+    // 子进程启动前释放父进程的GPU所有者，隔离账户仍由静态TempDir保留。
+    drop(driver);
+    drop(_bridge);
+    drop(_shaders);
+    drop(_device);
+    let status = std::process::Command::new(std::env::current_exe()?)
+        .args(["--exact", "m06_shipped_wall_synthetic_input_uses_real_ui_and_history", "--nocapture", "--test-threads=1"])
+        .env("TG_M6_ERASER_CHILD", "1")
+        .env("TG_M6_ERASER_FOLDER", session.save_folder_path())
+        .env("TG_M6_ERASER_SESSION", serde_json::to_string(&session)?)
+        .env("TG_M6_ERASER_WALL", wall.0.to_string())
+        .env("TG_M6_ERASER_REMAINING", serde_json::to_string(&remaining)?)
+        .env("TG_M6_ERASER_HISTORY", history_entry)
+        .status()?;
+    anyhow::ensure!(status.success(), "新进程恢复验收失败: {status}");
+    Ok(())
+}
+
+/// 子进程先使用自己的隔离账户启动，再复制父进程实际存档并走生产会话命令。
+fn m6_eraser_child_recovery() -> Result<()> {
+    use country_core::{meta_commander::{MetaCommand, MetaCommander},
+        resources::{session::SessionId, walls::WallId}};
+    fn copy_tree(from: &std::path::Path, to: &std::path::Path) -> Result<()> {
+        std::fs::create_dir_all(to)?;
+        for entry in std::fs::read_dir(from)? {
+            let entry = entry?;
+            let target = to.join(entry.file_name());
+            if entry.file_type()?.is_dir() { copy_tree(&entry.path(), &target)?; }
+            else { std::fs::copy(entry.path(), target)?; }
+        }
+        Ok(())
+    }
+    let session: SessionId = serde_json::from_str(&std::env::var("TG_M6_ERASER_SESSION")?)?;
+    let wall = WallId(std::env::var("TG_M6_ERASER_WALL")?.parse()?);
+    let source = PathBuf::from(std::env::var_os("TG_M6_ERASER_FOLDER").context("缺少父存档")?);
+    let BootedSession { mut driver, context, bridge: _bridge, shaders: _shaders, device: _device, _boot } = boot_shipped_session()?;
+    copy_tree(&source, &session.save_folder_path())?;
+    driver.app_mut().world_mut().resource_mut::<MetaCommander>()
+        .extend_script([MetaCommand::load_session(session, false)]);
+    let mut loaded = false;
+    let mut saw_reload = false;
+    for _ in 0..1200 {
+        context.begin_frame(egui::RawInput::default());
+        driver.app_mut().update();
+        let _ = context.end_frame();
+        let world = driver.app().world();
+        saw_reload |= world.get_resource::<bevy_state::prelude::State<country_core::app_loading_state::AppLoadingState>>()
+            .is_some_and(|state| *state.get() == country_core::app_loading_state::AppLoadingState::Reload);
+        if saw_reload && world.get_resource::<ActiveSession>().is_some_and(|s| s.id == session)
+            && world.resource::<LoadGameManager>().options.is_none()
+            && world.get_resource::<country_core::resources::history::ReplayBuffer>().is_some_and(|r| r.is_empty())
+            && world.get_resource::<country_core::systems::history::PendingHistoryCommands>().is_some_and(|p| p.0.is_empty())
+            && world.get_resource::<country_core::systems::mode_manager::AppMode>().is_some_and(|m| m.native_tag() != 13)
+            && world.get_resource::<bevy_state::prelude::State<country_core::app_loading_state::AppLoadingState>>()
+                .is_some_and(|state| *state.get() == country_core::app_loading_state::AppLoadingState::Game) {
+            loaded = true;
+            break;
+        }
+    }
+    anyhow::ensure!(loaded, "新进程未通过生产会话命令加载存档");
+    // 让回放最后一帧发送的事件由生产消费者完整处理。
+    for _ in 0..2 {
+        context.begin_frame(egui::RawInput::default());
+        driver.app_mut().update();
+        let _ = context.end_frame();
+    }
+    let world = driver.app().world();
+    anyhow::ensure!(world.resource::<country_core::resources::history::ReplayBuffer>().is_empty()
+        && world.resource::<country_core::systems::history::PendingHistoryCommands>().0.is_empty()
+        && world.resource::<country_core::systems::mode_manager::AppMode>().native_tag() != 13,
+        "新进程恢复后回放再次启动");
+    anyhow::ensure!(!world.resource::<InnerWalls>().contains(wall), "存档恢复后被擦除的墙重新出现");
+    let expected: serde_json::Value = serde_json::from_str(&std::env::var("TG_M6_ERASER_REMAINING")?)?;
+    anyhow::ensure!(m6_authority_map(world) == expected, "新进程的剩余墙权威状态不一致");
+    let mut expected_history: serde_json::Value = serde_json::from_str(&std::env::var("TG_M6_ERASER_HISTORY")?)?;
+    let entry = world.resource::<country_core::resources::history::History>().ledger().entries.last().context("恢复历史为空")?;
+    // 与父端和实际存档同走 f32 文本写出，再解析成 JSON 值逐字段严格比较。
+    let actual_wire = serde_json::to_string(&country_core::resources::history::serialized::SavedMultiEdit(entry.clone()))?;
+    let mut actual_history: serde_json::Value = serde_json::from_str(&actual_wire)?;
+    canonicalize_decorator_diff_map(&mut expected_history);
+    canonicalize_decorator_diff_map(&mut actual_history);
+    if let Some((path, expected, actual)) = m6_first_json_difference(&expected_history, &actual_history) {
+        anyhow::bail!("恢复历史末项不同于实际擦除记录：路径 {path}；expected={expected}；actual={actual}");
+    }
+    m6_assert_removed_owners(world, wall)?;
+    Ok(())
+}
+
+/// 以位模式比较完整墙源和元数据；实体代次不跨重建比较，屋顶检查墙ID与序列化权威字段。
+fn m6_authority_map(world: &bevy_ecs::world::World) -> serde_json::Value {
+    use country_core::resources::{color_id::{WallColorIds, HalftimberColorIds}, walls::{
+        decorator_storage::DecoratorStorage, public_walls::PublicWalls,
+    }};
+    let inner = world.resource::<InnerWalls>();
+    let colors = world.resource::<WallColorIds>();
+    let timber = world.resource::<HalftimberColorIds>();
+    let public = world.resource::<PublicWalls>();
+    let decorators = world.resource::<DecoratorStorage>();
+    let mut ids: Vec<_> = inner.wall_ids().collect();
+    ids.sort_by_key(|id| id.0);
+    let rows: Vec<_> = ids.into_iter().map(|id| {
+        let state = inner.get_unwrapped(id);
+        let snapshot = state.snapshot();
+        let source = &snapshot.source;
+        let mut decoration_ids: Vec<_> = decorators.wall_decorator_ids(id).collect();
+        decoration_ids.sort_unstable();
+        serde_json::json!({
+            "id": id.0,
+            "points": source.curve.points.iter().map(|p| p.map(f32::to_bits)).collect::<Vec<_>>(),
+            "u": source.curve.points_u.iter().map(|p| p.to_bits()).collect::<Vec<_>>(),
+            "length": source.curve.length.to_bits(), "kind": source.curve_kind_tag,
+            "floor": source.terrain_floor.to_bits(), "shape": source.shape.bytes(),
+            "style": source.style, "extra": source.extra.to_bits(), "special": source.special,
+            "path": source.observed_path_scalar.to_bits(), "clutter": source.clutter_version,
+            "source64": source.observed_source_flag_64, "source65": state.source_flag_65(),
+            "height": state.height().to_bits(), "elevation": state.elevation().to_bits(),
+            "metadata60": snapshot.metadata.source_60_bits, "metadata66": snapshot.metadata.source_66,
+            "metadata67": snapshot.metadata.source_67, "metadata69": snapshot.metadata.source_69,
+            "wall_color": colors.0.get(id.0 as usize), "timber_color": timber.0.get(id.0 as usize),
+            "roof": public.roof_entity(id).map(|entity| {
+                let roof = world.get::<country_core::resources::roofs::Roof>(entity)
+                    .expect("公开墙屋顶关联缺少真实屋顶组件");
+                assert_eq!(roof.wall_id(), id, "屋顶关联指向其他墙");
+                serde_json::to_value(roof).expect("屋顶权威字段序列化失败")
+            }), "decorator_ids": decoration_ids,
+        })
+    }).collect();
+    serde_json::Value::Array(rows)
+}
+
+/// 检查被拆掉的原墙已从实际墙实体、抹灰和支撑权威表退役。
+fn m6_assert_removed_owners(world: &bevy_ecs::world::World, wall: country_core::resources::walls::WallId) -> Result<()> {
+    use country_core::resources::walls::{wall_stone_columns::StoneColumnCollisionStorage,
+        public_walls::{PublicWalls, WallEntities, WallPlasters}};
+    use system_wall_constructor::{construct_arches::WallConstructorOutput, gpu_output::{ConstructorKey, ConstructorPart}};
+    anyhow::ensure!(!world.resource::<WallEntities>().0.contains_key(&wall), "已删墙仍保留实体/GPU owner");
+    anyhow::ensure!(!world.resource::<WallPlasters>().0.contains_key(&wall), "已删墙仍保留抹灰 owner");
+    let gpu = &world.resource::<WallConstructorOutput>().gpu;
+    let key = ConstructorKey { wall: wall.0, part: ConstructorPart::ElevationSupports };
+    anyhow::ensure!(gpu.brick_allocation(key).is_none() && gpu.plank_allocation(key).is_none()
+        && gpu.half_timber_allocation(wall.0).is_none(), "已删墙仍保留实际构造器GPU分配owner");
+    let columns = world.resource::<StoneColumnCollisionStorage>();
+    anyhow::ensure!(columns.columns.get(&wall).is_none_or(Vec::is_empty), "已删墙仍保留石柱几何");
+    anyhow::ensure!(!columns.colliders.contains_key(&wall), "已删墙仍保留石柱碰撞句柄");
+    anyhow::ensure!(world.resource::<PublicWalls>().get_unchecked(wall).is_none(), "已删墙仍保留公开墙");
+    Ok(())
+}
+
+/// 独立事件读取器仅诊断消费前的真实队列，不消费生产 reader 的游标。
+fn m6_probe_height_requests(
+    mut events: bevy_ecs::prelude::EventReader<country_core::systems::wall::adjust_wall_height::AdjustWallHeightCmd>,
+    inner: bevy_ecs::prelude::Res<InnerWalls>,
+) {
+    for event in events.read() {
+        eprintln!("M6_HEIGHT request={:?} exists={} ids={:?}", event.0,
+            inner.contains(country_core::resources::walls::WallId(event.0.wall.0)),
+            inner.wall_ids().collect::<Vec<_>>());
+    }
+}
+
+/// 必须先确认请求改变了历史游标，再等待原回放完成门；额外两帧让回放末帧
+/// 产生的高度等事件经生产消费者处理。事件队列自身保留双缓冲，不能用长度当消费游标。
+fn m6_wait_replay_completion(
+    driver: &mut tiny_glade::game_loop::GameFrameDriver,
+    context: &egui::Context,
+    expected_cursor: i32,
+    stage: &str,
+) -> Result<()> {
+    use country_core::{resources::history::{History, ReplayBuffer}, systems::{history::PendingHistoryCommands, mode_manager::AppMode}};
+    let complete = |world: &bevy_ecs::world::World| {
+        world.resource::<History>().ledger().cursor == expected_cursor
+            && world.resource::<ReplayBuffer>().is_empty()
+            && world.resource::<PendingHistoryCommands>().0.is_empty()
+            && world.resource::<AppMode>().native_tag() != 13
+    };
+    let mut reached = false;
+    for _ in 0..600 {
+        context.begin_frame(egui::RawInput::default());
+        driver.app_mut().update();
+        let _ = context.end_frame();
+        if complete(driver.app().world()) { reached = true; break; }
+    }
+    anyhow::ensure!(reached, "{stage}历史游标/队列/回放模式未完成");
+    for _ in 0..2 {
+        context.begin_frame(egui::RawInput::default());
+        driver.app_mut().update();
+        let _ = context.end_frame();
+        anyhow::ensure!(complete(driver.app().world()), "{stage}完成后回放再次启动");
+    }
+    Ok(())
+}
+
+/// 显示该墙各真实分配的绘制范围及全局活跃范围；释放后全局范围可能被其他墙复用。
+fn m6_log_constructor_ranges(world: &bevy_ecs::world::World, wall: country_core::resources::walls::WallId, stage: &str) -> Result<()> {
+    use country_core::{asset_libraries::ssbo_library::AssetSsboLibrary,
+        geometry::instanced_wall::BrickTransformSsbo, resources::roofs::roof_buffers::WoodenPlankSsbo};
+    use system_wall_constructor::{construct_arches::WallConstructorOutput, gpu_output::{ConstructorKey, ConstructorPart}};
+    let gpu = &world.resource::<WallConstructorOutput>().gpu;
+    let library = world.resource::<AssetSsboLibrary>();
+    let bricks = library.get::<BrickTransformSsbo>().context("缺少实际墙砖SSBO")?;
+    let planks = library.get::<WoodenPlankSsbo>().context("缺少实际木条SSBO")?;
+    let key = ConstructorKey { wall: wall.0, part: ConstructorPart::ElevationSupports };
+    eprintln!("M6_CONSTRUCTOR_RANGES stage={stage} wall={wall:?} brick={:?} plank={:?} half={:?} active_bricks={:?} active_planks={:?}",
+        gpu.brick_allocation(key).map(|a| bricks.allocation_to_draw_multi_instanced(a)),
+        gpu.plank_allocation(key).map(|a| planks.allocation_to_draw_multi_instanced(a)),
+        gpu.half_timber_allocation(wall.0).map(|a| planks.allocation_to_draw_multi_instanced(a)),
+        bricks.to_draw_multi_instanced(), planks.to_draw_multi_instanced());
+    Ok(())
+}
+
+/// 报告首个具体JSON差异，不输出整份历史；数组保持顺序，映射按键递归比较。
+fn m6_first_json_difference(expected: &serde_json::Value, actual: &serde_json::Value)
+    -> Option<(String, String, String)> {
+    fn short(value: Option<&serde_json::Value>) -> String {
+        let text = value.map_or_else(|| "<missing>".to_owned(), |v| v.to_string());
+        if text.len() <= 320 { text } else { format!("{}… ({} bytes)", text.chars().take(160).collect::<String>(), text.len()) }
+    }
+    fn walk(path: String, a: &serde_json::Value, b: &serde_json::Value) -> Option<(String, String, String)> {
+        match (a, b) {
+            (serde_json::Value::Object(a), serde_json::Value::Object(b)) => {
+                let keys: std::collections::BTreeSet<_> = a.keys().chain(b.keys()).collect();
+                for key in keys {
+                    let next = format!("{path}/{}", key.replace('~', "~0").replace('/', "~1"));
+                    match (a.get(key), b.get(key)) {
+                        (Some(x), Some(y)) => if let Some(diff) = walk(next, x, y) { return Some(diff); },
+                        (x, y) => return Some((next, short(x), short(y))),
+                    }
+                }
+                None
+            }
+            (serde_json::Value::Array(a), serde_json::Value::Array(b)) => {
+                for i in 0..a.len().max(b.len()) {
+                    let next = format!("{path}/{i}");
+                    match (a.get(i), b.get(i)) {
+                        (Some(x), Some(y)) => if let Some(diff) = walk(next, x, y) { return Some(diff); },
+                        (x, y) => return Some((next, short(x), short(y))),
+                    }
+                }
+                None
+            }
+            _ if a != b => Some((path, short(Some(a)), short(Some(b)))),
+            _ => None,
+        }
+    }
+    walk(String::new(), expected, actual)
+}
+
+/// 合成鼠标动作经过生产拾取/画布/绘墙/吸附，真实OS输入另验。
+#[test]
+fn m06_real_ui_draw_closed_wall_undo_redo_and_save() -> Result<()> {
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{input::action_set::DigitalActionPhase as Phase,
+        resources::{history::History, in_progress_curve::InProgressCurve},
+        systems::{mode_manager::{AppMode, WallShape}, ui::hover_intersection::hover_intersection,
+            wall::draw_wall::draw_wall}};
+    if std::env::var_os("TG_M6_CLOSED_CHILD").is_some() { return m6_closed_child_recovery(); }
+    let BootedSession { mut driver, context, bridge: _bridge, shaders: _shaders, device: _device, _boot } = boot_shipped_session()?;
+    let original = m6_authority_map(driver.app().world());
+    let before = driver.app().world().resource::<History>().ledger().entries.len();
+    driver.app_mut().insert_resource(AppMode::Wall(WallShape::Freeform));
+    driver.app_mut().insert_resource(M6SyntheticEraserInput { position: glam::Vec3::new(-18., 0., -18.),
+        click: Phase::Idle, undo: Phase::Idle, redo: Phase::Idle });
+    driver.app_mut().add_systems(bevy_app::Update, m6_inject_before_picker.before(hover_intersection));
+    // set10 的真实射线写入后注入合成命中，生产画布及吸附/绘墙都读取同一位置。
+    driver.app_mut().add_systems(bevy_app::Update, m6_inject_before_eraser
+        .after(country_core::resources::mouse_terrain_raycast::mouse_terrain_raycast)
+        .before(country_core::systems::wall::ui_draw_wall::ui_draw_wall)
+        .before(draw_wall));
+    let step = |driver: &mut tiny_glade::game_loop::GameFrameDriver| {
+        context.begin_frame(egui::RawInput::default()); driver.app_mut().update(); let _ = context.end_frame();
+    };
+    step(&mut driver);
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().click = Phase::JustPressed;
+    step(&mut driver);
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().click = Phase::Held;
+    let corners = [glam::Vec2::new(-18.,-18.), glam::Vec2::new(-12.,-18.),
+        glam::Vec2::new(-12.,-12.), glam::Vec2::new(-18.,-12.), glam::Vec2::new(-18.,-18.)];
+    for segment in corners.windows(2) {
+        for i in 1..=30 {
+            let p = segment[0].lerp(segment[1], i as f32 / 30.0);
+            driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().position = glam::Vec3::new(p.x, 0., p.y);
+            step(&mut driver);
+        }
+    }
+    let wall = driver.app().world().resource::<InProgressCurve>().wall.context("真实画布未生成进行中的墙")?;
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().click = Phase::JustReleased;
+    step(&mut driver);
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().click = Phase::Idle;
+    for _ in 0..10 { step(&mut driver); }
+    let world = driver.app().world();
+    anyhow::ensure!(world.resource::<InnerWalls>().get_unwrapped(wall).source().curve_kind_tag == 3,
+        "真实绘墙未触发自吸附闭合");
+    anyhow::ensure!(world.resource::<History>().ledger().entries.len() > before, "闭合未提交历史");
+    let cursor = world.resource::<History>().ledger().cursor;
+    let closed = m6_authority_map(world);
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().undo = Phase::JustPressed;
+    step(&mut driver);
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().undo = Phase::Idle;
+    m6_wait_replay_completion(&mut driver, &context, cursor - 1, "闭合撤销")?;
+    for _ in 0..10 { step(&mut driver); }
+    anyhow::ensure!(m6_authority_map(driver.app().world()) == original, "闭合撤销后权威墙不一致");
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().redo = Phase::JustPressed;
+    step(&mut driver);
+    driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().redo = Phase::Idle;
+    m6_wait_replay_completion(&mut driver, &context, cursor, "闭合重做")?;
+    for _ in 0..30 { step(&mut driver); }
+    anyhow::ensure!(m6_authority_map(driver.app().world()) == closed, "闭合重做后权威墙不一致");
+    use country_core::systems::save::save_game::{SaveGameCmd, SavingGameComplete};
+    let session = driver.app().world().resource::<ActiveSession>().id;
+    let folder = session.save_folder_path();
+    let saved_walls = m6_authority_map(driver.app().world());
+    let saved_history = serde_json::to_string(&country_core::resources::history::serialized::SavedMultiEdit(
+        driver.app().world().resource::<History>().ledger().entries.last().context("闭合历史为空")?.clone()))?;
+    driver.app_mut().world_mut().send_event(SaveGameCmd);
+    let mut saved = false;
+    for _ in 0..600 {
+        step(&mut driver);
+        if driver.app_mut().world_mut().resource_mut::<bevy_ecs::event::Events<SavingGameComplete>>()
+            .drain().any(|event| event.path == folder) { saved = true; break; }
+    }
+    anyhow::ensure!(saved && folder.join("history.json").is_file(), "闭合历史未经生产存档worker写入");
+    drop(driver); drop(_bridge); drop(_shaders); drop(_device);
+    let status = std::process::Command::new(std::env::current_exe()?)
+        .args(["--exact", "m06_real_ui_draw_closed_wall_undo_redo_and_save", "--nocapture", "--test-threads=1"])
+        .env("TG_M6_CLOSED_CHILD", "1").env("TG_M6_CLOSED_FOLDER", folder)
+        .env("TG_M6_CLOSED_SESSION", serde_json::to_string(&session)?)
+        .env("TG_M6_CLOSED_WALLS", serde_json::to_string(&saved_walls)?)
+        .env("TG_M6_CLOSED_HISTORY", saved_history).status()?;
+    anyhow::ensure!(status.success(), "闭合墙新进程恢复失败: {status}");
+    Ok(())
+}
+
+fn m6_closed_child_recovery() -> Result<()> {
+    use country_core::{meta_commander::{MetaCommand, MetaCommander}, resources::session::SessionId};
+    fn copy_tree(from: &std::path::Path, to: &std::path::Path) -> Result<()> {
+        std::fs::create_dir_all(to)?;
+        for entry in std::fs::read_dir(from)? {
+            let entry = entry?; let target = to.join(entry.file_name());
+            if entry.file_type()?.is_dir() { copy_tree(&entry.path(), &target)?; }
+            else { std::fs::copy(entry.path(), target)?; }
+        }
+        Ok(())
+    }
+    let session: SessionId = serde_json::from_str(&std::env::var("TG_M6_CLOSED_SESSION")?)?;
+    let source = PathBuf::from(std::env::var_os("TG_M6_CLOSED_FOLDER").context("缺少闭合墙存档")?);
+    let BootedSession { mut driver, context, bridge: _bridge, shaders: _shaders, device: _device, _boot } = boot_shipped_session()?;
+    copy_tree(&source, &session.save_folder_path())?;
+    driver.app_mut().world_mut().resource_mut::<MetaCommander>().extend_script([MetaCommand::load_session(session, false)]);
+    let mut saw_reload = false; let mut loaded = false;
+    for _ in 0..1200 {
+        context.begin_frame(egui::RawInput::default()); driver.app_mut().update(); let _ = context.end_frame();
+        let world = driver.app().world();
+        let loading = world.resource::<bevy_state::prelude::State<country_core::app_loading_state::AppLoadingState>>().get();
+        saw_reload |= *loading == country_core::app_loading_state::AppLoadingState::Reload;
+        if saw_reload && *loading == country_core::app_loading_state::AppLoadingState::Game
+            && world.get_resource::<ActiveSession>().is_some_and(|s| s.id == session)
+            && world.resource::<LoadGameManager>().options.is_none()
+            && world.resource::<country_core::resources::history::ReplayBuffer>().is_empty()
+            && world.resource::<country_core::systems::history::PendingHistoryCommands>().0.is_empty()
+            && world.resource::<country_core::systems::mode_manager::AppMode>().native_tag() != 13 { loaded = true; break; }
+    }
+    anyhow::ensure!(loaded, "闭合墙新进程未完成生产Reload");
+    for _ in 0..2 { context.begin_frame(egui::RawInput::default()); driver.app_mut().update(); let _ = context.end_frame(); }
+    let world = driver.app().world();
+    let expected: serde_json::Value = serde_json::from_str(&std::env::var("TG_M6_CLOSED_WALLS")?)?;
+    anyhow::ensure!(m6_authority_map(world) == expected, "闭合墙新进程权威状态不一致");
+    let mut expected: serde_json::Value = serde_json::from_str(&std::env::var("TG_M6_CLOSED_HISTORY")?)?;
+    let entry = world.resource::<country_core::resources::history::History>().ledger().entries.last().context("恢复闭合历史为空")?;
+    let wire = serde_json::to_string(&country_core::resources::history::serialized::SavedMultiEdit(entry.clone()))?;
+    let mut actual: serde_json::Value = serde_json::from_str(&wire)?;
+    canonicalize_decorator_diff_map(&mut expected); canonicalize_decorator_diff_map(&mut actual);
+    if let Some((path, expected, actual)) = m6_first_json_difference(&expected, &actual) {
+        anyhow::bail!("闭合历史差异 {path}: expected={expected}, actual={actual}");
+    }
     Ok(())
 }

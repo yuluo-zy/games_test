@@ -2009,6 +2009,7 @@ fn device_address_chunks_keep_same_page_ranges_until_cancel_or_real_completion()
     )));
 
     for submit in [false, true] {
+        let idle_waits = device.retirement_stats().idle_waits;
         // Bound to one full page: the next allocation can succeed only after
         // the actual imported ranges have been released, not by adding a page.
         let mut constants = DynamicConstants::with_config(
@@ -2158,10 +2159,13 @@ fn device_address_chunks_keep_same_page_ranges_until_cancel_or_real_completion()
         assert_eq!(session.borrow_mut().frame_import_count(), 0);
         let reused = constants
             .allocate(16)
-            .expect("cancel/completion released imported page");
+            .unwrap_or_else(|error| {
+                panic!("cancel/completion released imported page (submit={submit}): {error:?}")
+            });
         assert_eq!(Arc::as_ptr(&reused.buffer) as usize, page_ptr);
         assert_eq!(reused.offset, 0);
         assert_eq!(constants.stats().page_reuses, 1);
+        assert_eq!(device.retirement_stats().idle_waits, idle_waits);
         // Reset does not clear contents: verify both exact CPU uploads after
         // cancellation/completion and before writing the reused range.
         let mut actual_first = [0; 16];

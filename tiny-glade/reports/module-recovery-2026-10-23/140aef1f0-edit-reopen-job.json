@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "run-script",
+    "args": {
+      "programPath": "/tiny-glade.exe",
+      "code": "import json,hashlib,zlib,base64\nfrom ghidra.app.decompiler import DecompInterface\np=currentProgram;f=p.getFunctionManager().getFunctionAt(p.getAddressFactory().getAddress(\"140aef1f0\"));di=DecompInterface()\ntry:\n di.openProgram(p);d=di.decompileFunction(f,60,monitor)\n c=d.getDecompiledFunction().getC() if d.decompileCompleted() else \"\"\n print(json.dumps(dict(sha256=p.getExecutableSHA256(),body=int(f.getBody().getNumAddresses()),completed=d.decompileCompleted(),error=str(d.getErrorMessage()),c_sha256=hashlib.sha256(c.encode()).hexdigest(),manual=c.count(\"Switch is manually overridden\"),gz=base64.b64encode(zlib.compress(c.encode())).decode())))\nfinally:di.dispose()\n",
+      "timeoutSeconds": 120
+    },
+    "timeout_seconds": 180
+  }
+]

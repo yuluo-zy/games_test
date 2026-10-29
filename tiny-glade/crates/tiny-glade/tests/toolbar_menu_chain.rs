@@ -59,84 +59,88 @@ struct MenuHarness {
     widget: WidgetId,
 }
 
+fn initialize_menu_resources(world: &mut World) {
+    world.insert_resource(AppMode::Path);
+    let mut toolbar = Toolbar::default();
+    toolbar.switch_mode(&AppMode::Path);
+    world.insert_resource(toolbar);
+    input::register_input_events(world);
+    // These are owned by the real input installer, not fabricated by this
+    // fixture. Assert ownership so a future registrar regression is visible.
+    assert!(world.contains_resource::<MouseDepthValue>());
+    assert!(world.contains_resource::<PreviousAppMode>());
+    assert!(world.contains_resource::<Events<AppModeChanged>>());
+    assert_eq!(world.resource::<PreviousAppMode>().0, AppMode::Path);
+    assert_eq!(
+        std::any::TypeId::of::<ModeJustChanged>(),
+        std::any::TypeId::of::<AppModeChanged>(),
+        "requires the canonical full event alias, never a tool-only bridge"
+    );
+    assert_eq!(
+        std::any::TypeId::of::<UiInteractionState>(),
+        std::any::TypeId::of::<toolbar::resouces_and_components::UiInteractionState>()
+    );
+    assert_eq!(
+        std::any::TypeId::of::<country_core::components::UiMouseInteractable>(),
+        std::any::TypeId::of::<toolbar::resouces_and_components::UiMouseInteractable>()
+    );
+    world.init_resource::<DebugGui>();
+    world.init_resource::<GameProfile>();
+    world.init_resource::<GameConfig>();
+    world.init_resource::<ShaderRefactoringState>();
+    world.init_resource::<EscMenuState>();
+    world.init_resource::<TimeOfDayScreen>();
+    world.init_resource::<CursorCapturedPosition>();
+    world.init_resource::<CursorTerrainRaycast>();
+    world.insert_resource(CursorPositionSS(Vec2::ZERO));
+    world.insert_resource(WindowSize::new(960, 540));
+    world.insert_resource(MainCamera::new(1.0));
+    world.insert_resource(UiState::at_startup());
+    world.init_resource::<UiNavState>();
+    world.init_resource::<UiSignifierStream>();
+    world.insert_resource(ToolbarSizeMult { multiplier: 1.0 });
+    world.insert_resource(History::<MaybePendingSnapshotId>::empty_glade());
+    world.init_resource::<RestoreAppTo>();
+    world.insert_resource(ModeManagerUiContext::from_ui_state(
+        world.resource::<UiState>(),
+    ));
+    world.init_resource::<Events<WindowFocusEvent>>();
+    world.init_resource::<Events<EscapeMenuJustOpened>>();
+    world.init_resource::<Events<ShutdownGameCmd>>();
+    world.init_resource::<Events<OverwriteBrushPreview>>();
+    world.init_resource::<Events<OsCursorVisibilityCmd>>();
+    world.init_resource::<Events<PlayUiSound>>();
+    world.init_resource::<Events<UiClickEvent>>();
+    world.init_resource::<Events<UiDragEvent>>();
+    world.init_resource::<Events<ModeJustChanged>>();
+    world.init_resource::<Events<RequestAppModeChange>>();
+    world.init_resource::<Events<RequestToolbarCategoryChange>>();
+    world.init_resource::<Events<RequestHistoryCommand>>();
+    world.init_resource::<Events<LoadingGameComplete>>();
+    world.init_resource::<Events<HistoryCommand>>();
+    world.init_resource::<Events<UiHistoryPlaySelectAnimation>>();
+    world.init_resource::<Events<ModeManagerSound>>();
+    world.init_resource::<Events<ClearCanvasCmd>>();
+    world.init_resource::<toolbar::MeiContext>();
+    world.init_resource::<Events<bevy_input::mouse::MouseWheel>>();
+    world.init_resource::<Events<country_core::systems::audio::PlayMenuUiSound>>();
+
+    // Register required components exactly as the application does.
+    toolbar::resouces_and_components::register_local_components(world);
+    world.init_resource::<TaffyLayout>();
+    world.init_resource::<country_core::resources::gui::PhotomodeScreen>();
+    world.init_resource::<country_core::startup::init_photomode_state::PhotomodeState>();
+    world.init_resource::<country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen>();
+    world.insert_resource(country_core::resources::onboarding::WelcomeScreenState::Closed);
+}
+
 impl MenuHarness {
     fn new() -> Self {
         bevy_tasks::ComputeTaskPool::get_or_init(|| {
             bevy_tasks::TaskPoolBuilder::new().num_threads(2).build()
         });
         let mut world = World::new();
-        world.insert_resource(AppMode::Path);
-        let mut toolbar = Toolbar::default();
-        toolbar.switch_mode(&AppMode::Path);
-        world.insert_resource(toolbar);
-        input::register_input_events(&mut world);
-        // These are owned by the real input installer, not fabricated by this
-        // fixture. Assert ownership so a future registrar regression is visible.
-        assert!(world.contains_resource::<MouseDepthValue>());
-        assert!(world.contains_resource::<PreviousAppMode>());
-        assert!(world.contains_resource::<Events<AppModeChanged>>());
-        assert_eq!(world.resource::<PreviousAppMode>().0, AppMode::Path);
-        assert_eq!(
-            std::any::TypeId::of::<ModeJustChanged>(),
-            std::any::TypeId::of::<AppModeChanged>(),
-            "requires the canonical full event alias, never a tool-only bridge"
-        );
-        assert_eq!(
-            std::any::TypeId::of::<UiInteractionState>(),
-            std::any::TypeId::of::<toolbar::resouces_and_components::UiInteractionState>()
-        );
-        assert_eq!(
-            std::any::TypeId::of::<country_core::components::UiMouseInteractable>(),
-            std::any::TypeId::of::<toolbar::resouces_and_components::UiMouseInteractable>()
-        );
-        world.init_resource::<DebugGui>();
-        world.init_resource::<GameProfile>();
-        world.init_resource::<GameConfig>();
-        world.init_resource::<ShaderRefactoringState>();
-        world.init_resource::<EscMenuState>();
-        world.init_resource::<TimeOfDayScreen>();
-        world.init_resource::<CursorCapturedPosition>();
-        world.init_resource::<CursorTerrainRaycast>();
-        world.insert_resource(CursorPositionSS(Vec2::ZERO));
-        world.insert_resource(WindowSize::new(960, 540));
-        world.insert_resource(MainCamera::new(1.0));
-        world.insert_resource(UiState::at_startup());
-        world.init_resource::<UiNavState>();
-        world.init_resource::<UiSignifierStream>();
-        world.insert_resource(ToolbarSizeMult { multiplier: 1.0 });
-        world.insert_resource(History::<MaybePendingSnapshotId>::empty_glade());
-        world.init_resource::<RestoreAppTo>();
-        world.insert_resource(ModeManagerUiContext::from_ui_state(
-            world.resource::<UiState>(),
-        ));
-        world.init_resource::<Events<WindowFocusEvent>>();
-        world.init_resource::<Events<EscapeMenuJustOpened>>();
-        world.init_resource::<Events<ShutdownGameCmd>>();
-        world.init_resource::<Events<OverwriteBrushPreview>>();
-        world.init_resource::<Events<OsCursorVisibilityCmd>>();
-        world.init_resource::<Events<PlayUiSound>>();
-        world.init_resource::<Events<UiClickEvent>>();
-        world.init_resource::<Events<UiDragEvent>>();
-        world.init_resource::<Events<ModeJustChanged>>();
-        world.init_resource::<Events<RequestAppModeChange>>();
-        world.init_resource::<Events<RequestToolbarCategoryChange>>();
-        world.init_resource::<Events<RequestHistoryCommand>>();
-        world.init_resource::<Events<LoadingGameComplete>>();
-        world.init_resource::<Events<HistoryCommand>>();
-        world.init_resource::<Events<UiHistoryPlaySelectAnimation>>();
-        world.init_resource::<Events<ModeManagerSound>>();
-        world.init_resource::<Events<ClearCanvasCmd>>();
-        world.init_resource::<toolbar::MeiContext>();
-        world.init_resource::<Events<bevy_input::mouse::MouseWheel>>();
-        world.init_resource::<Events<country_core::systems::audio::PlayMenuUiSound>>();
-
-        // Register required components exactly as the application does.
-        toolbar::resouces_and_components::register_local_components(&mut world);
-        world.init_resource::<TaffyLayout>();
-        world.init_resource::<country_core::resources::gui::PhotomodeScreen>();
-        world.init_resource::<country_core::startup::init_photomode_state::PhotomodeState>();
-        world.init_resource::<country_core::startup::init_photomode_state::SteamdeckScreenshotMsgScreen>();
-        world.insert_resource(country_core::resources::onboarding::WelcomeScreenState::Closed);
+        initialize_menu_resources(&mut world);
         let mut startup = Schedule::default();
         startup.add_systems(toolbar::toolbar_startup::toolbar_setup);
         startup.run(&mut world);
@@ -238,7 +242,7 @@ impl MenuHarness {
 
 /// The production Welcome-page MEI frame: real device/bridge, original paper texture,
 /// fonts and templates, `welcome::ui` + `mei_post_update` behind the real input consumer.
-fn production_welcome_harness() -> (MenuHarness, tiny_glade::render_bridge::CoreRenderBridge) {
+fn install_welcome_assets(world: &mut World) -> tiny_glade::render_bridge::CoreRenderBridge {
     use country_core::{
         asset_libraries::{
             shader_library::AssetShaderLibrary, texture_library::AssetTextureLibrary,
@@ -261,14 +265,15 @@ fn production_welcome_harness() -> (MenuHarness, tiny_glade::render_bridge::Core
     let device =
         rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless())
             .expect("real MEI host Vulkan device");
+    let shaders = Arc::new(AssetShaderLibrary::new());
     let bridge = tiny_glade::render_bridge::CoreRenderBridge::new(
         device,
         installed.clone(),
-        Arc::new(AssetShaderLibrary::new()),
+        Arc::clone(&shaders),
     )
     .expect("real MEI core bridge");
-    let mut h = MenuHarness::new();
-    bridge.install_asset_libraries(&mut h.world).unwrap();
+    world.insert_resource(country_core::asset_libraries::shader_library::SharedAssetShaderLibrary(shaders));
+    bridge.install_asset_libraries(world).unwrap();
     let paper = installed.join("compiled-assets/textures/menu/paper-bg.texture");
     let file = AlignedFile::read(&paper).unwrap();
     let image = parse_compiled_image(file.bytes(), &paper);
@@ -277,26 +282,32 @@ fn production_welcome_harness() -> (MenuHarness, tiny_glade::render_bridge::Core
         .textures
         .create_texture("menu/paper-bg", &image.desc, image.data)
         .unwrap();
-    h.world
+    world
         .resource_mut::<AssetTextureLibrary>()
         .add(Some("menu/paper-bg".to_owned()), texture);
     let mut renderer = tg_text::TextRenderer::new();
     tiny_glade::mei_host::load_text_fonts(&mut renderer, &installed).unwrap();
     renderer.set_pixels_per_point(0.54).unwrap();
-    h.world.insert_resource(renderer);
+    world.insert_resource(renderer);
     let mut mei = toolbar::MeiContext::default();
     mei.load_configs(&installed.join("assets/ui"));
     mei.load_font_table(&installed.join("assets/fonts/table.ron"))
         .unwrap();
-    h.world.insert_resource(mei);
+    world.insert_resource(mei);
     let mut vermeer = VermeerState::default();
     vermeer.deactivate();
-    h.world.insert_resource(vermeer);
-    h.world.insert_resource(GameTime {
+    world.insert_resource(vermeer);
+    world.insert_resource(GameTime {
         delta: 1.0 / 60.0,
         ..Default::default()
     });
-    h.world.init_resource::<Events<SaveGameProfileCmd>>();
+    world.init_resource::<Events<SaveGameProfileCmd>>();
+    bridge
+}
+
+fn production_welcome_harness() -> (MenuHarness, tiny_glade::render_bridge::CoreRenderBridge) {
+    let mut h = MenuHarness::new();
+    let bridge = install_welcome_assets(&mut h.world);
     h.schedule.add_systems(
         (
             |mut text: ResMut<tg_text::TextRenderer>| text.begin_frame(),
@@ -536,4 +547,197 @@ fn toolbar_menu_frame_allocation_sites() {
             eprintln!("ALLOCSITES   {:5.1}%  {}", *n as f64 * 100.0 / total.max(1) as f64, site);
         }
     }
+}
+#[test]
+fn production_app_welcome_and_reload_use_real_toolbar_installers() {
+    use bevy_app::{App, Update};
+    use bevy_state::{app::{AppExtStates, StatesPlugin}, prelude::NextState};
+    use country_core::app_loading_state::AppLoadingState as Loading;
+    use tiny_glade::run_game::GameSystemSet;
+
+    const CHILD: &str = "TG_TOOLBAR_REAL_APP_CHILD";
+    if std::env::var_os(CHILD).is_none() {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "production_app_welcome_and_reload_use_real_toolbar_installers", "--nocapture"])
+            .env(CHILD, "1").status().unwrap();
+        assert!(status.success(), "隔离子进程中的真实 App 验收失败: {status}");
+        return;
+    }
+
+    let account = tempfile::tempdir().unwrap();
+    let installed = std::path::PathBuf::from(std::env::var_os("TG_INSTALL_ROOT").unwrap());
+    paths::initialize_paths_with_installation(0, Some(account.path()), &installed).unwrap();
+    struct RestoreCwd(std::path::PathBuf);
+    impl Drop for RestoreCwd {
+        fn drop(&mut self) { std::env::set_current_dir(&self.0).unwrap(); }
+    }
+    let _cwd = RestoreCwd(std::env::current_dir().unwrap());
+    std::env::set_current_dir(&installed).unwrap();
+    let mut app = App::new();
+    app.add_plugins(StatesPlugin).init_state::<Loading>();
+    tiny_glade::run_game::register_gameplay_events(&mut app);
+    initialize_menu_resources(app.world_mut());
+    app.add_event::<RequestAppModeChange>();
+    app.add_event::<RequestToolbarCategoryChange>();
+    app.add_event::<RequestHistoryCommand>();
+    app.add_event::<HistoryCommand>();
+    app.add_event::<PlayUiSound>();
+    app.add_event::<LoadingGameComplete>();
+    app.add_event::<EscapeMenuJustOpened>();
+    app.add_event::<ShutdownGameCmd>();
+    app.add_event::<WindowFocusEvent>();
+    app.init_resource::<country_core::meta_commander::MetaCommander>();
+    app.init_resource::<country_core::resources::rt::RtBvhBuilderGlueResource>();
+    app.init_resource::<country_core::resources::rt::RtWorld>();
+    app.insert_resource(country_core::asset_libraries::mesh_library::AssetMeshLibrary::new());
+    app.init_resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
+    app.insert_resource(country_core::resources::terrain_height::TerrainHeightsData::<
+        country_core::resources::terrain_height::TerrainHeightSsbo>::new());
+    app.add_event::<country_core::resources::events::DisplayRollercoasterPrompt>();
+    app.insert_resource(country_core::resources::game_clock::GameClock {
+        ran: true, ..Default::default()
+    });
+    app.init_resource::<country_core::resources::image_formation::ImageFormationConfigs>();
+    app.insert_resource(country_core::resources::platform::RuntimePlatform::from_detection(false, false));
+    app.init_resource::<country_core::systems::collision::world::RaycastWorld>();
+    app.init_resource::<country_core::resources::gui::NextEscMenuState>();
+    app.insert_resource(country_core::resources::walls::EraserSizeMultiplier(1.0));
+    app.insert_resource(country_core::resources::brush_sizes::BrushSizes {
+        path: country_core::resources::brush_sizes::PATH_DEFAULT,
+        water: country_core::resources::brush_sizes::WATER_DEFAULT,
+        garden: country_core::resources::brush_sizes::GARDEN_DEFAULT,
+    });
+    app.add_event::<country_core::resources::window::OsWindowCmd>();
+    app.init_resource::<country_core::resources::walls::public_walls::PublicWalls>();
+    app.insert_resource(country_core::resources::session::ActiveSession::new(
+        country_core::resources::session::SessionId::new(),
+        country_core::resources::session::SessionMeta::default()));
+    app.insert_resource(country_core::systems::timelapse_replay::TimelapseState::Inactive);
+    app.init_resource::<country_core::systems::timelapse_replay::ReplaySpeedMultiplierOverride>();
+    app.add_event::<country_core::systems::timelapse_replay::StartTimelapseReplayCmd>();
+    app.add_event::<country_core::resources::walls::public_walls::OnWallChanged>();
+    app.add_event::<country_core::resources::events::InitAdjWallHeightMode>();
+    app.add_event::<country_core::resources::events::FinishAdjWallHeightMode>();
+    app.add_event::<country_core::systems::timelapse_replay::TimelapseReplayFinished>();
+    app.add_event::<country_core::resources::photo_mode::PhotoModeCmd>();
+    app.add_event::<country_core::systems::ui::resources::widget_params::PlayPhotomodeSound>();
+    app.add_event::<country_core::systems::backend::photomode::PhotoModeAudioParameter>();
+    let camera = app.world().resource::<MainCamera>();
+    let matrices = country_core::render::FrameCameraMatrices {
+        projection: camera.read_matrix(0), inverse_projection: camera.read_matrix(0x40),
+        view: camera.read_matrix(0x80), inverse_view: camera.read_matrix(0xc0),
+    };
+    app.insert_resource(country_core::render::RenderTemporalState::new(matrices));
+    app.add_event::<country_core::systems::save::save_game::SaveGameCmd>();
+    app.insert_resource(country_core::resources::audio_resources::AudioCore::<
+        country_core::resources::audio_resources::DisabledStudio> {
+        studio: None, banks: Default::default(),
+    });
+    let _bridge = install_welcome_assets(app.world_mut());
+    use bevy_ecs::system::RunSystemOnce;
+    app.world_mut().run_system_once(
+        country_core::startup::init_populate_minimal_startup_ssbo_library::minimal_startup_ssbo_system
+    ).unwrap();
+    let device = _bridge.hosts().buffers.graphics_device().clone();
+    tiny_glade::loading_graph::attach_loading_mei(app.world_mut(), device, _bridge.hosts()).unwrap();
+    for stage in 0..44 {
+        app.configure_sets(Update, GameSystemSet(stage).before(GameSystemSet(stage + 1)));
+    }
+    tiny_glade::run_game::install_gameplay_device_input(&mut app);
+    app.add_systems(bevy_app::Startup, country_core::resources::glade_border::setup_glade_border);
+    app.add_systems(Update, country_core::systems::time_update::time_update.in_set(GameSystemSet(2)));
+    app.add_systems(Update, country_core::systems::backend::input::reset_input_state::reset_input_state.in_set(GameSystemSet(3)));
+    tiny_glade::mei_host::install_mei_frame_systems(&mut app);
+    app.add_plugins(tiny_glade::toolbar_plugin::ToolbarPlugin);
+    tiny_glade::toolbar_plugin::install_photomode_host_systems(&mut app);
+    tiny_glade::toolbar_plugin::install_mode_consumers(&mut app);
+    app.add_systems(Update, toolbar::menu::welcome::ui.in_set(GameSystemSet(36)).run_if(
+        bevy_state::condition::in_state(Loading::Game)));
+    app.add_systems(Update, (|mut text: ResMut<tg_text::TextRenderer>| text.begin_frame())
+        .in_set(GameSystemSet(1)));
+    app.add_systems(bevy_state::state::OnExit(Loading::Game),
+        country_core::startup::clearing::despawn_glade_entities);
+    app.world_mut().resource_mut::<NextState<Loading>>().set(Loading::Game);
+    fn frame(app: &mut App, pressed: bool, position: Vec2) {
+        let mut mouse = app.world_mut().resource_mut::<MouseButtonInput>();
+        mouse.clear();
+        if pressed { mouse.press(0); } else { mouse.release(0); }
+        app.world_mut().send_event(InputCursorMoved::Absolute(position));
+        app.world_mut().resource_mut::<bevy_time::Time>()
+            .advance_by(std::time::Duration::from_millis(16));
+        app.update();
+    }
+    for _ in 0..24 { frame(&mut app, false, Vec2::ZERO); }
+    let entity = app.world_mut().query::<(Entity, &SwitchToolbarCategoryButton)>()
+        .iter(app.world()).find(|(_, b)| b.category == ToolbarCategory::Water).unwrap().0;
+    let initial_count = app.world_mut().query_filtered::<Entity, With<TaffyNode>>().iter(app.world()).count();
+    let position = app.world().get::<Ui2dExtent>(entity).unwrap().pos;
+    *app.world_mut().resource_mut::<country_core::resources::onboarding::WelcomeScreenState>() =
+        country_core::resources::onboarding::WelcomeScreenState::Pending;
+    for _ in 0..4 { frame(&mut app, false, position); }
+    let position = app.world().get::<Ui2dExtent>(entity).unwrap().pos;
+    assert!(app.world().get::<Ui2dExtent>(entity).unwrap().size.x > 0.0);
+    assert!(matches!(*app.world().resource::<country_core::resources::onboarding::WelcomeScreenState>(),
+        country_core::resources::onboarding::WelcomeScreenState::Showing { .. }));
+    assert_eq!(app.world().get::<UiInteractionState>(entity).unwrap().state, 0);
+    frame(&mut app, true, position);
+    let extent = app.world().get::<Ui2dExtent>(entity).unwrap();
+    let cursor = app.world().resource::<CursorPositionSS>().0;
+    assert!((cursor.x - extent.pos.x).abs() <= extent.size.x * 0.5);
+    assert!((cursor.y - extent.pos.y).abs() <= extent.size.y * 0.5);
+    let node = app.world().get::<TaffyNode>(entity).unwrap().node;
+    assert_ne!(app.world().resource::<UiState>().interaction().widget,
+        WidgetId::from_name(&format!("toolbar_button_{node:?}")));
+    frame(&mut app, false, position);
+    assert_eq!(*app.world().resource::<AppMode>(), AppMode::Path);
+    let code = country_core::game_profile::desktop_keycode_index(
+        app.world().resource::<GameProfile>().key_bindings.bindings[29].unwrap()).unwrap();
+    app.world_mut().resource_mut::<KeyButtonInput>().press(code);
+    frame(&mut app, false, Vec2::ZERO);
+    app.world_mut().resource_mut::<KeyButtonInput>().release_all();
+    app.world_mut().resource_mut::<KeyButtonInput>().clear();
+    frame(&mut app, false, Vec2::ZERO);
+    if !app.world().resource::<country_core::resources::onboarding::WelcomeScreenState>().is_closed() {
+        assert!(matches!(*app.world().resource::<country_core::resources::onboarding::WelcomeScreenState>(),
+            country_core::resources::onboarding::WelcomeScreenState::Showing { elapsed } if elapsed > 0.));
+        app.world_mut().resource_mut::<KeyButtonInput>().press(code);
+        frame(&mut app, false, Vec2::ZERO);
+        app.world_mut().resource_mut::<KeyButtonInput>().release_all();
+        app.world_mut().resource_mut::<KeyButtonInput>().clear();
+        frame(&mut app, false, Vec2::ZERO);
+    }
+    assert!(app.world().resource::<country_core::resources::onboarding::WelcomeScreenState>().is_closed());
+    for _ in 0..24 { frame(&mut app, false, position); }
+    let position = app.world().get::<Ui2dExtent>(entity).unwrap().pos;
+    frame(&mut app, true, position);
+    frame(&mut app, false, position);
+    assert_eq!(*app.world().resource::<AppMode>(), AppMode::Water);
+    let mut category_events = app.world().resource::<Events<RequestToolbarCategoryChange>>().get_cursor();
+    category_events.read(app.world().resource::<Events<RequestToolbarCategoryChange>>()).for_each(drop);
+    let mut mode_events = app.world().resource::<Events<RequestAppModeChange>>().get_cursor();
+    mode_events.read(app.world().resource::<Events<RequestAppModeChange>>()).for_each(drop);
+    frame(&mut app, true, position);
+    app.world_mut().resource_mut::<NextState<Loading>>().set(Loading::Reload);
+    frame(&mut app, true, position);
+    assert!(app.world().get_entity(entity).is_err());
+    app.world_mut().resource_mut::<NextState<Loading>>().set(Loading::Game);
+    frame(&mut app, true, position);
+    assert_eq!(app.world_mut().query_filtered::<Entity, With<TaffyNode>>().iter(app.world()).count(), initial_count);
+    assert_eq!(app.world_mut().query::<&SwitchToolbarCategoryButton>().iter(app.world())
+        .filter(|b| b.category == ToolbarCategory::Water).count(), 1);
+    assert_eq!(app.world().resource::<UiState>().interaction().native_tag, 0);
+    assert_eq!(*app.world().resource::<AppMode>(), AppMode::Water);
+    assert_eq!(category_events.read(app.world().resource::<Events<RequestToolbarCategoryChange>>()).count(), 0);
+    assert_eq!(mode_events.read(app.world().resource::<Events<RequestAppModeChange>>()).count(), 0);
+    frame(&mut app, false, position);
+    assert_eq!(*app.world().resource::<AppMode>(), AppMode::Water);
+    assert_eq!(category_events.read(app.world().resource::<Events<RequestToolbarCategoryChange>>()).count(), 0);
+    let path = app.world_mut().query::<(Entity, &SwitchToolbarCategoryButton)>()
+        .iter(app.world()).find(|(_, b)| b.category == ToolbarCategory::Path).unwrap().0;
+    for _ in 0..24 { frame(&mut app, false, position); }
+    let path_position = app.world().get::<Ui2dExtent>(path).unwrap().pos;
+    for _ in 0..4 { frame(&mut app, false, path_position); }
+    frame(&mut app, true, path_position);
+    frame(&mut app, false, path_position);
+    assert_eq!(*app.world().resource::<AppMode>(), AppMode::Path);
 }

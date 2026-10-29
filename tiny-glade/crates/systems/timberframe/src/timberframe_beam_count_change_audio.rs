@@ -13,8 +13,7 @@
 //!    **`(frame - last_frame == 1) && (last_count != count)`**（非空 = 梁数变化过）。
 //! 4. 触发：`ShapeParameters::center()`（0x1411ff2a0）→ `utils::swizzlers::x0y()` → 构造
 //!    `PlayTimberframeSound`（kind 低字节 = 6，0x20B 记录）→ `Events::push`（0x20 步长、
-//!    +0x40 事件 id 递增）。`get_building_size_01()`（0x1417d3f10）结果写入事件 +0x10 ——
-//!    **country-core `PlayTimberframeSound` 无 size/id 字段，GAP**。
+//!    +0x40 事件 id 递增）。`get_building_size_01()`（0x1417d3f10）结果写入 payload +0x14。
 //! 5. 回写：`*(int*)(BeamCount+0x10) = frame`、`*(i64*)(BeamCount+0) = *(i64*)(BeamCount+8)`、
 //!    ResMut tick 回写（bevy 自动）。
 //!
@@ -44,14 +43,19 @@ pub struct TimberframeBeamCount {
     pub last_frame: i32,
 }
 
-/// 机器码读面 `*(int*)(GameTime+0x2c)` 的裸读（O）。当前 country-core `GameClock` 结构体
-/// 实际布局 `frame_count` 字段 @+0x28（reviewer-state 核验；章节证据 @0x2c 待校正）——故不依赖
-/// 字段名，按机器码读面取 +0x2c 的 4 字节；该偏移处原结构字段语义 U（跨域 GAP）。
+/// 原 GameTime+0x2c 是帧计数；当前 Rust 资源布局不保证原 ABI。
 fn game_time_int_at_0x2c(time: &GameTime) -> i32 {
-    // SAFETY: `GameClock` 为整块可读内存的 POD，+0x2c..+0x30 在该值边界内；与机器码读面一致。
-    unsafe {
-        let base = core::ptr::addr_of!(*time).cast::<u8>();
-        core::ptr::read_unaligned(base.add(0x2c) as *const i32)
+    time.frame_count as i32
+}
+
+/// 原 get_building_size_01：按形状面积归一化，不作夹紧。
+fn building_size_01(shape: ShapeParameters) -> f32 {
+    use country_core::systems::wall::valid_enclosure::Shape;
+    match shape.get_shape().expect("原半木命令需要有效形状") {
+        Shape::Rectangle(rect) => utils::scalar::inverse_lerp(5.0625, 225.0, rect.size.x * rect.size.y),
+        Shape::Circle(circle) => utils::scalar::inverse_lerp(
+            f32::from_bits(0x4022dc35), f32::from_bits(0x43490fdb),
+            (circle.radius * circle.radius) * std::f32::consts::PI),
     }
 }
 
@@ -61,12 +65,8 @@ fn game_time_int_at_0x2c(time: &GameTime) -> i32 {
 /// **且** `last_count != count` → 投递 `PlayTimberframeSound { kind=6, position=x0y(center) }`。
 ///
 /// 分歧点（GAP，登记不伪造）：
-/// - `get_building_size_01`（0x1417d3f10，audio/building_audio 域）未在 country-core 提供
-///   → 事件 size 字段（+0x10）未写出；`PlayTimberframeSound` core 类型缺 size/id 字段。
-/// - 触发用事件的形状索引：机器码取当前事件指针（本实现取首个未读事件，I）。
-/// - 帧读面：机器码读 `*(int*)(GameTime+0x2c)`（O）；reviewer-state 核验 country-core `GameClock`
-///   结构体实际布局 `frame_count` @+0x28（≠+0x2c；既有章节证据 @0x2c 待校正）——本实现按机器码
-///   面**裸读 +0x2c**，不依赖字段名；原结构 +0x2c 字段语义 U（跨域 GAP）。
+/// - 原选择最后一个未读事件并推进游标至队尾。
+/// - 原 GameTime+0x2c 是帧计数；当前 GameClock 使用语义字段而非假定原 ABI。
 pub fn timberframe_beam_count_change_audio(
     mut constructs: EventReader<ConstructTimberframeCmd>,
     mut beams: ResMut<TimberframeBeamCount>,
@@ -74,17 +74,17 @@ pub fn timberframe_beam_count_change_audio(
     mut sounds: EventWriter<PlayTimberframeSound>,
 ) {
     // O：无新事件 → 返回（read() 已推进游标）。
-    let Some(cmd) = constructs.read().next() else {
+    let Some(cmd) = constructs.read().last() else {
         return;
     };
 
-    // O：`*(int*)(*param_3 + 0x2c)` = GameClock 数据 +0x2c 处的 int（帧/计数读面）。
+    // 原 +0x2c 帧计数对应当前资源的语义字段。
     let frame = game_time_int_at_0x2c(&*time);
 
     // O：`(frame - last_frame == 1) && (last_count != count)`。
     if frame.wrapping_sub(beams.last_frame) == 1 && beams.last_count != beams.count {
         // O：`ShapeParameters::center`（0x1411ff2a0）+ `x0y()` → 位置（kind=6）。
-        // GAP：`get_building_size_01`（0x1417d3f10）→ 事件 size 字段，core 未提供。
+        // 原建筑尺寸参数按形状面积归一化，未夹紧。
         let center = (cmd.shape.len() >= 28)
             .then(|| {
                 ShapeParameters::from_observed(cmd.shape[..28].try_into().unwrap()).center()
@@ -93,12 +93,10 @@ pub fn timberframe_beam_count_change_audio(
         sounds.write(PlayTimberframeSound {
             kind: 6,
             position: Vec3::new(center.x, 0.0, center.y),
-            // 原生 0x20B 记录：kind@+0、pos@+8、size@+0x10、id@+0x18。core 现以
-            // {flag@+1, speed_source@+4, value@+0x14} 承载；本调用点不写这些字段
-            // （size 由 get_building_size_01 提供，GAP 未解锁）→ 0。
+            // 原 payload 的 +0x14 是 BuildingSize；事件序号由 Bevy 自行持有。
             flag: 0,
             speed_source: 0.0,
-            value: 0.0,
+            value: building_size_01(ShapeParameters::from_observed(cmd.shape)),
         });
     }
 

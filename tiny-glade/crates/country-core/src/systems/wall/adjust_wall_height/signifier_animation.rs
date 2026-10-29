@@ -104,12 +104,12 @@ pub fn ui_adjust_wall_height_signifier_animation(
             _ => 0.0,
         };
 
-        // n = min(outline.len, third f32 array.len)；y = terrain_y[i] + lift。
-        let outline = &record.geometry.outline;
-        let terrain_y = &record.geometry.terrain_y;
-        let count = outline.len().min(terrain_y.len());
+        // 原+0x88是已准备的轮廓Curve3，+0xe0是arch_segment_heights；不是地形采样高。
+        let outline = record.height_outline();
+        let heights = record.arch_segment_heights().unwrap_or(&[]);
+        let count = outline.len().min(heights.len());
         let points: Vec<Vec3> = (0..count)
-            .map(|i| Vec3::new(outline[i][0], terrain_y[i] + lift, outline[i][2]))
+            .map(|i| Vec3::new(outline[i][0], heights[i] + lift, outline[i][2]))
             .collect();
         // `try_new_from_points` Err → `Result::unwrap` panic（0x14085c81d）。
         let curve = Curve3::try_new_from_points(points, false).unwrap();
@@ -198,7 +198,9 @@ mod tests {
         let curve = Curve2::try_new(vec![[0.0, 0.0], [10.0, 0.0]], false).unwrap();
         let wall = inner.new_wall(WallState::new(curve, 4.0, 0, 0, false));
         let mut public = PublicWalls::default();
-        public.consume_with_paths(&mut inner, &terrain(), None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
+        let paths = crate::systems::wall::wall_state::path_preparation::PathRasters512::from_encoded(
+            std::array::from_fn(|_| vec![0; 512 * 512].into()), false).unwrap();
+        public.consume_with_paths(&mut inner, &terrain(), Some(&paths), &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
         let mut meshes = AssetMeshLibrary::new();
         let handle = meshes.add(MeshAsset::new(
             crate::utils::geo::mesh_from_pts("t", &[Vec3::ZERO]),
@@ -254,12 +256,14 @@ mod tests {
     }
 
     #[test]
-    fn rebuilds_curve_from_outline_x_z_and_terrain_y_and_defaults_u_to_half() {
+    fn rebuilds_curve_from_prepared_outline_and_arch_heights_and_defaults_u_to_half() {
         let mut f = fixture(0.0, false, None);
         run(&mut f.world);
         let s = signifier(&f);
         assert!(s.curve.points.len() >= 2);
-        assert!(s.curve.points.iter().all(|p| p.y == 0.0));
+        let heights = f.world.resource::<PublicWalls>().get(f.wall).unwrap()
+            .arch_segment_heights().unwrap();
+        assert!(s.curve.points.iter().zip(heights).all(|(p, height)| p.y == *height));
         assert_eq!(s.curve.points[0].x, 0.0);
         assert_eq!(s.curve.points.last().unwrap().x, 10.0);
         assert_eq!(s.anchor_u, Some(0.5));
@@ -348,12 +352,16 @@ mod tests {
         let mut f = fixture(0.0, false, Some(bytes));
         run(&mut f.world);
         let s = signifier(&f);
-        assert!(s.curve.points.iter().all(|p| p.y == FLAT_RIM_ROOF_LIFT));
+        let base = f.world.resource::<PublicWalls>().get(f.wall).unwrap()
+            .arch_segment_heights().unwrap();
+        assert!(s.curve.points.iter().zip(base).all(|(p, h)| p.y == *h + FLAT_RIM_ROOF_LIFT));
         // 无边平顶不下沉。
         bytes[0x3d] = 0;
         let mut g = fixture(0.0, false, Some(bytes));
         run(&mut g.world);
-        assert!(signifier(&g).curve.points.iter().all(|p| p.y == 0.0));
+        let base = g.world.resource::<PublicWalls>().get(g.wall).unwrap()
+            .arch_segment_heights().unwrap();
+        assert!(signifier(&g).curve.points.iter().zip(base).all(|(p, h)| p.y == *h));
     }
 
     #[test]

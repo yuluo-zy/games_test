@@ -49,14 +49,7 @@ pub struct ConstructGateCmd {
 /// Full leaf metadata retained independently of the renderer's two-field view.
 /// Module ownership is an integration design choice; the original component
 /// contains the top-position Vec, WallId, endpoint directions, seed and version.
-#[derive(Component, Clone, Debug)]
-pub struct WoodenGateState {
-    pub top_positions: Vec<[f32; 3]>,
-    pub wall: WallId,
-    pub endpoint_directions: [[f32; 2]; 2],
-    pub seed: u32,
-    pub clutter_version: u8,
-}
+pub use country_core::components::WoodenGate as WoodenGateState;
 
 /// B 0x140756370：9 参数面（顺序按 G06 findings）。
 pub fn construct_gates(
@@ -121,7 +114,6 @@ pub fn construct_gates(
             use country_core::render::mesh::{
                 ATTR_COLOR, ATTR_NORMAL, ATTR_POSITION, ATTR_UV, Mesh,
             };
-            use country_core::systems::render_loop::draw_passes::draw_callbacks_a::WoodenGateView;
             use country_core::utils::components::transform::Transform;
             let mut mesh = Mesh::new("wooden_gate");
             mesh.indices = leaf.mesh.indices;
@@ -170,10 +162,6 @@ pub fn construct_gates(
                         transform: Transform::identity(),
                     },
                     TransientMesh::new_with_registry(handle, meshes.transient_meshes()),
-                    WoodenGateView {
-                        q18: wall,
-                        d30: leaf.seed as i32,
-                    },
                     WoodenGateState {
                         top_positions: leaf.top_positions,
                         wall: id,

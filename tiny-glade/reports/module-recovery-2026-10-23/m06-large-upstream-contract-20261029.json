@@ -1,0 +1,43 @@
+{
+  "identity": {
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "graph_snapshot": "053060f0c5d388b353567d8b"
+  },
+  "entry": "0x141253fc0",
+  "signature_projection": [
+    "WallId",
+    "PublicWallState",
+    "Rectangle2d",
+    "PublicWalls",
+    "OverhangSegment pointer",
+    "length",
+    "AssetSsboLibrary",
+    "UiSignifierStream",
+    "RaycastWorld",
+    "TerrainHeightsData",
+    "large_count"
+  ],
+  "lifecycle": "先查 WoodenPlankSsbo 与墙 +0x140 owner 并持锁，再遍历全部段及逐项 push；失败忽略且尝试计数递增，释放锁",
+  "selection": [
+    "所有 segment 的邻墙ID建集合，候选若落入其他邻墙则跳过，缺墙panic",
+    "按邻墙形状圆重采样间距0.51000005，矩形逐段重采样0.900000036；首次遇到每个矩形邻墙才追加其在当前矩形内角点，点集按段初始化，采样点先于角点",
+    "局部二维 Aabb2 射线 is_hit 后入参 t_enter<0 取 t_exit，否则取 t_enter；须严格大于1.3",
+    "U=(P+1.3*N,current_elevation); L=(P,max(current_elevation-1.2,neighbor_elevation+0.28)); ray 从 U 指向 L.y-0.2 后归一化，f32::MAX、mask 0x31cf、排除当前墙",
+    "tag17无hit跳过；tag0/6通过，tag2读取 flag (0通过,1拒绝)，tag3/4/5/7/8/10/11/13/14拒绝，tag1/9/12/15/16 panic",
+    "非17 tag调用 terrain(hit.xz)，要求水平距离(hit.xz,U.xz)>=0.73999995、(current_elevation-terrain_y)-0.3>=0.6且tag通过，写单板 L→U；push 返回被忽略并count++"
+  ],
+  "native_samples": [
+    "m06-large-decisions-terrain_boundary.json",
+    "m06-large-decisions-terrain_high.json",
+    "m06-large-decisions-hit_near.json",
+    "m06-large-decisions-no_hit.json",
+    "m06-large-decisions-tag2_pass.json",
+    "m06-large-decisions-tag2_reject.json",
+    "m06-large-decisions-tag3_reject.json",
+    "m06-large-decisions-circle_segment.json",
+    "m06-large-overlap-native.json",
+    "m06-large-neighbor-height-native.json"
+  ],
+  "limits": "SSBO lookup/写、PublicWalls lookup、固定 ray hit/terrain、系统allocator/math为桥；业务几何、采样和判定执行原指令，不能视为真实RaycastWorld或完整App验收"
+}

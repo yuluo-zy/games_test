@@ -131,7 +131,8 @@ pub struct ClutterMarkedForDeletion;
 /// &AutoClutterConvertableToDecoClutter, &Transform, ..)>)`，函数体对 `HashMap<DecoratorId,
 /// Vec<DisplayChildAutoClutterInfo>>` 做 `grow_one<DisplayChildAutoClutterInfo>`（步长 0x60）。
 /// 即此前本 crate 以 `AutoClutterParentMap` 近似的 parent→children 映射，现取原名与原模块。
-/// 其读者（`Res<DecoratorAutoClutterChildren>`：ui_focus/placement 等系统）在其它 crate，未在此接线。
+/// 项保存真实网格元数据、变换及动画进度；不保存native指针或人工子实体镜像。
+/// ui_convert每帧清空并从真实ECS Query重建，生命周期与实体世代保持一致。
 #[derive(Resource, Clone, Debug, Default)]
 pub struct DecoratorAutoClutterChildren(
     pub hashbrown::HashMap<u32, Vec<crate::systems::ui_clutter::ui_autoclutter::DisplayChildAutoClutterInfo>, std::hash::RandomState>,

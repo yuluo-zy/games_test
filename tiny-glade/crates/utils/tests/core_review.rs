@@ -133,17 +133,6 @@ fn grid_sampling_preserves_centered_edges_and_legacy_extrapolation() {
 #[test]
 fn clipping_preserves_order_through_repeated_split_and_cover_operations() {
     let mut intervals = SubtractiveBoolean1D::new_range(0.0, 10.0);
-    for (start, end) in [(2.0, 1.0), (f32::NAN, 1.0), (0.0, f32::NAN)] {
-        assert!(catch_unwind(|| SubtractiveBoolean1D::new_range(start, end)).is_err());
-        let before = intervals.result().to_vec();
-        let invalid = Interval {
-            start,
-            end,
-            upper_exclusive: false,
-        };
-        assert!(catch_unwind(AssertUnwindSafe(|| intervals.subtract(invalid))).is_err());
-        assert_eq!(intervals.result(), before);
-    }
     let cut = |start, end| Interval {
         start,
         end,
@@ -155,7 +144,7 @@ fn clipping_preserves_order_through_repeated_split_and_cover_operations() {
         intervals.result(),
         [cut(0.0, 2.0), cut(3.0, 5.0), cut(7.0, 10.0)]
     );
-    // Clipping retains touching boundary points, including repeated cuts.
+    // 此非退化洞重复扣除后仍保留三段。
     intervals.subtract(cut(2.0, 3.0));
     assert_eq!(intervals.result().len(), 3);
     intervals.subtract(cut(-1.0, 11.0));

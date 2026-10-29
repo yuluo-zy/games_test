@@ -1226,8 +1226,7 @@ pub fn trs_packed(rotation: Quat, translation: Vec3, scale: Vec3) -> ([u32; 12],
     (words, translation, sort_key)
 }
 
-/// `LanternLightParams` fields read by the system (O; component is a typed gap in
-/// `components/mod.rs`, row stride 36 B = 9 words).
+/// 原36B LanternLightParams中Nani实际读取的字段；世界灯位和装饰ID属于另一消费者。
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct LanternParamsView {
     /// +0x0c f32 (packed into word12 low half).
@@ -1240,6 +1239,13 @@ pub struct LanternParamsView {
     pub p3: f32,
     /// +0x20 u8 (shifted into bit 30 of word14; `shl edi,0x1e`). O: bytes 0x00..0x0b / 0x1c..0x1f unread.
     pub flag: u8,
+}
+
+impl From<&crate::components::drawable::LanternLightParams> for LanternParamsView {
+    fn from(params: &crate::components::drawable::LanternLightParams) -> Self {
+        let field = |offset| f32::from_le_bytes(params.0[offset..offset + 4].try_into().unwrap());
+        Self { p0: field(12), p1: field(16), p2: field(20), p3: field(24), flag: params.0[32] }
+    }
 }
 
 /// O: `data = [mat3(9) , translation(3), pack2f16(p0,p1), pack2f16(p2,p3),
@@ -1285,8 +1291,8 @@ pub struct PlasterWallInputs {
 impl PlasterWallInputs {
     /// Reads the observed offsets from the 0x2a0-byte `PublicWallState` record (O offsets).
     ///
-    /// 旧树的 `from_state(&PublicWallState)` 只是 `from_bytes(state.raw_bytes())`；`PublicWallState` 类型
-    /// 尚未进入本工作区，所以这里直接收原始记录字节（偏移不变）。
+    /// 仅用于原版完整记录或原指令夹具。当前 PublicWallState 拥有安全字段，生产 ECS
+    /// 直接读取曲线、shape 与 authority；其局部 building_projection 不能当完整原ABI记录。
     pub fn from_bytes(b: &[u8]) -> Self {
         let u64_at = |o: usize| u64::from_le_bytes(b[o..o + 8].try_into().unwrap());
         let u32_at = |o: usize| u32::from_le_bytes(b[o..o + 4].try_into().unwrap());
@@ -1305,7 +1311,7 @@ impl PlasterWallInputs {
     }
 }
 
-/// `Plaster` row (stride 0x28 = 10 words, O; component is a typed gap).
+/// `Plaster` 记录视图（原 stride 0x28）；生产组件由 resources/walls/plaster.rs 持有。
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct PlasterView {
     /// +0x00..0x10: 16 B copied verbatim (O: 0x140dc0a90 is the ICF'd 16-byte memcpy; words 0..4).
@@ -1392,7 +1398,7 @@ pub fn build_cloth(
     }
 }
 
-/// `Smoke` row fields (O: stride 16 B; component is a typed gap).
+/// 原16B Smoke的GPU读取投影；实体权威属于components::Smoke。
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct SmokeView {
     /// +0x00 u32 → data word 13.
@@ -1401,6 +1407,12 @@ pub struct SmokeView {
     pub float_8: f32,
     /// +0x0c u8 (zero-extended, `movzx r8d,byte`) → data word 12.
     pub byte_c: u8,
+}
+
+impl From<&crate::components::Smoke> for SmokeView {
+    fn from(smoke: &crate::components::Smoke) -> Self {
+        Self { dword_0: smoke.key as u32, float_8: smoke.thickness, byte_c: smoke.kind }
+    }
 }
 
 /// O: `data = [mat3(9), translation(3), byte_c as u32, dword_0, float_8, 0]`.

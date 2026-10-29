@@ -19,67 +19,34 @@
 //!   `dst_as_wall_mut` → 写 12B 到 `Info+0x14`（anchor_ws）；side 1 无操作；
 //!   其余 panic。
 //!
-//! U：自由墙元素 12B 中 `t` 与 `y` 的拆分（`from_curve_internal_coord` 的
-//! t 实参在反编译中不可见）。本模型用具名 `t`/`y` 字段承载，并在测试中标定。
+//! 原RNE14081bd72读取元素+8为t；14081bda4/14081bddb从Info+4读取y。
+//! 先前额外y字段及kind字段不属于原生业务，已统一真实生产者事件。
 
 use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
 
+use country_core::resources::roofs::geometry::surface::Curve2 as AuthorityCurve2;
+use country_core::resources::walls::WallId;
 use country_core::resources::walls::decorator::DecoratorId;
 use country_core::resources::walls::decorator_storage::DecoratorStorage;
-use country_core::resources::walls::public_wall_state::PublicWallState;
 use country_core::resources::walls::public_walls::PublicWalls;
-use country_core::resources::walls::WallId;
-use utils::curve::{Curve2 as SamplingCurve2, CurveInternalCoord};
 use utils::wall_space::WallSpaceCoord;
 
 use crate::decorator_on_wall_height_changed::{
     get_wall_coord, set_anchor_ws, set_wall_coord, side_from_tag_byte,
 };
 
-/// 自由墙编辑元素（I：原 12B `{id, segment, f32}`；t/y 拆分 U）。
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct FreehandWallEdit {
-    pub id: u32,
-    /// 曲线段索引（O：`panic_bounds_check` 的索引）。
-    pub segment: u32,
-    /// 段内参数（`from_curve_internal_coord` t；断言 0..=1）。
-    pub t: f32,
-    /// 墙空间 y（O：写回 Info+0x04）。
-    pub y: f32,
-}
+// 原生产者12B元素已核实；墙空间y来自Info+4，不属于事件。
+pub use country_core::systems::ui_edit_freehand_walls::{
+    FreehandWallEdit, OnFreehandWallEdited as FreehandWallEditedEvent,
+};
 
-/// 自由手绘墙编辑事件（O 读面；生产者属 core wall 系统，U）。
-#[derive(Event, Clone, Debug)]
-pub struct FreehandWallEditedEvent {
-    /// +0x00：判别/前域（U）。
-    pub kind: u64,
-    /// +0x08/+0x10：受影响装饰。
-    pub affected: Vec<FreehandWallEdit>,
-    /// 墙 id（闭包 `**(u32**)(env+0x10) = event.wall`）。
-    pub wall: WallId,
-}
-
-/// 圆形编辑事件（O：0x10B 步长；wall@+0x1c）。
-#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct CircleEditedEvent {
-    /// +0x00：附加（U）。
-    pub extra: u64,
-    /// 墙 id。
-    pub wall: WallId,
-}
-
-/// 由 PublicWallState 构造 utils Curve2（源曲线；O：0x140c... Curve 采样面）。
-pub fn sampling_curve(state: &PublicWallState) -> Option<SamplingCurve2> {
-    let raw = state.simplified_curve_2d();
-    let points: Vec<Vec2> = raw.points.iter().map(|p| Vec2::new(p[0], p[1])).collect();
-    SamplingCurve2::try_new_from_points(points, false).ok()
-}
+pub use country_core::resources::events::OnCircleRotated as CircleEditedEvent;
 
 /// 自由墙单装饰重定位（O：from_curve_internal_coord + xvy 写面）。
 pub fn apply_freehand_edit(
     info: &mut country_core::resources::walls::decorator::DecoratorInfo,
-    curve: &SamplingCurve2,
+    curve: &AuthorityCurve2,
     edit: &FreehandWallEdit,
 ) {
     let segment = edit.segment as usize;
@@ -87,11 +54,11 @@ pub fn apply_freehand_edit(
         segment + 1 < curve.points.len(),
         "panic_bounds_check: freehand curve segment {segment} out of range"
     );
-    let coord = WallSpaceCoord::from_curve_internal_coord(curve, segment, edit.t, edit.y);
-    let position = curve.get_pos_at_coord(CurveInternalCoord {
-        segment,
-        t: edit.t,
-    });
+    // 原14081bda4/14081bddb读取目的地墙空间y，锚点旧高度不是这个源。
+    let y = get_wall_coord(info).y;
+    let coord = WallSpaceCoord::from_curve_internal_coord(curve, segment, edit.t, y);
+    let position = Vec2::from_array(curve.points[segment + 1]) * edit.t
+        + Vec2::from_array(curve.points[segment]) * (1.0 - edit.t);
     set_anchor_ws(info, Vec3::new(position.x, coord.y, position.y));
     set_wall_coord(info, coord);
 }
@@ -103,41 +70,24 @@ pub fn decorator_on_freehand_wall_edited(
     mut events: EventReader<FreehandWallEditedEvent>,
 ) {
     for event in events.read() {
-        let Some(state) = walls.get(event.wall) else {
-            panic!(
-                "option unwrap failed: PublicWalls::get({:?}) (decorator_on_freehand_wall_edited.rs)",
-                event.wall
-            );
-        };
-        let Some(curve) = sampling_curve(state) else {
-            log::warn!(
-                "decorator_on_freehand_wall_edited: invalid source curve for wall {:?}",
-                event.wall
-            );
-            continue;
-        };
         let Some(bucket) = storage.wall_decorators_mut(event.wall) else {
             continue;
         };
-        // O：元素 id → modified_ids。
         for edit in &event.affected {
             bucket.modified_ids.insert(edit.id);
-        }
-        for edit in &event.affected {
             let Some(info) = bucket.get_mut(DecoratorId(edit.id)) else {
                 continue;
             };
-            let side = side_from_tag_byte(info.dst_tag());
-            match side {
-                0 => apply_freehand_edit(info, &curve, edit),
+            match side_from_tag_byte(info.dst_tag()) {
+                0 => {
+                    // 原只在实际命中墙装饰时查公开墙；空事件不触发unwrap。
+                    let state = walls.get(event.wall).expect("自由墙装饰目标公开墙不存在");
+                    // 直接借用权威缓存；每个装饰不分配或重新参数化曲线。
+                    apply_freehand_edit(info, state.simplified_curve_2d(), edit);
+                }
                 1 => {}
-                2 => panic!(
-                    "assertion failed: freehand decorator {} has unsupported destination side 2",
-                    edit.id
-                ),
-                _ => unreachable!(
-                    "internal error: entered unreachable code (decorator_on_freehand_wall_edited.rs)"
-                ),
+                2 => panic!("自由墙装饰不能附着楼梯"),
+                _ => unreachable!("自由墙装饰目的地无效"),
             }
         }
     }
@@ -150,35 +100,25 @@ pub fn decorator_on_circle_edited(
     mut events: EventReader<CircleEditedEvent>,
 ) {
     for event in events.read() {
-        let Some(state) = walls.get(event.wall) else {
-            panic!(
-                "option unwrap failed: PublicWalls::get({:?}) (decorator_on_freehand_wall_edited.rs)",
-                event.wall
-            );
-        };
-        let Some(curve) = sampling_curve(state) else {
-            log::warn!(
-                "decorator_on_circle_edited: invalid source curve for wall {:?}",
-                event.wall
-            );
+        let Some(bucket) = storage.wall_decorators_mut(event.0) else {
             continue;
         };
-        let Some(bucket) = storage.wall_decorators_mut(event.wall) else {
-            continue;
-        };
-        for (_id, info) in bucket.iter_mut() {
+        for (&id, info) in &mut bucket.decorators {
             let side = side_from_tag_byte(info.dst_tag());
             match side {
                 0 => {
                     // O：WallSpaceCoord::to_world_space → 写 Info+0x14（12B）。
                     let coord = get_wall_coord(info);
-                    let world = coord.to_world_space(&curve);
+                    // 原只在真正处理墙附着时查PublicWalls；缺桶、空桶及Roof不会unwrap。
+                    let state = walls.get(event.0).expect("圆旋转装饰目标公开墙不存在");
+                    let world = coord.to_world_space(state.simplified_curve_2d());
                     set_anchor_ws(info, world);
+                    bucket.modified_ids.insert(id);
                 }
                 1 => {}
-                2 => panic!(
-                    "assertion failed: circle decorator has unsupported destination side 2"
-                ),
+                2 => {
+                    panic!("assertion failed: circle decorator has unsupported destination side 2")
+                }
                 _ => unreachable!(
                     "internal error: entered unreachable code (decorator_on_freehand_wall_edited.rs)"
                 ),
@@ -192,23 +132,19 @@ mod tests {
     use super::*;
     use country_core::resources::walls::decorator::DecoratorInfo;
 
-    fn line_curve() -> SamplingCurve2 {
-        SamplingCurve2::try_new_from_points(
-            vec![Vec2::new(0.0, 0.0), Vec2::new(4.0, 0.0)],
-            false,
-        )
-        .unwrap()
+    fn line_curve() -> AuthorityCurve2 {
+        AuthorityCurve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap()
     }
 
     #[test]
     fn freehand_midpoint_updates_coord_and_anchor() {
         let curve = line_curve();
         let mut info = DecoratorInfo::default();
+        set_wall_coord(&mut info, WallSpaceCoord::new_unchecked(0.0, 2.5));
         let edit = FreehandWallEdit {
             id: 1,
             segment: 0,
             t: 0.5,
-            y: 2.5,
         };
         apply_freehand_edit(&mut info, &curve, &edit);
         let coord = get_wall_coord(&info);
@@ -218,6 +154,44 @@ mod tests {
             crate::decorator_on_wall_height_changed::get_anchor_ws(&info),
             Vec3::new(2.0, 2.5, 0.0)
         );
+    }
+
+    #[test]
+    fn missing_bucket_and_empty_shared_event_do_not_require_public_wall() {
+        use bevy_ecs::system::RunSystemOnce;
+        use country_core::resources::walls::decorator_storage::DecoratorStorageAddr;
+        let mut world = World::new();
+        world.init_resource::<DecoratorStorage>();
+        world.init_resource::<PublicWalls>();
+        world.init_resource::<Events<FreehandWallEditedEvent>>();
+        world.send_event(
+            country_core::systems::ui_edit_freehand_walls::OnFreehandWallEdited {
+                wall: WallId(99),
+                affected: vec![FreehandWallEdit {
+                    id: 7,
+                    segment: 0,
+                    t: 0.5,
+                }],
+            },
+        );
+        world
+            .run_system_once(decorator_on_freehand_wall_edited)
+            .unwrap();
+        world
+            .resource_mut::<Events<FreehandWallEditedEvent>>()
+            .clear();
+        world
+            .resource_mut::<DecoratorStorage>()
+            .get_or_insert_default(DecoratorStorageAddr::Wall(WallId(100)));
+        world.send_event(
+            country_core::systems::ui_edit_freehand_walls::OnFreehandWallEdited {
+                wall: WallId(100),
+                affected: vec![],
+            },
+        );
+        world
+            .run_system_once(decorator_on_freehand_wall_edited)
+            .unwrap();
     }
 
     #[test]
@@ -231,5 +205,55 @@ mod tests {
         assert!((anchor.x - 1.0).abs() < 1e-5);
         assert_eq!(anchor.y, 3.0);
         assert!(anchor.z.abs() < 1e-5);
+    }
+
+    #[test]
+    fn circle_shared_rotation_event_reanchors_wall_and_compound_but_keeps_roof_and_unknown_bucket() {
+        use bevy_ecs::system::RunSystemOnce;
+        use country_core::resources::walls::{InnerWalls, WallState};
+        use country_core::resources::walls::decorator_storage::DecoratorStorageAddr;
+        use country_core::resources::walls::public_walls::WallPublicationDirty;
+        use country_core::resources::walls::publication_source::TerrainHeightGrid512;
+        use country_core::systems::wall::wall_state::wall_spatial_hash::WallSpatialHash;
+        let mut inner = InnerWalls::new();
+        let wall = inner.new_wall(WallState::new(line_curve(), 3.0, 0, 0, false));
+        let terrain = TerrainHeightGrid512 {
+            encoded: vec![0; 512 * 512].into(), minimum_y: 0.0,
+            maximum_y: 0.0, sampling_fix: false,
+        };
+        let mut public = PublicWalls::default();
+        public.consume_with_paths(&mut inner, &terrain, None,
+            &WallPublicationDirty::default(), &WallSpatialHash::default());
+        let mut storage = DecoratorStorage::default();
+        let bucket = storage.get_or_insert_default(DecoratorStorageAddr::Wall(wall));
+        for (id, tag) in [(1, 0), (2, 1), (3, 2)] {
+            let mut info = DecoratorInfo { u20: tag << 16, ..Default::default() };
+            set_wall_coord(&mut info, WallSpaceCoord::new_unchecked(1.0, 3.0));
+            set_anchor_ws(&mut info, Vec3::splat(-50.0));
+            bucket.insert(DecoratorId(id), info);
+        }
+        bucket.modified_ids.clear();
+        // 原先查桶再查实际墙装饰，缺桶和只有屋顶的孤桶不要求公共墙存在。
+        let roof_only = WallId(999);
+        let mut roof = DecoratorInfo { u20: 2 << 16, ..Default::default() };
+        set_anchor_ws(&mut roof, Vec3::splat(77.0));
+        storage.get_or_insert_default(DecoratorStorageAddr::Wall(roof_only)).insert(DecoratorId(9), roof);
+        let mut world = World::new();
+        world.insert_resource(storage);
+        world.insert_resource(public);
+        world.init_resource::<Events<CircleEditedEvent>>();
+        for id in [WallId(888), roof_only, wall] {
+            world.send_event(country_core::resources::events::OnCircleRotated(id));
+        }
+        world.run_system_once(decorator_on_circle_edited).unwrap();
+        let storage = world.resource::<DecoratorStorage>();
+        let bucket = storage.wall_decorators(wall).unwrap();
+        for id in [1, 2] {
+            assert_eq!(crate::decorator_on_wall_height_changed::get_anchor_ws(bucket.get(DecoratorId(id)).unwrap()), Vec3::new(1.0, 3.0, 0.0));
+            assert!(bucket.modified_ids.contains(&id));
+        }
+        assert_eq!(crate::decorator_on_wall_height_changed::get_anchor_ws(bucket.get(DecoratorId(3)).unwrap()), Vec3::splat(-50.0));
+        assert!(!bucket.modified_ids.contains(&3));
+        assert_eq!(crate::decorator_on_wall_height_changed::get_anchor_ws(storage.wall_decorators(roof_only).unwrap().get(DecoratorId(9)).unwrap()), Vec3::splat(77.0));
     }
 }

@@ -80,16 +80,54 @@ const PIN_HEIGHT_OFFSET: f32 = 1.5;
 /// water = 4，与 `ORDERED_NAMES` 第 5 位一致）。
 const WATER_RASTER_SLOT: u8 = 4;
 
-/// Water 的圈/高图钉变体（O：机器码事件写入 0x142260a60 载荷 = {Circle2d, height,
-/// union 标志 0x100}）。原版事件为 core `ui_clutter::ShowPinnedDecoClutter`（56 B union）
-/// 的圈/高变体（BASELINE 参数面 `EventWriter<ShowPinnedDecoClutter>`）；core ui_clutter
-/// 未恢复完整 union，按 core garden 域惯例以本 crate 专名表达 O 载荷（差登记 RESTORE.md）。
-#[derive(Event, Clone, Copy, Debug)]
-pub struct WaterPinnedClutterCircle {
-    pub circle: Circle2d,
-    pub height: f32,
-    /// O：union 载荷标志（0x100 = 256）。
-    pub flag: u16,
+/// 旧水工具公开名称重导出同一ShowPinned事件；0x100由brush_circle实际分支承载。
+pub use country_core::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter as WaterPinnedClutterCircle;
+
+#[cfg(test)]
+mod pin_writer_tests {
+    use super::*;
+    use country_core::{
+        resources::{world_raster::DirtyTilePublisher, time::GameTime},
+        systems::ui::resources::ui_state::{UiInteraction, WidgetId},
+    };
+    #[test]
+    fn real_water_drag_writes_the_one_shared_pin_queue_and_original_height_interval() {
+        use country_core::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter;
+        assert_eq!(std::any::TypeId::of::<WaterPinnedClutterCircle>(), std::any::TypeId::of::<ShowPinnedDecoClutter>());
+        let mut world = World::new();
+        crate::register_water_events(&mut world);
+        world.insert_resource(AppMode::Water);
+        let widget = WidgetId::clearing_canvas("watereraser_water_");
+        world.insert_resource(UiState::new(UiInteraction { native_tag: 2, native_phase: 3, widget }));
+        world.insert_resource(BrushSizes { water: 2.0, path: 1.0, garden: 1.0 });
+        world.insert_resource(EraserSizeMultiplier(1.0));
+        world.insert_resource(GladeBorder(BorderShape::Circle(Circle2d::new(Vec2::ZERO, 100.0))));
+        let mut cursor = CursorTerrainRaycast::new();
+        cursor.update(Some(Vec3::new(1.0, 3.25, -2.0)));
+        world.insert_resource(cursor);
+        world.init_resource::<ActiveRasterStrokesStorage>();
+        world.init_resource::<DecoratorArchivist<()>>();
+        world.init_resource::<ScheduledTerrainReadback>();
+        world.init_resource::<UiSignifierStream>();
+        world.init_resource::<GameTime>();
+        world.insert_resource(CameraCursorRay { origin: Vec3::new(1.0, 10.0, -2.0), dir: Vec3::NEG_Y });
+        world.insert_resource(WaterRaster::new(DirtyTilePublisher::unique()));
+        let library = AssetSsboLibrary::new();
+        library.add_new::<WaterRasterStagingSsbo>(&country_core::render::test_device::TestDevice(0));
+        world.insert_resource(library);
+        let mut schedule = Schedule::default();
+        schedule.add_systems(draw_water::<()>);
+        schedule.run(&mut world);
+        world.resource_mut::<UiState>().replace_interaction(UiInteraction { native_tag: 2, native_phase: 4, widget });
+        schedule.run(&mut world);
+        let pins = world.resource::<Events<ShowPinnedDecoClutter>>();
+        let mut reader = pins.get_cursor();
+        let pin = reader.read(pins).last().unwrap();
+        assert!(matches!(pin, ShowPinnedDecoClutter::Circle {
+            circle, vertical: [0.0, 4.75], containment: true, exclude_wall: None,
+        } if circle.center == Vec2::new(1.0,-2.0) && circle.radius == 2.0));
+        assert_eq!(world.resource::<ScheduledTerrainReadback>().pending.load(std::sync::atomic::Ordering::SeqCst), 2);
+    }
 }
 
 /// SystemParam 束（同 core `GardenRasterResources` 模式；原版为 `RasterDrawResources`
@@ -232,11 +270,9 @@ pub fn draw_water<C: Send + Sync + 'static>(
                 //     = 0x1429258d0）+ union 载荷 0x100（0x141ba9569），
                 //     `EventWriter::write<ShowPinnedDecoClutter>`（0x142260a60）。
                 let pos = cursor.position();
-                pins.write(WaterPinnedClutterCircle {
-                    circle: Circle2d::new(Vec2::new(pos.x, pos.z), brush_size),
-                    height: pos.y + PIN_HEIGHT_OFFSET,
-                    flag: 0x100,
-                });
+                pins.write(WaterPinnedClutterCircle::brush_circle(
+                    Circle2d::new(Vec2::new(pos.x, pos.z), brush_size), pos.y + PIN_HEIGHT_OFFSET,
+                ));
             }
             2
         }

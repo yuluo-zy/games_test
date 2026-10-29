@@ -147,6 +147,8 @@ addr = currentProgram.getAddressFactory().getAddress("140949c20")
 
 ## 6. 并行 agent 与持久性
 
+模型出现 `Selected model is at capacity` 时，可恢复的调度调用保留任务与检查点，最多三次退避重试（例如1、2、4秒）；仍失败则使用用户已授权的可用模型续派，记录未完成责任，不把过载当业务失败或完成。当前会话若被服务端直接终止，agent 无法在终止期间主动重试；下次恢复须从已保存检查点接续。只读工具的瞬态传输失败可有限重试；有副作用或结果未知的写请求先核实际结果，不盲目重放。不要为应对容量错误新建并行生产实现、重启共享逆向后端或放宽验收。
+
 只读 Ghidra/ReVa 使用 `--worker shared`，共享已分析数据库，多个客户端可以同时请求。需数据库修改或 ReVa 脚本时，每个 agent 使用自己的名称，例如 `roof-owner`、`wall-owner`，追加 `--write`。名称首字符为字母或数字，其余允许字母、数字、下划线、短横线，总长不超过 64。
 
 Ghidra/ReVa 的非 shared worker 自动从原 seed 建立独立 APFS clone；同名 worker 跨任务会复用，因此新任务需要唯一名称。新 clone **不继承共享副本后续 overlay**。同函数的不同签名/注释不自动合并；交付时记录 worker、地址、修改前后、来源和保存/重开证据，由集成 owner 选择。不要复制整个数据库覆盖另一 worker。
@@ -170,6 +172,40 @@ TG_MCP_WORKER=roof-owner /Users/yuluo/Desktop/game/tools/mcp-servers/ghidra-mcp/
 ```
 
 把 `roof-owner` 替换为自己的实际 worker。`--stop` 只向已验证属于该 worker 的 PID 发 SIGTERM；等进程退出再重连。不要停止其他 agent 仍使用的 shared 后端。客户端结束不等于持久 backend 已停止。不要硬编码端口/PID，manager 自动绑定正确实例。
+
+### 6.1 本轮证据文件与共享 Cargo（2026-10-27）
+
+**证据写入也需要 owner 与防覆盖检查。** 本轮已在自己创建的临时文件复验：`apply_patch` 的 `Add File` 可成功替换已有路径，不能把操作名当作 no-clobber 保证。写入前先检查目标是否存在、文件内实际 VA/版本/函数名和已有 SHA；已有 oracle 属于其他 owner 时保留原文件，协调复用或使用明确的本人前缀/VA 名，不以新结果覆盖旧失败。无人占用的新证据应采用真正的排他创建，例如 Python `Path.open("x")`；调用普通写工具前的 exists 检查只防常见误写，不是并发原子锁。写后核对路径、内容 VA、SHA 和夹具引用，报告区分原件 oracle 与候选输出。
+
+共享构建出现 `ENOSPC` 时先检查磁盘及正在运行的 `cargo`/`rustc`，将环境失败与业务断言失败分开保留。**本轮由中央确认编译器均已退出后，仅删除共享 `target/debug/incremental`**，保留源码、deps、原证与夹具；这不是授权其他 worker 随时清 target。后续统一 `CARGO_INCREMENTAL=0`，继续使用现有 target/debug/profile，不另设 `CARGO_TARGET_DIR`、复制 target、清 deps 或改变 profile 来抢过锁。编译锁等待与其他 owner 的接口中间态先协调，不擅改他人源。
+
+已实跑示例（在 `tiny-glade` 工作区内）：
+
+```sh
+CARGO_INCREMENTAL=0 cargo test --offline -p utils --lib original_expand_along_edge_complete_function_matches_native_bits_and_panics
+```
+
+磁盘故障、实际重跑及同 target 边界见 [共享几何复核](../../tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-independent-review.md)、[自由墙复原](../../tiny-glade/reports/module-recovery-2026-10-23/m01-freehand-recovery-2026-10-26.md)。不要把 `ENOSPC` 后未执行的测试记为通过，也不要把删缓存记为业务进度。
+
+### 6.2 模块先盘点、证据批量补缺、实现后分层验收（2026-10-29）
+
+每轮先按B原目录与PDB列出当前业务模块的函数，核对已有原证，再开始复写。清单至少包含：规范VA/RVA、物理范围、原源码归属、泛型实例／内联／别名关系、原证路径和完整性、Rust owner／源码指纹、调用与资源生产消费关系、生产注册、已执行验证及下一动作。**证据、算法、接线、验证分别记状态**；文件存在、同名函数、测试数量或旧进度统计均不能推导模块完成。未独立核验项明确记`not_reviewed`。
+
+先查现有报告、原指令oracle、完整汇编和已修复的反编译。仅在缺证、截断、身份变化、源码与证据矛盾或调用合同不清时重新逆向，并记录原因。同一个规范入口由一个owner维护证据；完整证据直接复用。新增业务文件前先核B原归属，维持现有重构目录，不另造平行实现。
+
+图工具先读[code-map入口](../../tools/code-map/README.md)，复用已发布snapshot，只读批量查询`search → neighbors/paths → state_users → evidence_pack/assembly`。先核调用者和资源写者，再核消费者、事件、历史、视觉和卸载；实例化包装与普通tuple／chain／IgnoreDeferred仍需原注册体证明。地址search带`0x`；函数key使用`function:B:RVAhex`。保留snapshot、原件指纹、查询参数、`truncated/next_offset/unknowns`，相关有界集合分页取完；数据库无边不代表原程序无调用。`module_map`只列模块，不能当业务函数完整目录。静态CALLS、curated关系与汇编范围覆盖不证明运行派发、CFG完整或业务验收。
+
+按缺口集合批量取原证，检查每个嵌套结果的错误、截断、真实物理范围及跳表／EH后才实现。验收依次区分原指令差分、真实World资源／事件链、生产App调度、真实GPU和OS输入；限定样本不能升级为整模块结论。中央review负责共享接口及调度，避免多个owner重逆向同一函数或互改共享资源。Cargo由owner轮转，其他owner继续只读盘点，不重复排队构建。
+
+编译按源码批次收口：owner先集中完成本轮断言与修改，再共享一次编译产物依次运行相关过滤组，避免每加一条断言触发全依赖重编；批次结束记录实际源码指纹，下一批新修改另验。测试命令退出0还要确认确实运行了目标测试；模块路径过滤错误导致`running 0 tests`不能记通过。真实App事件验收必须核整个启动调用顺序：本工程Bevy在`Events<T>`已被裸World初始化时，晚到的`App::add_event`会跳过维护注册；恢复通道要在最早App注册入口完成，并用实际多帧过期反例验证，不能只检查资源存在。
+
+当前实践：[装饰UI函数基线](../../../tiny-glade/reports/module-recovery-2026-10-23/m01-ui-function-inventory-2026-10-29.json)。其中同名源码及文件名含VA只自动产生候选；尚未审核条目不能统计为逆向完成。后续轮次先消费这份清单和各模块owner清单，再查询缺口。`tools/code-map-runtime/`仅本机缓存与运行状态，不提交。
+
+本轮独立review经验：①`ResMut`包装中的changed tick写入不是业务状态复位，先还原参数真实owner，保留无条件变更副作用；②结构采样`Vec::resize`只初始化新增元素，先追请求生产者是否每帧重建，不凭叶测试手工clear或改fill修正表象；③命令tuple的尾部字节不必然属于其中业务组件，须对照实际consumer读取面与对齐；④原rank是否就是mesh selector要核中间构造函数的实参，不能按命名臆断；⑤后台服务启动成功不等于后续可用，Neo4j daemon被宿主回收时按[code-map运行说明](../../tools/code-map/README.md)保持受管console并执行实际查询，再通知每个owner，不能静默改成无图流程。具体楼梯／楼板VA和样本结果留模块报告，不作跨版本通用常量。
+
+M0／M1／M6接续经验：①原脏队列是否去重要看push入口，不能按旧注释给Vec加contains；原重复队列可能承担顺序和重复重建语义。②原曲线包含两个Vec和总长度时有效对象可占0x38，不能把0x30猜成下一字段起点；事件记录stride8也可能只有event ID，实际事件为零大小。③恢复ECS查询时使用现有Option／Query.get校验，不复制旧Entity私有generation位型判断。④生产App测试先批量盘点全部SystemParam及原资源构造，复用真实注册入口和资产初始化；独立World预先建树后搬进App会与OnEnter重复建树，且可能覆盖App的调度资源。⑤真实Vulkan失败先区分沙箱与loader搜索路径；本机已验证的M3配置为`VK_ICD_FILENAMES=/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json`、`VK_LAYER_PATH=/opt/homebrew/share/vulkan/explicit_layer.d`、`DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib`，严格验收同时设`RHAPSODY_REQUIRE_VULKAN=1`并使用经审查的设备访问权限，不因ERROR_INCOMPATIBLE_DRIVER判机器无GPU。⑥有限几何样本通过后仍需非有限、退化、旋转、跨环和相邻ULP；已有M6反例表明圆与矩分支对NaN可能分别进入原panic和返回None，不能统一为“未相交”。
+
+字段语义按原publisher来源确认，不按旧注释或变量名：本轮已证明PublicWall `+0x280`来自elevation，先后在楼板与抹灰音效发现被误称height；用不同height/elevation的权威输入验收实际调用层。颜色、时间和代数也应使用当前Rust语义API，禁止把旧ABI偏移直接套到手工重构后的布局。看似反直觉的原行为先保留：剥落值吸附目标的最后一帧原本不触发重建；改成“更合理”的规则前必须有用户明确要求，不能混入逆向还原。
 
 ## 7. 身份与已知失败
 
@@ -207,6 +243,59 @@ sha256: f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03
 完整复验证据：[evidence/toolchain-revalidation/summary.json](../../evidence/toolchain-revalidation/summary.json)。验证覆盖关键读取、脚本、保存/重开及并发隔离路径；不代表所有上游工具逐一验证，也不构成游戏业务还原验收。
 
 本说明六份样例的实际执行记录：[ai-guide/summary.json](../../evidence/toolchain-revalidation/ai-guide/summary.json)。包括 catalog 分页修复前的失败报告和修复后的通过报告。
+
+### 7.1 跳表 CFG 污染、真实范围与持久修复（2026-10-27）
+
+本轮 shared `ui_move_shapes@14097a060` 报 body 3213 个离散字节，反编译却超过100KB并串入邻函数；freehand 两入口也达120000字符截断。遇到非法大 switch、跨邻函数、坏指令或正文截断，先拒绝将其当作完整业务，再按以下已验证步骤修复：
+
+1. 锁定原发行 RNE/PDB 的 SHA、PDB 物理范围与入口原字节；分析 patched EXE 的范围另比 SHA，不能以库文件名代替身份。用 LLVM 有界读取原字节/跳表，不按反编译器猜出的 case 数决定合同。
+2. 在**本人唯一 `--write` worker**内开事务，按 PDB 范围建立候选 `AddressSet`，剔除其他函数已拥有的 body；不得强吞邻函数。原相对跳表目标按 `table_base + sign_extend(i32)` 解码，核每个目标，再用 `JumpTable(jumpAddress, targets, True, 0).writeOverride(function)`。JPype 的 `Address.subtract` 返回 Java Long；传 `getBytes(Address, int)` 前显式 `int(...)`，不要截断64位地址。
+3. 检查脚本 `success/timedOut/stdoutTruncated` 与每个函数 decompileCompleted/error；保存修后正文及原始失败。修复不等于 Rust 参数已核准，关键 branch/ABI 仍回原 ASM。
+4. 按本指南第6节正常停止**自己的** backend、同 worker 重开；重读 body、四个 case 和 manual override，确认持久保存，最后正常关闭。不得重启/修改 shared 或其他 worker 来修一个函数。
+
+可复用的实跑 job 为 [m01-move-shapes-repair-job.json](../../tiny-glade/reports/module-recovery-2026-10-23/m01-move-shapes-repair-job.json)，worker `m01-move-20261026`，跳转 `14097ac59`、表 `142ab7514`、四目标 `14097c31e/14097ac5b/14097ae9d/14097af78`。用第2节 operator 将该 job 与本人唯一 worker/result 路径配套，**不可原样借用其他 owner 的 worker 名**。持久复验在 [m01-move-worker-reopen.json](../../tiny-glade/reports/module-recovery-2026-10-23/m01-move-worker-reopen.json)，操作解释见 [移动复原报告](../../tiny-glade/reports/module-recovery-2026-10-23/m01-move-shapes-recovery.md)；freehand 双入口实例见 [自由墙报告](../../tiny-glade/reports/module-recovery-2026-10-23/m01-freehand-recovery-2026-10-26.md)。
+
+**PDB span、Ghidra body、EH 不是同一个数。** 本例 PDB 物理跨度12822B，重建后Ghidra归属字节10677B；物理跨度含异常处理和已独立归属片段，不能要求填满跨度或据此计算恢复率。反方向也可能是坏CFG少读：`validate_blueprints@140827130` 原539B而Ghidra标签488B，`1408272b5` 间接跳表被误作调用；实际回调 `1412b84f0` PDB8161B而Ghidra标签2093B。以有界原ASM和完整表恢复被遗漏分支，保留Ghidra失真证据。另须区分正常 caller 与 EH 析构引用；EH `drop_in_place` xref 不能证明存在每帧清理系统。见 [独立业务复核](../../tiny-glade/reports/module-recovery-2026-10-23/m01-independent-final-business-review.md) 与 [signifier 生命周期审查](../../tiny-glade/reports/module-recovery-2026-10-23/m01-signifier-stream-lifecycle-2026-10-27.md)。
+
+### 7.2 Rust ZST tuple 与真实调度拓扑（2026-10-27）
+
+C 反编译会省略 Rust 零大小函数 item/tuple 实参；`chain_ignore_deferred()` 显示无参，**不能推出仅有一个系统**。先查完整 PDB 泛型的第一个类型参数，再查对应构造器中真实 `FunctionSystem.name` 字符串、配置数组长度与每0x70B记录的搬运；区分普通 tuple、chain 和 IgnoreDeferred，不能只凭物理 callee 的 ICF 名称、调用次数或临时栈槽推拓扑。
+
+本轮 `add_ivy_systems@140944070` 的 `141450fa0` 原泛型是8节点tuple，尾部又是普通二元tuple，实际9个业务系统；`DL=0x16` 是 spawner 的 `after_ignore_deferred(GameSystemSet22)`，不是系统数或 in_set。全部 VA、静态name、PDB完整泛型与原字节见 [ivy 原注册审查](../../tiny-glade/reports/module-recovery-2026-10-23/m01-ivy-pruner-registration-2026-10-27.md)。同样，decorator parent19中先构造的visual配置最终搬入slot14，不能按构造器调用时间误放到slot1，见 [独立复核的父表](../../tiny-glade/reports/module-recovery-2026-10-23/m01-independent-final-business-review.md)。
+
+### 7.3 SSE unordered 与独立原指令执行（2026-10-27）
+
+`MAXSS/MINSS` 必须回ASM核**目的/源操作数顺序**：NaN/unordered和相等时取第二操作数，C中的 fmax/maxNum、Rust max/clamp 或普通比较不必然相同；还要核后续是否有显式NaN修复。保留 ±0、输入quiet/signaling NaN的符号/payload，以及运算新生invalid NaN，不能统一成 `is_nan`/ULP 宽容比较。实例：提示动画 [原指令复核](../../tiny-glade/reports/module-recovery-2026-10-23/m01-public-hints-repair-review.md)，门底高度 [anchor 复原](../../tiny-glade/reports/module-recovery-2026-10-23/m01-anchor-follow-recovery.md)。
+
+**模拟器输出也须被独立执行交叉证伪。** 本轮 `expand_along_edge@140c9c620` 的双NaN样本中，Unicorn偏向更大payload；Rosetta x86_64直接调用同一原RNE函数，2592条非panic输入中96条否定该模拟器结果。保留两种输出和失败记录，不能迎合Unicorn把业务改成挑最大NaN，也不能用Rust候选生成oracle。ARM新生invalid为正NaN、原x86为 `0xffc00000` 的差异也要独立确认；局部恢复只处理原运算的新生invalid，保留已有NaN传播顺序。
+
+2026-10-29 增量：圆射线 `140c97980` 的49组NaN传播中，Unicorn与Rosetta有17组payload差异；已撤销为迎合单一模拟器而引入的first-root NaN覆盖。Rosetta也是翻译执行，不能称Windows/x86实机；有限值逐位一致、NaN分类、panic路径和payload冲突分别记录，不把局部冲突扩大为所有既有有限值证据无效。复杂finder的27组高度门控原入口执行仅证明该门控，不能升级为完整finder原侧差分。
+
+原执行先按PE section/RVA展开内存映像，**不能把raw RNE文件直接按RVA mmap**；校验入口原字节后用真实Win64 ABI调用。expand无需CRT，Rosetta探针没有数学/几何helper桥；其他函数桥接Darwin sinf/cosf等时须标明边界，不能冒称Windows UCRT全输入逐位等价。探针、两种原执行差异、最终严格夹具与命令均见 [共享几何复核](../../tiny-glade/reports/module-recovery-2026-10-23/m01-shared-geometry-independent-review.md)；`probe_m01_expand_x86.c` 是执行工具，不是重写算法。不要盲目重跑会重写共享fixture的探针；先按第6.1节核owner和已有SHA，再用独立结果名取证。
+
+以上仅是本轮工具与取证流程的实证增量；不代表相关模块、完整游戏或GPU验收通过。沿用既有 native skills，不复制另一份技能或平行指南。
+
+### 7.4 cleanup 反编译失败与同布局 owner 反证（2026-10-27）
+
+`Unable to find unique hash for varnode` 不一定是服务损坏。对本轮31KB原碰撞更新体，先在本人唯一write worker核原字节/PDB范围，剔除其他函数拥有的EH体；不要吞邻函数。清推断局部变量和补候选间接ABI仍失败时，使用本地 `DecompInterface` 的 native `setOptions`，仅关闭 `decompile/cleanup` action subgroup；本轮完整返回324941B C。该设置不改变原指令，C仍需回ASM核业务，不能把关闭分析action当作算法验证。完整 job、原件身份及正常停止→同worker重开→原C SHA相同→正常关闭的结果见[主碰撞更新恢复](../../tiny-glade/reports/module-recovery-2026-10-23/m01-rapier-producer-recovery-2026-10-27.md)。不要向共享实例或其他owner推广未验证选项。
+
+同样大小的两个资源不能靠 C 临时名推 nominal owner。本轮 Arch/Lintel 都有104B段；必须由原 typed FunctionSystem 参数顺序，追 entry RSP/RBP、参数槽及条件分支到真实表，再用 writer 方向反证。验收两张表都放不同非空数据，禁止以另一张表为空掩盖分派倒置。缺失错误也要区分 consumer：墙 required unwrap 与屋顶可缺失移除不是同一合同。
+
+跨体系结构 external libm 差异与原算法差异分开记录。先保留完整 x86 输出、每次原外部调用实参与返回，再将真实目标架构 libm 返回重放到原调用点，严格检验剩余原指令/数据流；不得修改生产算法迎合模拟器或用ULP宽容冒充原CRT逐位一致。地板96组与3272次 trig调用的34处平台差别、原圆数量256位型与全部失败记录见同报告。
+
+原控制器的验证不能只对末尾数学helper。全局射线本轮证实：循环内仅保存winner、循环后才转换；逐命中提前转换会改变已被覆盖坏数据的失败顺序。恢复UV变体后必须审调用者的hit判断（0/1命中、2miss），否则近UV命中会被远terrain覆盖。Option slice要区分None与Some(empty)：用is_empty代替指针存在位会吞掉原bounds panic；不要把旧假fixture的通过当作正确性。完整原控制流/无算术桥/真实World与259组数值回归见[全局射线恢复](../../tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md)。
+
+### 7.5 重建后迁回 owner、复合历史顺序与真实析构（2026-10-29）
+
+M06 独立 review 否定了仅看 Default/前段 memcpy 得出的 Reload 发布器替换判断：原`1408d8710`先保存旧世界、写入新物理世界，再逐槽析构新Publisher并迁回旧7qword，同时保留旧DirtyTiles/dirty，最后同样迁回ColliderDiff Publisher。`ResMut`入口`+0x10←+0x1c`是Bevy变更tick，不能写进业务注册计数器。完整父函数后半段必须检查；不要为错误恢复添加OnEnter重订阅来掩盖。
+
+复合历史的组序是业务语义，不能按Rust字段声明或反编译临时名排序。原擦除finish末尾将五个连续24B Vec以5b8→5a0→588→570→558装组；错误顺序在局部全空桶测试中空真通过，却在真实拆墙undo中产生已删除子墙的高度命令。至少用每桶非空样本，并等待真实ReplayBuffer和PendingHistoryCommands清空、退出Replay模式且末帧事件被消费后再比较或发下一操作。
+
+析构要按真实类型追：原抹灰generator的HashMap<WallId,Vec<Entity>>::insert只释放旧Vec存储，不能推断会销毁其Entity组件；重复Create确实可保留未登记旧实体。原最终OnExit另有Without<KeepOnLevelUnload>全局despawn与GpuWorld清空。因此区分创建时原行为、映射所有权、组件Drop和最终退出；实际诊断按wall/entity/registry/key/保留标记记录，不由GPU总数直接判泄漏，也不凭合理性改原行为。
+
+显式记录Cargo features：`country-core`默认未启用native-physics的过滤组不覆盖真实Rapier；下游库启用native feature也不等于编译了core内部cfg测试。保留缺导入等首次失败并以显式feature复验。以上原证、源码和不同轮次验证边界见现存M06业务台账与中央review JSON，不构成全模块验收。
+
+本轮补充：同类型实例及同WallId不代表同allocation，先沿原结构基址确认clear/append/drop字段，防止通用柱、高程支撑和半木互相覆盖。静态图无callee不代表无producer，过梁包含内联的三Vec柱缓存写入。真实App揭露的Raw工厂假schema须在原生产者修复，不给消费者写默认兼容。测试中的run_system_once会每次重建Local，不能用于验证跨帧保存稳定门；用同一Schedule保留真实状态，并确认snapshot引用及磁盘文件，而非只检查flush完成事件。原跳表函数若反编译大小远小于PDB范围，先在唯一worker核原表并修控制流，再恢复业务；成功反编译和工具修复本身不计游戏恢复。
 
 ## 8. 复用技能与一键小宠物试跑
 

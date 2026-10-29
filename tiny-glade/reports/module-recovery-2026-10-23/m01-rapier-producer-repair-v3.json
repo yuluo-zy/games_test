@@ -1,0 +1,532 @@
+{
+  "backend": "reva",
+  "worker": "m01-rapier-20261027",
+  "access": "write",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json,hashlib,zlib,base64\nfrom ghidra.program.model.address import AddressSet\nfrom ghidra.app.decompiler import DecompInterface,DecompileOptions\nfrom ghidra.program.flatapi import FlatProgramAPI\np=currentProgram;fm=p.getFunctionManager();api=FlatProgramAPI(p,monitor);af=p.getAddressFactory()\na=lambda s:af.getAddress(s)\nstart,end=a(\"1408d0490\"),a(\"1408d7ecd\")\nraw=bytes(x&255 for x in api.getBytes(start,int(end.subtract(start))))\nif hashlib.sha256(raw).hexdigest()!=\"081c905027375a9b741ad9ed74648dd23529b9da08d9311cce3f0e5d8968b2c1\":raise RuntimeError(\"RNE span SHA mismatch\")\nf=fm.getFunctionAt(start);before=int(f.getBody().getNumAddresses())\ntx=p.startTransaction(\"M01 bounded original collision producer body\")\ntry:\n body=AddressSet(start,end.subtract(1));excluded=[]\n for other in fm.getFunctionsOverlapping(body):\n  if other.getEntryPoint()!=start:excluded.append(str(other.getEntryPoint()));body.delete(other.getBody())\n f.setBody(body)\n locals_before=[str(v) for v in f.getLocalVariables()]\n for v in f.getLocalVariables():f.removeVariable(v)\n p.endTransaction(tx,True)\nexcept:\n p.endTransaction(tx,False);raise\nrows=[]\nfor style in [\"decompile\"]:\n monitor.checkCancelled();di=DecompInterface()\n try:\n  di.setSimplificationStyle(style);di.openProgram(p);d=di.decompileFunction(f,75,monitor)\n  rows.append(dict(style=style,completed=d.decompileCompleted(),error=str(d.getErrorMessage()),gz=base64.b64encode(zlib.compress(d.getDecompiledFunction().getC().encode())).decode() if d.decompileCompleted() and d.getDecompiledFunction() is not None else None))\n finally:di.dispose()\nprint(json.dumps(dict(sha256=p.getExecutableSHA256(),before=before,after=int(f.getBody().getNumAddresses()),excluded=excluded,removed_locals=locals_before,result=rows)))\n",
+        "timeoutSeconds": 180
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json,hashlib,zlib,base64\nfrom ghidra.program.model.address import AddressSet\nfrom ghidra.app.decompiler import DecompInterface,DecompileOptions\nfrom ghidra.program.flatapi import FlatProgramAPI\np=currentProgram;fm=p.getFunctionManager();api=FlatProgramAPI(p,monitor);af=p.getAddressFactory()\na=lambda s:af.getAddress(s)\nstart,end=a(\"1408d0490\"),a(\"1408d7ecd\")\nraw=bytes(x&255 for x in api.getBytes(start,int(end.subtract(start))))\nif hashlib.sha256(raw).hexdigest()!=\"081c905027375a9b741ad9ed74648dd23529b9da08d9311cce3f0e5d8968b2c1\":raise RuntimeError(\"RNE span SHA mismatch\")\nf=fm.getFunctionAt(start);before=int(f.getBody().getNumAddresses())\ntx=p.startTransaction(\"M01 bounded original collision producer body\")\ntry:\n body=AddressSet(start,end.subtract(1));excluded=[]\n for other in fm.getFunctionsOverlapping(body):\n  if other.getEntryPoint()!=start:excluded.append(str(other.getEntryPoint()));body.delete(other.getBody())\n f.setBody(body)\n locals_before=[str(v) for v in f.getLocalVariables()]\n for v in f.getLocalVariables():f.removeVariable(v)\n p.endTransaction(tx,True)\nexcept:\n p.endTransaction(tx,False);raise\nrows=[]\nfor style in [\"decompile\"]:\n monitor.checkCancelled();di=DecompInterface()\n try:\n  di.setSimplificationStyle(style);di.openProgram(p);d=di.decompileFunction(f,75,monitor)\n  rows.append(dict(style=style,completed=d.decompileCompleted(),error=str(d.getErrorMessage()),gz=base64.b64encode(zlib.compress(d.getDecompiledFunction().getC().encode())).decode() if d.decompileCompleted() and d.getDecompiledFunction() is not None else None))\n finally:di.dispose()\nprint(json.dumps(dict(sha256=p.getExecutableSHA256(),before=before,after=int(f.getBody().getNumAddresses()),excluded=excluded,removed_locals=locals_before,result=rows)))\n",
+        "timeoutSeconds": 180
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"sha256\\\": \\\"cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323\\\", \\\"before\\\": 23221, \\\"after\\\": 23221, \\\"excluded\\\": [\\\"1408d5e50\\\", \\\"1408d5f40\\\", \\\"1408d6020\\\", \\\"1408d6100\\\", \\\"1408d61e0\\\", \\\"1408d6370\\\", \\\"1408d64d0\\\", \\\"1408d6620\\\", \\\"1408d6770\\\", \\\"1408d68c0\\\", \\\"1408d6a10\\\", \\\"1408d6b10\\\", \\\"1408d6bf0\\\", \\\"1408d6d40\\\", \\\"1408d6e20\\\", \\\"1408d6f70\\\", \\\"1408d70c0\\\", \\\"1408d7230\\\", \\\"1408d7390\\\", \\\"1408d7470\\\", \\\"1408d7550\\\", \\\"1408d76b0\\\", \\\"1408d7810\\\", \\\"1408d7970\\\", \\\"1408d7ad0\\\", \\\"1408d7bb0\\\", \\\"1408d7d00\\\", \\\"1408d7de0\\\"], \\\"removed_locals\\\": [\\\"[undefined1[16] local_58@Stack[-0x58]:16]\\\", \\\"[undefined1[16] local_68@Stack[-0x68]:16]\\\", \\\"[undefined1[16] local_78@Stack[-0x78]:16]\\\", \\\"[undefined1[16] local_88@Stack[-0x88]:16]\\\", \\\"[undefined1[16] local_98@Stack[-0x98]:16]\\\", \\\"[undefined1[16] local_a8@Stack[-0xa8]:16]\\\", \\\"[undefined1[16] local_b8@Stack[-0xb8]:16]\\\", \\\"[undefined1[16] local_c8@Stack[-0xc8]:16]\\\", \\\"[undefined1[16] local_d8@Stack[-0xd8]:16]\\\", \\\"[undefined1[16] local_e8@Stack[-0xe8]:16]\\\", \\\"[undefined8 local_f0@Stack[-0xf0]:8]\\\", \\\"[undefined8 local_f8@Stack[-0xf8]:8]\\\", \\\"[undefined1 local_f9@Stack[-0xf9]:1]\\\", \\\"[undefined8 local_108@Stack[-0x108]:8]\\\", \\\"[undefined8 local_110@Stack[-0x110]:8]\\\", \\\"[undefined1 local_111@Stack[-0x111]:1]\\\", \\\"[undefined1 local_112@Stack[-0x112]:1]\\\", \\\"[undefined1 local_113@Stack[-0x113]:1]\\\", \\\"[undefined1 local_114@Stack[-0x114]:1]\\\", \\\"[undefined1 local_115@Stack[-0x115]:1]\\\", \\\"[undefined1 local_116@Stack[-0x116]:1]\\\", \\\"[undefined1 local_117@Stack[-0x117]:1]\\\", \\\"[undefined1 local_118@Stack[-0x118]:1]\\\", \\\"[undefined1 local_119@Stack[-0x119]:1]\\\", \\\"[undefined8 local_128@Stack[-0x128]:8]\\\", \\\"[undefined8 local_130@Stack[-0x130]:8]\\\", \\\"[undefined8 local_138@Stack[-0x138]:8]\\\", \\\"[undefined8 local_140@Stack[-0x140]:8]\\\", \\\"[undefined8 local_148@Stack[-0x148]:8]\\\", \\\"[undefined1 local_149@Stack[-0x149]:1]\\\", \\\"[undefined1 local_14a@Stack[-0x14a]:1]\\\", \\\"[undefined1 local_14b@Stack[-0x14b]:1]\\\", \\\"[undefined8 local_158@Stack[-0x158]:8]\\\", \\\"[undefined8 local_160@Stack[-0x160]:8]\\\", \\\"[undefined8 local_168@Stack[-0x168]:8]\\\", \\\"[undefined8 local_170@Stack[-0x170]:8]\\\", \\\"[undefined8 local_178@Stack[-0x178]:8]\\\", \\\"[undefined8 local_180@Stack[-0x180]:8]\\\", \\\"[undefined8 local_188@Stack[-0x188]:8]\\\", \\\"[undefined1 local_189@Stack[-0x189]:1]\\\", \\\"[undefined1[16] local_1a8@Stack[-0x1a8]:16]\\\", \\\"[undefined1[16] local_1b8@Stack[-0x1b8]:16]\\\", \\\"[undefined8 local_1c0@Stack[-0x1c0]:8]\\\", \\\"[undefined8 local_1c8@Stack[-0x1c8]:8]\\\", \\\"[undefined8 local_1d0@Stack[-0x1d0]:8]\\\", \\\"[undefined8 local_1d8@Stack[-0x1d8]:8]\\\", \\\"[undefined8 local_1e8@Stack[-0x1e8]:8]\\\", \\\"[undefined1[16] local_1f8@Stack[-0x1f8]:16]\\\", \\\"[undefined8 local_200@Stack[-0x200]:8]\\\", \\\"[undefined8 local_208@Stack[-0x208]:8]\\\", \\\"[undefined8 local_210@Stack[-0x210]:8]\\\", \\\"[undefined8 local_218@Stack[-0x218]:8]\\\", \\\"[undefined1[16] local_228@Stack[-0x228]:16]\\\", \\\"[undefined1[16] local_238@Stack[-0x238]:16]\\\", \\\"[undefined1[16] local_248@Stack[-0x248]:16]\\\", \\\"[undefined1[16] local_258@Stack[-0x258]:16]\\\", \\\"[undefined1[16] local_268@Stack[-0x268]:16]\\\", \\\"[undefined1[16] local_278@Stack[-0x278]:16]\\\", \\\"[undefined1[16] local_288@Stack[-0x288]:16]\\\", \\\"[undefined1[16] local_298@Stack[-0x298]:16]\\\", \\\"[undefined1[20] local_2b8@Stack[-0x2b8]:20]\\\", \\\"[undefined8 local_2c0@Stack[-0x2c0]:8]\\\", \\\"[undefined8 local_2c8@Stack[-0x2c8]:8]\\\", \\\"[undefined8 local_2d0@Stack[-0x2d0]:8]\\\", \\\"[undefined8 local_2d8@Stack[-0x2d8]:8]\\\", \\\"[undefined8 local_2e0@Stack[-0x2e0]:8]\\\", \\\"[undefined1[16] local_2f0@Stack[-0x2f0]:16]\\\", \\\"[undefined1[16] local_308@Stack[-0x308]:16]\\\", \\\"[undefined1[16] local_318@Stack[-0x318]:16]\\\", \\\"[undefined1[16] local_328@Stack[-0x328]:16]\\\", \\\"[undefined1[16] local_338@Stack[-0x338]:16]\\\", \\\"[undefined1[16] local_348@Stack[-0x348]:16]\\\", \\\"[undefined1[16] local_358@Stack[-0x358]:16]\\\", \\\"[undefined1[16] local_368@Stack[-0x368]:16]\\\", \\\"[undefined1[16] local_378@Stack[-0x378]:16]\\\", \\\"[undefined8 local_380@Stack[-0x380]:8]\\\", \\\"[undefined1[16] local_390@Stack[-0x390]:16]\\\", \\\"[undefined1[16] local_3a0@Stack[-0x3a0]:16]\\\", \\\"[undefined1[16] local_3b0@Stack[-0x3b0]:16]\\\", \\\"[undefined8 local_3b8@Stack[-0x3b8]:8]\\\", \\\"[undefined8 local_3c0@Stack[-0x3c0]:8]\\\", \\\"[undefined8 local_3c8@Stack[-0x3c8]:8]\\\", \\\"[undefined8 local_3d0@Stack[-0x3d0]:8]\\\", \\\"[undefined8 local_3d8@Stack[-0x3d8]:8]\\\", \\\"[undefined8 local_3e0@Stack[-0x3e0]:8]\\\", \\\"[undefined4 local_3e4@Stack[-0x3e4]:4]\\\", \\\"[undefined8 local_3f0@Stack[-0x3f0]:8]\\\", \\\"[undefined1[16] local_400@Stack[-0x400]:16]\\\", \\\"[undefined8 local_408@Stack[-0x408]:8]\\\", \\\"[undefined8 local_410@Stack[-0x410]:8]\\\", \\\"[undefined8 local_418@Stack[-0x418]:8]\\\", \\\"[undefined4 local_41c@Stack[-0x41c]:4]\\\", \\\"[undefined8 local_424@Stack[-0x424]:8]\\\", \\\"[undefined8 local_430@Stack[-0x430]:8]\\\", \\\"[undefined8 local_438@Stack[-0x438]:8]\\\", \\\"[undefined8 local_440@Stack[-0x440]:8]\\\", \\\"[undefined8 local_458@Stack[-0x458]:8]\\\", \\\"[undefined1[16] local_468@Stack[-0x468]:16]\\\", \\\"[undefined8 local_478@Stack[-0x478]:8]\\\", \\\"[undefined1[16] local_488@Stack[-0x488]:16]\\\", \\\"[undefined local_4a8@Stack[-0x4a8]:1]\\\", \\\"[undefined8 local_4b8@Stack[-0x4b8]:8]\\\", \\\"[undefined8 local_4c0@Stack[-0x4c0]:8]\\\", \\\"[undefined8 local_4c8@Stack[-0x4c8]:8]\\\"], \\\"result\\\": [{\\\"style\\\": \\\"decompile\\\", \\\"completed\\\": false, \\\"error\\\": \\\"\\\\nRecoverable Error: Unable to find unique hash for varnode\\\", \\\"gz\\\": null}]}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":2837}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "get-function-count",
+        "title": "Get Function Count",
+        "description": "Get the total count of functions in the program (use this before calling get-functions to plan pagination)",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program to get functions from",
+              "type": "string"
+            },
+            "filterDefaultNames": {
+              "default": true,
+              "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set-function-prototype",
+        "title": "Set Function Prototype",
+        "description": "Set or update a function prototype using C-style function signatures. Can create new functions or update existing ones.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program",
+              "type": "string"
+            },
+            "signature": {
+              "description": "C-style function signature (e.g., 'int main(int argc, char** argv)')",
+              "type": "string"
+            },
+            "location": {
+              "description": "Address or symbol name where the function is located",
+              "type": "string"
+            },
+            "createIfNotExists": {
+              "default": true,
+              "description": "Create function if it doesn't exist at the location",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "programPath",
+            "location",
+            "signature"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-decompilation",
+        "title": "Get Function Decompilation",
+        "description": "Get decompiled code for a function with line range support. Defaults to 50 lines to conserve context - start with small chunks (10-20 lines) then expand as needed using offset/limit. Updating variable data types and names can significantly improve decompilation quality. Use includeCallers/includeCallees to get caller/callee lists in one call (avoids separate tool invocations).",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "functionNameOrAddress": {
+              "description": "Function name, address, or symbol to decompile (e.g. 'main', '0x00401000', or 'start'). For addresses pointing inside a function, the containing function will be decompiled.",
+              "type": "string"
+            },
+            "includeCallers": {
+              "default": false,
+              "description": "Include list of functions that call this one (name, address, signature). Use for understanding function usage without bulk decompilation.",
+              "type": "boolean"
+            },
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program containing the function",
+              "type": "string"
+            },
+            "offset": {
+              "default": 1,
+              "description": "Line number to start reading from (1-based). Defaults to 1.",
+              "type": "integer"
+            },
+            "includeDisassembly": {
+              "default": false,
+              "description": "Whether to include assembly listing alongside decompilation for sync",
+              "type": "boolean"
+            },
+            "includeIncomingReferences": {
+              "default": false,
+              "description": "Whether to include incoming cross references to this function on the function declaration line",
+              "type": "boolean"
+            },
+            "limit": {
+              "default": 50,
+              "description": "Number of lines to return. Defaults to 50 lines to conserve context. Use smaller chunks (10-20 lines) for initial exploration, then expand as needed.",
+              "type": "integer"
+            },
+            "includeReferenceContext": {
+              "default": false,
+              "description": "Whether to include code context snippets from calling functions (requires includeIncomingReferences)",
+              "type": "boolean"
+            },
+            "includeComments": {
+              "default": false,
+              "description": "Whether to include comments in the decompilation output",
+              "type": "boolean"
+            },
+            "includeCallees": {
+              "default": false,
+              "description": "Include list of functions this one calls (name, address, signature). Use for understanding function dependencies without bulk decompilation.",
+              "type": "boolean"
+            },
+            "signatureOnly": {
+              "default": false,
+              "description": "Return only signature/metadata without decompiled code. Saves output tokens.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "programPath",
+            "functionNameOrAddress"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find-cross-references",
+        "title": "Find Cross References",
+        "description": "Find all references to or from a memory location, symbol, or function. Returns incoming and/or outgoing references with optional decompilation context.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "includeContext": {
+              "default": false,
+              "description": "Include decompilation context snippets for code references",
+              "type": "boolean"
+            },
+            "contextLines": {
+              "default": 2,
+              "description": "Number of lines before and after to include in context snippets",
+              "type": "integer"
+            },
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program to get references from",
+              "type": "string"
+            },
+            "offset": {
+              "default": 0,
+              "description": "Starting offset for pagination (0-based)",
+              "type": "integer"
+            },
+            "includeFlow": {
+              "default": true,
+              "description": "Include flow references (calls, jumps, branches)",
+              "type": "boolean"
+            },
+            "limit": {
+              "default": 100,
+              "description": "Maximum number of references to return per direction",
+              "type": "integer"
+            },
+            "location": {
+              "description": "Address or symbol name to get references for (e.g., '0x00400123', 'main', 'FUN_00401000')",
+              "type": "string"
+            },
+            "includeData": {
+              "default": true,
+              "description": "Include data references (reads, writes)",
+              "type": "boolean"
+            },
+            "direction": {
+              "description": "Direction of references to retrieve: 'to' (incoming), 'from' (outgoing), or 'both' (default)",
+              "default": "both",
+              "type": "string",
+              "enum": [
+                "to",
+                "from",
+                "both"
+              ]
+            }
+          },
+          "required": [
+            "programPath",
+            "location"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-data-type-by-string",
+        "title": "Get Data Type by String",
+        "description": "Get a data type by its string representation",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program",
+              "type": "string"
+            },
+            "dataTypeString": {
+              "description": "String representation of the data type (e.g., 'char**', 'int[10]')",
+              "type": "string"
+            },
+            "archiveName": {
+              "default": "",
+              "description": "Optional name of the data type archive to search in. If not provided, all archives will be searched.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "programPath",
+            "dataTypeString"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "run-script",
+        "title": "Run Python Script",
+        "description": "Execute a Python script in the Ghidra PyGhidra runtime against a specific program. Requires Ghidra to be launched via PyGhidra (mcp-reva or pyghidra-gui). Returns captured stdout/stderr, duration, and timeout flag. Script failures appear in stderr with success=false; tool failures (bad args, PyGhidra unavailable) are MCP errors. Cancellation is cooperative: long-running scripts should periodically check monitor.isCancelled() so the timeout can fire on tight loops.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to an existing .py script to run.",
+              "type": "string"
+            },
+            "programPath": {
+              "description": "Path to the program in the Ghidra Project",
+              "type": "string"
+            },
+            "code": {
+              "description": "Inline Python source. The script runs as a Ghidra script with currentProgram, FlatProgramAPI helpers, and monitor available. Wrap state changes in currentProgram.startTransaction(...) / endTransaction(...) yourself \u2014 the tool does not open a transaction. Provide exactly one of: code, scriptPath, scriptName.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "Name of a script (e.g., 'MyAnalysis.py') resolved across registered Ghidra script directories.",
+              "type": "string"
+            },
+            "timeoutSeconds": {
+              "default": 60,
+              "description": "Per-call timeout override in seconds. Defaults to the configured script timeout.",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list-scripts",
+        "title": "List Scripts",
+        "description": "List Python scripts visible to Ghidra across all registered script directories (user dir + system dirs + bundle dirs). Filterable by path or name; supports pagination.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "pathFilter": {
+              "default": "",
+              "description": "Optional substring filter on script absolute path",
+              "type": "string"
+            },
+            "startIndex": {
+              "default": 0,
+              "description": "Pagination start (0-indexed)",
+              "type": "integer"
+            },
+            "nameFilter": {
+              "default": "",
+              "description": "Optional substring filter on script file name",
+              "type": "string"
+            },
+            "maxCount": {
+              "default": 100,
+              "description": "Maximum entries to return",
+              "type": "integer"
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read-script",
+        "title": "Read Script",
+        "description": "Read a script's source, returned with cat -n style line numbers so you can reference exact lines in edit-script. Supports chunked reads via offset/limit. Sets truncated=true if more lines remain.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to the script. Provide either scriptPath or scriptName.",
+              "type": "string"
+            },
+            "offset": {
+              "default": 1,
+              "description": "1-indexed starting line",
+              "type": "integer"
+            },
+            "limit": {
+              "default": 2000,
+              "description": "Maximum lines to return",
+              "type": "integer"
+            },
+            "scriptName": {
+              "description": "Script file name resolved across registered script directories.",
+              "type": "string"
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "write-script",
+        "title": "Write Script",
+        "description": "Create a new script or fully replace an existing one in a writeable script directory. System directories are read-only. Use edit-script for targeted changes instead of full rewrites.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path; must resolve under a writeable script directory.",
+              "type": "string"
+            },
+            "code": {
+              "description": "Script source to write.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "File name (e.g., 'MyAnalysis.py') \u2014 written to the default writeable scripts directory.",
+              "type": "string"
+            },
+            "overwrite": {
+              "default": false,
+              "description": "Overwrite existing file. Default false: errors if file exists.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "code"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "edit-script",
+        "title": "Edit Script",
+        "description": "Replace exact old_string with new_string in a script. Errors if old_string isn't found, or if it matches multiple locations and replace_all is false. Use this instead of write-script when iterating on an existing script.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to the script to edit (must be writeable).",
+              "type": "string"
+            },
+            "old_string": {
+              "description": "Exact text to find. Must occur exactly once unless replace_all is true; surround with enough context to make it unique.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "Script file name resolved under the default writeable scripts directory.",
+              "type": "string"
+            },
+            "replace_all": {
+              "default": false,
+              "description": "Replace every occurrence. Default false: errors if old_string matches more than one location.",
+              "type": "boolean"
+            },
+            "new_string": {
+              "description": "Replacement text. Must differ from old_string.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "old_string",
+            "new_string"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

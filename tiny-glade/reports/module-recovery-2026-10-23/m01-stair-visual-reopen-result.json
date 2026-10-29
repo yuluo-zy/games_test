@@ -1,0 +1,532 @@
+{
+  "backend": "reva",
+  "worker": "m01-stair-visual-20261027",
+  "access": "write",
+  "actual_mcp_connection": true,
+  "target_execution": false,
+  "results": [
+    {
+      "tool": "run-script",
+      "requested_args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json,zlib,base64\nfrom ghidra.app.decompiler import DecompInterface\np=currentProgram\nf=p.getFunctionManager().getFunctionAt(p.getAddressFactory().getAddress(\"140803dd0\"))\ndi=DecompInterface()\ntry:\n di.openProgram(p)\n d=di.decompileFunction(f,45,monitor)\n c=d.getDecompiledFunction().getC() if d.decompileCompleted() else \"\"\n print(json.dumps(dict(body_bytes=f.getBody().getNumAddresses(),completed=d.decompileCompleted(),error=str(d.getErrorMessage()),manual_switch=\"Switch is manually overridden\" in c,cross_function_pollution=\"14080c6ee\" in c,gz=base64.b64encode(zlib.compress(c.encode())).decode())))\nfinally:di.dispose()\n",
+        "timeoutSeconds": 90
+      },
+      "args": {
+        "programPath": "/tiny-glade.exe",
+        "code": "import json,zlib,base64\nfrom ghidra.app.decompiler import DecompInterface\np=currentProgram\nf=p.getFunctionManager().getFunctionAt(p.getAddressFactory().getAddress(\"140803dd0\"))\ndi=DecompInterface()\ntry:\n di.openProgram(p)\n d=di.decompileFunction(f,45,monitor)\n c=d.getDecompiledFunction().getC() if d.decompileCompleted() else \"\"\n print(json.dumps(dict(body_bytes=f.getBody().getNumAddresses(),completed=d.decompileCompleted(),error=str(d.getErrorMessage()),manual_switch=\"Switch is manually overridden\" in c,cross_function_pollution=\"14080c6ee\" in c,gz=base64.b64encode(zlib.compress(c.encode())).decode())))\nfinally:di.dispose()\n",
+        "timeoutSeconds": 90
+      },
+      "result": {
+        "meta": null,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"programPath\":\"/tiny-glade.exe\",\"timedOut\":false,\"stdout\":\"{\\\"body_bytes\\\": 6126, \\\"completed\\\": true, \\\"error\\\": \\\"\\\", \\\"manual_switch\\\": true, \\\"cross_function_pollution\\\": false, \\\"gz\\\": \\\"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\\\"}\\n\",\"success\":true,\"stderrTruncated\":false,\"scriptSource\":{\"type\":\"inline\",\"value\":\"<inline>\"},\"stdoutTruncated\":false,\"stderr\":\"\",\"durationMs\":1184}",
+            "annotations": null,
+            "meta": null
+          }
+        ],
+        "structuredContent": null,
+        "isError": false
+      }
+    }
+  ],
+  "catalog": {
+    "meta": null,
+    "nextCursor": null,
+    "tools": [
+      {
+        "name": "get-function-count",
+        "title": "Get Function Count",
+        "description": "Get the total count of functions in the program (use this before calling get-functions to plan pagination)",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program to get functions from",
+              "type": "string"
+            },
+            "filterDefaultNames": {
+              "type": "boolean",
+              "description": "Whether to filter out default Ghidra generated names like FUN_, DAT_, etc.",
+              "default": true
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "set-function-prototype",
+        "title": "Set Function Prototype",
+        "description": "Set or update a function prototype using C-style function signatures. Can create new functions or update existing ones.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program",
+              "type": "string"
+            },
+            "signature": {
+              "description": "C-style function signature (e.g., 'int main(int argc, char** argv)')",
+              "type": "string"
+            },
+            "location": {
+              "description": "Address or symbol name where the function is located",
+              "type": "string"
+            },
+            "createIfNotExists": {
+              "type": "boolean",
+              "description": "Create function if it doesn't exist at the location",
+              "default": true
+            }
+          },
+          "required": [
+            "programPath",
+            "location",
+            "signature"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-decompilation",
+        "title": "Get Function Decompilation",
+        "description": "Get decompiled code for a function with line range support. Defaults to 50 lines to conserve context - start with small chunks (10-20 lines) then expand as needed using offset/limit. Updating variable data types and names can significantly improve decompilation quality. Use includeCallers/includeCallees to get caller/callee lists in one call (avoids separate tool invocations).",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "functionNameOrAddress": {
+              "description": "Function name, address, or symbol to decompile (e.g. 'main', '0x00401000', or 'start'). For addresses pointing inside a function, the containing function will be decompiled.",
+              "type": "string"
+            },
+            "includeCallers": {
+              "type": "boolean",
+              "description": "Include list of functions that call this one (name, address, signature). Use for understanding function usage without bulk decompilation.",
+              "default": false
+            },
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program containing the function",
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Line number to start reading from (1-based). Defaults to 1.",
+              "default": 1
+            },
+            "includeDisassembly": {
+              "type": "boolean",
+              "description": "Whether to include assembly listing alongside decompilation for sync",
+              "default": false
+            },
+            "includeIncomingReferences": {
+              "type": "boolean",
+              "description": "Whether to include incoming cross references to this function on the function declaration line",
+              "default": false
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Number of lines to return. Defaults to 50 lines to conserve context. Use smaller chunks (10-20 lines) for initial exploration, then expand as needed.",
+              "default": 50
+            },
+            "includeReferenceContext": {
+              "type": "boolean",
+              "description": "Whether to include code context snippets from calling functions (requires includeIncomingReferences)",
+              "default": false
+            },
+            "includeComments": {
+              "type": "boolean",
+              "description": "Whether to include comments in the decompilation output",
+              "default": false
+            },
+            "includeCallees": {
+              "type": "boolean",
+              "description": "Include list of functions this one calls (name, address, signature). Use for understanding function dependencies without bulk decompilation.",
+              "default": false
+            },
+            "signatureOnly": {
+              "type": "boolean",
+              "description": "Return only signature/metadata without decompiled code. Saves output tokens.",
+              "default": false
+            }
+          },
+          "required": [
+            "programPath",
+            "functionNameOrAddress"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "find-cross-references",
+        "title": "Find Cross References",
+        "description": "Find all references to or from a memory location, symbol, or function. Returns incoming and/or outgoing references with optional decompilation context.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "includeContext": {
+              "type": "boolean",
+              "description": "Include decompilation context snippets for code references",
+              "default": false
+            },
+            "contextLines": {
+              "type": "integer",
+              "description": "Number of lines before and after to include in context snippets",
+              "default": 2
+            },
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program to get references from",
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "Starting offset for pagination (0-based)",
+              "default": 0
+            },
+            "includeFlow": {
+              "type": "boolean",
+              "description": "Include flow references (calls, jumps, branches)",
+              "default": true
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of references to return per direction",
+              "default": 100
+            },
+            "location": {
+              "description": "Address or symbol name to get references for (e.g., '0x00400123', 'main', 'FUN_00401000')",
+              "type": "string"
+            },
+            "includeData": {
+              "type": "boolean",
+              "description": "Include data references (reads, writes)",
+              "default": true
+            },
+            "direction": {
+              "enum": [
+                "to",
+                "from",
+                "both"
+              ],
+              "type": "string",
+              "default": "both",
+              "description": "Direction of references to retrieve: 'to' (incoming), 'from' (outgoing), or 'both' (default)"
+            }
+          },
+          "required": [
+            "programPath",
+            "location"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "get-data-type-by-string",
+        "title": "Get Data Type by String",
+        "description": "Get a data type by its string representation",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "programPath": {
+              "description": "Path in the Ghidra Project to the program",
+              "type": "string"
+            },
+            "dataTypeString": {
+              "description": "String representation of the data type (e.g., 'char**', 'int[10]')",
+              "type": "string"
+            },
+            "archiveName": {
+              "type": "string",
+              "description": "Optional name of the data type archive to search in. If not provided, all archives will be searched.",
+              "default": ""
+            }
+          },
+          "required": [
+            "programPath",
+            "dataTypeString"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "run-script",
+        "title": "Run Python Script",
+        "description": "Execute a Python script in the Ghidra PyGhidra runtime against a specific program. Requires Ghidra to be launched via PyGhidra (mcp-reva or pyghidra-gui). Returns captured stdout/stderr, duration, and timeout flag. Script failures appear in stderr with success=false; tool failures (bad args, PyGhidra unavailable) are MCP errors. Cancellation is cooperative: long-running scripts should periodically check monitor.isCancelled() so the timeout can fire on tight loops.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to an existing .py script to run.",
+              "type": "string"
+            },
+            "programPath": {
+              "description": "Path to the program in the Ghidra Project",
+              "type": "string"
+            },
+            "code": {
+              "description": "Inline Python source. The script runs as a Ghidra script with currentProgram, FlatProgramAPI helpers, and monitor available. Wrap state changes in currentProgram.startTransaction(...) / endTransaction(...) yourself \u2014 the tool does not open a transaction. Provide exactly one of: code, scriptPath, scriptName.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "Name of a script (e.g., 'MyAnalysis.py') resolved across registered Ghidra script directories.",
+              "type": "string"
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "description": "Per-call timeout override in seconds. Defaults to the configured script timeout.",
+              "default": 60
+            }
+          },
+          "required": [
+            "programPath"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "list-scripts",
+        "title": "List Scripts",
+        "description": "List Python scripts visible to Ghidra across all registered script directories (user dir + system dirs + bundle dirs). Filterable by path or name; supports pagination.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "pathFilter": {
+              "type": "string",
+              "description": "Optional substring filter on script absolute path",
+              "default": ""
+            },
+            "startIndex": {
+              "type": "integer",
+              "description": "Pagination start (0-indexed)",
+              "default": 0
+            },
+            "nameFilter": {
+              "type": "string",
+              "description": "Optional substring filter on script file name",
+              "default": ""
+            },
+            "maxCount": {
+              "type": "integer",
+              "description": "Maximum entries to return",
+              "default": 100
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "read-script",
+        "title": "Read Script",
+        "description": "Read a script's source, returned with cat -n style line numbers so you can reference exact lines in edit-script. Supports chunked reads via offset/limit. Sets truncated=true if more lines remain.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to the script. Provide either scriptPath or scriptName.",
+              "type": "string"
+            },
+            "offset": {
+              "type": "integer",
+              "description": "1-indexed starting line",
+              "default": 1
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum lines to return",
+              "default": 2000
+            },
+            "scriptName": {
+              "description": "Script file name resolved across registered script directories.",
+              "type": "string"
+            }
+          },
+          "required": []
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "write-script",
+        "title": "Write Script",
+        "description": "Create a new script or fully replace an existing one in a writeable script directory. System directories are read-only. Use edit-script for targeted changes instead of full rewrites.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path; must resolve under a writeable script directory.",
+              "type": "string"
+            },
+            "code": {
+              "description": "Script source to write.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "File name (e.g., 'MyAnalysis.py') \u2014 written to the default writeable scripts directory.",
+              "type": "string"
+            },
+            "overwrite": {
+              "type": "boolean",
+              "description": "Overwrite existing file. Default false: errors if file exists.",
+              "default": false
+            }
+          },
+          "required": [
+            "code"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      },
+      {
+        "name": "edit-script",
+        "title": "Edit Script",
+        "description": "Replace exact old_string with new_string in a script. Errors if old_string isn't found, or if it matches multiple locations and replace_all is false. Use this instead of write-script when iterating on an existing script.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "type": "object",
+          "properties": {
+            "scriptPath": {
+              "description": "Absolute path to the script to edit (must be writeable).",
+              "type": "string"
+            },
+            "old_string": {
+              "description": "Exact text to find. Must occur exactly once unless replace_all is true; surround with enough context to make it unique.",
+              "type": "string"
+            },
+            "scriptName": {
+              "description": "Script file name resolved under the default writeable scripts directory.",
+              "type": "string"
+            },
+            "replace_all": {
+              "type": "boolean",
+              "description": "Replace every occurrence. Default false: errors if old_string matches more than one location.",
+              "default": false
+            },
+            "new_string": {
+              "description": "Replacement text. Must differ from old_string.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "old_string",
+            "new_string"
+          ]
+        },
+        "outputSchema": null,
+        "icons": null,
+        "annotations": {
+          "title": null,
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": null,
+          "openWorldHint": null
+        },
+        "meta": null,
+        "execution": null
+      }
+    ]
+  },
+  "catalog_pages": 1,
+  "ok": true
+}

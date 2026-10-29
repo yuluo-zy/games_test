@@ -8,8 +8,7 @@
 //!   `u=i/(count-1)`、截面 0.2 判等」——1.5（0x1429258d0）、下限 6。
 //! - 音频 `timberframe_beam_count_change_audio` 0x1421b6610：REVIEW「判等（主体）」——
 //!   `(frame-last_frame==1) && (last_count!=count)`、kind=6、位置 x0y(center)、
-//!   last_frame/last_count 回写。此处以 World 调度验证触发门与载荷；帧读面沿用机器码
-//!   裸读 +0x2c（与实现同一读面；GameClock 布局分歧见 RESTORE FIX-3）。
+//!   last_frame/last_count 回写。此处以 World 调度验证触发门与载荷；帧读面使用原帧计数对应的 GameClock 语义字段。
 //!
 //! 构造系统的逐梁写路径未判等（WoodenPlankSsbo/RenderInstance 等 GAP），本测试不触碰。
 
@@ -98,13 +97,7 @@ fn orientation_mat3_column_order() {
 // ---------------------------------------------------------------------------
 
 fn game_time_with_frame(frame: i32) -> GameTime {
-    let mut time = GameTime::default();
-    // 机器码读面 `*(int*)(GameTime+0x2c)`（与实现同一读面；见 RESTORE FIX-3）。
-    unsafe {
-        let base = core::ptr::addr_of_mut!(time).cast::<u8>();
-        core::ptr::write_unaligned(base.add(0x2c).cast::<i32>(), frame);
-    }
-    time
+    GameTime { frame_count: frame as u32, ..Default::default() }
 }
 
 fn run_audio(
@@ -187,4 +180,92 @@ fn audio_trigger_gate_and_payload() {
     );
     assert_eq!(len, 1);
     assert_eq!(events[0].kind, 6);
+}
+
+#[test]
+fn audio_uses_real_clock_and_normalized_building_area() {
+    use country_core::systems::wall::valid_enclosure::{Shape, ShapeParameters};
+    use utils::geometry::{Circle2d, Rectangle2d};
+    for (shape, expected) in [
+        (Shape::Rectangle(Rectangle2d { axis: Vec2::X, center: Vec2::ZERO, size: Vec2::new(15.0, 15.0) }), 1.0f32),
+        (Shape::Rectangle(Rectangle2d { axis: Vec2::X, center: Vec2::ZERO, size: Vec2::splat(2.25) }), 0.0),
+        (Shape::Circle(Circle2d::new(Vec2::ZERO, 8.0)), 1.0),
+    ] {
+        let mut world = World::new();
+        world.init_resource::<Events<ConstructTimberframeCmd>>();
+        world.init_resource::<Events<PlayTimberframeSound>>();
+        world.insert_resource(TimberframeBeamCount { last_count: 3, count: 4, last_frame: 9 });
+        world.insert_resource(GameTime { frame_count: 10, ran: false, paused: true, ..Default::default() });
+        world.send_event(ConstructTimberframeCmd::from_shape(ShapeParameters::from_shape(shape), 0));
+        let mut schedule = Schedule::default();
+        schedule.add_systems(timberframe_beam_count_change_audio);
+        schedule.run(&mut world);
+        let sounds = world.resource::<Events<PlayTimberframeSound>>();
+        let mut reader = sounds.get_cursor();
+        let sound = reader.read(sounds).next().unwrap();
+        assert_eq!(sound.kind, 6);
+        assert_eq!(sound.value.to_bits(), expected.to_bits());
+    }
+}
+
+#[test]
+fn audio_frame_gate_wraps_at_u32_boundary() {
+    let (out, count, sounds) = run_audio(
+        TimberframeBeamCount { last_count: 1, count: 2, last_frame: -1 }, 0, true,
+    );
+    assert_eq!(count, 1);
+    assert_eq!(sounds[0].kind, 6);
+    assert_eq!(out.last_frame, 0);
+    assert_eq!(out.last_count, 2);
+}
+
+#[test]
+fn audio_uses_last_command_and_consumes_the_whole_batch() {
+    use country_core::systems::wall::valid_enclosure::{Shape, ShapeParameters};
+    use utils::geometry::Circle2d;
+    let mut world = World::new();
+    world.init_resource::<Events<ConstructTimberframeCmd>>();
+    world.init_resource::<Events<PlayTimberframeSound>>();
+    world.insert_resource(TimberframeBeamCount { last_count: 0, count: 1, last_frame: 4 });
+    world.insert_resource(GameTime { frame_count: 5, ..Default::default() });
+    for x in [1.0, 7.0] {
+        world.send_event(ConstructTimberframeCmd::from_shape(
+            ShapeParameters::from_shape(Shape::Circle(Circle2d::new(Vec2::new(x, 3.0), 1.0))), 0));
+    }
+    let mut schedule = Schedule::default();
+    schedule.add_systems(timberframe_beam_count_change_audio);
+    schedule.run(&mut world);
+    let sounds = world.resource::<Events<PlayTimberframeSound>>();
+    let mut reader = sounds.get_cursor();
+    assert_eq!(reader.read(sounds).next().unwrap().position, Vec3::new(7.0, 0.0, 3.0));
+    world.resource_mut::<GameTime>().frame_count = 6;
+    world.resource_mut::<TimberframeBeamCount>().count = 2;
+    schedule.run(&mut world);
+    assert_eq!(world.resource::<Events<PlayTimberframeSound>>().len(), 1);
+}
+
+#[test]
+fn audio_building_size_matches_original_x86_for_finite_shapes() {
+    use country_core::systems::wall::valid_enclosure::{Shape, ShapeParameters};
+    use utils::geometry::{Circle2d, Rectangle2d};
+    let oracle = [
+        [0xbc5204a0, 0xb1251052, 0x3d89d308, 0x3f800000, 0x40631053],
+        [0xbcbc900a, 0xbc9e6484, 0x00000000, 0x3e8933df, 0x3f800000],
+    ];
+    for kind in 0..2 {
+        for (i, size) in [0.0, 0.9, 2.25, 8.0, 15.0].into_iter().enumerate() {
+            let shape = if kind == 0 { Shape::Circle(Circle2d::new(Vec2::ZERO, size)) } else {
+                Shape::Rectangle(Rectangle2d { axis: Vec2::X, center: Vec2::ZERO, size: Vec2::splat(size) })
+            };
+            let mut world = World::new();
+            world.init_resource::<Events<ConstructTimberframeCmd>>();
+            world.init_resource::<Events<PlayTimberframeSound>>();
+            world.insert_resource(TimberframeBeamCount { last_count: 0, count: 1, last_frame: 0 });
+            world.insert_resource(GameTime { frame_count: 1, ..Default::default() });
+            world.send_event(ConstructTimberframeCmd::from_shape(ShapeParameters::from_shape(shape), 0));
+            let mut schedule = Schedule::default(); schedule.add_systems(timberframe_beam_count_change_audio); schedule.run(&mut world);
+            let sounds = world.resource::<Events<PlayTimberframeSound>>(); let mut reader = sounds.get_cursor();
+            assert_eq!(reader.read(sounds).next().unwrap().value.to_bits(), oracle[kind][i], "形状 {kind} 尺寸 {size}");
+        }
+    }
 }

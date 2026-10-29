@@ -1,40 +1,14 @@
-//! `decorator_on_rectangle_edited.rs` — 矩形墙编辑 → 装饰沿周长重映射
-//! （decorator_on_rectangle_edited 0x140819c00 + 内联 `on_rectangle_edited` 行 35）。
-//!
-//! 证据：`toolchain/decor-trunk/decompiled/140819c00_decorator_on_rectangle_edited.c`
-//! （O 全文）。
-//!
-//! 流程（O）：
-//! 1. 事件（步长 0x58）→ `DecoratorArchivist::archive_current_decorators_in_storages`
-//!    （标签 "rectangle edit"）+ `decorator_cull_allow_wall`；
-//! 2. 墙的 premade 形状（`get_enclosure_params`）→ Rectangle2d；
-//! 3. 逐装饰（side 0）：
-//!    * `WallCornerAttachment::to_rectangle_corner_id` 命中 → `Rectangle2d::get_point`
-//!      → `xvy` → 写 `Info+0x14`（anchor_ws）；
-//!    * 未命中 → `orientation_mat2` 逆变换 + `world_to_local` → 除以半尺寸 →
-//!      clamp `[-1,1]`（minps/maxps + NaN 传播）→ 变换回世界 → `xvy` → 写 anchor_ws；
-//!    * `get_closest_u_from_pos(position) / perimeter()` → 写 `Info+0x00`（coord.u）；
-//!    * `Info+0x04` 写第二个输出（精确来源 U；本实现保留原 coord.y）。
-//! 4. side 1 → 无操作；其余 → panic。
-//!
-//! U：
-//! - `Info+0x04` 的原写入量（decomp 中 `uVar30 = extraout_RAX_03[6]` 或 `[1]`）
-//!   未闭合；矩形编辑不改变竖直墙空间坐标，保留原值并登记。
-//! - `WallCornerAttachment` 类型在 core 未实现（章节 O）；本文件提供
-//!   [`rectangle_corner_id`] 等价助手（0x140b256f0：`{present!=0, id-1}`）。
-
+//! B140819c00：矩形编辑快照到装饰锚点、墙空间距离、碰撞归档的真实链路。
 use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
 
-use country_core::resources::walls::decorator_archivist::DecoratorArchivist;
-use country_core::resources::walls::decorator_storage::DecoratorStorage;
-use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::resources::walls::WallId;
-use country_core::systems::wall::valid_enclosure::{Shape, ShapeParameters};
+use country_core::resources::walls::decorator_storage::DecoratorStorage;
+use country_core::systems::wall::valid_enclosure::ShapeParameters;
 use utils::geometry::Rectangle2d;
 
 use crate::decorator_on_wall_height_changed::{
-    get_anchor_ws, get_wall_coord, set_anchor_ws, set_wall_coord, side_from_tag_byte,
+    get_wall_coord, set_anchor_ws, set_wall_coord, side_from_tag_byte,
 };
 
 /// 矩形角附着 id（等价 `WallCornerAttachment::to_rectangle_corner_id`
@@ -48,107 +22,127 @@ pub fn rectangle_corner_id(attachment: u8) -> Option<u32> {
     }
 }
 
-/// 矩形编辑事件（O：0x58B 记录；本模型只消费墙键）。
-#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
-pub struct RectangleEditedEvent {
-    /// 墙 id。
-    pub wall: WallId,
-    /// 附加（U）。
-    pub extra: u64,
-}
-
-/// 非角分支：局部投影 → 每轴除以半尺寸 → clamp[-1,1] → 反变换（O）。
-pub fn project_onto_rectangle(rectangle: Rectangle2d, position: Vec2) -> Vec2 {
-    let half = rectangle.size * 0.5;
-    if half.x == 0.0 || half.y == 0.0 {
-        // 退化矩形：原实现除法会产生 inf/nan；显式跳过，避免伪造坐标。
-        return position;
-    }
-    let local = rectangle.world_to_local(position) / half;
-    let clamped = Vec2::new(clamped_or_nan(local.x), clamped_or_nan(local.y));
-    rectangle.local_to_world(clamped * half)
-}
-
-#[inline]
-fn clamped_or_nan(value: f32) -> f32 {
-    // 原 minps/maxps + NAN 处理：NaN 传播，其余 clamp 到 [-1,1]。
-    if value.is_nan() {
-        value
-    } else {
-        value.clamp(-1.0, 1.0)
-    }
-}
-
-/// 单个装饰重映射（O）。
-pub fn remap_decorator_on_rectangle(
-    info: &mut country_core::resources::walls::decorator::DecoratorInfo,
-    shape: &ShapeParameters,
-    rectangle: Rectangle2d,
-) {
-    let anchor = get_anchor_ws(info);
-    let position = Vec2::new(anchor.x, anchor.z);
-    let new_position = match rectangle_corner_id((info.u20 & 0xff) as u8) {
-        Some(corner) => {
-            let point = rectangle.get_point(corner as usize);
-            // `xvy`：保留原 y。
-            set_anchor_ws(info, Vec3::new(point.x, anchor.y, point.y));
-            point
-        }
-        None => {
-            let projected = project_onto_rectangle(rectangle, position);
-            set_anchor_ws(info, Vec3::new(projected.x, anchor.y, projected.y));
-            projected
+/// 原非角锚点重映射：以before坐标系找主轴，仅主轴随尺寸/中心变化。
+/// B140819ef6..f56、14081a174..228；不能把两轴一同缩放或投到当前矩形。
+pub fn remap_rectangle_anchor(before: Rectangle2d, after: Rectangle2d, position: Vec2) -> Vec2 {
+    let inverse = before.orientation_mat2().inverse();
+    let old_center = inverse * before.center;
+    let new_center = inverse * after.center;
+    let shift = new_center - old_center;
+    let mut local = inverse * position - old_center;
+    let ratio = local / (before.size * 0.5);
+    // 原MAXPS/MINPS后显式unordered blend将NaN取下限-1。
+    let bound = |value: f32| {
+        if value.is_nan() {
+            -1.0
+        } else {
+            value.clamp(-1.0, 1.0)
         }
     };
-    // O：`get_closest_u_from_pos(..) / perimeter()` 写入 Info+0x00。
-    let perimeter = shape.perimeter();
-    if perimeter > 0.0 {
-        let u = shape.get_closest_u_from_pos(new_position) / perimeter;
-        let mut coord = get_wall_coord(info);
-        coord.u = u;
-        set_wall_coord(info, coord);
+    let ratio = Vec2::new(bound(ratio.x), bound(ratio.y));
+    if ratio.x.abs() > ratio.y.abs() {
+        local.x = (ratio.x * after.size.x) * 0.5 + shift.x;
+    } else {
+        local.y = (ratio.y * after.size.y) * 0.5 + shift.y;
     }
+    after.orientation_mat2() * local + before.center
 }
 
-/// `decorator_on_rectangle_edited` @0x140819c00（O 结构）。
-pub fn decorator_on_rectangle_edited<C: Send + Sync + 'static>(
-    walls: Res<PublicWalls>,
-    mut storage: ResMut<DecoratorStorage>,
-    mut archivist: ResMut<DecoratorArchivist<C>>,
-    mut events: EventReader<RectangleEditedEvent>,
+/// 静止矩形的同一原算法；保留既有调用接口，不提供退化尺寸早退。
+pub fn project_onto_rectangle(rectangle: Rectangle2d, position: Vec2) -> Vec2 {
+    remap_rectangle_anchor(rectangle, rectangle, position)
+}
+
+/// 使用首次归档的锚点，防止跨帧累加重映射。原角分支还把coord.y改为anchor.y。
+pub fn remap_decorator_on_rectangle(
+    info: &mut country_core::resources::walls::decorator::DecoratorInfo,
+    before: Rectangle2d,
+    after: Rectangle2d,
+    archived_anchor: Vec3,
+    attachment: u8,
 ) {
-    for event in events.read() {
-        // O：归档当前装饰（标签 "rectangle edit"）。
-        archivist.archive_current_decorators_in_storages(std::slice::from_ref(&*storage));
-        // O 0x140819ddb：把该墙存储里的装饰 id 放行进 culling.allowed_ids（&mut，无返回值）。
-        archivist.decorator_cull_allow_wall(event.wall, &storage);
-        let Some(state) = walls.get(event.wall) else {
-            log::warn!(
-                "decorator_on_rectangle_edited: wall {:?} missing from PublicWalls",
-                event.wall
-            );
-            continue;
-        };
-        // O：get_enclosure_params → 矩形；circle/non-premade 不属于本系统语义。
-        let shape = ShapeParameters::from_snapshot(state.shape());
-        let Some(Shape::Rectangle(rectangle)) = shape.get_shape() else {
-            continue;
-        };
-        let Some(bucket) = storage.wall_decorators_mut(event.wall) else {
-            continue;
-        };
-        for (_id, info) in bucket.iter_mut() {
-            let side = side_from_tag_byte(info.dst_tag());
-            match side {
-                0 => remap_decorator_on_rectangle(info, &shape, rectangle),
-                1 => {}
-                2 => panic!(
-                    "assertion failed: rectangle decorator has unsupported destination side 2"
-                ),
-                _ => unreachable!(
-                    "internal error: entered unreachable code (decorator_on_rectangle_edited.rs)"
-                ),
+    let (position, vertical) = match rectangle_corner_id(attachment) {
+        Some(corner) => (after.get_point(corner as usize), archived_anchor.y),
+        None => (
+            remap_rectangle_anchor(
+                before,
+                after,
+                Vec2::new(archived_anchor.x, archived_anchor.z),
+            ),
+            get_wall_coord(info).y,
+        ),
+    };
+    set_anchor_ws(info, Vec3::new(position.x, archived_anchor.y, position.y));
+    // 原14081a165/277均是MULSS，产出墙空间距离，而不是归一化u。
+    set_wall_coord(
+        info,
+        utils::wall_space::WallSpaceCoord::new_unchecked(
+            after.get_closest_u_from_pos(position) * after.perimeter(),
+            vertical,
+        ),
+    );
+}
+
+/// 原140819c00五参数，取最后一帧快照；读取编辑后的InnerWalls而非延迟发布表。
+pub fn decorator_on_rectangle_edited(
+    walls: Res<country_core::resources::walls::InnerWalls>,
+    mut events: EventReader<country_core::systems::wall::shapes::rectangle::OnRectangleEdited>,
+    mut storage: ResMut<DecoratorStorage>,
+    mut archivist: ResMut<
+        country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist,
+    >,
+    resources: country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,
+) {
+    use country_core::resources::walls::decorator_storage::DecoratorStorageAddr;
+    use country_core::resources::walls::publication_fields::WallId as ArchivedWallId;
+    use country_core::systems::wall::shapes::rectangle::{
+        WipRectangle, edit_decision::RectangleEditState,
+    };
+    let Some(event) = events.read().last() else {
+        return;
+    };
+    let state = RectangleEditState(event.0);
+    if state.tag() == 0 {
+        return;
+    }
+    let wall = WallId(state.wall().expect("矩形快照标签无效").0);
+    let before = WipRectangle(event.0).before();
+    archivist.archive_current_decorators_in_storages_with_resources(
+        &[
+            DecoratorStorageAddr::Wall(wall),
+            DecoratorStorageAddr::Terrain,
+        ],
+        &storage,
+        &resources,
+        "rectangle edit",
+    );
+    archivist.decorator_cull_allow_wall(wall, &storage);
+    let source = walls.get(wall).expect("矩形编辑墙不存在于InnerWalls");
+    let shape = source
+        .get_enclosure_params()
+        .expect("矩形编辑墙缺少enclosure");
+    let after = ShapeParameters::from_snapshot(shape).as_rectangle();
+    let Some(bucket) = storage.wall_decorators_mut(wall) else {
+        return;
+    };
+    // 原MaybeMut::get_mut@140a1b1e0仅side0登记modified；拆借字段避免逐帧复制ID。
+    let modified = &mut bucket.modified_ids;
+    for (&id, info) in &mut bucket.decorators {
+        match side_from_tag_byte(info.dst_tag()) {
+            0 => {
+                modified.insert(id);
+                let archived = archivist
+                    .walls
+                    .get(&ArchivedWallId(wall.0))
+                    .and_then(|bucket| bucket.items.get(&id))
+                    .expect("矩形编辑装饰缺少首次归档");
+                let f = |at| f32::from_le_bytes(archived.0[at..at + 4].try_into().unwrap());
+                let anchor = Vec3::new(f(0x14), f(0x18), f(0x1c));
+                let attachment = archived.0[0x20];
+                remap_decorator_on_rectangle(info, before, after, anchor, attachment);
             }
+            1 => {}
+            _ => panic!("矩形编辑装饰包含原版不支持的目的地side"),
         }
     }
 }
@@ -156,10 +150,182 @@ pub fn decorator_on_rectangle_edited<C: Send + Sync + 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::decorator_on_wall_height_changed::get_anchor_ws;
     use country_core::resources::walls::decorator::DecoratorInfo;
 
     fn rect() -> Rectangle2d {
         Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::new(10.0, 4.0))
+    }
+
+    #[test]
+    fn actual_world_archive_survives_two_frames_and_restores_without_drift() {
+        use country_core::{
+            resources::walls::{
+                InnerWalls,
+                decorator::{DecoratorId, DecoratorInfo},
+                decorator_archivist::LiveDecoratorArchivist,
+                decorator_collision::DecoratorPhysicsColliders,
+                decorator_storage::DecoratorStorageAddr,
+            },
+            systems::{
+                collision::world::RaycastWorld,
+                wall::{
+                    shapes::rectangle::{OnRectangleEdited, WipRectangle},
+                    valid_enclosure::Shape,
+                },
+            },
+        };
+        let before = rect();
+        let mut inner = InnerWalls::default();
+        let curve = before.as_curve2();
+        let authority_curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(
+            curve.points.iter().map(|point| point.to_array()).collect(),
+            false,
+        )
+        .unwrap();
+        let wall = inner.new_wall_w_params(authority_curve, 3.0, 0, 0, false);
+        inner.update_wall_state_enclosure(
+            wall,
+            ShapeParameters::from_shape(Shape::Rectangle(before)).to_snapshot(),
+        );
+        let mut original = DecoratorInfo::default();
+        set_anchor_ws(&mut original, Vec3::new(4., 7., 1.));
+        set_wall_coord(
+            &mut original,
+            utils::wall_space::WallSpaceCoord::new_unchecked(12., 9.),
+        );
+        let mut storage = DecoratorStorage::default();
+        storage
+            .get_or_insert_default(DecoratorStorageAddr::Wall(wall))
+            .insert(DecoratorId(1), original);
+        storage
+            .decorator_to_storage
+            .insert(DecoratorId(1), DecoratorStorageAddr::Wall(wall));
+        let mut roof = DecoratorInfo::default();
+        roof.u20 = 2 << 16;
+        storage
+            .get_or_insert_default(DecoratorStorageAddr::Wall(wall))
+            .insert(DecoratorId(2), roof);
+        storage
+            .decorator_to_storage
+            .insert(DecoratorId(2), DecoratorStorageAddr::Wall(wall));
+        let mut world = World::new();
+        world.insert_resource(inner);
+        world.insert_resource(storage);
+        world.init_resource::<LiveDecoratorArchivist>();
+        world.init_resource::<RaycastWorld>();
+        world.init_resource::<DecoratorPhysicsColliders>();
+        world.init_resource::<Events<OnRectangleEdited>>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(decorator_on_rectangle_edited);
+        let mut wip = WipRectangle::default();
+        wip.begin_dimensions(wall, 2, before, 7., Vec2::ZERO);
+        let mut expected = None;
+        for (width, center) in [(12., 1.), (14., 2.)] {
+            world
+                .resource_mut::<DecoratorStorage>()
+                .get_or_insert_default(DecoratorStorageAddr::Wall(wall))
+                .modified_ids
+                .clear();
+            let after = Rectangle2d::new_axis_aligned(Vec2::new(center, 0.), Vec2::new(width, 4.));
+            world
+                .resource_mut::<InnerWalls>()
+                .update_wall_state_enclosure(
+                    wall,
+                    ShapeParameters::from_shape(Shape::Rectangle(after)).to_snapshot(),
+                );
+            wip.set_current(after);
+            world
+                .resource_mut::<Events<OnRectangleEdited>>()
+                .send(OnRectangleEdited(wip.0));
+            schedule.run(&mut world);
+            let actual = world
+                .resource::<DecoratorStorage>()
+                .get(DecoratorStorageAddr::Wall(wall))
+                .unwrap()
+                .get(DecoratorId(1))
+                .unwrap();
+            let bucket = world
+                .resource::<DecoratorStorage>()
+                .get(DecoratorStorageAddr::Wall(wall))
+                .unwrap();
+            assert!(
+                bucket.modified_ids.contains(&1),
+                "原MaybeMut必须触发后续装饰重建"
+            );
+            assert!(
+                !bucket.modified_ids.contains(&2),
+                "原roof侧不申请可变记录也不标dirty"
+            );
+            let point = remap_rectangle_anchor(before, after, Vec2::new(4., 1.));
+            assert_eq!(
+                get_anchor_ws(actual).to_array().map(f32::to_bits),
+                [point.x, 7., point.y].map(f32::to_bits)
+            );
+            assert_eq!(get_wall_coord(actual).y, 9.);
+            expected = Some(*actual);
+        }
+        schedule.run(&mut world);
+        let unchanged = world
+            .resource::<DecoratorStorage>()
+            .get(DecoratorStorageAddr::Wall(wall))
+            .unwrap()
+            .get(DecoratorId(1))
+            .unwrap();
+        assert_eq!(
+            get_anchor_ws(unchanged),
+            get_anchor_ws(&expected.unwrap()),
+            "空闲帧不累计重映射"
+        );
+        world.resource_scope(|world, mut archivist: Mut<LiveDecoratorArchivist>| {
+            archivist.extract_and_restore_to_storage(&mut world.resource_mut::<DecoratorStorage>());
+            assert!(archivist.walls.is_empty());
+            assert!(archivist.collision_a.is_empty());
+            assert!(archivist.collision_b.is_empty());
+            // 原140b2c4b0只drain归档/碰撞；culling的清理由extract_diff负责。
+            assert!(archivist.culling.allowed_ids.contains(&1));
+        });
+        let storage = world.resource::<DecoratorStorage>();
+        let restored = storage
+            .get(DecoratorStorageAddr::Wall(wall))
+            .unwrap()
+            .get(DecoratorId(1))
+            .unwrap();
+        assert_eq!(get_anchor_ws(restored), get_anchor_ws(&original));
+        assert_eq!(get_wall_coord(restored), get_wall_coord(&original));
+        assert_eq!(
+            storage.decorator_to_storage.get(DecoratorId(1)),
+            Some(DecoratorStorageAddr::Wall(wall))
+        );
+    }
+
+    #[test]
+    fn native_rectangle_archive_anchor_bits() {
+        type Case = ([u32; 6], [u32; 6], [u32; 2], [u32; 2]);
+        let cases: &[Case] = include!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../reports/module-recovery-2026-10-23/m01-rectangle-anchor-native-cases.rs"
+        ));
+        let rectangle = |v: [u32; 6]| {
+            let v = v.map(f32::from_bits);
+            Rectangle2d {
+                axis: Vec2::new(v[0], v[1]),
+                center: Vec2::new(v[2], v[3]),
+                size: Vec2::new(v[4], v[5]),
+            }
+        };
+        for (index, (before, after, point, expected)) in cases.iter().copied().enumerate() {
+            let actual = remap_rectangle_anchor(
+                rectangle(before),
+                rectangle(after),
+                Vec2::from_array(point.map(f32::from_bits)),
+            );
+            assert_eq!(
+                actual.to_array().map(f32::to_bits),
+                expected,
+                "原指令锚点差异case {index}"
+            );
+        }
     }
 
     #[test]
@@ -185,16 +351,16 @@ mod tests {
 
     #[test]
     fn corner_remap_writes_anchor_and_normalized_u() {
-        let shape = ShapeParameters::from_shape(Shape::Rectangle(rect()));
         let mut info = DecoratorInfo::default();
         info.u20 = 2; // corner tag 2 → corner id 1
         let anchor = Vec3::new(100.0, 7.0, 100.0);
         set_anchor_ws(&mut info, anchor);
-        remap_decorator_on_rectangle(&mut info, &shape, rect());
+        remap_decorator_on_rectangle(&mut info, rect(), rect(), anchor, 2);
         // 角 1 = (-w/2, +l/2) = (-5, 2)。
         let a = crate::decorator_on_wall_height_changed::get_anchor_ws(&info);
         assert_eq!(a, Vec3::new(-5.0, 7.0, 2.0));
         let coord = get_wall_coord(&info);
-        assert!(coord.u > 0.0 && coord.u < 1.0);
+        assert_eq!(coord.u, 4.0);
+        assert_eq!(coord.y, 7.0);
     }
 }

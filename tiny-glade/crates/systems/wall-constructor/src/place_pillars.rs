@@ -13,10 +13,10 @@
 //! `assemble_stone_pillar`（0x14120d670 + closure$4 0x14120d340）：
 //! - `param_3 += 0.2`、`param_4 += 0.2`（原件先加）；
 //!   `param_3 ≤ 1.26` → 单段 `[0, param_4]`；否则双段
-//!   `[0, param_3]` 与 `[param_3, param_4]`，且
+//!   `[0, param_4]` 与 `[param_4, param_3]`，且
 //!   `flag = 1.2 < |param_4−param_3|`。
 //! - 每段 `span = (b−a) − (flag?0.25:0)`；
-//!   `count = max(3, round(span/0.56))`；`random_splits_into(count,
+//!   `count = max(3, ceil(span/0.56))`；`random_splits_into(count,
 //!   0.28/span, rng)` 生成切点，映射 `t*span+a`；flag 段再追加段尾 b。
 //! - 相邻切点跨度 ≥0.01 时发射：中心 = (x, (y0+y1)/2, z)，高度 = |Δy|，
 //!   截面宽 = 0.42±0.05 / 0.7±0.05（flag 段末段固定 0.7/0.84）。
@@ -145,8 +145,8 @@ pub fn pillar_segments(bottom: f32, top: f32) -> Vec<(f32, f32, bool)> {
     } else {
         let delta = (top - bottom).abs();
         vec![
-            (0.0, bottom, true),
-            (bottom, top, delta > f32::from_bits(0x3f99999a)),
+            (0.0, top, true),
+            (top, bottom, delta > f32::from_bits(0x3f99999a)),
         ]
     }
 }
@@ -166,8 +166,18 @@ pub fn assemble_stone_pillar(
     context: PillarEmitContext,
     out: &mut Vec<[u8; 96]>,
 ) {
+    visit_stone_bricks(x, y, z, bottom, top, seed, |brick, ordinal| {
+        out.push(brick.to_ssbo(ordinal, context).observed_bytes());
+    });
+}
+
+fn visit_stone_bricks(
+    x: f32, y: f32, z: f32, bottom: f32, top: f32, seed: u64,
+    mut emit: impl FnMut(StonePillarBrick, u32),
+) {
     let rng = fastrand::Rng::with_seed(seed);
-    let y = y + f32::from_bits(0xbe4ccccd); // −0.2：原件 fVar33 = param_5[1] − 0.2
+    let base_y = y;
+    let y = y + f32::from_bits(0xbe4ccccd); // 顶盖使用提前偏移的原基高。
     let segments = pillar_segments(bottom, top);
     let mut emitted: u32 = 0;
     for (a, b, flag) in segments {
@@ -177,12 +187,9 @@ pub fn assemble_stone_pillar(
             0.0
         }; // 0.25
         let span = (b - a) - gap;
-        if !(span > 0.0) {
-            continue;
-        }
-        // count = max(3, round(span / 0.56))：原件 `if (uVar16 < 4) uVar16 = 3`。
+        // 原 14120d670 使用 ceilf，随后最小值为 3。
         let count = {
-            let rounded = (span / f32::from_bits(0x3f0f5c29)).round(); // 0.56
+            let rounded = (span / f32::from_bits(0x3f0f5c29)).ceil(); // 0.56
             let saturated = if rounded < 0.0 {
                 0usize
             } else if rounded > u64::MAX as f32 {
@@ -204,32 +211,32 @@ pub fn assemble_stone_pillar(
             // 原件追加段尾（0.25 间隙保留在最后一对里）。
             heights.push(b);
         }
-        for (low, high) in heights.iter().tuple_windows() {
+        for (index, (low, high)) in heights.iter().tuple_windows().enumerate() {
             let (low, high) = (*low, *high);
-            let length = (high - low).abs();
+            let low_y = low + base_y - 0.2;
+            let high_y = high + base_y - 0.2;
+            let delta_y = high_y - low_y;
+            let length = (delta_y * delta_y + 0.0 + 0.0).sqrt();
             if length < f32::from_bits(0x3c23d70a) {
                 // 0.01 ε
                 continue;
             }
             let (width_x, width_z) = if !flag {
                 jitter_widths(&rng)
-            } else if length_is_last_pair(&heights, low, high) {
+            } else if index == heights.len() - 2 {
                 // 原件的“末段固定 0.7/0.84”判据：lVar20 == len-2。
                 (f32::from_bits(0x3f333333), f32::from_bits(0x3f570a3e))
             } else {
                 jitter_widths(&rng)
             };
             let brick = StonePillarBrick {
-                center: [x, y + (low + high) * 0.5, z],
+                // 原先分别把两个端点加基高、减0.2，再求中点。
+                center: [x, (low_y + high_y) * 0.5, z],
                 width_x,
                 height: length,
                 width_z,
             };
-            out.push(
-                brick
-                    .to_ssbo(seed as u32 + emitted, context)
-                    .observed_bytes(),
-            );
+            emit(brick, emitted);
             emitted += 1;
         }
     }
@@ -243,7 +250,7 @@ pub fn assemble_stone_pillar(
             height: f32::from_bits(0x3f000000),  // 0.5
             width_z: f32::from_bits(0x3f59999a), // 0.85
         };
-        out.push(cap.to_ssbo(seed as u32 + emitted, context).observed_bytes());
+        emit(cap, emitted);
     }
 }
 
@@ -259,66 +266,455 @@ fn jitter_widths(rng: &fastrand::Rng) -> (f32, f32) {
     (width_x, width_z)
 }
 
-/// 末段判定：pair 是 heights 的最后两个元素（原件 `lVar20 == len-2`）。
-fn length_is_last_pair(heights: &[f32], low: f32, high: f32) -> bool {
-    heights.len() >= 2 && heights[heights.len() - 2] == low && heights[heights.len() - 1] == high
+/// 原 1407541xx：按 LoopRange 的起点及模数映射两个准备路径端点，
+/// 再逐分量使用 `(next-current)*fraction+current`；非法模数或索引保留失败。
+fn sample_pillar_position(
+    points: &[[f32; 3]],
+    range: country_core::systems::wall::construction::segmentation::WallLoopRange,
+    coord: country_core::systems::wall::construction::segmentation::ThresholdedCurveCoord,
+) -> [f32; 3] {
+    let index = (coord.point_index as i32).wrapping_add(range.start);
+    let first = index.rem_euclid(range.modulus) as usize;
+    let second = index.wrapping_add(1).rem_euclid(range.modulus) as usize;
+    let a = points[first];
+    let b = points[second];
+    std::array::from_fn(|axis| (b[axis] - a[axis]) * coord.fraction + a[axis])
 }
 
-/// B 0x140753670 `place_pillars` 的候选/装配宿主。
-///
-/// **未完成（I）**：52KB 原函数包含双缓冲队列、0x88B 段落、LoopRange/
-/// CurveSlice、木柱二路与 MaterialStats；本轮只恢复 `add_proposal` /
-/// `assemble_stone_pillar` 两个原语并把候选采集接到真实支柱原语上。
-/// `PillarEmitContext` 的 material/flags/wall_distance 来源仍 U。
+/// 原自由墙端点按 0.1875 延伸至墙内；非端点保持原采样坐标。
+fn adjust_freehand_pillar_coord(
+    points: &[[f32; 3]],
+    range: country_core::systems::wall::construction::segmentation::WallLoopRange,
+    key: usize,
+    flag: u8,
+    coord: country_core::systems::wall::construction::segmentation::ThresholdedCurveCoord,
+) -> country_core::systems::wall::construction::segmentation::ThresholdedCurveCoord {
+    use utils::curve::{CurveCoordSemanticThresholded3D, CurveInternalCoord,
+        curve_slice::{CurveSlice, LoopCurvePoints}};
+    use country_core::systems::wall::construction::segmentation::ThresholdedCurveCoord;
+    // 140bece40 读取 LoopIdx 的原始有符号值；这里不取模。
+    let first = range.start == 0 && flag & 2 != 0;
+    let end = i64::from(range.end) == points.len() as i64;
+    if !first && !(end && flag & 4 != 0) { return coord; }
+    let length = range.len();
+    assert!(key < length, "原柱候选超出 LoopRange");
+    let start = CurveInternalCoord::new_for_point_count(key, 0.0, length);
+    let loop_range = utils::loop_range::LoopRange { start_idx: range.start, end_idx: range.end, period: range.modulus };
+    let view = LoopCurvePoints { points, range: loop_range };
+    let mut slice = CurveSlice::<[f32; 3], _, CurveCoordSemanticThresholded3D, glam::Vec2, _>::from_coord_range_with_remap(
+        view, start, start, |_, p: &[f32; 3]| glam::Vec2::new(p[0], p[2]));
+    if first { slice.extend_right(0.1875); } else { slice.extend_left(0.1875); }
+    let result = if first { slice.end() } else { slice.start() };
+    ThresholdedCurveCoord { point_index: result.segment as u32, fraction: result.t }
+}
+
+/// 原 0x88 段的三个缓存按最短长度 zip；key 同时索引 flags 与 coords。
+/// 自由墙端点需先执行原 CurveSlice 延伸，由调用者提供调整后的坐标。
+#[derive(Clone, Copy, Debug)]
+struct SegmentPillar {
+    proposal: PillarPlacementProposal,
+    score: f32,
+    position: [f32; 3],
+    key: usize,
+}
+
+/// 原 1407542xx–6a3 的柱木记录；两条水平轴由提案方向与 Y 叉积给出。
+fn wooden_pillar_record(
+    pillar: &SegmentPillar,
+    wall: u64,
+    segment_ordinal: usize,
+    pillar_ordinal: usize,
+) -> country_core::resources::roofs::roof_buffers::WoodenPlankSsbo {
+    use country_core::resources::{render::Affine3Packed, roofs::roof_buffers::WoodenPlankSsbo};
+    let read = |offset| f32::from_le_bytes(pillar.proposal.bytes[offset..offset + 4].try_into().unwrap());
+    let x = read(0);
+    let z = read(4);
+    let height = (read(0x14) + 0.2) + 0.1;
+    // 保留原叉积及零乘/加顺序，负零与非有限方向均会影响结果位型。
+    let direction = glam::Vec3::new(x, 0.0, z);
+    let cross = glam::Vec3::new(z * 1.0 - 0.0 * 0.0,
+        x * 0.0 - z * 0.0, 0.0 * 0.0 - x * 1.0);
+    let zero = glam::Vec3::ZERO;
+    let cross_zero = cross * 0.0;
+    let direction_zero = direction * 0.0;
+    let position = glam::Vec3::new(pillar.position[0], pillar.position[1] - 0.2, pillar.position[2]);
+    WoodenPlankSsbo {
+        transform: Affine3Packed::from_cols(
+            (cross * 0.375 + zero) + direction_zero,
+            (glam::Vec3::Y * height + cross_zero) + direction_zero,
+            direction * 0.375 + (cross_zero + zero),
+            (cross_zero + direction_zero) + position,
+        ),
+        gate_seed: segment_ordinal as i32,
+        piece_seed: pillar_ordinal as i32,
+        wall_id: wall as u32,
+        flags: 0,
+    }
+}
+
+/// 逐柱石砖候选：原闭包以柱方向定向砖轴，沿墙参数由提案 u 与发布曲线长度计算。
+/// 原输入/记录的数值等价仍须用 14120d670→14120d340 原输出逐字节验证。
+fn visit_stone_pillar_records(
+    pillar: &SegmentPillar,
+    wall: country_core::resources::walls::WallId,
+    curve_length: f32,
+    mut emit: impl FnMut(BrickTransformSsbo),
+) {
+    use country_core::geometry::instanced_wall::BrickSourceId;
+    let read = |offset| f32::from_le_bytes(pillar.proposal.bytes[offset..offset + 4].try_into().unwrap());
+    let distance = read(0x18) * curve_length;
+    let context = PillarEmitContext { material: BrickSourceId::from_wall_id(
+        country_core::resources::walls::publication_fields::WallId(wall.0)).0, flags: 0,
+        wall_distance: [distance + f32::from_bits(0xbe6b851f), distance + f32::from_bits(0x3e6b851f)] };
+    let x = read(0);
+    let z = read(4);
+    let inv = 1.0 / (x * x + z * z).sqrt();
+    let (x, z) = (x * inv, z * inv);
+    visit_stone_bricks(pillar.position[0], pillar.position[1], pillar.position[2],
+        read(0x14), pillar.score, wall.0.wrapping_add(pillar.key as u64), |brick, ordinal| {
+            let mut record = brick.to_ssbo(ordinal, context);
+            record.affine_columns = [[x * brick.width_x, 0.0, z * brick.width_x], [0.0, brick.height, 0.0],
+                [(-z * brick.width_z) + 0.0, 0.0, x * brick.width_z], brick.center];
+            emit(record);
+        });
+}
+
+#[cfg(test)]
+fn stone_pillar_records(pillar: &SegmentPillar, wall: country_core::resources::walls::WallId,
+    curve_length: f32) -> Vec<BrickTransformSsbo> {
+    let mut out = Vec::new();
+    visit_stone_pillar_records(pillar, wall, curve_length, |record| out.push(record));
+    out
+}
+
+fn segment_pillars<'a>(
+    mask: &'a country_core::systems::wall::construction::segmentation::WallPathSegmentationMask,
+    points: Option<&'a [[f32; 3]]>,
+    mut adjust: impl FnMut(usize, u8, country_core::systems::wall::construction::segmentation::ThresholdedCurveCoord)
+        -> country_core::systems::wall::construction::segmentation::ThresholdedCurveCoord + 'a,
+) -> impl Iterator<Item = SegmentPillar> + 'a {
+    mask.pillar_proposals.iter().zip(&mask.pillar_scores).zip(&mask.pillar_keys)
+        .map(move |((proposal, &score), &key)| {
+            let flag = mask.flags[key];
+            let coord = adjust(key, flag, mask.coords[key]);
+            SegmentPillar { proposal: PillarPlacementProposal { bytes: *proposal }, score,
+                position: sample_pillar_position(points.expect("非空柱提案需要已准备墙路径"), mask.range, coord), key }
+        })
+}
+
+/// B 0x140753670：消费事件与上游分段柱缓存，写同墙拱/过梁 owner。
+/// 三种缓存由原分段生产者写入；通用砖／木实例槽与高程支撑独立。
 pub fn place_pillars(
     mut changed: EventReader<OnWallChanged>,
     mut bricks: EventReader<RecalculateWallBricks>,
     mut create_roof: EventReader<CreateRoofCmd>,
-    walls: Res<PublicWalls>,
-    ssbo: Res<AssetSsboLibrary>,
-    mut proposals: ResMut<PillarProposals>,
+    mut walls: ResMut<PublicWalls>,
+    mut ssbo: ResMut<AssetSsboLibrary>,
+    masks: Res<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>,
+    mut output: ResMut<crate::construct_arches::WallConstructorOutput>,
 ) {
-    let recalc: Vec<u64> = changed
+    let mut recalc: Vec<u64> = changed
         .read()
         .map(|e| e.0.0)
         .chain(bricks.read().map(|e| e.0.0))
         .chain(create_roof.read().map(|e| e.0.wall_id().0))
         .collect();
+    // 原 140753cxx 将三组事件的墙 ID 合并后无符号排序、去重。
+    recalc.sort_unstable();
+    recalc.dedup();
+    let mut brick_exhausted = false;
+    let mut plank_exhausted = false;
     for wall_id in recalc {
         let id = country_core::resources::walls::WallId(wall_id);
-        let Some(wall) = walls.get(id) else {
-            continue;
-        };
-        let curve = wall.simplified_curve_2d();
-        if curve.points.len() < 2 {
-            continue;
+        let wall = walls.get_mut(id).expect("柱放置事件必须引用已发布墙");
+        let projection = wall.building_projection();
+        let freehand = projection.shape().tag() == 2;
+        let wood = projection.observed_296() == 1;
+        let curve_length = projection.published_source_curve_length();
+        let points = wall.prepared_path.as_ref().map(|path| path.positions.as_slice());
+        let segments = masks.masks.get(&wall_id).expect("柱放置需要处理后的墙分段");
+        let mut positions = Vec::new();
+        let mut count = 0u32;
+        for (segment_index, mask) in segments.iter().enumerate() {
+            let pillars = segment_pillars(mask, points, move |key, flag, coord| {
+                if freehand { adjust_freehand_pillar_coord(points.expect("自由墙柱提案需要已准备墙路径"), mask.range, key, flag, coord) } else { coord }
+            });
+            for (pillar_index, pillar) in pillars.enumerate() {
+                positions.push([pillar.position[0], pillar.position[2]]);
+                count = count.wrapping_add(1);
+                if wood {
+                    let storage = ssbo.get_mut::<country_core::resources::roofs::roof_buffers::WoodenPlankSsbo>()
+                        .expect("原柱木 SSBO 缺失");
+                    let mut writer = output.gpu.wall_plank_writer(storage, wall_id);
+                    plank_exhausted |= writer.push(&wooden_pillar_record(&pillar, wall_id, segment_index, pillar_index)).is_err();
+                } else {
+                    let storage = ssbo.get_mut::<BrickTransformSsbo>().expect("原柱砖 SSBO 缺失");
+                    let mut writer = output.gpu.wall_brick_writer(storage, wall_id);
+                    visit_stone_pillar_records(&pillar, id, curve_length, |record| {
+                        brick_exhausted |= writer.push(&record).is_err();
+                    });
+                }
+            }
         }
-        // 候选源仍 U（原件的双缓冲队列 + 0x88B 段 + 0.1875 半砖偏移 +
-        // find_stone_column_start_y 未重建）。下面的 1.2m 间隔与 64 上限是
-        // **显式占位常量**，不是原算法；只用于让 add_proposal 有真实事件
-        // 驱动，不得按完成计。assemble_stone_pillar 需要真实 bottom/top 源，
-        // 当前不在此处伪造调用。
-        let total = curve.length;
-        let count = ((total / f32::from_bits(0x3f99999a)).ceil() as usize).clamp(0, 64);
-        for i in 0..count {
-            let t = (i as f32 + 0.5) / count.max(1) as f32;
-            let idx = ((t * (curve.points.len() - 1).max(1) as f32) as usize)
-                .min(curve.points.len().saturating_sub(2));
-            let p = curve.points[idx];
-            let mut proposal = PillarPlacementProposal { bytes: [0u8; 28] };
-            // score@+0x14：候选高度（原件由 find_stone_column_start_y 等给出）。
-            proposal.set_score(p[1]);
-            // 提案 index@+0x00（原件 0x1cB 记录首字段为采样索引）。
-            proposal.bytes[0..4].copy_from_slice(&(idx as u32).to_le_bytes());
-            proposals.add_proposal(wall_id, proposal);
-        }
-        let _ = ssbo;
+        if wood { wall.material_stats.set_lintel_pillars_count(count); }
+        else { wall.material_stats.set_arch_pillars_count(count); }
+        wall.material_stats.set_pillar_placements(positions);
     }
+    if brick_exhausted { log::error!("原柱砖分配容量不足"); }
+    if plank_exhausted { log::error!("原柱木分配容量不足"); }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pillar_position_uses_loop_range_and_interpolates_in_original_order() {
+        use country_core::systems::wall::construction::segmentation::{ThresholdedCurveCoord, WallLoopRange};
+        let points = [[0., 1., 2.], [4., 5., 6.], [8., 9., 10.]];
+        let range = WallLoopRange { start: -1, end: 2, modulus: 3 };
+        assert_eq!(sample_pillar_position(&points, range, ThresholdedCurveCoord { point_index: 0, fraction: 0.25 }), [6., 7., 8.]);
+    }
+
+    #[test]
+    fn segment_pillars_uses_three_cache_lengths_and_indexed_coordinates() {
+        use country_core::systems::wall::construction::segmentation::{ThresholdedCurveCoord, WallLoopRange, WallPathSegmentationMask};
+        let mask = WallPathSegmentationMask { flags: vec![0, 7],
+            coords: vec![ThresholdedCurveCoord { point_index: 0, fraction: 0.0 },
+                ThresholdedCurveCoord { point_index: 1, fraction: 0.5 }],
+            pillar_proposals: vec![[1; 28], [2; 28]], pillar_scores: vec![3.0], pillar_keys: vec![1, 0],
+            range: WallLoopRange { start: 0, end: 3, modulus: 3 }, length: 8.0 };
+        let points = [[0., 0., 0.], [4., 2., 0.], [8., 4., 0.]];
+        let result: Vec<_> = segment_pillars(&mask, Some(&points), |key, flag, coord| {
+            assert_eq!((key, flag), (1, 7)); coord
+        }).collect();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].proposal.bytes, [1; 28]);
+        assert_eq!((result[0].score, result[0].key, result[0].position), (3.0, 1, [6., 3., 0.]));
+    }
+
+    #[test]
+    fn wooden_pillar_keeps_original_identity_and_axis_mapping() {
+        let mut proposal = PillarPlacementProposal { bytes: [0; 28] };
+        proposal.bytes[0..4].copy_from_slice(&1.0f32.to_le_bytes());
+        proposal.bytes[0x14..0x18].copy_from_slice(&2.0f32.to_le_bytes());
+        let pillar = SegmentPillar { proposal, score: 1.0, position: [4.0, 3.0, 5.0], key: 2 };
+        let record = wooden_pillar_record(&pillar, 42, 3, 7);
+        assert_eq!((record.gate_seed, record.piece_seed, record.wall_id, record.flags), (3, 7, 42, 0));
+        assert_eq!(record.transform, country_core::resources::render::Affine3Packed::from_cols(
+            glam::Vec3::new(0.0, 0.0, -0.375), glam::Vec3::new(0.0, (2.0f32 + 0.2) + 0.1, 0.0),
+            glam::Vec3::new(0.375, 0.0, 0.0), glam::Vec3::new(4.0, 2.8, 5.0)));
+    }
+
+    #[test]
+    fn wooden_pillar_original_six_records_match() {
+        let inputs = [([1., 0.], [4., 5., 6.], 2.), ([0., 1.], [4., 5., 6.], 2.),
+            ([0.6, 0.8], [4., 5., 6.], 2.), ([-0.0, 1.], [-0.0, 0., -0.0], 0.),
+            ([1., -0.0], [0., -0.0, 0.], -0.2), ([-1., 0.], [-1., 1., -1.], 1.)];
+        let fixture = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reports/module-recovery-2026-10-23/m06-place-wood-oracle-2026-10-29.jsonl"));
+        for (case, ((direction, position, height), line)) in inputs.into_iter().zip(fixture.lines()).enumerate() {
+            let hex = line.split("\"original\": \"").nth(1).unwrap().split('"').next().unwrap();
+            let expected: Vec<u8> = (0..hex.len()).step_by(2).map(|i| u8::from_str_radix(&hex[i..i+2], 16).unwrap()).collect();
+            let mut proposal = PillarPlacementProposal { bytes: [0; 28] };
+            for (offset, value) in [(0, direction[0]), (4, direction[1]), (0x14, height)] {
+                proposal.bytes[offset..offset+4].copy_from_slice(&f32::to_le_bytes(value));
+            }
+            let pillar = SegmentPillar { proposal, score: 0., position, key: 0 };
+            let record = wooden_pillar_record(&pillar, 123, 2, 7);
+            let mut actual = Vec::new();
+            for column in record.transform.cols { for value in column.to_array() { actual.extend(value.to_le_bytes()); } }
+            for value in [record.gate_seed as u32, record.piece_seed as u32, record.wall_id, record.flags] { actual.extend(value.to_le_bytes()); }
+            assert_eq!(actual, expected, "原木柱完整记录不一致，样本 {case}");
+        }
+    }
+
+    #[test]
+    fn stone_pillar_first_original_oracle_matches_full_records() {
+        let line = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reports/module-recovery-2026-10-23/m06-place-stone-oracle-2026-10-29.jsonl"))
+            .lines().next().unwrap();
+        let list = line.split("\"bricks\": [").nth(1).unwrap().split(']').next().unwrap();
+        let expected: Vec<Vec<u8>> = list.split(',').map(|s| {
+            let hex = s.trim().trim_matches('"');
+            (0..hex.len()).step_by(2).map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap()).collect()
+        }).collect();
+        let mut proposal = PillarPlacementProposal { bytes: [0; 28] };
+        for (offset, value) in [(0, 1.0f32), (0x14, 1.0), (0x18, 0.25)] {
+            proposal.bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+        }
+        let pillar = SegmentPillar { proposal, score: 2.0, position: [4.0, 5.0, 6.0], key: 0 };
+        let actual = stone_pillar_records(&pillar, country_core::resources::walls::WallId(123), 10.0);
+        assert_eq!(actual.iter().map(|record| record.observed_bytes().to_vec()).collect::<Vec<_>>(), expected);
+    }
+
+    #[test]
+    fn stone_pillar_all_original_oracle_records_match() {
+        let fixture = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reports/module-recovery-2026-10-23/m06-place-stone-oracle-2026-10-29.jsonl"));
+        for (case, line) in fixture.lines().enumerate() {
+            let input = line.split("\"input\": ").nth(1).unwrap().split(", \"original\"").next().unwrap();
+            let values: Vec<_> = input.trim_matches(|c| c == '[' || c == ']').split(',').map(str::trim).collect();
+            let bottom: f32 = values[0].parse().unwrap();
+            let top: f32 = values[1].parse().unwrap();
+            let seed: u64 = values[2].parse().unwrap();
+            let dx: f32 = values[3].trim_start_matches('[').parse().unwrap();
+            let dz: f32 = values[4].trim_end_matches(']').parse().unwrap();
+            let list = line.split("\"bricks\": [").nth(1).unwrap().split(']').next().unwrap();
+            let expected: Vec<Vec<u8>> = if list.trim().is_empty() { Vec::new() } else { list.split(',').map(|s| {
+                let hex = s.trim().trim_matches('"');
+                (0..hex.len()).step_by(2).map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap()).collect()
+            }).collect() };
+            let mut proposal = PillarPlacementProposal { bytes: [0; 28] };
+            for (offset, value) in [(0, dx), (4, dz), (0x14, bottom), (0x18, 0.25)] {
+                proposal.bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+            }
+            let pillar = SegmentPillar { proposal, score: top, position: [4.0, 5.0, 6.0],
+                key: seed.wrapping_sub(123) as usize };
+            let actual = stone_pillar_records(&pillar, country_core::resources::walls::WallId(123), 10.0);
+            assert_eq!(actual.iter().map(|record| record.observed_bytes().to_vec()).collect::<Vec<_>>(), expected,
+                "原柱完整记录不一致，样本 {case}");
+        }
+    }
+
+    #[test]
+    fn actual_lintel_producer_feeds_place_pillars_and_material_stats() {
+        use country_core::{
+            render::{sparse_instance_buffer::SparseInstanceBuffer, ssbo::rhapsody_boundary::{BackendError, Buffer, BufferDesc, GraphicsDevice}},
+            resources::{roofs::{geometry::surface::Curve2, roof_buffers::WoodenPlankSsbo},
+                walls::{InnerWalls, arches::LintelSegments, publication_source::TerrainHeightGrid512},
+                world_raster::DirtyTilePublisher,
+                world_raster_defs::{PathRaster, Cobblestone1Raster, Cobblestone2Raster, Cobblestone3Raster}},
+            systems::wall::{construction::segmentation::{wall_path_segmentation, WallSegmentationInput},
+                registration::register_wall_cpu_resources,
+                wall_state::publish_public_wall_state::{publish_public_wall_state, WallPublicationTerrain}},
+        };
+        struct CpuDevice;
+        impl GraphicsDevice for CpuDevice {
+            fn create_buffer(&self, desc: &BufferDesc, _: &str, _: Option<&[u8]>) -> Result<Buffer, BackendError> {
+                Ok(Buffer { id: 812, byte_size: desc.size as u64, ..Default::default() })
+            }
+            fn update_buffer_bytes(&self, _: &Buffer, _: &[u8], _: &[std::ops::Range<usize>], _: usize) -> Result<(), BackendError> {
+                Err(BackendError::invalid_usage("此测试不提供 GPU 上传"))
+            }
+        }
+        let mut world = World::new();
+        register_wall_cpu_resources(&mut world);
+        world.init_resource::<Events<CreateRoofCmd>>();
+        world.insert_resource(WallPublicationTerrain(TerrainHeightGrid512 { encoded: vec![0;512*512].into(), minimum_y: 0., maximum_y: 0., sampling_fix: false }));
+        let mut path = PathRaster::new(DirtyTilePublisher::unique());
+        path.write_composite(Some(&vec![255;512*512]));
+        world.insert_resource(path);
+        world.insert_resource(Cobblestone1Raster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(Cobblestone2Raster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(Cobblestone3Raster::new(DirtyTilePublisher::unique()));
+        world.init_resource::<LintelSegments>();
+        world.init_resource::<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>();
+        world.init_resource::<crate::construct_arches::WallConstructorOutput>();
+        let library = AssetSsboLibrary::new();
+        library.register::<WoodenPlankSsbo>(SparseInstanceBuffer::<WoodenPlankSsbo>::new_storage_buffer(&CpuDevice, None));
+        world.insert_resource(library);
+        let id = world.resource_mut::<InnerWalls>().new_wall_w_params(
+            Curve2::try_new(vec![[-6.,0.],[-1.,0.],[3.,2.],[7.,2.]], false).unwrap(), 1.2, 0, 1, false);
+        let mut publication = Schedule::default(); publication.add_systems(publish_public_wall_state); publication.run(&mut world);
+        let masks = {
+            let walls = world.resource::<PublicWalls>();
+            let wall = walls.get(id).unwrap();
+            let path = wall.prepared_path.as_ref().unwrap();
+            wall_path_segmentation(WallSegmentationInput { prepared_positions: &path.positions,
+                path_values: &path.segment_values, shape: wall.shape(), observed_special_flag: wall.authority.source_flag_65() }).unwrap()
+        };
+        world.resource_mut::<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>().masks.insert(id.0, masks);
+        let mut source = Schedule::default();
+        source.add_systems((crate::gpu_output::clear_constructor_planks, crate::construct_lintels::construct_lintels).chain());
+        source.run(&mut world);
+        let mask = &world.resource::<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>().masks[&id.0];
+        let expected: usize = mask.iter().map(|m| m.pillar_proposals.len()).sum();
+        assert!(expected > 0, "真实过梁必须生成非空柱提案");
+        let before: u32 = world.resource_mut::<AssetSsboLibrary>().get_mut::<WoodenPlankSsbo>().unwrap()
+            .to_draw_multi_instanced().iter().map(|(_, n)| *n).sum();
+        let mut place = Schedule::default(); place.add_systems(place_pillars); place.run(&mut world);
+        let wall = world.resource::<PublicWalls>();
+        let stats = &wall.get(id).unwrap().material_stats;
+        assert_eq!(stats.pillar_placements.len(), expected);
+        assert_eq!(stats.counts[2] as usize, expected);
+        let after: u32 = world.resource_mut::<AssetSsboLibrary>().get_mut::<WoodenPlankSsbo>().unwrap()
+            .to_draw_multi_instanced().iter().map(|(_, n)| *n).sum();
+        assert_eq!(after - before, expected as u32);
+        place.run(&mut world);
+        let quiet: u32 = world.resource_mut::<AssetSsboLibrary>().get_mut::<WoodenPlankSsbo>().unwrap()
+            .to_draw_multi_instanced().iter().map(|(_, n)| *n).sum();
+        assert_eq!(quiet, after, "无新事件不得重复写柱");
+        // 实际洞口最终化 producer 可单独发 RecalculateWallBricks；记录当前
+        // 重算事件与 owner 的可观察行为，不推断原版有额外清理系统。
+        world.resource_mut::<country_core::resources::walls::wall_holes::WallHoles>().add(id,
+            country_core::resources::walls::wall_holes::RawWallHole { center: [1., 1.], dimensions: [0.5, 0.5], kind: 0 }).unwrap();
+        let mut finalize = Schedule::default();
+        finalize.add_systems(country_core::systems::wall::construct_wall_bricks::finalize_wall_holes);
+        finalize.run(&mut world);
+        place.run(&mut world);
+        let quiet: u32 = world.resource_mut::<AssetSsboLibrary>().get_mut::<WoodenPlankSsbo>().unwrap()
+            .to_draw_multi_instanced().iter().map(|(_, n)| *n).sum();
+        assert_eq!(quiet - after, expected as u32, "单独的真实洞口重算会追加柱记录");
+        let old_placements = world.resource::<PublicWalls>().get(id).unwrap().material_stats.pillar_placements.clone();
+        {
+            let mut masks = world.resource_mut::<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>();
+            let mask = masks.masks.get_mut(&id.0).unwrap().iter_mut().find(|mask| !mask.pillar_proposals.is_empty()).unwrap();
+            mask.pillar_proposals.push(mask.pillar_proposals[0]);
+            mask.pillar_scores.push(mask.pillar_scores[0]);
+            mask.pillar_keys.push(usize::MAX);
+        }
+        world.resource_mut::<Events<OnWallChanged>>().send(OnWallChanged(id));
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| place.run(&mut world))).is_err());
+        let partial: u32 = world.resource_mut::<AssetSsboLibrary>().get_mut::<WoodenPlankSsbo>().unwrap()
+            .to_draw_multi_instanced().iter().map(|(_, n)| *n).sum();
+        assert!(partial > quiet, "后续索引错误必须保留已写柱前缀");
+        assert_eq!(world.resource::<PublicWalls>().get(id).unwrap().material_stats.pillar_placements, old_placements,
+            "该墙未完成时不得提交新统计");
+    }
+
+    #[test]
+    fn freehand_endpoint_moves_inward_but_nonendpoint_does_not() {
+        use country_core::systems::wall::construction::segmentation::{ThresholdedCurveCoord, WallLoopRange};
+        let points = [[0., 0., 0.], [4., 0., 0.], [8., 0., 0.]];
+        let range = WallLoopRange { start: 0, end: 3, modulus: 3 };
+        let start = ThresholdedCurveCoord { point_index: 0, fraction: 0.0 };
+        let adjusted = adjust_freehand_pillar_coord(&points, range, 0, 2, start);
+        assert_eq!(sample_pillar_position(&points, range, adjusted), [0.1875, 0., 0.]);
+        assert_eq!(adjust_freehand_pillar_coord(&points, range, 0, 0, start), start);
+        let end = ThresholdedCurveCoord { point_index: 1, fraction: 1.0 };
+        let adjusted = adjust_freehand_pillar_coord(&points, range, 2, 4, end);
+        assert_eq!(sample_pillar_position(&points, range, adjusted), [7.8125, 0., 0.]);
+    }
+
+    #[test]
+    fn freehand_original_five_endpoint_samples_match() {
+        use country_core::systems::wall::construction::segmentation::{ThresholdedCurveCoord, WallLoopRange};
+        let fixture = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reports/module-recovery-2026-10-23/m06-place-freehand-oracle-2026-10-29.jsonl"));
+        let points = [[0., 0., 0.], [4., 0., 0.], [8., 0., 0.]];
+        let inputs = [(4,0,2,0,0.), (4,2,4,1,1.), (4,0,0,0,0.), (3,2,4,1,1.), (4,1,2,1,0.5)];
+        for (case, ((period, key, flag, segment, fraction), line)) in inputs.into_iter().zip(fixture.lines()).enumerate() {
+            let expected = line.split("\"original\": \"").nth(1).unwrap().split('"').next().unwrap();
+            let range = WallLoopRange { start: 0, end: 3, modulus: period };
+            let coord = adjust_freehand_pillar_coord(&points, range, key, flag,
+                ThresholdedCurveCoord { point_index: segment, fraction });
+            let actual: String = sample_pillar_position(&points, range, coord).into_iter()
+                .flat_map(f32::to_le_bytes).map(|byte| format!("{byte:02x}")).collect();
+            assert_eq!(actual, expected, "原自由墙柱坐标不一致，样本 {case}");
+        }
+    }
+
+    #[test]
+    fn freehand_original_short_and_raw_range_endpoints_match() {
+        use country_core::systems::wall::construction::segmentation::{ThresholdedCurveCoord, WallLoopRange};
+        let points = [[0., 0., 0.], [0.1, 0., 0.]];
+        for (start, end, key, flag, segment, fraction, expected) in [
+            (0,2,0,2,0,0., 0.1f32), (0,2,1,4,0,1., 0.),
+            (1,2,0,2,0,0., 0.1), (-2,0,0,2,0,0., 0.),
+        ] {
+            let range = WallLoopRange { start, end, modulus: 2 };
+            let coord = adjust_freehand_pillar_coord(&points, range, key, flag,
+                ThresholdedCurveCoord { point_index: segment, fraction });
+            assert_eq!(sample_pillar_position(&points, range, coord)[0].to_bits(), expected.to_bits());
+        }
+    }
 
     fn proposal(score: f32, marker: u8) -> PillarPlacementProposal {
         let mut p = PillarPlacementProposal { bytes: [0u8; 28] };
@@ -351,13 +747,13 @@ mod tests {
     #[test]
     fn pillar_segments_split_at_126_and_flag_large_delta() {
         assert_eq!(pillar_segments(1.0, 1.0).len(), 1);
-        let segs = pillar_segments(1.1, 3.0);
+        let segs = pillar_segments(3.0, 1.1);
         assert_eq!(segs.len(), 2);
         assert_eq!(segs[0].0, 0.0);
         assert!((segs[0].1 - 1.3).abs() < 1e-6);
         assert!(segs[0].2);
         assert!(segs[1].2, "|Δ| = 1.9 > 1.2");
-        let segs = pillar_segments(1.1, 2.0);
+        let segs = pillar_segments(2.0, 1.1);
         assert!(!segs[1].2, "|Δ| = 0.9 <= 1.2");
     }
 

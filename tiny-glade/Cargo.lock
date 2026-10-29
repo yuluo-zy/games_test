@@ -4147,6 +4147,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8cf8e6a8aa66ce33f63993ffc4ea4271eb5b0530a9002db8455ea6050c77bfa"
 
 [[package]]
+name = "priority-queue"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5676d703dda103cbb035b653a9f11448c0a7216c7926bd35fcb5865475d0c970"
+dependencies = [
+ "autocfg",
+ "equivalent",
+ "indexmap 2.7.1",
+]
+
+[[package]]
 name = "proc-macro-crate"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5211,6 +5222,7 @@ version = "0.1.0"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
+ "bytemuck",
  "country-core",
  "glam 0.29.3",
  "utils",
@@ -5259,6 +5271,7 @@ version = "0.1.0"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
+ "bevy_time",
  "bitvec",
  "country-core",
  "fastrand 1.8.0",
@@ -5267,8 +5280,12 @@ dependencies = [
  "hashbrown 0.14.5",
  "itertools 0.14.0",
  "log",
+ "ordered-float 4.2.2",
  "petgraph 0.8.1",
+ "priority-queue",
  "puffin",
+ "serde_json",
+ "tabloid",
  "utils",
 ]
 
@@ -5303,6 +5320,7 @@ dependencies = [
  "bevy_app",
  "bevy_ecs",
  "bevy_input",
+ "bevy_time",
  "country-core",
  "glam 0.29.3",
  "lang-lib",

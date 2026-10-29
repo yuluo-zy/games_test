@@ -3,21 +3,18 @@
 //!
 //! Evidence: `chapters/systems/wall/shapes/rectangle/ui_edit_rectangle_orientation.rs.md`
 //! (O, 0x140ad8000 / do_ui_edit_rectangle_rotate 0x140ad8be0). The rotation
-//! angle uses the fast 8-coefficient acos polynomial; the sign comes from the
-//! cross product. The result updates the UiState80 (variant 2) and emits an
-//! EditRectangleCmd plus FinishEditRectangleCmd.
+//! angle uses the full eight-coefficient acos with its π branch. The original
+//! Wip variant1, time interpolation, stepped border limit and final effects
+//! are preserved through independent producer and consumer systems.
 
 use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
 
-use super::get_rectangle_orientation;
-use super::finish_edit_rectangle::RectangleEditUiState;
-use crate::resources::walls::InnerWalls;
 use utils::geometry::intersect::Triangle;
 
 /// 8 fast-acos coefficients (0x142ae0d44..0x142ae0d60).
 const ACOS_COEFFS: [u32; 8] = [
-    0x3bda90c5, 0x3cd90a90, 0x3c8bfc66, 0x3dfd10f8, 0xbd4d8392, 0x3db63a9e, 0xbe5bbfca, 0x3fc90fda,
+    0xbaa57a2c, 0x3bda90c5, 0xbc8bfc66, 0x3cfd10f8, 0xbd4d8392, 0x3db63a9e, 0xbe5bbfca, 0x3fc90fda,
 ];
 /// pi (0x40490fdb @0x1429edba4).
 
@@ -154,91 +151,296 @@ fn box_trigger_triangles(
         .collect()
 }
 
-/// Rotation input (UI producer 待接线).
-#[derive(Resource, Clone, Copy, Debug, Default)]
-pub struct RectangleOrientationEditInput {
-    pub wall: crate::resources::walls::WallId,
-    pub from_axis: Vec2,
-    pub cursor: Vec2,
-    pub submitting: bool,
+/// B原16B Local：一次拖拽期间锁定最近相机角点，结束后才允许重新选择。
+#[derive(Clone, Copy, Debug)]
+pub struct ClosestCornerCache {
+    pub corner: usize,
+    pub recalculate: bool,
+}
+impl Default for ClosestCornerCache {
+    fn default() -> Self {
+        Self {
+            corner: 0,
+            recalculate: true,
+        }
+    }
 }
 
-/// B fast acos: `sqrt(1 - |x|) * P(x)` with the observed coefficients.
-fn fast_acos(x: f32) -> f32 {
-    let x = x.abs();
-    let poly = ACOS_COEFFS
-        .iter()
-        .fold(0.0f32, |acc, &coef| acc * x + f32::from_bits(coef));
-    poly * (1.0 - x).sqrt()
-}
-
-/// B 0x140ad8be0: rotate the rectangle toward the cursor direction.
-pub fn do_ui_edit_rectangle_rotate(
-    wall: crate::resources::walls::WallId,
-    from_axis: Vec2,
-    cursor: Vec2,
-    state: &mut RectangleEditUiState,
-    preview: &mut super::super::PreviewRectangle,
-    commands: &mut EventWriter<super::super::EditRectangleCmd>,
-    finish: &mut EventWriter<super::super::FinishEditRectangleCmd>,
-) {
-    let to_axis = if cursor.length_squared() > 0.0 {
-        cursor.normalize()
-    } else {
-        from_axis
-    };
-    let cos = (from_axis.dot(to_axis))
-        / ((from_axis.length_squared() * to_axis.length_squared()).max(1e-12).sqrt());
-    let angle = fast_acos(cos);
-    let cross = from_axis.x * to_axis.y - from_axis.y * to_axis.x;
-    let signed = if cross < 0.0 { -angle } else { angle };
-    let orientation = get_rectangle_orientation(signed);
-
-    preview.orientation = orientation;
-
-    state.0.fill(0);
-    state.0[..4].copy_from_slice(&2u32.to_le_bytes());
-    state.0[0x08..0x10].copy_from_slice(&wall.0.to_le_bytes());
-    state.0[0x18..0x1c].copy_from_slice(&signed.to_le_bytes());
-
-    commands.write(super::super::EditRectangleCmd {
-        wall,
-        center: preview.center,
-        dimensions: preview.dimensions,
-        orientation,
-    });
-    finish.write(super::super::FinishEditRectangleCmd { wall });
-}
-
-/// B 0x140ad8000 (system shell).
+/// B140ad8000原十组参数；真实widget交互写完整DO事件。
+#[allow(clippy::too_many_arguments)]
 pub fn ui_edit_rectangle_orientation(
-    input: Res<RectangleOrientationEditInput>,
-    inner: Res<InnerWalls>,
-    mut state: ResMut<RectangleEditUiState>,
-    mut preview: ResMut<super::super::PreviewRectangle>,
-    mut commands: EventWriter<super::super::EditRectangleCmd>,
-    mut finish: EventWriter<super::super::FinishEditRectangleCmd>,
+    mode: Res<crate::systems::mode_manager::AppMode>,
+    walls: Res<crate::resources::walls::public_walls::PublicWalls>,
+    mut stream: ResMut<crate::systems::ui::signifiers::UiSignifierStream>,
+    ui: Res<crate::systems::ui::resources::ui_state::UiState>,
+    camera: Res<crate::systems::camera_rig::MainCamera>,
+    ray: Res<crate::resources::mouse_terrain_raycast::CameraCursorRay>,
+    mut moved: EventReader<crate::systems::camera_rig::main_camera::MainCameraMoved>,
+    mut cache: Local<ClosestCornerCache>,
+    mut events: EventWriter<DoUiEditRectangleRotate>,
+    mut commands: Commands,
 ) {
-    if !input.submitting {
+    use super::ui_modes::edit_orientation::UiRectangleOrientationEdit;
+    use crate::systems::{
+        mode_manager::{AppMode, EditSubject},
+        ui::resources::ui_state::DragState,
+        wall::valid_enclosure::ShapeParameters,
+    };
+    if mode.native_tag() > 5 {
         return;
     }
-    if !inner.contains(input.wall) {
+    let camera_moved = moved.read().last().is_some();
+    for (wall, state) in walls.all() {
+        if state.shape().tag() != 1 {
+            continue;
+        }
+        let selected = match *mode {
+            AppMode::Editing(EditSubject::None) => false,
+            AppMode::Editing(EditSubject::Wall(id) | EditSubject::Roof(id)) if id == wall.0 => true,
+            _ => continue,
+        };
+        let rectangle = ShapeParameters::from_snapshot(state.shape()).as_rectangle();
+        if selected && cache.recalculate {
+            let eye = camera.eye_position();
+            let eye = Vec2::new(eye.x, eye.z);
+            let distance = |corner| {
+                let d = rectangle.get_point(corner) - eye;
+                (d.y * d.y + d.x * d.x).sqrt()
+            };
+            let first = distance(0);
+            let second = distance(1);
+            let mut corner = usize::from(second < first);
+            let mut closest = if first <= second { first } else { second };
+            for next in 2..4 {
+                let d = distance(next);
+                if d < closest {
+                    closest = d;
+                    corner = next;
+                }
+            }
+            cache.corner = corner;
+        }
+        for corner in 0..4 {
+            if selected && cache.corner != corner {
+                continue;
+            }
+            let mut widget = UiRectangleOrientationEdit::new(wall, rectangle, corner, selected);
+            let previous = ui.widget_context(widget.widget_id());
+            if !selected
+                && !super::ui_edit_rectangle_dims::candidate_hit(rectangle, &ray)
+                && !previous.is_active()
+            {
+                continue;
+            }
+            let context = widget.widget(&ui, state, camera_moved);
+            if camera_moved && !selected && context.dragged() == 2 {
+                continue;
+            }
+            widget.signifier(&context, &mut stream);
+            if !selected && context.hovered() == 1 {
+                commands.queue(move |world: &mut World| {
+                    world.send_event(crate::systems::wall::wall_highlight::HighlightWallCmd {
+                        wall,
+                        ty: 2,
+                    });
+                });
+            }
+            cache.recalculate = ui.hover_byte() < 2 || context.dragged() == 2;
+            let intersection = context.intersecting();
+            if u32::from_le_bytes(intersection[..4].try_into().unwrap()) != 2 {
+                events.write(DoUiEditRectangleRotate {
+                    intersection,
+                    wall,
+                    rectangle,
+                    corner,
+                    phase: DragState(context.dragged()),
+                });
+                // B140ad898c..8997写出唯一交互后直接结束；继续枚举会破坏角点锁存。
+                return;
+            }
+        }
+    }
+}
+
+/// 原旋转事件完整载荷，和尺寸事件保持各自独立reader。
+#[derive(Event, Clone, Copy, Debug)]
+pub struct DoUiEditRectangleRotate {
+    pub intersection: [u8; 56],
+    pub wall: crate::resources::walls::WallId,
+    pub rectangle: utils::geometry::Rectangle2d,
+    pub corner: usize,
+    pub phase: crate::systems::ui::resources::ui_state::DragState,
+}
+
+/// 原glam acos多项式必须有负值π分支，不能将abs(cos)多项式直接当acos。
+pub fn original_rectangle_signed_angle(a: Vec2, b: Vec2) -> f32 {
+    let an = 1.0 / (a.y * a.y + a.x * a.x).sqrt();
+    let bn = 1.0 / (b.y * b.y + b.x * b.x).sqrt();
+    let a = Vec2::new(a.x * an, a.y * an);
+    let b = Vec2::new(b.x * bn, b.y * bn);
+    let cos = (b.x * a.x + b.y * a.y) / ((b.y * b.y + b.x * b.x) * (a.y * a.y + a.x * a.x)).sqrt();
+    let x = cos.abs();
+    let root = 1.0 - x;
+    let root = if root.is_nan() || root >= 0.0 {
+        root
+    } else {
+        0.0
+    };
+    let mut polynomial = f32::from_bits(ACOS_COEFFS[0]);
+    for coefficient in &ACOS_COEFFS[1..] {
+        polynomial = polynomial * x + f32::from_bits(*coefficient);
+    }
+    let angle = polynomial * root.sqrt();
+    let angle = if cos < 0.0 {
+        f32::from_bits(0x40490fdb) - angle
+    } else {
+        angle
+    };
+    let cross = b.y * a.x - a.y * b.x;
+    let sign = if cross.is_nan() {
+        f32::from_bits(0x7fc00000)
+    } else {
+        f32::from_bits((cross.to_bits() & 0x80000000) | 0x3f800000)
+    };
+    sign * angle
+}
+fn original_rotate_axis(axis: Vec2, angle: f32) -> Vec2 {
+    let sin = angle.sin();
+    let cos = angle.cos();
+    Vec2::new(axis.y * (-sin) + axis.x * cos, axis.y * cos + axis.x * sin)
+}
+
+/// B140ad8be0完整held分支由原ASM恢复，旧反编译在jumptable错误后遗漏了此分支。
+#[allow(clippy::too_many_arguments)]
+pub fn do_ui_edit_rectangle_rotate(
+    walls: Res<crate::resources::walls::public_walls::PublicWalls>,
+    mut wip: ResMut<super::WipRectangle>,
+    mut edit: EventWriter<super::super::EditRectangleCmd>,
+    mut finish: EventWriter<super::super::FinishEditRectangleCmd>,
+    time: Res<crate::resources::time::GameTime>,
+    ray: Res<crate::resources::mouse_terrain_raycast::CameraCursorRay>,
+    border: Res<crate::resources::glade_border::GladeBorder>,
+    mut display: EventWriter<crate::resources::glade_border::DisplayOutOfBorder>,
+    mut feedback: EventWriter<crate::resources::glade_border::FeedbackInputOutOfBorder>,
+    mut trees: EventWriter<crate::resources::tree_storage::HideTreesinAreaCmd>,
+    mut pins: EventWriter<crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>,
+    mut events: EventReader<DoUiEditRectangleRotate>,
+) {
+    use super::super::utils::shape_signifier_lerp::{ShapeVal, lerp_shape};
+    use crate::resources::{
+        glade_border::{BorderShape, DisplayOutOfBorder, FeedbackInputOutOfBorder},
+        tree_storage::{HideTreesinAreaCmd, TreeHideArea},
+    };
+    let Some(event) = events.read().last() else {
+        return;
+    };
+    if u32::from_le_bytes(event.intersection[..4].try_into().unwrap()) == 2 {
         return;
     }
-    do_ui_edit_rectangle_rotate(
-        input.wall,
-        input.from_axis,
-        input.cursor,
-        &mut state,
-        &mut preview,
-        &mut commands,
-        &mut finish,
+    let wall = walls.get(event.wall).expect("矩形旋转墙尚未发布");
+    if event.phase.0 == 2 {
+        return;
+    }
+    if event.phase.is_started() {
+        let y = f32::from_le_bytes(event.intersection[40..44].try_into().unwrap());
+        let point = ray.intersect_with_xz_plane(y);
+        let rectangle = event.rectangle;
+        let angle = original_rectangle_signed_angle(
+            rectangle.get_point(event.corner) - rectangle.center,
+            Vec2::new(point.x, point.z) - rectangle.center,
+        );
+        wip.begin_rotation(event.wall, event.corner, rectangle, y, angle);
+        return;
+    }
+    if event.phase.is_finished() {
+        finish.write(super::super::FinishEditRectangleCmd);
+        trees.write(HideTreesinAreaCmd {
+            area: TreeHideArea::Rectangle(event.rectangle),
+            height_limit: wall.authority.arch_height(),
+            expansion: 1.5,
+            finished: true,
+        });
+        return;
+    }
+    assert_eq!(wip.tag(), 1, "矩形旋转held缺少Started状态");
+    let before = wip.current();
+    let point = ray.intersect_with_xz_plane(wip.scalar(4));
+    let corner = u64::from_le_bytes(wip.0[24..32].try_into().unwrap()) as usize;
+    let angle = original_rectangle_signed_angle(
+        before.get_point(corner) - before.center,
+        Vec2::new(point.x, point.z) - before.center,
+    ) - wip.scalar(8);
+    let angle = lerp_shape(ShapeVal::Circle(0.0), ShapeVal::Circle(angle), time.delta).get_radius();
+    let mut after = before;
+    after.axis = original_rotate_axis(before.axis, angle);
+    if !border.is_shape_inside(BorderShape::Rectangle(after)) {
+        display.write(DisplayOutOfBorder);
+        feedback.write(FeedbackInputOutOfBorder);
+        // 原版按正向0.1弧度步进，每次先保存前一有效值；负角越界直接保持before。
+        let mut step = 0.0;
+        let mut candidate = before;
+        loop {
+            after = candidate;
+            if !(angle > step) {
+                break;
+            }
+            step += 0.1;
+            candidate.axis = original_rotate_axis(before.axis, step);
+            if !border.is_shape_inside(BorderShape::Rectangle(candidate)) {
+                break;
+            }
+        }
+    }
+    pins.write(
+        crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter::rectangle(
+            after,
+            wall.authority.arch_height(),
+            wall.max_y_gable(),
+            Some(event.wall),
+        ),
     );
+    trees.write(HideTreesinAreaCmd {
+        area: TreeHideArea::Rectangle(after),
+        height_limit: wall.authority.arch_height(),
+        expansion: 1.5,
+        finished: false,
+    });
+    let d = after.axis - before.axis;
+    if (d.y * d.y + d.x * d.x).sqrt() > 0.0 {
+        let previous_corner = before.get_point(corner);
+        let current_corner = after.get_point(corner);
+        let d = current_corner - previous_corner;
+        wip.set_current(after);
+        edit.write(super::super::EditRectangleCmd {
+            wall: event.wall,
+            center: after.center,
+            dimensions: after.size,
+            orientation: after.axis,
+            position: Vec3::new(after.center.x, wip.scalar(4), after.center.y),
+            speed: (d.y * d.y + d.x * d.x).sqrt(),
+            rotation: true,
+        });
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn original_rectangle_signed_angle_native_bits() {
+        let cases: &[([u32; 2], [u32; 2], u32)] = include!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../reports/module-recovery-2026-10-23/m01-rectangle-angle-native-cases.rs"
+        ));
+        for (index, (a, b, expected)) in cases.iter().copied().enumerate() {
+            let angle = original_rectangle_signed_angle(
+                Vec2::from_array(a.map(f32::from_bits)),
+                Vec2::from_array(b.map(f32::from_bits)),
+            );
+            assert_eq!(angle.to_bits(), expected, "原旋转角片段差异case {index}");
+        }
+    }
 
     #[test]
     fn skewed_box_volume_keeps_corner_order_and_fixed_index_pattern() {

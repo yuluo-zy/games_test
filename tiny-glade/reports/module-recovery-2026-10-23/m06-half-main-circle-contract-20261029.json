@@ -1,0 +1,21 @@
+{
+  "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "entry": "141218e30",
+  "caller_event": "140758e74..140758f11: caller writes half-generated Vec cap/ptr/len, wall ID and event sequence to 40B event, including empty Vec",
+  "positions": "14121b9f0 stores positions in absolute wall distance; 1412021c0 and 141204c10 divide each by PWS+0x28c and enforce CurveU range/NaN; 14121e4af..e52f sort and dedup; 14121c326 consumes sorted u",
+  "angles": "14121cea5..cefb: k=TAU/wall_length; mid=((b+a)*0.5)*k - CircularF32(rotation).as_f32(); half=((b-a)*0.5)*k; theta0=(mid-half)-left_extension*k; theta1=(mid+half)+right_extension*k; every operation f32 and in this order",
+  "extensions": "14121d39a..d6f1: for every filtered flat hole compare each boundary endpoint cyclically to hole min/max after divide by wall_length and fmod 1, each direction strictly <0.05; matching left/right extends .1 and sets bit 1/2; both sets3. xy uses angles but no flag. main/top xz share angles+flag.",
+  "curved": "top main xz pos=(circle.center,boundary adjusted height), center=radius,length=.68,w28=.3200000226; bottom xy center=(radius+.28)+(area_index==0?.05:0), length=.1,w28=.3200000226. roof+0x3d=0 and upper boundary: extra xz pos.y=adjusted_height+.86, center=radius+.2,length=.12,w=.12. Flat-no-rim height guard per Roof::is_flat_w_no_rim; original +/- .2 before main. Radius and threshold constants anchored source ASM.",
+  "fine_count": "circle top branch 14121dd3e..ddac max(2,ceil((abs(theta1-theta0)*radius)/0.4)); theta are extended angles; following jitter processing not reconstructed here",
+  "samples": [
+    "m06-half-main-circle-native.json",
+    "m06-half-main-circle-rotated-native.json",
+    "m06-half-main-circle-nonzero-native.json",
+    "m06-half-main-circle-seamhole-native.json",
+    "m06-half-main-circle-middlehole-native.json",
+    "m06-half-main-circle-rim-native.json",
+    "m06-half-main-circle-nonflat-native.json"
+  ],
+  "scope": "原完整 half入口输入由原Circle2d::as_curve2(.9)产生14点和一致U，空decorator，除了孔洞样本其余空hole；allocator/SSBO/锁和系统math桥，原业务与RNG运行；事件仅caller指令证明，非完整原App事件探针。 非flat height1/ratio1 样本是 gable Some([0,2])，不可称无山墙。"
+}

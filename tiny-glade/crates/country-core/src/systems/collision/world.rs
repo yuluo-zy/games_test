@@ -26,7 +26,9 @@
 //! `RaycastMesh` 类型族、`rapier_hit_to_raycast_world_result`（barycentric 插值）、
 //! dirty 瓦片生命周期（`flush_colliders`/`flush_rapier_colliders`/`subscribe_to_changes`）、
 //! collider 生命周期泛型（`upsert_collider`/`remove_collider`/`dispose_collider_mesh_instance`）。
-//! 仍登记（REBUILD-DEEP.md / REMANDER2）：`update_rapier_colliders`、`on_level_reload`、
+//! 以下为2026-10-17历史登记，不能当作当前未完成清单；2026-10-27已恢复十二参更新与
+//! 五实体表、真实几何及Reload验收，见reports/module-recovery-2026-10-23/
+//! m01-rapier-producer-recovery-2026-10-27.md。历史项：`update_rapier_colliders`、`on_level_reload`、
 //! `construct_arch_geo`、`to_offset_collider_builder`/`into_transformed_shape` 族、
 //! `iter_shape_overlaps`/`shape_overlaps_with`/`decorator_overlaps_with_others`、
 //! `upsert_collider_entry` 的注册表插入接线、`Rapier::spherecast` 命中法线方向修正、
@@ -45,6 +47,63 @@ use crate::systems::collision::EMPTY_COLLIDER_HANDLE_TAG;
 #[cfg(feature = "native-physics")]
 use crate::systems::collision::SUBWORLD_SLOT_COUNT;
 use utils::geometry::aabb::{Aabb2, Aabb3};
+
+/// 原1408d7ed0：对heights/positions的zip相邻窗口追加两面；RDX法线、R8三角，均非索引。
+/// 保留原不等长度截短、短段不输出与已有Vec前缀，不读取该104B段的其余字段。
+pub fn construct_arch_geo(
+    segment: &crate::systems::wall::construction::structures::MaterializedWallSegment,
+    normals: &mut Vec<[glam::Vec3; 3]>,
+    triangles: &mut Vec<utils::geometry::intersect::Triangle>,
+) {
+    let count = segment.heights.len().min(segment.positions.len());
+    for index in 1..count {
+        let before = glam::Vec3::from_array(segment.positions[index - 1]);
+        let after = glam::Vec3::from_array(segment.positions[index]);
+        let heights = [segment.heights[index - 1], segment.heights[index]];
+        let mut output = arch_collision_pair::<false>(before, after, heights);
+        // 有限输入保持原常规浮点性能；异常结果局部恢复原SSE NaN来源与invalid负位型。
+        if output.iter().any(|(triangle, normal)| !normal.is_finite() || triangle.points.iter().any(|p| !p.is_finite())) {
+            output = arch_collision_pair::<true>(before, after, heights);
+        }
+        for (triangle, normal) in output {
+            normals.push([normal; 3]);
+            triangles.push(triangle);
+        }
+    }
+}
+
+fn arch_collision_pair<const SSE: bool>(before: glam::Vec3, after: glam::Vec3, heights: [f32; 2])
+    -> [(utils::geometry::intersect::Triangle, glam::Vec3); 2]
+{
+    #[inline]
+    fn original<const SSE: bool>(a: f32, b: f32, result: f32) -> f32 {
+        if !SSE { return result; }
+        if a.is_nan() { f32::from_bits(a.to_bits() | 0x0040_0000) }
+        else if b.is_nan() { f32::from_bits(b.to_bits() | 0x0040_0000) }
+        else if result.is_nan() { f32::from_bits(0xffc0_0000) }
+        else { result }
+    }
+    let add = |a: f32, b: f32| original::<SSE>(a, b, a + b);
+    let sub = |a: f32, b: f32| original::<SSE>(a, b, a - b);
+    let mul = |a: f32, b: f32| original::<SSE>(a, b, a * b);
+    let div = |a: f32, b: f32| original::<SSE>(a, b, a / b);
+    let lift = |point: glam::Vec3, height| glam::Vec3::new(add(mul(height, 0.0), point.x), add(height, point.y), add(point.z, mul(height, 0.0)));
+    let raised_before = lift(before, heights[0]);
+    let raised_after = lift(after, heights[1]);
+    [utils::geometry::intersect::Triangle::new(before, after, raised_before),
+        utils::geometry::intersect::Triangle::new(after, raised_after, raised_before)].map(|triangle| {
+        // 原14123ada0使用(p1-p0)×(p2-p1)，保留SIMD每个乘法的左右来源及Z先加顺序。
+        let [p0, p1, p2] = triangle.points;
+        let a = glam::Vec3::from_array(std::array::from_fn(|i| sub(p1[i], p0[i])));
+        let b = glam::Vec3::from_array(std::array::from_fn(|i| sub(p2[i], p1[i])));
+        let normal = glam::Vec3::new(sub(mul(a.y, b.z), mul(b.y, a.z)),
+            sub(mul(a.z, b.x), mul(b.z, a.x)), sub(mul(b.y, a.x), mul(b.x, a.y)));
+        let squared = add(mul(normal.z, normal.z), add(mul(normal.y, normal.y), mul(normal.x, normal.x)));
+        let length = original::<SSE>(squared, 0.0, squared.sqrt());
+        let inverse = div(1.0, length);
+        (triangle, normal.map(|component| mul(inverse, component)))
+    })
+}
 
 /// `xz_flatten_aabb`（0x1408d98a0）：把 3D AABB 压到 XZ 平面（丢弃 y），
 /// 返回 `Aabb2 { min: (min.x, min.z), max: (max.x, max.z) }`。
@@ -75,20 +134,17 @@ pub struct SubworldColliderHandle {
     pub slot: u8,
 }
 
-/// `impl$3::partial_cmp`（0x1408cc5d0，O）：**只按 +8 槽字节比较**（Less/Equal/Greater），
-/// 忽略 index/generation。fresh 机器码：`cVar1 = *(in_RCX+8) != *(in_RDX+8);
-/// if (*(in_RCX+8) < *(in_RDX+8)) cVar1 = -1; return cVar1;` —— 即先判 `<`，不等则返回
-/// `!=` 的 bool（槽大 → 1 / 槽小 → -1）。`derive(PartialOrd)` 按字段序（index→generation→slot）
-/// 与机器语义不符，故手写为仅槽字节比较。
+/// 原 GraphMap::add_edge（B 0x14093a9ca..0x14093aa0c）先比较槽，
+/// 槽相同时依次比较 collider 索引和 generation，用完整顺序规范化无向边。
 impl PartialOrd for SubworldColliderHandle {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.slot.cmp(&other.slot))
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for SubworldColliderHandle {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.slot.cmp(&other.slot)
+        (self.slot, self.index, self.generation).cmp(&(other.slot, other.index, other.generation))
     }
 }
 
@@ -113,7 +169,7 @@ impl SubworldColliderHandle {
     }
 }
 
-/// `RaycastWorldResult`（O：~0x40B）。判别语义：+0x34 = 0 命中 / 2 未命中；地形命中时 +0x00
+/// `RaycastWorldResult`（O：~0x40B）。判别语义：+0x34 = 0 无UV命中 / 1 有UV命中 / 2 未命中；地形命中时 +0x00
 /// 首字节 = 0xb（此时 handle 区无 rapier 句柄）。`#[repr(C)]` 使字段偏移与机器码一致：
 /// handle 24B@+0x00、position@+0x18、normal@+0x24、toi@+0x30、判别@+0x34、额外@+0x38。
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -128,7 +184,7 @@ pub struct RaycastWorldResult {
     pub normal: glam::Vec3,
     /// +0x30。
     pub toi: f32,
-    /// +0x34：0 = 命中，2 = 未命中。
+    /// +0x34：0 = 无UV命中，1 = 有UV命中，2 = 未命中。
     pub discriminant: u32,
     /// +0x38。
     pub extra: [f32; 2],
@@ -148,7 +204,7 @@ impl RaycastWorldResult {
     }
 
     pub fn is_hit(&self) -> bool {
-        self.discriminant == RAYCAST_WORLD_RESULT_HIT
+        matches!(self.discriminant, 0 | 1)
     }
 
     pub fn is_miss(&self) -> bool {
@@ -249,9 +305,15 @@ fn strict_mesh_key(raw: u64) -> RaycastMeshKey {
 /// toi@+0x30、判别 0@+0x34）。
 #[cfg(feature = "native-physics")]
 fn terrain_result(toi: f32, origin: glam::Vec3, dir: glam::Vec3) -> RaycastWorldResult {
+    terrain_result_at_position(toi, origin + dir * toi)
+}
+
+/// 原raycast_w_terrain复制地形服务返回的真实point，不能重算丢掉该字段。
+#[cfg(feature = "native-physics")]
+fn terrain_result_at_position(toi: f32, position: glam::Vec3) -> RaycastWorldResult {
     RaycastWorldResult {
         handle: [u64::from(RAYCAST_WORLD_RESULT_TERRAIN), 0, 0],
-        position: origin + dir * toi,
+        position,
         normal: glam::Vec3::Y,
         toi,
         discriminant: RAYCAST_WORLD_RESULT_HIT,
@@ -272,9 +334,9 @@ fn terrain_result(toi: f32, origin: glam::Vec3, dir: glam::Vec3) -> RaycastWorld
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ColliderDiff {
     /// 被移除的 collider 句柄（O：find_mesh 图剪枝消费）。
-    pub removed: Vec<SubworldColliderHandle>,
+    pub removed: std::collections::HashSet<SubworldColliderHandle>,
     /// 新增/变更的 collider 句柄（O：find_mesh 逐句柄 AABB + Qbvh 遍历消费）。
-    pub added: Vec<SubworldColliderHandle>,
+    pub added: std::collections::HashSet<SubworldColliderHandle>,
 }
 
 impl tabloid::State for ColliderDiff {
@@ -297,9 +359,10 @@ impl tabloid::StateDelta<ColliderDiff> for ColliderDelta {
     fn apply_to(&self, state: &mut ColliderDiff) {
         if let Some(h) = self.handle {
             if self.removed {
-                state.removed.push(h);
+                // 原 141453d98..ded：先抵消未消费的新增，找不到才记录删除。
+                if !state.added.remove(&h) { state.removed.insert(h); }
             } else {
-                state.added.push(h);
+                state.added.insert(h);
             }
         }
     }
@@ -906,6 +969,29 @@ impl RaycastGeoSource {
         Self::decorator_source(3, id, storage)
     }
 
+    /// 原Roof来源tag2：墙身份@8，flat/gable为两个独立字节，非实体索引。
+    pub fn roof(wall: crate::resources::walls::WallId, flat: bool, gable: bool) -> Self {
+        let mut source = Self::tag_only(2);
+        source.0[1] = u8::from(flat);
+        source.0[2] = u8::from(gable);
+        source.0[8..16].copy_from_slice(&wall.0.to_le_bytes());
+        source
+    }
+
+    /// 原自动杂物来源tag12的载荷是完整实体身份，与Roof的WallId载荷不同。
+    pub fn auto_clutter(entity: bevy_ecs::entity::Entity) -> Self {
+        let mut source = Self::tag_only(12);
+        source.0[8..16].copy_from_slice(&entity.to_bits().to_le_bytes());
+        source
+    }
+
+    /// 原墙、地板和拱/过梁来源都携带WallId，三个实体表保持独立。
+    fn wall_owned(tag: u8, wall: crate::resources::walls::WallId) -> Self {
+        let mut source = Self::tag_only(tag);
+        source.0[8..16].copy_from_slice(&wall.0.to_le_bytes());
+        source
+    }
+
     pub fn decorator_interaction(
         id: crate::resources::walls::decorator::DecoratorId,
         storage: crate::resources::walls::decorator_storage::DecoratorStorageAddr,
@@ -1046,10 +1132,11 @@ impl RaycastMesh {
 /// - `mesh.indices`（O：`*(mesh+0x28)`）为 0 → 非网格命中（判别 0）；
 /// - 否则若命中判别（O：`hit[0]`）!= 2 → 判别 = 2（miss）；
 /// - 索引 = `tri - (tri>=len ? len : 0)`；再越界 panic（O：两次 `panic_bounds_check`）；
-/// - barycentric 权重经 `barycentric(pos, v1, v2, v0)` 施加到逐角点法线/uv；
+/// - 命中点先减平移并逆旋转到网格局部，再经 `barycentric(local, v0, v1, v2)`；
 /// - **法线经旋转四元数（O：in_R9）旋转** `n' = q * n`；uv 旋转不变；
 /// - 法线缓冲为空 → 用命中法线（O：`in_R8+0x0c` 的 fallback Vec3，已是世界空间，不旋转）；
-/// - 有 uv → 判别 1，extra = uv；无 uv → 判别 0，extra = {bc.y, bc.y}。
+/// - 有 uv → 判别 1，extra = uv；无 uv → 判别 0，extra = {bc.z, bc.z}。
+/// 当前公开旧签名仅供零平移兼容；真实带姿态查询使用下方原完整内核。
 #[cfg(feature = "native-physics")]
 pub fn rapier_hit_to_raycast_world_result(
     mesh: &RaycastMeshData,
@@ -1061,73 +1148,106 @@ pub fn rapier_hit_to_raycast_world_result(
     handle: SubworldColliderHandle,
     rotation: glam::Quat,
 ) -> RaycastWorldResult {
-    let position = origin + dir * toi;
-    let handle_region = [
-        u64::from(handle.index) | (u64::from(handle.generation) << 32),
-        u64::from(handle.slot),
-        0,
-    ];
-    let mut result = RaycastWorldResult {
-        handle: handle_region,
-        position,
-        normal: hit_normal,
+    rapier_hit_to_raycast_world_result_at_pose(
+        mesh,
+        origin,
+        dir,
         toi,
-        discriminant: RAYCAST_WORLD_RESULT_HIT,
-        extra: [0.0, 0.0],
+        hit_normal,
+        tri_index,
+        [
+            u64::from(handle.index) | (u64::from(handle.generation) << 32),
+            u64::from(handle.slot),
+            0,
+        ],
+        glam::Vec3::ZERO,
+        rotation,
+    )
+}
+
+/// 原1408ce4a0的姿态转换。此处保留原逐lane运算顺序；先还原局部命中坐标，
+/// 才能对原网格顶点插值；旧公开签名通过零平移wrapper保持兼容。
+#[cfg(feature = "native-physics")]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn rapier_hit_to_raycast_world_result_at_pose(
+    mesh: &crate::systems::collision::world::RaycastMeshData,
+    origin: glam::Vec3,
+    direction: glam::Vec3,
+    toi: f32,
+    normal: glam::Vec3,
+    triangle: Option<u32>,
+    source: [u64; 3],
+    translation: glam::Vec3,
+    q: glam::Quat,
+) -> crate::systems::collision::world::RaycastWorldResult {
+    use crate::systems::collision::world::RaycastWorldResult;
+    let position = direction * toi + origin;
+    let mut result = RaycastWorldResult {
+        handle: source,
+        position,
+        normal,
+        toi,
+        discriminant: 0,
+        extra: [0.0; 2],
     };
-    // O：`mesh+0x28`（索引 len）为 0 → 非三角路径，返回射线上位置 + 命中法线。
     let indices = mesh.indices();
     if indices.is_empty() {
         return result;
     }
-    // O：`*in_R8 != 2` → +0x34 = 2（网格命中判别不符 = miss）。
-    let Some(tri) = tri_index else {
-        result.discriminant = RAYCAST_WORLD_RESULT_MISS;
+    let Some(mut triangle) = triangle.map(|x| x as usize) else {
+        result.discriminant = 2;
         return result;
     };
-    let len = indices.len();
-    let mut tri = tri as usize;
-    if tri >= len {
-        tri -= len;
+    if triangle >= indices.len() {
+        triangle -= indices.len();
     }
-    if tri >= len {
-        panic!("rapier_hit_to_raycast_world_result: triangle index out of bounds");
-    }
+    let [a, b, c] = indices[triangle];
+    let d = position - translation;
+    let tx = (d.y * q.z - d.z * q.y) * 2.0;
+    let ty = (d.z * q.x - d.x * q.z) * 2.0;
+    let tz = (q.y * d.x - d.y * q.x) * 2.0;
+    let local = glam::Vec3::new(
+        (tx * q.w + (ty * q.z - tz * q.y)) + d.x,
+        (ty * q.w + (tz * q.x - tx * q.z)) + d.y,
+        ((q.y * tx - ty * q.x) + q.w * tz) + d.z,
+    );
     let vertices = mesh.vertices();
-    let [va, vb, vc] = indices[tri];
-    // O：越界 panic（panic_bounds_check），不做静默跳过。
-    let pa = vertices[va as usize];
-    let pb = vertices[vb as usize];
-    let pc = vertices[vc as usize];
-    // O：barycentric(point, v1, v2, v0)，权重 {x→v1, y→v2, z→v0}。
-    let bc = utils::geometry::barycentric::barycentric(position, pb, pc, pa);
+    let bc = ::utils::geometry::barycentric::barycentric(
+        local,
+        vertices[a as usize],
+        vertices[b as usize],
+        vertices[c as usize],
+    );
     let normals = mesh.normals();
-    if normals.is_empty() {
-        // O：法线缓冲为空 → fallback 命中法线（世界空间）。
-        result.normal = hit_normal;
-    } else {
-        let n0 = normals[va as usize];
-        let n1 = normals[vb as usize];
-        let n2 = normals[vc as usize];
-        let x = glam::Vec3::new(
-            n1.x * bc.x + n2.x * bc.y + n0.x * bc.z,
-            n1.y * bc.x + n2.y * bc.y + n0.y * bc.z,
-            n1.z * bc.x + n2.z * bc.y + n0.z * bc.z,
+    // 原按Option指针判别；Some(empty)须继续原索引bounds检查，不能当作None fallback。
+    if mesh.normals_ptr != 0 {
+        let (na, nb, nc) = (
+            normals[a as usize],
+            normals[b as usize],
+            normals[c as usize],
         );
-        // O：四元数旋转插值法线（in_R9 = Quat）。
-        result.normal = rotation * x;
+        let n = glam::Vec3::new(
+            nc.x * bc.z + (nb.x * bc.y + bc.x * na.x),
+            nc.y * bc.z + (nb.y * bc.y + bc.x * na.y),
+            nc.z * bc.z + (na.z * bc.x + bc.y * nb.z),
+        );
+        let tx = (n.z * q.y - n.y * q.z) * 2.0;
+        let ty = (n.x * q.z - n.z * q.x) * 2.0;
+        let tz = (n.y * q.x - q.y * n.x) * 2.0;
+        result.normal = glam::Vec3::new(
+            (q.w * tx + (tz * q.y - ty * q.z)) + n.x,
+            (q.w * ty + (tx * q.z - tz * q.x)) + n.y,
+            ((ty * q.x - q.y * tx) + q.w * tz) + n.z,
+        );
     }
     let uvs = mesh.uvs();
-    if uvs.is_empty() {
-        result.discriminant = RAYCAST_WORLD_RESULT_HIT;
-        result.extra = [bc.y, bc.y];
+    if mesh.uvs_ptr == 0 {
+        result.extra = [bc.z, bc.z];
     } else {
-        let u0 = uvs[va as usize];
-        let u1 = uvs[vb as usize];
-        let u2 = uvs[vc as usize];
+        let (a, b, c) = (uvs[a as usize], uvs[b as usize], uvs[c as usize]);
         result.extra = [
-            u1.x * bc.x + u2.x * bc.y + u0.x * bc.z,
-            u1.y * bc.x + u2.y * bc.y + u0.y * bc.z,
+            c.x * bc.z + (bc.y * b.x + bc.x * a.x),
+            c.y * bc.z + (bc.y * b.y + bc.x * a.y),
         ];
         result.discriminant = 1;
     }
@@ -1239,6 +1359,19 @@ pub struct RaycastWorld {
     /// Collider.user_data carries its key; the colliders Vec is only its public projection.
     #[cfg(feature = "native-physics")]
     mesh_sources: MeshInstanceSources,
+    /// 原World+3df8：屋顶实体完整generation→实际物理实例，供指定屋顶查询与卸载共用。
+    #[cfg(feature = "native-physics")]
+    roof_colliders: std::collections::HashMap<bevy_ecs::entity::Entity, ColliderMeshInstance>,
+    /// 原+3dc8、+3e28、+3e58：主墙面、地板、拱/过梁，各自保留真实实体generation。
+    #[cfg(feature = "native-physics")]
+    wall_colliders: std::collections::HashMap<bevy_ecs::entity::Entity, ColliderMeshInstance>,
+    #[cfg(feature = "native-physics")]
+    floor_colliders: std::collections::HashMap<bevy_ecs::entity::Entity, ColliderMeshInstance>,
+    #[cfg(feature = "native-physics")]
+    arch_colliders: std::collections::HashMap<bevy_ecs::entity::Entity, ColliderMeshInstance>,
+    /// 原World+3e88：可转换自动杂物的独立实体表，与屋顶共享同一物理receipt分配器。
+    #[cfg(feature = "native-physics")]
+    auto_clutter_colliders: std::collections::HashMap<bevy_ecs::entity::Entity, ColliderMeshInstance>,
 }
 
 /// 单个子世界槽（O：`world::RapierSubWorld`，`impl$0::build` 0x140b685e0 用
@@ -1288,6 +1421,16 @@ impl RaycastWorld {
             dirty_tiles_publishers: std::array::from_fn(|_| Publisher::new()),
             #[cfg(feature = "native-physics")]
             mesh_sources: MeshInstanceSources::new(),
+            #[cfg(feature = "native-physics")]
+            roof_colliders: std::collections::HashMap::new(),
+            #[cfg(feature = "native-physics")]
+            wall_colliders: std::collections::HashMap::new(),
+            #[cfg(feature = "native-physics")]
+            floor_colliders: std::collections::HashMap::new(),
+            #[cfg(feature = "native-physics")]
+            arch_colliders: std::collections::HashMap::new(),
+            #[cfg(feature = "native-physics")]
+            auto_clutter_colliders: std::collections::HashMap::new(),
         }
     }
 
@@ -1426,6 +1569,42 @@ impl RaycastWorld {
             .expect("collider source: mesh receipt missing or stale")
     }
 
+    /// 原完整射线predicate1408cab80及winner1408cdeea均先将raw generation按位OR1。
+    /// 这是该原查询的读取规则；不改变其他owner显式generation的严格接口。
+    #[cfg(feature = "native-physics")]
+    fn raycast_mesh_for_collider(&self, slot: u8, handle: ColliderHandle) -> (&RaycastMesh, &Collider) {
+        let collider = self.slots[slot as usize].colliders.get(handle)
+            .expect("raycast: physical collider missing");
+        let raw = collider.user_data as u64;
+        let mesh = self.get_collider_mesh(raw as u32, (raw >> 32) as u32 | 1);
+        (mesh, collider)
+    }
+
+    /// 原1408cab80/1408ca9a0共用注册校验，但完整/简单射线的排墙位图不同。
+    #[cfg(feature = "native-physics")]
+    fn ray_collider_is_allowed(
+        &self,
+        slot: u8,
+        handle: ColliderHandle,
+        excluded_wall: Option<crate::resources::walls::WallId>,
+        wall_kinds: u32,
+    ) -> bool {
+        // 即使没有排墙条件，也先验证真实collider的完整mesh receipt generation。
+        let source = self.registered_mesh_for_collider(slot, handle).source;
+        Self::source_passes_wall_exclusion(source, excluded_wall, wall_kinds)
+    }
+
+    #[cfg(feature = "native-physics")]
+    fn source_passes_wall_exclusion(source: RaycastGeoSource,
+        excluded_wall: Option<crate::resources::walls::WallId>, wall_kinds: u32) -> bool {
+        match excluded_wall {
+            Some(wall) if source.0[0] <= 8 && wall_kinds & (1 << source.0[0]) != 0 => {
+                u64::from_le_bytes(source.0[8..16].try_into().unwrap()) != wall.0
+            }
+            _ => true,
+        }
+    }
+
     /// `RaycastWorld::subscribe_to_changes`（0x1408cdc20，O）：`(&mut self, slot: u8)` →
     /// `Publisher::subscribe<DirtyTiles>` on `self.slot[slot]` 的内联发布器
     /// （`slot * 0x390 + 0x170`，不做边界检查；本实现越界 panic）。
@@ -1445,6 +1624,19 @@ impl RaycastWorld {
         handle: rapier3d::geometry::ColliderHandle,
     ) -> Option<&mut rapier3d::geometry::Collider> {
         self.slots[slot as usize].colliders.get_mut(handle)
+    }
+
+    /// 指定屋顶只查原实体表，不以同位置或同槽的其它碰撞体代替。
+    #[cfg(feature = "native-physics")]
+    pub fn roof_collider_instance(&self, entity: bevy_ecs::entity::Entity) -> Option<&ColliderMeshInstance> {
+        self.roof_colliders.get(&entity)
+    }
+
+    /// 原get_rapier_collider的只读借用投影；调用者负责保留missing的原失败先后。
+    #[cfg(feature = "native-physics")]
+    pub fn get_rapier_collider_ref(&self, slot: u8, handle: rapier3d::geometry::ColliderHandle)
+        -> Option<&rapier3d::geometry::Collider> {
+        self.slots[slot as usize].colliders.get(handle)
     }
 
     /// 子世界槽的查询管线（O：`find_mesh_mesh_intersections` 0x140a97b70 候选槽
@@ -1547,7 +1739,7 @@ impl RaycastWorld {
                 max_toi
             };
             if let Some(terrain_hit) = terrain.intersect_ray(ray, maximum_toi) {
-                result = terrain_result(terrain_hit.t, origin, dir);
+                result = terrain_result_at_position(terrain_hit.t, terrain_hit.position);
             }
         }
         result
@@ -1685,7 +1877,7 @@ impl RaycastWorld {
         dir: glam::Vec3,
         mask: u32,
     ) -> RaycastSimpleResult {
-        Rapier::raycast_simple(self, origin, dir, f32::MAX, mask)
+        Rapier::raycast_simple(self, origin, dir, f32::MAX, mask, None)
     }
 
     /// B `raycast_simple` accepts an explicit parametric TOI bound. The actual
@@ -1698,7 +1890,24 @@ impl RaycastWorld {
         max_toi: f32,
         mask: u32,
     ) -> RaycastSimpleResult {
-        Rapier::raycast_simple(self, origin, dir, max_toi, mask)
+        Rapier::raycast_simple(self, origin, dir, max_toi, mask, None)
+    }
+
+    /// 原tips三次有界simple查询：保留原方向长度、TOI与指定墙排除，不另建射线实现。
+    #[cfg(feature = "native-physics")]
+    pub fn raycast_simple_with_max_toi_excluding_wall_id(
+        &self, origin: glam::Vec3, dir: glam::Vec3, max_toi: f32, mask: u32,
+        wall: crate::resources::walls::WallId,
+    ) -> RaycastSimpleResult {
+        Rapier::raycast_simple(self, origin, dir, max_toi, mask, Some(wall))
+    }
+
+    #[cfg(not(feature = "native-physics"))]
+    pub fn raycast_simple_with_max_toi_excluding_wall_id(
+        &self, _origin: glam::Vec3, _dir: glam::Vec3, _max_toi: f32, _mask: u32,
+        _wall: crate::resources::walls::WallId,
+    ) -> RaycastSimpleResult {
+        panic!("有界排墙simple射线需要native-physics")
     }
 
     /// `RaycastWorld::raycast_simple`（非 native-physics 壳）。
@@ -1712,46 +1921,84 @@ impl RaycastWorld {
         RaycastSimpleResult::miss()
     }
 
-    /// `RaycastWorld::raycast_simple_exclude_wall_id`（0x1408ccc50）：fresh 反编译
-    /// `Rapier::raycast_simple()` 转发与 0x1408ccc20 **同体**（未见排除实参/过滤），
-    /// 故 Rust 侧同样转发、不消费 `excluded`（保留入参合同）。
-    #[cfg(feature = "native-physics")]
+    /// 原0x1408ccc50把有效Option<WallId>转交0x1408ce180，区别于ccc20的None。
+    /// 旧SubworldColliderHandle入参混淆了墙身份与碰撞句柄；统一复用实际墙排除查询。
     pub fn raycast_simple_exclude_wall_id(
         &self,
         origin: glam::Vec3,
         dir: glam::Vec3,
         mask: u32,
-        _excluded: SubworldColliderHandle,
+        excluded: crate::resources::walls::WallId,
     ) -> RaycastSimpleResult {
-        Rapier::raycast_simple(self, origin, dir, f32::MAX, mask)
+        self.raycast_simple_excluding_wall_id(origin, dir, mask, excluded)
     }
 
-    /// `RaycastWorld::raycast_simple_exclude_wall_id`（非 native-physics 壳）。
+    /// 原 B 1408ce180 的真实 Option<WallId> 排除面；移动建筑使用 mask 0x202。
+    /// 复用原十七槽查询，只排除 source kind 0/1/2/8 中同一墙的几何。
+    #[cfg(feature = "native-physics")]
+    pub fn raycast_simple_excluding_wall_id(
+        &self,
+        origin: glam::Vec3,
+        dir: glam::Vec3,
+        mask: u32,
+        wall: crate::resources::walls::WallId,
+    ) -> RaycastSimpleResult {
+        Rapier::raycast_simple(self, origin, dir, f32::MAX, mask, Some(wall))
+    }
+
     #[cfg(not(feature = "native-physics"))]
-    pub fn raycast_simple_exclude_wall_id(
+    pub fn raycast_simple_excluding_wall_id(
         &self,
         _origin: glam::Vec3,
         _dir: glam::Vec3,
         _mask: u32,
-        _excluded: SubworldColliderHandle,
+        _wall: crate::resources::walls::WallId,
     ) -> RaycastSimpleResult {
-        RaycastSimpleResult::miss()
+        panic!("建筑移动的屋顶吸附需要 native-physics 碰撞查询")
     }
 
-    /// `RaycastWorld::legacy_raycast_w_params`（0x1408cc770）：转发 `Rapier::raycast`；
-    /// 未命中把判别 2 写 +0x30（toi 槽，legacy 特例，同 `legacy_raycast`）。
+    /// 原1408cc770：基础mask为0xf3，再OR调用者的额外位；不能把Option判别当mask。
+    /// 未命中保留legacy整数判别2的位模式，命中使用安全拥有型结果。
     #[cfg(feature = "native-physics")]
     pub fn legacy_raycast_w_params(
         &self,
         origin: glam::Vec3,
         dir: glam::Vec3,
-        mask: u32,
+        additional_mask: u32,
     ) -> RaycastWorldResult {
-        let mut result = Rapier::raycast(self, origin, dir, mask);
+        let mut result = Rapier::raycast(self, origin, dir, 0xf3 | additional_mask);
         if result.is_miss() {
             result.toi = f32::from_bits(RAYCAST_WORLD_RESULT_MISS);
         }
         result
+    }
+
+    /// 原旗帜140800844：Some(当前墙)，额外mask0，射线方向(+0,-1,-0)。
+    /// 仍调用完整Rapier射线和法线路径，不能换成simple查询后拼装结果。
+    #[cfg(feature = "native-physics")]
+    pub fn legacy_raycast_w_params_excluding_wall_id(
+        &self,
+        origin: glam::Vec3,
+        dir: glam::Vec3,
+        additional_mask: u32,
+        wall: crate::resources::walls::WallId,
+    ) -> RaycastWorldResult {
+        let mut result = Rapier::raycast_with_params(
+            self, origin, dir, f32::MAX, 0xf3 | additional_mask, Some(wall),
+        );
+        if result.is_miss() { result.toi = f32::from_bits(RAYCAST_WORLD_RESULT_MISS); }
+        result
+    }
+
+    #[cfg(not(feature = "native-physics"))]
+    pub fn legacy_raycast_w_params_excluding_wall_id(
+        &self,
+        _origin: glam::Vec3,
+        _dir: glam::Vec3,
+        _additional_mask: u32,
+        _wall: crate::resources::walls::WallId,
+    ) -> RaycastWorldResult {
+        panic!("旗帜排除当前墙的完整射线需要 native-physics 碰撞查询")
     }
 
     /// `RaycastWorld::legacy_raycast_w_params`（非 native-physics 壳）。
@@ -1941,6 +2188,265 @@ pub enum ColliderUpsert {
     Inserted { handle: SubworldColliderHandle },
     Replaced { handle: SubworldColliderHandle },
     Kept { handle: SubworldColliderHandle },
+}
+
+#[cfg(feature = "native-physics")]
+impl RaycastWorld {
+    /// 借出同一原实体表，继续复用已恢复的泛型upsert/remove；panic也归还表的所有权。
+    fn with_entity_collider_map<R>(&mut self,
+        select: fn(&mut Self) -> &mut std::collections::HashMap<bevy_ecs::entity::Entity, ColliderMeshInstance>,
+        run: impl FnOnce(&mut Self,
+        &mut std::collections::HashMap<bevy_ecs::entity::Entity, ColliderMeshInstance>) -> R) -> R {
+        struct Borrowed<'a> {
+            world: &'a mut RaycastWorld,
+            map: std::collections::HashMap<bevy_ecs::entity::Entity, ColliderMeshInstance>,
+            select: fn(&mut RaycastWorld) -> &mut std::collections::HashMap<bevy_ecs::entity::Entity, ColliderMeshInstance>,
+        }
+        impl Drop for Borrowed<'_> {
+            fn drop(&mut self) { *(self.select)(self.world) = std::mem::take(&mut self.map); }
+        }
+        let map = std::mem::take(select(self));
+        let mut borrowed = Borrowed { world: self, map, select };
+        run(borrowed.world, &mut borrowed.map)
+    }
+}
+
+/// 原1408d075e..1408d13a7：Changed<Transform>先写，再消费Removed转换组件。
+/// 原只用包围盒宽/深和top-bottom，高度半值作为local平移；不加bottom，不读center/axis或Transform.scale。
+#[cfg(feature = "native-physics")]
+fn auto_clutter_collider_geometry(bounds: &utils::geometry::rectangle::Rectangle3d) -> (glam::Vec3, glam::Vec3) {
+    let height = bounds.top - bounds.bottom;
+    let zero = height * 0.0;
+    (glam::Vec3::new(bounds.footprint.size.x, height, bounds.footprint.size.y),
+        glam::Vec3::new(zero * 0.5, height * 0.5, zero * 0.5))
+}
+
+/// 原Changed/Removed两部分共用原+3e88实体表；这里不替代完整12参父系统。
+#[cfg(feature = "native-physics")]
+pub fn update_auto_clutter_rapier_colliders(
+    mut world: bevy_ecs::prelude::ResMut<RaycastWorld>,
+    changed: bevy_ecs::prelude::Query<(bevy_ecs::entity::Entity,
+        &crate::utils::components::transform::Transform,
+        &crate::components::drawable::AutoClutterConvertableToDecoClutter),
+        bevy_ecs::prelude::Changed<crate::utils::components::transform::Transform>>,
+    mut removed: bevy_ecs::prelude::RemovedComponents<crate::components::drawable::AutoClutterConvertableToDecoClutter>,
+) {
+    update_auto_clutter_colliders_inner(&mut world, &changed, removed.read());
+}
+
+#[cfg(feature = "native-physics")]
+fn update_auto_clutter_colliders_inner<'a>(
+    world: &mut RaycastWorld,
+    changed: impl IntoIterator<Item = (bevy_ecs::entity::Entity,
+        &'a crate::utils::components::transform::Transform,
+        &'a crate::components::drawable::AutoClutterConvertableToDecoClutter)>,
+    removed: impl Iterator<Item = bevy_ecs::entity::Entity>,
+) {
+    world.with_entity_collider_map(|world| &mut world.auto_clutter_colliders, |world, instances| {
+        for (entity, transform, clutter) in changed {
+            let (dimensions, center) = auto_clutter_collider_geometry(&clutter.bounds);
+            let mesh = Arc::new(RaycastMeshData::new_cuboid_at(dimensions, center));
+            upsert_collider(world, instances, entity, RaycastGeoSource::auto_clutter(entity),
+                mesh, transform.translation, transform.rotation);
+        }
+        for entity in removed { remove_collider(world, instances, &entity); }
+    });
+}
+
+/// 原1408d45a7..1408d5b4f的完整Roof分支；完整12参主系统的其它分支仍独立恢复。
+/// Added删除→Changed触发体/屋顶→Removed触发体，不能将移除提前或过滤为只看mesh变更。
+#[cfg(feature = "native-physics")]
+pub fn update_roof_rapier_colliders(
+    mut world: bevy_ecs::prelude::ResMut<RaycastWorld>,
+    walls: bevy_ecs::prelude::Res<crate::resources::walls::public_walls::PublicWalls>,
+    changed: bevy_ecs::prelude::Query<(
+        bevy_ecs::entity::Entity,
+        &crate::resources::roofs::RoofTriggerVolume,
+        &crate::resources::roofs::Roof,
+    ), (
+        bevy_ecs::prelude::Or<(
+            bevy_ecs::prelude::Changed<crate::resources::roofs::RoofTriggerVolume>,
+            bevy_ecs::prelude::Changed<crate::resources::roofs::Roof>,
+        )>,
+        bevy_ecs::prelude::Without<crate::resources::roofs::RoofMarkedForDeletion>,
+    )>,
+    mut removed: bevy_ecs::prelude::RemovedComponents<crate::resources::roofs::RoofTriggerVolume>,
+    deleted: bevy_ecs::prelude::Query<bevy_ecs::entity::Entity, (
+        bevy_ecs::prelude::With<crate::resources::roofs::RoofTriggerVolume>,
+        bevy_ecs::prelude::Added<crate::resources::roofs::RoofMarkedForDeletion>,
+    )>,
+) {
+    update_roof_colliders_inner(&mut world, &walls, &changed, removed.read(), deleted.iter());
+}
+
+#[cfg(feature = "native-physics")]
+fn update_roof_colliders_inner<'a>(
+    world: &mut RaycastWorld,
+    walls: &crate::resources::walls::public_walls::PublicWalls,
+    changed: impl IntoIterator<Item = (bevy_ecs::entity::Entity,
+        &'a crate::resources::roofs::RoofTriggerVolume, &'a crate::resources::roofs::Roof)>,
+    removed: impl Iterator<Item = bevy_ecs::entity::Entity>,
+    deleted: impl Iterator<Item = bevy_ecs::entity::Entity>,
+) {
+    world.with_entity_collider_map(|world| &mut world.roof_colliders, |world, instances| {
+        for entity in deleted { remove_collider(world, instances, &entity); }
+        for (entity, volume, roof) in changed {
+            // 原先检查真实PublicWalls：缺墙或正在推倒时删除既有实例，不读取触发体数组。
+            if !walls.get(roof.wall_id()).is_some_and(|wall| !wall.is_being_bulldozed()) {
+                remove_collider(world, instances, &entity);
+                continue;
+            }
+            let triangles: Vec<_> = volume.triangles_at_floor_y(roof.floor_y()).collect();
+            let mesh = Arc::new(RaycastMeshData::new_unindexed(&triangles, volume.normals(), Some(volume.uvs())));
+            upsert_collider(world, instances, entity,
+                RaycastGeoSource::roof(roof.wall_id(), roof.is_flat(), roof.is_gable()),
+                mesh, glam::Vec3::ZERO, glam::Quat::IDENTITY);
+        }
+        for entity in removed { remove_collider(world, instances, &entity); }
+    });
+}
+
+/// 原1408d0490的十二组SystemParam。内部严格依次消费杂物、墙三域、墙移除、屋顶；
+/// Query保留原Changed/Added/Without过滤，不依赖平行系统的偶然运行次序。
+#[cfg(feature = "native-physics")]
+pub fn update_rapier_colliders(
+    mut world: bevy_ecs::prelude::ResMut<RaycastWorld>,
+    changed_walls: bevy_ecs::prelude::Query<(bevy_ecs::entity::Entity,
+        &crate::resources::walls::wall_trigger_volume::WallTriggerVolume,
+        &crate::geometry::instanced_wall::InstancedWall<crate::systems::wall::construction::bricks::WallBrickInstance>),
+        bevy_ecs::prelude::Changed<crate::resources::walls::wall_trigger_volume::WallTriggerVolume>>,
+    mut removed_walls: bevy_ecs::prelude::RemovedComponents<crate::resources::walls::wall_trigger_volume::WallTriggerVolume>,
+    roofs: bevy_ecs::prelude::Query<&crate::resources::roofs::Roof>,
+    changed_roofs: bevy_ecs::prelude::Query<(bevy_ecs::entity::Entity,
+        &crate::resources::roofs::RoofTriggerVolume, &crate::resources::roofs::Roof),
+        (bevy_ecs::prelude::Or<(bevy_ecs::prelude::Changed<crate::resources::roofs::RoofTriggerVolume>,
+            bevy_ecs::prelude::Changed<crate::resources::roofs::Roof>)>,
+        bevy_ecs::prelude::Without<crate::resources::roofs::RoofMarkedForDeletion>)>,
+    mut removed_roofs: bevy_ecs::prelude::RemovedComponents<crate::resources::roofs::RoofTriggerVolume>,
+    deleted_roofs: bevy_ecs::prelude::Query<bevy_ecs::entity::Entity,
+        (bevy_ecs::prelude::With<crate::resources::roofs::RoofTriggerVolume>,
+        bevy_ecs::prelude::Added<crate::resources::roofs::RoofMarkedForDeletion>)>,
+    arches: bevy_ecs::prelude::Res<crate::resources::walls::arches::ArchSegments>,
+    lintels: bevy_ecs::prelude::Res<crate::resources::walls::arches::LintelSegments>,
+    walls: bevy_ecs::prelude::Res<crate::resources::walls::public_walls::PublicWalls>,
+    changed_auto: bevy_ecs::prelude::Query<(bevy_ecs::entity::Entity,
+        &crate::utils::components::transform::Transform,
+        &crate::components::drawable::AutoClutterConvertableToDecoClutter),
+        bevy_ecs::prelude::Changed<crate::utils::components::transform::Transform>>,
+    mut removed_auto: bevy_ecs::prelude::RemovedComponents<crate::components::drawable::AutoClutterConvertableToDecoClutter>,
+) {
+    use crate::resources::walls::{WallId, wall_trigger_volume::WallTriggerVolumeParams};
+    use crate::systems::wall::valid_enclosure::ShapeParameters;
+    update_auto_clutter_colliders_inner(&mut world, &changed_auto, removed_auto.read());
+    for (entity, volume, instanced) in &changed_walls {
+        let wall_id = WallId(instanced.id);
+        // 原183d/18ce→5c37为required unwrap；不同于Roof的可缺失墙门控。
+        // 有效性检查同样发生在空触发体和几何访问之前，不能吞掉发布/调度错误。
+        let wall = walls.get(wall_id).expect("墙碰撞更新缺少已发布的PublicWallState");
+        if wall.is_being_bulldozed() {
+            remove_wall_owned_colliders(&mut world, entity);
+            continue;
+        }
+        let source_flag = wall.authority.source_flag_65();
+        // 原1b08读取param9 Lintel（RBP+4b0→stack290）；else 1c50读取param8 Arch。
+        // 两表元素同为104B，不能根据反编译临时名或几何形状反推表身份。
+        let segments = if source_flag == 1 { lintels.0.get(&wall_id) } else { arches.0.get(&wall_id) };
+        world.with_entity_collider_map(|world| &mut world.arch_colliders, |world, instances| {
+            let mut normals = Vec::new();
+            let mut triangles = Vec::new();
+            if let Some(segments) = segments {
+                for segment in segments { construct_arch_geo(segment, &mut normals, &mut triangles); }
+            }
+            if triangles.is_empty() { remove_collider(world, instances, &entity); }
+            else {
+                let mesh = Arc::new(RaycastMeshData::new_unindexed(&triangles, &normals, None));
+                upsert_collider(world, instances, entity, RaycastGeoSource::wall_owned(9, wall_id),
+                    mesh, glam::Vec3::ZERO, glam::Quat::IDENTITY);
+            }
+        });
+        // 关联屋顶只查询原Roof组件；缺失/失效Entity视为非平顶，不扫描其他屋顶。
+        let flat_roof = walls.roof_component(wall_id, |entity| roofs.get(entity).ok())
+            .is_some_and(|roof| roof.is_flat());
+        world.with_entity_collider_map(|world| &mut world.wall_colliders, |world, instances| {
+            if volume.quads.is_empty() { remove_collider(world, instances, &entity); }
+            else {
+                let geometry = volume.get_collision_geo(WallTriggerVolumeParams {
+                    u_range: None,
+                    normal_offset: Some(if wall.shape().tag() < 2 { f32::from_bits(0x3ea1_47ae) } else { 0.0 }),
+                    minimum_height: 0.0,
+                    offset_from_top: if flat_roof { f32::from_bits(0xbeeb_851f) } else { 0.0 },
+                    apply: true,
+                });
+                let mesh = Arc::new(RaycastMeshData::new_unindexed(&geometry.triangles, &geometry.normals, Some(&geometry.uvs)));
+                // 原字节左移3位，不把原flag 65与其他freehand字段混淆。
+                upsert_collider(world, instances, entity, RaycastGeoSource::wall_owned(source_flag.wrapping_shl(3), wall_id),
+                    mesh, glam::Vec3::ZERO, glam::Quat::IDENTITY);
+            }
+        });
+        world.with_entity_collider_map(|world| &mut world.floor_colliders, |world, instances| {
+            // 原JBE也排除NaN；地形相对最小高度用于门控，实际平面Y取authority.elevation。
+            let shape = ShapeParameters::from_observed(*wall.shape().bytes()).get_shape();
+            if !(wall.geometry.metrics.minimum_relative_height > 0.0) || shape.is_none() {
+                remove_collider(world, instances, &entity);
+            } else {
+                let mesh = Arc::new(floor_mesh(shape.unwrap(), wall.authority.elevation()));
+                upsert_collider(world, instances, entity, RaycastGeoSource::wall_owned(1, wall_id),
+                    mesh, glam::Vec3::ZERO, glam::Quat::IDENTITY);
+            }
+        });
+    }
+    for entity in removed_walls.read() { remove_wall_owned_colliders(&mut world, entity); }
+    update_roof_colliders_inner(&mut world, &walls, &changed_roofs, removed_roofs.read(), deleted_roofs.iter());
+}
+
+#[cfg(feature = "native-physics")]
+fn remove_wall_owned_colliders(world: &mut RaycastWorld, entity: bevy_ecs::entity::Entity) {
+    // 原墙移除顺序：主面+3dc8，再地板+3e28，最后拱/过梁+3e58。
+    world.with_entity_collider_map(|world| &mut world.wall_colliders,
+        |world, instances| { remove_collider(world, instances, &entity); });
+    world.with_entity_collider_map(|world| &mut world.floor_colliders,
+        |world, instances| { remove_collider(world, instances, &entity); });
+    world.with_entity_collider_map(|world| &mut world.arch_colliders,
+        |world, instances| { remove_collider(world, instances, &entity); });
+}
+
+/// 原内联floor_mesh（1408d3014..398c）：四角矩形，或0.5步长整圆加中心的完整扇面。
+/// 第二份二维点列沿原求值次序保留；原new_indexed明确传None UV，不拿该点列补造UV。
+#[cfg(feature = "native-physics")]
+fn floor_mesh(shape: crate::systems::wall::valid_enclosure::Shape, elevation: f32) -> RaycastMeshData {
+    use crate::systems::wall::valid_enclosure::Shape;
+    let normal = glam::Vec3::new(-0.0, -1.0, -0.0);
+    match shape {
+        Shape::Rectangle(rectangle) => {
+            let vertices = std::array::from_fn::<_, 4, _>(|index| {
+                let p = rectangle.get_point(index);
+                glam::Vec3::new(p.x, elevation, p.y)
+            });
+            let _projection_points = std::array::from_fn::<_, 4, _>(|index| rectangle.get_point(index));
+            RaycastMeshData::new_indexed(&[[0,1,2],[0,2,3]], &vertices, Some(&[normal;4]), None)
+        }
+        Shape::Circle(circle) => {
+            // 原as_points2/as_points3将ceil结果饱和转usize后取至少3点。
+            // 这里复用现有逐点算法，避免其它用途的try采样接口提前拒绝非有限半径。
+            let mut vertices: Vec<_> = circle.as_points2_ptcount(floor_circle_points_count(circle.radius))
+                .map(|p| glam::Vec3::new(p.x, elevation, p.y)).collect();
+            let mut projection_points: Vec<_> = circle.as_points2_ptcount(floor_circle_points_count(circle.radius)).collect();
+            vertices.insert(0, glam::Vec3::new(circle.center.x, elevation, circle.center.y));
+            projection_points.insert(0, circle.center);
+            let indices: Vec<_> = (1..vertices.len()).zip(2..vertices.len())
+                .map(|(first,second)| [0,first as u32,second as u32]).collect();
+            let normals = vec![normal;vertices.len()];
+            let mesh = RaycastMeshData::new_indexed(&indices, &vertices, Some(&normals), None);
+            drop(projection_points);
+            mesh
+        }
+    }
+}
+
+#[cfg(feature = "native-physics")]
+fn floor_circle_points_count(radius: f32) -> usize {
+    // 原140c97bc0/140c97c50的固定step=0.5调用，包含NaN→0、+∞→usize::MAX。
+    (((radius * core::f32::consts::TAU / 0.5).ceil()) as usize).max(3)
 }
 
 /// Canonical upsert, B DecoratorId monomorph @141294980.
@@ -2172,42 +2678,52 @@ impl Rapier {
         world: &RaycastWorld, origin: glam::Vec3, dir: glam::Vec3,
         max_toi: f32, mask: u32,
     ) -> RaycastWorldResult {
+        Self::raycast_with_params(world, origin, dir, max_toi, mask, None)
+    }
+
+    fn raycast_with_params(
+        world: &RaycastWorld, origin: glam::Vec3, dir: glam::Vec3,
+        max_toi: f32, mask: u32,
+        excluded_wall: Option<crate::resources::walls::WallId>,
+    ) -> RaycastWorldResult {
         let ray = Ray::new(
             Point::new(origin.x, origin.y, origin.z),
             Vector::new(dir.x, dir.y, dir.z),
         );
-        let mut result = RaycastWorldResult::miss();
+        let mut selected = None;
         let mut maximum_toi = max_toi;
         for (slot_index, slot) in world.slots.iter().enumerate() {
             if (mask >> slot_index) & 1 == 0 {
                 continue;
             }
+            // 原完整射线predicate的0x105只含0/2/8，不排除kind1；simple是0x107。
+            let predicate = |handle: ColliderHandle, _: &Collider| {
+                let (mesh, _) = world.raycast_mesh_for_collider(slot_index as u8, handle);
+                RaycastWorld::source_passes_wall_exclusion(mesh.source, excluded_wall, 0x105)
+            };
             if let Some((handle, intersection)) = slot.pipeline.cast_ray_and_get_normal(
                 &slot.bodies,
                 &slot.colliders,
                 &ray,
                 maximum_toi,
                 true,
-                QueryFilter::default(),
+                QueryFilter::default().predicate(&predicate),
             ) {
                 // B 0x1408cde07: the next slot receives this hit's TOI.
                 maximum_toi = intersection.time_of_impact;
-                // O：命中后校验注册表并拷贝条目前 24 B（0x1408cdc60 → 0x1408ce4a0）。
-                result = RaycastWorldResult {
-                    handle: registry_handle_region(world, slot_index as u8, handle),
-                    position: origin + dir * intersection.time_of_impact,
-                    normal: glam::Vec3::new(
-                        intersection.normal.x,
-                        intersection.normal.y,
-                        intersection.normal.z,
-                    ),
-                    toi: intersection.time_of_impact,
-                    discriminant: RAYCAST_WORLD_RESULT_HIT,
-                    extra: [0.0, 0.0],
-                };
+                // 原循环只保留最终winner；不能提前插值导致被后来命中覆盖的mesh先panic。
+                selected = Some((slot_index as u8, handle, intersection));
             }
         }
-        result
+        let Some((slot, handle, hit)) = selected else { return RaycastWorldResult::miss(); };
+        let (mesh, collider) = world.raycast_mesh_for_collider(slot, handle);
+        let position = collider.position();
+        let source = std::array::from_fn(|i| u64::from_le_bytes(mesh.source.0[i*8..i*8+8].try_into().unwrap()));
+        let triangle = match hit.feature { rapier3d::parry::shape::FeatureId::Face(index) => Some(index), _ => None };
+        rapier_hit_to_raycast_world_result_at_pose(&mesh.data, origin, dir, hit.time_of_impact,
+            glam::Vec3::new(hit.normal.x, hit.normal.y, hit.normal.z), triangle, source,
+            glam::Vec3::new(position.translation.x, position.translation.y, position.translation.z),
+            glam::Quat::from_xyzw(position.rotation.i, position.rotation.j, position.rotation.k, position.rotation.w))
     }
 
     /// O：0x1408cdf80。17 槽 Qbvh `traverse_depth_first_node` + `RayIntersectionsVisitor`：
@@ -2316,6 +2832,7 @@ impl Rapier {
         dir: glam::Vec3,
         max_toi: f32,
         mask: u32,
+        excluded_wall: Option<crate::resources::walls::WallId>,
     ) -> RaycastSimpleResult {
         let ray = Ray::new(
             Point::new(origin.x, origin.y, origin.z),
@@ -2327,13 +2844,17 @@ impl Rapier {
             if (mask >> slot_index) & 1 == 0 {
                 continue;
             }
+            // 1408ca9a0：先通过真实 collider receipt 校验注册记录，再按墙ID过滤。
+            let predicate = |handle: ColliderHandle, _: &Collider| {
+                world.ray_collider_is_allowed(slot_index as u8, handle, excluded_wall, 0x107)
+            };
             if let Some((handle, toi)) = slot.pipeline.cast_ray(
                 &slot.bodies,
                 &slot.colliders,
                 &ray,
                 maximum_toi,
                 true,
-                QueryFilter::default(),
+                QueryFilter::default().predicate(&predicate),
             ) {
                 // B 0x1408ce180: a hit shortens the next slot's maximum TOI.
                 maximum_toi = toi;
@@ -2641,15 +3162,26 @@ impl RaycastWorld {
     /// `RaycastWorld::on_level_reload`（0x1408d8710，O）：关卡重载 —— 重建整个碰撞世界。
     ///
     /// fresh 反编译（b1-update-rapier 同批）：
-    /// 1. 计数器写 `*[self+0x10] = [self+0x1c]`（+0x10/+0x1c 计数器，flush_rapier_colliders
-    ///    同款写；Rust 未建模，登记）；
-    /// 2. 重建：`default<RapierSubWorld>`×17（0x390 B/槽）+ 发布器复位 + 空
+    /// 1. 系统参数变更 tick 写 `*[param+0x10] = [param+0x1c]`；由 Bevy ResMut 管理；
+    /// 2. 重建：`default<RapierSubWorld>`×17（0x390 B/槽）+ 空
     ///    `MeshInstanceSources`（0xe0 B 默认副本写 @+0x3dc8、`Vec<Slot<RaycastMesh>>`
     ///    指针 @+0x3ea8/+0x3eb0）。
     ///
-    /// Rust 侧等价 = 全量 `RaycastWorld::new()`（结构判等；发布器/槽/源一并复位）。
+    /// 3. 原 1408d8b48–6a 先保存旧世界再写入新世界；1408d8c36–d20
+    ///    按槽取旧 +0x150 的 7 qword，析构新发布器并搬回旧发布器；
+    ///    1408d8c69–87 同时保留槽内待发布 DirtyTiles 与脏标志，
+    ///    1408d8dbb–e41 对 +0x3cb0 的 ColliderDiff 发布器同样处理。
+    ///    保留旧订阅及未读取的通知，不发布伪造的重置差量。
     pub fn on_level_reload(&mut self) {
-        *self = RaycastWorld::new();
+        let mut fresh = RaycastWorld::new();
+        std::mem::swap(&mut fresh.publisher, &mut self.publisher);
+        std::mem::swap(&mut fresh.dirty_tiles_publishers, &mut self.dirty_tiles_publishers);
+        #[cfg(feature = "native-physics")]
+        for (new, old) in fresh.slots.iter_mut().zip(self.slots.iter_mut()) {
+            std::mem::swap(&mut new.dirty_tiles, &mut old.dirty_tiles);
+            new.dirty = old.dirty;
+        }
+        *self = fresh;
     }
 
     /// `RaycastWorld::into_transformed_shape`（impl$42 0x1408d98c0，O）：
@@ -2778,6 +3310,22 @@ impl RaycastWorld {
         shape: &dyn Shape,
         shape_position: &Isometry<f32>,
         mask: u32,
+        callback: F,
+    ) {
+        self.iter_shape_overlaps_at_filtered(shape, shape_position, mask, |_, _| true, callback);
+    }
+
+    /// 原 predicate 先于形状精测运行；保留同一 Rapier 管线及句柄/mesh generation 校验。
+    #[cfg(feature = "native-physics")]
+    fn iter_shape_overlaps_at_filtered<
+        P: Fn(SubworldColliderHandle, &RaycastGeoSource) -> bool,
+        F: FnMut(SubworldColliderHandle, &RaycastGeoSource) -> bool,
+    >(
+        &self,
+        shape: &dyn Shape,
+        shape_position: &Isometry<f32>,
+        mask: u32,
+        predicate: P,
         mut callback: F,
     ) {
         for (slot_index, slot) in self.slots.iter().enumerate() {
@@ -2785,12 +3333,17 @@ impl RaycastWorld {
                 continue;
             }
             let mut stop = false;
+            let filter = |handle: rapier3d::geometry::ColliderHandle, _: &rapier3d::geometry::Collider| {
+                let (index, generation) = handle.into_raw_parts();
+                let mesh = self.registered_mesh_for_collider(slot_index as u8, handle);
+                predicate(SubworldColliderHandle::new(index, generation, slot_index as u8), &mesh.source)
+            };
             slot.pipeline.intersections_with_shape(
                 &slot.bodies,
                 &slot.colliders,
                 shape_position,
                 shape,
-                QueryFilter::default(),
+                QueryFilter { predicate: Some(&filter), ..QueryFilter::default() },
                 |handle| {
                     let (index, generation) = handle.into_raw_parts();
                     let source = self
@@ -2825,10 +3378,25 @@ impl RaycastWorld {
         mask: u32,
         callback: F,
     ) {
+        self.iter_shape_overlaps_handle_filtered(handle, mask, |_, _| true, callback);
+    }
+
+    /// 楼梯结构图的两组原闭包：先排除同边/本轮已处理端，再做真实形状相交。
+    #[cfg(feature = "native-physics")]
+    pub fn iter_shape_overlaps_handle_filtered<
+        P: Fn(SubworldColliderHandle, &RaycastGeoSource) -> bool,
+        F: FnMut(SubworldColliderHandle, &RaycastGeoSource) -> bool,
+    >(
+        &self,
+        handle: SubworldColliderHandle,
+        mask: u32,
+        predicate: P,
+        callback: F,
+    ) {
         let t = self.into_transformed_shape(handle);
         let shape = t.as_collider_shape();
         let position = collider_isometry(t.position, t.rotation);
-        self.iter_shape_overlaps_at(shape.as_ref(), &position, mask, callback);
+        self.iter_shape_overlaps_at_filtered(shape.as_ref(), &position, mask, predicate, callback);
     }
 
     /// `iter_shape_overlaps<(IsoTransform, &RaycastMeshData)>`（O：impl$45 变换）。
@@ -2935,6 +3503,630 @@ impl RaycastGeoSource {
     pub fn from_slot(slot: u8) -> RaycastGeoSource {
         const SLOT_TO_SOURCE: [u8; 17] = [0, 2, 3, 6, 10, 11, 8, 7, 4, 1, 9, 12, 13, 14, 5, 15, 16];
         Self::tag_only(SLOT_TO_SOURCE[slot as usize])
+    }
+}
+
+#[cfg(all(test, feature = "native-physics"))]
+mod global_raycast_recovery_tests {
+    use super::*;
+    use glam::{Quat,Vec2,Vec3};
+    use std::collections::HashMap;
+
+    fn fixture() -> serde_json::Value {
+        serde_json::from_str(include_str!("../../../../../tests/fixtures/native/m01-global-ray.json")).unwrap()
+    }
+    fn floats(row:&serde_json::Value,name:&str) -> Vec<f32> {
+        row[name].as_array().unwrap().iter().map(|n|n.as_f64().unwrap() as f32).collect()
+    }
+    fn source(row:&serde_json::Value) -> RaycastGeoSource {
+        let values=row["source"].as_array().unwrap();crate::systems::collision::query_policy::RaycastGeoSourceProjection(
+            std::array::from_fn(|i|values[i].as_u64().unwrap() as u8))
+    }
+    fn data(row:&serde_json::Value) -> RaycastMeshData {
+        if row["primitive"]==true {return RaycastMeshData::new_cuboid_at(Vec3::splat(2.0),Vec3::NEG_Y);}
+        let vertices=floats(row,"vertices").chunks_exact(3).map(|p|Vec3::from_slice(p)).collect::<Vec<_>>();
+        let normals=floats(row,"normal_values").chunks_exact(3).map(|p|Vec3::from_slice(p)).collect::<Vec<_>>();
+        let uv=floats(row,"uv_values").chunks_exact(2).map(|p|Vec2::from_slice(p)).collect::<Vec<_>>();
+        let mesh=RaycastMeshData::new_indexed(&[[0,1,2]],&vertices,
+            (row["normals"]==true).then_some(normals.as_slice()),(row["uv"]==true).then_some(uv.as_slice()));
+        if let Some(indices)=row.get("indices") {
+            let bad=std::array::from_fn(|i|indices[i].as_u64().unwrap() as u32);
+            // 故障夹具：唯一owned三索引缓冲保持原分配长度，物理Shape已拥有独立有效副本。
+            // 只改变转换用源索引，验证原winner后置读取；不伪造实际物理相交记录。
+            unsafe {*(mesh.indices_ptr as *mut [u32;3])=bad;}
+        }
+        mesh
+    }
+    fn actual_world(case:&serde_json::Value) -> (RaycastWorld,HashMap<usize,ColliderMeshInstance>) {
+        let mut world=RaycastWorld::new();let mut instances=HashMap::new();
+        for (id,row) in case["colliders"].as_array().unwrap().iter().enumerate() {
+            let translation=floats(row,"translation");let rotation=floats(row,"rotation");
+            upsert_collider(&mut world,&mut instances,id,source(row),Arc::new(data(row)),Vec3::from_slice(&translation),Quat::from_slice(&rotation));
+            if let Some(generation)=row.get("raw_generation") {
+                let instance=instances[&id];let raw=(generation.as_u64().unwrap()<<32)|u64::from(instance.registry_index);
+                world.get_rapier_collider(instance.slot,instance.collider).unwrap().user_data=u128::from(raw);
+            }
+        }
+        world.flush_colliders();(world,instances)
+    }
+    fn active_words(hit:RaycastWorldResult) -> Vec<u32> {
+        hit.handle.into_iter().flat_map(|word|[word as u32,(word>>32)as u32])
+            .chain(hit.position.to_array().map(f32::to_bits)).chain(hit.normal.to_array().map(f32::to_bits))
+            .chain([hit.toi.to_bits(),hit.discriminant]).chain(hit.extra.map(f32::to_bits)).collect()
+    }
+
+    #[test]
+    fn original_full_global_outputs_match_actual_rapier_world_for_all_slots_layers_and_yaw_poses() {
+        let fixture=fixture();let mut compared=0;
+        for case in fixture["cases"].as_array().unwrap() {
+            if !case["panic"].is_null() || case["name"]=="no_face" || case["name"]=="back_face" {continue;}
+            // 非Face/反面feature的显式契约在下个resolved原差分测试中核验；这里使用真实QBVH返回。
+            let (world,_instances)=actual_world(case);let ray=case.get("ray").map(|_|floats(case,"ray")).unwrap_or(vec![0.,12.,0.,0.,-1.,0.]);
+            let limit=case.get("max_toi").map(|n|n.as_f64().unwrap() as f32).unwrap_or(f32::MAX);
+            let hit=world.raycast_with_max_toi(Vec3::from_slice(&ray[..3]),Vec3::from_slice(&ray[3..]),limit,case["mask"].as_u64().unwrap() as u32);
+            let expected=case["output"].as_array().unwrap().iter().map(|n|n.as_u64().unwrap() as u32).collect::<Vec<_>>();
+            assert_eq!(hit.discriminant,expected[13],"原global判别{}",case["name"]);
+            if hit.is_hit() {
+                let actual=active_words(hit);
+                assert_eq!(&actual[..14],&expected[..14],"原global完整活动结果{}",case["name"]);
+                // 原primitive无UV分支不写extra；三角网格无UV仍写barycentric尾分量。
+                let selected=case["physical_trace"][0].as_u64().unwrap();
+                let primitive=case["colliders"].as_array().unwrap().iter().find(|c|c["slot"]==selected).unwrap()["primitive"]==true;
+                if !primitive {assert_eq!(&actual[14..],&expected[14..],"原global UV/barycentric{}",case["name"]);}
+            }
+            compared+=1;
+        }
+        assert_eq!(compared,70);
+    }
+
+    #[test]
+    fn original_global_predicate_normalizes_raw_generation_then_filters_only_0_2_8_wall_kinds() {
+        let fixture=fixture();let rows=fixture["predicates"].as_array().unwrap();assert_eq!(rows.len(),204);
+        for case in rows {
+            let row=&case["colliders"][0];let mut world=RaycastWorld::new();let mut instances=HashMap::new();
+            upsert_collider(&mut world,&mut instances,0,source(row),Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE,Vec3::ZERO)),Vec3::Y*5.,Quat::IDENTITY);
+            let instance=instances[&0];let raw=(row["raw_generation"].as_u64().unwrap()<<32)|u64::from(instance.registry_index);
+            world.get_rapier_collider(instance.slot,instance.collider).unwrap().user_data=u128::from(raw);world.flush_colliders();
+            let excluded=case.get("excluded_wall").map(|n|crate::resources::walls::WallId(n.as_u64().unwrap()));
+            let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||Rapier::raycast_with_params(&world,Vec3::Y*12.,Vec3::NEG_Y,
+                f32::MAX,1<<instance.slot,excluded)));
+            if !case["panic"].is_null() {assert!(result.is_err(),"原predicate应失败{case}");}
+            else {assert_eq!(result.unwrap().is_hit(),case["allowed"].as_bool().unwrap(),"原predicate{case}");}
+        }
+    }
+
+    #[test]
+    fn original_final_feature_and_bounds_paths_use_the_same_complete_pose_converter() {
+        let fixture=fixture();let mut checked=0;
+        for case in fixture["cases"].as_array().unwrap() {
+            if case["physical_trace"].as_array().unwrap().is_empty() || matches!(case["panic"].as_str(),Some("receipt"|"physical")) {continue;}
+            let slot=case["physical_trace"][0].as_u64().unwrap();let row=case["colliders"].as_array().unwrap().iter().find(|row|row["slot"]==slot).unwrap();
+            let mesh=data(row);let translation=floats(row,"translation");let rotation=floats(row,"rotation");
+            let src=source(row);let words=std::array::from_fn(|i|u64::from_le_bytes(src.0[i*8..i*8+8].try_into().unwrap()));
+            let feature=row.get("feature").and_then(|v|v.as_u64()).unwrap_or(2);
+            let face=row.get("face").and_then(|v|v.as_u64()).unwrap_or(0);
+            let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||rapier_hit_to_raycast_world_result_at_pose(
+                &mesh,Vec3::Y*12.,Vec3::NEG_Y,row["toi"].as_f64().unwrap() as f32,Vec3::Y,
+                (feature==2).then_some(face as u32),words,Vec3::from_slice(&translation),Quat::from_slice(&rotation))));
+            if case["panic"]=="bounds" {assert!(result.is_err(),"原bounds{case}");}
+            else {
+                let actual=result.unwrap();let expected=case["output"].as_array().unwrap().iter().map(|n|n.as_u64().unwrap() as u32).collect::<Vec<_>>();
+                assert_eq!(actual.discriminant,expected[13]);
+                if actual.is_hit() {let actual=active_words(actual);assert_eq!(&actual[..14],&expected[..14]);
+                    if row["primitive"]!=true {assert_eq!(&actual[14..],&expected[14..]);}}
+            }
+            checked+=1;
+        }
+        assert_eq!(checked,75);
+    }
+
+    #[test]
+    fn only_final_winner_reads_corrupted_conversion_indices_in_a_real_world() {
+        let fixture=fixture();
+        for near in [true,false] {
+            let name=if near {"deferred_bad_vertices_True"}else{"deferred_bad_vertices_False"};
+            let case=fixture["cases"].as_array().unwrap().iter().find(|case|case["name"]==name).unwrap();
+            let (world,_)=actual_world(case);
+            let result=std::panic::catch_unwind(std::panic::AssertUnwindSafe(||world.raycast(Vec3::Y*12.,Vec3::NEG_Y,3)));
+            if near {let result=result.unwrap();assert_eq!(active_words(result),case["output"].as_array().unwrap().iter().map(|n|n.as_u64().unwrap() as u32).collect::<Vec<_>>());}
+            else {assert!(result.is_err());}
+        }
+    }
+
+    #[test]
+    fn bounded_simple_adapter_preserves_wall_exclusion_max_toi_and_mask() {
+        use crate::resources::walls::WallId;
+        let mut world=RaycastWorld::new();let mut instances=HashMap::new();
+        upsert_collider(&mut world,&mut instances,0,RaycastGeoSource::wall_owned(0,WallId(7)),
+            Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE,Vec3::ZERO)),Vec3::X*0.1,Quat::IDENTITY);
+        upsert_collider(&mut world,&mut instances,1,RaycastGeoSource::wall_owned(0,WallId(8)),
+            Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE,Vec3::ZERO)),Vec3::X*1.5,Quat::IDENTITY);
+        world.flush_colliders();
+        assert!(world.raycast_simple_with_max_toi_excluding_wall_id(Vec3::ZERO,Vec3::X*2.,0.49,1,WallId(7)).is_miss());
+        let hit=world.raycast_simple_with_max_toi_excluding_wall_id(Vec3::ZERO,Vec3::X*2.,0.5,1,WallId(7));
+        assert!(!hit.is_miss());assert_eq!(hit.toi,0.5);assert_eq!(hit.handle[1],8);
+        assert!(world.raycast_simple_with_max_toi_excluding_wall_id(Vec3::ZERO,Vec3::X*2.,1.,0,WallId(7)).is_miss());
+    }
+
+    #[test]
+    fn original_terrain_wrapper_limits_and_copied_point_keep_the_service_contract() {
+        let fixture=fixture();let rows=fixture["terrain_cases"].as_array().unwrap();assert_eq!(rows.len(),16);
+        for case in rows {
+            assert!(case["panic"].is_null());let mask=case["mask"].as_u64().unwrap() as u32;
+            let maximum=case.get("max_toi").map(|v|v.as_f64().unwrap()as f32).unwrap_or(f32::MAX);
+            if mask&0x20==0 {assert!(case["terrain_limit"].is_null());continue;}
+            let limit=if mask&2!=0 && 4.0<=maximum {4.0f32}else{maximum};
+            assert_eq!(case["terrain_limit"].as_u64().unwrap()as u32,limit.to_bits(),"原UV与无UV hit都收紧terrain上限");
+            let expected=case["output"].as_array().unwrap().iter().map(|v|v.as_u64().unwrap()as u32).collect::<Vec<_>>();
+            if expected[0]&255==11 {
+                let toi=case["terrain_toi"].as_f64().unwrap()as f32;
+                let point=case.get("terrain_position").map(|_|Vec3::from_slice(&floats(case,"terrain_position"))).unwrap_or(Vec3::new(0.,12.-toi,0.));
+                let actual=active_words(terrain_result_at_position(toi,point));
+                assert_eq!(&actual[6..14],&expected[6..14]);assert_eq!(actual[0]&255,11);
+            }
+        }
+    }
+
+    #[test]
+    fn actual_global_receipts_obey_mask_normalization_staleness_and_retirement() {
+        use crate::resources::walls::WallId;
+        let mut world=RaycastWorld::new();let mut instances=HashMap::new();
+        let mesh=Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE,Vec3::ZERO));let weak=Arc::downgrade(&mesh);
+        upsert_collider(&mut world,&mut instances,0,RaycastGeoSource::wall_owned(0,WallId(7)),mesh,Vec3::Y*5.,Quat::IDENTITY);
+        world.flush_colliders();let original=instances[&0];
+        let receipt=(u64::from(original.generation)<<32)|u64::from(original.registry_index);
+        for raw in [receipt.wrapping_add(2<<32),(u64::from(original.generation)<<32)|u64::from(u32::MAX)] {
+            world.get_rapier_collider(original.slot,original.collider).unwrap().user_data=u128::from(raw);
+            assert!(world.raycast(Vec3::Y*12.,Vec3::NEG_Y,0).is_miss(),"未选slot不触发receipt读取");
+            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||world.raycast(Vec3::Y*12.,Vec3::NEG_Y,1))).is_err());
+        }
+        world.get_rapier_collider(original.slot,original.collider).unwrap().user_data=u128::from(receipt);
+        remove_collider(&mut world,&mut instances,&0).unwrap();world.flush_colliders();assert!(weak.upgrade().is_none());
+        assert!(world.raycast(Vec3::Y*12.,Vec3::NEG_Y,1).is_miss());
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||world.raycast_mesh_for_collider(original.slot,original.collider))).is_err());
+        upsert_collider(&mut world,&mut instances,1,RaycastGeoSource::wall_owned(0,WallId(8)),
+            Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE,Vec3::ZERO)),Vec3::Y*5.,Quat::IDENTITY);
+        world.flush_colliders();let next=instances[&1];assert_eq!(next.registry_index,original.registry_index);assert_ne!(next.generation,original.generation);
+        world.get_rapier_collider(next.slot,next.collider).unwrap().user_data=u128::from(receipt);
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||world.raycast(Vec3::Y*12.,Vec3::NEG_Y,1))).is_err());
+        let even=(u64::from(next.generation&!1)<<32)|u64::from(next.registry_index);
+        world.get_rapier_collider(next.slot,next.collider).unwrap().user_data=u128::from(even);
+        assert_eq!(world.raycast(Vec3::Y*12.,Vec3::NEG_Y,1).handle[1],8,"新世代raw偶数也只OR1，不固定到首世代");
+    }
+
+    #[test]
+    fn actual_twelve_param_roofs_global_nearest_uv_terrain_merge_and_removal_are_continuous() {
+        use crate::resources::{roofs::{Roof,RoofMarkedForDeletion},walls::{WallId,public_walls::PublicWalls}};
+        let (mut world,mut schedule,_,_)=super::full_rapier_collider_producer_tests::setup();
+        let mut low=super::full_rapier_collider_producer_tests::roof(42,0.);
+        let mut high=super::full_rapier_collider_producer_tests::roof(43,1.);
+        low.observed_mut()[0x4c..0x50].copy_from_slice(&3.0f32.to_le_bytes());high.observed_mut()[0x4c..0x50].copy_from_slice(&7.0f32.to_le_bytes());
+        let low=world.spawn((low,super::full_rapier_collider_producer_tests::roof_volume())).id();
+        let high=world.spawn((high,super::full_rapier_collider_producer_tests::roof_volume())).id();
+        world.resource_mut::<PublicWalls>().associate_roof(WallId(42),low);world.resource_mut::<PublicWalls>().associate_roof(WallId(43),high);
+        schedule.run(&mut world);world.resource_mut::<RaycastWorld>().flush_colliders();
+        let origin=Vec3::new(-0.25,12.,-0.25);
+        let hit=world.resource::<RaycastWorld>().raycast(origin,Vec3::NEG_Y,2);
+        assert!(hit.is_hit());assert_eq!(hit.discriminant,1);assert_eq!(hit.extra,[0.375,0.375]);assert_eq!(hit.position.y,7.);
+        assert_eq!(hit.handle[1],43);
+        let instance=*world.resource::<RaycastWorld>().roof_collider_instance(high).unwrap();
+        let weak=Arc::downgrade(&world.resource::<RaycastWorld>().get_collider_mesh(instance.registry_index,instance.generation).data);
+        world.entity_mut(high).insert(RoofMarkedForDeletion);schedule.run(&mut world);world.resource_mut::<RaycastWorld>().flush_colliders();
+        assert!(weak.upgrade().is_none());assert_eq!(world.resource::<RaycastWorld>().raycast(origin,Vec3::NEG_Y,2).position.y,3.);
+        let mut terrain=TerrainHeightsData::<TerrainHeightSsbo>::new();terrain.set_height_range(0.,0.);
+        let hit=world.resource::<RaycastWorld>().raycast_w_terrain(&terrain,origin,Vec3::NEG_Y,2|0x20);
+        assert_eq!(hit.discriminant,1);assert_eq!(hit.position.y,3.,"近UV命中必须限制更远地形查询");
+        assert!(world.resource::<RaycastWorld>().raycast_w_terrain_with_max_toi(&terrain,origin,Vec3::NEG_Y,8.,2|0x20).is_miss());
+        assert_eq!(world.resource::<RaycastWorld>().raycast_w_terrain_with_max_toi(&terrain,origin,Vec3::NEG_Y,9.,2|0x20).discriminant,1);
+        for (height,terrain_wins) in [(0.0f32,true),(-3.,true),(3.,false)] {
+            world.get_mut::<Roof>(low).unwrap().observed_mut()[0x4c..0x50].copy_from_slice(&height.to_le_bytes());
+            schedule.run(&mut world);world.resource_mut::<RaycastWorld>().flush_colliders();
+            let hit=world.resource::<RaycastWorld>().raycast_w_terrain(&terrain,origin,Vec3::NEG_Y,2|0x20);
+            assert_eq!(hit.is_terrain(),terrain_wins);assert!(hit.is_hit());
+            assert_eq!(hit.discriminant,if terrain_wins {0}else{1});
+        }
+        world.despawn(low);schedule.run(&mut world);world.resource_mut::<RaycastWorld>().flush_colliders();
+        assert!(world.resource::<RaycastWorld>().raycast(origin,Vec3::NEG_Y,2).is_miss());
+    }
+}
+
+#[cfg(all(test, feature = "native-physics"))]
+mod full_rapier_collider_producer_tests {
+    use super::*;
+    use bevy_ecs::prelude::*;
+    use glam::{Quat, Vec2, Vec3};
+    use crate::resources::{roofs::{Roof, RoofTriggerVolume, RoofMarkedForDeletion, geometry::surface::Curve2},
+        walls::{WallId, WallState, InnerWalls, arches::{ArchSegments, LintelSegments},
+            wall_trigger_volume::{Quad, WallTriggerVolume}, publication_fields::WallShapeSnapshot,
+            public_walls::{PublicWalls, WallPublicationDirty, WallSpatialHash}, publication_source::TerrainHeightGrid512}};
+    use crate::geometry::instanced_wall::InstancedWall;
+    use crate::systems::wall::{construction::{bricks::WallBrickInstance,
+        structures::MaterializedWallSegment, segmentation::WallLoopRange}, valid_enclosure::Shape};
+    use crate::components::drawable::{AutoClutterConvertableToDecoClutter, AutoClutterDestination, AutoClutterSource};
+    use crate::utils::components::transform::Transform;
+
+    fn segment(x: f32) -> MaterializedWallSegment {
+        MaterializedWallSegment {heights:vec![1.0,2.0],positions:vec![[x,3.0,1.0],[x+1.0,3.0,1.0]],
+            points_u:vec![0.0,1.0],source_indices:[0,2],range:WallLoopRange {start:0,end:1,modulus:2}}
+    }
+    fn volume() -> WallTriggerVolume {
+        let mut volume=WallTriggerVolume::default();
+        volume.quads.push(Quad {wall_uv:[Vec2::ZERO,Vec2::X,Vec2::Y,Vec2::ONE],
+            positions:[Vec3::new(-2.0,3.0,-2.0),Vec3::new(2.0,3.0,-2.0),Vec3::new(-2.0,7.0,-2.0),Vec3::new(2.0,7.0,-2.0)],
+            prepared_u:[0.0,1.0],endpoint_normals:[Vec3::Z;2],segment_heights:[3.0;2]});volume
+    }
+    pub(super) fn roof(id:u64,height:f32) -> Roof {
+        let mut bytes=[0;88];bytes[..8].copy_from_slice(&id.to_le_bytes());
+        bytes[0x30..0x34].copy_from_slice(&height.to_le_bytes());bytes[0x4c..0x50].copy_from_slice(&3.0f32.to_le_bytes());
+        Roof::from_observed(bytes)
+    }
+    pub(super) fn roof_volume() -> RoofTriggerVolume {
+        let mut volume=RoofTriggerVolume::default();
+        volume.set_triangles(vec![[Vec3::new(-1.0,0.0,-1.0),Vec3::new(-1.0,0.0,1.0),Vec3::new(1.0,0.0,-1.0)]]);
+        volume.set_normals(vec![[Vec3::Y;3]]);volume.set_uvs(vec![[Vec2::ZERO,Vec2::Y,Vec2::X]]);volume
+    }
+    pub(super) fn setup() -> (World,Schedule,Entity,Entity) {
+        let mut inner=InnerWalls::new();
+        for (id,flag,shape) in [(42,0,Shape::Rectangle(utils::geometry::Rectangle2d {axis:Vec2::X,center:Vec2::ZERO,size:Vec2::splat(4.0)})),
+            (43,1,Shape::Circle(utils::geometry::Circle2d {center:Vec2::new(8.0,0.0),radius:2.0,rotation:0.3}))] {
+            let curve=Curve2::try_new(vec![[-2.0,-2.0],[2.0,-2.0],[2.0,2.0],[-2.0,2.0]],true).unwrap();
+            let state=WallState::new(curve,2.0,0,flag,false);let (mut snapshot,freehand)=state.into_snapshot();
+            snapshot.source.terrain_floor=3.0;snapshot.source.shape=WallShapeSnapshot::from_observed(shape.to_record());
+            snapshot.source.curve_kind_tag=shape.tag();
+            inner.new_wall_with_id(WallId(id),WallState::from_snapshot(snapshot,freehand));
+        }
+        let mut walls=PublicWalls::default();walls.consume_with_paths(&mut inner,&TerrainHeightGrid512 {
+            encoded:vec![0;512*512].into(),minimum_y:0.0,maximum_y:0.0,sampling_fix:false},None,
+            &WallPublicationDirty::default(),&WallSpatialHash::default());
+        assert!(walls.get(WallId(42)).unwrap().geometry.metrics.minimum_relative_height>0.0);
+        assert!(walls.get(WallId(43)).unwrap().geometry.metrics.minimum_relative_height>0.0);
+        let mut world=World::new();world.insert_resource(RaycastWorld::new());world.insert_resource(walls);
+        // 对侧表故意带不同几何，验收必须证明原分派，不能靠另一表为空掩盖倒置或fallback。
+        world.insert_resource(ArchSegments(std::collections::HashMap::from([
+            (WallId(42),vec![segment(0.0)]),(WallId(43),vec![segment(-100.0)])])));
+        world.insert_resource(LintelSegments(std::collections::HashMap::from([
+            (WallId(43),vec![segment(8.0)]),(WallId(42),vec![segment(100.0)])])));
+        let a=world.spawn((volume(),InstancedWall::<WallBrickInstance>::new(42,Vec::new()))).id();
+        let b=world.spawn((volume(),InstancedWall::<WallBrickInstance>::new(43,Vec::new()))).id();
+        let mut schedule=Schedule::default();schedule.add_systems(update_rapier_colliders);(world,schedule,a,b)
+    }
+    fn mesh(world:&World,instance:ColliderMeshInstance) -> &RaycastMeshData {
+        &world.resource::<RaycastWorld>().get_collider_mesh(instance.registry_index,instance.generation).data
+    }
+    fn wall_owned(world:&World,entity:Entity) -> [ColliderMeshInstance;3] {
+        let world=world.resource::<RaycastWorld>();[world.wall_colliders[&entity],world.floor_colliders[&entity],world.arch_colliders[&entity]]
+    }
+    fn weak(world:&World,instance:ColliderMeshInstance) -> std::sync::Weak<RaycastMeshData> {
+        Arc::downgrade(&world.resource::<RaycastWorld>().get_collider_mesh(instance.registry_index,instance.generation).data)
+    }
+    fn touch(world:&mut World,entity:Entity) { world.get_mut::<WallTriggerVolume>(entity).unwrap().set_changed(); }
+
+    #[test]
+    fn twelve_params_update_all_five_real_entity_maps_and_keep_64_clean_frames() {
+        let (mut world,mut schedule,a,b)=setup();
+        let roof_a=world.spawn((roof(42,0.0),roof_volume())).id();
+        let roof_b=world.spawn((roof(43,1.0),roof_volume())).id();
+        world.resource_mut::<PublicWalls>().associate_roof(WallId(42),roof_a);
+        world.resource_mut::<PublicWalls>().associate_roof(WallId(43),roof_b);
+        let clutter=world.spawn((Transform {translation:Vec3::new(1.0,2.0,3.0),rotation:Quat::from_rotation_y(0.7),scale:Vec3::splat(9.0)},
+            AutoClutterConvertableToDecoClutter {source:AutoClutterSource::None,destination:AutoClutterDestination::Terrain,
+                mesh_name:"real-collider-query",bounds:utils::geometry::rectangle::Rectangle3d::new(Vec3::ZERO,Vec3::splat(2.0),Vec2::X)})).id();
+        schedule.run(&mut world);
+        let first=wall_owned(&world,a);let second=wall_owned(&world,b);
+        assert_eq!(world.resource::<RaycastWorld>().registry_live,9);
+        for (entity,instances,tag,id) in [(a,first,0,42u64),(b,second,8,43)] {
+            for (instance,expected_tag) in instances.into_iter().zip([tag,1,9]) {
+                let owner=world.resource::<RaycastWorld>().get_collider_mesh(instance.registry_index,instance.generation);
+                assert_eq!(owner.source.tag(),expected_tag);assert_eq!(&owner.source.0[8..16],&id.to_le_bytes());
+            }
+            assert!(!mesh(&world,instances[0]).uvs().is_empty());assert!(mesh(&world,instances[1]).uvs().is_empty());
+            assert!(mesh(&world,instances[2]).uvs().is_empty());
+            assert_eq!(mesh(&world,instances[2]).vertices()[0].x,if id==42 {0.0}else{8.0},"原typed参数栈身份决定Arch/Lintel表");
+            assert_eq!(world.resource::<RaycastWorld>().wall_colliders[&entity],instances[0]);
+        }
+        assert_eq!(mesh(&world,first[0]).vertices()[0].z.to_bits(),(-2.0+f32::from_bits(0x3ea147ae)).to_bits());
+        assert_eq!(mesh(&world,first[0]).vertices()[2].y.to_bits(),(7.0+f32::from_bits(0xbeeb851f)).to_bits());
+        assert_eq!(mesh(&world,second[0]).vertices()[2].y,7.0);
+        assert!(mesh(&world,first[1]).vertices().iter().all(|p|p.y==3.0));
+        assert_eq!(mesh(&world,second[1]).vertices()[0],Vec3::new(8.0,3.0,0.0));
+        let owner_weak=weak(&world,first[0]);
+        for _ in 0..64 {schedule.run(&mut world);assert_eq!(wall_owned(&world,a),first);assert_eq!(wall_owned(&world,b),second);}
+        assert_eq!(world.resource::<RaycastWorld>().registry_live,9);
+        // 原只监听触发体Changed；纯Arch/Lintel资源变更不能偷偷提前重建。
+        world.resource_mut::<ArchSegments>().0.get_mut(&WallId(42)).unwrap()[0].heights[0]=2.5;
+        schedule.run(&mut world);assert_eq!(wall_owned(&world,a),first);
+        world.get_mut::<WallTriggerVolume>(a).unwrap().quads[0].positions[0].x=-2.5;
+        schedule.run(&mut world);let changed=wall_owned(&world,a);
+        assert_ne!(changed[0],first[0]);assert_eq!(changed[1],first[1]);assert_ne!(changed[2],first[2]);assert!(owner_weak.upgrade().is_none());
+        world.entity_mut(roof_a).insert(RoofMarkedForDeletion);world.entity_mut(clutter).remove::<AutoClutterConvertableToDecoClutter>();
+        schedule.run(&mut world);assert!(!world.resource::<RaycastWorld>().roof_colliders.contains_key(&roof_a));
+        assert!(world.resource::<RaycastWorld>().auto_clutter_colliders.is_empty());
+        assert_eq!(world.resource::<RaycastWorld>().registry_live,7);
+    }
+
+    #[test]
+    fn original_floor_and_wall_gates_keep_independent_tables_and_only_the_associated_roof() {
+        let (mut world,mut schedule,a,b)=setup();
+        let unrelated=world.spawn(roof(42,0.0)).id();schedule.run(&mut world);
+        let initial=wall_owned(&world,a);assert_eq!(mesh(&world,initial[0]).vertices()[2].y,7.0);
+        world.resource_mut::<PublicWalls>().associate_roof(WallId(42),unrelated);touch(&mut world,a);schedule.run(&mut world);
+        let flat=wall_owned(&world,a);assert_ne!(flat[0],initial[0]);assert_eq!(flat[1],initial[1]);
+        world.despawn(unrelated);touch(&mut world,a);schedule.run(&mut world);
+        assert_eq!(mesh(&world,wall_owned(&world,a)[0]).vertices()[2].y,7.0,"失效关联不扫描其他Roof");
+        for minimum in [0.0,-0.0,-1.0,f32::NAN] {
+            world.resource_mut::<PublicWalls>().get_mut(WallId(42)).unwrap().geometry.metrics.minimum_relative_height=minimum;
+            touch(&mut world,a);schedule.run(&mut world);let physics=world.resource::<RaycastWorld>();
+            assert!(!physics.floor_colliders.contains_key(&a));assert!(physics.wall_colliders.contains_key(&a));assert!(physics.arch_colliders.contains_key(&a));
+        }
+        let mut shape=[0;28];shape[..4].copy_from_slice(&2u32.to_le_bytes());
+        {let mut walls=world.resource_mut::<PublicWalls>();let wall=walls.get_mut(WallId(42)).unwrap();
+            wall.geometry.metrics.minimum_relative_height=3.0;wall.authority.snapshot.source.shape=WallShapeSnapshot::from_observed(shape);}
+        touch(&mut world,a);schedule.run(&mut world);assert!(!world.resource::<RaycastWorld>().floor_colliders.contains_key(&a));
+        let primary=world.resource::<RaycastWorld>().wall_colliders[&a];assert_eq!(mesh(&world,primary).vertices()[0].z,-2.0);
+        world.get_mut::<WallTriggerVolume>(a).unwrap().quads.clear();schedule.run(&mut world);
+        assert!(!world.resource::<RaycastWorld>().wall_colliders.contains_key(&a));assert!(world.resource::<RaycastWorld>().arch_colliders.contains_key(&a));
+        world.resource_mut::<ArchSegments>().0.remove(&WallId(42));touch(&mut world,a);schedule.run(&mut world);
+        assert!(!world.resource::<RaycastWorld>().arch_colliders.contains_key(&a),"选定表缺失时移除，不能转读非空的另一表");
+        world.resource_mut::<LintelSegments>().0.get_mut(&WallId(43)).unwrap()[0].heights.truncate(1);
+        touch(&mut world,b);schedule.run(&mut world);assert!(!world.resource::<RaycastWorld>().arch_colliders.contains_key(&b),"原zip少于两点不生成mesh");
+        world.resource_mut::<PublicWalls>().get_mut(WallId(43)).unwrap().set_being_bulldozed(true);
+        touch(&mut world,b);schedule.run(&mut world);let physics=world.resource::<RaycastWorld>();
+        assert!(!physics.wall_colliders.contains_key(&b));assert!(!physics.floor_colliders.contains_key(&b));assert!(!physics.arch_colliders.contains_key(&b));
+    }
+
+    #[test]
+    fn required_missing_or_invalid_public_wall_panics_before_an_empty_trigger_can_skip_it() {
+        for invalid in [false,true] {
+            let (mut world,mut schedule,a,b)=setup();
+            world.entity_mut(a).remove::<WallTriggerVolume>();world.entity_mut(b).remove::<WallTriggerVolume>();
+            if invalid {world.resource_mut::<PublicWalls>().get_mut(WallId(42)).unwrap().authority.snapshot.source.curve.length=0.0;}
+            world.spawn((WallTriggerVolume::default(),InstancedWall::<WallBrickInstance>::new(if invalid {42}else{999},Vec::new())));
+            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||schedule.run(&mut world))).is_err());
+            assert_eq!(world.resource::<RaycastWorld>().registry_live,0);
+        }
+    }
+
+    #[test]
+    fn component_removal_generation_reuse_and_reload_release_every_original_map_owner() {
+        let (mut world,mut schedule,a,b)=setup();schedule.run(&mut world);
+        let first=wall_owned(&world,a);let weak_meshes=first.map(|instance|weak(&world,instance));
+        world.entity_mut(a).remove::<WallTriggerVolume>();schedule.run(&mut world);
+        assert!(weak_meshes.iter().all(|mesh|mesh.upgrade().is_none()));assert_eq!(world.resource::<RaycastWorld>().registry_live,3);
+        world.despawn(a);let reused=world.spawn((volume(),InstancedWall::<WallBrickInstance>::new(42,Vec::new()))).id();
+        assert_ne!(reused,a);schedule.run(&mut world);assert!(!world.resource::<RaycastWorld>().wall_colliders.contains_key(&a));
+        let owners=wall_owned(&world,reused).into_iter().chain(wall_owned(&world,b)).map(|instance|weak(&world,instance)).collect::<Vec<_>>();
+        world.resource_mut::<RaycastWorld>().on_level_reload();assert!(owners.iter().all(|mesh|mesh.upgrade().is_none()));
+        {let physics=world.resource::<RaycastWorld>();assert_eq!(physics.registry_live,0);assert!(physics.wall_colliders.is_empty());
+            assert!(physics.floor_colliders.is_empty());assert!(physics.arch_colliders.is_empty());assert!(physics.roof_colliders.is_empty());assert!(physics.auto_clutter_colliders.is_empty());}
+        touch(&mut world,reused);touch(&mut world,b);schedule.run(&mut world);assert_eq!(world.resource::<RaycastWorld>().registry_live,6);
+        world.despawn(reused);world.despawn(b);schedule.run(&mut world);world.resource_mut::<RaycastWorld>().flush_colliders();
+        assert_eq!(world.resource::<RaycastWorld>().registry_live,0);
+        assert!(world.resource::<RaycastWorld>().slots.iter().all(|slot|slot.colliders.is_empty()));
+    }
+
+    #[test]
+    fn failed_primary_geometry_preserves_original_arch_before_primary_before_floor_side_effects() {
+        let (mut world,mut schedule,a,_)=setup();schedule.run(&mut world);let before=wall_owned(&world,a);
+        let old_arch=weak(&world,before[2]);let old_wall=weak(&world,before[0]);let old_floor=weak(&world,before[1]);
+        world.resource_mut::<ArchSegments>().0.get_mut(&WallId(42)).unwrap()[0].heights[0]=3.5;
+        world.get_mut::<WallTriggerVolume>(a).unwrap().quads[0].prepared_u=[0.5,0.5];
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||schedule.run(&mut world))).is_err());
+        // 原先提交新的拱，再因所有quad退化失败；旧主面及尚未处理的地板不被清掉。
+        let after=wall_owned(&world,a);assert_ne!(after[2],before[2]);assert_eq!(after[0],before[0]);assert_eq!(after[1],before[1]);
+        assert!(old_arch.upgrade().is_none());assert!(old_wall.upgrade().is_some());assert!(old_floor.upgrade().is_some());
+    }
+}
+
+#[cfg(all(test, feature = "native-physics"))]
+mod floor_collider_geometry_tests {
+    use super::*;
+    use crate::systems::wall::valid_enclosure::Shape;
+    use glam::Vec2;
+
+    #[test]
+    fn original_circle_sampling_count_keeps_saturating_nonfinite_and_signed_boundary_rules() {
+        let fixture:serde_json::Value=serde_json::from_str(include_str!(
+            "../../../../../tests/fixtures/native/m01-floor-mesh.json")).unwrap();
+        let cases=fixture["count_cases"].as_array().unwrap();assert_eq!(cases.len(),256);
+        for case in cases {
+            let radius=f32::from_bits(case["radius"].as_u64().unwrap() as u32);
+            assert_eq!(floor_circle_points_count(radius) as u64,case["expected"].as_u64().unwrap(),"radius{:08x}",radius.to_bits());
+        }
+    }
+
+    #[test]
+    fn complete_rectangle_and_circle_floor_geometry_matches_96_original_branch_outputs() {
+        let fixture:serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../../tests/fixtures/native/m01-floor-mesh.json")).unwrap();
+        for case in fixture["cases"].as_array().unwrap() {
+            assert_eq!(case["panic"],false);
+            let input:Vec<_> = case["input"].as_array().unwrap().iter().map(|v|f32::from_bits(v.as_u64().unwrap() as u32)).collect();
+            let shape = if case["kind"] == 1 {
+                Shape::Rectangle(utils::geometry::Rectangle2d {axis:Vec2::new(input[0],input[1]),
+                    center:Vec2::new(input[2],input[3]),size:Vec2::new(input[4],input[5])})
+            } else {
+                Shape::Circle(utils::geometry::Circle2d {center:Vec2::new(input[0],input[1]),radius:input[2],rotation:input[3]})
+            };
+            let mesh = floor_mesh(shape,input[6]);
+            let expected = |name:&str|case[name].as_array().unwrap().iter().map(|v|v.as_u64().unwrap() as u32).collect::<Vec<_>>();
+            assert_eq!(mesh.indices().iter().flatten().copied().collect::<Vec<_>>(),expected("indices"),"原floor索引case{}",case["id"]);
+            assert_eq!(mesh.vertices().iter().flat_map(|point|point.to_array().map(f32::to_bits)).collect::<Vec<_>>(),expected("vertices"),"原floor顶点case{}",case["id"]);
+            assert_eq!(mesh.normals().iter().flat_map(|point|point.to_array().map(f32::to_bits)).collect::<Vec<_>>(),expected("normals"),"原floor法线case{}",case["id"]);
+            assert!(mesh.uvs().is_empty(),"原显式None，不能把projection_points伪接UV");
+            assert!(mesh.shape.is_some());
+        }
+        assert_eq!(fixture["cases"].as_array().unwrap().len(),96);
+    }
+}
+
+#[cfg(all(test, feature = "native-physics"))]
+mod auto_clutter_collider_producer_tests {
+    use super::*;
+    use bevy_ecs::prelude::*;
+    use crate::components::drawable::{AutoClutterConvertableToDecoClutter, AutoClutterDestination, AutoClutterSource};
+    use crate::utils::components::transform::Transform;
+    use utils::geometry::rectangle::Rectangle3d;
+    use glam::{Quat, Vec2, Vec3};
+
+    #[test]
+    fn original_256_dimensions_and_center_match_native_bits_except_cross_arch_nan_payload() {
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../../tests/fixtures/native/m01-auto-clutter-collider.json")).unwrap();
+        let mut exact = 0;
+        for case in fixture["cases"].as_array().unwrap() {
+            let b: Vec<_> = case["bounds"].as_array().unwrap().iter().map(|v|f32::from_bits(v.as_u64().unwrap() as u32)).collect();
+            let mut bounds = Rectangle3d::new(Vec3::splat(77.0),Vec3::ONE,Vec2::Y);
+            bounds.footprint.size = Vec2::new(b[0],b[1]);bounds.bottom = b[2];bounds.top = b[3];
+            let (dimensions,center) = auto_clutter_collider_geometry(&bounds);
+            for (actual,expected) in dimensions.to_array().into_iter().chain(center.to_array())
+                .zip(case["expected"].as_array().unwrap()) {
+                let expected = expected.as_u64().unwrap() as u32;
+                if f32::from_bits(expected).is_nan() { assert!(actual.is_nan()); }
+                else { assert_eq!(actual.to_bits(),expected,"case{}",case["id"]);exact+=1; }
+            }
+        }
+        assert_eq!(fixture["cases"].as_array().unwrap().len(),256);assert!(exact>900);
+    }
+
+    #[test]
+    fn real_transform_query_ignores_scale_and_bounds_pose_keeps_clean_frames_and_removes_exact_entity() {
+        let mut world = World::new();world.insert_resource(RaycastWorld::new());
+        let mut bounds = Rectangle3d::new(Vec3::new(66.0,11.0,-99.0),Vec3::new(2.0,4.0,6.0),Vec2::Y);
+        bounds.bottom = -3.0;bounds.top = 5.0;
+        let entity = world.spawn((Transform {translation:Vec3::new(1.0,3.0,4.0),rotation:Quat::from_rotation_z(core::f32::consts::FRAC_PI_2),
+            scale:Vec3::new(-9.0,0.0,0.001)},AutoClutterConvertableToDecoClutter {source:AutoClutterSource::None,
+                destination:AutoClutterDestination::Terrain,mesh_name:"source-field-is-not-collider-geometry",bounds})).id();
+        let mut schedule = Schedule::default();schedule.add_systems(update_auto_clutter_rapier_colliders);
+        schedule.run(&mut world);
+        let first = world.resource::<RaycastWorld>().auto_clutter_colliders[&entity];
+        let weak = Arc::downgrade(&world.resource::<RaycastWorld>().get_collider_mesh(first.registry_index,first.generation).data);
+        {
+            let physics = world.resource::<RaycastWorld>();
+            assert_eq!(first.slot,11);
+            let mesh = physics.get_collider_mesh(first.registry_index,first.generation);
+            assert_eq!(mesh.source.0[0],12);assert_eq!(u64::from_le_bytes(mesh.source.0[8..16].try_into().unwrap()),entity.to_bits());
+            let collider = physics.get_rapier_collider_ref(first.slot,first.collider).unwrap();
+            assert_eq!(collider.shape().as_cuboid().unwrap().half_extents,Vector::new(1.0,4.0,3.0));
+            // 原external*local，局部中心只有高度半值，且不消费Transform.scale。
+            let expected = Vec3::new(1.0,3.0,4.0)+Quat::from_rotation_z(core::f32::consts::FRAC_PI_2)*Vec3::new(0.0,4.0,0.0);
+            let actual = collider.position().translation.vector;
+            assert!((Vec3::new(actual.x,actual.y,actual.z)-expected).length()<1e-5);
+        }
+        world.clear_trackers();schedule.run(&mut world);
+        assert_eq!(world.resource::<RaycastWorld>().auto_clutter_colliders[&entity],first);
+        world.get_mut::<AutoClutterConvertableToDecoClutter>(entity).unwrap().bounds.top = 7.0;
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<RaycastWorld>().auto_clutter_colliders[&entity],first,"原Changed仅看Transform");
+        world.get_mut::<Transform>(entity).unwrap().set_changed();schedule.run(&mut world);
+        let replacement = world.resource::<RaycastWorld>().auto_clutter_colliders[&entity];
+        assert_ne!(replacement,first);assert!(weak.upgrade().is_none());
+        let weak = Arc::downgrade(&world.resource::<RaycastWorld>().get_collider_mesh(replacement.registry_index,replacement.generation).data);
+        world.clear_trackers();world.entity_mut(entity).remove::<AutoClutterConvertableToDecoClutter>();schedule.run(&mut world);
+        assert!(world.resource::<RaycastWorld>().auto_clutter_colliders.is_empty());assert!(weak.upgrade().is_none());
+        world.resource_mut::<RaycastWorld>().flush_colliders();assert_eq!(world.resource::<RaycastWorld>().registry_live,0);
+    }
+}
+
+#[cfg(all(test, feature = "native-physics"))]
+mod roof_collider_producer_tests {
+    use super::*;
+    use bevy_ecs::prelude::*;
+    use crate::resources::{roofs::{Roof, RoofTriggerVolume, RoofMarkedForDeletion, geometry::surface::Curve2},
+        walls::{WallId, WallState, InnerWalls, public_walls::{PublicWalls, WallPublicationDirty, WallSpatialHash},
+            publication_source::TerrainHeightGrid512}};
+    use glam::{Vec2, Vec3};
+
+    fn walls() -> PublicWalls {
+        let mut inner = InnerWalls::new();
+        for id in [42,43] {
+            let curve = Curve2::try_new(vec![[-2.0,-2.0],[2.0,-2.0],[2.0,2.0],[-2.0,2.0]], true).unwrap();
+            inner.new_wall_with_id(WallId(id), WallState::new(curve, 2.0, 0, 0, false));
+        }
+        let mut result = PublicWalls::default();
+        result.consume_with_paths(&mut inner, &TerrainHeightGrid512 {encoded:vec![0;512*512].into(),
+            minimum_y:0.0,maximum_y:0.0,sampling_fix:false}, None,
+            &WallPublicationDirty::default(), &WallSpatialHash::default());
+        result
+    }
+    fn roof(wall: u64, floor: f32, height: f32, gable: f32) -> Roof {
+        let mut bytes = [0;88];bytes[..8].copy_from_slice(&wall.to_le_bytes());
+        for (offset,value) in [(0x30,height),(0x34,gable),(0x4c,floor)] {
+            bytes[offset..offset+4].copy_from_slice(&value.to_le_bytes());
+        }
+        Roof::from_observed(bytes)
+    }
+    fn volume() -> RoofTriggerVolume {
+        let mut volume = RoofTriggerVolume::default();
+        volume.set_triangles(vec![[Vec3::new(-1.0,0.0,-1.0),Vec3::new(-1.0,0.0,1.0),Vec3::new(1.0,0.0,-1.0)]]);
+        volume.set_normals(vec![[Vec3::Y;3]]);volume.set_uvs(vec![[Vec2::ZERO,Vec2::Y,Vec2::X]]);volume
+    }
+    fn setup() -> (World, Schedule) {
+        let mut world = World::new();world.insert_resource(RaycastWorld::new());world.insert_resource(walls());
+        let mut schedule = Schedule::default();schedule.add_systems(update_roof_rapier_colliders);(world,schedule)
+    }
+    fn instance(world: &World, entity: Entity) -> ColliderMeshInstance {
+        *world.resource::<RaycastWorld>().roof_collider_instance(entity).unwrap()
+    }
+    fn weak_mesh(world: &World, instance: ColliderMeshInstance) -> std::sync::Weak<RaycastMeshData> {
+        Arc::downgrade(&world.resource::<RaycastWorld>().get_collider_mesh(instance.registry_index,instance.generation).data)
+    }
+
+    #[test]
+    fn real_roof_query_keeps_unchanged_owner_replaces_floor_and_removes_added_deleted_or_trigger_removed() {
+        let (mut world,mut schedule) = setup();
+        let a = world.spawn((roof(42,3.0,0.0,0.0),volume())).id();
+        let b = world.spawn((roof(43,7.0,0.8,1.0),volume())).id();
+        schedule.run(&mut world);
+        let first = instance(&world,a);let first_weak = weak_mesh(&world,first);
+        let other = instance(&world,b);let other_weak = weak_mesh(&world,other);
+        assert_eq!(first.slot,1);assert_eq!(other.slot,1);
+        {
+            let physics = world.resource::<RaycastWorld>();
+            let mesh = physics.get_collider_mesh(first.registry_index,first.generation);
+            assert_eq!(mesh.data.vertices()[0],Vec3::new(-1.0,3.0,-1.0));
+            assert_eq!(mesh.data.normals(),&[Vec3::Y;3]);
+            assert_eq!(mesh.data.uvs(),&[Vec2::ZERO,Vec2::Y,Vec2::X]);
+            assert_eq!(&mesh.source.0[..3],&[2,1,0]);
+            assert_eq!(&physics.get_collider_mesh(other.registry_index,other.generation).source.0[..3],&[2,0,1]);
+            assert_eq!(physics.get_rapier_collider_ref(first.slot,first.collider).unwrap().position().translation.vector.y,0.0);
+        }
+        world.clear_trackers();schedule.run(&mut world);
+        assert_eq!(instance(&world,a),first,"干净帧不重建网格、receipt或物理实例");
+        world.get_mut::<Roof>(a).unwrap().observed_mut()[0x4c..0x50].copy_from_slice(&5.0f32.to_le_bytes());
+        schedule.run(&mut world);let changed = instance(&world,a);
+        assert_ne!(changed,first);assert!(first_weak.upgrade().is_none());
+        assert_eq!(world.resource::<RaycastWorld>().get_collider_mesh(changed.registry_index,changed.generation).data.vertices()[0].y,5.0);
+        let changed_weak = weak_mesh(&world,changed);
+        world.clear_trackers();world.entity_mut(a).insert(RoofMarkedForDeletion);schedule.run(&mut world);
+        assert!(world.resource::<RaycastWorld>().roof_collider_instance(a).is_none());
+        assert!(changed_weak.upgrade().is_none());
+        world.clear_trackers();world.entity_mut(b).remove::<RoofTriggerVolume>();schedule.run(&mut world);
+        assert!(world.resource::<RaycastWorld>().roof_collider_instance(b).is_none());
+        assert!(other_weak.upgrade().is_none());
+        world.resource_mut::<RaycastWorld>().flush_colliders();
+        assert_eq!(world.resource::<RaycastWorld>().registry_live,0);
+    }
+
+    #[test]
+    fn roof_original_public_wall_gate_precedes_empty_geometry_and_reload_drops_entity_owners() {
+        let (mut world,mut schedule) = setup();
+        let missing = world.spawn((roof(99,0.0,0.0,0.0),RoofTriggerVolume::default())).id();
+        schedule.run(&mut world);
+        assert!(world.resource::<RaycastWorld>().roof_collider_instance(missing).is_none(),"缺真实墙时不读取空触发体");
+        let a = world.spawn((roof(42,2.0,f32::NAN,1.0),volume())).id();schedule.run(&mut world);
+        let old = instance(&world,a);let old_weak = weak_mesh(&world,old);
+        assert_eq!(&world.resource::<RaycastWorld>().get_collider_mesh(old.registry_index,old.generation).source.0[..3],&[2,0,1],"原无序高度仍进入gable门");
+        world.clear_trackers();world.resource_mut::<PublicWalls>().get_mut(WallId(42)).unwrap().set_being_bulldozed(true);
+        world.get_mut::<Roof>(a).unwrap().set_changed();schedule.run(&mut world);
+        assert!(world.resource::<RaycastWorld>().roof_collider_instance(a).is_none());assert!(old_weak.upgrade().is_none());
+        world.clear_trackers();world.resource_mut::<PublicWalls>().get_mut(WallId(42)).unwrap().set_being_bulldozed(false);
+        world.get_mut::<Roof>(a).unwrap().set_changed();schedule.run(&mut world);
+        let live = instance(&world,a);let live_weak = weak_mesh(&world,live);
+        world.resource_mut::<RaycastWorld>().on_level_reload();
+        assert!(world.resource::<RaycastWorld>().roof_colliders.is_empty());assert!(live_weak.upgrade().is_none());
+        assert!(world.resource::<RaycastWorld>().mesh_sources.meshes.is_empty());
+        world.clear_trackers();world.get_mut::<RoofTriggerVolume>(a).unwrap().set_changed();schedule.run(&mut world);
+        assert!(world.resource::<RaycastWorld>().roof_collider_instance(a).is_some(),"Reload重建写出的真实Changed触发体重新注册");
     }
 }
 
@@ -3187,22 +4379,22 @@ mod transform_family_tests {
     /// `MeshIntersectionArtifacts` 0x40 B 边载荷布局。
     #[test]
     fn mesh_intersection_artifacts_layout() {
-        use crate::systems::collision::MeshIntersectionArtifacts;
-        assert_eq!(core::mem::size_of::<MeshIntersectionArtifacts>(), 0x40);
+        use crate::systems::collision::PendingMeshIntersection;
+        assert_eq!(core::mem::size_of::<PendingMeshIntersection>(), 0x40);
         assert_eq!(
-            core::mem::offset_of!(MeshIntersectionArtifacts, polylines),
+            core::mem::offset_of!(PendingMeshIntersection, polylines),
             0x00
         );
         assert_eq!(
-            core::mem::offset_of!(MeshIntersectionArtifacts, mesh_ref_a),
+            core::mem::offset_of!(PendingMeshIntersection, mesh_ref_a),
             0x18
         );
         assert_eq!(
-            core::mem::offset_of!(MeshIntersectionArtifacts, mesh_ref_b),
+            core::mem::offset_of!(PendingMeshIntersection, mesh_ref_b),
             0x20
         );
-        assert_eq!(core::mem::offset_of!(MeshIntersectionArtifacts, a), 0x28);
-        assert_eq!(core::mem::offset_of!(MeshIntersectionArtifacts, b), 0x34);
+        assert_eq!(core::mem::offset_of!(PendingMeshIntersection, a), 0x28);
+        assert_eq!(core::mem::offset_of!(PendingMeshIntersection, b), 0x34);
     }
 
     /// `RaycastMeshData` 0x78 B 布局（fresh new_indexed/new_unindexed store 序列）：
@@ -3248,7 +4440,7 @@ mod transform_family_tests {
     /// `intersect_newly_added_colliders::closure_env$0` 去重/产物推送。
     #[test]
     fn intersect_newly_added_collider_dedups_and_pushes_artifacts() {
-        use crate::systems::collision::MeshIntersectionArtifacts;
+        use crate::systems::collision::PendingMeshIntersection;
         let tri_a = rapier3d::parry::shape::TriMesh::new(
             vec![
                 Point::new(-1.0, -1.0, 0.0),
@@ -3320,7 +4512,7 @@ mod transform_family_tests {
         assert_eq!(added.index, candidate.index);
         assert_ne!(map_a[&()].registry_index, map_b[&()].registry_index);
         let mut processed = std::collections::HashSet::new();
-        let mut artifacts: Vec<MeshIntersectionArtifacts> = Vec::new();
+        let mut artifacts: Vec<PendingMeshIntersection> = Vec::new();
 
         crate::systems::collision::intersect_meshes::intersect_newly_added_collider(
             &world,
@@ -3929,7 +5121,7 @@ mod clutter_physics_regressions {
     }
 
     #[test]
-    fn real_receipts_reject_even_wrong_and_removed_generations_and_release_owner() {
+    fn explicit_receipts_stay_strict_global_raycast_normalizes_even_and_retirement_releases_owner() {
         let mut world = RaycastWorld::new();
         let mut map = std::collections::HashMap::new();
         let mesh = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(2.0), Vec3::ZERO));
@@ -3960,13 +5152,8 @@ mod clutter_physics_regressions {
             .unwrap()
             .user_data =
             u128::from((u64::from(old.generation & !1) << 32) | u64::from(old.registry_index));
-        assert!(
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                world.raycast(Vec3::new(0.0, 3.0, 0.0), Vec3::NEG_Y, 1);
-            }))
-            .is_err(),
-            "an actual hit must reject a normalized-even receipt"
-        );
+        assert!(world.raycast(Vec3::new(0.0, 3.0, 0.0), Vec3::NEG_Y, 1).is_hit(),
+            "原global predicate和winner都读取raw generation|1，显式receipt getter仍严格");
         world.slots[old.slot as usize]
             .colliders
             .get_mut(old.collider)
@@ -4314,6 +5501,161 @@ mod finite_simple_ray_regressions {
         assert_eq!(hit.handle, words);
     }
 
+    fn original_legacy_evidence() -> serde_json::Value {
+        let value: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"), "/../../reports/module-recovery-2026-10-23/m01-legacy-wall-ray-native.json"
+        ))).unwrap();
+        assert_eq!(value["binary_sha256"], "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03");
+        value
+    }
+    fn source_with_wall(kind: u8, wall: crate::resources::walls::WallId) -> RaycastGeoSource {
+        let mut bytes = [0;24]; bytes[0] = kind;
+        bytes[8..16].copy_from_slice(&wall.0.to_le_bytes());
+        crate::systems::collision::query_policy::RaycastGeoSourceProjection(bytes)
+    }
+    fn assert_full_source(hit: &RaycastWorldResult, expected: RaycastGeoSource) {
+        assert!(hit.is_hit());
+        assert_eq!(hit.handle, std::array::from_fn(|i|u64::from_le_bytes(expected.0[i*8..i*8+8].try_into().unwrap())));
+    }
+
+    #[test]
+    fn legacy_wall_exclusion_matches_original_full_predicate_for_all_source_kinds() {
+        use crate::resources::walls::WallId;
+        let evidence = original_legacy_evidence();
+        let rows = evidence["rows"].as_array().unwrap();
+        assert_eq!(rows.len(),144);
+        for row in rows.iter().filter(|row| row["query"] == "full" && row["panic"].is_null()) {
+            let mut world = RaycastWorld::new(); let mut instances = HashMap::new();
+            let own = source_with_wall(row["kind"].as_u64().unwrap() as u8, WallId(row["source_wall"].as_u64().unwrap()));
+            let other = source_with_wall(own.0[0], WallId(row["source_wall"].as_u64().unwrap() ^ 1));
+            insert_box(&mut world,&mut instances,1,own,Vec3::Y*5.0);
+            insert_box(&mut world,&mut instances,2,other,Vec3::Y);
+            world.flush_colliders();
+            let additional = 1u32 << own.subworld();
+            let direction = Vec3::new(0.0,-1.0,-0.0);
+            let hit = if row["option_tag"] == 1 {
+                world.legacy_raycast_w_params_excluding_wall_id(Vec3::Y*10.0,direction,additional,WallId(row["excluded_wall"].as_u64().unwrap()))
+            } else { world.legacy_raycast_w_params(Vec3::Y*10.0,direction,additional) };
+            let own_allowed = row["allowed"].as_bool().unwrap();
+            assert_full_source(&hit,if own_allowed { own } else { other });
+            assert_eq!(hit.toi,if own_allowed { 4.5 } else { 8.5 });
+            assert_eq!(hit.position.y,if own_allowed { 5.5 } else { 1.5 });
+            assert_eq!(hit.normal,Vec3::Y,"完整射线必须返回实际Rapier法线，不能以simple结果补零");
+        }
+        // 原完整0x105保留kind1，原simple0x107排kind1；两个路径确实不同。
+        let mut world=RaycastWorld::new(); let mut instances=HashMap::new();
+        let wall=WallId(77);let own=source_with_wall(1,wall);let other=source_with_wall(1,WallId(88));
+        insert_box(&mut world,&mut instances,1,own,Vec3::Y*5.0);
+        insert_box(&mut world,&mut instances,2,other,Vec3::Y);world.flush_colliders();
+        let mask=1<<own.subworld();
+        assert_full_source(&world.legacy_raycast_w_params_excluding_wall_id(Vec3::Y*10.0,-Vec3::Y,mask,wall),own);
+        assert_source(&world.raycast_simple_excluding_wall_id(Vec3::Y*10.0,-Vec3::Y,mask,wall),other);
+    }
+
+    #[test]
+    fn legacy_wrapper_uses_original_base_mask_and_extra_bits_in_real_rapier_world() {
+        use crate::resources::walls::WallId;
+        let evidence=original_legacy_evidence();let rows=evidence["wrappers"].as_array().unwrap();assert_eq!(rows.len(),24);
+        let mut world=RaycastWorld::new();let mut instances=HashMap::new();
+        let near=RaycastGeoSource::from_slot(3);let far=RaycastGeoSource::from_slot(7);
+        insert_box(&mut world,&mut instances,1,near,Vec3::Z*2.0);
+        insert_box(&mut world,&mut instances,2,far,Vec3::Z*8.0);world.flush_colliders();
+        for row in rows {
+            let input=&row["input"];let mask=row["callee"]["mask"].as_u64().unwrap() as u32;
+            assert_eq!(row["callee"]["max_toi_bits"].as_u64().unwrap() as u32,f32::MAX.to_bits());
+            assert_eq!(row["legacy_miss_bits"],2);
+            let extra=input["additional_mask"].as_u64().unwrap() as u32;
+            let hit=if input["option_tag"]==1 {
+                world.legacy_raycast_w_params_excluding_wall_id(Vec3::ZERO,Vec3::Z,extra,WallId(input["wall"].as_u64().unwrap()))
+            } else { world.legacy_raycast_w_params(Vec3::ZERO,Vec3::Z,extra) };
+            assert_full_source(&hit,if mask & (1<<3)!=0 { near } else { far });
+            assert_eq!(hit.toi,if mask & (1<<3)!=0 { 1.5 } else { 7.5 });
+        }
+    }
+
+    #[test]
+    fn legacy_filtered_ray_preserves_nearest_bound_equal_later_slot_and_miss_tag() {
+        use crate::resources::walls::WallId;
+        let wall=WallId(7);let mut world=RaycastWorld::new();let mut instances=HashMap::new();
+        let excluded=source_with_wall(0,wall);
+        let other=source_with_wall(2,WallId(8));let tie=RaycastGeoSource::from_slot(4);let last=RaycastGeoSource::from_slot(16);
+        insert_box(&mut world,&mut instances,1,excluded,Vec3::Y*8.0);
+        insert_box(&mut world,&mut instances,2,other,Vec3::Y*2.0);
+        insert_box(&mut world,&mut instances,3,tie,Vec3::Y*2.0);
+        insert_box(&mut world,&mut instances,4,last,Vec3::Y);world.flush_colliders();
+        let cast=|world:&RaycastWorld,extra|world.legacy_raycast_w_params_excluding_wall_id(Vec3::Y*10.0,Vec3::new(0.0,-1.0,-0.0),extra,wall);
+        assert_full_source(&cast(&world,0),tie);
+        assert_full_source(&cast(&world,1<<16),tie); // 后槽更远，不能覆盖之前的上限。
+        remove_collider(&mut world,&mut instances,&4).unwrap();
+        insert_box(&mut world,&mut instances,5,last,Vec3::Y*2.0);world.flush_colliders();
+        let hit=cast(&world,1<<16);assert_full_source(&hit,last);assert_eq!(hit.toi,7.5);
+        for id in [2,3,5] {remove_collider(&mut world,&mut instances,&id).unwrap();}
+        world.flush_colliders();let miss=cast(&world,1<<16);
+        assert!(miss.is_miss());assert_eq!(miss.toi.to_bits(),2);
+    }
+
+    #[test]
+    fn legacy_predicate_validates_receipt_before_wall_rejection_and_obeys_slot_mask() {
+        use crate::resources::walls::WallId;
+        let wall=WallId(7);let mut world=RaycastWorld::new();let mut instances=HashMap::new();
+        insert_box(&mut world,&mut instances,1,source_with_wall(0,wall),Vec3::Y*5.0);world.flush_colliders();
+        let live=instances[&1];
+        let original=(u64::from(live.generation)<<32)|u64::from(live.registry_index);
+        world.get_rapier_collider(live.slot,live.collider).unwrap().user_data=u128::from(original^(1<<32));
+        assert!(world.legacy_raycast_w_params_excluding_wall_id(Vec3::Y*10.0,-Vec3::Y,0,wall).is_miss(),
+            "原完整predicate先OR1验证成功，再排除同墙；不能沿用显式receipt的偶数拒绝断言");
+        for raw in [original.wrapping_add(2<<32), (u64::from(live.generation)<<32)|u64::from(u32::MAX)] {
+            world.get_rapier_collider(live.slot,live.collider).unwrap().user_data=u128::from(raw);
+            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+                world.legacy_raycast_w_params_excluding_wall_id(Vec3::Y*10.0,-Vec3::Y,0,wall))).is_err());
+        }
+        world.get_rapier_collider(live.slot,live.collider).unwrap().user_data=u128::from(original);
+        remove_collider(&mut world,&mut instances,&1).unwrap();
+        insert_box(&mut world,&mut instances,2,source_with_wall(1,wall),Vec3::Y*5.0);world.flush_colliders();
+        let live=instances[&2];
+        world.get_rapier_collider(live.slot,live.collider).unwrap().user_data=u128::from((u64::from(live.generation.wrapping_add(2))<<32)|u64::from(live.registry_index));
+        assert!(world.legacy_raycast_w_params_excluding_wall_id(Vec3::Y*10.0,-Vec3::Y,0,wall).is_miss());
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+            world.legacy_raycast_w_params_excluding_wall_id(Vec3::Y*10.0,-Vec3::Y,1<<9,wall))).is_err());
+    }
+
+    #[test]
+    fn original_simple_ray_predicate_excludes_all_own_wall_kinds() {
+        use crate::resources::walls::WallId;
+        let source = |kind, wall: WallId| {
+            let mut bytes = [0; 24];
+            bytes[0] = kind;
+            bytes[8..16].copy_from_slice(&wall.0.to_le_bytes());
+            crate::systems::collision::query_policy::RaycastGeoSourceProjection(bytes)
+        };
+        let wall = WallId(0x1234_5678_9abc_def0);
+        let other = WallId(0xfedc_ba98_7654_3210);
+        // 原predicate常量0x107只包含0/1/2/8，不能按subworld或其他类型推断墙。
+        for kind in 0u8..17 {
+            let mut world = RaycastWorld::new();
+            let mut instances = HashMap::new();
+            let own = source(kind, wall);
+            let target = source(kind, other);
+            insert_box(&mut world, &mut instances, 1, own, Vec3::Y * 5.0);
+            insert_box(&mut world, &mut instances, 2, target, Vec3::Y);
+            world.flush_colliders();
+            let mask = 1 << own.subworld();
+            let ordinary = world.raycast_simple(Vec3::Y * 10.0, -Vec3::Y, mask);
+            assert_source(&ordinary, own);
+            let filtered = world.raycast_simple_excluding_wall_id(
+                Vec3::Y * 10.0, -Vec3::Y, mask, wall,
+            );
+            assert_eq!(world.raycast_simple_exclude_wall_id(Vec3::Y * 10.0, -Vec3::Y, mask, wall), filtered);
+            assert_source(&filtered, if matches!(kind, 0 | 1 | 2 | 8) { target } else { own });
+            assert_eq!(filtered.toi, if matches!(kind, 0 | 1 | 2 | 8) { 8.5 } else { 4.5 });
+            let filtered_other = world.raycast_simple_excluding_wall_id(
+                Vec3::Y * 10.0, -Vec3::Y, mask, other,
+            );
+            assert_source(&filtered_other, own);
+            assert_eq!(filtered_other.toi,4.5);
+        }
+    }
+
     #[test]
     fn bounded_source13_miss_and_endpoint_keep_old_max_entry() {
         let mut world = RaycastWorld::new();
@@ -4332,9 +5674,9 @@ mod finite_simple_ray_regressions {
         assert_source(&hit, source);
         assert_eq!(hit.position, Vec3::Y * -1.0);
         assert_eq!(hit.toi, 2.0);
-        // The existing exclude entry retains its previous forwarding behavior.
+        // source13不携带墙身份，排除任一墙都保持此命中，不把句柄误作WallId。
         assert_eq!(world.raycast_simple_exclude_wall_id(origin, direction, mask,
-            SubworldColliderHandle::new(0, 0, 0)), old);
+            crate::resources::walls::WallId(1)), old);
     }
 
     #[test]
@@ -4411,6 +5753,32 @@ mod finite_simple_ray_regressions {
 mod slot_publisher_tests {
     use super::*;
 
+    #[cfg(feature = "native-physics")]
+    #[test]
+    fn reload_preserves_pending_and_future_slot_and_mesh_publications() {
+        let mut world = RaycastWorld::new();
+        let mut dirty = world.subscribe_to_changes(0);
+        let mut diff = world.mesh_intersect_collider_diff_publisher().subscribe();
+        let mut owners = std::collections::HashMap::new();
+        let mesh = || std::sync::Arc::new(RaycastMeshData::new_cuboid_at(glam::Vec3::ONE, glam::Vec3::ZERO));
+        upsert_collider(&mut world, &mut owners, 1u64, RaycastGeoSource::Slot0,
+            mesh(), glam::Vec3::ZERO, glam::Quat::IDENTITY);
+        world.flush_colliders();
+        upsert_collider(&mut world, &mut owners, 2u64, RaycastGeoSource::Slot0,
+            mesh(), glam::Vec3::X * 4.0, glam::Quat::IDENTITY);
+        world.on_level_reload();
+        assert!(dirty.take().is_some(), "重载前尚未读取的脏区必须保留");
+        assert!(!diff.take().expect("重载前差量必须保留").added.is_empty());
+        world.flush_colliders();
+        assert!(dirty.take().is_some(), "重载前尚未 flush 的槽脏区必须保留");
+        owners.clear();
+        upsert_collider(&mut world, &mut owners, 3u64, RaycastGeoSource::Slot0,
+            mesh(), glam::Vec3::ZERO, glam::Quat::IDENTITY);
+        world.flush_colliders();
+        assert!(dirty.take().is_some(), "原订阅必须接收新世界脏区");
+        assert!(diff.take().expect("原订阅必须接收新世界差量").added.iter().any(|handle| handle.slot == 0));
+    }
+
     /// 0x1408cdc20：按槽号取内联发布器（`slot*0x390+0x170`）；每个槽独立，且不检查越界（Rust 侧 panic）。
     #[test]
     fn subscribe_to_changes_is_per_slot() {
@@ -4423,5 +5791,36 @@ mod slot_publisher_tests {
             let _ = world.subscribe_to_changes(crate::systems::collision::SUBWORLD_SLOT_COUNT);
         }));
         assert!(result.is_err());
+    }
+}
+
+#[cfg(test)]
+mod native_arch_collision_recovery_tests {
+    use super::*;
+    #[test]
+    fn original_arch_full_entry_preserves_zip_order_prefix_and_nonfinite_bits() {
+        let report: serde_json::Value = serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../reports/module-recovery-2026-10-23/m01-arch-collision-rosetta.json"))).unwrap();
+        assert_eq!(report["rne_sha256"], "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03");
+        let rows = report["rows"].as_array().unwrap(); assert_eq!(rows.len(), 315);
+        let mut differences = Vec::new();
+        for (case, row) in rows.iter().enumerate() {
+            let f = |value: &serde_json::Value| f32::from_bits(value.as_u64().unwrap() as u32);
+            let segment = crate::systems::wall::construction::structures::MaterializedWallSegment {
+                heights: row["heights"].as_array().unwrap().iter().map(f).collect(),
+                positions: row["positions"].as_array().unwrap().iter().map(|p| std::array::from_fn(|i| f(&p[i]))).collect(),
+                points_u: vec![f32::NAN], source_indices: [91, 94],
+                range: crate::systems::wall::construction::segmentation::WallLoopRange { start: 0, end: 0, modulus: 1 },
+            };
+            let seed = row["seed"].as_u64().unwrap() as usize;
+            let mut normals: Vec<_> = (0..seed).map(|i| std::array::from_fn(|p| glam::Vec3::from_array(std::array::from_fn(|j| f32::from_bits(0x3f80_0000 + (i * 9 + p * 3 + j) as u32))))).collect();
+            let mut triangles: Vec<_> = (0..seed).map(|i| utils::geometry::intersect::Triangle { points: std::array::from_fn(|p| glam::Vec3::from_array(std::array::from_fn(|j| f32::from_bits(0xbf80_0000 + (i * 9 + p * 3 + j) as u32)))) }).collect();
+            construct_arch_geo(&segment, &mut normals, &mut triangles);
+            for (name, actual) in [("normals", normals.iter().flatten().flat_map(|v| v.to_array()).map(f32::to_bits).collect::<Vec<_>>()),
+                ("triangles", triangles.iter().flat_map(|t| t.points).flat_map(|v| v.to_array()).map(f32::to_bits).collect())] {
+                let expected: Vec<u32> = row[name].as_array().unwrap().iter().flat_map(|a| a.as_array().unwrap()).map(|v| v.as_u64().unwrap() as u32).collect();
+                if actual != expected { differences.push(format!("case{case} {name}: {:?}", actual.iter().zip(&expected).enumerate().filter(|(_, (a,b))| a != b).take(4).collect::<Vec<_>>())); }
+            }
+        }
+        assert!(differences.is_empty(), "原完整拱碰撞几何逐位差异：{differences:?}");
     }
 }

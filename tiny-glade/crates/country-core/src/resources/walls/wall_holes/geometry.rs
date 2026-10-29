@@ -88,6 +88,10 @@ impl Default for WallHoleStorage {
     }
 }
 impl WallHoleStorage {
+    /// B 140f86e50：缺失墙条目先建立已最终化的空owner；保留零长度和空指纹。
+    pub fn new_finalized() -> Self {
+        Self { phase: HoleStoragePhase::Finalized, ..Self::new_in_progress() }
+    }
     pub fn new_in_progress() -> Self {
         Self {
             phase: HoleStoragePhase::InProgress,
