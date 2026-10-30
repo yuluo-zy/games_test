@@ -97,6 +97,7 @@ fn assets() -> (AssetMeshLibrary, AssetShaderLibrary, SheepStartupAssets) {
 #[derive(Debug)]
 struct Audio(Arc<Mutex<Vec<(String, u32)>>>);
 impl CritterAudioSink for Audio {
+    fn start(&mut self) { panic!("startup does not start Baah") }
     fn start_if_not_playing(&mut self) {
         panic!("startup does not start Baah")
     }

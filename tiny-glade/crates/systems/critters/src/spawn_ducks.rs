@@ -8,7 +8,7 @@
 //! - spawn_ducks 0x140f8f210（80–197）：门控（非 demo 且 `is_corrupted()==false`）；
 //!   计时：资源 +0x18 累加 dt；query 桶非空（有活鸭）→ 额外 +2×dt（合计 3×，O disasm
 //!   0x140f8f32c）；timer >= 30.0（0x41f00000）才生，生后归 0；活鸭数 `>= 15`（0xf）不生。
-//!   候选 `sorted_by<IterMut<(Vec2,bool)>>`；逐点 `bilinear 水采样 > 0.99`（0x3f7d70a4）跳过、
+//!   候选 `sorted_by<IterMut<(Vec2,bool)>>`；逐点 `bilinear 水采样 <= 0.99`（0x3f7d70a4）清 used 并跳过、
 //!   `TerrainHeightsData::sample_at_world_xz` 高度 > 0 跳过（须水面）；取中 →
 //!   uniform_f32×2 + golden_spiral(k+u) + x0y 构 **2** 点轨迹（k=1,2；首点 = 候选位直接落，
 //!   无 golden_spiral(0) 额外抽数；**无 ×2.0 缩放**）→ Trajectory；uniform_f32 +
@@ -78,18 +78,19 @@ pub fn spawn_ducks(
     }
     locations.timer = 0.0;
 
-    // 候选：未用 + 水面（<= 0.99 保留） + 地形高度 <= 0（水面）。真实为 sorted_by
+    // 候选：深水 > 0.99 + 未用 + 地形高度 <= 0。真实为 sorted_by
     // 稳定序（comparator closure U）；本重建按候选下标序（DIVERGE，见模块注）。
     let mut rng_ctx = rng.0.lock().unwrap();
     let mut picked: Option<Vec3> = None;
     for i in 0..locations.candidates.len() {
-        if locations.used[i] {
+        let c = locations.candidates[i];
+        // 原 C 140f8f210 L135–142：水面 <= 0.99 时清 used 并跳过。
+        let water_v = w.bilinear_sample_at_world_xz(c.x, c.z, 130.0, 130.0);
+        if water_v <= f32::from_bits(0x3f7d_70a4) {
+            locations.used[i] = false;
             continue;
         }
-        let c = locations.candidates[i];
-        // 水采样 > 0.99 → 跳过（O 0x3f7d70a4；真实还写 flag=0 清除——DIVERGE）。
-        let water_v = w.bilinear_sample_at_world_xz(c.x, c.z, 130.0, 130.0);
-        if water_v > 0.99 {
+        if locations.used[i] {
             continue;
         }
         let h = terrain.sample_at_world_xz(c.x, c.z);

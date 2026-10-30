@@ -7,7 +7,7 @@
 //!
 //! 逐语句重建要点（fresh 反编译 + disassemble_function 复核）：
 //! - `random_vel_change`：`timer -= dt`；`<=0` 时 3×`fastrand::Rng::f32()`：
-//!   前两个进 `utils::uniform_sample_cone(u, v, cone=0x3f7e76c9≈0.99376)`（窄锥，z 轴近 +1），
+//!   前两个进 `utils::uniform_sample_cone(u, v, cone=0x3f7e76c9=0.994)`（窄锥，z 轴近 +1），
 //!   第三个进 `utils::lerp(0.1, 0.3, t)` 重设 timer；随后
 //!   `time_continuous_lerp_vec3(dir_smoothed, dir, rate=4.0, dt)` 平滑方向，
 //!   `Quat::from_rotation_arc(Vec3::Y, dir_smoothed)` 得旋转，`vel = q * vel`。
@@ -34,8 +34,7 @@
 //! - `BoidFlock::remove`：索引 Vec<u32> 倒序遍历；校验索引 < len 后对 boid 0x18 槽与
 //!   aux 0x38 槽 swap_remove；`Entities::contains` 存活则 despawn。
 //!
-//! RAY_DIRS 表（32×Vec3，惰性初始化 Lazy）：精确 32 方向字面量未从原二进制提取
-//! （Once init 闭包运行期填充），本文件以 golden-angle 球面序占位（分歧点，见 RESTORE.md）。
+//! RAY_DIRS 的原版惰性初始化入口 0x141dc1fa0 生成 32×Vec4，w 分量为零。
 
 use fastrand::Rng;
 use glam::{Quat, Vec3};
@@ -52,7 +51,7 @@ pub struct Boid {
 /// BoidFlock 的 aux 槽（stride 0x38）：goal + 平滑方向/原始方向/计时。
 /// 布局（反汇编）：goal_active u32@+0、goal Vec3@+4、dir_smoothed@+0x18、
 /// dir@+0x24、timer f32@+0x30。
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BoidState {
     /// 目标（None = goal_active==0）。
     pub goal: Option<Vec3>,
@@ -62,6 +61,14 @@ pub struct BoidState {
     pub dir: Vec3,
     /// 下次随机转向的计时（@+0x30）。
     pub timer: f32,
+}
+
+impl Default for BoidState {
+    fn default() -> Self {
+        // fish@0x140f91229 与 wren@0x142326a80 的 aux 初始化写同一组常量：
+        // 两个方向均为 (0,0,1)，目标激活和计时为零。
+        Self { goal: None, dir_smoothed: Vec3::Z, dir: Vec3::Z, timer: 0.0 }
+    }
 }
 
 /// 邻居记录（6 f32/条 = pos + vel）。
@@ -100,7 +107,7 @@ pub fn uniform_sample_cone(u: f32, v: f32, cone: f32) -> Vec3 {
 }
 
 /// 锥采样上限（random_vel_change 调用点 0x142f7d5f4 = 0x3f7e76c9）。
-pub const CONE_MAX: f32 = 0.99376;
+pub const CONE_MAX: f32 = f32::from_bits(0x3f7e_76c9);
 
 /// `utils::time_continuous_lerp(cur, target, rate, dt)`（0x140c904e0）：
 /// `cur + (target-cur) * (1 - exp(-rate*dt))`。
@@ -288,19 +295,26 @@ pub const COHESION_WEIGHT: f32 = 0.005;
 /// 分离权重 1.7（0x142f7d790）。
 pub const SEP_WEIGHT: f32 = 1.7;
 
-/// RAY_DIRS 32 向（Lazy 惰性初始化；精确字面量未提取，golden-angle 球面序占位）。
+/// RAY_DIRS 32 向（B 原指令 0x141dc2050–0x141dc20da）。
 pub static RAY_DIRS: LazyLock<[Vec3; 32]> = LazyLock::new(make_ray_dirs);
 
 fn make_ray_dirs() -> [Vec3; 32] {
-    // 占位：fibonacci/golden-angle 球面序（x/z 用于水面采样；方向向量语义在
-    // frame_update 内按原算法使用）。精确值需从原二进制 RAY_DIRS Lazy 提取。
-    // 该表仅影响"避障转向"的 32 个候选方向，不影响其余控制流。
+    // 常量取自 B 的 0x142925904 / 0x142ac4cc0 / 0x142c8bb50 / 0x142f7d5f0。
+    // 原循环：t=(i+1)*1/32; z=lerp(1,-sqrt(1/2),t);
+    // r=sqrt(min(1,max(0,1-z*z))); angle=i*10.166407585;
+    // 每项按 (r*cosf(angle),r*sinf(angle),z,0) 写入 16 字节槽。
+    let one = f32::from_bits(0x3f80_0000);
+    let step = f32::from_bits(0x3d00_0000);
+    let bottom = f32::from_bits(0xbf35_04f3);
+    let angular_step = f32::from_bits(0x4122_a99b);
     let mut out = [Vec3::ZERO; 32];
     for i in 0..32 {
-        let ga = i as f32 * 2.3999632;
-        let z = (i as f32 / 16.0 - 1.0) * 0.9; // -0.9..0.9
-        let r = (1.0 - z * z).sqrt();
-        out[i] = Vec3::new(r * ga.cos(), r * ga.sin(), z).normalize();
+        let index = i as f32;
+        let t = (index + one) * step;
+        let z = one + (bottom - one) * t;
+        let radius = (one - z * z).max(0.0).min(one).sqrt();
+        let angle = index * angular_step;
+        out[i] = Vec3::new(radius * angle.cos(), radius * angle.sin(), z);
     }
     out
 }

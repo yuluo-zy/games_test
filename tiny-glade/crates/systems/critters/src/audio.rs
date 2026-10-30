@@ -12,6 +12,8 @@ use glam::Vec3;
 
 /// critters 消费的音频方法集（每方法 = 一条已证原生调用）。
 pub trait CritterAudioSink: Send + Sync {
+    /// `AudioInstance::start`（0x140a57240）：每次调用都转发给活动实例。
+    fn start(&mut self);
     /// `start_if_not_playing`（0x140a57300）：位掩码 0xb 跳过 {Playing,Sustaining,Starting}。
     fn start_if_not_playing(&mut self);
     /// `stop`（0x140a59430/0x140a57470）：STOP_IMMEDIATE。
@@ -46,6 +48,11 @@ impl Default for AudioHandle {
 }
 
 impl AudioHandle {
+    pub fn start(&mut self) {
+        if let AudioHandle::Active(sink) = self {
+            sink.start();
+        }
+    }
     pub fn start_if_not_playing(&mut self) {
         if let AudioHandle::Active(sink) = self {
             sink.start_if_not_playing();
@@ -157,6 +164,9 @@ struct DuckFlapLoop<E: country_core::resources::audio_resources::EventInstance>(
 impl<E: country_core::resources::audio_resources::EventInstance + Send + Sync> CritterAudioSink
     for DuckFlapLoop<E>
 {
+    fn start(&mut self) {
+        let _ = self.0.current_mut().start();
+    }
     fn start_if_not_playing(&mut self) {
         let _ = self.0.start_if_not_playing();
     }
@@ -225,6 +235,9 @@ impl CritterAudioCore {
 impl<S: country_core::resources::audio_resources::EventInstance + Send + Sync> CritterAudioSink
     for country_core::resources::audio_resources::AudioInstance<S>
 {
+    fn start(&mut self) {
+        let _ = country_core::resources::audio_resources::AudioInstance::start(self);
+    }
     fn start_if_not_playing(&mut self) {
         let _ = country_core::resources::audio_resources::AudioInstance::start_if_not_playing(self);
     }

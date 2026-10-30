@@ -20,7 +20,7 @@
 //!   （key = 认领的鹪鹩实体）；`remove_entry` 释放。认领半径 8.0（64.0 平方）。
 //! - 主循环保留条件 `sqrt(x²+y²) <= 91.92388 && y <= 30.0`；否则
 //!   `BoidFlock::remove`（三数组 swap_remove + 存活实体 despawn）。
-//!   界内 → `Boid::frame_update<wren>`（sep_r=1.3、align=0.1169、min/max=(7,14)）。
+//!   界内 → `Boid::frame_update<wren>`（sep_r=1.3、align=0.117、min/max=(7,14)）。
 //! - 摇树出生（haven 分支）：庇护鹪鹩计时 `-=dt`；`timer<=0 && dist/dt>10` →
 //!   log "Tree has been shaken. Spawning birds!" + burst=`floor(rng*5)+1` +
 //!   timer=`0.8+rng*5.2`；出生位 = 树心 + normalize(dir)*dist*1.01，
@@ -28,7 +28,7 @@
 //!
 //! 登记（未闭合）：`FreeSpot` 值的完整字段/认领释放时机、`UiSignifierStream`
 //! 调试写入、`Added<TreeMarkedForDeletion>` 分支的具体动作、NaniBundle 实例描述
-//! （host render 缝）、closure_3 viable 的 32 向 raycast 表（boids 层已有近似）。
+//! （host render 缝）、closure_3 viable 的完整 raycast 判定；boids 的 32 向生成式已按原版恢复。
 
 use bevy_ecs::prelude::*;
 use country_core::components::TreeMarkedForDeletion;
@@ -277,7 +277,7 @@ pub fn sim_wren_boids(
             &neighbors,
             i,
             1.3,
-            0.1169,
+            f32::from_bits(0x3def_9db2),
             7.0,
             14.0,
             dt,

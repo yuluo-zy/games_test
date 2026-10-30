@@ -175,13 +175,18 @@ pub struct Fish {
 /// 鱼群（`FishBoids`，fish.rs PDB 命名实体）。B 侧是 **Resource**（`insert_resource<
 /// FishBoids>` 符号实证 0x140f84e80；`despawn_fish(ResMut<FishBoids>,
 /// ResMut<FishSpawnLocations>)` 在 `OnExit<AppLoadingState>` 重置资源）。crate 以
-/// 每鱼实体上的 0x18 槽投影（pos+vel；`turn_timer` = 0x38 槽计时）承载，并同时
-/// derive `Resource` 以便 `despawn_fish` 重置资源侧表示。
-#[derive(Component, Resource, Clone, Copy, Debug, Default, PartialEq)]
+/// 两段并行 Vec 分别保存 0x18 Boid 和 0x38 aux；索引是两段的共同身份。
+#[derive(Resource, Debug, Default)]
 pub struct FishBoids {
-    pub pos: Vec3,
-    pub vel: Vec3,
-    pub turn_timer: f32,
+    pub boids: Vec<crate::boids::Boid>,
+    pub states: Vec<FishBoidAux>,
+}
+
+/// B aux+0x10 保存实体 ID；其余方向、目标和计时由 BoidState 承载。
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FishBoidAux {
+    pub state: crate::boids::BoidState,
+    pub entity: bevy_ecs::entity::Entity,
 }
 
 /// One identity for the behavior systems and firefly rendering callbacks.
@@ -250,6 +255,8 @@ pub fn duck_spawn_steps() -> [f32; 10] {
 #[derive(Resource, Clone, Debug)]
 pub struct FishSpawnLocations {
     pub candidates: Vec<Vec3>,
+    /// 原版每个 12B 候选记录的 +8 used 字节。
+    pub used: Vec<bool>,
 }
 
 impl Default for FishSpawnLocations {
@@ -276,7 +283,7 @@ impl FishSpawnLocations {
                 candidates.push(Vec3::new(x, 0.0, z));
             }
         }
-        Self { candidates }
+        Self { candidates, used: vec![false; 625] }
     }
 }
 

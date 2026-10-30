@@ -8,7 +8,7 @@
 //!   草稿正确）。新 timer = `uniform*0.15+0.05`；proposed = pos + dir*timer；
 //!   校验 `sqrt(z²+x²) < 65 || < 原半径`。
 //! - set_firefly_velocities_towards_goals 0x142317040（115–136）：`dir = normalize(goal-pos)`；
-//!   `multiplier = 1.0`（0x3f800000）；海拔下限：`pos.y <= 1.0` 时 `dir.y = max(dir.y, 0.25)`。
+//!   `multiplier = 1.0`（0x3f800000）；海拔下限：`pos.y < 1.0` 时 `dir.y = max(dir.y, 0.25)`。
 //! - fireflies_send_to_gpu 0x142316760：SSBO 上传（GPU 后置；CPU 侧实例数据 = core
 //!   `FireflySsbo`，96 上限）。
 

@@ -964,6 +964,7 @@ mod recovered_audio_consumption_tests {
 
     struct Sink { name: &'static str, calls: Arc<Mutex<Vec<String>>> }
     impl CritterAudioSink for Sink {
+        fn start(&mut self) { self.calls.lock().unwrap().push(format!("{}:start", self.name)); }
         fn start_if_not_playing(&mut self) { self.calls.lock().unwrap().push(format!("{}:start", self.name)); }
         fn stop(&mut self) { self.calls.lock().unwrap().push(format!("{}:stop", self.name)); }
         fn set_position(&mut self, _: Vec3) { self.calls.lock().unwrap().push(format!("{}:position", self.name)); }

@@ -22,8 +22,7 @@
 //!
 //! `advance_sheep_pet` 与解码 handler 逐语句一致（对照：phase0 匹配门/+0x60、phase1
 //! progress 未钳制写 amplitude、phase2 `!(progress>1)||requested` 保持、phase3 +0x60=0 +
-//! amplitude=1.0-progress、phase4 归零）。差异仅 phase0 额外写 `pet_progress=0`（二进制
-//! h0 不写 +0x1c，随后被 phase1 覆盖，无行为差）。
+//! amplitude=1.0-progress、phase4 归零）。phase0 不写 `pet_progress`，与原 handler 写面一致。
 //!
 //! DIVERGE：二进制事件名 `PlaySheepPetAnimation`，crate 以 `PlaySheepPet` 承载（lib.rs
 //! 事件注册仍旧名，待对齐）；音频槽写（`mov dword [rbp],ecx`）为查询列值，不建模。
@@ -69,7 +68,6 @@ pub fn advance_sheep_pet(sheep: &mut Sheep, requested: bool, delta: f32) -> (boo
             }
             sheep.control_flag = 1;
             sheep.pet_phase = 1;
-            sheep.pet_progress = 0.0;
             advanced = true;
             entered = true;
         }

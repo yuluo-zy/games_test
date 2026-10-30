@@ -74,6 +74,7 @@ mod tests {
     struct QuackCounter(Arc<AtomicUsize>);
 
     impl CritterAudioSink for QuackCounter {
+        fn start(&mut self) { panic!("建筑反应不应直接启动音频"); }
         fn start_if_not_playing(&mut self) {
             self.0.fetch_add(1, Ordering::SeqCst);
         }
