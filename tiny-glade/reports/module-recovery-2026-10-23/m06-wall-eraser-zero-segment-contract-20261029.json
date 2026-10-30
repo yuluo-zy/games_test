@@ -1,0 +1,43 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "function": "0x140accab0",
+  "case": "zero surviving segments",
+  "sequence": [
+    {
+      "site": "140ace441-45a",
+      "action": "WallEraserArchivist::add_fully_erased_event(wall_id)"
+    },
+    {
+      "site": "140ace45f-47f",
+      "action": "InnerWalls::remove(wall_id); matching wall marked dirty then removed; missing wall panic"
+    },
+    {
+      "site": "140ace484-493",
+      "action": "if remove result None skip audio"
+    },
+    {
+      "site": "140ace4fb-657",
+      "action": "on returned state emit PlayWallAudio"
+    }
+  ],
+  "audio": {
+    "kind": "removed WallState[0x65]!=0 ? 6 : 0",
+    "position": "cursor option Vec3 or (0,0,0)",
+    "volume": 1.0,
+    "flag": 2,
+    "event_stride": 40,
+    "offsets": {
+      "seq": 0,
+      "kind": 8,
+      "position": 16,
+      "volume": 28,
+      "flag": 32
+    },
+    "unresolved": "bytes event+9..+15 not proven semantic value"
+  },
+  "evidence": [
+    "bounded RNE instructions 140ace441-140ace657",
+    "read-only Ghidra remove@14085aa60 and archivist@14092f630"
+  ],
+  "limitation": "full original eraser entry not dynamically executed"
+}

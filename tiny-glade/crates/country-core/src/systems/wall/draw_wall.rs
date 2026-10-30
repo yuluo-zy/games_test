@@ -80,7 +80,7 @@ pub enum WallDrawingIssue {
     },
     /// finish_wall 的 snap-merge 闭包（0x140a82060）在 `wall_a == wall_b`（吸附到自己的端点）
     /// 时把墙推入局部 Vec，随后对其逐个做 enclosure 的 CompoundEdit + `_try_update_state`
-    /// （0x140a8105..0x140a81359）。该闭环 enclosure 记录尚未恢复；PlayLineAcrossWall 已照写。
+    /// （0x140a8105..0x140a81359）。保留旧诊断变体以兼容外部使用；正式闭环已接权威状态与历史。
     ClosedLoopEnclosureNotRecovered {
         wall: WallId,
     },
@@ -460,8 +460,7 @@ mod tests {
             (
                 ui_draw_wall,
                 draw_wall,
-                finish_wall,
-                record_wall_history::<()>,
+                finish_wall::<()>,
             )
                 .chain(),
         );
@@ -735,7 +734,7 @@ mod tests {
             .resource_mut::<Events<FinishWall>>()
             .send(FinishWall(true));
         let mut finish = Schedule::default();
-        finish.add_systems(finish_wall);
+        finish.add_systems(finish_wall::<()>);
         finish.run(&mut world);
         assert!(world.resource::<InProgressCurve>().wall.is_none());
         assert!(world.resource::<InnerWalls>().contains(wall));
@@ -743,7 +742,7 @@ mod tests {
             world.resource::<WallDrawingIssues>().0.last(),
             Some(WallDrawingIssue::UnsupportedFinish { .. })
         ));
-        assert_eq!(world.resource::<Events<RecordWallHistory>>().len(), 1);
+        assert_eq!(world.resource::<History<()>>().pending().unwrap().edits.len(), 1);
         let merges: Vec<_> = world
             .resource::<Events<crate::systems::wall::merge_walls::MergeWallsCmd>>()
             .get_cursor()
@@ -806,7 +805,6 @@ mod tests {
             let mut schedule = Schedule::default();
             schedule.add_systems(control_input_replay.before(ui_draw_wall));
             add_wall_drawing_cpu_systems::<()>(&mut schedule);
-            schedule.add_systems(record_wall_history::<()>.in_set(HistoryCpuStage::Record));
             add_recording_systems::<()>(&mut schedule);
             ui_frame(&mut world, &mut schedule, 3, Vec3::ZERO);
             assert!(

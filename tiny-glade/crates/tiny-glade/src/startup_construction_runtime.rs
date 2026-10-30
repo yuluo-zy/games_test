@@ -15,6 +15,7 @@ pub(super) fn install_resources(app: &mut App) {
     crate::wall_constructor_plugin::build(app);
     app.init_resource::<res::walls::wooden_gates::Gates>();
     app.init_resource::<res::walls::arches::ArchSegments>();
+    app.init_resource::<res::walls::arches::LintelSegments>();
     app.init_resource::<res::walls::arches::BuildingHadArchesLastFrame>();
     app.init_resource::<res::walls::public_walls::WallEntities>();
     app.init_resource::<res::walls::public_walls::WallPlasters>();
@@ -70,28 +71,17 @@ pub(super) fn install(app: &mut App) {
 /// wired, so the dependent behaviour stays unclosed until the owning domain replaces
 /// the seam with the real source. None of this is claimed as original behaviour.
 fn install_open_adapter_inputs(app: &mut App) {
-    // Original creator is known and exact: add_wall_shape_ux@140945f50 inserts it
-    // all-zero (u32@+0 = 0, u64@+8 = 0), read by timberframe's two construct systems.
-    // The remaining half of add_wall_shape_ux (8 shape systems + 4 resources) belongs to
-    // the wall owner's pass and is intentionally not mounted here.
-    app.insert_resource(
-        sys::wall::shapes::calc_shape_height::TimberframeConstructionParamsCache::default());
-    // OPEN: terrain tool adapters (country-core terrain/*): "I" seams whose native
-    // owners (CursorTerrainRaycast/Rapier raycast/SSBO readback/UI context) are not yet
-    // bridged; no host writer exists, so hover/focus/selection stay idle.
-    use sys::terrain::{terrain_hover_idx as hover, ui_draw_terrain as draw,
-        ui_edit_terrain as edit, ui_terrain_focus_mode as focus, deferred_terrain_history as hist};
-    app.init_resource::<hover::MouseTerrainHoverReadback>();
-    app.init_resource::<hover::TerrainWaterSample>();
-    app.init_resource::<draw::TerrainHoverInput>();
+    // 与原add_wall_shape_ux共用唯一缓存；初始化不能覆盖已加载的权威内容。
+    app.init_resource::<sys::wall::shapes::calc_shape_height::TimberframeConstructionParamsCache>();
+    // 地形聚焦已恢复真实Cursor/Rapier/UiState与Local，不再初始化三份无生产者镜像。
+    // 下列兼容资源仍由各原owner逐项审阅；初始化本身不证明工具链已验收。
+    use sys::terrain::{ui_draw_terrain as draw, ui_edit_terrain as edit,
+        deferred_terrain_history as hist};
     app.init_resource::<draw::TerrainDrawState>();
     app.init_resource::<edit::TerrainEditUiState>();
     app.init_resource::<edit::TerrainWidgetResponseTable>();
     app.init_resource::<edit::StairsPlacementBucket>();
     app.init_resource::<edit::TerrainEditHistoryPending>();
-    app.init_resource::<focus::TerrainFocusRaycast>();
-    app.init_resource::<focus::TerrainFocusHover>();
-    app.init_resource::<focus::TerrainFocusSelection>();
     app.init_resource::<hist::PendingTerrainHistory>();
     // ShowPinnedDecoClutter is an Event (56 B) in the original (registered by ClutterPlugin as its
     // 8th register_event); decoclutter_show_pins reads it through an EventReader.
@@ -108,8 +98,6 @@ fn install_open_adapter_inputs(app: &mut App) {
     app.add_event::<system_onboarding::hint_orchestrator::ToolbarUiIsInFocus>();
     // Terrain-tool adapter events with no recovered original registrar.
     app.add_event::<edit::TerrainWindowFocus>();
-    app.add_event::<focus::SignifierDrawTopology>();
-    app.add_event::<focus::TerrainFocusTrigger>();
 }
 
 #[cfg(test)]

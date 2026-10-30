@@ -28,6 +28,9 @@ impl Aabb2 {
         self.intersect_segment(start, end).is_some()
     }
     pub fn from_center_dims(center: Vec2, dimensions: Vec2) -> Self {
+        // B14123fff0：检查尺寸长度的有序比较；中心NaN和无穷尺寸不额外拒绝。
+        let length = (dimensions.y * dimensions.y + dimensions.x * dimensions.x).sqrt();
+        assert!(length >= 0.0, "矩形尺寸长度无效");
         let h = dimensions * 0.5;
         Self {
             min: center - h,
@@ -290,5 +293,24 @@ mod native_ray_interval_tests {
             assert_eq!(0.0 <= exit && enter <= exit, case["hit"].as_bool().unwrap());
             assert_eq!(bounds.intersect_ray(ray).to_bits(), enter.to_bits());
         }
+    }
+}
+
+#[cfg(test)]
+mod native_dimension_contract {
+    use super::*;
+
+    #[test]
+    fn dimension_length_guard_rejects_nan_without_inventing_other_guards() {
+        for dimensions in [Vec2::new(f32::NAN, 1.0), Vec2::new(1.0, f32::NAN),
+            Vec2::new(f32::INFINITY, f32::NAN)] {
+            assert!(std::panic::catch_unwind(|| Aabb2::from_center_dims(Vec2::ZERO, dimensions)).is_err());
+        }
+        let reversed = Aabb2::from_center_dims(Vec2::ZERO, Vec2::splat(-2.0));
+        assert_eq!(reversed.min, Vec2::ONE);
+        assert_eq!(reversed.max, -Vec2::ONE);
+        assert!(Aabb2::from_center_dims(Vec2::splat(f32::NAN), Vec2::ONE).min.is_nan());
+        assert_eq!(Aabb2::from_center_dims(Vec2::ZERO, Vec2::splat(f32::INFINITY)).max,
+            Vec2::splat(f32::INFINITY));
     }
 }

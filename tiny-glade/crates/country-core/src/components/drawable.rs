@@ -518,3 +518,27 @@ impl crate::render::extract::JournaledComponent for PrevTransform {}
 use crate::render::extract::WorldComponentWrite as _;
 
 use crate::render::extract::ComponentWrite;
+
+/// 原 B LanternLightParams：世界灯位@0、局部灯位@12、强度@24、装饰ID@28、点亮位@32。
+/// 保留原36字节载荷，与生成器、光源维护和Nani更新共享同一TypeId。
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, PartialEq)]
+pub struct LanternLightParams(pub [u8; 36]);
+
+/// 原B墙旗布20B业务字段；回调和实体生成共享真实类型，不保留地方影子组件。
+#[derive(bevy_ecs::component::Component,Clone,Copy,Debug,Default,PartialEq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
+pub struct WallFlagCloth {
+    pub id: i32,
+    pub f4: f32,
+    pub f8: f32,
+    pub fc: f32,
+    pub flag: bool,
+}
+/// 原B屋顶旗布的整数种子，与两个draw回调共享唯一TypeId。
+#[derive(bevy_ecs::component::Component,Clone,Copy,Debug,Default,PartialEq,Eq)]
+#[component(on_insert = crate::render::extract::record_component_change::<Self>,
+    on_remove = crate::render::extract::record_component_change::<Self>)]
+pub struct RoofFlagCloth(pub u32);
+impl crate::render::extract::JournaledComponent for WallFlagCloth {}
+impl crate::render::extract::JournaledComponent for RoofFlagCloth {}

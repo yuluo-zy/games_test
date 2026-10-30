@@ -43,16 +43,10 @@
 //! 未命中 reserve_rehash 插入空 Vec）与 `UpdateRtWorldEvent`（Event 载荷）后，
 //! 按宿主反编译全序实现第 4-6 步。
 use bevy_ecs::prelude::*;
-use ::utils::bytes::{read_f32_le as read_f32, write_f32_le as write_f32};
 use country_core::resources::stairs_walls::{StairsPillarProposal, StairsPillarProposals};
 use country_core::systems::collision::world::RaycastWorld;
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
 
-/// 提议记录内字段偏移（stride 0x2c）。
-const POS: std::ops::Range<usize> = 0..8; // pos x/z（2×f32）
-const EXT_X: std::ops::Range<usize> = 8..12; // size_x（合并取 max）
-const EXT_Z: std::ops::Range<usize> = 12..16; // size_z（合并取 min）
-const KIND: usize = 0x28; // kind 字节（==0x02 终止桶内处理）
 /// 合并距离阈值（`while (0.01 <= dist)`；合并当 dist < 0.01）。
 const MERGE_DIST: f32 = 0.01;
 
@@ -70,18 +64,16 @@ const MERGE_DIST: f32 = 0.01;
 pub fn merge_nearby_proposals(bucket: &[StairsPillarProposal]) -> Vec<StairsPillarProposal> {
     let mut merged: Vec<StairsPillarProposal> = Vec::new();
     for proposal in bucket {
-        let new = proposal.observed();
         // kind == 0x02：终止本桶剩余处理（宿主 `if (cVar37 == '\x02') break;`）。
-        if new[KIND] == 0x02 {
+        if proposal.kind == 0x02 {
             break;
         }
-        let nx = read_f32(new, POS.start);
-        let nz = read_f32(new, POS.start + 4);
+        let nx = proposal.position.x;
+        let nz = proposal.position.y;
         let mut matched: Option<usize> = None;
         for (i, existing) in merged.iter().enumerate() {
-            let ex = existing.observed();
-            let ex_x = read_f32(ex, POS.start);
-            let ex_z = read_f32(ex, POS.start + 4);
+            let ex_x = existing.position.x;
+            let ex_z = existing.position.y;
             let dx = ex_x - nx;
             let dz = ex_z - nz;
             let dist = (dx * dx + dz * dz).sqrt();
@@ -98,12 +90,11 @@ pub fn merge_nearby_proposals(bucket: &[StairsPillarProposal]) -> Vec<StairsPill
             Some(i) => {
                 // 命中：只更新 existing 的 size_x（max）/ size_z（min），
                 // 其余字段保留 existing（宿主只写 `*existing + 8/+0xc`）。
-                let existing = merged[i].observed();
-                let mut out = *existing;
-                let ex_x = read_f32(existing, EXT_X.start);
-                let new_x = read_f32(new, EXT_X.start);
-                let ex_z = read_f32(existing, EXT_Z.start);
-                let new_z = read_f32(new, EXT_Z.start);
+                let existing = &mut merged[i];
+                let ex_x = existing.top_y;
+                let new_x = proposal.top_y;
+                let ex_z = existing.bottom_y;
+                let new_z = proposal.bottom_y;
                 // 宿主 +8：`ex.is_nan() ? new : (new <= ex ? ex : new)`（max）。
                 let merged_x = if ex_x.is_nan() {
                     new_x
@@ -120,9 +111,8 @@ pub fn merge_nearby_proposals(bucket: &[StairsPillarProposal]) -> Vec<StairsPill
                 } else {
                     new_z
                 };
-                write_f32(&mut out, EXT_X.start, merged_x);
-                write_f32(&mut out, EXT_Z.start, merged_z);
-                merged[i] = StairsPillarProposal::from_observed(out);
+                existing.top_y = merged_x;
+                existing.bottom_y = merged_z;
             }
         }
     }
@@ -149,6 +139,7 @@ pub fn process_playermade_stair_pillars_proposals(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ::utils::bytes::write_f32_le as write_f32;
 
     fn proposal(pos: [f32; 2], size_x: f32, size_z: f32, kind: u8) -> StairsPillarProposal {
         let mut bytes = [0u8; 44];
@@ -161,12 +152,10 @@ mod tests {
     }
 
     fn pos(record: &StairsPillarProposal) -> (f32, f32) {
-        let b = record.observed();
-        (read_f32(b, 0), read_f32(b, 4))
+        (record.position.x, record.position.y)
     }
     fn ext(record: &StairsPillarProposal) -> (f32, f32) {
-        let b = record.observed();
-        (read_f32(b, 8), read_f32(b, 12))
+        (record.top_y, record.bottom_y)
     }
 
     #[test]

@@ -1,0 +1,128 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "provider": "shared-readonly ghidra",
+  "functions": {
+    "0x142008c60": {
+      "name": "call_mut<tuple$<ref$<rapier3d::geometry::collider_components::ColliderHandle>_>,ref_mut$<rapier3d::pipeline::query_pipeline::impl$7::intersections_with_shape::closure_env$0<country_core::systems::collision::world::impl$14::iter_shape_overlaps::closure_env$1<country_core::systems::collision::world::SubworldColliderHandle,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env$0,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env$1>_>_>_>",
+      "size": 886,
+      "address": "142008c60",
+      "decompiled_code": "\nvoid __cdecl\ncore::ops::function::impls::impl$3::\ncall_mut<tuple_<ref_<rapier3d::geometry::collider_components::ColliderHandle>_>,ref_mut_<rapier3d::pipeline::query_pipeline::impl_7::intersections_with_shape::closure_env_0<country_core::systems::collision::world::impl_14::iter_shape_overlaps::closure_env_1<country_core::systems::collision::world::SubworldColliderHandle,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env_0,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env_1>_>_>_>\n          (void)\n\n{\n  float fVar1;\n  float fVar2;\n  longlong lVar3;\n  float *pfVar4;\n  longlong lVar5;\n  ulonglong uVar6;\n  float fVar7;\n  float fVar8;\n  float fVar9;\n  float fVar10;\n  char extraout_AL;\n  int extraout_EAX;\n  longlong extraout_RAX;\n  ulonglong uVar11;\n  ulonglong *extraout_RAX_00;\n  undefined8 *in_RCX;\n  float fVar12;\n  float fVar13;\n  float fVar14;\n  float fVar15;\n  float fVar16;\n  float fVar17;\n  float fVar18;\n  float local_b8;\n  float fStack_b4;\n  float fStack_b0;\n  float fStack_ac;\n  undefined8 local_a8;\n  float local_a0;\n  \n  lVar3 = *(longlong *)*in_RCX;\n  rapier3d::geometry::collider_set::ColliderSet::get_mut_internal();\n  if (extraout_RAX != 0) {\n    rapier3d::pipeline::query_pipeline::QueryFilter::test();\n    if (extraout_AL != '\\0') {\n      pfVar4 = *(float **)(lVar3 + 0x18);\n      fVar1 = *pfVar4;\n      fVar2 = pfVar4[3];\n      fVar7 = *(float *)(extraout_RAX + 0x34);\n      fVar8 = *(float *)(extraout_RAX + 0x38);\n      fVar9 = *(float *)(extraout_RAX + 0x3c);\n      fVar10 = *(float *)(extraout_RAX + 0x40);\n      fVar16 = (float)((ulonglong)*(undefined8 *)(extraout_RAX + 0x44) >> 0x20);\n      fVar15 = (float)*(undefined8 *)(extraout_RAX + 0x44);\n      fVar12 = (float)*(undefined8 *)(pfVar4 + 1);\n      fVar13 = (float)((ulonglong)*(undefined8 *)(pfVar4 + 1) >> 0x20);\n      fVar17 = *(float *)(extraout_RAX + 0x4c) * fVar12 -\n               (float)*(undefined8 *)(extraout_RAX + 0x48) * fVar13;\n      fVar18 = fVar15 * fVar13 -\n               (float)((ulonglong)*(undefined8 *)(extraout_RAX + 0x48) >> 0x20) * fVar1;\n      fVar17 = fVar17 + fVar17;\n      fVar18 = fVar18 + fVar18;\n      fVar14 = fVar16 * fVar1 - fVar12 * fVar15;\n      fVar14 = fVar14 + fVar14;\n      local_a0 = fVar14 * fVar2 + (fVar18 * fVar1 - fVar12 * fVar17) +\n                 *(float *)(extraout_RAX + 0x4c) + pfVar4[6];\n      local_b8 = (fVar7 * fVar2 + fVar10 * fVar1 + fVar9 * fVar12) - fVar8 * fVar13;\n      fStack_ac = ((fVar10 * fVar2 - fVar7 * fVar1) - fVar8 * fVar12) - fVar9 * fVar13;\n      fStack_b4 = fVar7 * fVar13 + (fVar8 * fVar2 - fVar9 * fVar1) + fVar10 * fVar12;\n      fStack_b0 = fVar10 * fVar13 + ((fVar8 * fVar1 + fVar9 * fVar2) - fVar7 * fVar12);\n      local_a8 = CONCAT44(fVar2 * fVar18 + (fVar17 * fVar13 - fVar14 * fVar1) + fVar16 +\n                          (float)((ulonglong)*(undefined8 *)(pfVar4 + 4) >> 0x20),\n                          fVar2 * fVar17 + (fVar14 * fVar12 - fVar18 * fVar13) + fVar15 +\n                          (float)*(undefined8 *)(pfVar4 + 4));\n      uVar11 = (**(code **)(*(longlong *)(lVar3 + 0x28) + 0x18))\n                         (*(undefined8 *)(lVar3 + 0x20),&local_b8,*(undefined8 *)(lVar3 + 0x30),\n                          *(undefined8 *)(lVar3 + 0x38),\n                          *(longlong *)(extraout_RAX + 0x10) +\n                          (*(longlong *)(*(longlong *)(extraout_RAX + 0x18) + 0x10) - 1U &\n                          0xfffffffffffffff0) + 0x10,*(longlong *)(extraout_RAX + 0x18));\n      if ((uVar11 & 1) != 0) {\n        lVar3 = **(longlong **)(lVar3 + 0x40);\n        rapier3d::geometry::collider_set::ColliderSet::get_mut_internal();\n        if (extraout_RAX_00 == (ulonglong *)0x0) {\n                    // WARNING: Subroutine does not return\n          option::unwrap_failed();\n        }\n        uVar11 = *extraout_RAX_00;\n        country_core::resources::walls::decorator::DecoratorRank::new();\n        lVar5 = *(longlong *)(lVar3 + 8);\n        uVar6 = *(ulonglong *)(lVar3 + 0x10);\n        country_core::systems::collision::world::impl$62::data();\n        if (((uVar6 <= (uVar11 & 0xffffffff)) || (lVar5 == 0)) ||\n           (*(int *)(lVar5 + 0x20 + (uVar11 & 0xffffffff) * 0x28) != extraout_EAX)) {\n                    // WARNING: Subroutine does not return\n          std::panicking::begin_panic<ref_<str_>_>();\n        }\n        country_core::systems::collision::world::SubworldColliderHandle::new();\n        country_core::resources::stairs::structural_graph::StairsStructuralGraph::\n        upsert_support_source_collider();\n        country_core::resources::stairs::structural_graph::StairsStructuralGraph::\n        add_edge_by_collider();\n      }\n    }\n  }\n  return;\n}\n\n",
+      "callee_count": 9,
+      "callees": [
+        {
+          "name": "add_edge_by_collider",
+          "address": "14086a260"
+        },
+        {
+          "name": "begin_panic<ref$<str$>_>",
+          "address": "1428d8725"
+        },
+        {
+          "name": "data",
+          "address": "1408d99e0"
+        },
+        {
+          "name": "get_mut_internal",
+          "address": "140b93940"
+        },
+        {
+          "name": "new",
+          "address": "1408cc620"
+        },
+        {
+          "name": "new",
+          "address": "140833250"
+        },
+        {
+          "name": "test",
+          "address": "1403c13a0"
+        },
+        {
+          "name": "unwrap_failed",
+          "address": "1428d9310"
+        },
+        {
+          "name": "upsert_support_source_collider",
+          "address": "140869f90"
+        }
+      ],
+      "revision": {
+        "token": "1791719479858:445f58e8:3",
+        "epoch": "445f58e8",
+        "modification_number": 3,
+        "saved_time": 1791719479858,
+        "unsaved_changes": false,
+        "decompiled": true
+      }
+    },
+    "0x142008fe0": {
+      "name": "call_mut<tuple$<ref$<rapier3d::geometry::collider_components::ColliderHandle>_>,ref_mut$<rapier3d::pipeline::query_pipeline::impl$7::intersections_with_shape::closure_env$0<country_core::systems::collision::world::impl$14::iter_shape_overlaps::closure_env$1<country_core::systems::collision::world::SubworldColliderHandle,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env$2,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env$3>_>_>_>",
+      "size": 899,
+      "address": "142008fe0",
+      "decompiled_code": "\nvoid __cdecl\ncore::ops::function::impls::impl$3::\ncall_mut<tuple_<ref_<rapier3d::geometry::collider_components::ColliderHandle>_>,ref_mut_<rapier3d::pipeline::query_pipeline::impl_7::intersections_with_shape::closure_env_0<country_core::systems::collision::world::impl_14::iter_shape_overlaps::closure_env_1<country_core::systems::collision::world::SubworldColliderHandle,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env_2,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env_3>_>_>_>\n          (void)\n\n{\n  float fVar1;\n  float fVar2;\n  longlong lVar3;\n  float *pfVar4;\n  longlong lVar5;\n  ulonglong uVar6;\n  float fVar7;\n  float fVar8;\n  float fVar9;\n  float fVar10;\n  char extraout_AL;\n  int extraout_EAX;\n  longlong extraout_RAX;\n  ulonglong uVar11;\n  ulonglong *extraout_RAX_00;\n  undefined8 *in_RCX;\n  float fVar12;\n  float fVar13;\n  float fVar14;\n  float fVar15;\n  float fVar16;\n  float fVar17;\n  float fVar18;\n  char local_c8;\n  float local_b8;\n  float fStack_b4;\n  float fStack_b0;\n  float fStack_ac;\n  undefined8 local_a8;\n  float local_a0;\n  \n  lVar3 = *(longlong *)*in_RCX;\n  rapier3d::geometry::collider_set::ColliderSet::get_mut_internal();\n  if (extraout_RAX != 0) {\n    rapier3d::pipeline::query_pipeline::QueryFilter::test();\n    if (extraout_AL != '\\0') {\n      pfVar4 = *(float **)(lVar3 + 0x18);\n      fVar1 = *pfVar4;\n      fVar2 = pfVar4[3];\n      fVar7 = *(float *)(extraout_RAX + 0x34);\n      fVar8 = *(float *)(extraout_RAX + 0x38);\n      fVar9 = *(float *)(extraout_RAX + 0x3c);\n      fVar10 = *(float *)(extraout_RAX + 0x40);\n      fVar16 = (float)((ulonglong)*(undefined8 *)(extraout_RAX + 0x44) >> 0x20);\n      fVar15 = (float)*(undefined8 *)(extraout_RAX + 0x44);\n      fVar12 = (float)*(undefined8 *)(pfVar4 + 1);\n      fVar13 = (float)((ulonglong)*(undefined8 *)(pfVar4 + 1) >> 0x20);\n      fVar17 = *(float *)(extraout_RAX + 0x4c) * fVar12 -\n               (float)*(undefined8 *)(extraout_RAX + 0x48) * fVar13;\n      fVar18 = fVar15 * fVar13 -\n               (float)((ulonglong)*(undefined8 *)(extraout_RAX + 0x48) >> 0x20) * fVar1;\n      fVar17 = fVar17 + fVar17;\n      fVar18 = fVar18 + fVar18;\n      fVar14 = fVar16 * fVar1 - fVar12 * fVar15;\n      fVar14 = fVar14 + fVar14;\n      local_a0 = fVar14 * fVar2 + (fVar18 * fVar1 - fVar12 * fVar17) +\n                 *(float *)(extraout_RAX + 0x4c) + pfVar4[6];\n      local_b8 = (fVar7 * fVar2 + fVar10 * fVar1 + fVar9 * fVar12) - fVar8 * fVar13;\n      fStack_ac = ((fVar10 * fVar2 - fVar7 * fVar1) - fVar8 * fVar12) - fVar9 * fVar13;\n      fStack_b4 = fVar7 * fVar13 + (fVar8 * fVar2 - fVar9 * fVar1) + fVar10 * fVar12;\n      fStack_b0 = fVar10 * fVar13 + ((fVar8 * fVar1 + fVar9 * fVar2) - fVar7 * fVar12);\n      local_a8 = CONCAT44(fVar2 * fVar18 + (fVar17 * fVar13 - fVar14 * fVar1) + fVar16 +\n                          (float)((ulonglong)*(undefined8 *)(pfVar4 + 4) >> 0x20),\n                          fVar2 * fVar17 + (fVar14 * fVar12 - fVar18 * fVar13) + fVar15 +\n                          (float)*(undefined8 *)(pfVar4 + 4));\n      uVar11 = (**(code **)(*(longlong *)(lVar3 + 0x28) + 0x18))\n                         (*(undefined8 *)(lVar3 + 0x20),&local_b8,*(undefined8 *)(lVar3 + 0x30),\n                          *(undefined8 *)(lVar3 + 0x38),\n                          *(longlong *)(extraout_RAX + 0x10) +\n                          (*(longlong *)(*(longlong *)(extraout_RAX + 0x18) + 0x10) - 1U &\n                          0xfffffffffffffff0) + 0x10,*(longlong *)(extraout_RAX + 0x18));\n      if ((uVar11 & 1) != 0) {\n        lVar3 = **(longlong **)(lVar3 + 0x40);\n        rapier3d::geometry::collider_set::ColliderSet::get_mut_internal();\n        if (extraout_RAX_00 == (ulonglong *)0x0) {\n                    // WARNING: Subroutine does not return\n          option::unwrap_failed();\n        }\n        uVar11 = *extraout_RAX_00;\n        country_core::resources::walls::decorator::DecoratorRank::new();\n        lVar5 = *(longlong *)(lVar3 + 8);\n        uVar6 = *(ulonglong *)(lVar3 + 0x10);\n        country_core::systems::collision::world::impl$62::data();\n        if (((uVar6 <= (uVar11 & 0xffffffff)) || (lVar5 == 0)) ||\n           (*(int *)(lVar5 + 0x20 + (uVar11 & 0xffffffff) * 0x28) != extraout_EAX)) {\n                    // WARNING: Subroutine does not return\n          std::panicking::begin_panic<ref_<str_>_>();\n        }\n        country_core::systems::collision::world::SubworldColliderHandle::new();\n        if (1 < (byte)(local_c8 - 0xfU)) {\n          country_core::resources::stairs::structural_graph::StairsStructuralGraph::\n          upsert_support_source_collider();\n        }\n        country_core::resources::stairs::structural_graph::StairsStructuralGraph::\n        add_edge_by_collider();\n      }\n    }\n  }\n  return;\n}\n\n",
+      "callee_count": 9,
+      "callees": [
+        {
+          "name": "add_edge_by_collider",
+          "address": "14086a260"
+        },
+        {
+          "name": "begin_panic<ref$<str$>_>",
+          "address": "1428d8725"
+        },
+        {
+          "name": "data",
+          "address": "1408d99e0"
+        },
+        {
+          "name": "get_mut_internal",
+          "address": "140b93940"
+        },
+        {
+          "name": "new",
+          "address": "1408cc620"
+        },
+        {
+          "name": "new",
+          "address": "140833250"
+        },
+        {
+          "name": "test",
+          "address": "1403c13a0"
+        },
+        {
+          "name": "unwrap_failed",
+          "address": "1428d9310"
+        },
+        {
+          "name": "upsert_support_source_collider",
+          "address": "140869f90"
+        }
+      ],
+      "revision": {
+        "token": "1791719479858:445f58e8:3",
+        "epoch": "445f58e8",
+        "modification_number": 3,
+        "saved_time": 1791719479858,
+        "unsaved_changes": false,
+        "decompiled": true
+      }
+    }
+  },
+  "source_filter": {
+    "program": "tiny-glade.exe",
+    "name": "closure$0<country_core::systems::collision::world::SubworldColliderHandle,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env$0,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env$1>",
+    "size": 436,
+    "address": "14129c210",
+    "decompiled_code": "\nvoid __cdecl\ncountry_core::systems::collision::world::impl$14::iter_shape_overlaps::\nclosure_0<country_core::systems::collision::world::SubworldColliderHandle,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env_0,system_decorator::decorator_visual::stairs_assemble::calculate_distortion_from_structural_graph::closure_env_1>\n          (void)\n\n{\n  char *pcVar1;\n  longlong lVar2;\n  undefined8 uVar3;\n  longlong lVar4;\n  longlong *plVar5;\n  uint uVar6;\n  uint uVar7;\n  char extraout_AL;\n  int extraout_EAX;\n  int extraout_EAX_00;\n  ulonglong *extraout_RAX;\n  ulonglong extraout_RAX_00;\n  longlong *in_RCX;\n  int iVar8;\n  ulonglong uVar9;\n  longlong lVar10;\n  uint uVar11;\n  ushort uVar12;\n  ulonglong uVar13;\n  byte bVar14;\n  char cVar15;\n  char cVar17;\n  char cVar18;\n  char cVar19;\n  undefined1 auVar16 [16];\n  undefined1 auVar20 [16];\n  int iVar23;\n  undefined1 auVar21 [16];\n  undefined1 auVar22 [16];\n  char local_38;\n  \n  lVar4 = *in_RCX;\n  rapier3d::geometry::collider_set::ColliderSet::get_mut_internal();\n  if (extraout_RAX == (ulonglong *)0x0) {\n                    // WARNING: Subroutine does not return\n    core::option::unwrap_failed();\n  }\n  uVar9 = *extraout_RAX;\n  resources::walls::decorator::DecoratorRank::new();\n  lVar10 = *(longlong *)(lVar4 + 8);\n  uVar13 = *(ulonglong *)(lVar4 + 0x10);\n  iVar8 = (int)uVar9;\n  impl$62::data();\n  if ((((uVar9 & 0xffffffff) < uVar13) && (lVar10 != 0)) &&\n     (*(int *)(lVar10 + 0x20 + (uVar9 & 0xffffffff) * 0x28) == extraout_EAX_00)) {\n    lVar4 = in_RCX[2];\n    SubworldColliderHandle::new();\n    plVar5 = *(longlong **)(lVar4 + 8);\n    world::impl$3::partial_cmp();\n    if ((extraout_AL != -1) && (plVar5[3] != 0)) {\n      core::hash::BuildHasher::\n      hash_one<std::hash::random::RandomState,ref_<country_core::systems::collision::world::SubworldColliderHandle>_>\n                ();\n      lVar4 = *plVar5;\n      bVar14 = (byte)(extraout_RAX_00 >> 0x39);\n      auVar16 = ZEXT216(CONCAT11(bVar14,bVar14));\n      auVar16 = pshuflw(auVar16,auVar16,0);\n      lVar10 = 0;\n      uVar9 = extraout_RAX_00;\n      while( true ) {\n        uVar9 = plVar5[1] & uVar9;\n        pcVar1 = (char *)(lVar4 + uVar9);\n        cVar15 = auVar16[0];\n        auVar21[0] = -(*pcVar1 == cVar15);\n        cVar17 = auVar16[1];\n        auVar21[1] = -(pcVar1[1] == cVar17);\n        cVar18 = auVar16[2];\n        auVar21[2] = -(pcVar1[2] == cVar18);\n        cVar19 = auVar16[3];\n        auVar21[3] = -(pcVar1[3] == cVar19);\n        auVar21[4] = -(pcVar1[4] == cVar15);\n        auVar21[5] = -(pcVar1[5] == cVar17);\n        auVar21[6] = -(pcVar1[6] == cVar18);\n        auVar21[7] = -(pcVar1[7] == cVar19);\n        auVar21[8] = -(pcVar1[8] == cVar15);\n        auVar21[9] = -(pcVar1[9] == cVar17);\n        auVar21[10] = -(pcVar1[10] == cVar18);\n        auVar21[0xb] = -(pcVar1[0xb] == cVar19);\n        auVar21[0xc] = -(pcVar1[0xc] == cVar15);\n        auVar21[0xd] = -(pcVar1[0xd] == cVar17);\n        auVar21[0xe] = -(pcVar1[0xe] == cVar18);\n        auVar21[0xf] = -(pcVar1[0xf] == cVar19);\n        uVar12 = (ushort)(SUB161(auVar21 >> 7,0) & 1) | (ushort)(SUB161(auVar21 >> 0xf,0) & 1) << 1\n                 | (ushort)(SUB161(auVar21 >> 0x17,0) & 1) << 2 |\n                 (ushort)(SUB161(auVar21 >> 0x1f,0) & 1) << 3 |\n                 (ushort)(SUB161(auVar21 >> 0x27,0) & 1) << 4 |\n                 (ushort)(SUB161(auVar21 >> 0x2f,0) & 1) << 5 |\n                 (ushort)(SUB161(auVar21 >> 0x37,0) & 1) << 6 |\n                 (ushort)(SUB161(auVar21 >> 0x3f,0) & 1) << 7 |\n                 (ushort)(SUB161(auVar21 >> 0x47,0) & 1) << 8 |\n                 (ushort)(SUB161(auVar21 >> 0x4f,0) & 1) << 9 |\n                 (ushort)(SUB161(auVar21 >> 0x57,0) & 1) << 10 |\n                 (ushort)(SUB161(auVar21 >> 0x5f,0) & 1) << 0xb |\n                 (ushort)(SUB161(auVar21 >> 0x67,0) & 1) << 0xc |\n                 (ushort)(SUB161(auVar21 >> 0x6f,0) & 1) << 0xd |\n                 (ushort)(SUB161(auVar21 >> 0x77,0) & 1) << 0xe | (ushort)(auVar21[0xf] >> 7) << 0xf\n        ;\n        uVar11 = (uint)uVar12;\n        while (uVar12 != 0) {\n          uVar6 = 0;\n          for (uVar7 = uVar11; (uVar7 & 1) == 0; uVar7 = uVar7 >> 1 | 0x80000000) {\n            uVar6 = uVar6 + 1;\n          }\n          uVar13 = uVar6 + uVar9 & plVar5[1];\n          if ((local_38 == *(char *)(lVar4 + -4 + uVar13 * -0xc)) &&\n             (lVar2 = lVar4 + uVar13 * -0xc, uVar3 = *(undefined8 *)(lVar2 + -0xc),\n             auVar22._0_4_ = -(uint)((int)uVar3 == extraout_EAX),\n             iVar23 = -(uint)((int)((ulonglong)uVar3 >> 0x20) == iVar8),\n             auVar22._4_4_ = auVar22._0_4_, auVar22._8_4_ = iVar23, auVar22._12_4_ = iVar23,\n             iVar23 = movmskpd((int)lVar2,auVar22), iVar23 == 3)) {\n            return;\n          }\n          uVar12 = (ushort)(uVar11 - 1) & (ushort)uVar11;\n          uVar11 = CONCAT22((short)(uVar11 - 1 >> 0x10),uVar12);\n        }\n        auVar20[0] = -(*pcVar1 == -1);\n        auVar20[1] = -(pcVar1[1] == -1);\n        auVar20[2] = -(pcVar1[2] == -1);\n        auVar20[3] = -(pcVar1[3] == -1);\n        auVar20[4] = -(pcVar1[4] == -1);\n        auVar20[5] = -(pcVar1[5] == -1);\n        auVar20[6] = -(pcVar1[6] == -1);\n        auVar20[7] = -(pcVar1[7] == -1);\n        auVar20[8] = -(pcVar1[8] == -1);\n        auVar20[9] = -(pcVar1[9] == -1);\n        auVar20[10] = -(pcVar1[10] == -1);\n        auVar20[0xb] = -(pcVar1[0xb] == -1);\n        auVar20[0xc] = -(pcVar1[0xc] == -1);\n        auVar20[0xd] = -(pcVar1[0xd] == -1);\n        auVar20[0xe] = -(pcVar1[0xe] == -1);\n        auVar20[0xf] = -(pcVar1[0xf] == -1);\n        if ((((((((((((((((SUB161(auVar20 >> 7,0) & 1) != 0 || (SUB161(auVar20 >> 0xf,0) & 1) != 0)\n                        || (SUB161(auVar20 >> 0x17,0) & 1) != 0) ||\n                       (SUB161(auVar20 >> 0x1f,0) & 1) != 0) || (SUB161(auVar20 >> 0x27,0) & 1) != 0\n                      ) || (SUB161(auVar20 >> 0x2f,0) & 1) != 0) ||\n                    (SUB161(auVar20 >> 0x37,0) & 1) != 0) || (SUB161(auVar20 >> 0x3f,0) & 1) != 0)\n                  || (SUB161(auVar20 >> 0x47,0) & 1) != 0) || (SUB161(auVar20 >> 0x4f,0) & 1) != 0)\n                || (SUB161(auVar20 >> 0x57,0) & 1) != 0) || (SUB161(auVar20 >> 0x5f,0) & 1) != 0) ||\n              (SUB161(auVar20 >> 0x67,0) & 1) != 0) || (SUB161(auVar20 >> 0x6f,0) & 1) != 0) ||\n            (SUB161(auVar20 >> 0x77,0) & 1) != 0) || auVar20[0xf] < '\\0') break;\n        uVar9 = uVar9 + lVar10 + 0x10;\n        lVar10 = lVar10 + 0x10;\n      }\n    }\n    return;\n  }\n                    // WARNING: Subroutine does not return\n  std::panicking::begin_panic<ref_<str_>_>();\n}\n\n",
+    "revision": {
+      "token": "1791719479858:445f58e8:3",
+      "epoch": "445f58e8",
+      "modification_number": 3,
+      "saved_time": 1791719479858,
+      "unsaved_changes": false,
+      "decompiled": true
+    }
+  }
+}

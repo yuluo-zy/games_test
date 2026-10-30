@@ -16,27 +16,6 @@ use glam::{Vec2, Vec3};
 
 use crate::resources::walls::WallId;
 
-/// Toolbar shape-selection record `{tag u32@+0, ty u8@+4}` (shape_placement /
-/// calc_shape_height / ui_create_* read `tag == 6` for wall shapes; ty 1 =
-/// circle, 2 = rectangle).
-#[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
-pub struct SelectedWallShape {
-    pub tag: u32,
-    pub ty: u8,
-}
-
-impl SelectedWallShape {
-    pub const WALL_SHAPES_TAG: u32 = 6;
-    pub const TY_CIRCLE: u8 = 1;
-    pub const TY_RECTANGLE: u8 = 2;
-    pub fn is_circle(&self) -> bool {
-        self.tag == Self::WALL_SHAPES_TAG && self.ty == Self::TY_CIRCLE
-    }
-    pub fn is_rectangle(&self) -> bool {
-        self.tag == Self::WALL_SHAPES_TAG && self.ty == Self::TY_RECTANGLE
-    }
-}
-
 /// 原圆形画布预览：反馈位置、几何参数与交互起始平面。
 #[derive(Resource, Clone, Copy, Debug, PartialEq)]
 pub struct PreviewCircle {
@@ -129,11 +108,9 @@ pub struct EditRectangleCmd {
     pub rotating: bool,
 }
 
-/// FinishEditRectangleCmd (finish_edit_rectangle 0x141464a60 reader).
+/// The finished wall is taken from the active WipRectangle, not the event.
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
-pub struct FinishEditRectangleCmd {
-    pub wall: WallId,
-}
+pub struct FinishEditRectangleCmd;
 
 /// Convert the geometry-domain Curve2 into the wall-authority curve
 /// (crate::resources::roofs::geometry::surface::Curve2). The original had one Curve2; the
@@ -147,13 +124,13 @@ pub fn to_authority_curve(
         .expect("shape curve produced a valid authority Curve2")
 }
 
-/// B `add_wall_shape_ux` resource half: the four shape preview/placement
-/// resources plus the shape command events.
+/// 原 add_wall_shape_ux 的资源与事件初始化。真实选择由 AppMode 唯一拥有，
+/// 不能另建 SelectedWallShape 让预览与实际工具产生两套权威。
 pub fn register_shape_resources(world: &mut World) {
-    world.init_resource::<SelectedWallShape>();
     world.init_resource::<PreviewCircle>();
     world.init_resource::<PreviewRectangle>();
     world.init_resource::<ShapePlacement>();
+    world.init_resource::<SnapMode>();
     world.init_resource::<CalcShapeHeight>();
     world.init_resource::<Events<CreateCircleCmd>>();
     world.init_resource::<Events<crate::resources::glade_border::MaxDemoElevationReached>>();
@@ -165,10 +142,10 @@ pub fn register_shape_resources(world: &mut World) {
     world.init_resource::<rectangle::ui_create_rectangle::ShapesDragMouseMoved>();
     world.init_resource::<rectangle::ui_edit_rectangle_dims::UiEditRectangleActiveWidgetResource>();
     world.init_resource::<Events<rectangle::ui_edit_rectangle_dims::DoUiEditRectangleDims>>();
-    world.init_resource::<rectangle::ui_edit_rectangle_orientation::ClosestCornerCache>();
     world
         .init_resource::<Events<rectangle::ui_edit_rectangle_orientation::DoUiEditRectangleRotate>>(
         );
+    world.init_resource::<circle::ui_edit_circle::AnimatedCircleSignifierResource>();
     world.init_resource::<rectangle::finish_edit_rectangle::RectangleEditUiState>();
 }
 

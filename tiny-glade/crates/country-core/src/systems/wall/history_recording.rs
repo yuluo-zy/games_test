@@ -18,6 +18,17 @@ use std::sync::Arc;
 #[derive(Event, Clone, Debug)]
 pub struct RecordWallHistory(pub Arc<WallCompoundHistoryEdit>);
 
+/// 原墙体 producer 在自身调用点同步加入同一 History；未录制时按原版 panic。
+pub fn record_wall_immediately<S>(
+    record: RecordWallHistory,
+    history: &mut History<S>,
+) {
+    let edit = EditType::Wall(record.0);
+    history.add(edit.clone()).unwrap_or_else(|_| {
+        panic!("Tried writing {edit:?} to History when the input recording is finished")
+    });
+}
+
 impl RecordWallHistory {
     /// Original seed-create followed by full-state growth, preserving both
     /// concurrent-edit groups and every captured source metadata byte.

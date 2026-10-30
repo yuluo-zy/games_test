@@ -95,6 +95,10 @@ pub fn instantiate_audio_w_position<S: Studio>(
     position: [f32; 3],
 ) -> AudioInstance<S::Event> {
     let mut instance = core.instantiate_audio(name);
+    // B 140aa33a3/140aa33d9：构造失败在设置位置之前 unwrap；禁用音频仍正常返回。
+    if let AudioInstance::Err(error) = &instance {
+        panic!("called `Result::unwrap()` on an `Err` value: {error}");
+    }
     let _ = instance.set_position(position);
     let _ = instance.start_if_not_playing();
     instance
@@ -102,7 +106,7 @@ pub fn instantiate_audio_w_position<S: Studio>(
 
 /// `instantiate_audio_w_position_and_volume` (0x140aa3590): instantiate →
 /// set_position → start_if_not_playing → set_volume (Active only). Used by the
-/// wall one-shot kinds and elevation supports.
+/// wall one-shot kinds. 高程支撑原调用位置专用helper，不经过音量设置。
 pub fn instantiate_audio_w_position_and_volume<S: Studio>(
     core: &AudioCore<S>,
     name: &str,

@@ -18,12 +18,34 @@ use bevy_ecs::resource::Resource;
 
 use crate::render::ssbo::StorageElement;
 
+/// 当前异步宿主的地形来源，不是原B持久映射的ABI字段。
+#[derive(Resource, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TerrainReadbackEpoch {
+    pub session: Option<crate::resources::session::SessionId>,
+    pub state_tick: Option<bevy_ecs::component::Tick>,
+}
+
+impl TerrainReadbackEpoch {
+    pub fn capture(world: &bevy_ecs::world::World) -> Self {
+        Self {
+            session: world.get_resource::<crate::resources::session::ActiveSession>().map(|session| session.id),
+            state_tick: world.get_resource_change_ticks::<bevy_state::state::State<crate::app_loading_state::AppLoadingState>>()
+                .map(|ticks| ticks.changed),
+        }
+    }
+}
+
+/// 最后一次已接纳的地形拷贝确认；pending资源在Reload时按原行为保留。
+#[derive(Resource, Clone, Copy)]
+pub struct TerrainCopyEpoch(pub TerrainReadbackEpoch);
+
 /// 一份已发布的回读。按 16 字节块存放，保证对 `T`（对齐 ≤ 16）可直接切片视图。
 struct Entry {
     words: Vec<u128>,
     bytes: usize,
     frame: u64,
     revision: u64,
+    epoch: Option<TerrainReadbackEpoch>,
 }
 
 /// 某个回读类型的最近完整副本。
@@ -33,6 +55,8 @@ pub struct ReadbackView<'a, T> {
     pub frame: u64,
     /// 本类型的发布次数（每次新数据 +1），用于跳过未变化的重复处理。
     pub revision: u64,
+    /// 地形宿主记录的会话来源；纯CPU夹具保留None。
+    pub epoch: Option<TerrainReadbackEpoch>,
 }
 
 #[derive(Resource, Default)]
@@ -53,7 +77,7 @@ impl GpuReadbacks {
         // SAFETY: 存储按 16 字节对齐且至少 len*size 字节；字节来自同一类型 GPU 缓冲的
         // 完整副本，与原版把映射区重解释为 `&[T]` 的假设相同（T: Copy、按位有效）。
         let data = unsafe { core::slice::from_raw_parts(entry.words.as_ptr().cast::<T>(), len) };
-        Some(ReadbackView { data, frame: entry.frame, revision: entry.revision })
+        Some(ReadbackView { data, frame: entry.frame, revision: entry.revision, epoch: entry.epoch })
     }
 
     /// 只取数据切片。
@@ -73,6 +97,11 @@ impl GpuReadbacks {
     /// 发布渲染侧移交的字节（`bytes` 是有效字节数）。较旧帧的结果被拒收并原样返还，
     /// 被替换的旧容器也返还给调用方，供渲染侧复用分配。
     pub fn publish_words(&mut self, ty: TypeId, words: Vec<u128>, bytes: usize, frame: u64) -> Option<Vec<u128>> {
+        self.publish_words_for_epoch(ty, words, bytes, frame, None)
+    }
+
+    pub fn publish_words_for_epoch(&mut self, ty: TypeId, words: Vec<u128>, bytes: usize, frame: u64,
+        epoch: Option<TerrainReadbackEpoch>) -> Option<Vec<u128>> {
         assert!(bytes <= words.len() * 16, "readback byte count exceeds its storage");
         match self.entries.get_mut(&ty) {
             Some(entry) if entry.frame > frame => Some(words),
@@ -80,10 +109,11 @@ impl GpuReadbacks {
                 entry.bytes = bytes;
                 entry.frame = frame;
                 entry.revision += 1;
+                entry.epoch = epoch;
                 Some(core::mem::replace(&mut entry.words, words))
             }
             None => {
-                self.entries.insert(ty, Entry { words, bytes, frame, revision: 1 });
+                self.entries.insert(ty, Entry { words, bytes, frame, revision: 1, epoch });
                 None
             }
         }

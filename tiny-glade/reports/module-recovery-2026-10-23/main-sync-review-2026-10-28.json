@@ -1,0 +1,126 @@
+{
+  "date": "2026-10-28",
+  "timezone": "Asia/Shanghai",
+  "scope": "Fetch/fast-forward main, restore and reconcile pre-existing local recovery work, independently audit M01 completion from actual source/callers. No full module or game acceptance.",
+  "previous_head": "8408f140f",
+  "main_head": "9028e2db4ce7aa8bff90557ae0a3b059858d01de",
+  "fetched_commits": 87,
+  "backup_stash": "a296a5ca14ab4d42de4897642c807de5c6f49956",
+  "preservation": {
+    "pre_sync_tracked_modified_files": 170,
+    "tracked_overlapping_paths": 19,
+    "backup_untracked_file_entries": 2874,
+    "missing_restored_entries": 0,
+    "differing_restored_entries_before_necessary_merge_edits": 0,
+    "note": "Initial porcelain grouped directories; complete stash untracked tree enumerates 2874 files. Stash retained; no reset/force/push."
+  },
+  "merge_decisions": [
+    "Preserve new rhapsody module decomposition; move the old collect_recorded_imports patch into rg/vulkan/session/frame_imports.rs, delete superseded vulkan.rs.",
+    "Preserve evidence-backed local complete move/circle/height algorithms instead of replacing with remote partial checkpoints; remote content retained in HEAD and local content retained in stash.",
+    "Retain remote actual input-to-height-history integration tests; prepare authoritative path heights and aim at original focused control lift, without changing production geometry or weakening assertions.",
+    "Use canonical OnShapeMoved type for producer and consumers; preserve ReanchorDecorators; deduplicate modules and boundary algorithm.",
+    "Remove accidental second height-system registration while retaining its original tuple placement.",
+    "Keep relocated upstream tool guide, merge retained 6.1 and 7.1..7.4 experience sections.",
+    "Migrate constants regression test to the new public resource API."
+  ],
+  "checks": [
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo check --offline -p tiny-glade --tests",
+      "result": "PASS"
+    },
+    {
+      "command": "TG_INSTALL_ROOT=<B root> CARGO_INCREMENTAL=0 cargo test --offline -p toolbar --lib",
+      "result": "109 passed, 9 ignored"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test --offline -p country-core --features native-physics --lib systems::wall::shapes:: -- --nocapture",
+      "result": "54 passed"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test --offline -p country-core --features native-physics --lib adjust_wall_height -- --nocapture",
+      "result": "52 passed; includes remote physical_chain tests after valid fixture preparation"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test --offline -p tiny-glade --lib original_shape_tree_and_decorator_consumers_are_present_once_in_order -- --nocapture",
+      "result": "1 passed; manually adds cache target, does NOT establish full production visual chain"
+    },
+    {
+      "command": "TG_INSTALL_ROOT=<B root> CARGO_INCREMENTAL=0 cargo test --offline -p tiny-glade --test toolbar_module_chain --test toolbar_focus_chain",
+      "result": "8 + 2 passed; fresh-process child runs are part of parent tests, not additional counts"
+    },
+    {
+      "command": "managed_projection constants_pages_retire_only_after_external_snapshot_and_weak_release --exact --test-threads=1 --nocapture",
+      "result": "1 passed on real local Vulkan; strict RHAPSODY_REQUIRE_VULKAN=1; no extra idle waits asserted"
+    }
+  ],
+  "findings": [
+    {
+      "id": "M01-OPEN-1",
+      "source": "tiny-glade/crates/tiny-glade/src/decorator_plugin.rs",
+      "symbol": "build_recovered_visual_systems",
+      "fact": "No production call; run_game invokes build_startup_resources only. UI registration helpers likewise are not mounted by production build_startup_resources. Restored leaf functions are not evidence of active end-to-end placement/move/visual/validation."
+    },
+    {
+      "id": "M01-OPEN-2",
+      "source": "tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs",
+      "symbol": "playermade_stairs_assemble<const X: bool>",
+      "fact": "Empty body for both original monomorphs."
+    },
+    {
+      "id": "M01-OPEN-3",
+      "source": "tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs",
+      "symbol": "calculate_distortion_from_structural_graph",
+      "fact": "Still returns empty Vec; no actual structural distortion calculation."
+    },
+    {
+      "id": "GAME-OPEN-1",
+      "source": "tiny-glade/crates/systems/clutter/src/autoclutter/manage_autoclutter_entities.rs",
+      "symbol": "resolved",
+      "fact": "Explicit pending panic for erased autoclutter selected mesh/source and unsupported selectors. Static current-source blocker; full scene was NOT rerun on this merged snapshot."
+    }
+  ],
+  "acceptance": {
+    "M01": "NOT COMPLETE",
+    "terrain": "NOT evaluated as complete",
+    "real_OS_input": "not performed per user prior deferral",
+    "whole_game_GPU_window_present_performance": "not accepted in this sync audit",
+    "excluded": "Real Steam SDK, Credits and license remain outside requested scope"
+  },
+  "source_sha256": {
+    "tiny-glade/crates/tiny-glade/src/run_game.rs": "00574b4b89598196d5526439e147f59396f4b9726a90fc0e0b50a9394ae1a31c",
+    "tiny-glade/crates/tiny-glade/src/decorator_plugin.rs": "c0c1632d93106c28e064a5f2ee4a0270df5a0a96ef4c75bb8cf8efbc147047cc",
+    "tiny-glade/crates/country-core/src/resources/events.rs": "1dc016769dc780ad6aaa8805505258cd374a92a9422295be12093d255e9cf155",
+    "tiny-glade/crates/country-core/src/resources/glade_border.rs": "b985978d25665927582b67251137ead0d1924da9df0c710d4b6890899c9fe488",
+    "tiny-glade/crates/country-core/src/systems/ui_move_shapes.rs": "2e636e6208655232c73b8a1c121bcef5b0fbfb5cb82ec036a23da0b4485f2e92",
+    "tiny-glade/crates/country-core/src/systems/wall/adjust_wall_height/ui_adjust_wall_height.rs": "8e7ef9a4aa9710a3be15f9c323a4664f7f42b0474f75b46922952faecc605c72",
+    "tiny-glade/crates/country-core/src/systems/wall/shapes/circle/ui_edit_circle.rs": "33a2ffb228debd52cac91fc954ca5476cf520b45ba6edfc2ff2b37dd3c4e21cd",
+    "tiny-glade/crates/country-core/src/systems/wall/shapes/circle/signifiers/edit_arrow.rs": "5e40111dda6a8a219278f1096b07bcad0c135506ab95f92a422844c34d17b62c",
+    "tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs": "635f44c523aba13b4169873890adbec41f45358ce8a35dc89dfe22c09b38003c",
+    "tiny-glade/crates/systems/clutter/src/autoclutter/manage_autoclutter_entities.rs": "4a135200c298f1da7d9804c853aef556a94ae673827239b6e91c72d06b63a9fa",
+    "tiny-glade/crates/rhapsody/src/rg/vulkan/session/frame_imports.rs": "81bb4f3cc0bd2e8306ce5da93d603bb1694ae03a4877838afad1c7476d5e1f15",
+    "tiny-glade/crates/rhapsody/src/rg/pass_bindings/projection/mod.rs": "1e8ef0d9c5eff91f4e46e5e7e00831e2b8c8ebabda1f7b4b87777da9eb663efd",
+    "tiny-glade/crates/rhapsody/tests/managed_projection.rs": "9008d4a4d4e29d5c7d5829cd43a9bf4850fc596ddbac101c53e715cd710c075e"
+  },
+  "log_sha256": {
+    "main-sync-2026-10-28-check.log": "37c0eb97e8d9dff9cbb66ce4aee4e36a967463aa555518c92c7e432640e2fdf5",
+    "main-sync-2026-10-28-toolbar-before-assets.log": "df92962d887a0c8e9c5692a5c56c9982a3d3a67a24716bc620679ac279837c64",
+    "main-sync-2026-10-28-toolbar.log": "156d87dd6b7edfd410bdadc1267e7df57b95cbde23382a5ab8ee4e15e6bcfe29",
+    "main-sync-2026-10-28-shapes.log": "307bd1d511ea0ae8593bed9ebba56e72d83d8deb7f7a3bdef46787b4ba078856",
+    "main-sync-2026-10-28-schedule.log": "1057a4fcea0e581963bcb5727deb7635475d529be6055686ed580f600afc8afa",
+    "main-sync-2026-10-28-toolbar-chain.log": "ace3107606cb0309597098b2710650f1a29f0ea112c0b0e2b97d9698b69780ac",
+    "main-sync-2026-10-28-height-before-fixture.log": "cf98608e4a49f21063fd13ea2f9465064668e455435587b7913e36893bbbd5f0",
+    "main-sync-2026-10-28-height.log": "be38aae89717c96897720f46887c00ca8047b59176c1c138210af2e71b06a2f6",
+    "main-sync-2026-10-28-projection-before-api.log": "7b28e28d1e46387aff95dbbd05e85718bc1b9f418d5f20e672204aab6380f253",
+    "main-sync-2026-10-28-projection-build.log": "9370b9dca7bc290e663c7928afba30e676a197affc3be2e86b137091715184ba",
+    "main-sync-2026-10-28-projection-gpu.log": "bc6581d47361023555077905aaa08962063b55b955d6b4d7bc40b32fb7183f78",
+    "main-sync-2026-10-28-final-check.log": "f4f6811403af1dba7098a9c1a1544aec5f5ce0479b035c340b9d5e783a7ec9cc"
+  },
+  "final_check": "PASS: cargo check --offline -p tiny-glade --tests after the final test/merge API adjustments, 58.35s",
+  "final_git_state": {
+    "branch": "main",
+    "head_equals_origin_main": true,
+    "unmerged_paths": 0,
+    "local_changes": "retained as unstaged; not committed or pushed",
+    "backup_stash_retained": true
+  }
+}

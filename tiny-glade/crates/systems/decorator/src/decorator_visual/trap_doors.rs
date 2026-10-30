@@ -18,7 +18,8 @@
 //!
 //! 本轮原字节复核：flat-only、enclosure交点None才允许、动态cuboid完整尺寸
 //! (1.3,.5,1.3)，dataClone形成不同outer/sameinner Arc，真实entry/source/pose。
-//! 尚未完整恢复DormerHole与后续视觉载荷，不能据本source宣称完整视觉验收。
+//! 已恢复完整builder、颜色/透明标记及canonical DormerHole输出；非空World经
+//! fullvisual实体与碰撞回收测试通过，真实GPU场景验收由宿主另行完成。
 
 use bevy_ecs::prelude::*;
 use country_core::resources::roofs::roof_shape::Roof;
@@ -26,6 +27,8 @@ use country_core::resources::walls::cached_decorator_transforms::{
     CachedDecoratorTransform, CachedDecoratorTransforms,
 };
 use country_core::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
+use country_core::resources::walls::decorator_subtype::DerivedDecoratorInfoResources;
+#[cfg(test)]
 use country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes;
 use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::systems::collision::world::RaycastMeshData;
@@ -34,7 +37,7 @@ use std::sync::Arc;
 use utils::geometry::{Circle2d, Rectangle2d};
 
 use crate::blueprint::DecoratorBlueprints;
-use crate::decorator_visual_state::DecoratorTransientVisualState;
+
 use crate::utils::visual_entity_builder::WindowVisualEntityBuilder;
 
 /// 农舍活板门子类型（O：行 424）。
@@ -112,63 +115,58 @@ fn trap_door_enclosure_accepts(transform: &CachedDecoratorTransform, roof: &Roof
     }
 }
 
-/// B1407be730：恢复真实flat/边界门与动态collider；后续洞/视觉载荷仍待完整恢复。
+/// 原 B1407be730：按flat/enclosure门生成真实碰撞、描边、视觉builder和屋顶洞。
 pub fn generate_trap_doors(
+    derived_resources: DerivedDecoratorInfoResources,
     decorator_storage: Res<DecoratorStorage>,
     cached_transforms: Res<CachedDecoratorTransforms>,
     walls: Res<PublicWalls>,
     roofs: Query<&Roof>,
-    derived: Res<DerivedDecoratorSubtypes>,
     mut blueprints: ResMut<DecoratorBlueprints>,
-    mut transient: ResMut<DecoratorTransientVisualState>,
+    _signifiers: Res<country_core::systems::ui::signifiers::UiSignifierStream>,
 ) {
+    let derived = derived_resources.as_view();
     for (wall, decorators) in decorator_storage.iter_walls() {
-        let Some(roof_entity) = walls.roof_entity(wall) else {
-            continue;
-        };
-        let Ok(roof) = roofs.get(roof_entity) else {
-            continue;
-        };
-        // 原bec64是JE跳过，只处理flat；与其它老虎窗的相反门不能混用。
-        if !roof.is_flat() {
-            continue;
-        }
+        let Some(roof_entity) = walls.roof_entity(wall) else { continue; };
+        let Ok(roof) = roofs.get(roof_entity) else { continue; };
+        if !roof.is_flat() { continue; }
         for (id, info) in decorators.iter_modified() {
-            let subtype = derived.get(id).0;
-            let Some(geometry) = trap_door_geometry(subtype) else {
-                continue;
-            };
+            let subtype = derived.subtype(country_core::resources::walls::decorator::DecoratorId(id)).0;
+            let Some(geometry) = trap_door_geometry(subtype) else { continue; };
             let transform = cached_transforms.transform(id);
-            if !trap_door_enclosure_accepts(&transform, roof) {
-                continue;
-            }
-            // 原bef7d先取得真实entry，后续构造失败保留source/flags部分mutation。
-            let blueprint =
-                blueprints.insert_for(id, DecoratorStorageAddr::Wall(wall), info.state());
+            if !trap_door_enclosure_accepts(&transform, roof) { continue; }
+            // 原bef7d先取得真实entry；后续失败仍保留source/flags的已发生修改。
+            let blueprint = blueprints.insert_for(id, DecoratorStorageAddr::Wall(wall), info.state());
             let data = RaycastMeshData::new_cuboid_at(
-                Vec3::new(TRAP_DOOR_CUBOID_A, 0.5, TRAP_DOOR_CUBOID_A),
-                Vec3::ZERO,
+                Vec3::new(TRAP_DOOR_CUBOID_A, 0.5, TRAP_DOOR_CUBOID_A), Vec3::ZERO,
             );
-            // 原dataClone新建outer Arc，内部SharedShape仍同owner，不重建第二primitive。
-            let collision = Arc::new(data.clone());
-            let interaction = Arc::new(data);
-            blueprint.set_positioned_colliders(
-                collision,
-                interaction,
-                &transform.translation,
-                &transform.rotation,
-            );
+            blueprint.set_positioned_colliders(Arc::new(data.clone()), Arc::new(data),
+                &transform.translation, &transform.rotation);
             blueprint.set_cached_transform(transform);
-            // 下面保留旧视觉接口；零洞载荷/旧outline尚未接完整原业务，不能计作已恢复。
-            let _hole =
-                crate::utils::DormerHoleSsbo::cottage([0; 16], id, [0; 16], [0.0, 0.0], 0.0);
-            blueprint.set_outline((0.0, 0.0, 0.0));
-            let mut builder =
-                WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);
+            let mut builder = WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);
+            builder.scale = transform.scale;
             builder.mesh_name = geometry.mesh;
             builder.nani_name = geometry.nani;
-            let _ = &mut transient;
-            let _ = &builder;
+            // 原Info+28的999是未指定颜色哨兵，转真实ColorId0；不读独立map key。
+            builder.color_id = Some(country_core::resources::color_id::ColorId(
+                if info.u28 == 999 { 0 } else { info.u28 },
+            ));
+            builder.semi_transparent = info.state() != 0;
+            blueprint.visual_entities.push(builder);
+            let q = transform.rotation;
+            // 原旋转公式保留非单位四元数语义，不归一化，也不换成假定单位的叉积简式。
+            let length_sq = q.z * q.z + (q.y * q.y + q.x * q.x);
+            let dot = q.z * 1.0 + (q.y * 0.0 + q.x * 0.0);
+            let twice_dot = dot + dot;
+            let twice_w = q.w + q.w;
+            let forward_x = twice_w * (q.y * 1.0 - q.z * 0.0)
+                + (twice_dot * q.x + (q.w * q.w - length_sq) * 0.0);
+            let forward_z = twice_w * (q.x * 0.0 - q.y * 0.0)
+                + (twice_dot * q.z + (q.w * q.w - length_sq) * 1.0);
+            blueprint.dormer_holes.push(country_core::resources::walls::dormers::DormerHoleSsbo::cottage(
+                wall.0 as u32, transform.translation, Vec3::new(1.125, 0.375, 1.125),
+                [forward_x, forward_z],
+            ));
         }
     }
 }
@@ -266,7 +264,7 @@ mod canonical_trap_dynamic_tests {
             decorator_id: 41,
             ty: 0x38,
             rank: 2,
-            state: 1,
+            state: 0,
             u20: 2 << 16,
             ..Default::default()
         };
@@ -288,7 +286,8 @@ mod canonical_trap_dynamic_tests {
         cached.insert(41, transform);
         world.insert_resource(cached);
         world.insert_resource(DecoratorBlueprints::default());
-        world.insert_resource(DecoratorTransientVisualState::default());
+        world.init_resource::<country_core::resources::walls::decorator_subtype::DecoratorMeshLibrary>();
+        world.init_resource::<country_core::systems::ui::signifiers::UiSignifierStream>();
         // 不注册MeshLibrary：原trap只用动态primitive及真实ID owner。
         (world, entity, transform)
     }
@@ -303,7 +302,8 @@ mod canonical_trap_dynamic_tests {
             blueprint.storage_addr,
             Some(DecoratorStorageAddr::Wall(WallId(7)))
         );
-        assert_eq!(blueprint.interaction_source_flags, 1);
+        assert_eq!(blueprint.interaction_source_flags, 0);
+        assert_eq!(blueprint.u138, 0);
         assert_eq!(blueprint.transform, Some(transform));
         assert!(blueprint.colliders.is_empty());
         let BlueprintMeshSlot::Mesh(collision) = &blueprint.collision_mesh else {
@@ -348,7 +348,7 @@ mod canonical_trap_dynamic_tests {
             (
                 &maps.second[&id],
                 &interaction.mesh,
-                RaycastGeoSource::decorator_interaction(id, addr, 1),
+                RaycastGeoSource::decorator_interaction(id, addr, 0),
             ),
         ] {
             let registered =
@@ -426,4 +426,99 @@ mod canonical_trap_dynamic_tests {
             );
         }
     }
+    fn install_fullvisual(world: &mut World) {
+        world.init_resource::<crate::blueprint::PrevDecoratorBlueprints>();
+        world.init_resource::<crate::decorator_visual_state::DecoratorVisualState>();
+        world.init_resource::<country_core::resources::walls::wall_holes::WallHoles>();
+        world.init_resource::<country_core::systems::collision::world::RaycastWorld>();
+        world.init_resource::<country_core::resources::walls::decorator_collision::DecoratorPhysicsColliders>();
+        world.init_resource::<country_core::systems::collision::WindowAutoClutterCandidates>();
+        world.init_resource::<crate::decorator_visual::deco_differential_state::WallAttachedDecoTracker<crate::decorator_visual::chimney_assemble_bricks::ChimneyAssemblyParams>>();
+        world.init_resource::<crate::decorator_visual::deco_differential_state::WallAttachedDecoTracker<crate::decorator_visual::door_stairs_assemble_bricks::DoorStairsAssemblyParams>>();
+        world.insert_resource(country_core::asset_libraries::mesh_library::AssetMeshLibrary::new());
+        world.insert_resource(country_core::asset_libraries::shader_library::SharedAssetShaderLibrary(std::sync::Arc::new(country_core::asset_libraries::shader_library::AssetShaderLibrary::new())));
+        // CPU descriptor fixture，未创建真实GPU资源或验证画面。
+        world.insert_resource(country_core::asset_libraries::texture_library::AssetTextureLibrary::new(&country_core::render::test_device::TestDevice(0)));
+        world.init_resource::<Events<country_core::resources::walls::public_walls::OnWallDeleted>>();
+    }
+
+    #[test]
+    fn trap_builder_and_nonzero_hole_reach_actual_fullvisual_and_entity_reclamation() {
+        for (subtype, color) in [(5, 999), (10, 123)] {
+            let (mut world, _, transform) = fixture(roof(true, 0.0, 3.0), Vec3::new(0.0, 2.0, 0.0));
+            world.resource_mut::<DerivedDecoratorSubtypes>().insert(41, DecoratorSubtype(subtype));
+            world.resource_mut::<DecoratorStorage>().per_wall.get_mut(&WallId(7)).unwrap()
+                .get_mut(DecoratorId(41)).unwrap().u28 = color;
+            world.run_system_once(generate_trap_doors).unwrap();
+            let blueprint = world.resource::<DecoratorBlueprints>().get(41).unwrap();
+            assert!(blueprint.outline.is_none(), "不写未消费的legacy outline");
+            let builder = &blueprint.visual_entities[0];
+            assert_eq!(builder.mesh_name, trap_door_mesh(subtype).unwrap());
+            assert_eq!(builder.nani_name, TRAP_DOOR_NANI);
+            assert_eq!(builder.scale, transform.scale);
+            assert_eq!(builder.color_id, Some(country_core::resources::color_id::ColorId(if color == 999 { 0 } else { color })));
+            assert!(!builder.semi_transparent);
+            assert!(!builder.balcony_door, "nani类别不代表原条件组件标志");
+            let hole = blueprint.dormer_holes[0];
+            assert_eq!(hole.0[..8], [0.0f32.to_bits(), 2.0f32.to_bits(), 0.0f32.to_bits(), 7, 1.125f32.to_bits(), 0.375f32.to_bits(), 1.125f32.to_bits(), 0]);
+            assert_eq!(hole.0[10..], [1.0f32.to_bits(), (-50.0f32).to_bits()]);
+            assert!(f32::from_bits(hole.0[8]).abs() > 0.4);
+            let crate::blueprint::BlueprintMeshSlot::Mesh(collision) = &blueprint.collision_mesh else { panic!("真实collider"); };
+            let weak = Arc::downgrade(&collision.mesh);
+            install_fullvisual(&mut world);
+            world.run_system_once(crate::blueprint::instantiate_blueprints).unwrap();
+            let state = world.resource::<crate::decorator_visual_state::DecoratorVisualState>();
+            let entity = state.persistent_entities_of(41).unwrap()[0];
+            assert!(state.persistent.get(41).unwrap().is_sealed());
+            assert_eq!(world.get::<country_core::render::nani::systems::NaniInstanceDesc>(entity).unwrap().mesh,
+                country_core::render::nani::systems::NaniMeshSelector::Named(country_core::name_hash::NameHash::compute(trap_door_mesh(subtype).unwrap())));
+            assert!(world.get::<country_core::render::nani::gpu_world::InstanceDataMarker<country_core::render::nani::instance_data::BalconyDoorInstanceData>>(entity).is_some());
+            assert_eq!(world.get::<country_core::utils::components::transform::Transform>(entity).unwrap().scale, transform.scale);
+            assert_eq!(world.get::<country_core::resources::color_id::ColorId>(entity).unwrap().0, if color == 999 { 0 } else { color });
+            let mut previous = crate::blueprint::PrevDecoratorBlueprints::default();
+            world.resource::<DecoratorBlueprints>().copy_blueprints_to_prev(&mut previous);
+            world.insert_resource(previous);
+            // 同一蓝图下一帧不重复spawn，移除后真实fullvisual销毁原entity和两个collider。
+            world.run_system_once(crate::blueprint::instantiate_blueprints).unwrap();
+            assert_eq!(world.resource::<crate::decorator_visual_state::DecoratorVisualState>().persistent_entities_of(41), Some([entity].as_slice()));
+            world.resource_mut::<DecoratorBlueprints>().map.clear();
+            world.run_system_once(crate::blueprint::instantiate_blueprints).unwrap();
+            assert!(world.get_entity(entity).is_err());
+            assert!(world.resource::<DecoratorPhysicsColliders>().first.is_empty());
+            assert!(world.resource::<DecoratorPhysicsColliders>().second.is_empty());
+            *world.resource_mut::<crate::blueprint::PrevDecoratorBlueprints>() = Default::default();
+            assert!(weak.upgrade().is_none());
+        }
+    }
+
+    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reports/module-recovery-2026-10-23/m01-trap-forward-native-vectors.rs"));
+
+    #[test]
+    fn trap_hole_forward_matches_64_original_sse_vectors_including_nonunit_quaternions() {
+        for &(quaternion, forward) in TRAP_FORWARD_NATIVE {
+            let (mut world, _, mut transform) = fixture(roof(true, 0.0, 3.0), Vec3::ZERO);
+            transform.rotation = glam::Quat::from_array(quaternion.map(f32::from_bits));
+            world.resource_mut::<CachedDecoratorTransforms>().insert(41, transform);
+            world.run_system_once(generate_trap_doors).unwrap();
+            assert_eq!(world.resource::<DecoratorBlueprints>().get(41).unwrap().dormer_holes[0].0[8..10], forward, "原quat bits {quaternion:?}");
+        }
+    }
+
+    #[test]
+    fn trap_preview_keeps_real_visual_but_original_skip_byte_prevents_both_physics_upserts() {
+        let (mut world, _, _) = fixture(roof(true, 0.0, 3.0), Vec3::ZERO);
+        world.resource_mut::<DecoratorStorage>().per_wall.get_mut(&WallId(7)).unwrap().get_mut(DecoratorId(41)).unwrap().state = 1;
+        world.run_system_once(generate_trap_doors).unwrap();
+        let blueprint = world.resource::<DecoratorBlueprints>().get(41).unwrap();
+        assert_eq!(blueprint.u138, 1, "原insert第五参写Arc+138/data+128");
+        assert_eq!(blueprint.interaction_source_flags, 0, "不能把state混进Arc+139/data+129");
+        assert!(blueprint.visual_entities[0].semi_transparent);
+        install_fullvisual(&mut world);
+        world.run_system_once(crate::blueprint::instantiate_blueprints).unwrap();
+        assert!(world.resource::<DecoratorPhysicsColliders>().first.is_empty());
+        assert!(world.resource::<DecoratorPhysicsColliders>().second.is_empty());
+        let entity = world.resource::<crate::decorator_visual_state::DecoratorVisualState>().persistent_entities_of(41).unwrap()[0];
+        assert!(world.get::<country_core::components::SemiTransparent>(entity).is_some());
+    }
+
 }

@@ -1,0 +1,131 @@
+{
+  "program": "tiny-glade.exe",
+  "functions": {
+    "0x1408cdc60": {
+      "name": "raycast",
+      "size": 784,
+      "address": "1408cdc60",
+      "signature": "void __cdecl raycast(void)",
+      "entry_point": "1408cdc60",
+      "body_start": "1408cdc60",
+      "body_end": "1408cdf70",
+      "decompiled_code": "\nvoid __cdecl country_core::systems::collision::world::Rapier::raycast(void)\n\n{\n  undefined8 uVar1;\n  uint uVar2;\n  undefined8 uVar3;\n  undefined8 uVar4;\n  uint uVar5;\n  ulonglong *extraout_RAX;\n  longlong in_RCX;\n  uint uVar6;\n  ulonglong in_RDX;\n  ulonglong uVar7;\n  longlong lVar8;\n  uint uVar9;\n  undefined8 *in_R8;\n  longlong lVar10;\n  int iVar11;\n  uint uVar12;\n  undefined4 in_stack_00000028;\n  uint in_stack_00000038;\n  undefined8 local_138;\n  undefined4 local_130;\n  undefined1 local_128 [16];\n  undefined1 *local_118;\n  undefined *local_110;\n  undefined8 local_108;\n  ulonglong local_fc;\n  undefined4 local_f4;\n  undefined4 local_ec;\n  longlong local_e0;\n  undefined1 local_d0 [8];\n  longlong local_c8;\n  undefined1 *local_c0;\n  uint local_b8;\n  uint local_b4;\n  int local_b0;\n  undefined4 uStack_ac;\n  undefined8 local_a4;\n  undefined4 local_9c;\n  undefined8 local_98;\n  undefined8 uStack_90;\n  undefined8 local_88;\n  \n  uVar3 = *in_R8;\n  uVar4 = in_R8[1];\n  uVar1 = in_R8[2];\n  iVar11 = 4;\n  lVar8 = 0x20;\n  uVar12 = 0;\n  uVar7 = in_RDX;\n  do {\n    local_118 = local_d0;\n    uVar5 = uVar12;\n    do {\n      uVar9 = (uint)in_R8;\n      uVar6 = (uint)uVar7;\n      if (lVar8 == 0x3cb0) {\n        local_118 = (undefined1 *)local_e0;\n        local_110 = (undefined *)CONCAT44(uVar9,uVar6);\n        local_108 = CONCAT44(in_stack_00000028,iVar11);\n        local_fc = local_138;\n        local_f4 = local_130;\n        if (iVar11 == 4) {\n          *(undefined4 *)(in_RCX + 0x34) = 2;\n        }\n        else {\n          rapier3d::geometry::collider_set::ColliderSet::get_mut_internal();\n          if (extraout_RAX == (ulonglong *)0x0) {\n                    // WARNING: Subroutine does not return\n            core::option::unwrap_failed();\n          }\n          uVar7 = *extraout_RAX & 0xffffffff;\n          if (((*(ulonglong *)(in_RDX + 0x10) <= uVar7) || (*(longlong *)(in_RDX + 8) == 0)) ||\n             (*(uint *)(*(longlong *)(in_RDX + 8) + 0x20 + uVar7 * 0x28) !=\n              ((uint)(*extraout_RAX >> 0x20) | 1))) {\n                    // WARNING: Subroutine does not return\n            std::panicking::begin_panic<ref_<str_>_>();\n          }\n          rapier_hit_to_raycast_world_result();\n        }\n        return;\n      }\n      lVar8 = lVar8 + 0x390;\n      uVar12 = uVar5 + 1;\n      uVar2 = uVar5 & 0x1f;\n      uVar5 = uVar12;\n    } while ((in_stack_00000038 >> uVar2 & 1) == 0);\n    lVar10 = in_RDX + lVar8 + -0x390;\n    local_110 = &DAT_142aa3858;\n    local_108 = 0;\n    local_fc = local_fc & 0xffffffff;\n    local_ec = 0;\n    local_c8 = lVar10;\n    local_c0 = local_128;\n    local_98 = uVar3;\n    uStack_90 = uVar4;\n    local_88 = uVar1;\n    rapier3d::pipeline::query_pipeline::QueryPipeline::cast_ray_and_get_normal();\n    if (local_b0 != 4) {\n      local_138 = local_a4;\n      local_130 = local_9c;\n      uVar6 = local_b8;\n      uVar9 = local_b4;\n      local_e0 = lVar10;\n      in_stack_00000028 = uStack_ac;\n      iVar11 = local_b0;\n    }\n    in_R8 = (undefined8 *)(ulonglong)uVar9;\n    uVar7 = (ulonglong)uVar6;\n  } while( true );\n}\n\n",
+      "callee_count": 5,
+      "callees": [
+        {
+          "name": "begin_panic<ref$<str$>_>",
+          "address": "1428d8725"
+        },
+        {
+          "name": "cast_ray_and_get_normal",
+          "address": "140b945d0"
+        },
+        {
+          "name": "get_mut_internal",
+          "address": "140b93940"
+        },
+        {
+          "name": "rapier_hit_to_raycast_world_result",
+          "address": "1408ce4a0"
+        },
+        {
+          "name": "unwrap_failed",
+          "address": "1428d9310"
+        }
+      ],
+      "revision": {
+        "token": "1791719479858:445f58e8:3",
+        "epoch": "445f58e8",
+        "modification_number": 3,
+        "saved_time": 1791719479858,
+        "unsaved_changes": false,
+        "decompiled": true
+      }
+    },
+    "0x1408ce4a0": {
+      "name": "rapier_hit_to_raycast_world_result",
+      "size": 1397,
+      "address": "1408ce4a0",
+      "signature": "void __cdecl rapier_hit_to_raycast_world_result(void)",
+      "entry_point": "1408ce4a0",
+      "body_start": "1408ce4a0",
+      "body_end": "1408cea14",
+      "decompiled_code": "\nvoid __cdecl country_core::systems::collision::world::rapier_hit_to_raycast_world_result(void)\n\n{\n  float fVar1;\n  float fVar2;\n  int iVar3;\n  undefined8 uVar4;\n  undefined8 uVar5;\n  undefined8 uVar6;\n  longlong lVar7;\n  ulonglong uVar8;\n  longlong lVar9;\n  undefined4 uVar10;\n  ulonglong uVar11;\n  undefined8 *in_RCX;\n  undefined8 *in_RDX;\n  ulonglong uVar12;\n  int *in_R8;\n  float *in_R9;\n  ulonglong uVar13;\n  float fVar14;\n  float fVar15;\n  float fVar16;\n  float fVar17;\n  float fVar18;\n  float fVar19;\n  float fVar20;\n  float fVar21;\n  float fVar22;\n  float fVar23;\n  float fVar24;\n  float fVar25;\n  float fVar26;\n  float fVar27;\n  undefined8 *in_stack_00000028;\n  float local_f4;\n  undefined8 local_f0;\n  \n  fVar1 = (float)in_R8[2];\n  fVar23 = *(float *)((longlong)in_RDX + 0x14) * fVar1 + *(float *)(in_RDX + 1);\n  fVar21 = fVar1 * (float)*(undefined8 *)((longlong)in_RDX + 0xc) + (float)*in_RDX;\n  fVar22 = fVar1 * (float)((ulonglong)*(undefined8 *)((longlong)in_RDX + 0xc) >> 0x20) +\n           (float)((ulonglong)*in_RDX >> 0x20);\n  lVar7 = in_stack_00000028[3];\n  uVar8 = *(ulonglong *)(lVar7 + 0x28);\n  if (uVar8 == 0) {\n    iVar3 = in_R8[5];\n    *(undefined8 *)((longlong)in_RCX + 0x24) = *(undefined8 *)(in_R8 + 3);\n    *(int *)((longlong)in_RCX + 0x2c) = iVar3;\n    uVar4 = in_stack_00000028[1];\n    *in_RCX = *in_stack_00000028;\n    in_RCX[1] = uVar4;\n    in_RCX[2] = in_stack_00000028[2];\n    in_RCX[3] = CONCAT44(fVar22,fVar21);\n    *(float *)(in_RCX + 4) = fVar23;\n    *(float *)(in_RCX + 6) = fVar1;\n    *(undefined4 *)((longlong)in_RCX + 0x34) = 0;\n    return;\n  }\n  if (*in_R8 != 2) {\n    *(undefined4 *)((longlong)in_RCX + 0x34) = 2;\n    return;\n  }\n  uVar11 = 0;\n  if (uVar8 <= (uint)in_R8[1]) {\n    uVar11 = uVar8;\n  }\n  uVar11 = (uint)in_R8[1] - uVar11;\n  if (uVar8 <= uVar11) {\n                    // WARNING: Subroutine does not return\n    core::panicking::panic_bounds_check();\n  }\n  lVar9 = *(longlong *)(lVar7 + 0x20);\n  uVar12 = (ulonglong)*(uint *)(lVar9 + uVar11 * 0xc);\n  uVar13 = (ulonglong)*(uint *)(lVar9 + 4 + uVar11 * 0xc);\n  uVar11 = (ulonglong)*(uint *)(lVar9 + 8 + uVar11 * 0xc);\n  fVar15 = in_R9[3];\n  fVar2 = *in_R9;\n  fVar24 = (float)*(undefined8 *)(in_R9 + 1);\n  fVar25 = (float)((ulonglong)*(undefined8 *)(in_R9 + 1) >> 0x20);\n  uVar8 = *(ulonglong *)(lVar7 + 0x18);\n  if (uVar8 <= uVar12) {\n                    // WARNING: Subroutine does not return\n    core::panicking::panic_bounds_check();\n  }\n  if (uVar13 < uVar8) {\n    if (uVar8 <= uVar11) {\n                    // WARNING: Subroutine does not return\n      core::panicking::panic_bounds_check();\n    }\n    ::utils::geometry::barycentric::barycentric();\n    lVar9 = *(longlong *)(lVar7 + 0x40);\n    fVar16 = (float)local_f0;\n    fVar14 = (float)((ulonglong)local_f0 >> 0x20);\n    if (lVar9 == 0) {\n      fVar19 = (float)*(undefined8 *)(in_R8 + 3);\n      fVar20 = (float)((ulonglong)*(undefined8 *)(in_R8 + 3) >> 0x20);\n      fVar18 = (float)in_R8[5];\n      lVar9 = *(longlong *)(lVar7 + 0x50);\n    }\n    else {\n      uVar8 = *(ulonglong *)(lVar7 + 0x48);\n      if (uVar8 <= uVar12) {\n                    // WARNING: Subroutine does not return\n        core::panicking::panic_bounds_check();\n      }\n      if (uVar8 <= uVar13) {\n                    // WARNING: Subroutine does not return\n        core::panicking::panic_bounds_check();\n      }\n      if (uVar8 <= uVar11) {\n                    // WARNING: Subroutine does not return\n        core::panicking::panic_bounds_check();\n      }\n      uVar4 = *(undefined8 *)(lVar9 + uVar12 * 0xc);\n      fVar18 = fVar14 * *(float *)(lVar9 + 8 + uVar11 * 0xc) +\n               *(float *)(lVar9 + 8 + uVar12 * 0xc) * local_f4 +\n               fVar16 * *(float *)(lVar9 + 8 + uVar13 * 0xc);\n      uVar5 = *(undefined8 *)(lVar9 + uVar13 * 0xc);\n      uVar6 = *(undefined8 *)(lVar9 + uVar11 * 0xc);\n      fVar19 = (float)uVar6 * fVar14 + (float)uVar5 * fVar16 + local_f4 * (float)uVar4;\n      fVar20 = (float)((ulonglong)uVar6 >> 0x20) * fVar14 +\n               (float)((ulonglong)uVar5 >> 0x20) * fVar16 +\n               local_f4 * (float)((ulonglong)uVar4 >> 0x20);\n      fVar26 = fVar18 * fVar24 - fVar20 * fVar25;\n      fVar27 = fVar19 * fVar25 - fVar18 * fVar2;\n      fVar17 = fVar20 * fVar2 - fVar24 * fVar19;\n      fVar26 = fVar26 + fVar26;\n      fVar27 = fVar27 + fVar27;\n      fVar17 = fVar17 + fVar17;\n      fVar19 = fVar15 * fVar26 + (fVar17 * fVar24 - fVar27 * fVar25) + fVar19;\n      fVar20 = fVar15 * fVar27 + (fVar26 * fVar25 - fVar17 * fVar2) + fVar20;\n      fVar18 = (fVar27 * fVar2 - fVar24 * fVar26) + fVar15 * fVar17 + fVar18;\n      lVar9 = *(longlong *)(lVar7 + 0x50);\n    }\n    if (lVar9 == 0) {\n      uVar10 = 0;\n      fVar15 = fVar14;\n    }\n    else {\n      uVar8 = *(ulonglong *)(lVar7 + 0x58);\n      if (uVar8 <= uVar12) {\n                    // WARNING: Subroutine does not return\n        core::panicking::panic_bounds_check();\n      }\n      if (uVar8 <= uVar13) {\n                    // WARNING: Subroutine does not return\n        core::panicking::panic_bounds_check();\n      }\n      if (uVar8 <= uVar11) {\n                    // WARNING: Subroutine does not return\n        core::panicking::panic_bounds_check();\n      }\n      uVar4 = *(undefined8 *)(lVar9 + uVar12 * 8);\n      uVar5 = *(undefined8 *)(lVar9 + uVar13 * 8);\n      uVar6 = *(undefined8 *)(lVar9 + uVar11 * 8);\n      fVar15 = fVar14 * (float)((ulonglong)uVar6 >> 0x20);\n      fVar14 = fVar14 * (float)uVar6 + fVar16 * (float)uVar5 + local_f4 * (float)uVar4;\n      uVar10 = 1;\n      fVar15 = fVar15 + fVar16 * (float)((ulonglong)uVar5 >> 0x20) +\n                        local_f4 * (float)((ulonglong)uVar4 >> 0x20);\n    }\n    *(ulonglong *)((longlong)in_RCX + 0x24) = CONCAT44(fVar20,fVar19);\n    *(float *)((longlong)in_RCX + 0x2c) = fVar18;\n    uVar4 = in_stack_00000028[1];\n    *in_RCX = *in_stack_00000028;\n    in_RCX[1] = uVar4;\n    in_RCX[2] = in_stack_00000028[2];\n    in_RCX[3] = CONCAT44(fVar22,fVar21);\n    *(float *)(in_RCX + 4) = fVar23;\n    *(float *)(in_RCX + 6) = fVar1;\n    *(undefined4 *)((longlong)in_RCX + 0x34) = uVar10;\n    in_RCX[7] = CONCAT44(fVar15,fVar14);\n    return;\n  }\n                    // WARNING: Subroutine does not return\n  core::panicking::panic_bounds_check();\n}\n\n",
+      "callee_count": 2,
+      "callees": [
+        {
+          "name": "barycentric",
+          "address": "1416c2f20"
+        },
+        {
+          "name": "panic_bounds_check",
+          "address": "1428d9518"
+        }
+      ],
+      "revision": {
+        "token": "1791719479858:445f58e8:3",
+        "epoch": "445f58e8",
+        "modification_number": 3,
+        "saved_time": 1791719479858,
+        "unsaved_changes": false,
+        "decompiled": true
+      }
+    },
+    "0x1408cc870": {
+      "name": "raycast",
+      "size": 39,
+      "address": "1408cc870",
+      "signature": "void __cdecl raycast(void)",
+      "entry_point": "1408cc870",
+      "body_start": "1408cc870",
+      "body_end": "1408cc896",
+      "decompiled_code": "\nvoid __cdecl country_core::systems::collision::world::RaycastWorld::raycast(void)\n\n{\n  Rapier::raycast();\n  return;\n}\n\n",
+      "callee_count": 1,
+      "callees": [
+        {
+          "name": "raycast",
+          "address": "1408cdc60"
+        }
+      ],
+      "revision": {
+        "token": "1791719479858:445f58e8:3",
+        "epoch": "445f58e8",
+        "modification_number": 3,
+        "saved_time": 1791719479858,
+        "unsaved_changes": false,
+        "decompiled": true
+      }
+    },
+    "0x1408cd430": {
+      "name": "raycast_w_terrain",
+      "size": 383,
+      "address": "1408cd430",
+      "signature": "void __cdecl raycast_w_terrain(void)",
+      "entry_point": "1408cd430",
+      "body_start": "1408cd430",
+      "body_end": "1408cd5ae",
+      "decompiled_code": "\nvoid __cdecl country_core::systems::collision::world::RaycastWorld::raycast_w_terrain(void)\n\n{\n  undefined8 *in_RCX;\n  uint in_stack_00000030;\n  byte local_7c;\n  undefined4 local_78;\n  undefined8 local_74;\n  undefined4 local_6c;\n  uint local_68;\n  undefined4 uStack_64;\n  undefined8 uStack_60;\n  undefined4 local_58;\n  undefined4 uStack_54;\n  undefined8 uStack_50;\n  undefined8 local_48;\n  undefined8 uStack_40;\n  undefined4 local_38;\n  int local_34;\n  undefined4 uStack_30;\n  undefined4 local_2c;\n  \n  if ((in_stack_00000030 & 0x20) == 0) {\n    Rapier::raycast();\n  }\n  else {\n    Rapier::raycast();\n    if (local_34 == 2) {\n      resources::terrain_height::TerrainHeightsData::\n      intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>();\n      if ((local_68 & 1) == 0) {\n        *(undefined4 *)((longlong)in_RCX + 0x34) = 2;\n      }\n      else {\n        *(undefined4 *)(in_RCX + 4) = local_58;\n        in_RCX[3] = uStack_60;\n        *(undefined1 *)in_RCX = 0xb;\n        *(undefined8 *)((longlong)in_RCX + 0x24) = 0x3f80000000000000;\n        *(undefined4 *)((longlong)in_RCX + 0x2c) = 0;\n        *(undefined4 *)(in_RCX + 6) = uStack_64;\n        *(undefined4 *)((longlong)in_RCX + 0x34) = 0;\n      }\n    }\n    else {\n      resources::terrain_height::TerrainHeightsData::\n      intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>();\n      if ((local_7c & 1) == 0) {\n        in_RCX[4] = local_48;\n        in_RCX[5] = uStack_40;\n        in_RCX[2] = CONCAT44(uStack_54,local_58);\n        in_RCX[3] = uStack_50;\n        *in_RCX = CONCAT44(uStack_64,local_68);\n        in_RCX[1] = uStack_60;\n        *(ulonglong *)((longlong)in_RCX + 0x34) = CONCAT44(uStack_30,local_34);\n        *(undefined4 *)((longlong)in_RCX + 0x3c) = local_2c;\n        *(undefined4 *)(in_RCX + 6) = local_38;\n      }\n      else {\n        *(undefined4 *)(in_RCX + 4) = local_6c;\n        in_RCX[3] = local_74;\n        *(undefined1 *)in_RCX = 0xb;\n        *(undefined8 *)((longlong)in_RCX + 0x24) = 0x3f80000000000000;\n        *(undefined4 *)((longlong)in_RCX + 0x2c) = 0;\n        *(undefined4 *)((longlong)in_RCX + 0x34) = 0;\n        *(undefined4 *)(in_RCX + 6) = local_78;\n      }\n    }\n  }\n  return;\n}\n\n",
+      "callee_count": 2,
+      "callees": [
+        {
+          "name": "intersect_ray<country_core::resources::terrain_height::TerrainHeightSsbo>",
+          "address": "1409e9a20"
+        },
+        {
+          "name": "raycast",
+          "address": "1408cdc60"
+        }
+      ],
+      "revision": {
+        "token": "1791719479858:445f58e8:3",
+        "epoch": "445f58e8",
+        "modification_number": 3,
+        "saved_time": 1791719479858,
+        "unsaved_changes": false,
+        "decompiled": true
+      }
+    }
+  },
+  "count": 4,
+  "requested": 4
+}

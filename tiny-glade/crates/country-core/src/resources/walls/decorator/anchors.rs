@@ -219,6 +219,17 @@ pub fn move_wall_decorator_following_anchor(
     if attachment.anchor.is_bottom_door {
         return Err(DecoratorAnchorError::BottomDoorConsumerRequired);
     }
+    move_wall_decorator_following_anchor_base(info, context)
+}
+/// 原14081d202..14081d2e5的公共前段，门底也必须先提交该段，再做原profile尾段。
+/// 旧独立helper保留门底guard；完整ECS消费者通过此入口执行真实原顺序。
+pub fn move_wall_decorator_following_anchor_base(
+    info: &DecoratorInfoObserved,
+    context: &DecoratorAnchorContext<'_>,
+) -> Result<DecoratorInfoObserved, DecoratorAnchorError> {
+    let attachment = info
+        .try_dst_as_wall()
+        .ok_or(DecoratorAnchorError::NonWallDestination(info.destination_tag()))?;
     let height = wall_attachment_height(context, attachment.coordinate[0])?;
     let raw = context.raw_curve;
     let (i, t) = crate::systems::wall::wall_state::pending_changed::approximate_curve_coordinate(

@@ -135,14 +135,8 @@ impl PathRastersResources<'_> {
 #[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default)]
 pub struct SetSizeBasedOnAppModePath;
 
-/// 路径笔刷预览圆事件（O：`ShowPinnedDecoClutter` 的 circle/height 特化，56 B 复合
-/// 事件槽；与 garden 的 `GardenPinnedClutterCircle` 同族，draw_garden 注释已说明该
-/// 56 B union 的渲染器未恢复）。
-#[derive(bevy_ecs::event::Event, Clone, Copy, Debug)]
-pub struct PathPinnedClutterCircle {
-    pub circle: utils::geometry::Circle2d,
-    pub height: f32,
-}
+/// 旧路径公开名称直接重导出唯一ShowPinned事件，不再创建独立替身队列。
+pub use crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter as PathPinnedClutterCircle;
 
 /// `path_brush_preview_size` 0x140b01f?（系统名；PDB 0x140b1c010）。
 ///
@@ -354,14 +348,13 @@ pub mod draw_path {
                     return;
                 }
                 if draw {
-                    pins.write(PathPinnedClutterCircle {
-                        circle: Circle2d::new(center, radius),
-                        height: if cursor.tag & 1 != 0 {
+                    pins.write(PathPinnedClutterCircle::brush_circle(
+                        Circle2d::new(center, radius), if cursor.tag & 1 != 0 {
                             position.y + PIN_HEIGHT_OFFSET
                         } else {
                             PIN_HEIGHT_OFFSET
                         },
-                    });
+                    ));
                 }
                 command = 2;
             } else {
@@ -754,6 +747,11 @@ mod world_raster_tests {
         schedule.run(&mut world); // Extend（discriminant 2）：draw + pin 事件。
         assert_eq!(world.resource::<Events<PathDrawEvent>>().len(), 1);
         assert_eq!(world.resource::<Events<PathPinnedClutterCircle>>().len(), 1);
+        let pins = world.resource::<Events<crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>>();
+        let mut reader = pins.get_cursor();
+        assert!(matches!(reader.read(pins).last(), Some(
+            PathPinnedClutterCircle::Circle { vertical: [0.0, 1.5], containment: true, exclude_wall: None, .. }
+        )));
         assert!(world
             .resource::<PathRaster>()
             .scratch()

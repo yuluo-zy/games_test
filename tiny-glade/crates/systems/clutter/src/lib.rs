@@ -189,18 +189,10 @@ impl Plugin for ClutterPlugin {
 /// 由 core/宿主提供，此处不创建。
 pub fn init_adapter_resources(world: &mut World) {
     world.init_resource::<autoclutter::populate_autoclutter_regions::MeshGroupWeights>();
-    world.init_resource::<autoclutter::add_lantern_water_setdresssing::LanternRng>();
-    world.init_resource::<autoclutter::add_tree_vegetation_setdressing::TreeRng>();
     world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonRng>();
     world.init_resource::<inter_shape_stitches::stitch_bricks::StitchRng>();
     world.init_resource::<autoclutter::LazyGridClutterCell>();
-    world.init_resource::<autoclutter::add_lantern_water_setdresssing::TerrainDecoratorPositions>();
-    world.init_resource::<autoclutter::add_lantern_water_setdresssing::IsStarted>();
-    world.init_resource::<autoclutter::add_tree_vegetation_setdressing::TreePositions>();
-    world.init_resource::<autoclutter::add_tree_vegetation_setdressing::IsDragging>();
-    world.init_resource::<autoclutter::add_tree_vegetation_setdressing::IsCorrupted>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::DirtyTilesResource>();
-    world.init_resource::<autoclutter::populate_autoclutter_regions::RockMaskData>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::SessionMeta>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::PopulateLocal>();
     world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonBricks>();
@@ -220,12 +212,12 @@ pub fn init_adapter_resources(world: &mut World) {
 /// preplaced 链按 `.chain()` 组合。
 pub fn configure(world: &mut World, schedule: &mut Schedule) {
     world.init_resource::<autoclutter::AutoClutterState>();
+    world.init_resource::<country_core::systems::ui_clutter::DeletedAutoClutter>();
     world.init_resource::<country_core::systems::collision::WindowAutoClutterCandidates>();
+    world.init_resource::<country_core::systems::collision::BirdNestCandidateLocations>();
     world.init_resource::<Events<country_core::systems::audio::PlayClutterSoundCmd>>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::MeshGroupWeights>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::AutoClutterDirtySubscriptions>();
-    world.init_resource::<autoclutter::add_lantern_water_setdresssing::LanternRng>();
-    world.init_resource::<autoclutter::add_tree_vegetation_setdressing::TreeRng>();
     world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonRng>();
     world.init_resource::<inter_shape_stitches::stitch_bricks::StitchRng>();
     world.init_resource::<autoclutter::LazyGridClutterCell>();
@@ -234,13 +226,7 @@ pub fn configure(world: &mut World, schedule: &mut Schedule) {
     // The SSBO library is the actual readback owner; init preserves host data.
     world.init_resource::<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>();
     world.init_resource::<autoclutter::read_bush_positions_from_gpu::BushGrid>();
-    world.init_resource::<autoclutter::add_lantern_water_setdresssing::TerrainDecoratorPositions>();
-    world.init_resource::<autoclutter::add_lantern_water_setdresssing::IsStarted>();
-    world.init_resource::<autoclutter::add_tree_vegetation_setdressing::TreePositions>();
-    world.init_resource::<autoclutter::add_tree_vegetation_setdressing::IsDragging>();
-    world.init_resource::<autoclutter::add_tree_vegetation_setdressing::IsCorrupted>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::DirtyTilesResource>();
-    world.init_resource::<autoclutter::populate_autoclutter_regions::RockMaskData>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::SessionMeta>();
     world.init_resource::<autoclutter::populate_autoclutter_regions::PopulateLocal>();
     world.init_resource::<inter_roof_merlons::construct_inter_roof_merlons::MerlonBricks>();

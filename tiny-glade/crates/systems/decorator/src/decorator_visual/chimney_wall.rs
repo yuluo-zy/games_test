@@ -1,6 +1,6 @@
 //! 原B1407c21b0/12159B：两种墙烟囱的真实动态碰撞producer。
 //! 19复用实际墙/路径/高度/邻居数据组成有序box，20变换真实vent_pipe_collision资产。
-//! 此处只闭合碰撞/source/entry链；烟雾与视觉装配参数的既有缺口仍未全部恢复。
+//! 同时写真实烟雾builder和40B砖装配参数，复用原差分/稀疏缓冲消费者。
 
 use bevy_ecs::prelude::*;
 use ::utils::scalar::max_f32;
@@ -26,6 +26,9 @@ use utils::{
     geometry::intersect::Triangle,
     wall_space::WallSpace,
 };
+use crate::decorator_visual::chimney_assemble_bricks::ChimneyAssemblyParams;
+use crate::utils::visual_entity_builder::WindowVisualEntityBuilder;
+use country_core::systems::ui::signifiers::UiSignifierStream;
 
 pub const WALL_CHIMNEY_SUBTYPE_LOW: u8 = 0x13;
 pub const WALL_CHIMNEY_SUBTYPE_HIGH: u8 = 0x14;
@@ -37,17 +40,24 @@ pub fn is_wall_chimney_subtype(subtype: u8) -> bool {
 }
 
 pub fn generate_wall_chimneys(
+    derived: DerivedDecoratorInfoResources,
     decorator_storage: Res<DecoratorStorage>,
     cached_transforms: Res<CachedDecoratorTransforms>,
     walls: Res<PublicWalls>,
-    derived: DerivedDecoratorInfoResources,
-    assets: Res<AssetMeshLibrary>,
     mut blueprints: ResMut<crate::blueprint::DecoratorBlueprints>,
-    _transient: ResMut<crate::decorator_visual_state::DecoratorTransientVisualState>,
+    assets: Res<AssetMeshLibrary>,
+    _signifiers: Res<UiSignifierStream>,
 ) {
     let derived = derived.as_view();
-    for (wall_id, decorators) in decorator_storage.iter() {
-        for (id, info) in decorators.iter_modified() {
+    // 原全存储遍历不是当前仅墙的iter兼容接口；vent分支不要求Wall地址。
+    let buckets = decorator_storage.per_wall.iter()
+        .map(|(&wall, bucket)| (DecoratorStorageAddr::Wall(wall), bucket))
+        .chain(decorator_storage.terrain.iter().map(|bucket| (DecoratorStorageAddr::Terrain, bucket)))
+        .chain(decorator_storage.stairs.iter().map(|bucket| (DecoratorStorageAddr::Stair, bucket)));
+    for (addr, decorators) in buckets {
+        for &id in &decorators.modified_ids {
+            let info = decorators.get(DecoratorId(id))
+                .expect("modified wall chimney is missing from its storage");
             let subtype = derived.subtype(DecoratorId(id)).0;
             if !is_wall_chimney_subtype(subtype) {
                 continue;
@@ -55,16 +65,57 @@ pub fn generate_wall_chimneys(
             let cached = cached_transforms.transform(id);
             // 原2a19先取得唯一entry，再消费extra和动态几何的required输入。
             let blueprint =
-                blueprints.insert_for(id, DecoratorStorageAddr::Wall(wall_id), info.state());
+                blueprints.insert_for(id, addr, info.state());
             let extra = info.extra().as_chimney();
             blueprint.set_cached_transform(cached);
             let triangles = if subtype == WALL_CHIMNEY_SUBTYPE_LOW {
                 let wall = walls
-                    .get(wall_id)
+                    .get(addr.as_wall())
                     .expect("wall chimney requires its public wall");
-                wall_chimney_triangles(id, info, extra.f, &cached, wall, decorators, &derived)
+                let geometry = wall_chimney_geometry(id, info, extra.f, &cached, wall,
+                    decorators, &derived);
+                // 原3b7b再次读缓存；烟顶仅取1/3偏移，不能误用碰撞主体的.15。
+                let smoke_transform = cached_transforms.transform(id);
+                let smoke_position = Vec3::new(smoke_transform.translation.x,
+                    geometry.height + smoke_transform.translation.y,
+                    smoke_transform.translation.z)
+                    + smoke_transform.rotation * Vec3::new(0.0, 0.0, 1.0 / 3.0);
+                let mut smoke = WindowVisualEntityBuilder::new(smoke_position,
+                    smoke_transform.rotation, id);
+                smoke.nani_name = CHIMNEY_NANI_SMOKE;
+                smoke.smoke = Some((0, extra.smoke));
+                smoke.semi_transparent = info.state() != 0;
+                blueprint.visual_entities.push(smoke);
+                let half = geometry.height * 0.5;
+                let base = geometry.body.translation.y - half;
+                let axis = cached.rotation * Vec3::X;
+                blueprint.chimney_assembly = Some(Box::new(ChimneyAssemblyParams { words: [
+                    u32::from(!geometry.lower_valid), geometry.lower_height.to_bits(),
+                    geometry.body.translation.x.to_bits(), geometry.body.translation.z.to_bits(),
+                    base.to_bits(), (half + geometry.body.translation.y).to_bits(),
+                    axis.x.to_bits(), axis.z.to_bits(), info.u28,
+                    (geometry.height_without_extra + base).to_bits(),
+                ] }));
+                geometry.triangles
             } else {
-                vent_pipe_triangles(&cached, &assets)
+                // 原先发布vent本体builder，资产缺失panic仍保留该已有副作用。
+                let position = cached.translation
+                    + cached.rotation * Vec3::new(0.0, 0.0, 0.28);
+                let mut vent = WindowVisualEntityBuilder::new(position, cached.rotation, id);
+                vent.mesh_name = "decorators/vent_pipe";
+                vent.nani_name = "nani_solid_vertex_color";
+                vent.scale = cached.scale;
+                vent.semi_transparent = info.state() != 0;
+                blueprint.visual_entities.push(vent);
+                let triangles = vent_pipe_triangles(&cached, &assets);
+                let mut smoke = WindowVisualEntityBuilder::new(position
+                    + cached.rotation * Vec3::new(-0.07, 1.42, 0.58), cached.rotation, id);
+                smoke.nani_name = CHIMNEY_NANI_SMOKE;
+                smoke.scale = Vec3::splat(0.5);
+                smoke.smoke = Some((1, extra.smoke));
+                smoke.semi_transparent = info.state() != 0;
+                blueprint.visual_entities.push(smoke);
+                triangles
             };
             // 原4017..416b按面展开，不weld顶点；normals/UV均为None。
             let vertices: Vec<_> = triangles
@@ -87,8 +138,6 @@ pub fn generate_wall_chimneys(
                 &Vec3::ZERO,
                 &Quat::IDENTITY,
             );
-            // 现有烟囱视觉参数接口保留；其完整原boxed装配载荷另有未恢复部分。
-            blueprint.add_chimney(extra.f);
         }
     }
 }
@@ -142,7 +191,7 @@ fn nearest_coord(points: &[[f32; 3]], position: Vec3) -> CurveInternalCoord {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn wall_chimney_triangles(
+fn wall_chimney_geometry(
     id: u32,
     info: &DecoratorInfo,
     extra_height: f32,
@@ -150,14 +199,15 @@ fn wall_chimney_triangles(
     wall: &PublicWallState,
     decorators: &Decorators,
     derived: &DerivedDecoratorInfoView<'_>,
-) -> Vec<Triangle> {
+) -> WallChimneyGeometry {
     let max_y = wall.max_y();
     let dst = info.dst_as_wall().wall_space_coord();
     let original_points = wall.geometry.outline.as_slice();
     let coord = coord_at_distance(original_points, max_f32(dst.u, 0.0));
     let ground_y = (1.0 - coord.t) * original_points[coord.segment][1]
         + coord.t * original_points[coord.segment + 1][1];
-    let height = extra_height + (max_f32(max_y - dst.y, 0.0) + 3.0);
+    let height_without_extra = max_f32(max_y - dst.y, 0.0) + 3.0;
+    let height = extra_height + height_without_extra;
     let first_offset = cached.rotation * Vec3::new(0.0, 0.0, f32::from_bits(0x3eaaaaab));
     let second_offset = cached.rotation * Vec3::new(0.0, 0.0, f32::from_bits(0x3e19999a));
     let position = Vec3::new(
@@ -173,6 +223,7 @@ fn wall_chimney_triangles(
     };
     let mut triangles = Vec::with_capacity(24);
     let mut lower_valid = false;
+    let mut lower_height = 0.0;
     let relative_height_blocks = wall.authority.elevation() > 0.0
         && scalar_at(
             &wall.geometry.relative_heights,
@@ -181,7 +232,7 @@ fn wall_chimney_triangles(
     let difference = dst.y - ground_y;
     // 原2dee有序<5；NaN和>=5都不进入lower候选，不能写成 !(difference>=5)。
     if !relative_height_blocks && difference < 5.0 {
-        let lower_height = max_f32(difference, 1.5);
+        lower_height = max_f32(difference, 1.5);
         let lower = Transform {
             rotation: body.rotation,
             translation: Vec3::new(
@@ -238,7 +289,17 @@ fn wall_chimney_triangles(
         };
         triangles.extend(box_trigger_volume(1.0, 1.0, 1.0, &fallback));
     }
-    triangles
+    WallChimneyGeometry { triangles, body, height, height_without_extra, lower_valid, lower_height }
+}
+
+/// 只承接本函数同一原分支的结果；不建立另一份墙或装饰状态。
+struct WallChimneyGeometry {
+    triangles: Vec<Triangle>,
+    body: Transform,
+    height: f32,
+    height_without_extra: f32,
+    lower_valid: bool,
+    lower_height: f32,
 }
 
 /// 原37c2..43cc的完整lower判定；真实邻居/高度/路径缺失不能默认成功。
@@ -381,6 +442,7 @@ mod canonical_collision_chain_tests {
         world.insert_resource(AssetMeshLibrary::new());
         world.insert_resource(PublicWalls::default());
         world.insert_resource(DecoratorBlueprints::default());
+        world.init_resource::<UiSignifierStream>();
         world.insert_resource(
             crate::decorator_visual_state::DecoratorTransientVisualState::default(),
         );
@@ -436,7 +498,8 @@ mod canonical_collision_chain_tests {
             blueprint.storage_addr,
             Some(DecoratorStorageAddr::Wall(WallId(7)))
         );
-        assert_eq!(blueprint.interaction_source_flags, 1);
+        assert_eq!(blueprint.u138, 1);
+        assert_eq!(blueprint.interaction_source_flags, 0);
         assert!(blueprint.colliders.is_empty());
         let BlueprintMeshSlot::Mesh(collision) = &blueprint.collision_mesh else {
             panic!("实际碰撞网格")
@@ -477,6 +540,8 @@ mod canonical_collision_chain_tests {
             scale: Vec3::new(2.0, 3.0, 4.0),
         };
         let mut world = base_world(20, cached);
+        world.resource_mut::<DecoratorStorage>().per_wall.get_mut(&WallId(7)).unwrap()
+            .get_mut(DecoratorId(41)).unwrap().state = 0;
         let mut asset = Mesh::new("非规则四面体原输入夹具");
         asset.set_attribute(
             ATTR_POSITION,
@@ -487,7 +552,11 @@ mod canonical_collision_chain_tests {
             .resource::<AssetMeshLibrary>()
             .add(MeshAsset::new(asset, Some(VENT_PIPE_COLLISION.to_owned())));
         world.run_system_once(generate_wall_chimneys).unwrap();
-        let actual = mesh(&world);
+        let blueprint = world.resource::<DecoratorBlueprints>().get(41).unwrap();
+        assert_eq!(blueprint.u138, 0);
+        assert_eq!(blueprint.interaction_source_flags, 0);
+        let BlueprintMeshSlot::Mesh(positioned) = &blueprint.collision_mesh else { panic!() };
+        let actual = Arc::clone(&positioned.mesh);
         // 独立列出180度Y旋转、非单位缩放、原.28局部偏移后的全部原面顺序。
         let a = Vec3::new(4.0, 2.0, -3.28);
         let b = Vec3::new(2.0, 2.0, -3.28);
@@ -531,7 +600,7 @@ mod canonical_collision_chain_tests {
                 RaycastGeoSource::decorator_interaction(
                     DecoratorId(41),
                     DecoratorStorageAddr::Wall(WallId(7)),
-                    1,
+                    0,
                 ),
             ),
         ] {
@@ -654,7 +723,8 @@ mod canonical_collision_chain_tests {
             blueprint.storage_addr,
             Some(DecoratorStorageAddr::Wall(WallId(7)))
         );
-        assert_eq!(blueprint.interaction_source_flags, 1);
+        assert_eq!(blueprint.u138, 1);
+        assert_eq!(blueprint.interaction_source_flags, 0);
         assert!(blueprint.transform.is_some());
         assert!(matches!(
             blueprint.collision_mesh,
@@ -682,5 +752,125 @@ mod canonical_collision_chain_tests {
                 .transform
                 .is_some()
         );
+    }
+
+    fn original_input_transform(input: &[u32; 14]) -> CachedDecoratorTransform {
+        CachedDecoratorTransform {
+            rotation: Quat::from_array(std::array::from_fn(|i| f32::from_bits(input[i]))),
+            translation: Vec3::from_array(std::array::from_fn(|i| f32::from_bits(input[i + 4]))),
+            scale: Vec3::from_array(std::array::from_fn(|i| f32::from_bits(input[i + 7]))),
+        }
+    }
+
+    fn set_original_input(world: &mut World, input: &[u32; 14]) {
+        world.resource_mut::<CachedDecoratorTransforms>().insert(41, original_input_transform(input));
+        let mut storage = world.resource_mut::<DecoratorStorage>();
+        let bucket = storage.per_wall.get_mut(&WallId(7)).unwrap();
+        let mut info = *bucket.get(DecoratorId(41)).unwrap();
+        info.set_extra(DecoratorExtraInfo::Chimney(ChimneyExtra {
+            f: f32::from_bits(input[10]), smoke: input[11] as u8,
+        }));
+        info.state = input[12] as u8;
+        info.u28 = input[13];
+        bucket.insert(DecoratorId(41), info);
+    }
+
+    fn builder_words(builder: &WindowVisualEntityBuilder) -> Vec<u32> {
+        builder.rotation.to_array().into_iter().chain(builder.translation.to_array())
+            .chain(builder.scale.to_array()).map(f32::to_bits).collect()
+    }
+
+    #[test]
+    fn complete_wall_outputs_match_original_arithmetic_and_assembly_ranges() {
+        let mut world = body_world(0.0);
+        for (case, (input, lower, expected_body, expected_smoke, expected_params)) in
+            crate::decorator_visual::chimney_roof::original_fixture::WALL_CASES.iter().enumerate() {
+            set_original_input(&mut world, input);
+            world.resource_mut::<PublicWalls>().get_mut(WallId(7)).unwrap()
+                .prepared_path.as_mut().unwrap().segment_values.fill(if *lower { 0.0 } else { 1.0 });
+            world.run_system_once(generate_wall_chimneys).unwrap();
+            let blueprints = world.resource::<DecoratorBlueprints>();
+            let blueprint = blueprints.get(41).unwrap();
+            assert_eq!(blueprint.chimney_assembly.as_ref().unwrap().words,
+                *expected_params, "wall assembly case {case}");
+            assert_eq!(builder_words(&blueprint.visual_entities[0]), *expected_smoke,
+                "wall smoke case {case}");
+            let storage = world.resource::<DecoratorStorage>();
+            let bucket = storage.wall_decorators(WallId(7)).unwrap();
+            let info = bucket.get(DecoratorId(41)).unwrap();
+            let derived = country_core::resources::walls::decorator_subtype::DerivedDecoratorInfoView::new(
+                world.resource::<DerivedDecoratorSubtypes>(), world.resource::<DecoratorMeshLibrary>());
+            let geometry = wall_chimney_geometry(41, info, f32::from_bits(input[10]),
+                &original_input_transform(input), world.resource::<PublicWalls>().get(WallId(7)).unwrap(), bucket, &derived);
+            let body: Vec<_> = geometry.body.rotation.to_array().into_iter()
+                .chain(geometry.body.translation.to_array()).chain(geometry.body.scale.to_array())
+                .map(f32::to_bits).collect();
+            assert_eq!(body, *expected_body, "wall geometry case {case}");
+            assert_eq!(geometry.lower_valid, *lower);
+            assert!(blueprint.chimney.is_none());
+        }
+    }
+
+    #[test]
+    fn both_vent_builders_match_original_unscaled_offsets_and_smoke_scale() {
+        let mut world = base_world(20, original_input_transform(
+            &crate::decorator_visual::chimney_roof::original_fixture::PIPE_CASES[0].0));
+        let mut asset = Mesh::new("原vent碰撞World输入");
+        asset.set_attribute(ATTR_POSITION, vec![Vec3::ZERO, Vec3::X, Vec3::Y]);
+        asset.set_indices(vec![0, 1, 2]);
+        world.resource::<AssetMeshLibrary>().add(MeshAsset::new(asset, Some(VENT_PIPE_COLLISION.into())));
+        for (case, (input, vent, smoke)) in crate::decorator_visual::chimney_roof::original_fixture::PIPE_CASES.iter().enumerate() {
+            set_original_input(&mut world, input);
+            world.run_system_once(generate_wall_chimneys).unwrap();
+            let blueprints = world.resource::<DecoratorBlueprints>();
+            let blueprint = blueprints.get(41).unwrap();
+            assert_eq!(builder_words(&blueprint.visual_entities[0]), *vent, "vent case {case}");
+            assert_eq!(builder_words(&blueprint.visual_entities[1]), *smoke, "vent smoke case {case}");
+            assert_eq!(blueprint.visual_entities[1].smoke, Some((1, input[11] as u8)));
+            assert!(blueprint.chimney_assembly.is_none());
+        }
+    }
+
+    #[test]
+    fn full_storage_iteration_keeps_vent_source_and_low_chimney_address_failure() {
+        for addr in [DecoratorStorageAddr::Terrain, DecoratorStorageAddr::Stair] {
+            for subtype in [19, 20] {
+                let mut world = base_world(subtype, CachedDecoratorTransform {
+                    rotation: Quat::IDENTITY, translation: Vec3::new(2., 3., 4.), scale: Vec3::ONE });
+                let mut asset = Mesh::new("非墙vent原输入三角形");
+                asset.set_attribute(ATTR_POSITION, vec![Vec3::ZERO, Vec3::X, Vec3::Y]);
+                asset.set_indices(vec![0, 1, 2]);
+                world.resource::<AssetMeshLibrary>().add(MeshAsset::new(asset, Some(VENT_PIPE_COLLISION.into())));
+                let mut storage = world.resource_mut::<DecoratorStorage>();
+                let bucket = storage.per_wall.remove(&WallId(7)).unwrap();
+                match addr { DecoratorStorageAddr::Terrain => storage.terrain = Some(bucket),
+                    _ => storage.stairs = Some(bucket) }
+                drop(storage);
+                let result = catch_unwind(AssertUnwindSafe(||
+                    world.run_system_once(generate_wall_chimneys).unwrap()));
+                assert_eq!(result.is_err(), subtype == 19);
+                let blueprint = world.resource::<DecoratorBlueprints>().get(41).unwrap();
+                assert_eq!(blueprint.storage_addr, Some(addr));
+                assert!(blueprint.transform.is_some());
+                assert_eq!(blueprint.visual_entities.len(), if subtype == 19 { 0 } else { 2 });
+                assert!(blueprint.chimney_assembly.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_modified_id_is_not_silently_filtered_by_legacy_iterator() {
+        let mut world = base_world(20, CachedDecoratorTransform {
+            rotation: Quat::IDENTITY, translation: Vec3::ZERO, scale: Vec3::ONE });
+        let mut storage = world.resource_mut::<DecoratorStorage>();
+        let bucket = storage.per_wall.get_mut(&WallId(7)).unwrap();
+        bucket.modified_ids.clear(); bucket.modified_ids.insert(999);
+        drop(storage);
+        let error = catch_unwind(AssertUnwindSafe(||
+            world.run_system_once(generate_wall_chimneys).unwrap())).unwrap_err();
+        let message = error.downcast_ref::<&str>().copied()
+            .or_else(|| error.downcast_ref::<String>().map(String::as_str)).unwrap_or("");
+        assert!(message.contains("modified wall chimney is missing"));
+        assert!(world.resource::<DecoratorBlueprints>().map.is_empty());
     }
 }

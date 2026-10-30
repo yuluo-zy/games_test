@@ -340,6 +340,15 @@ impl RtWorld {
         self.meshes.remove(handle)
     }
 
+    /// 原invalidate140b37a1a..a57：仅命中时先drop真实DirtyCow/Arc，再标记拓扑变化。
+    /// 单次查表；miss不制造脏帧，不改其它入口原有dirty合同。
+    pub fn remove_mesh_if_present(&mut self, handle: &RtMeshHandle) -> bool {
+        let Some(removed) = self.meshes.remove(handle) else { return false; };
+        drop(removed);
+        self.topology_dirty = true;
+        true
+    }
+
     /// 批量移除（`update_rt_world` 的两段变更切片）。
     pub fn remove_meshes<'a>(&mut self, handles: impl IntoIterator<Item = &'a RtMeshHandle>) {
         for handle in handles {

@@ -1,7 +1,7 @@
 //! 原B哥特墙窗：完整主生成器1407e87b0/10658B及帽骨1407eb500/1182B。
 //! 原证与数值表见本任务gothic-main-chain-20261021。主生成器只发布蓝图，
 //! 实体/GPU上传仍由唯一fullvisual/Nani宿主消费，不在这里复制运行时owner。
-//! 尚未恢复的独立半老虎窗剖面函数保留原有边界，不是本主函数的callee。
+//! 独立半老虎窗剖面1407eb160由老虎窗瓦片生成器消费，按原帽骨/曲面合同恢复。
 
 use std::sync::Arc;
 
@@ -46,70 +46,61 @@ pub const GOTHIC_HALF_DORMER_RADIUS_DEFAULT: f32 = 0.38;
 /// `GOTHIC_HALF_DORMER_RADIUS[rank-1]`（rank 1..3，否则 panic）；其余 → 0.38。
 /// ⚠ RE-ANALYSIS §4.4 "is_circle? 0.38 : 表" 方向反了，以本实现为准。
 pub fn gothic_half_dormer_radius(rank: u8, is_circle: bool, shape_kind: u8) -> f32 {
-    if is_circle && shape_kind == 7 && (1..=3).contains(&rank) {
+    if is_circle && shape_kind == 7 {
+        assert!((1..=3).contains(&rank), "internal error: entered unreachable code");
         GOTHIC_HALF_DORMER_RADIUS[rank as usize - 1]
     } else {
         GOTHIC_HALF_DORMER_RADIUS_DEFAULT
     }
 }
 
-/// 0x1407eb160（O 结构 + fresh 核对）：哥特半老虎窗剖面世界空间计算。
-///
-/// 主体 `0..2` for_each 构建两条剖面 `Curve3` 压入 `out`（index 语义 U）。
-/// 每段：`gothic_half_dormer_profile_curve(rank)` 取点表 → 逐点世界变换（U，
-/// wall-space 面）→ max_y 截断（O 结构）→ `Curve::try_new_from_points<Vec3,3D>`。
-/// U：精确 wall-space 变换（B raw 偏移缺 country_core PublicWallState）、
-/// 0..2 索引语义、逐语句寄存器流。
+/// 原1407eb160及1412ac9b0：由真实帽骨两侧构造世界剖面，并在墙顶首次相交处停止。
+/// 返回固定两条曲线；原实现从Vec取两个owned Curve，当前接口避免额外中间容器。
 pub fn calc_gothic_half_dormer_profile_ws(
-    out: &mut Vec<Curve3>,
     rank: u8,
-    max_y: f32,
-    is_circle: bool,
-    shape_kind: u8,
-) {
-    // O：`0..2` for_each（两次 closure_0，0x1407eb274 / 0x1407eb282）。
-    for _ in 0..2 {
-        let profile = gothic_half_dormer_profile_curve(rank);
-        // U：半径在此函数逐点变换中经 wall 法线应用（0x1412ac9b0 输出
-        // `Vec3(fVar9*nx+lerp_x, h+lerp_y, fVar9*ny+lerp_z)`）；当前以 RE-ANALYSIS
-        // 简式承载，半径仅登记。
-        let _radius = gothic_half_dormer_radius(rank, is_circle, shape_kind);
-
-        // 逐点世界变换（U，wall-space 面）：RE-ANALYSIS 简式 `Vec3(u, h*max_y, 0)`。
-        // ⚠ 精确变换含 inverse_lerp(0,last,u) 的墙点 A/B lerp 与 C/D 法线
-        // （raw offsets 缺 country_core PublicWallState），未实现。
-        let world_points: Vec<Vec3> = profile
-            .iter()
-            .map(|p| Vec3::new(p.x, p.y * max_y, 0.0))
-            .collect();
-
-        // max_y 截断（O 结构，closure$0 0x1407e7dd0）：折线裁剪到 y >= max_y，
-        // 段跨越处插 `y==max_y` 截断点（`t=(max_y-prev.y)/(cur.y-prev.y)`）。
-        // 寄存器别名打散，精确流 U，以语义裁剪承载。
-        let mut points: Vec<Vec3> = Vec::with_capacity(world_points.len() + 1);
-        let mut prev: Option<Vec3> = None;
-        for cur in &world_points {
-            if let Some(p) = prev {
-                if (p.y >= max_y) != (cur.y >= max_y) {
-                    let t = (max_y - p.y) / (cur.y - p.y);
-                    points.push(Vec3::new(
-                        p.x + (cur.x - p.x) * t,
-                        max_y,
-                        p.z + (cur.z - p.z) * t,
-                    ));
+    subtype: u8,
+    profile: &[Vec2],
+    bones: &GothicHatBones,
+    wall: &PublicWallState,
+) -> [Curve3; 2] {
+    let last_x = profile.last().expect("called Option::unwrap() on a None value").x;
+    let radius = gothic_half_dormer_radius(rank, wall.is_circle().is_some(), subtype);
+    let center_normal = Vec2::new(bones.side[2], bones.side[3]);
+    std::array::from_fn(|side| {
+        // 原side0是center→second，side1是center→first，不能镜像世界X替代弯墙。
+        let (end, end_normal) = if side == 0 {
+            (bones.second, Vec2::from_array(bones.edge))
+        } else {
+            (bones.first, Vec2::new(bones.side[0], bones.side[1]))
+        };
+        let mut mapped = profile.iter().map(|p| {
+            let t = inverse_lerp(0.0, last_x, p.x);
+            let complement = 1.0 - t;
+            let n = end_normal * t + center_normal * complement;
+            let reciprocal = 1.0 / (n.y * n.y + n.x * n.x).sqrt();
+            let n = n * reciprocal;
+            let base = end * t + bones.center * complement;
+            Vec3::new(radius * n.x + base.x,
+                radius * 0.0 + p.y + base.y,
+                radius * n.y + base.z)
+        });
+        let mut points = Vec::with_capacity(profile.len());
+        if let Some(first) = mapped.next() {
+            points.push(first);
+            let mut previous = first;
+            for point in mapped {
+                let max_y = wall.max_y();
+                if point.y < max_y {
+                    let t = (max_y - previous.y) / (point.y - previous.y);
+                    points.push((point - previous) * t + previous);
+                    break;
                 }
+                points.push(point);
+                previous = point;
             }
-            if cur.y >= max_y {
-                points.push(*cur);
-            }
-            prev = Some(*cur);
         }
-
-        // O：`Curve::try_new_from_points<Vec3, CurveCoordSemantic3D>()` +
-        // unwrap（closure$0 LAB_1407e80e4）→ 压入 out（stride 0x38）。
-        let curve = Curve3::try_new_from_points(points, false).unwrap();
-        out.push(curve);
-    }
+        Curve3::try_new_from_points(points, false).unwrap()
+    })
 }
 
 /// 原60B输出的语义字段；不依赖本机Vec3对齐或原生容器布局。
@@ -124,7 +115,7 @@ pub struct GothicHatBones {
 
 impl GothicHatBones {
     // 主函数发布前把edge前移；GPU载荷不是帽骨结构的内存拷贝。
-    fn deformation_bytes(self) -> [u8; 60] {
+    pub(super) fn deformation_bytes(self) -> [u8; 60] {
         let values = [
             self.side[0],
             self.side[1],
@@ -284,7 +275,7 @@ fn window_holes(rank: u8) -> [[f32; 3]; 3] {
     bits.map(|row| row.map(f32::from_bits))
 }
 
-fn brick_color(
+pub(super) fn brick_color(
     info: &DecoratorInfo,
     wall: u32,
     u: f32,
@@ -307,16 +298,21 @@ fn brick_color(
     bytes
 }
 
-/// 原10658B四参系统：只从真实墙和canonical目录生成本id的完整蓝图。
+/// 原10658B五参系统：只从真实墙和canonical目录生成本id的完整蓝图。
 pub fn generate_gothic_wall_windows(
     derived: DerivedDecoratorInfoResources,
     storage: Res<DecoratorStorage>,
     walls: Res<PublicWalls>,
     mut blueprints: ResMut<DecoratorBlueprints>,
+    // 原第五Res保留调度依赖；原本体不以其生成替代蓝图或默认反馈。
+    _signifiers: Res<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>,
 ) {
     let view = derived.as_view();
     for (wall_id, decorators) in storage.iter_walls() {
-        for (modified, info) in decorators.iter_modified() {
+        for &modified in &decorators.modified_ids {
+            // 原next先required查Info，再读subtype及dst-tag；失配必须沿原unwrap失败。
+            let info = decorators.decorators.get(&modified)
+                .expect("called `Option::unwrap()` on a `None` value");
             let id = DecoratorId(modified);
             let subtype = view.subtype(id).0;
             if subtype & 0x1e != 6 || info.dst_tag() > 1 {
@@ -585,6 +581,7 @@ mod original_main_tests {
         world.insert_resource(subtypes);
         world.insert_resource(library);
         world.insert_resource(DecoratorBlueprints::default());
+        world.init_resource::<country_core::systems::ui::signifiers::signifier_create::UiSignifierStream>();
         world
     }
 
@@ -619,7 +616,8 @@ mod original_main_tests {
                         blueprint.storage_addr,
                         Some(DecoratorStorageAddr::Wall(WALL))
                     );
-                    assert_eq!(blueprint.interaction_source_flags, 1);
+                    assert_eq!(blueprint.interaction_source_flags, 0);
+                    assert_eq!(blueprint.u138, 1);
                     assert_eq!(blueprint.visual_entities.len(), 3);
                     let hat = &blueprint.visual_entities[0];
                     let glass = &blueprint.visual_entities[1];
@@ -802,7 +800,8 @@ mod original_main_tests {
             "decorators/window_gothic_1x1_hat"
         );
         let blueprints = world.resource::<DecoratorBlueprints>();
-        assert_eq!(blueprints.get(7).unwrap().interaction_source_flags, 2);
+        assert_eq!(blueprints.get(7).unwrap().interaction_source_flags, 0);
+        assert_eq!(blueprints.get(7).unwrap().u138, 2);
         assert!(blueprints.get(7).unwrap().visual_entities[0].semi_transparent);
     }
 
@@ -946,5 +945,35 @@ mod original_main_tests {
         let blueprints = world.resource::<DecoratorBlueprints>();
         assert_eq!(blueprints.get(7).unwrap().dormer_holes[0].0[4], 0x3f73_8716);
         assert_eq!(blueprints.get(7).unwrap().wall_holes.len(), 3);
+    }
+}
+
+#[cfg(test)]
+mod complete_half_dormer_profile_native_tests {
+    use super::*;
+    use country_core::resources::{roofs::geometry::surface::Curve2,walls::{WallState,InnerWalls,WallId,publication_source::TerrainHeightGrid512,publication_fields::WallShapeSnapshot,public_walls::{WallPublicationDirty,WallSpatialHash}}};
+    #[test]
+    fn complete_native_half_profiles_keep_bent_normals_rank_radius_and_wall_top_clip() {
+        type Case = (u8,bool,u8,f32,&'static [[f32;2]],&'static [(&'static [[u32;3]],&'static [u32],u32)]);
+        let cases:&[Case]=include!(concat!(env!("CARGO_MANIFEST_DIR"),"/../../../reports/module-recovery-2026-10-23/m01-halfprofile-native-fixtures-v4.rs"));
+        for (index,&(rank,circle,subtype,max_y,profile,expected)) in cases.iter().enumerate() {
+            let curve=Curve2::try_new(vec![[0.,0.],[1.,0.]],false).unwrap();
+            let mut snapshot=WallState::new(curve,[0.,2.,3.][index%3],0,0,false).snapshot().clone();
+            let mut shape=[0u8;28];shape[..4].copy_from_slice(&(if circle {0u32} else {1}).to_le_bytes());shape[12..16].copy_from_slice(&2f32.to_le_bytes());if !circle { shape[4..8].copy_from_slice(&1f32.to_le_bytes());shape[20..24].copy_from_slice(&2f32.to_le_bytes());shape[24..28].copy_from_slice(&2f32.to_le_bytes()); }
+            snapshot.source.shape=WallShapeSnapshot::from_observed(shape);snapshot.source.curve_kind_tag=if circle {0} else {1};
+            let state=WallState::from_snapshot(snapshot,0);
+            let mut inner=InnerWalls::new();inner.new_wall_with_id(WallId(7),state);
+            let mut walls=PublicWalls::default();walls.consume_with_paths(&mut inner,&TerrainHeightGrid512 {encoded:vec![0;512*512].into(),minimum_y:0.,maximum_y:0.,sampling_fix:false},None,&WallPublicationDirty::default(),&WallSpatialHash::default());
+            let wall=walls.get(WallId(7)).unwrap();assert_eq!(wall.max_y(),max_y);assert_eq!(wall.is_circle().is_some(),circle);
+            let bones=GothicHatBones {first:Vec3::new(2.,2.,-0.5),center:Vec3::new(3.,2.,-1.),second:Vec3::new(4.,2.,-1.5),side:[0.6,0.8,1.,0.],edge:[0.8,-0.6]};
+            let profile=profile.iter().copied().map(Vec2::from_array).collect::<Vec<_>>();
+            let actual=calc_gothic_half_dormer_profile_ws(rank,subtype,&profile,&bones,wall);
+            for (side,(curve,(points,us,length))) in actual.iter().zip(expected).enumerate() {
+                let p=curve.points.iter().map(|p|p.to_array().map(f32::to_bits)).collect::<Vec<_>>();
+                assert_eq!(p.as_slice(),*points,"case {index} side {side} points");
+                assert_eq!(curve.points_u.iter().copied().map(f32::to_bits).collect::<Vec<_>>().as_slice(),*us,"case {index} side {side} u");
+                assert_eq!(curve.length.to_bits(),*length,"case {index} side {side} length");
+            }
+        }
     }
 }

@@ -517,3 +517,134 @@ fn history_press_before_reload_does_not_undo_the_reentered_session() {
     h.click(0);
     h.assert_state(false, -1);
 }
+
+// M1：实际绘制生产者和历史记录器；磁盘与加载复用生产 worker 和加载状态机。
+fn terrain_history_harness() -> HistoryHarness {
+    use country_core::{asset_libraries::ssbo_library::AssetSsboLibrary,
+        render::test_device::TestDevice,
+        resources::{glade_border::{BorderShape, GladeBorder}, terrain_editing::TerrainEditingData,
+            terrain_rock_mask::TerrainRockMaskSsbo, world_raster_defs::WaterRaster},
+        systems::{render_loop::compute_passes::{mouse_read_terrain_stroke_index::MouseTerrainRaycastSsbo,
+                read_terrain_data::ScheduledTerrainReadback}, terrain::{self, replay_terrain, edit_terrain_stroke}}};
+    let mut h = HistoryHarness::new();
+    terrain::register_terrain_events(&mut h.input.world);
+    h.input.world.insert_resource(TerrainEditingData(tg_terrain::stroke::TerrainEditingData::default()));
+    h.input.world.insert_resource(WaterRaster::new(country_core::resources::world_raster::DirtyTilePublisher::unique()));
+    h.input.world.insert_resource(GladeBorder(BorderShape::Circle(utils::geometry::Circle2d::new(Vec2::ZERO, 100.0))));
+    h.input.world.insert_resource(ScheduledTerrainReadback::default());
+    let library = AssetSsboLibrary::new();
+    let device = TestDevice(1);
+    library.add_new::<MouseTerrainRaycastSsbo>(&device);
+    library.add_new::<TerrainRockMaskSsbo>(&device);
+    h.input.world.insert_resource(library);
+    h.history = Schedule::default();
+    h.history.add_systems((
+        history_runtime::history_process_system::<MaybePendingSnapshotId>,
+        history_runtime::replay_mode::replay_mode,
+        replay_terrain::replay_terrain,
+        edit_terrain_stroke::edit_terrain_stroke,
+        history_runtime::replay_pop_bucket_system,
+        history_runtime::finish_replay::finish_replay,
+    ).chain());
+    h
+}
+
+#[test]
+fn terrain_history_disk_fresh_processes() {
+    let root = tempfile::tempdir().unwrap();
+    for phase in ["write", "restore"] {
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "history::terrain_history_process_entry", "--nocapture"])
+            .env("TG_TERRAIN_HISTORY_PHASE", phase)
+            .env("TG_TERRAIN_HISTORY_ROOT", root.path()).status().unwrap();
+        assert!(status.success(), "terrain history process failed during {phase}");
+        assert!(root.path().join(format!("terrain-completed-{phase}")).is_file());
+    }
+}
+
+#[test]
+fn terrain_history_process_entry() {
+    use country_core::{resources::terrain_editing::TerrainEditingData,
+        systems::{terrain::{ui_draw_terrain, deferred_terrain_history}, ui::resources::ui_state::UiInteraction}};
+    let Ok(phase) = std::env::var("TG_TERRAIN_HISTORY_PHASE") else { return; };
+    let root = std::path::PathBuf::from(std::env::var_os("TG_TERRAIN_HISTORY_ROOT").unwrap());
+    paths::initialize_paths(0, Some(&root)).unwrap();
+    let mut h = terrain_history_harness();
+    let session_file = root.join("terrain-session.json");
+    if phase == "write" {
+        let session = SessionId::new();
+        install_save_owner(&mut h.input.world, session);
+        h.input.world.insert_resource(AppMode::Terrain);
+        h.input.world.resource_mut::<CursorTerrainRaycast>().tag = 1;
+        h.input.world.resource_mut::<CursorTerrainRaycast>().pos = glam::Vec3::new(3.0, 2.0, 4.0);
+        h.input.world.resource_mut::<History>().start_input_recording(AppMode::Terrain.native_tag() as u32).unwrap();
+        let mut draw = Schedule::default();
+        draw.add_systems((ui_draw_terrain::ui_draw_terrain,
+            deferred_terrain_history::history_record_terrain::<MaybePendingSnapshotId>).chain());
+        let widget = WidgetId::clearing_canvas(ui_draw_terrain::DRAW_CANVAS_NAME);
+        for phase in [3, 4, 5] {
+            if phase == 4 { h.input.world.resource_mut::<CursorTerrainRaycast>().pos.x = 4.0; }
+            h.input.world.resource_mut::<UiState>().replace_interaction(UiInteraction { native_tag: 2, native_phase: phase, widget });
+            draw.run(&mut h.input.world);
+        }
+        h.input.world.resource_mut::<History>().finish_input_recording().unwrap().unwrap();
+        // 第二次事务由真实编辑控件和命令消费者产生。
+        h.input.world.resource_mut::<History>().start_input_recording(AppMode::Terrain.native_tag() as u32).unwrap();
+        let mut edit = Schedule::default();
+        edit.add_systems((country_core::systems::terrain::ui_edit_terrain::ui_edit_terrain,
+            country_core::systems::terrain::edit_terrain_stroke::edit_terrain_stroke,
+            deferred_terrain_history::history_record_terrain::<MaybePendingSnapshotId>).chain());
+        let widget = WidgetId::from_name("terrain_edit_0__canvas");
+        for phase in [3, 4, 5] {
+            h.input.world.resource_mut::<UiState>().replace_interaction(UiInteraction { native_tag: 2, native_phase: phase, widget });
+            if phase == 4 { h.input.world.send_event(country_core::resources::window::CursorMovedScreenSpace(Vec2::new(100.0, 0.0))); }
+            edit.run(&mut h.input.world);
+        }
+        h.input.world.resource_mut::<History>().finish_input_recording().unwrap().unwrap();
+        assert!(h.input.world.resource::<TerrainEditingData>().strokes[&tg_terrain::schema::StrokeId(0)].falloff > 0.4);
+        // 执行真实历史命令、回放与编辑消费者。
+        for (command, expected) in [(HistoryCommand::UNDO, 0.4), (HistoryCommand::REDO, 0.6)] {
+            h.input.world.send_event(command);
+            for _ in 0..24 { h.history.run(&mut h.input.world); }
+            assert!(h.input.world.resource::<ReplayBuffer>().is_empty());
+            let falloff = h.input.world.resource::<TerrainEditingData>().strokes[&tg_terrain::schema::StrokeId(0)].falloff;
+            assert!((falloff - expected).abs() < 0.000001, "history must apply the expected falloff");
+        }
+        let terrain = h.input.world.resource::<TerrainEditingData>();
+        let stroke = &terrain.strokes[&tg_terrain::schema::StrokeId(0)];
+        let expected = serde_json::json!({"session":session, "history":h.saved_history_contract(),
+            "next_index":terrain.next_index,"stroke":stroke});
+        std::fs::write(&session_file, serde_json::to_vec(&expected).unwrap()).unwrap();
+        h.save();
+        shutdown_save_thread(&mut h.input.world).unwrap();
+    } else {
+        let expected: serde_json::Value = serde_json::from_slice(&std::fs::read(&session_file).unwrap()).unwrap();
+        let session: SessionId = serde_json::from_value(expected["session"].clone()).unwrap();
+        install_save_owner(&mut h.input.world, session);
+        h.input.world.init_resource::<TimeOfDay>();
+        h.input.world.init_resource::<GladeSettings>();
+        let mut manager = LoadGameManager::new();
+        manager.begin(LoadGameSource::Path(session.save_folder_path().join("history.json")),
+            ActiveLoadOptions { ignore_snapshot: false, request_reveal: false, new_session: false },
+            country_core::startup::startup_session::make_post_load_commands(vec![]));
+        h.input.world.insert_resource(manager);
+        h.input.world.insert_resource(AppMode::LoadGame);
+        for _ in 0..3 { load_game::try_load_game_system(&mut h.input.world).unwrap(); h.history.run(&mut h.input.world); }
+        assert_eq!(h.input.world.resource::<LoadGameManager>().state, LoadGameState::Loaded);
+        for _ in 0..24 { h.history.run(&mut h.input.world); }
+        assert_eq!(h.saved_history_contract(), expected["history"]);
+        let terrain = h.input.world.resource::<TerrainEditingData>();
+        let stroke = &terrain.strokes[&tg_terrain::schema::StrokeId(0)];
+        assert_eq!(serde_json::json!(terrain.next_index), expected["next_index"]);
+        assert_eq!(serde_json::to_value(stroke).unwrap(), expected["stroke"]);
+        let saved_falloff = stroke.falloff;
+        h.input.world.send_event(HistoryCommand::UNDO);
+        for _ in 0..24 { h.history.run(&mut h.input.world); }
+        assert_eq!(h.input.world.resource::<TerrainEditingData>().strokes[&tg_terrain::schema::StrokeId(0)].falloff, 0.4);
+        h.input.world.send_event(HistoryCommand::REDO);
+        for _ in 0..24 { h.history.run(&mut h.input.world); }
+        assert_eq!(h.input.world.resource::<TerrainEditingData>().strokes[&tg_terrain::schema::StrokeId(0)].falloff, saved_falloff);
+        shutdown_save_thread(&mut h.input.world).unwrap();
+    }
+    std::fs::write(root.join(format!("terrain-completed-{phase}")), b"passed").unwrap();
+}

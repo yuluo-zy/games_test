@@ -1,0 +1,41 @@
+{
+  "production_world_boundary": "menu Reload reuses same App/World; startup Loading->Gameplay SubApp swap is one-time",
+  "original_registration": {
+    "owner": "country_core::systems::collision::impl$0::build",
+    "va": "0x140b685e0",
+    "pdb_bytes": 2139,
+    "state_argument_instruction": "0x140b6878a: mov dl,1",
+    "add_systems_call": "0x140b6878c ->0x140b66ff0",
+    "schedule": "OnExit(AppLoadingState::Game)",
+    "pair": [
+      "intersect_meshes::on_exit_game_state",
+      "RaycastWorld::on_level_reload"
+    ],
+    "chain": false,
+    "run_if": false,
+    "explicit_relative_edges_to_other_OnExit_owners": false
+  },
+  "source": "tiny-glade/crates/country-core/src/systems/collision/intersect_meshes.rs",
+  "source_sha256": "f4d88728e7e62c61f742c804425a31c869bf8d0064f7ede9f348c798c6d9941b",
+  "implementation": "existing B owner path; only missing on_exit_game_state and narrow tests; host mount belongs to root",
+  "test": {
+    "command": "CARGO_INCREMENTAL=0 cargo test --manifest-path tiny-glade/Cargo.toml -p country-core --features native-physics --lib --offline reload_owner_boundary_tests -- --nocapture",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "filtered_out": 3000,
+    "test_seconds": 0.01,
+    "cases": [
+      "same App without original exit pair retains old collider/mesh Arc/graph edge",
+      "same App with original exit pair releases old collider/last mesh Arc/graph edge and preserves graph capacity",
+      "whole App Drop releases RaycastWorld even without explicit reset",
+      "Game subsequent update does not repeat reset"
+    ]
+  },
+  "native_evidence": "m01-collision-reload-evidence-report.json",
+  "not_validated": [
+    "central production host mount",
+    "real GPU Reload",
+    "OS input"
+  ]
+}

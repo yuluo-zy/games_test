@@ -1,381 +1,781 @@
-//! B `systems/wall/shapes/rectangle/ui_edit_rectangle_dims.rs`: rectangle
-//! dimension editing.
-//!
-//! Evidence: `chapters/systems/wall/shapes/rectangle/ui_edit_rectangle_dims.rs.md`
-//! (O, 0x140ad6250 / do_ui_edit_rectangle_dims 0x140ad6e00). Dragging an edge
-//! moves it along its normal and writes the new dims into the UiState80
-//! (variant 1) plus an EditRectangleCmd. The exact projection constants are
-//! 待取证; Rectangle2d::expand_along_edge is reused.
-
+//! B140ad6250/140ad6e00：原UI producer→DO consumer的矩形尺寸拖拽链。
+use super::{
+    super::{EditRectangleCmd, FinishEditRectangleCmd},
+    WipRectangle,
+    ui_modes::edit_dims::UiRectangleDimsEdit,
+};
+use crate::{
+    resources::{
+        glade_border::{BorderShape, DisplayOutOfBorder, FeedbackInputOutOfBorder, GladeBorder},
+        mouse_terrain_raycast::CameraCursorRay,
+        tree_storage::{HideTreesinAreaCmd, TreeHideArea},
+        walls::{
+            WallId,
+            decorator_archivist::LiveDecoratorArchivist,
+            public_walls::{PublicWalls, WallEntities},
+            wall_trigger_volume::WallTriggerVolume,
+        },
+    },
+    systems::{
+        camera_rig::main_camera::MainCameraMoved,
+        mode_manager::{AppMode, EditSubject},
+        ui::{
+            resources::{
+                slider3d::{Slider3d, Slider3dStart},
+                ui_state::{DragState, UiState},
+            },
+            signifiers::UiSignifierStream,
+        },
+        ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter,
+        wall::valid_enclosure::{Shape, ShapeParameters},
+    },
+};
 use bevy_ecs::prelude::*;
-use glam::Vec2;
+use glam::{Vec2, Vec3};
+use utils::{curve::Curve2, geometry::Rectangle2d};
 
-use super::super::EditRectangleCmd;
-use super::finish_edit_rectangle::RectangleEditUiState;
-use crate::resources::walls::InnerWalls;
-use crate::systems::wall::valid_enclosure::ShapeParameters;
+/// 原80字节活动记录：Curve2、WidgetId和世界原点；producer每帧替换该拥有型状态。
+#[derive(Resource, Clone, Debug, Default)]
+pub struct UiEditRectangleActiveWidgetResource(
+    pub  Option<(
+        Curve2,
+        crate::systems::ui::resources::ui_state::WidgetId,
+        Vec3,
+    )>,
+);
 
-fn edge_widget_id(
-    wall: crate::resources::walls::WallId,
-    edge: usize,
-) -> crate::systems::ui::resources::ui_state::WidgetId {
-    crate::systems::ui::resources::ui_state::WidgetId(
-        ::utils::calculate_hash(&(wall.0, edge as u64)) ^ 0x448d3066df154a46,
-    )
-}
-
-pub fn distance_to_edge(rect: ::utils::geometry::Rectangle2d, edge: usize, cursor: Vec2) -> f32 {
-    let (point, _) = rect.get_edge_pts(edge);
-    (cursor - point).dot(rect.get_edge_normal(edge))
-}
-
-/// B UiRectangleDimsEdit::widget geometry. The selected edge samples the
-/// published 3D curve and segment heights; ordinary edges clip the wall volume.
-fn edge_widget_geometry(
-    wall: &crate::resources::walls::public_wall_state::PublicWallState,
-    edge: usize,
-    selected: bool,
-    trigger: Option<&crate::resources::walls::wall_trigger_volume::WallTriggerVolume>,
-) -> crate::systems::ui::resources::widget_params::WidgetGeometry {
-    use crate::systems::ui::resources::widget_params::WidgetGeometry;
-    let rect = ShapeParameters::from_snapshot(wall.shape()).as_rectangle();
-    if !selected {
-        return trigger
-            .filter(|t| t.is_valid())
-            .map(|t| {
-                WidgetGeometry::TriangleMesh(t.edit_shape_tris_in_range(Some([
-                    rect.get_point_u(edge),
-                    rect.get_point_u(edge + 1),
-                ])))
-            })
-            .unwrap_or(WidgetGeometry::Empty);
-    }
-    let points = &wall
-        .prepared_path
-        .as_ref()
-        .expect("rectangle edge requires prepared path")
-        .positions;
-    let sample = |point| {
-        let coord = ::utils::curve::approx_curve_coord(points, point, |p| Vec2::new(p[0], p[2]));
-        let a = coord.segment;
-        let b = a + 1;
-        let t = coord.t;
-        let blend = |x: f32, y: f32| y * t + x * (1.0 - t);
-        (
-            blend(points[a][1], points[b][1]),
-            blend(wall.segment_heights[a], wall.segment_heights[b]),
-        )
-    };
-    let (a, b) = rect.get_edge_pts(edge);
-    let (bottom_a, height_a) = sample(a);
-    let (bottom_b, height_b) = sample(b);
-    let bottom = bottom_a.max(bottom_b);
-    let height = height_a.max(height_b);
-    let y = bottom + (height - bottom) * 0.5;
-    let normal = rect.get_edge_normal(edge);
-    let n = glam::Vec3::new(normal.x, 0.0, normal.y);
-    let mid = a * 0.5 + b * 0.5;
-    let rotation = ::utils::rotation_from_normal(n);
-    let position = glam::Vec3::new(mid.x, y, mid.y) + n * (0.63 * 0.5) + rotation * glam::Vec3::Z;
-    let transform = crate::utils::components::transform::Transform {
-        translation: position,
-        rotation,
-        scale: glam::Vec3::ONE,
-    };
-    WidgetGeometry::TriangleMesh(super::ui_edit_rectangle_orientation::box_trigger_volume(
-        1.0, 0.5, 2.0, &transform,
-    ))
-}
-
-/// Original producer event: active intersection, selected wall and edge.
-#[derive(Event, Clone, Debug)]
+/// 原104字节业务载荷：完整intersection、墙、矩形、边及拖拽phase。
+#[derive(Event, Clone, Copy, Debug)]
 pub struct DoUiEditRectangleDims {
     pub intersection: [u8; 56],
-    pub wall: crate::resources::walls::WallId,
-    pub rectangle: ::utils::geometry::Rectangle2d,
-    pub edge: u64,
-    pub phase: u8,
+    pub wall: WallId,
+    pub rectangle: Rectangle2d,
+    pub edge: usize,
+    pub phase: DragState,
 }
-
-#[derive(Clone, Debug)]
-pub struct RectangleActiveEdge {
-    pub curve: ::utils::curve::Curve2,
-    pub widget: crate::systems::ui::resources::ui_state::WidgetId,
-    pub position: glam::Vec3,
-}
-#[derive(Resource, Default)]
-pub struct UiEditRectangleActiveWidgetResource(pub Option<RectangleActiveEdge>);
-
-fn write_rectangle(bytes: &mut [u8], rect: ::utils::geometry::Rectangle2d) {
-    bytes.copy_from_slice(
-        &crate::systems::wall::valid_enclosure::Shape::Rectangle(rect).to_record()[4..],
-    );
-}
-
-fn read_rectangle(bytes: &[u8]) -> ::utils::geometry::Rectangle2d {
-    let mut record = [0; 28];
-    record[..4].copy_from_slice(&1u32.to_le_bytes());
-    record[4..].copy_from_slice(bytes);
-    ShapeParameters::from_observed(record).as_rectangle()
-}
-
-/// B do_ui_edit_rectangle_dims; ShowPinned is pending its shared owner.
-pub fn do_ui_edit_rectangle_dims(
-    mut input: EventReader<DoUiEditRectangleDims>,
-    (public, cursor, window, camera, border): (
-        Res<crate::resources::walls::public_walls::PublicWalls>,
-        Res<crate::resources::mouse_terrain_raycast::CursorPositionSS>,
-        Res<crate::resources::window::WindowSize>,
-        Res<crate::systems::camera_rig::main_camera::MainCamera>,
-        Res<crate::resources::glade_border::GladeBorder>,
-    ),
-    (mut wip, mut slider, mut archivist): (
-        ResMut<RectangleEditUiState>,
-        Local<crate::systems::ui::resources::slider3d::Slider3dState>,
-        ResMut<crate::resources::walls::decorator_archivist::LiveDecoratorArchivist>,
-    ),
-    (mut edits, mut finish, mut trees, mut display, mut feedback, mut pins): (
-        EventWriter<EditRectangleCmd>,
-        EventWriter<super::super::FinishEditRectangleCmd>,
-        EventWriter<crate::resources::tree_storage::HideTreesinAreaCmd>,
-        EventWriter<crate::resources::glade_border::DisplayOutOfBorder>,
-        EventWriter<crate::resources::glade_border::FeedbackInputOutOfBorder>,
-        EventWriter<crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>,
-    ),
-) {
-    use crate::resources::glade_border::{
-        BorderShape, DisplayOutOfBorder, FeedbackInputOutOfBorder,
-    };
-    use crate::resources::tree_storage::{HideTreesinAreaCmd, TreeHideArea};
-    use crate::systems::ui::resources::slider3d::Slider3dMatrices;
-    let Some(event) = input.read().last() else {
-        return;
-    };
-    if u32::from_le_bytes(event.intersection[..4].try_into().unwrap()) == 2 {
-        return;
-    }
-    let wall = public
-        .get(event.wall)
-        .expect("rectangle dimension edit wall missing");
-    let edge = event.edge as usize;
-    let rect = event.rectangle;
-    let normal = rect.get_edge_normal(edge);
-    let f = |at| f32::from_le_bytes(event.intersection[at..at + 4].try_into().unwrap());
-    let hit = glam::Vec3::new(f(0x24), f(0x28), f(0x2c));
-    match event.phase.wrapping_sub(2).min(3) {
-        1 => {
-            archivist.decorator_cull_allow_any();
-            wip.0[..4].copy_from_slice(&2u32.to_le_bytes());
-            wip.0[4..8].copy_from_slice(&hit.y.to_le_bytes());
-            wip.0[8..16].copy_from_slice(&event.wall.0.to_le_bytes());
-            wip.0[16..24].copy_from_slice(&event.edge.to_le_bytes());
-            write_rectangle(&mut wip.0[24..48], rect);
-            write_rectangle(&mut wip.0[48..72], rect);
-            let (a, b) = rect.get_edge_pts(edge);
-            let e = b - a;
-            let p = Vec2::new(hit.x, hit.z);
-            let denominator = (e.y * e.y + e.x * e.x).max(1.0e-20);
-            let t = ((p.y - a.y) * e.y + (p.x - a.x) * e.x) / denominator;
-            let q = a * (1.0 - t) + b * t;
-            let offset = normal * (p - q).dot(normal);
-            wip.0[72..76].copy_from_slice(&offset.x.to_le_bytes());
-            wip.0[76..80].copy_from_slice(&offset.y.to_le_bytes());
-        }
-        2 => {
-            pins.write(crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter::Rectangle {
-                rectangle: rect, bottom: wall.authority.elevation(), top: wall.max_y(), exclude_wall: Some(event.wall),
-            });
-            trees.write(HideTreesinAreaCmd {
-                area: TreeHideArea::Rectangle(rect),
-                height_limit: wall.authority.elevation(),
-                expansion: 1.5,
-                finished: false,
-            });
-        }
-        3 => {
-            finish.write(super::super::FinishEditRectangleCmd { wall: event.wall });
-            trees.write(HideTreesinAreaCmd {
-                area: TreeHideArea::Rectangle(rect),
-                height_limit: wall.authority.elevation(),
-                expansion: 1.5,
-                finished: true,
-            });
-        }
-        _ => {}
-    }
-    if u32::from_le_bytes(wip.0[..4].try_into().unwrap()) != 2 {
-        return;
-    }
-    let direction = glam::Vec3::new(normal.x, 0.0, normal.y);
-    let dimension = if edge == 1 || edge == 3 {
-        rect.size.y
-    } else {
-        rect.size.x
-    };
-    let matrices = Slider3dMatrices {
-        second: camera.read_matrix(0),
-        gap: [0; 0x40],
-        first: camera.read_matrix(0x80),
-    };
-    let Some((_, scalar)) = slider.update(
-        event.phase,
-        hit,
-        direction,
-        dimension,
-        cursor.0,
-        window.as_dims(),
-        &matrices,
-        [2.25, 15.0],
-    ) else {
-        return;
-    };
-    let mut candidate = rect;
-    candidate.expand_along_edge(edge, scalar - dimension, 2.25, 15.0);
-    let current = read_rectangle(&wip.0[48..72]);
-    if !border.is_shape_inside(BorderShape::Rectangle(candidate)) {
-        display.write(DisplayOutOfBorder);
-        feedback.write(FeedbackInputOutOfBorder);
-        let BorderShape::Rectangle(fitted) = border.search_lerped_shape_that_fits_into_glade(
-            BorderShape::Rectangle(current),
-            BorderShape::Rectangle(candidate),
-        ) else {
-            unreachable!()
-        };
-        candidate = fitted;
-    }
-    if (candidate.center - current.center).length() > 0.0 {
-        write_rectangle(&mut wip.0[48..72], candidate);
-        let before = read_rectangle(&wip.0[24..48]);
-        let height = f32::from_le_bytes(wip.0[4..8].try_into().unwrap());
-        edits.write(EditRectangleCmd {
-            wall: event.wall,
-            center: candidate.center,
-            dimensions: candidate.size,
-            orientation: candidate.axis,
-            position: glam::Vec3::new(before.center.x, height, before.center.y),
-            movement: (scalar - dimension).abs(),
-            rotating: false,
-        });
+impl DoUiEditRectangleDims {
+    pub fn point(&self) -> Vec3 {
+        let f = |at| f32::from_le_bytes(self.intersection[at..at + 4].try_into().unwrap());
+        Vec3::new(f(36), f(40), f(44))
     }
 }
 
-/// Native producer: register the candidate edge widgets and send the active
-/// intersection. The downstream Slider3d transaction is implemented separately.
+/// 原RayBoxIntersection的有序hit判定，同时检查出口，不能只检查near有限。
+pub(super) fn candidate_hit(rectangle: Rectangle2d, ray: &CameraCursorRay) -> bool {
+    let bounds = rectangle.aabb();
+    let first =
+        (bounds.min - Vec2::new(ray.origin.x, ray.origin.z)) / Vec2::new(ray.dir.x, ray.dir.z);
+    let last =
+        (bounds.max - Vec2::new(ray.origin.x, ray.origin.z)) / Vec2::new(ray.dir.x, ray.dir.z);
+    let near = first.x.min(last.x).max(first.y.min(last.y));
+    let far = first.x.max(last.x).min(first.y.max(last.y));
+    near <= far && 0.0 <= far
+}
+
+/// 原11个SystemParam；producer只注册真实widget并运输当前交互，不直接修改墙。
 pub fn ui_edit_rectangle_dims(
-    mode: Res<crate::systems::mode_manager::AppMode>,
-    _signifiers: Res<crate::systems::ui::signifiers::signifier_create::UiSignifierStream>,
-    ui: Res<crate::systems::ui::resources::ui_state::UiState>,
-    ray: Res<crate::resources::mouse_terrain_raycast::CameraCursorRay>,
-    public: Res<crate::resources::walls::public_walls::PublicWalls>,
-    entities: Res<crate::resources::walls::public_walls::WallEntities>,
-    triggers: Query<&crate::resources::walls::wall_trigger_volume::WallTriggerVolume>,
-    mut camera_moved: EventReader<crate::systems::camera_rig::main_camera::MainCameraMoved>,
+    mode: Res<AppMode>,
+    mut stream: ResMut<UiSignifierStream>,
+    ui: Res<UiState>,
+    ray: Res<CameraCursorRay>,
+    walls: Res<PublicWalls>,
+    entities: Res<WallEntities>,
+    triggers: Query<&WallTriggerVolume>,
+    mut moved: EventReader<MainCameraMoved>,
     mut active: ResMut<UiEditRectangleActiveWidgetResource>,
-    mut output: EventWriter<DoUiEditRectangleDims>,
+    mut events: EventWriter<DoUiEditRectangleDims>,
     mut commands: Commands,
 ) {
-    use crate::systems::mode_manager::{AppMode, EditSubject};
-    use crate::systems::ui::resources::widget_params::WidgetParams;
-    use ::utils::geometry::{Aabb2, Ray2};
     active.0 = None;
-    let moved = camera_moved.read().count() != 0;
-    let selected = match *mode {
-        AppMode::Editing(EditSubject::Wall(id) | EditSubject::Roof(id)) => {
-            Some(crate::resources::walls::WallId(id))
-        }
-        AppMode::Editing(EditSubject::None) => None,
-        _ => return,
-    };
-    for (wall_id, _) in public.all() {
-        if selected.is_some_and(|id| id != wall_id) {
+    if mode.native_tag() > 5 {
+        return;
+    }
+    let camera_moved = moved.read().last().is_some();
+    for (wall, state) in walls.all() {
+        if state.shape().tag() != 1 {
             continue;
         }
-        let wall = public.get(wall_id).expect("iterated wall");
-        if wall.shape().tag() != 1 {
-            continue;
-        }
-        let rect = ShapeParameters::from_snapshot(wall.shape()).as_rectangle();
-        let (enter, exit) = Aabb2::from_points(rect.as_points2()).intersect_ray_interval(Ray2 {
-            origin: Vec2::new(ray.origin.x, ray.origin.z),
-            direction: Vec2::new(ray.dir.x, ray.dir.z),
-        });
-        let ray_hits = 0.0 <= exit && enter <= exit;
+        let selected = match *mode {
+            AppMode::Editing(EditSubject::None) => false,
+            AppMode::Editing(EditSubject::Wall(id) | EditSubject::Roof(id)) if id == wall.0 => true,
+            _ => continue,
+        };
+        let rectangle = ShapeParameters::from_snapshot(state.shape()).as_rectangle();
         for edge in 0..4 {
-            let id = edge_widget_id(wall_id, edge);
-            let is_selected = selected == Some(wall_id);
-            if !is_selected
-                && !ray_hits
-                && !(ui.active_widget() == id && ui.hover_byte() != 0 && ui.intersection_tag() != 2)
-            {
+            let mut widget = UiRectangleDimsEdit::new(wall, rectangle, edge, selected);
+            let context = ui.widget_context(widget.widget_id());
+            let dragged = context.dragged();
+            if !selected && !candidate_hit(rectangle, &ray) && !context.is_active() {
                 continue;
             }
-            let trigger = entities
-                .wall_entity(wall_id)
-                .and_then(|entity| triggers.get(entity).ok());
-            let geometry = edge_widget_geometry(wall, edge, is_selected, trigger);
-            let mut params = WidgetParams::default().geometry(geometry);
-            params.occlude_by_world = !is_selected;
-            let enabled = u32::from(!moved);
-            for (i, (slot, kind)) in params
-                .sounds
-                .slots
-                .iter_mut()
-                .zip([1u32, 2, 3, 3])
-                .enumerate()
-            {
-                slot[..4].copy_from_slice(&(kind * enabled).to_le_bytes());
-                params.fields[[3, 5, 6, 7][i]] = kind * enabled;
-            }
-            let context = ui.add_with_id(id, params);
-            if moved
-                && !is_selected
-                && !(ui.hover_byte() > 1 && ui.active_widget() == id && ui.click_byte() != 2)
-            {
+            let trigger = if selected {
+                None
+            } else {
+                let entity = entities
+                    .wall_entity(wall)
+                    .expect("矩形墙缺少WallEntities关联");
+                Some(
+                    triggers
+                        .get(entity)
+                        .expect("矩形墙实体缺少WallTriggerVolume"),
+                )
+            };
+            let context = widget.widget(&ui, state, trigger, camera_moved);
+            if camera_moved && !selected && dragged == 2 {
                 continue;
             }
-            if !context.is_active() {
-                continue;
-            }
-            if !is_selected && ui.hover_byte() == 1 && ui.click_byte() != 0 {
+            widget.signifier(&context, &mut stream, &mut active);
+            // 原1412dce20为deferred HighlightWallCmd，不是模式切换。
+            if !selected && context.hovered() != 0 {
                 commands.queue(move |world: &mut World| {
                     world.send_event(crate::systems::wall::wall_highlight::HighlightWallCmd {
-                        wall: wall_id,
+                        wall,
                         ty: 2,
                     });
                 });
             }
             let intersection = context.intersecting();
-            let phase = if ui.hover_byte() == 1 {
-                2
-            } else {
-                context.dragged()
-            };
-            output.write(DoUiEditRectangleDims {
-                intersection,
-                wall: wall_id,
-                rectangle: rect,
-                edge: edge as u64,
-                phase,
-            });
-            if !is_selected {
-                let (a, b) = rect.get_edge_pts(edge);
-                let mid = (a + b) * 0.5;
-                let curve = ::utils::curve::Curve2::try_new(vec![a - mid, b - mid], false)
-                    .expect("edge curve");
-                let y = ui.intersection_point().y;
-                active.0 = Some(RectangleActiveEdge {
-                    curve,
-                    widget: id,
-                    position: glam::Vec3::new(mid.x, y, mid.y),
+            if u32::from_le_bytes(intersection[..4].try_into().unwrap()) != 2 {
+                events.write(DoUiEditRectangleDims {
+                    intersection,
+                    wall,
+                    rectangle,
+                    edge,
+                    phase: DragState(context.dragged()),
                 });
             }
         }
+    }
+}
+
+/// 原12组参数；Started归档/建锚点，Held编辑，Finished发送unit完成信号。
+#[allow(clippy::too_many_arguments)]
+pub fn do_ui_edit_rectangle_dims(
+    walls: Res<PublicWalls>,
+    mut archivist: ResMut<LiveDecoratorArchivist>,
+    mut wip: ResMut<WipRectangle>,
+    mut edit: EventWriter<EditRectangleCmd>,
+    mut finish: EventWriter<FinishEditRectangleCmd>,
+    mut slider: Slider3d,
+    border: Res<GladeBorder>,
+    mut display: EventWriter<DisplayOutOfBorder>,
+    mut feedback: EventWriter<FeedbackInputOutOfBorder>,
+    mut trees: EventWriter<HideTreesinAreaCmd>,
+    mut pins: EventWriter<ShowPinnedDecoClutter>,
+    mut events: EventReader<DoUiEditRectangleDims>,
+) {
+    let Some(event) = events.read().last() else {
+        return;
+    };
+    if u32::from_le_bytes(event.intersection[..4].try_into().unwrap()) == 2 {
+        return;
+    }
+    let wall = walls.get(event.wall).expect("矩形尺寸编辑墙尚未发布");
+    let point = event.point();
+    let rectangle = event.rectangle;
+    let edge = event.edge;
+    let normal = rectangle.get_edge_normal(edge);
+    if event.phase.is_started() {
+        archivist.decorator_cull_allow_any();
+        let (a, b) = rectangle.get_edge_pts(edge);
+        let d = b - a;
+        let denominator = (d.y * d.y + d.x * d.x).max(1e-20);
+        let t = ((point.z - a.y) * d.y + (point.x - a.x) * d.x) / denominator;
+        let foot = Vec2::new((1.0 - t) * a.x + t * b.x, (1.0 - t) * a.y + t * b.y);
+        let distance = normal.y * (point.z - foot.y) + normal.x * (point.x - foot.x);
+        wip.begin_dimensions(event.wall, edge, rectangle, point.y, normal * distance);
+    } else if event.phase.0 == 4 {
+        pins.write(ShowPinnedDecoClutter::rectangle(
+            rectangle,
+            wall.authority.arch_height(),
+            wall.max_y_gable(),
+            Some(event.wall),
+        ));
+        trees.write(HideTreesinAreaCmd {
+            area: TreeHideArea::Rectangle(rectangle),
+            height_limit: wall.authority.arch_height(),
+            expansion: 1.5,
+            finished: false,
+        });
+    } else if event.phase.is_finished() {
+        finish.write(FinishEditRectangleCmd);
+        trees.write(HideTreesinAreaCmd {
+            area: TreeHideArea::Rectangle(rectangle),
+            height_limit: wall.authority.arch_height(),
+            expansion: 1.5,
+            finished: true,
+        });
+    }
+    if wip.tag() != 2 {
+        return;
+    }
+    let dimension = usize::from(edge == 1 || edge == 3);
+    let Some(change) = slider.update(
+        event.phase,
+        || Slider3dStart {
+            origin: point,
+            direction: Vec3::new(normal.x, 0.0, normal.y),
+            value: rectangle.size[dimension],
+        },
+        [2.25, 15.0],
+    ) else {
+        return;
+    };
+    let delta = change.value - rectangle.size[dimension];
+    let mut after = rectangle;
+    after.expand_along_edge(edge, delta, 2.25, 15.0);
+    if !border.is_shape_inside(BorderShape::Rectangle(after)) {
+        display.write(DisplayOutOfBorder);
+        feedback.write(FeedbackInputOutOfBorder);
+        after = border
+            .search_lerped_shape_that_fits_into_glade(
+                ShapeParameters::from_shape(Shape::Rectangle(wip.current())),
+                ShapeParameters::from_shape(Shape::Rectangle(after)),
+            )
+            .as_rectangle();
+    }
+    let difference = after.center - wip.current().center;
+    if (difference.y * difference.y + difference.x * difference.x).sqrt() > 0.0 {
+        let old = wip.before();
+        let y = wip.scalar(4);
+        wip.set_current(after);
+        edit.write(EditRectangleCmd {
+            wall: event.wall,
+            center: after.center,
+            dimensions: after.size,
+            orientation: after.axis,
+            position: Vec3::new(old.center.x, y, old.center.y),
+            movement: delta.abs(),
+            rotating: false,
+        });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        resources::{
+            critters::sheep::CmdCheckForSheepInsideBuilding,
+            history::History,
+            onboarding::NotifyHintSystemShapeEditWasPerformed,
+            walls::{
+                InnerWalls,
+                decorator_storage::DecoratorStorage,
+                public_walls::{WallPublicationDirty, WallSpatialHash},
+                publication_source::TerrainHeightGrid512,
+            },
+        },
+        systems::{
+            audio::{PlayBuildingAudio, RequestWallMaterialAudio},
+            camera_rig::MainCamera,
+            ui::resources::ui_state::UiInteraction,
+            wall::{
+                shapes::rectangle::{
+                    edit_rectangle::edit_rectangle,
+                    finish_edit_rectangle::{OnRectangleEdited, finish_edit_rectangle},
+                },
+                wall_state::path_preparation::PathRasters512,
+            },
+        },
+    };
+    use std::sync::Arc;
+
+    fn publish(world: &mut World, terrain: &TerrainHeightGrid512, paths: &PathRasters512) {
+        world.resource_scope(|world, mut public: Mut<PublicWalls>| {
+            public.consume_with_paths(
+                &mut world.resource_mut::<InnerWalls>(),
+                terrain,
+                Some(paths),
+                &WallPublicationDirty::default(),
+                &WallSpatialHash::default(),
+            );
+            let ids: Vec<_> = public.wall_ids().collect();
+            for wall in ids {
+                public
+                    .get_mut(wall)
+                    .unwrap()
+                    .update_gable_heights(None)
+                    .unwrap();
+            }
+        });
+    }
+
+    fn replay_recorded_rectangle_both_directions(
+        world: &mut World,
+        wall: WallId,
+        terrain: &TerrainHeightGrid512,
+        paths: &PathRasters512,
+    ) {
+        use crate::resources::history::{EditType, wall_edit::WallHistoryEdit};
+        use crate::resources::walls::publication_fields::WallId as ReplayWallId;
+        use crate::systems::history::wall_replay_interpreter::WallReplayCommand;
+        let edit = match &world.resource::<History>().pending().unwrap().edits[0] {
+            EditType::Wall(compound) => compound.groups[0][0].clone(),
+            other => panic!("矩形应产生Wall历史，实际{other:?}"),
+        };
+        let WallHistoryEdit::MorphPremadeShape(parameters) = &edit else {
+            panic!("矩形应记录原MorphPremadeShape");
+        };
+        let mut sources = std::collections::HashMap::from([(
+            ReplayWallId(wall.0),
+            world
+                .resource::<InnerWalls>()
+                .get(wall)
+                .unwrap()
+                .clone()
+                .into_snapshot()
+                .0,
+        )]);
+        for undo in [true, false] {
+            let mut command = WallReplayCommand {
+                edit: edit.clone(),
+                timed: false,
+                duration: 0.0,
+                elapsed: 0.0,
+                undo,
+                finished: false,
+            };
+            let result = command.advance(&mut sources, 0.25, terrain).unwrap();
+            assert!(!result.updated_source_notifications.is_empty());
+            let restored = &sources[&ReplayWallId(wall.0)].source;
+            world
+                .resource_mut::<InnerWalls>()
+                .update_wall_state_curve(wall, restored.curve.clone());
+            world
+                .resource_mut::<InnerWalls>()
+                .update_wall_state_enclosure(wall, restored.shape.clone());
+            publish(world, terrain, paths);
+            let expected = if undo {
+                parameters.before
+            } else {
+                parameters.after
+            };
+            assert_eq!(
+                world
+                    .resource::<PublicWalls>()
+                    .get(wall)
+                    .unwrap()
+                    .shape()
+                    .bytes(),
+                expected.bytes()
+            );
+        }
+    }
+
+    fn validation_world() -> (
+        World,
+        WallId,
+        Rectangle2d,
+        TerrainHeightGrid512,
+        PathRasters512,
+    ) {
+        let rectangle = Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::new(10.0, 4.0));
+        let terrain = TerrainHeightGrid512 {
+            encoded: Arc::from(vec![0; 512 * 512]),
+            minimum_y: 0.0,
+            maximum_y: 0.0,
+            sampling_fix: false,
+        };
+        let paths = PathRasters512::from_encoded(
+            std::array::from_fn(|_| Arc::from(vec![0; 512 * 512])),
+            false,
+        )
+        .unwrap();
+        let mut world = World::new();
+        world.init_resource::<InnerWalls>();
+        world.init_resource::<PublicWalls>();
+        world.init_resource::<WallEntities>();
+        world.init_resource::<UiEditRectangleActiveWidgetResource>();
+        world.init_resource::<WipRectangle>();
+        world.init_resource::<LiveDecoratorArchivist>();
+        world.init_resource::<DecoratorStorage>();
+        world.init_resource::<UiSignifierStream>();
+        world.insert_resource(crate::resources::mouse_terrain_raycast::CursorPositionSS(
+            Vec2::new(50., 50.),
+        ));
+        world.insert_resource(crate::resources::window::WindowSize::new(100, 100));
+        let mut camera = MainCamera::default();
+        camera.write_matrix(0, &glam::Mat4::IDENTITY);
+        camera.write_matrix(0x80, &glam::Mat4::IDENTITY);
+        world.insert_resource(camera);
+        world.insert_resource(CameraCursorRay {
+            origin: Vec3::new(0., 10., 0.),
+            dir: Vec3::NEG_Y,
+        });
+        world.insert_resource(GladeBorder(BorderShape::Rectangle(
+            Rectangle2d::new_axis_aligned(Vec2::ZERO, Vec2::splat(130.)),
+        )));
+        let mut time = bevy_time::Time::<()>::default();
+        time.advance_by(std::time::Duration::from_secs_f32(0.25));
+        world.insert_resource(time);
+        let mut history: History = History::empty_glade();
+        history.start_input_recording(0).unwrap();
+        world.insert_resource(history);
+        macro_rules! event {($($ty:ty),*)=>{$(world.init_resource::<Events<$ty>>();)*};}
+        event!(
+            DoUiEditRectangleDims,
+            EditRectangleCmd,
+            FinishEditRectangleCmd,
+            OnRectangleEdited,
+            DisplayOutOfBorder,
+            FeedbackInputOutOfBorder,
+            HideTreesinAreaCmd,
+            ShowPinnedDecoClutter,
+            MainCameraMoved,
+            RequestWallMaterialAudio,
+            PlayBuildingAudio,
+            NotifyHintSystemShapeEditWasPerformed,
+            CmdCheckForSheepInsideBuilding
+        );
+        // 使用真实创建consumer建立权威墙/屋顶请求/创建历史，再跨帧进入编辑。
+        use crate::resources::color_id::{
+            HalftimberColorIds, SetGateColorIdCmd, SetHalftimberColorIdCmd, SetWallColorIdCmd,
+            WallColorIds,
+        };
+        use crate::systems::{
+            history::recording::HistoryRecordingFailed, mode_manager::RequestToolbarCategoryChange,
+        };
+        use bevy_ecs::system::RunSystemOnce;
+        world.init_resource::<WallColorIds>();
+        world.init_resource::<HalftimberColorIds>();
+        world
+            .init_resource::<crate::resources::glade_color_customization::GladeColorCustomization>(
+            );
+        event!(
+            super::super::super::CreateRectangleCmd,
+            crate::resources::roofs::commands::CreateRoofCmd,
+            SetWallColorIdCmd,
+            SetHalftimberColorIdCmd,
+            SetGateColorIdCmd,
+            RequestToolbarCategoryChange,
+            HistoryRecordingFailed
+        );
+        world
+            .resource_mut::<Events<super::super::super::CreateRectangleCmd>>()
+            .send(super::super::super::CreateRectangleCmd {
+                center: rectangle.center,
+                dimensions: rectangle.size,
+                orientation: rectangle.axis,
+                previous_wall: None,
+                height: 3.0,
+                elevation: 0.0,
+            });
+        world
+            .run_system_once(super::super::create_rectangle::create_rectangle)
+            .unwrap();
+        assert_eq!(
+            world
+                .resource::<Events<crate::resources::roofs::commands::CreateRoofCmd>>()
+                .len(),
+            1
+        );
+        assert!(
+            world
+                .resource::<Events<HistoryRecordingFailed>>()
+                .is_empty()
+        );
+        let wall = world.resource::<InnerWalls>().wall_ids().next().unwrap();
+        assert_eq!(
+            world
+                .resource::<Events<CmdCheckForSheepInsideBuilding>>()
+                .len(),
+            1
+        );
+        world
+            .resource_mut::<Events<CmdCheckForSheepInsideBuilding>>()
+            .clear();
+        world.resource_mut::<Events<HideTreesinAreaCmd>>().clear();
+        world
+            .resource_mut::<History>()
+            .finish_input_recording()
+            .unwrap();
+        world
+            .resource_mut::<History>()
+            .start_input_recording(1)
+            .unwrap();
+        publish(&mut world, &terrain, &paths);
+        world.insert_resource(AppMode::Editing(EditSubject::Wall(wall.0)));
+        (world, wall, rectangle, terrain, paths)
+    }
+    #[test]
+    fn actual_finish_without_geometry_change_restores_archive_and_preserves_inactive_bytes() {
+        let (mut world, wall, rectangle, _, _) = validation_world();
+        let mut wip = WipRectangle::default();
+        wip.begin_dimensions(wall, 0, rectangle, 1.0, Vec2::new(0.3, -0.4));
+        let before = wip.0;
+        world.insert_resource(wip);
+        world.resource_mut::<LiveDecoratorArchivist>().special1 = Some(Default::default());
+        world
+            .resource_mut::<LiveDecoratorArchivist>()
+            .decorator_cull_allow_any();
+        world
+            .resource_mut::<Events<FinishEditRectangleCmd>>()
+            .send(FinishEditRectangleCmd);
+        let mut schedule = Schedule::default();
+        schedule.add_systems(finish_edit_rectangle::<crate::resources::history::MaybePendingSnapshotId>);
+        schedule.run(&mut world);
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<WipRectangle>().tag(), 0);
+        assert_eq!(&world.resource::<WipRectangle>().0[4..], &before[4..]);
+        assert!(
+            world
+                .resource::<LiveDecoratorArchivist>()
+                .special1
+                .is_none()
+        );
+        assert!(
+            world
+                .resource::<History>()
+                .pending()
+                .unwrap()
+                .edits
+                .is_empty()
+        );
+        assert_eq!(world.resource::<Events<OnRectangleEdited>>().len(), 1);
+        assert!(
+            world
+                .resource::<Events<NotifyHintSystemShapeEditWasPerformed>>()
+                .is_empty()
+        );
+        assert!(
+            world
+                .resource::<Events<CmdCheckForSheepInsideBuilding>>()
+                .is_empty()
+        );
+    }
+    #[test]
+    fn actual_world_ui_drag_audio_history_and_idle_frames() {
+        let (mut world, wall, rectangle, terrain, paths) = validation_world();
+        let widget = UiRectangleDimsEdit::new(wall, rectangle, 0, true).widget_id();
+        let mut ui = UiState::new(UiInteraction {
+            native_tag: 2,
+            native_phase: 3,
+            widget,
+        });
+        ui.set_intersection_tag(0);
+        ui.set_intersection_point(Vec3::new(-5., 1., 0.));
+        world.insert_resource(ui);
+        let mut schedule = Schedule::default();
+        schedule.add_systems(
+            (
+                ui_edit_rectangle_dims,
+                do_ui_edit_rectangle_dims,
+                edit_rectangle,
+                finish_edit_rectangle::<crate::resources::history::MaybePendingSnapshotId>,
+            )
+                .chain(),
+        );
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<WipRectangle>().tag(), 2);
+        assert_eq!(
+            world.resource::<WipRectangle>().before().size,
+            Vec2::new(10., 4.)
+        );
+        assert!(
+            world
+                .resource::<History>()
+                .pending()
+                .unwrap()
+                .edits
+                .is_empty()
+        );
+        world
+            .resource_mut::<UiState>()
+            .replace_interaction(UiInteraction {
+                native_tag: 2,
+                native_phase: 4,
+                widget,
+            });
+        world
+            .resource_mut::<crate::resources::mouse_terrain_raycast::CursorPositionSS>()
+            .0 = Vec2::new(75., 50.);
+        schedule.run(&mut world);
+        let edited = ShapeParameters::from_snapshot(
+            world
+                .resource::<InnerWalls>()
+                .get(wall)
+                .unwrap()
+                .get_enclosure_params()
+                .unwrap(),
+        )
+        .as_rectangle();
+        assert_ne!(edited.size, rectangle.size, "真实屏幕投影必须改变尺寸");
+        assert_eq!(world.resource::<Events<PlayBuildingAudio>>().len(), 1);
+        assert_eq!(
+            world.resource::<Events<RequestWallMaterialAudio>>().len(),
+            1
+        );
+        assert_eq!(world.resource::<Events<ShowPinnedDecoClutter>>().len(), 1);
+        publish(&mut world, &terrain, &paths);
+        world
+            .resource_mut::<UiState>()
+            .replace_interaction(UiInteraction {
+                native_tag: 2,
+                native_phase: 1,
+                widget,
+            });
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<WipRectangle>().tag(), 0);
+        assert_eq!(
+            world.resource::<History>().pending().unwrap().edits.len(),
+            1
+        );
+        assert_eq!(
+            world
+                .resource::<Events<CmdCheckForSheepInsideBuilding>>()
+                .len(),
+            1
+        );
+        assert_eq!(
+            world
+                .resource::<Events<NotifyHintSystemShapeEditWasPerformed>>()
+                .len(),
+            1
+        );
+        replay_recorded_rectangle_both_directions(&mut world, wall, &terrain, &paths);
+        let save =
+            serde_json::to_string(world.resource::<InnerWalls>().get(wall).unwrap()).unwrap();
+        let restored: crate::resources::walls::WallState = serde_json::from_str(&save).unwrap();
+        assert_eq!(
+            restored.get_enclosure_params().unwrap().bytes(),
+            world
+                .resource::<InnerWalls>()
+                .get(wall)
+                .unwrap()
+                .get_enclosure_params()
+                .unwrap()
+                .bytes()
+        );
+        world
+            .resource_mut::<History>()
+            .finish_input_recording()
+            .unwrap();
+        world
+            .resource_mut::<UiState>()
+            .replace_interaction(UiInteraction {
+                native_tag: 0,
+                native_phase: 2,
+                widget,
+            });
+        schedule.run(&mut world);
+        schedule.run(&mut world);
+        assert_eq!(
+            world.resource::<Events<OnRectangleEdited>>().len(),
+            3,
+            "空闲帧不重放活动快照"
+        );
+        world.resource_mut::<InnerWalls>().remove(wall);
+        publish(&mut world, &terrain, &paths);
+        schedule.run(&mut world);
+        assert!(world.resource::<PublicWalls>().get(wall).is_none());
+    }
+    #[test]
+    fn actual_rotation_ui_has_started_held_finished_and_history() {
+        use super::super::ui_edit_rectangle_orientation::{
+            DoUiEditRectangleRotate, do_ui_edit_rectangle_rotate, ui_edit_rectangle_orientation,
+        };
+        use super::super::ui_modes::edit_orientation::UiRectangleOrientationEdit;
+        let (mut world, wall, rectangle, terrain, paths) = validation_world();
+        world.init_resource::<Events<DoUiEditRectangleRotate>>();
+        world.insert_resource(crate::resources::time::GameTime {
+            delta: 0.25,
+            ..Default::default()
+        });
+        let widget = UiRectangleOrientationEdit::new(wall, rectangle, 0, true).widget_id();
+        let mut ui = UiState::new(UiInteraction {
+            native_tag: 2,
+            native_phase: 3,
+            widget,
+        });
+        ui.set_intersection_tag(0);
+        ui.set_intersection_point(Vec3::new(-5., 1., -2.));
+        world.insert_resource(ui);
+        world.insert_resource(CameraCursorRay {
+            origin: Vec3::new(-5., 10., -2.),
+            dir: Vec3::NEG_Y,
+        });
+        let mut schedule = Schedule::default();
+        schedule.add_systems(
+            (
+                ui_edit_rectangle_orientation,
+                do_ui_edit_rectangle_rotate,
+                edit_rectangle,
+                finish_edit_rectangle::<crate::resources::history::MaybePendingSnapshotId>,
+            )
+                .chain(),
+        );
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<WipRectangle>().tag(), 1);
+        assert_eq!(world.resource::<WipRectangle>().before().axis, Vec2::X);
+        world
+            .resource_mut::<UiState>()
+            .replace_interaction(UiInteraction {
+                native_tag: 2,
+                native_phase: 4,
+                widget,
+            });
+        world.insert_resource(CameraCursorRay {
+            origin: Vec3::new(2., 10., -5.),
+            dir: Vec3::NEG_Y,
+        });
+        schedule.run(&mut world);
+        let after = ShapeParameters::from_snapshot(
+            world
+                .resource::<InnerWalls>()
+                .get(wall)
+                .unwrap()
+                .get_enclosure_params()
+                .unwrap(),
+        )
+        .as_rectangle();
+        assert_ne!(after.axis, rectangle.axis, "原旋转DO必须修改权威墙朝向");
+        assert_eq!(after.size, rectangle.size);
+        assert_eq!(world.resource::<Events<PlayBuildingAudio>>().len(), 1);
+        assert_eq!(world.resource::<Events<ShowPinnedDecoClutter>>().len(), 1);
+        publish(&mut world, &terrain, &paths);
+        world
+            .resource_mut::<UiState>()
+            .replace_interaction(UiInteraction {
+                native_tag: 2,
+                native_phase: 1,
+                widget,
+            });
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<WipRectangle>().tag(), 0);
+        assert_eq!(
+            world.resource::<History>().pending().unwrap().edits.len(),
+            1
+        );
+        assert_eq!(
+            world
+                .resource::<Events<CmdCheckForSheepInsideBuilding>>()
+                .len(),
+            1
+        );
+        replay_recorded_rectangle_both_directions(&mut world, wall, &terrain, &paths);
+        world
+            .resource_mut::<History>()
+            .finish_input_recording()
+            .unwrap();
+        world
+            .resource_mut::<UiState>()
+            .replace_interaction(UiInteraction {
+                native_tag: 0,
+                native_phase: 2,
+                widget,
+            });
+        schedule.run(&mut world);
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<Events<OnRectangleEdited>>().len(), 3);
+        assert_eq!(world.resource::<Events<PlayBuildingAudio>>().len(), 1);
     }
 }
 
 #[cfg(test)]
 mod native_widget_tests {
     use super::*;
+    use super::super::finish_edit_rectangle::RectangleEditUiState;
     use crate::resources::walls::public_wall_state::PublicWallState;
     use crate::resources::walls::wall_trigger_volume::WallTriggerVolume;
     use crate::resources::walls::{WallState, publication_source::TerrainHeightGrid512};
@@ -391,7 +791,7 @@ mod native_widget_tests {
             let edge = case["edge"].as_u64().unwrap() as usize;
             let expected = u64::from_str_radix(case["widget_id"].as_str().unwrap(), 16).unwrap();
             assert_eq!(
-                edge_widget_id(crate::resources::walls::WallId(wall), edge).0,
+                UiRectangleDimsEdit::new(crate::resources::walls::WallId(wall), Rectangle2d::new(Vec2::ZERO, Vec2::ONE, Vec2::X), edge, true).widget_id().0,
                 expected
             );
         }
@@ -426,23 +826,6 @@ mod native_widget_tests {
         wall.prepare_paths(&paths).unwrap();
         let mut trigger = WallTriggerVolume::default();
         trigger.recompute(&wall).unwrap();
-        assert!(matches!(
-            edge_widget_geometry(&wall, 0, false, None),
-            WidgetGeometry::Empty
-        ));
-        let WidgetGeometry::TriangleMesh(tris) =
-            edge_widget_geometry(&wall, 0, false, Some(&trigger))
-        else {
-            panic!("range mesh")
-        };
-        assert!(!tris.is_empty());
-        let WidgetGeometry::TriangleMesh(box_tris) =
-            edge_widget_geometry(&wall, 0, true, Some(&trigger))
-        else {
-            panic!("selected box")
-        };
-        assert_eq!(box_tris.len(), 12);
-
         use crate::resources::walls::{
             InnerWalls,
             public_walls::{PublicWalls, WallEntities, WallPublicationDirty, WallSpatialHash},
@@ -479,7 +862,7 @@ mod native_widget_tests {
         producer.set_executor_kind(bevy_ecs::schedule::ExecutorKind::SingleThreaded);
         producer.add_systems(ui_edit_rectangle_dims);
         producer.run(&mut world);
-        let widget = edge_widget_id(id, 0);
+        let widget = UiRectangleDimsEdit::new(id, rect, 0, true).widget_id();
         let params = world
             .resource::<crate::systems::ui::resources::ui_state::UiState>()
             .widget(widget)
@@ -536,7 +919,7 @@ mod native_widget_tests {
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].wall, id);
         assert_eq!(events[0].edge, 0);
-        assert_eq!(events[0].phase, 2);
+        assert_eq!(events[0].phase.0, 2);
         // Feed the actual picker intersection into the transaction system.
         world.init_resource::<RectangleEditUiState>();
         world.init_resource::<crate::resources::walls::decorator_storage::DecoratorStorage>();
@@ -583,7 +966,7 @@ mod native_widget_tests {
             2
         );
         assert_eq!(
-            read_rectangle(&world.resource::<RectangleEditUiState>().0[24..48]),
+            world.resource::<RectangleEditUiState>().before(),
             rect
         );
         world
@@ -741,7 +1124,7 @@ mod native_widget_tests {
         let before = world.resource::<RectangleEditUiState>().0;
         let mut missing = events[0].clone();
         missing.wall = crate::resources::walls::WallId(u64::MAX);
-        missing.phase = 3;
+        missing.phase = crate::systems::ui::resources::ui_state::DragState(3);
         world.send_event(missing);
         assert!(
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| transaction.run(&mut world)))

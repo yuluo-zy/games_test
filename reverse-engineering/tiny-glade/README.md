@@ -16,6 +16,7 @@
 | MCP / Ghidra / ReVa | [`docs/current/AI_REVERSE_TOOLS.md`](docs/current/AI_REVERSE_TOOLS.md) → [`tool-usage/README.md`](tool-usage/README.md) |
 | 机器台账 | [`tracking/README.md`](tracking/README.md) |
 | 脚本与工具 | [`scripts/README.md`](scripts/README.md) → [`tools/`](tools/) |
+| 汇编图谱、函数/模块地图与只读 Agent 查询 | [`tools/code-map/README.md`](tools/code-map/README.md) |
 
 ## 渐进式披露（按层读，不要一次加载）
 

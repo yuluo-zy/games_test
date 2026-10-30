@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "artifact": {
+    "path": "/Users/yuluo/Desktop/game/B版本内容/tiny-glade.rne",
+    "sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "bytes": 58460160,
+    "id": "tiny-glade-B-release",
+    "version": "B",
+    "format": "PE",
+    "image_base": "0x140000000",
+    "rsds": [
+      {
+        "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+        "age": 1,
+        "pdb_name": "tiny_glade.pdb"
+      }
+    ],
+    "debug": {
+      "path": "/Users/yuluo/Desktop/game/B版本内容/tiny_glade.pdb",
+      "sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+      "bytes": 274710528,
+      "guid": "09F1A02A-49F2-F8C8-4C4C-44205044422E",
+      "age": 1
+    }
+  },
+  "request_id": "m01-legacy-rect-rotate-full",
+  "cache_key": "782a00118a396e49860cfdc633fb2918fa843f3f0f75d03ea66eb28a3553f6fb",
+  "status": "ok",
+  "range": {
+    "rva": "0xc984f0",
+    "length": 41,
+    "start_va": "0x140c984f0",
+    "stop_va_exclusive": "0x140c98519",
+    "instruction_overhang_bytes": 0,
+    "function_boundary_verified": false
+  },
+  "instructions": [
+    {
+      "va": "0x140c984f0",
+      "rva": "0xc984f0",
+      "bytes": "f20f1001",
+      "size": 4,
+      "assembly": "movsd\t(%rcx), %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984f4",
+      "rva": "0xc984f4",
+      "bytes": "f20f104908",
+      "size": 5,
+      "assembly": "movsd\t0x8(%rcx), %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984f9",
+      "rva": "0xc984f9",
+      "bytes": "0f14c0",
+      "size": 3,
+      "assembly": "unpcklps\t%xmm0, %xmm0            # xmm0 = xmm0[0,0,1,1]",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984fc",
+      "rva": "0xc984fc",
+      "bytes": "0f2812",
+      "size": 3,
+      "assembly": "movaps\t(%rdx), %xmm2",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c984ff",
+      "rva": "0xc984ff",
+      "bytes": "0f59c2",
+      "size": 3,
+      "assembly": "mulps\t%xmm2, %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c98502",
+      "rva": "0xc98502",
+      "bytes": "0f14c9",
+      "size": 3,
+      "assembly": "unpcklps\t%xmm1, %xmm1            # xmm1 = xmm1[0,0,1,1]",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c98505",
+      "rva": "0xc98505",
+      "bytes": "0f59ca",
+      "size": 3,
+      "assembly": "mulps\t%xmm2, %xmm1",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c98508",
+      "rva": "0xc98508",
+      "bytes": "0f28d0",
+      "size": 3,
+      "assembly": "movaps\t%xmm0, %xmm2",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c9850b",
+      "rva": "0xc9850b",
+      "bytes": "660f15d1",
+      "size": 4,
+      "assembly": "unpckhpd\t%xmm1, %xmm2            # xmm2 = xmm2[1],xmm1[1]",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c9850f",
+      "rva": "0xc9850f",
+      "bytes": "0f16c1",
+      "size": 3,
+      "assembly": "movlhps\t%xmm1, %xmm0            # xmm0 = xmm0[0],xmm1[0]",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c98512",
+      "rva": "0xc98512",
+      "bytes": "0f58c2",
+      "size": 3,
+      "assembly": "addps\t%xmm2, %xmm0",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c98515",
+      "rva": "0xc98515",
+      "bytes": "0f1101",
+      "size": 3,
+      "assembly": "movups\t%xmm0, (%rcx)",
+      "crosses_requested_stop": false
+    },
+    {
+      "va": "0x140c98518",
+      "rva": "0xc98518",
+      "bytes": "c3",
+      "size": 1,
+      "assembly": "retq",
+      "crosses_requested_stop": false
+    }
+  ],
+  "symbolization": [
+    {
+      "Address": "0xc984f0",
+      "ModuleName": "/Users/yuluo/Desktop/game/B版本内容/tiny-glade.rne",
+      "Symbol": [
+        {
+          "Column": 0,
+          "Discriminator": 0,
+          "FileName": "/home/h3/code/pouncelight/country-slice-private/crates/utils/src/geometry/rectangle.rs",
+          "FunctionName": "utils::geometry::rectangle::Rectangle3d::rotate_projective_xz::h9bbed3eb57c5f818",
+          "Line": 48,
+          "StartAddress": "",
+          "StartFileName": "",
+          "StartLine": 0
+        }
+      ]
+    }
+  ],
+  "missing_symbol_addresses": [],
+  "raw_assembly": "\n/Users/yuluo/Desktop/game/B版本内容/tiny-glade.rne:\tfile format coff-x86-64\n\nDisassembly of section .text:\n\n0000000140001000 <.text>:\n140c984f0: f2 0f 10 01                 \tmovsd\t(%rcx), %xmm0\n140c984f4: f2 0f 10 49 08              \tmovsd\t0x8(%rcx), %xmm1\n140c984f9: 0f 14 c0                    \tunpcklps\t%xmm0, %xmm0            # xmm0 = xmm0[0,0,1,1]\n140c984fc: 0f 28 12                    \tmovaps\t(%rdx), %xmm2\n140c984ff: 0f 59 c2                    \tmulps\t%xmm2, %xmm0\n140c98502: 0f 14 c9                    \tunpcklps\t%xmm1, %xmm1            # xmm1 = xmm1[0,0,1,1]\n140c98505: 0f 59 ca                    \tmulps\t%xmm2, %xmm1\n140c98508: 0f 28 d0                    \tmovaps\t%xmm0, %xmm2\n140c9850b: 66 0f 15 d1                 \tunpckhpd\t%xmm1, %xmm2            # xmm2 = xmm2[1],xmm1[1]\n140c9850f: 0f 16 c1                    \tmovlhps\t%xmm1, %xmm0            # xmm0 = xmm0[0],xmm1[0]\n140c98512: 0f 58 c2                    \taddps\t%xmm2, %xmm0\n140c98515: 0f 11 01                    \tmovups\t%xmm0, (%rcx)\n140c98518: c3                          \tretq\n",
+  "original_target_executed": false
+}

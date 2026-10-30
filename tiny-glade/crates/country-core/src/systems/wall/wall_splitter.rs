@@ -512,9 +512,8 @@ pub fn wall_splitter<S: Send + Sync + 'static>(
                 .map(|&(id, low, high)| (WallId(id), low, high))
                 .collect();
             storage.on_wall_split(wall, &removed_curve, &children);
-            let compound = eraser.finish(&wall_colors, &halftimber_colors);
-            history
-                .add(EditType::Wall(Arc::new(compound)))
+            eraser
+                .finish_recorded(&wall_colors, &halftimber_colors, &mut history, &inner_walls)
                 .map_err(|_| WallSplitterError::HistoryNotRecording)?;
 
             events
@@ -543,14 +542,26 @@ enum SplitAction {
 }
 
 fn add_history<S>(history: &mut History<S>, edit: ColorEdit) -> std::result::Result<(), WallSplitterError> {
-    history
-        .add(EditType::Color(Arc::new(edit)))
-        .map_err(|_| WallSplitterError::HistoryNotRecording)
+    let edit = EditType::Color(Arc::new(edit));
+    history.add(edit.clone()).unwrap_or_else(|_| {
+        panic!("Tried writing {edit:?} to History when the input recording is finished")
+    });
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn splitter_color_history_without_recording_panics_at_original_call() {
+        let mut history = History::<()>::empty_glade();
+        let edit = ColorEdit::Wall { wall_id: WallId(1), from: StrokeId(1), to: StrokeId(2) };
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = add_history(&mut history, edit);
+        })).is_err());
+        assert!(history.pending().is_none());
+    }
     use crate::{
         resources::walls::publication_source::TerrainHeightGrid512,
         systems::{

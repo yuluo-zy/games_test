@@ -66,12 +66,12 @@ fn corner_poses(cached: CachedDecoratorTransform, width: f32, normal: Vec2,
     let first = directions[0] * span + center;
     let second = directions[1] * span + center;
     let midpoint = second * 0.5 + first * 0.5;
-    let mut main = Transform { rotation: utils::xz_rotation_bad(normal),
+    let mut main = Transform { rotation: utils::xz_projective_rotation_bad(Vec3::new(normal.x, 0.0, normal.y)),
         translation: Vec3::new(midpoint.x, cached.translation.y, midpoint.y), scale: Vec3::ONE };
     assert!((1..=3).contains(&rank), "农舍角窗 rank 必须为1至3");
     let side = |point: Vec2, direction: Vec2| {
         let position = point * EDGE_BLEND + center * CORNER_RETAIN;
-        Transform { rotation: utils::xz_rotation_bad(Vec2::new(-direction.y, direction.x)),
+        Transform { rotation: utils::xz_projective_rotation_bad(Vec3::new(-direction.y, 0.0, direction.x)),
             translation: Vec3::new(position.x, cached.translation.y, position.y), scale: Vec3::ONE }
     };
     let sides = [side(first, directions[0]), side(second, directions[1])];
@@ -86,7 +86,10 @@ pub fn generate_cottage_corner_windows(derived: DerivedDecoratorInfoResources,
     meshes: Res<AssetMeshLibrary>) {
     let view = derived.as_view();
     for (wall_id, decorators) in storage.iter_walls() {
-        for (modified, info) in decorators.iter_modified() {
+        for &modified in &decorators.modified_ids {
+            // 原modified集合与真实Info必须同桶一致，不能用filter_map吞掉坏定位器。
+            let info = decorators.decorators.get(&modified)
+                .expect("called `Option::unwrap()` on a `None` value");
             let id = DecoratorId(modified);
             if view.subtype(id).0 != 3 { continue; }
             let wall = walls.get(wall_id).expect("called `Option::unwrap()` on a `None` value");

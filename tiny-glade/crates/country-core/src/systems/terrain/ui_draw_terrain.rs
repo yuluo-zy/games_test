@@ -44,17 +44,6 @@ pub const DRAW_CANVAS_NAME: &str = "terrain_draw";
 /// B state-2 caller 0x140aa025b reads .rdata@0x1429258d8 = 0x3e99999a.
 pub const MORPH_SPACING: f32 = 0.3;
 
-/// 悬停有效性适配（I：UI 悬停上下文 layout Gap；ui_edit_terrain 消费）。
-#[derive(Resource, Clone, Copy, Debug, Default)]
-pub struct TerrainHoverInput {
-    /// 悬停命中（位 0）。
-    pub hovered: bool,
-    /// 命中位置（世界）。
-    pub position: Vec2,
-    /// UI 交互激活标记（O：ui_edit `*pcVar23` = CursorTerrainRaycast.tag；1 = 命中）。
-    pub pressed: bool,
-}
-
 /// DrawState（O：Local；crate 以 Resource 承载以便宿主/测试注入与观测，I；`+0x20..0x40` 8 B 元素 Vec；结尾状态字节回写 `*in_stack_00000068`；
 /// `*in_stack_00000070` = drag 距离浮点槽）。
 #[derive(Resource, Clone, Debug, Default)]
@@ -91,9 +80,9 @@ pub fn ui_draw_terrain(
     mut effects: TerrainDrawEffects,
     mut draw_state: ResMut<TerrainDrawState>,
     mut pending: ResMut<PendingTerrainHistory>,
-    assets: Option<Res<AssetSsboLibrary>>,
+    assets: Res<AssetSsboLibrary>,
     mut archivist: ResMut<LiveDecoratorArchivist>,
-    readbacks: Option<Res<crate::render::gpu_readback::GpuReadbacks>>,
+    readbacks: Res<crate::render::gpu_readback::GpuReadbacks>,
 ) {
     // 门：AppMode::Terrain（O：0x140a9fdf9 `CMP dword [RAX],0xa`）。
     if mode.native_tag() != 10 {
@@ -164,20 +153,17 @@ pub fn ui_draw_terrain(
     // B0x142adc498: resolved original new/continue/release/noop branches.
     match state {
         1 => {
-            if let Ok(Some(id)) = editing.new_stroke(position.to_array()) {
+            if let Some(id) = editing.new_stroke(position.to_array()).expect("original terrain stroke creation must not swallow failures") {
                 // B aa010f..aa011d: preserve the raw drag distance before any
                 // SSBO lookup or clamp/addition for the actual stroke height.
                 editing.cursor_height_override = Some(draw_state.drag_distance);
                 // Both readbacks come from the render thread's latest published
                 // copies; neither inspects the mapping an in-flight GPU frame is
                 // rewriting, so the original lookup order after creation holds.
-                let library = assets.as_deref()
-                    .expect("terrain drawing requires the SSBO library");
-                let readbacks = readbacks.as_deref();
-                let mouse_index = crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::read_terrain_stroke_index(library, readbacks);
-                library.get::<TerrainRockMaskSsbo>()
+                let mouse_index = crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::read_terrain_stroke_index(&assets, Some(&readbacks));
+                assets.get::<TerrainRockMaskSsbo>()
                     .expect("terrain drawing requires TerrainRockMaskSsbo");
-                let samples = TerrainRockMaskSsbo::published(readbacks);
+                let samples = TerrainRockMaskSsbo::published(Some(&readbacks));
                 let on_rock = mouse_index.is_some_and(|index| index != -1)
                     && sample_at_world_xz(bytemuck::cast_slice(samples), cursor.x, cursor.y) != 0;
                 let height = initial_stroke_height(mouse_index, on_rock, draw_state.drag_distance);
@@ -202,20 +188,15 @@ pub fn ui_draw_terrain(
                 // B 0x140aa0235..0x140aa02c2: the cursor keeps all XYZ
                 // coordinates; border failure skips mutation and notification.
                 stroke.insert_or_morph_last_point(position.to_array(), MORPH_SPACING);
-                let id = StrokeId(
-                    editing
-                        .next_index
-                        .checked_sub(1)
-                        .expect("original last terrain stroke counter assertion"),
-                );
+                let id = editing.last_stroke_id();
                 // The native caller publishes this even when the point helper
                 // returns without changing a point (near duplicate / 1024 cap).
                 effects.changed.write(EvTerrainStrokeChanged(id));
             }
         }
         3 => {
-            let id = editing.next_index.checked_sub(1).map(StrokeId);
-            if let (Some(id), Ok(stroke)) = (id, editing.get_last_mut_stroke()) {
+            let id = editing.last_stroke_id();
+            if let Ok(stroke) = editing.get_last_mut_stroke() {
                 pending.stage(TerrainEdit::NewTerrainStroke {
                     index: id,
                     height_ws: stroke.height_ws,
@@ -246,6 +227,7 @@ mod recovered_extend_tests {
     fn world(position: glam::Vec3, inside: bool) -> World {
         let mut world = World::new();
         register_terrain_events(&mut world);
+        register_test_buffers(&mut world);
         world.insert_resource(AppMode::Terrain);
         world.insert_resource(CursorTerrainRaycast {
             tag: 1,
@@ -326,6 +308,7 @@ mod typed_history_release_tests {
     fn release_records_an_owned_typed_stroke_once_and_resets_pending() {
         let mut world = World::new();
         register_terrain_events(&mut world);
+        register_test_buffers(&mut world);
         world.insert_resource(AppMode::Terrain);
         world.insert_resource(CursorTerrainRaycast::default());
         world.insert_resource(WaterRaster::new(
@@ -411,6 +394,7 @@ pub(super) fn register_test_buffers(world: &mut World) {
     library.add_new::<crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::MouseTerrainRaycastSsbo>(&device);
     library.add_new::<TerrainRockMaskSsbo>(&device);
     world.insert_resource(library);
+    world.insert_resource(crate::render::gpu_readback::GpuReadbacks::default());
 }
 
 #[cfg(test)]
@@ -935,6 +919,7 @@ mod native_canvas_argument_tests {
         ] {
             let mut world = World::new();
             register_terrain_events(&mut world);
+            register_test_buffers(&mut world);
             world.insert_resource(AppMode::Terrain);
             world.insert_resource(CursorTerrainRaycast {
                 tag: u32::from(hit),
@@ -987,6 +972,7 @@ mod cursor_plane_lifecycle_tests {
     fn world(distance: f32, phase: u8) -> World {
         let mut world = World::new();
         register_terrain_events(&mut world);
+        register_test_buffers(&mut world);
         world.insert_resource(AppMode::Terrain);
         world.insert_resource(CursorTerrainRaycast {
             tag: 1,
@@ -1014,6 +1000,9 @@ mod cursor_plane_lifecycle_tests {
     fn start_sets_raw_plane_before_a_later_missing_ssbo_failure() {
         for bits in [(-1.0_f32).to_bits(), 25.0_f32.to_bits(), 0x8000_0000, 0x7fc0_1234] {
             let mut world = world(f32::from_bits(bits), 3);
+            // Mandatory resource ownership is already present; the branch's
+            // first inner SSBO lookup remains the original failure point.
+            world.insert_resource(AssetSsboLibrary::new());
             let mut schedule = Schedule::default();
             schedule.add_systems(ui_draw_terrain);
             // The original mutates the plane first; preserve that observable
@@ -1033,7 +1022,7 @@ mod cursor_plane_lifecycle_tests {
         let mut world = world(12.0, 3);
         {
             let mut editing = world.resource_mut::<TerrainEditingData>();
-            editing.next_index = tg_terrain::stroke::ID_COUNTER_LIMIT;
+            editing.next_index = u64::from(tg_terrain::stroke::ID_COUNTER_LIMIT);
             editing.cursor_height_override = Some(7.25);
         }
         let mut schedule = Schedule::default();
@@ -1047,11 +1036,34 @@ mod cursor_plane_lifecycle_tests {
     fn release_without_a_last_stroke_still_clears_the_plane() {
         let mut world = world(12.0, 5);
         world.resource_mut::<TerrainDrawState>().state = 2;
-        world.resource_mut::<TerrainEditingData>().cursor_height_override = Some(7.25);
+        {
+            let mut editing = world.resource_mut::<TerrainEditingData>();
+            // 原get_last_mut_stroke先断言完整64位counter非零，再查counter低32位-1。
+            // 这里模拟最后笔画已被移除；counter=0属于另一条原失败分支。
+            editing.next_index = 1;
+            editing.cursor_height_override = Some(7.25);
+        }
         let mut schedule = Schedule::default();
         schedule.add_systems(ui_draw_terrain);
         schedule.run(&mut world);
         assert_eq!(world.resource::<TerrainEditingData>().cursor_height_override, None);
+        assert!(world.resource::<Events<NotifyHintSystemTerrain>>().is_empty());
+        assert!(world.resource::<Events<NotifyHintSystemToolWasJustUsed>>().is_empty());
+    }
+
+    #[test]
+    fn release_with_zero_counter_panics_before_clearing_the_plane() {
+        let mut world = world(12.0, 5);
+        world.resource_mut::<TerrainDrawState>().state = 2;
+        world.resource_mut::<TerrainEditingData>().cursor_height_override = Some(7.25);
+        let mut schedule = Schedule::default();
+        schedule.add_systems(ui_draw_terrain);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            schedule.run(&mut world);
+        }));
+        assert!(result.is_err());
+        // 原140aa02d9调用924900；counter零在9249f5失败，不能到aa06eb清除平面。
+        assert_eq!(world.resource::<TerrainEditingData>().cursor_height_override, Some(7.25));
         assert!(world.resource::<Events<NotifyHintSystemTerrain>>().is_empty());
         assert!(world.resource::<Events<NotifyHintSystemToolWasJustUsed>>().is_empty());
     }

@@ -178,6 +178,70 @@ fn externally_held_snapshot_is_immutable_and_capacity_recovers_after_release() {
 }
 
 #[test]
+fn constants_pages_retire_only_after_external_snapshot_and_weak_release() {
+    use rhapsody::resource::{
+        DYNAMIC_CONSTANTS_CHUNK_SIZE_BYTES as PAGE, DynamicConstants, DynamicConstantsConfig,
+    };
+    let Some((mut session, buffers)) = fixture() else { return; };
+    let device = session.backend.device().clone();
+    let idle_waits = device.retirement_stats().idle_waits;
+    let mut constants = DynamicConstants::with_config(device, DynamicConstantsConfig {
+        max_pages: 1, max_backing_bytes: PAGE, max_idle_pages: 1,
+    }).unwrap();
+    let chunk = constants.allocate(16).unwrap();
+    chunk.write_bytes(&[0x37; 16]).unwrap();
+    let pointer = Arc::as_ptr(&chunk.buffer) as usize;
+    let aligned = constants.allocate(0).unwrap();
+    let tail = constants.allocate(PAGE - aligned.offset).unwrap();
+    drop((aligned, tail));
+    let mut graph = session.begin_frame().unwrap();
+    let input = session.import_frame_buffer(&mut graph, chunk.buffer.clone(), 0x35).unwrap();
+    drop(chunk);
+    let output = graph.import_unowned("snapshot output",
+        ResourceSpec::Buffer(buffers[2].desc).descriptor(), (1u64 << 62) | 3, HOST).unwrap();
+    let mut pass = graph.add_pass("constants snapshot lease").with_side_effect();
+    pass.add_resource_access(input, 0x25, 0).unwrap();
+    pass.add_resource_access(output, 0x34, 1).unwrap();
+    let native = session.backend.device().clone();
+    pass.render_with_result_context(move |context| {
+        let managed = context.managed.unwrap();
+        let input = managed.buffer_for(input.raw()).unwrap();
+        let output = managed.buffer_for(output.raw()).unwrap();
+        unsafe { native.raw_device().cmd_copy_buffer(
+            vk::CommandBuffer::from_raw(context.command.handle()), input.raw(), output.raw(),
+            &[vk::BufferCopy { src_offset: 0, dst_offset: 0, size: SIZE }]); }
+        Ok(())
+    });
+    graph.export(input, HOST).unwrap();
+    graph.export(output, HOST).unwrap();
+    let receipt = session.execute_frame(graph.build()).unwrap();
+    assert!(!receipt.receipts.is_empty());
+    let held = session.backend.managed_pass_resources().unwrap();
+    let key = held.buffer_for(input.raw()).unwrap().key();
+    session.wait_frame(receipt.frame, 10_000_000_000).unwrap();
+    let mut actual = [0; SIZE as usize];
+    buffers[2].read_bytes(0, &mut actual).unwrap();
+    assert_eq!(actual, [0x37; SIZE as usize]);
+    assert_eq!(session.frame_import_count(), 0);
+    assert!(matches!(constants.allocate(16), Err(rhapsody::Error::Timeout)));
+    session.collect_completed_frames().unwrap();
+    assert_eq!(held.buffer_for(input.raw()).unwrap().key(), key);
+    let weak = Arc::downgrade(&held);
+    drop(held);
+    session.collect_completed_frames().unwrap();
+    assert!(matches!(constants.allocate(16), Err(rhapsody::Error::Timeout)));
+    assert_eq!(weak.upgrade().unwrap().buffer_for(input.raw()).unwrap().key(), key);
+    drop(weak);
+    // 没有新导入退役也必须重试空闲快照；不能靠下一帧重建或设备 idle 才归还页。
+    session.collect_completed_frames().unwrap();
+    let reused = constants.allocate(16).unwrap();
+    assert_eq!(Arc::as_ptr(&reused.buffer) as usize, pointer);
+    assert_eq!(reused.offset, 0);
+    assert_eq!(constants.stats().page_reuses, 1);
+    assert_eq!(session.backend.device().retirement_stats().idle_waits, idle_waits);
+}
+
+#[test]
 fn resource_bound_failure_precedes_recording_and_a_larger_limit_recovers() {
     let Some((mut session, buffers)) = fixture() else {
         return;

@@ -1,0 +1,181 @@
+{
+  "module": "M02 terrain history/save/reload bounded dependency",
+  "date": "2026-10-27",
+  "status": "wire/counter frozen after passing bounded tests; central owns combined terrain/host acceptance",
+  "original_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "original_pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "source_sha256": {
+    "crates/systems/terrain/src/stroke.rs": "39ce0bd7eacf9714428e3210c846a0c378da669168d358865b5ffb6afdd7a09b",
+    "crates/country-core/src/systems/save/snapshot.rs": "65b74d7e11201803c32aee41016d92e8762085a73c7f253e4fe6dd994634699e",
+    "crates/country-core/src/systems/terrain/replay_terrain.rs": "52df88cff07a8a69d9510b0cdafdeeb73f2ddee12f147b75ff86e2493a291681",
+    "crates/country-core/src/systems/terrain/ui_draw_terrain.rs": "f4dbc3b1a8be5d7decc84697f33775f4147809bac5c0101d25ad6a1684a5ccca",
+    "crates/tiny-glade/tests/original_scene_compute_gpu.rs": "691045045f2482bf8c703e52725309b0deed6e5b3bce975daf7b414a2ec8338d"
+  },
+  "original_ranges": {
+    "terrain_registration": [
+      "0x1409455f0",
+      454
+    ],
+    "terrain_record": [
+      "0x140ac9770",
+      359
+    ],
+    "history_registration": [
+      "0x1409438a0",
+      1390
+    ],
+    "save_registration": [
+      "0x1409443b0",
+      1064
+    ],
+    "terrain_json_object": [
+      "0x1415c5ff0",
+      2535
+    ],
+    "terrain_json_array": [
+      "0x1415a8830",
+      927
+    ],
+    "new_stroke": [
+      "0x140924a10",
+      302
+    ],
+    "get_last_mut_stroke": [
+      "0x140924900",
+      258
+    ]
+  },
+  "original_behavior_differential_executions": 0,
+  "rust_receipts": {
+    "tg_terrain_all_lib": {
+      "passed": 9,
+      "failed": 0,
+      "ignored": 0
+    },
+    "country_core_snapshot_native_physics": {
+      "passed": 25,
+      "failed": 0,
+      "ignored": 0,
+      "shipped_assets": "explicit B installed assets/starting-builds, all36 original snapshot corpus reached"
+    }
+  },
+  "regressions": [
+    "missing required fields reject before World mutation",
+    "invalid/overflow u32 map key rejects instead of disappearing",
+    "next_stroke_index remains original valid alias",
+    "u64MAX file encode/load/actual terrain World writeback keeps counter and raw heights",
+    "map key u32MAX independent from value index17",
+    "counter0x3ffffe success,0x3fffff/u64MAX no allocation and unchanged",
+    "last ID original full-u64 nonzero guard then DECL low32 projection",
+    "collision old drop then panic after counter increment/map replacement"
+  ],
+  "baseline_receipts": [
+    "m02-terrain-wire-before-fix.log:0pass/2fail",
+    "m02-terrain-schema-baseline.log:5 current-rlib silent acceptance/data loss cases",
+    "m02-terrain-snapshot-first-world-failure.log:24pass/1fail, missing actual empty-stair graph owner in fixture, no production loader change to fix"
+  ],
+  "central_gpu_receipt": "m02-root-terrain-gpu-validation.json (separate original W3 M3 Vulkan fixture, not counted as this agent native executions)",
+  "not_claimed": [
+    "complete M02 UI/OS input acceptance",
+    "whole App startup/render acceptance",
+    "all terrain algorithms original instruction differential",
+    "whole-game save/restart acceptance",
+    "performance or original-image equivalence"
+  ],
+  "original_registration_note": "set41 current pop->finish->conditional timelapse matches PDB top-level tuple; stale contrary comment corrected by root",
+  "reload_note": "same App: OnExit begin -> ClearCanvas(false) -> ungated Reload-frame Update33 terrain/history reset -> PostUpdate Reload->Game -> next OnEnter actual NextSession; no independent invented reset",
+  "m1_side_lifecycle_review_2026_10_29": {
+    "scope": "用户本侧请求四项M1收尾；不改M6，不调用子agent，不跳过完整生产App系统",
+    "finding": "同一World真实Reload后旧GPU票据会覆盖新会话CPU权威高度；原仅WorldId和帧号隔离不足",
+    "changes": [
+      "双地形GPU票据携带SessionId与State<AppLoadingState>变化版本快照，拒绝同World不同生命周期旧反馈；同存档ID也适用",
+      "地形回读缓存保留同一TerrainReadbackEpoch，旧缓存不能满足新生命周期的CPU延迟消费",
+      "请求writeback校验同一来源并发布TerrainCopyEpoch，旧copy_issued位单独丢弃，不减pending、不吞新确认",
+      "CPU延迟Local按生命周期清旧条目，保留原两帧延迟、每帧最多一对拷贝与两次拷贝间的原通知顺序",
+      "联合用例含旧缓存已就绪、另一组真实旧票据跨Reload、旧确认位保留；新合法反馈完整发布，旧反馈不发布脏区/通知"
+    ],
+    "receipts": [
+      {
+        "log": "/private/tmp/m1-side-reload-old-ticket-20261029.log",
+        "status": "夹具依赖cpu-probe专属API编译失败；改用公开TransferManager真实提交票据"
+      },
+      {
+        "log": "/private/tmp/m1-side-reload-old-ticket-v2-20261029.log",
+        "status": "沙箱GPU初始化ERROR_INCOMPATIBLE_DRIVER，非业务断言"
+      },
+      {
+        "log": "/private/tmp/m1-side-reload-old-ticket-direct-20261029.log",
+        "status": "真实GPU修复前反例FAILED：旧会话权威高度被覆盖"
+      },
+      {
+        "log": "/private/tmp/m1-side-reload-lifecycle-v5-20261029.log",
+        "status": "同ID夹具缺真实加载完成consumer，loading.tmp阻止再次加载；未改生产loader迎合夹具"
+      },
+      {
+        "log": "/private/tmp/m1-side-reload-lifecycle-v7-20261029.log",
+        "status": "2/2通过，子进程隔离同ID用例；完整双512²高度、缓存拒收、无旧脏区/通知及新合法反馈全域发布"
+      },
+      {
+        "log": "/private/tmp/m1-side-extract-regression-v3-20261029.log",
+        "status": "4/4通过；含同一request owner跨session旧ack不吞新请求、新ack可正常消费"
+      },
+      {
+        "log": "/private/tmp/m1-side-production-world-20261029.log",
+        "status": "真实完整App失败于autoclutter selected mesh/source owner erased (kind3,key0x8e53fbdb)；未删或替换该系统"
+      },
+      {
+        "log": "/private/tmp/m1-side-lifecycle-final-20261029.log",
+        "status": "统一正常cargo重编通过：lib过滤6项（其中4项terrain反馈）、原W3/W5 GPU子链2项、跨不同ID及同ID Reload 2项；同ID子进程内部1项不重复计数"
+      }
+    ],
+    "timer_evidence": {
+      "pdb_procedures_scanned": 85312,
+      "matching_procedures": 1,
+      "match": "App::insert_resource<MouseActivityTimer> @14153dcb0",
+      "typeid_words": [
+        "0xd540d6b4fbc978a8",
+        "0xcd0fedd0298f5319"
+      ],
+      "all_literal_sites": [
+        "14153dcfd",
+        "14153dd07",
+        "14153e008",
+        "14153e012"
+      ],
+      "literal_scope": "均在insert_resource函数内，原RNE SHA逐字节身份已校验",
+      "limits": "未发现业务更新/typed消费；PDB只有类型StringId及new inline，没有字段语义。负面检索不证明所有间接路径不存在，未凭猜测添加算法或删资源",
+      "local_evidence": [
+        "/private/tmp/m1-side-timer-procedure-matches-20261029.json",
+        "/private/tmp/m1-side-timer-typeid-sites-20261029.json",
+        "/private/tmp/m1-side-timer-types-20261029.json"
+      ],
+      "matching_types": "types.jsonl.gz仅匹配1个IPI LF_STRING_ID，无字段定义；原每文件metadata仅new inline及插入，未发现业务消费者"
+    },
+    "remaining": [
+      "floor/rocky-depth到最终可见场景完整上游仍未收口",
+      "可见场景编辑保存重启恢复未收口；完整生产App被autoclutter缺口阻断",
+      "计时字段业务语义仍无原证，不宣告补全"
+    ],
+    "provenance_boundary": "新增生命周期来源校验属于当前并行渲染宿主的安全适配，不冒称原B持久映射ABI或原数学算法变化",
+    "source_sha256": {
+      "tiny-glade/crates/tiny-glade/src/gpu_readback.rs": "119b22dfef4c204c116d43a286da815aa447adf38b3e7a23e48a5a92ed19488b",
+      "tiny-glade/crates/tiny-glade/src/render_extract.rs": "d77deae665eacbcb2b79711e0ddce09c7c160c4c04eff3e82bc98da9fdf04573",
+      "tiny-glade/crates/country-core/src/systems/terrain/delayed_terrain_changed_msg.rs": "6f9280c279e1daff7889e1371fea60f7f52c23fffcac88556310c423d512b224",
+      "tiny-glade/crates/tiny-glade/tests/original_session_control.rs": "6bbf4bb734aacb60e9ef000dcfdb5e4d05c99e036f024b8252e21caf4464a56a"
+    },
+    "regression_detail": {
+      "old_cpu_fields": "两份完整512²高度逐值不变，旧反馈不重复发布缓存revision",
+      "old_notifications": "新增私有subscriber旧反馈无dirty发布，OnTerrainChange计数不增加",
+      "new_feedback": "两份完整512²高度等于真实GPU新上传，双4096脏块发布、通知恰一次",
+      "load_same_id_fixture": "首轮同ID失败来自缺少真实check_load_completion_system；补消费者正常删除loading.tmp，未手工删除标记或修改loader",
+      "gpu_scope": "真实TransferManager上传/回读票据；此联合测试没有冒充完整floor/rocky场景上游或最终present"
+    },
+    "source_sha256_at_completion": {
+      "tiny-glade/crates/tiny-glade/src/gpu_readback.rs": "002f28321a64bc68932e689b4d07223f575dc7a1372c09977d7b86b0143a162f",
+      "tiny-glade/crates/tiny-glade/src/render_extract.rs": "d5c4f342f21abf9f951060511ccc53980a510a67737c0f39cb21dc08bc28d754",
+      "tiny-glade/crates/country-core/src/render/gpu_readback.rs": "88c057daee76eb125b11ae518e510ab80aec2bfbb24abdd0ae23fe4d1a42b06f",
+      "tiny-glade/crates/country-core/src/systems/terrain/delayed_terrain_changed_msg.rs": "38a923ecd93dcb5b1b8fa8f2c6c2ccb0cca23e15763c895972b1dc68de7c1f5f",
+      "tiny-glade/crates/tiny-glade/tests/original_session_control.rs": "8226c227419c6a6b44f1d9234873015470e27adc376dba3fd0a2c920cf127e7e"
+    }
+  }
+}

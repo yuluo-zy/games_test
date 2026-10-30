@@ -62,19 +62,8 @@ pub fn from_curve_resolved(
 /// 三个 helper 都委托到各自的原函数；在对应算法未闭合前保持显式 panic，
 /// 不以空函数体吞掉真实输出。
 pub mod helpers {
-    /// 墙角砖（O：construct_walls 实调；几何数值见 building-structures）。
-    pub fn add_wall_corners(points: &[[f32; 3]], out: &mut Vec<[u8; 96]>) {
-        let points: Vec<glam::Vec3> = points.iter().map(|p| glam::Vec3::from_array(*p)).collect();
-        crate::utils::wall_corners::add_wall_corners_new(&points, out);
-    }
-    /// 墙裙边（O：实调）。
-    pub fn add_skirts(points: &[[f32; 3]], out: &mut Vec<[u8; 96]>) {
-        let points: Vec<glam::Vec3> = points.iter().map(|p| glam::Vec3::from_array(*p)).collect();
-        crate::utils::wall_skirts::add_skirts_new(&points, out);
-    }
-    /// 阶梯指示符（O：实调；stairs_signifiers 0x141223d10）。
-    pub fn stairs_signifiers(wall: u64, points: &[[f32; 3]], out: &mut Vec<[u8; 96]>) {
-        let points: Vec<glam::Vec3> = points.iter().map(|p| glam::Vec3::from_array(*p)).collect();
-        crate::utils::stairs_signifiers::stairs_signifiers_new(wall, &points, out);
-    }
+    // 沿用原归属的唯一算法和真实参数；不再保留丢失洞／高度输入的points-only包装。
+    pub use crate::utils::wall_corners::add_wall_corners_new as add_wall_corners;
+    pub use crate::utils::wall_skirts::add_skirts_new as add_skirts;
+    pub use crate::utils::stairs_signifiers::stairs_signifiers_new as stairs_signifiers;
 }

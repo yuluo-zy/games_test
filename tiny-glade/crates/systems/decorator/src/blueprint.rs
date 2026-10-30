@@ -225,8 +225,9 @@ impl DecoratorBlueprint {
             rotation.is_finite(),
             "interaction mesh rotation must be finite"
         );
-        self.interaction = Some(InteractionMesh {
-            xyz: *xyz,
+        // 原set_interaction_mesh与碰撞实例化必须共用同一槽，不能写无人消费的旧影子字段。
+        self.interaction_mesh = BlueprintMeshSlot::Mesh(PositionedDecoratorMesh {
+            position: *xyz,
             mesh,
             rotation: *rotation,
         });
@@ -289,7 +290,7 @@ impl DecoratorBlueprints {
         &mut self,
         id: u32,
         storage_addr: DecoratorStorageAddr,
-        interaction_source_flags: u8,
+        state: u8,
     ) -> &mut DecoratorBlueprint {
         let entry = self
             .map
@@ -304,7 +305,10 @@ impl DecoratorBlueprints {
         *blueprint = DecoratorBlueprint::new();
         blueprint.visual_entities = visuals;
         blueprint.storage_addr = Some(storage_addr);
-        blueprint.interaction_source_flags = interaction_source_flags;
+        // 原 insert 返回 Arc 数据区（allocation +0x10），但状态写入
+        // allocation +0x138；+0x139 是楼梯另外设置的交互来源标志。
+        // 两者混用会令预览态生成碰撞，并污染正式交互射线的分类。
+        blueprint.u138 = state;
         blueprint
     }
 
@@ -516,7 +520,7 @@ pub fn instantiate_blueprints(
 /// public system retains the unused texture library scheduling dependency;
 /// keeping these wrappers avoids eagerly marking unvisited mutable owners.
 #[allow(clippy::too_many_arguments)]
-fn instantiate_blueprint_visual_state(
+pub(crate) fn instantiate_blueprint_visual_state(
     mut visual_state: ResMut<DecoratorVisualState>,
     mut wall_holes: ResMut<WallHoles>,
     mut commands: Commands,
@@ -973,7 +977,7 @@ fn validate_affected_decorator(
 }
 
 /// 原140b26a80 tuple专化：external * mesh.local；不同于另一 into_transformed_shape 专化。
-fn validation_overlap_shape(
+pub(crate) fn validation_overlap_shape(
     mesh: &PositionedDecoratorMesh,
 ) -> country_core::systems::collision::world::OffsetColliderTransform {
     let external =
@@ -1268,6 +1272,20 @@ fn show_delete_scribble(
 mod tests {
     use super::*;
     use country_core::resources::walls::{WallId, decorator_storage::Decorators};
+
+    #[test]
+    fn insert_state_and_interaction_flags_have_independent_native_write_sites() {
+        // 原 140825df6 返回 allocation+0x10，140825e09 写 allocation+0x138；
+        // 楼梯 1408047bd 才写 data+0x129，即 allocation+0x139。
+        let mut blueprints = DecoratorBlueprints::default();
+        for state in [0, 1, 2, u8::MAX] {
+            let blueprint = blueprints.insert_for(7, DecoratorStorageAddr::Stair, state);
+            assert_eq!(blueprint.u138, state);
+            assert_eq!(blueprint.interaction_source_flags, 0);
+            blueprint.interaction_source_flags = 1;
+            assert_eq!(blueprint.u138, state);
+        }
+    }
 
     #[test]
     fn snapshot_shares_identity_and_reinsert_cannot_mutate_previous() {

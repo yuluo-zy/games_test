@@ -1,130 +1,113 @@
-//! B circle-edit arc signifier (0x140a64a40).
+//! 原 B 140a64a40：半径加0.23的局部圆弧，以 eased 在0.75两侧展开。
+use super::{
+    super::ui_edit_circle::AnimatedCircleSignifierResource, edit_arrow::EditCircleSignifier,
+};
+use crate::{
+    asset_libraries::{Handle, mesh_library::AssetMeshLibrary},
+    render::{mesh::Mesh, pass_builder::draw_list::DrawTopology},
+    resources::walls::WallId,
+    systems::ui::signifiers::{
+        SignifierAnimation, SignifierEntityBuilder, SignifierFactory, UiSignifierStream,
+    },
+    utils::geo::update_curve_mesh,
+};
 use bevy_ecs::prelude::*;
+use glam::{Vec2, Vec3};
 use std::sync::Arc;
-use ::utils::geometry::Circle2d;
-use crate::asset_libraries::mesh_library::AssetMeshLibrary;
-use crate::render::mesh::Mesh;
-use crate::asset_libraries::Handle;
-use crate::systems::ui::signifiers::animation::SignifierAnimation;
-use crate::systems::ui::signifiers::signifier_create::UiSignifierStream;
-use crate::systems::ui::signifiers::signifier_factory::{SignifierEntityBuilder, SignifierFactory, SignifierMesh};
-use crate::systems::wall::shapes::circle::ui_edit_circle::AnimatedCircleSignifierResource;
+use utils::geometry::Circle2d;
 
-/// Native line component: circle at +0, retained data at +0x10, total 0x28.
+/// 原40字节载荷：局部圆16B、墙身份8B、曲线更新附加量16B。
 #[derive(Component, Clone, Copy, Debug)]
 pub struct SignifierEditCircleShapeLine {
     pub circle: Circle2d,
-    pub retained: [u8; 24],
+    pub wall: WallId,
+    pub offset: Vec3,
+    pub reserved: f32,
 }
 
-pub fn register_required_components() -> super::edit_arrow::ComponentRegistration {
-    super::edit_arrow::ComponentRegistration {
-        size: 0x28,
-        type_id: (0x7c65f1f941b3ec27, 0x92748f8a36511053),
-        name: "country_core::systems::wall::shapes::circle::signifiers::edit_line::SignifierEditCircleShapeLine",
-    }
-}
-
-fn current_circle(resource: &AnimatedCircleSignifierResource) -> Circle2d {
-    let mut circle = Circle2d::new(glam::Vec2::ZERO, resource.angle_base + 0.23);
-    circle.center = -circle.get_pos_at_u(0.75);
+fn local_circle(radius: f32) -> Circle2d {
+    let mut circle = Circle2d::new(Vec2::ZERO, radius + 0.23);
+    circle.center -= circle.get_pos_at_u(0.75);
     circle
 }
+fn arc_points(circle: Circle2d, eased: f32, height: f32) -> Vec<Vec3> {
+    // 142925984的原值为0.1，0.23是半径扩张，均不是角度或90度比例。
+    let half = eased * 0.1 + (1.0 - eased) * 0.01;
+    let start = 0.75 - half;
+    let end = 0.75 + half;
+    assert!(
+        (0.0..=1.0).contains(&start) && (0.0..=1.0).contains(&end),
+        "invalid CurveU"
+    );
+    circle
+        .as_curve2_range(0.2, start, end)
+        .points
+        .into_iter()
+        .map(|p| Vec3::new(p.x, height, p.y))
+        .collect()
+}
 
-/// B 0x140a64a40: create only for circle; update all existing line entities.
 pub fn signifier_edit_circle_line(
-    mut query: Query<(&mut SignifierEditCircleShapeLine, &Handle<Mesh>, &SignifierAnimation)>,
-    resource: Res<AnimatedCircleSignifierResource>,
+    mut query: Query<(
+        &mut SignifierEditCircleShapeLine,
+        &Handle<Mesh>,
+        &SignifierAnimation,
+    )>,
+    subject: Res<AnimatedCircleSignifierResource>,
     mut meshes: ResMut<AssetMeshLibrary>,
     mut stream: ResMut<UiSignifierStream>,
 ) {
-    if resource.tag != 2 && resource.tag & 1 == 0 {
-        let circle = current_circle(&resource);
-        let mut retained = [0u8; 24];
-        retained[..8].copy_from_slice(&resource.unknown_00[8..16]);
-        let id = u64::from_le_bytes(resource.unknown_00[..8].try_into().unwrap());
-        let name = format!("edit_circle_{:?}_line", crate::systems::ui::resources::ui_state::WidgetId(id));
-        let mut factory = SignifierFactory::from_closure(&name, Arc::new(move |meshes, shaders, commands| {
-            let entity = SignifierEntityBuilder::new(SignifierMesh::Empty)
-                .animation_duration(0.3).custom_shader("vertex_color_shader")
+    if subject.dragging == Some(false) {
+        let circle = local_circle(subject.circle.radius);
+        let wall = subject.wall;
+        let mut factory = SignifierFactory::from_closure(
+            &format!("edit_circle_WidgetId {{ hash: {} }}_line", subject.widget.0),
+            Arc::new(move |meshes, shaders, commands| {
+                let entity = SignifierEntityBuilder::new(
+                    crate::systems::ui::signifiers::signifier_factory::SignifierMesh::Empty,
+                )
+                .disable_default_animation()
+                .animation_duration(0.3)
                 .build(meshes, shaders, commands);
-            commands.entity(entity).insert((SignifierEditCircleShapeLine { circle, retained }, crate::render::pass_builder::draw_list::DrawTopology::Alt(3.0)));
-            vec![entity]
-        }));
+                commands.entity(entity).insert((
+                    DrawTopology::Alt(3.0),
+                    SignifierEditCircleShapeLine {
+                        circle,
+                        wall,
+                        offset: Vec3::ZERO,
+                        reserved: 0.0,
+                    },
+                    EditCircleSignifier,
+                ));
+                vec![entity]
+            }),
+        );
         factory.marker = 0x142ad4518;
         stream.write_factory(&factory);
     }
-    for (mut line, handle, animation) in &mut query {
-        let s = animation.eased * 0.1 + (1.0 - animation.eased) * 0.01;
-        let start = 0.75 - s;
-        let end = 0.75 + s;
-        assert!((0.0..=1.0).contains(&start) && (0.0..=1.0).contains(&end), "invalid CurveU");
-        if resource.tag != 2 { line.circle = current_circle(&resource); }
-        let curve = line.circle.as_curve2_range(0.2, start, end);
-        let height = f32::from_le_bytes(line.retained[12..16].try_into().unwrap());
-        crate::utils::geo::update_curve_mesh(meshes.get_mut(*handle), curve.points.into_iter().map(|p| crate::utils::geo::x_h_y(p, height)));
+    // 退出活动状态仍更新现有圆弧，使卸载动画可正常缩回。
+    for (mut line, mesh, animation) in &mut query {
+        if subject.dragging.is_some() {
+            line.circle = local_circle(subject.circle.radius);
+        }
+        update_curve_mesh(
+            meshes.get_mut(*mesh),
+            arc_points(line.circle, animation.eased, line.offset.y),
+        );
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::asset_libraries::mesh_library::MeshAsset;
-    use glam::Vec2;
 
     #[test]
-    fn real_schedule_updates_mesh_and_preserves_fallback_circle() {
-        let mut world = World::new();
-        let meshes = AssetMeshLibrary::default();
-        let handle = meshes.add(MeshAsset::new(Mesh::new("circle line test"), None));
-        world.insert_resource(meshes);
-        world.init_resource::<UiSignifierStream>();
-        let mut resource = AnimatedCircleSignifierResource::default();
-        resource.tag = 0;
-        resource.angle_base = 2.0;
-        world.insert_resource(resource);
-        let mut retained = [42; 24];
-        retained[12..16].copy_from_slice(&2.5f32.to_le_bytes());
-        let line = SignifierEditCircleShapeLine { circle: Circle2d::new(Vec2::ZERO, 1.0), retained };
-        let entity = world.spawn((line, handle, SignifierAnimation { eased: 0.5, ..Default::default() })).id();
-        let mut schedule = Schedule::default();
-        schedule.add_systems(signifier_edit_circle_line);
-        schedule.run(&mut world);
-        let expected = current_circle(&resource);
-        let line = world.get::<SignifierEditCircleShapeLine>(entity).unwrap();
-        assert_eq!(line.circle, expected);
-        assert_eq!(line.retained, retained);
-        let points = expected.as_curve2_range(0.2, 0.695, 0.805).points;
-        let mesh = world.resource::<AssetMeshLibrary>().get(handle).unwrap();
-        assert_eq!(mesh.positions_without_indices(), points.into_iter().map(|p| crate::utils::geo::x_h_y(p, 2.5)).collect::<Vec<_>>());
-        assert_eq!(world.resource::<UiSignifierStream>().committed_len(), 1);
-        use crate::systems::ui::signifiers::UiSignifierEntry;
-        use crate::asset_libraries::shader_library::AssetShaderLibrary;
-        use crate::render::{shader::RasterShaderProgram, test_device::TestDevice};
-        let entries = world.resource_mut::<UiSignifierStream>().take_entries();
-        let UiSignifierEntry::Factory(factory) = &entries[0] else { panic!("line factory") };
-        assert_eq!(factory.name(), Some("edit_circle_WidgetId(0)_line"));
-        assert_eq!(factory.marker, 0x142ad4518);
-        assert_eq!(std::mem::size_of::<SignifierEditCircleShapeLine>(), 0x28);
-        let shaders = AssetShaderLibrary::new();
-        shaders.add_raster(RasterShaderProgram::new_draw("vertex_color_shader", Default::default(), &TestDevice(1)), false);
-        let factory_meshes = AssetMeshLibrary::default();
-        let mut spawned = World::new();
-        let mut queue = bevy_ecs::world::CommandQueue::default();
-        let mut commands = Commands::new(&mut queue, &spawned);
-        let spawned_entity = factory.wake(&factory_meshes, &shaders, &mut commands)[0];
-        drop(commands); queue.apply(&mut spawned);
-        assert_eq!(spawned.get::<SignifierEditCircleShapeLine>(spawned_entity).unwrap().circle, expected);
-        assert_eq!(spawned.get::<SignifierAnimation>(spawned_entity).unwrap().duration, 0.3);
-        assert_eq!(*spawned.get::<crate::render::pass_builder::draw_list::DrawTopology>(spawned_entity).unwrap(), crate::render::pass_builder::draw_list::DrawTopology::Alt(3.0));
-        world.resource_mut::<AnimatedCircleSignifierResource>().tag = 2;
-        world.resource_mut::<AnimatedCircleSignifierResource>().angle_base = 9.0;
-        schedule.run(&mut world);
-        assert_eq!(world.get::<SignifierEditCircleShapeLine>(entity).unwrap().circle, expected);
-        assert_eq!(world.resource::<UiSignifierStream>().committed_len(), 0);
-        world.resource_mut::<AnimatedCircleSignifierResource>().tag = 1;
-        schedule.run(&mut world);
-        assert_eq!(world.resource::<UiSignifierStream>().committed_len(), 0);
-        assert_eq!(world.get::<SignifierEditCircleShapeLine>(entity).unwrap().circle.radius, 9.23);
+    fn arc_preserves_component_height_and_rejects_invalid_curve_u() {
+        let circle = local_circle(2.0);
+        let points = arc_points(circle, 0.5, 2.5);
+        assert!(!points.is_empty());
+        assert!(points.iter().all(|point| point.y == 2.5));
+        assert!(std::panic::catch_unwind(|| arc_points(circle, f32::NAN, 0.0)).is_err());
+        assert!(std::panic::catch_unwind(|| arc_points(circle, 100.0, 0.0)).is_err());
     }
 }

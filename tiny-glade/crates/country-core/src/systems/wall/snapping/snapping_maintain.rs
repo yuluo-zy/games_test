@@ -10,7 +10,7 @@ use glam::Vec3;
 
 use super::{DisableSnapping, SNAP_MODE_END, SNAP_MODE_SEGMENT, SnappingMode};
 use crate::resources::walls::public_walls::PublicWalls;
-use crate::systems::ui::signifiers::signifier_create::{UiAppendSignifier, UiSignifierStream};
+use crate::systems::ui::signifiers::signifier_create::UiSignifierStream;
 
 /// Local proxy for the B flag resource read by check_for_disable_snapping
 /// (param_2 first byte): non-zero means a modifier that disables snapping is
@@ -51,28 +51,27 @@ pub fn snapping_maintain(mut mode: ResMut<SnappingMode>) {
     mode.published.end = mode.end;
 }
 
-/// B 0x140a6a650 (6-param signifier system). Mode 2 draws the end-snap
-/// preview centered on the snap point; mode 3 draws the segment preview line.
-/// The exact dual signifier-stream structure is 待接线 (render host); the
-/// reconstruction writes [`UiAppendSignifier`] records to the library stream.
+/// B 0x140a6a650：先清两个预览实体，再更新端点预览或提交完整段线和球工厂。
 pub fn snapping_signifiers(
     mode: Res<SnappingMode>,
+    mut ends: Query<&mut crate::utils::components::transform::Transform,
+        (With<crate::components::SnappingToEndPreview>, Without<crate::components::SnappingToSegmentPreview>)>,
+    mut segments: Query<&mut crate::utils::components::transform::Transform,
+        (With<crate::components::SnappingToSegmentPreview>, Without<crate::components::SnappingToEndPreview>)>,
     public: Res<PublicWalls>,
+    terrain: Res<crate::resources::terrain_height::TerrainHeightsData>,
     mut stream: ResMut<UiSignifierStream>,
 ) {
+    let mut segment = segments.single_mut().expect("原段吸附预览实体必须唯一");
+    segment.scale = Vec3::ZERO;
+    let mut end = ends.single_mut().expect("原端点吸附预览实体必须唯一");
+    end.scale = Vec3::ZERO;
     if mode.mode <= super::SNAP_MODE_SEGMENT_CANDIDATE {
         return;
     }
     if mode.mode == SNAP_MODE_END {
-        // {x, height, y} swizzle of the shared snap region.
-        let position = Vec3::new(mode.snap.y, mode.snap.x, mode.snap.z);
-        stream.write(UiAppendSignifier {
-            tag: 1,
-            kind: 1,
-            position,
-            scale: 1.5,
-            name: 0,
-        });
+        end.translation = Vec3::new(mode.snap.y, mode.snap.x, mode.snap.z);
+        end.scale = Vec3::splat(1.5);
         return;
     }
     let Some(state) = public.get(mode.wall) else {
@@ -80,30 +79,65 @@ pub fn snapping_signifiers(
     };
     // 原生调用方以参考点（snap 目标）作 position 传入 preview_snapping_line；
     // 函数内部做 get_approx_u_from_pos 投影（对称切片中点 = 投影点）。
-    let reference = glam::Vec2::new(mode.snap.x, mode.snap.z);
-    let Some(line) = crate::systems::wall::shapes::shape_placement_signifiers::preview_snapping_line(
-        state,
-        reference,
+    let position = Vec3::new(mode.snap.y, mode.snap.x, mode.snap.z);
+    let Some(line) = crate::systems::wall::shapes::shape_placement_signifiers::preview_snapping_line_data(
+        state, position, &terrain, 4.0, 0.0, 0.0,
     ) else {
         return;
     };
-    // Segment preview: a straight helper line from the wall shape toward the
-    // snap point (B DebugLine/DebugSphere drawing, host 待接线).
-    let start = line;
-    let end = Vec3::new(mode.snap.y, mode.snap.z, mode.snap.x);
-    stream.write(UiAppendSignifier {
-        tag: 2,
-        kind: 2,
-        position: start,
-        scale: end.x,
-        name: end.z.to_bits() as u64,
-    });
+    crate::utils::debug_viz::DebugLine::new(line.points).line_width(2.0).show(&mut stream);
+    crate::utils::debug_viz::DebugSphere::new(line.anchor).radius(0.2).solid().show(&mut stream);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::systems::wall::snapping::SNAP_MODE_NONE;
+
+    #[test]
+    fn original_preview_entities_and_segment_factories_have_real_owners() {
+        use crate::{components::{SnappingToEndPreview, SnappingToSegmentPreview},
+            resources::{roofs::geometry::surface::Curve2, terrain_height::TerrainHeightsData,
+                walls::{InnerWalls, WallId, WallState, publication_source::TerrainHeightGrid512,
+                    public_walls::{WallPublicationDirty, WallSpatialHash}}},
+            systems::ui::signifiers::signifier_create::UiSignifierEntry,
+            utils::components::transform::Transform};
+        let mut inner = InnerWalls::new();
+        let wall = WallId(42);
+        inner.new_wall_with_id(wall, WallState::new(
+            Curve2::try_new(vec![[0., 0.], [8., 0.]], false).unwrap(), 3., 0, 0, false));
+        let terrain_grid = TerrainHeightGrid512 { encoded: vec![0; 512 * 512].into(),
+            minimum_y: 0., maximum_y: 0., sampling_fix: false };
+        let mut public = PublicWalls::default();
+        public.consume_with_paths(&mut inner, &terrain_grid, None,
+            &WallPublicationDirty::default(), &WallSpatialHash::default());
+        let mut world = World::new();
+        let end = world.spawn((SnappingToEndPreview, Transform::identity())).id();
+        let segment = world.spawn((SnappingToSegmentPreview, Transform::identity())).id();
+        let mut mode = SnappingMode::new(); mode.mode = SNAP_MODE_END;
+        mode.snap = Vec3::new(3., 4., 5.); mode.wall = wall;
+        world.insert_resource(mode); world.insert_resource(public);
+        world.insert_resource(TerrainHeightsData::<crate::resources::terrain_height::TerrainHeightSsbo>::new());
+        world.init_resource::<UiSignifierStream>();
+        let mut schedule = Schedule::default(); schedule.add_systems(snapping_signifiers);
+        schedule.run(&mut world);
+        let transform = world.get::<Transform>(end).unwrap();
+        assert_eq!(transform.translation, Vec3::new(4., 3., 5.));
+        assert_eq!(transform.scale, Vec3::splat(1.5));
+        assert_eq!(world.get::<Transform>(segment).unwrap().scale, Vec3::ZERO);
+        assert_eq!(world.resource::<UiSignifierStream>().committed_len(), 0);
+        world.resource_mut::<SnappingMode>().mode = SNAP_MODE_SEGMENT;
+        world.resource_mut::<SnappingMode>().snap = Vec3::new(0., 4., 0.);
+        schedule.run(&mut world);
+        assert_eq!(world.get::<Transform>(end).unwrap().scale, Vec3::ZERO);
+        let entries = world.resource_mut::<UiSignifierStream>().take_entries();
+        assert_eq!(entries.len(), 2);
+        for entry in entries {
+            let UiSignifierEntry::Factory(factory) = entry else { panic!("原吸附工厂不能是数字raw") };
+            assert!(factory.has_closure());
+            assert!(factory.name().is_some_and(|name| !name.is_empty()));
+        }
+    }
 
     fn run_disable(input: bool, mode: u8) -> (u8, Vec<DisableSnapping>) {
         let mut world = World::new();

@@ -253,7 +253,7 @@ pub fn add_recording_systems<S: Send + Sync + 'static>(
         history_start_recording::<S>
             .after(ui_draw_terrain)
             .after(ui_edit_terrain)
-            .before(crate::systems::ui_clutter::rmb_autoclutter::handle_rmb_autoclutter::<S>)
+            .before(crate::systems::ui_clutter::ui_autoclutter::ui_convert_autoclutter_to_decoclutter::<S>)
             .before(HistoryCpuStage::Record),
     );
     schedule.add_systems(

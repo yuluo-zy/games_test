@@ -3,12 +3,12 @@
 
 use bevy_ecs::prelude::*;
 use country_core::{
-    resources::{clutter_meshes::{ClutterMeshes, ClutterMeshTy}, color_id::ColorId},
+    resources::clutter_meshes::{ClutterMeshes, ClutterMeshTy},
     systems::collision::{WindowAutoClutterCandidates, WindowAutoClutterKind},
 };
 use glam::Vec3;
 
-use super::{AutoClutterSpawn, AutoClutterState, ResolvedClutterMesh, SpawnShared};
+use super::{AutoClutterPayload, AutoClutterSpawn, AutoClutterState, ResolvedClutterMesh};
 
 pub fn add_autoclutter_on_windows(
     mut state: ResMut<AutoClutterState>,
@@ -16,29 +16,30 @@ pub fn add_autoclutter_on_windows(
     mut candidates: ResMut<WindowAutoClutterCandidates>,
 ) {
     for candidate in candidates.0.drain(..) {
-        let (mesh, marker, color) = match candidate.kind {
+        let (mesh, marker, selector_value) = match candidate.kind {
             WindowAutoClutterKind::WindowFlowerpot =>
-                (meshes.mesh(ClutterMeshTy::WindowFlowerpot), 2, None),
+                (meshes.mesh(ClutterMeshTy::WindowFlowerpot), 2, 0),
             WindowAutoClutterKind::WindowFlowerbed { mesh_index } =>
-                (&meshes.window_flowerbeds()[mesh_index], 2, None),
+                (&meshes.window_flowerbeds()[mesh_index], 2, 0),
             WindowAutoClutterKind::WindowShutter { side, native_u32_04 } =>
-                (meshes.mesh(ClutterMeshTy::WindowShutter), u8::from(!side), Some(ColorId(native_u32_04))),
+                (meshes.mesh(ClutterMeshTy::WindowShutter), u8::from(!side), native_u32_04),
             WindowAutoClutterKind::DoorBell =>
-                (meshes.mesh(ClutterMeshTy::DoorBell), 2, None),
+                (meshes.mesh(ClutterMeshTy::DoorBell), 2, 0),
             WindowAutoClutterKind::DoorKrans =>
-                (meshes.mesh(ClutterMeshTy::DoorKrans), 2, None),
+                (meshes.mesh(ClutterMeshTy::DoorKrans), 2, 0),
             WindowAutoClutterKind::DoorKransAutumn =>
-                (meshes.mesh(ClutterMeshTy::DoorKransAutumn), 2, None),
+                (meshes.mesh(ClutterMeshTy::DoorKransAutumn), 2, 0),
         };
         // Original+10 is a full quaternion, not a Vec3 with an invented w=0.
         let direction = candidate.rotation * Vec3::Z;
         let translation = candidate.translation;
         state.spawn_candidates.push(AutoClutterSpawn {
             kind: 5,
-            shared: SpawnShared::Mesh { metadata: ResolvedClutterMesh::from(mesh), color },
+            payload: AutoClutterPayload::Mesh { metadata: ResolvedClutterMesh::from(mesh) },
             f18: 1,
             key: candidate.key,
             marker,
+            selector_value,
             position: translation,
             host_id: candidate.wall.0,
             // Retain represented native scalar values, without copying padding.
@@ -80,7 +81,9 @@ mod tests {
         schedule.run(&mut world);
         assert!(world.resource::<WindowAutoClutterCandidates>().0.is_empty());
         for (i, spawn) in world.resource::<AutoClutterState>().spawn_candidates.iter().enumerate() {
-            let SpawnShared::Mesh { metadata, color } = &spawn.shared else { panic!("real metadata required") };
+            let AutoClutterPayload::Mesh { metadata } = &spawn.payload else {
+                panic!("real metadata required")
+            };
             assert_eq!(metadata.name_hash.0, expected[i].0);
             assert_eq!(spawn.key, 0x1234_5678_0000_0000 + i as u64);
             assert_eq!(spawn.host_id, 0xfedc_ba98_7654_3210);
@@ -89,7 +92,7 @@ mod tests {
             assert!(direction.abs_diff_eq(Vec3::X, 1e-6));
             assert_eq!(spawn.scale, 1.0);
             assert_eq!(spawn.marker, if i == 2 { 0 } else { 2 });
-            assert_eq!(*color, if i == 2 { Some(ColorId(0xfedc_ba98)) } else { None });
+            assert_eq!(spawn.selector_value, if i == 2 { 0xfedc_ba98 } else { 0 });
         }
         schedule.run(&mut world);
         assert_eq!(world.resource::<AutoClutterState>().spawn_candidates.len(), 6,

@@ -1,562 +1,740 @@
-//! B `decorator_visual/cottage_balcony_door.rs` — 农舍阳台门装饰视觉生成（D1）。
-//!
-//! 证据：fresh RE-MCP 反编译 0x1407f3da0（generate_cottage_balcony_doors，65KB）
-//! / 0x1407f5e70（add_door_autoclutter，5.8KB，**O 全文**）+ 骨架 callees（O）：
-//! DecoratorLibKey::new（3×）、DecoratorInfo dst 访问、add_door_autoclutter 递归、
-//! GladeType::is_autumn、Rectangle2d/Circle2d 几何、Affine3Packed::from_cols、
-//! WindowVisualEntityBuilder 链、blueprint 链。
-//!
-//! 2026-10-19 复核的新事实（O）：
-//! - 门子类型判别：0x1407f3da0 行 396 `subtype != 0x04 → skip`
-//!   （农舍门子类型 = 4；与 derive 的 wall_attachment_subtype cottage door 一致）；
-//! - `add_door_autoclutter`（0x1407f5e70）：
-//!   * 门控 `info+0x45 > 3`（rank/state 间字节）；
-//!   * 装饰 id 经机器哈希 `h = (((x+A) ^ B) * (x+A)) >> 30`，
-//!     `x = hash(id)`，`A = 0xa0761d6478bd642f`，`B = 0xe7037ed1a0b428db`；
-//!   * `h & 3 == 0` → 记录 type 3 + 网格 `"doorbell"`（0x142a8bbe0，len 8）；
-//!   * `h & 3 == 1` → 记录 type `func(seed)|4` + 网格 `"krans"`
-//!     （0x142a8bc00，len 5）；
-//!   * 记录 0x50B：`+0x00` 类型字节；`+0x10..0x1c` 四元数；`+0x20..0x28`
-//!     位置（按四元数旋转）；`+0x2c..0x3c` 附加 5 浮点；`+0x40` 句柄；
-//!     `+0x48` param_5。
-//! - 其余门几何（内联矩形/门框装配）仍 U。
-//!
-//! U 登记：① 阳台门几何生成主体 ② 参数映射 ③ autoclutter 旋转偏移常量的
-//! 精确槽位（0x142a8b610/0x142a8b630 两套四元数组合）。
-
-use bevy_ecs::prelude::*;
-use country_core::resources::walls::decorator::DecoratorInfo;
-use country_core::resources::walls::decorator_storage::DecoratorStorage;
-use country_core::resources::walls::decorator_subtype::{
-    DecoratorLibKey, DerivedDecoratorInfoResources,
+//! 原B1407f3da0农舍阳台门、1407f5e70自动门饰；只向canonical蓝图发布。
+use super::{
+    cottage_wall_window::{wall_space, window_builder},
+    gothic_balcony_door::check_for_door_stairs,
 };
-use country_core::resources::walls::public_walls::PublicWalls;
-use glam::{Quat, Vec3};
+use crate::blueprint::{DecoratorBlueprint, DecoratorBlueprints};
+use bevy_ecs::prelude::*;
+use country_core::{
+    resources::{
+        color_id::ColorId,
+        session::ActiveSession,
+        terrain_height::TerrainHeightsData,
+        walls::{
+            WallId,
+            cached_decorator_transforms::CachedDecoratorTransform,
+            decorator::{DecoratorId, DecoratorInfo},
+            decorator_storage::{DecoratorStorage, DecoratorStorageAddr},
+            decorator_subtype::{DecoratorLibKey, DerivedDecoratorInfoResources},
+            public_walls::{PublicWallState, PublicWalls},
+            wall_holes::RawWallHole,
+        },
+        world_raster_defs::WaterRaster,
+    },
+    systems::collision::{WindowAutoClutterCandidate, WindowAutoClutterKind},
+    utils::components::transform::Transform,
+};
+use glam::{Vec2, Vec3};
+use utils::{
+    comparative_space::ComparativeSpace,
+    curve::{CurveCoordSemantic3D, CurveInternalCoord, curve_slice::CurveSlice},
+    wall_space::WallSpaceCoord,
+};
 
-use crate::blueprint::DecoratorBlueprints;
-use crate::decorator_visual_state::DecoratorTransientVisualState;
-use crate::utils::visual_entity_builder::WindowVisualEntityBuilder;
+pub const COTTAGE_DOOR_SUBTYPE: u8 = 4;
+const DOORS: [&str; 3] = [
+    "decorators/balcony_door_rank1",
+    "decorators/balcony_door_rank2",
+    "decorators/balcony_door_rank3",
+];
+const RAILS: [&str; 3] = [
+    "decorators/balcony_door_rank1_rails",
+    "decorators/balcony_door_rank2_rails",
+    "decorators/balcony_door_rank3_rails",
+];
 
-/// 农舍门子类型（O：0x1407f3da0 行 396 `!= 0x04`）。
-pub const COTTAGE_DOOR_SUBTYPE: u8 = 0x04;
-/// autoclutter 门控字节阈值（O：`info+0x45 > 3`）。
-pub const AUTOCLUTTER_STATE_MIN: u8 = 3;
-/// 机器哈希常量（O：0x1407f5e70）。
-pub const AUTOCLUTTER_HASH_A: u64 = 0xa076_1d64_78bd_642f;
-/// 机器哈希常量（O）。
-pub const AUTOCLUTTER_HASH_B: u64 = 0xe703_7ed1_a0b4_28db;
-/// 变体 0 网格名（O：0x142a8bbe0，len 8）。
-pub const AUTOCLUTTER_MESH_DOORBELL: &str = "doorbell";
-/// 变体 1 网格名（O：0x142a8bc00，len 5）。
-pub const AUTOCLUTTER_MESH_KRANS: &str = "krans";
-/// 记录 type 基底（O：变体 0 直接写 3；变体 1 写 `seed|4`）。
-pub const AUTOCLUTTER_TYPE_BASE: u8 = 3;
-
-/// autoclutter 记录（0x50B 关键字段；其余槽位 U）。
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct AutoClutterRecord {
-    /// `+0x00` 类型字节（3 或 `seed|4`）。
-    pub kind: u8,
-    /// `+0x10..0x1c` 四元数。
-    pub quat: Quat,
-    /// `+0x20..0x28` 位置。
-    pub position: Vec3,
-    /// `+0x2c..0x3c` 附加 5 浮点。
-    pub extra: [f32; 5],
-    /// `+0x40` 句柄。
-    pub handle: u64,
-    /// `+0x48` param_5。
-    pub param5: u64,
-    /// 网格名（O）。
-    pub mesh: &'static str,
+/// 原fastrand混合保留完整128位乘积。随机选择读Info内id，候选键读外层id。
+pub fn door_autoclutter_hash(id: u32) -> u64 {
+    let a = utils::rng::init_rng(id).wrapping_add(0xa076_1d64_78bd_642f);
+    let p = u128::from(a ^ 0xe703_7ed1_a0b4_28db) * u128::from(a);
+    (p >> 30) as u64 ^ (p >> 94) as u64
 }
 
-/// 机器哈希（O 0x1407f5e70 行 40-46）：
-/// `x = hash(id)`；`h = ((x + A) ^ B) * (x + A) >> 30`；返回 `lo ^ hi`。
-pub fn door_autoclutter_hash(id: u32, hash_id: impl Fn(u32) -> u64) -> u64 {
-    let x = hash_id(id);
-    let a = x.wrapping_add(AUTOCLUTTER_HASH_A);
-    let p = ((a ^ AUTOCLUTTER_HASH_B) as u128)
-        .wrapping_mul(a as u128)
-        >> 30;
-    ((p as u64) ^ (p >> 64) as u64) as u64
-}
-
-/// 0x1407f5e70（O，5.8KB）：阳台门附加杂乱生成。
-///
-/// 返回推送的记录数：`h&3==0` → 1 条（doorbell）；`h&3==1` → 1 条（krans，
-/// type = `seed_byte|4`）；其余 → 0。门控 `info.u45 <= 3` → 0。
-pub fn add_door_autoclutter(
+/// 原1407f5e70六参：墙键、存储id和主题分别来自真实owner，不从Info猜测。
+pub(super) fn add_door_autoclutter(
     info: &DecoratorInfo,
-    quat: Quat,
-    position: Vec3,
-    extra: [f32; 5],
-    handle: u64,
-    param5: u64,
-    seed_byte: u8,
-    out: &mut Vec<AutoClutterRecord>,
-    hash_id: impl Fn(u32) -> u64,
-) -> usize {
-    // O：`3 < *(byte*)(info+0x45)`。
-    if info.u45 <= AUTOCLUTTER_STATE_MIN {
-        return 0;
+    pose: &Transform,
+    blueprint: &mut DecoratorBlueprint,
+    id: DecoratorId,
+    wall: WallId,
+    session: &ActiveSession,
+) {
+    if info.u45 <= 3 {
+        return;
     }
-    let h = door_autoclutter_hash(info.decorator_id, hash_id);
-    let before = out.len();
-    match h & 3 {
-        0 => out.push(AutoClutterRecord {
-            kind: AUTOCLUTTER_TYPE_BASE,
-            quat,
-            position,
-            extra,
-            handle,
-            param5,
-            mesh: AUTOCLUTTER_MESH_DOORBELL,
-        }),
-        1 => out.push(AutoClutterRecord {
-            kind: seed_byte | 4,
-            quat,
-            position,
-            extra,
-            handle,
-            param5,
-            mesh: AUTOCLUTTER_MESH_KRANS,
-        }),
-        // O：其余分支不 push。
-        _ => {}
-    }
-    out.len() - before
+    let (kind, name, offset) = match door_autoclutter_hash(info.decorator_id) & 3 {
+        0 => (
+            WindowAutoClutterKind::DoorBell,
+            "doorbell",
+            Vec3::new(-0.25, 0.74, 0.1),
+        ),
+        1 => (
+            if session.is_autumn() {
+                WindowAutoClutterKind::DoorKransAutumn
+            } else {
+                WindowAutoClutterKind::DoorKrans
+            },
+            "krans",
+            Vec3::new(0.0, 0.5, 0.2),
+        ),
+        _ => return,
+    };
+    blueprint
+        .window_auto_clutter_candidates
+        .push(WindowAutoClutterCandidate {
+            kind,
+            rotation: pose.rotation,
+            translation: pose.rotation * offset + pose.translation,
+            scale: pose.scale,
+            key: utils::calculate_hash(&(id, name)),
+            wall,
+        });
 }
 
-/// 0x1407f3da0（O 结构）：生成农舍阳台门装饰视觉。
-///
-/// 业务链（O callee）：逐墙逐 modified 装饰 → DecoratorLibKey（3×new =
-/// 碰撞/交互/描边键）→ 阳台门几何（Rectangle2d/Circle2d + Affine3Packed 装配，
-/// 细节 U）→ 蓝图（set_colliders/set_outline + insert）→ 视觉实体
-/// （WindowVisualEntityBuilder 链）→ add_door_autoclutter 附加杂乱
-/// （GladeType::is_autumn 分支，O callee）。
+pub(super) fn rank_index(rank: u8) -> usize {
+    let index = usize::from(rank.wrapping_sub(1));
+    assert!(index < 3, "阳台门rank必须为1至3");
+    index
+}
+
+/// 原两端采样，不能改读旧缓存；即使墙形状是圆也走同一墙空间投影。
+fn door_pose(info: &DecoratorInfo, wall: &PublicWallState, width: f32) -> Transform {
+    let coord = info.dst_as_wall().wall_space_coord();
+    let space = wall_space(wall);
+    let first = WallSpaceCoord::new_unchecked(space.project_clamp(coord.u - width * 0.5), coord.y)
+        .to_world_space(wall.simplified_curve_2d());
+    let second = WallSpaceCoord::new_unchecked(space.project_clamp(coord.u + width * 0.5), coord.y)
+        .to_world_space(wall.simplified_curve_2d());
+    cottage_pose_from_samples(first, second, coord.y)
+}
+
+/// 原1407f459b..1407f4648；真实墙空间采样后的数值段，复用供原指令差分。
+fn cottage_pose_from_samples(first: Vec3, second: Vec3, y: f32) -> Transform {
+    let dx = second.x - first.x;
+    let dz = second.z - first.z;
+    let reciprocal = 1.0 / (dx * dx + dz * dz).sqrt();
+    Transform {
+        rotation: utils::xz_projective_rotation_bad(Vec3::new(
+            -reciprocal * dz,
+            0.0,
+            reciprocal * dx,
+        )),
+        translation: Vec3::new(
+            second.x * 0.5 + first.x * 0.5,
+            y,
+            second.z * 0.5 + first.z * 0.5,
+        ),
+        scale: Vec3::ONE,
+    }
+}
+
+/// 原门底栏杆读mappedCurve3的XZ弧长；高度是mix，不是差值lerp。
+pub(super) fn needs_bottom_rail(
+    wall: &PublicWallState,
+    info: &DecoratorInfo,
+    pose: &Transform,
+    terrain: &TerrainHeightsData,
+) -> bool {
+    let points = wall.geometry.outline.as_slice();
+    assert!(points.len() >= 2, "阳台门必须有有效mappedCurve3");
+    let u = info.dst_as_wall().wall_space_coord().u;
+    let start = CurveInternalCoord { segment: 0, t: 0.0 };
+    let mut curve =
+        CurveSlice::<[f32; 3], _, CurveCoordSemantic3D, Vec2, _>::from_coord_range_with_remap(
+            points,
+            start,
+            start,
+            |_, p| Vec2::new(p[0], p[2]),
+        );
+    curve.extend_right(if u > 0.0 { u } else { 0.0 });
+    let end = curve.end();
+    let profile = end.t * points[end.segment + 1][1] + (1.0 - end.t) * points[end.segment][1];
+    // 原ucomiss/jbe在无序时跳过，必须为严格有序大于。
+    profile > terrain.sample_at_world_xz(pose.translation.x, pose.translation.z) + 0.15
+}
+
 pub fn generate_cottage_balcony_doors(
-    decorator_storage: Res<DecoratorStorage>,
-    _walls: Res<PublicWalls>,
+    session: Res<ActiveSession>,
+    walls: Res<PublicWalls>,
+    storage: Res<DecoratorStorage>,
     derived: DerivedDecoratorInfoResources,
-    cached: Res<
-        country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms,
-    >,
     mut blueprints: ResMut<DecoratorBlueprints>,
-    mut transient: ResMut<DecoratorTransientVisualState>,
-    _commands: Commands,
+    terrain: Res<TerrainHeightsData>,
+    water: Res<WaterRaster>,
 ) {
-    let derived = derived.as_view();
-    let mesh_lib = derived.mesh_library();
-    for (wall, decorators) in decorator_storage.iter_walls() {
-        for (id, info) in decorators.iter_modified() {
-            // O：门子类型 = 4（0x1407f3da0 行 396）。
-            if derived
-                .subtype(country_core::resources::walls::decorator::DecoratorId(id))
-                .0
-                != COTTAGE_DOOR_SUBTYPE
-            {
+    let view = derived.as_view();
+    let library = view.mesh_library();
+    for (wall_id, decorators) in storage.iter_walls() {
+        for modified in decorators.iter_modified_ids() {
+            let id = DecoratorId(modified);
+            let info = decorators.get(id).expect("modified装饰记录缺失");
+            if view.subtype(id).0 != COTTAGE_DOOR_SUBTYPE {
                 continue;
             }
-            // 蓝图（O callee）。
-            let blueprint = blueprints.insert_for(
-                id,
-                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
-                info.state(),
-            );
-            let transform = cached.transform(id);
+            // 原entry早于required墙、库查询，不能将失败路径改成事务式预计算。
+            let blueprint =
+                blueprints.insert_for(modified, DecoratorStorageAddr::Wall(wall_id), info.state());
+            let wall = walls.get(wall_id).expect("阳台门所属墙缺失");
+            let coord = info.dst_as_wall().wall_space_coord();
             let key = DecoratorLibKey::new(COTTAGE_DOOR_SUBTYPE, info.rank());
+            let bounds = library.collision_record(key).bounds;
+            let pose = door_pose(info, wall, bounds.footprint.size.x);
             blueprint.set_positioned_colliders(
-                std::sync::Arc::clone(&mesh_lib.collision_record(key).mesh),
-                std::sync::Arc::clone(&mesh_lib.interaction_record(key).mesh),
-                &transform.translation,
-                &transform.rotation,
+                library.collision_record(key).mesh.clone(),
+                library.interaction_record(key).mesh.clone(),
+                &pose.translation,
+                &pose.rotation,
             );
-            blueprint.set_outline((0.0, 0.0, 0.0));
-            // 视觉实体（O callee：WindowVisualEntityBuilder 链）。
-            let builder =
-                WindowVisualEntityBuilder::new(transform.translation, transform.rotation, id);
-            let _ = &mut transient;
-            let _ = &builder;
-            // add_door_autoclutter（O callee；autumn 分支 GladeType::is_autumn）。
-            let mut records = Vec::new();
-            let _ = add_door_autoclutter(
-                info,
-                transform.rotation,
-                transform.translation,
-                [0.0; 5],
-                0,
-                0,
-                0,
-                &mut records,
-                |id| id as u64 * 0x9e37_79b9_7f4a_7c15,
-            );
-        }
-    }
-}
-
-/// 阳台门判别（O：派生子类型 0x04；与 0x1407f3da0 分支一致）。
-pub fn is_balcony_door(derived_subtype: u8) -> bool {
-    derived_subtype == COTTAGE_DOOR_SUBTYPE
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn hash_is_deterministic_and_uses_constants() {
-        let h1 = door_autoclutter_hash(42, |id| id as u64);
-        let h2 = door_autoclutter_hash(42, |id| id as u64);
-        assert_eq!(h1, h2);
-        assert_ne!(h1, door_autoclutter_hash(43, |id| id as u64));
-    }
-
-    #[test]
-    fn state_gate_blocks_low_u45() {
-        let mut info = DecoratorInfo::default();
-        info.u45 = 3;
-        let mut out = Vec::new();
-        let n = add_door_autoclutter(
-            &info,
-            Quat::IDENTITY,
-            Vec3::ZERO,
-            [0.0; 5],
-            0,
-            0,
-            0,
-            &mut out,
-            |id| id as u64,
-        );
-        assert_eq!(n, 0);
-        assert!(out.is_empty());
-    }
-
-    #[test]
-    fn pushes_at_most_one_record_per_door() {
-        let mut info = DecoratorInfo::default();
-        info.u45 = 4;
-        let mut out = Vec::new();
-        let n = add_door_autoclutter(
-            &info,
-            Quat::IDENTITY,
-            Vec3::ONE,
-            [1.0; 5],
-            7,
-            9,
-            0,
-            &mut out,
-            |id| id as u64,
-        );
-        assert!(n <= 1);
-        if n == 1 {
-            assert_eq!(out[0].position, Vec3::ONE);
-            assert_eq!(out[0].handle, 7);
-            assert_eq!(out[0].param5, 9);
-            assert_eq!(out[0].kind, 3);
-            assert_eq!(out[0].mesh, "doorbell");
-        }
-    }
-
-    #[test]
-    fn variant_one_uses_krans_and_seed_bits() {
-        // 找一个 h&3==1 的 id。
-        let mut id = 0u32;
-        loop {
-            let h = door_autoclutter_hash(id, |x| x as u64);
-            if h & 3 == 1 {
-                break;
+            let cached = CachedDecoratorTransform {
+                rotation: pose.rotation,
+                translation: pose.translation,
+                scale: pose.scale,
+            };
+            blueprint.set_cached_transform(cached);
+            let bounds = library.collision_record(key).bounds;
+            let rank = rank_index(info.rank());
+            blueprint.wall_holes.push(RawWallHole {
+                center: [coord.u, coord.y],
+                dimensions: [bounds.footprint.size.x, bounds.top - bounds.bottom],
+                kind: 0,
+            });
+            let color = Some(ColorId(info.u28));
+            let semi = info.state() != 0;
+            let mut door = window_builder(id, pose, DOORS[rank], "nani_balcony_door", color, semi);
+            door.balcony_door = true;
+            blueprint.visual_entities.push(door);
+            add_door_autoclutter(info, &pose, blueprint, id, wall_id, &session);
+            if (info.u20 >> 8) as u8 == 1
+                && !check_for_door_stairs(&terrain, &water, &cached, &bounds, blueprint)
+                && needs_bottom_rail(wall, info, &pose, &terrain)
+            {
+                blueprint.visual_entities.push(window_builder(
+                    id,
+                    pose,
+                    RAILS[rank],
+                    "nani_solid_vertex_color_window",
+                    color,
+                    semi,
+                ));
             }
-            id += 1;
         }
-        let mut info = DecoratorInfo::default();
-        info.u45 = 4;
-        info.decorator_id = id;
-        let mut out = Vec::new();
-        let n = add_door_autoclutter(
-            &info,
-            Quat::IDENTITY,
-            Vec3::ZERO,
-            [0.0; 5],
-            0,
-            0,
-            5,
-            &mut out,
-            |x| x as u64,
-        );
-        assert_eq!(n, 1);
-        assert_eq!(out[0].mesh, "krans");
-        assert_eq!(out[0].kind, 5 | 4);
-    }
-
-    #[test]
-    fn door_predicate_is_subtype_four() {
-        assert!(is_balcony_door(4));
-        assert!(!is_balcony_door(3));
-        assert!(!is_balcony_door(9));
     }
 }
 
+pub fn is_balcony_door(subtype: u8) -> bool {
+    subtype == COTTAGE_DOOR_SUBTYPE
+}
 
 #[cfg(test)]
-mod canonical_owner_regressions {
+pub(super) mod original_balcony_tests {
     use super::*;
-    use crate::blueprint::BlueprintMeshSlot;
     use bevy_ecs::system::RunSystemOnce;
-    use country_core::resources::walls::{
-        WallId,
-        cached_decorator_transforms::{CachedDecoratorTransform, CachedDecoratorTransforms},
-        decorator::{DecoratorId, DecoratorInfo},
-        decorator_storage::{DecoratorStorage, Decorators},
-        decorator_subtype::{
-            DecoratorCollision, DecoratorCollisionOutline, DecoratorMeshLibrary, DecoratorOutline,
-            DecoratorSubtype, DerivedDecoratorSubtypes,
+    use country_core::resources::{
+        session::{GladeType, SessionId, SessionMeta},
+        walls::{
+            cached_decorator_transforms::CachedDecoratorTransforms,
+            decorator_subtype::DecoratorMeshLibrary,
         },
+        world_raster::DirtyTilePublisher,
     };
-    use country_core::systems::collision::world::RaycastMeshData;
-    use country_core::systems::wall::shapes::rectangle::ui_edit_rectangle_orientation::box_trigger_volume;
-    use country_core::utils::components::transform::Transform;
-    use glam::{Vec2, Vec3};
-    use std::sync::Arc;
+    use glam::Quat;
 
-    fn fixture() -> (
-        World,
-        Arc<RaycastMeshData>,
-        Arc<RaycastMeshData>,
-        CachedDecoratorTransform,
-    ) {
-        let mut world = World::new();
-        let mut storage = DecoratorStorage::default();
-        let mut decorators = Decorators::default();
-        decorators.insert(
-            DecoratorId(41),
-            DecoratorInfo {
-                decorator_id: 41,
-                rank: 2,
-                ty: 0x38,
-                state: 1,
-                ..Default::default()
+    fn session(theme: u32) -> ActiveSession {
+        ActiveSession::new(
+            SessionId::new(),
+            SessionMeta {
+                glade: if theme == 3 {
+                    GladeType::Autumn
+                } else {
+                    GladeType::Summer
+                },
+                ..SessionMeta::default()
             },
-        );
-        storage.per_wall.insert(WallId(7), decorators);
-        world.insert_resource(storage);
-        world.insert_resource(PublicWalls::default());
-        world.insert_resource(DecoratorBlueprints::default());
-        world.insert_resource(DecoratorTransientVisualState::default());
-        let transform = CachedDecoratorTransform {
-            rotation: Quat::from_rotation_y(0.75),
-            translation: Vec3::new(4., 5., 6.),
-            scale: Vec3::ONE,
-        };
-        let mut cached = CachedDecoratorTransforms::default();
-        cached.insert(41, transform);
-        world.insert_resource(cached);
-        let mut subtypes = DerivedDecoratorSubtypes::default();
-        subtypes.insert(41, DecoratorSubtype(4));
-        world.insert_resource(subtypes);
-        let collision = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO));
-        let interaction = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(2.), Vec3::ZERO));
-        let record = |mesh: Arc<RaycastMeshData>, size: Vec3| DecoratorCollision {
-            triangles: box_trigger_volume(size.x, size.y, size.z, &Transform::identity()),
-            mesh,
-            bounds: utils::geometry::Rectangle3d::new(Vec3::ZERO, size, Vec2::X),
-        };
-        let mut meshes = DecoratorMeshLibrary::default();
-        meshes.insert(
-            DecoratorLibKey::new(4, 2),
-            record(Arc::clone(&collision), Vec3::ONE),
-            record(Arc::clone(&interaction), Vec3::splat(2.)),
-            DecoratorOutline::None,
-            DecoratorCollisionOutline::None,
-        );
-        world.insert_resource(meshes);
-        (world, collision, interaction, transform)
+        )
     }
-
-    #[test]
-    fn actual_generator_borrows_exact_rank_both_mesh_owners_and_cached_pose() {
-        let (mut world, collision, interaction, transform) = fixture();
+    pub(in crate::decorator_visual) fn world(subtype: u8, rank: u8) -> World {
+        let mut world =
+            super::super::cottage_wall_window::original_window_helper_tests::producer_world(
+                subtype, rank,
+            );
+        // 原系统不依赖CachedDecoratorTransforms，删除以防误用旧生产者合同。
+        world.remove_resource::<CachedDecoratorTransforms>();
+        world.insert_resource(session(0));
+        world.insert_resource(TerrainHeightsData::<
+            country_core::resources::terrain_height::TerrainHeightSsbo,
+        >::new());
+        world.insert_resource(WaterRaster::new(DirtyTilePublisher::unique()));
         world
-            .run_system_once(generate_cottage_balcony_doors)
-            .unwrap();
-        let blueprints = world.resource::<DecoratorBlueprints>();
-        let blueprint = &blueprints.map[&41];
-        assert_eq!(
-            blueprint.storage_addr,
-            Some(
-                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(
-                    WallId(7)
-                )
-            )
-        );
-        assert_eq!(blueprint.interaction_source_flags, 1);
-        assert!(blueprint.colliders.is_empty());
-        let BlueprintMeshSlot::Mesh(actual_collision) = &blueprint.collision_mesh else {
-            panic!("必须输出实际collision槽")
-        };
-        let BlueprintMeshSlot::Mesh(actual_interaction) = &blueprint.interaction_mesh else {
-            panic!("必须输出实际interaction槽")
-        };
-        assert!(Arc::ptr_eq(&actual_collision.mesh, &collision));
-        assert!(Arc::ptr_eq(&actual_interaction.mesh, &interaction));
-        assert!(!Arc::ptr_eq(
-            &actual_collision.mesh,
-            &actual_interaction.mesh
-        ));
-        assert_eq!(actual_collision.position, transform.translation);
-        assert_eq!(actual_collision.rotation, transform.rotation);
-        assert_eq!(actual_interaction.position, transform.translation);
-        assert_eq!(actual_interaction.rotation, transform.rotation);
-        assert!(
-            actual_collision
-                .mesh
-                .shape_ref()
-                .unwrap()
-                .as_cuboid()
-                .is_some()
-        );
     }
 
     #[test]
-    fn actual_generator_requires_id_and_both_exact_rank_records() {
-        let (mut missing_mesh, _, _, _) = fixture();
-        missing_mesh
-            .resource_mut::<DecoratorMeshLibrary>()
-            .interaction
-            .remove(&DecoratorLibKey::new(4, 2));
-        assert!(
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| missing_mesh
-                .run_system_once(generate_cottage_balcony_doors)
-                .unwrap()))
-            .is_err()
+    fn original_autoclutter_4096_native_cases_full_rng_hash_pose_theme_and_outer_ids() {
+        let fixture = include_str!(
+            "../../../../../reports/module-recovery-2026-10-23/1407f5e70-autoclutter-native.txt"
         );
-        // 原entry早于required库查询，失败后保留已重置entry与实际source。
-        let entry = missing_mesh
-            .resource::<DecoratorBlueprints>()
-            .get(41)
-            .unwrap();
-        assert_eq!(
-            entry.storage_addr,
-            Some(
-                country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(
-                    WallId(7)
-                )
-            )
-        );
-        assert_eq!(entry.interaction_source_flags, 1);
-        assert!(matches!(
-            entry.collision_mesh,
-            BlueprintMeshSlot::Unspecified
-        ));
-        assert!(matches!(
-            entry.interaction_mesh,
-            BlueprintMeshSlot::Unspecified
-        ));
-        let (mut missing_id, _, _, _) = fixture();
-        missing_id.insert_resource(DerivedDecoratorSubtypes::default());
-        assert!(
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| missing_id
-                .run_system_once(generate_cottage_balcony_doors)
-                .unwrap()))
-            .is_err()
-        );
-        assert!(missing_id.resource::<DecoratorBlueprints>().map.is_empty());
-    }
-
-    #[test]
-    fn canonical_entry_reaches_both_live_physics_maps_with_real_source_and_pose() {
-        use crate::blueprint::{PrevDecoratorBlueprints, instantiate_decorator_colliders};
-        use country_core::resources::walls::{
-            decorator_collision::DecoratorPhysicsColliders, decorator_storage::DecoratorStorageAddr,
-        };
-        use country_core::systems::collision::world::{RaycastGeoSource, RaycastWorld};
-        let (mut world, collision, interaction, transform) = fixture();
-        world
-            .run_system_once(generate_cottage_balcony_doors)
-            .unwrap();
-        let current = world.resource::<DecoratorBlueprints>();
-        let mut physics = RaycastWorld::new();
-        let mut maps = DecoratorPhysicsColliders::default();
-        instantiate_decorator_colliders(
-            &mut maps,
-            current,
-            &PrevDecoratorBlueprints::default(),
-            &mut physics,
-        );
-        let id = DecoratorId(41);
-        let storage = DecoratorStorageAddr::Wall(WallId(7));
-        for (instance, mesh, source) in [
-            (
-                &maps.first[&id],
-                &collision,
-                RaycastGeoSource::decorator(id, storage),
-            ),
-            (
-                &maps.second[&id],
-                &interaction,
-                RaycastGeoSource::decorator_interaction(id, storage, 1),
-            ),
-        ] {
-            let registered =
-                physics.get_collider_mesh(instance.registry_index, instance.generation);
-            assert!(Arc::ptr_eq(&registered.data, mesh));
-            assert_eq!(registered.source, source);
-            let actual = physics.get_collider(instance.handle());
-            assert_eq!(actual.position, transform.translation);
-            assert_eq!(actual.rotation, transform.rotation);
+        let sessions = [session(0), session(3)];
+        for (case, line) in fixture.lines().enumerate() {
+            let row: Vec<u32> = line
+                .split_ascii_whitespace()
+                .map(|word| u32::from_str_radix(word, 16).unwrap())
+                .collect();
+            let info = DecoratorInfo {
+                decorator_id: row[0],
+                u45: row[1] as u8,
+                ..Default::default()
+            };
+            let pose = Transform {
+                rotation: Quat::from_array(std::array::from_fn(|i| f32::from_bits(row[3 + i]))),
+                translation: Vec3::from_array(std::array::from_fn(|i| f32::from_bits(row[7 + i]))),
+                scale: Vec3::from_array(std::array::from_fn(|i| f32::from_bits(row[10 + i]))),
+            };
+            let mut blueprint = DecoratorBlueprint::new();
+            add_door_autoclutter(
+                &info,
+                &pose,
+                &mut blueprint,
+                DecoratorId(row[0] + 700),
+                WallId(0x1_0000_0007),
+                &sessions[usize::from(row[2] == 3)],
+            );
+            assert_eq!(
+                blueprint.window_auto_clutter_candidates.len(),
+                row[13] as usize,
+                "case {case}"
+            );
+            if row[13] == 0 {
+                continue;
+            }
+            let actual = blueprint.window_auto_clutter_candidates[0];
+            let kind = match actual.kind {
+                WindowAutoClutterKind::DoorBell => 3,
+                WindowAutoClutterKind::DoorKrans => 4,
+                WindowAutoClutterKind::DoorKransAutumn => 5,
+                _ => unreachable!(),
+            };
+            let mut words = vec![kind];
+            words.extend(actual.rotation.to_array().map(f32::to_bits));
+            words.extend(actual.translation.to_array().map(f32::to_bits));
+            words.extend(actual.scale.to_array().map(f32::to_bits));
+            words.extend([
+                actual.key as u32,
+                (actual.key >> 32) as u32,
+                actual.wall.0 as u32,
+                (actual.wall.0 >> 32) as u32,
+            ]);
+            assert_eq!(words, row[14..], "原完整helper case {case}");
         }
     }
 
     #[test]
-    fn actual_generator_reuses_unique_entry_and_preserves_a_shared_previous_snapshot() {
-        use country_core::resources::walls::decorator_storage::DecoratorStorageAddr;
-        let (mut world, _, _, transform) = fixture();
-        world
-            .run_system_once(generate_cottage_balcony_doors)
-            .unwrap();
-        let unique = Arc::as_ptr(&world.resource::<DecoratorBlueprints>().map[&41]);
-        world
-            .run_system_once(generate_cottage_balcony_doors)
-            .unwrap();
-        assert_eq!(
-            unique,
-            Arc::as_ptr(&world.resource::<DecoratorBlueprints>().map[&41])
-        );
-        let previous = Arc::clone(&world.resource::<DecoratorBlueprints>().map[&41]);
-        world
-            .resource_mut::<DecoratorStorage>()
-            .per_wall
-            .get_mut(&WallId(7))
-            .unwrap()
-            .get_mut(DecoratorId(41))
-            .unwrap()
-            .state = 0;
-        let shifted = CachedDecoratorTransform {
-            translation: transform.translation + Vec3::X,
-            ..transform
+    fn actual_cottage_all_ranks_publish_builders_holes_real_pose_and_two_mesh_owners() {
+        use crate::blueprint::BlueprintMeshSlot;
+        for rank in 1..=3 {
+            let mut world = world(4, rank);
+            world
+                .run_system_once(generate_cottage_balcony_doors)
+                .unwrap();
+            let blueprint = world.resource::<DecoratorBlueprints>().get(7).unwrap();
+            assert_eq!(
+                blueprint.storage_addr,
+                Some(DecoratorStorageAddr::Wall(WallId(42)))
+            );
+            let pose = blueprint.transform.as_ref().unwrap();
+            assert_eq!(pose.scale, Vec3::ONE);
+            assert_eq!(pose.translation, Vec3::new(-4., 2., 0.));
+            assert_eq!(blueprint.visual_entities.len(), 1);
+            let door = &blueprint.visual_entities[0];
+            assert_eq!(door.mesh_name, DOORS[rank as usize - 1]);
+            assert_eq!(door.nani_name, "nani_balcony_door");
+            assert!(door.balcony_door && door.semi_transparent);
+            assert_eq!(door.color_id, Some(ColorId(0x55667788)));
+            assert_eq!(blueprint.wall_holes.len(), 1);
+            assert_eq!(blueprint.wall_holes[0].center, [4., 2.]);
+            assert_eq!(blueprint.wall_holes[0].dimensions, [4., 2.]);
+            let BlueprintMeshSlot::Mesh(collision) = &blueprint.collision_mesh else {
+                panic!("无碰撞")
+            };
+            let BlueprintMeshSlot::Mesh(interaction) = &blueprint.interaction_mesh else {
+                panic!("无交互")
+            };
+            assert_eq!(collision.position, pose.translation);
+            assert_eq!(interaction.position, pose.translation);
+            let library = world.resource::<DecoratorMeshLibrary>();
+            let key = DecoratorLibKey::new(4, rank);
+            assert!(std::sync::Arc::ptr_eq(
+                &collision.mesh,
+                &library.collision_record(key).mesh
+            ));
+            assert!(std::sync::Arc::ptr_eq(
+                &interaction.mesh,
+                &library.interaction_record(key).mesh
+            ));
+        }
+    }
+
+    #[test]
+    fn required_wall_or_interaction_failure_retains_original_partial_entry() {
+        for missing_wall in [false, true] {
+            let mut world = world(4, 1);
+            if missing_wall {
+                world.insert_resource(PublicWalls::default());
+            } else {
+                world
+                    .resource_mut::<DecoratorMeshLibrary>()
+                    .interaction
+                    .clear();
+            }
+            assert!(
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| world
+                    .run_system_once(generate_cottage_balcony_doors)
+                    .unwrap()))
+                .is_err()
+            );
+            let entry = world.resource::<DecoratorBlueprints>().get(7).unwrap();
+            assert_eq!(
+                entry.storage_addr,
+                Some(DecoratorStorageAddr::Wall(WallId(42)))
+            );
+            assert!(entry.transform.is_none() && entry.visual_entities.is_empty());
+        }
+    }
+    #[test]
+    fn actual_doors_fullvisual_multiframe_edit_recollect_and_unload() {
+        use crate::{
+            blueprint::{PrevDecoratorBlueprints, instantiate_blueprint_visual_state},
+            decorator_visual::deco_differential_state::{
+                ChimneyAssemblyParams, DoorStairsAssemblyParams, WallAttachedDecoTracker,
+            },
+            decorator_visual_state::DecoratorVisualState,
         };
-        world
-            .resource_mut::<CachedDecoratorTransforms>()
-            .insert(41, shifted);
-        world
-            .run_system_once(generate_cottage_balcony_doors)
-            .unwrap();
-        let current = &world.resource::<DecoratorBlueprints>().map[&41];
-        assert!(!Arc::ptr_eq(&previous, current));
-        assert_eq!(previous.interaction_source_flags, 1);
-        assert_eq!(current.interaction_source_flags, 0);
-        assert_eq!(
-            current.storage_addr,
-            Some(DecoratorStorageAddr::Wall(WallId(7)))
-        );
-        let BlueprintMeshSlot::Mesh(old) = &previous.collision_mesh else {
-            panic!("旧快照实际网格")
+        use country_core::{
+            asset_libraries::{
+                mesh_library::AssetMeshLibrary,
+                shader_library::{AssetShaderLibrary, SharedAssetShaderLibrary},
+            },
+            render::nani::systems::NaniInstanceDesc,
+            resources::walls::{
+                decorator_collision::DecoratorPhysicsColliders, public_walls::OnWallDeleted,
+                wall_holes::WallHoles,
+            },
+            systems::collision::{WindowAutoClutterCandidates, world::RaycastWorld},
         };
-        let BlueprintMeshSlot::Mesh(new) = &current.collision_mesh else {
-            panic!("新快照实际网格")
+        use std::sync::Arc;
+        for (subtype, state) in [4, 9].into_iter().flat_map(|subtype| [0_u8, 1].map(move |state| (subtype, state))) {
+            let mut world = world(subtype, 1);
+            world.insert_resource(PrevDecoratorBlueprints::default());
+            world.insert_resource(DecoratorVisualState::default());
+            world.insert_resource(WallHoles::default());
+            world.insert_resource(RaycastWorld::new());
+            world.insert_resource(DecoratorPhysicsColliders::default());
+            world.insert_resource(WindowAutoClutterCandidates::default());
+            world.insert_resource(WallAttachedDecoTracker::<ChimneyAssemblyParams>::default());
+            world.insert_resource(WallAttachedDecoTracker::<DoorStairsAssemblyParams>::default());
+            world.insert_resource(AssetMeshLibrary::new());
+            world.insert_resource(SharedAssetShaderLibrary(
+                Arc::new(AssetShaderLibrary::new()),
+            ));
+            world.insert_resource(bevy_ecs::event::Events::<OnWallDeleted>::default());
+            // 选择原Bell分支，使真实候选重收集路径非空；Info.id和map id仍不同。
+            let seed = (0..512)
+                .find(|id| door_autoclutter_hash(*id) & 3 == 0)
+                .unwrap();
+            {
+                let mut storage = world.resource_mut::<DecoratorStorage>();
+                let info = storage
+                    .per_wall
+                    .get_mut(&WallId(42))
+                    .unwrap()
+                    .get_mut(DecoratorId(7))
+                    .unwrap();
+                info.decorator_id = seed;
+                info.u45 = 4;
+                info.state = state;
+            }
+            let generate = |world: &mut World| {
+                if subtype == 4 {
+                    world
+                        .run_system_once(generate_cottage_balcony_doors)
+                        .unwrap();
+                } else {
+                    world
+                        .run_system_once(
+                            super::super::gothic_balcony_door::generate_gothic_balcony_doors,
+                        )
+                        .unwrap();
+                }
+            };
+            generate(&mut world);
+            world
+                .run_system_once(instantiate_blueprint_visual_state)
+                .unwrap();
+            let old = world
+                .resource::<DecoratorVisualState>()
+                .persistent_entities_of(7)
+                .unwrap()
+                .to_vec();
+            assert_eq!(old.len(), if subtype == 4 { 1 } else { 2 });
+            for entity in &old {
+                assert!(world.get::<NaniInstanceDesc>(*entity).is_some());
+            }
+            let snapshot = |world: &mut World| {
+                let mut params = bevy_ecs::system::SystemState::<(
+                    Res<DecoratorBlueprints>,
+                    ResMut<PrevDecoratorBlueprints>,
+                )>::new(world);
+                let (current, mut previous) = params.get_mut(world);
+                current.copy_blueprints_to_prev(&mut previous);
+            };
+            snapshot(&mut world);
+            *world.resource_mut::<WallHoles>() = WallHoles::default();
+            world
+                .resource_mut::<WindowAutoClutterCandidates>()
+                .0
+                .clear();
+            generate(&mut world);
+            world
+                .run_system_once(instantiate_blueprint_visual_state)
+                .unwrap();
+            assert_eq!(
+                world
+                    .resource::<DecoratorVisualState>()
+                    .persistent_entities_of(7)
+                    .unwrap(),
+                old
+            );
+            assert_eq!(world.resource::<WindowAutoClutterCandidates>().0.len(), 1);
+            assert_eq!(
+                world.resource::<WallHoles>().storage[&WallId(42)]
+                    .raw_holes()
+                    .len(),
+                if subtype == 4 { 1 } else { 3 }
+            );
+            // 改真实墙空间目标，不改builder或缓存；新生产者应替换实际ECS实体和碰撞。
+            {
+                let mut storage = world.resource_mut::<DecoratorStorage>();
+                let info = storage
+                    .per_wall
+                    .get_mut(&WallId(42))
+                    .unwrap()
+                    .get_mut(DecoratorId(7))
+                    .unwrap();
+                let coord = info.wall_space_coord();
+                let mut dst = info.destination().as_wall().clone();
+                dst.coord = WallSpaceCoord::new_unchecked(coord.u, coord.y + 0.5);
+                info.set_destination(
+                    country_core::resources::walls::decorator::DecoratorDst::Wall(dst),
+                );
+            }
+            *world.resource_mut::<WallHoles>() = WallHoles::default();
+            world
+                .resource_mut::<WindowAutoClutterCandidates>()
+                .0
+                .clear();
+            generate(&mut world);
+            world
+                .run_system_once(instantiate_blueprint_visual_state)
+                .unwrap();
+            let edited = world
+                .resource::<DecoratorVisualState>()
+                .persistent_entities_of(7)
+                .unwrap()
+                .to_vec();
+            for entity in &edited {
+                assert_eq!(world.get::<Transform>(*entity).unwrap().translation.y, 2.5);
+            }
+            let physics = world.resource::<DecoratorPhysicsColliders>();
+            if state == 0 {
+                let handle = physics.first[&DecoratorId(7)].handle();
+                assert_eq!(world.resource::<RaycastWorld>().get_collider(handle).position.y, 2.5);
+                assert!(physics.second.contains_key(&DecoratorId(7)));
+            } else {
+                assert!(physics.first.is_empty() && physics.second.is_empty(), "原preview状态不注册正式碰撞");
+            }
+            assert_ne!(old, edited);
+            for entity in old {
+                assert!(!world.entities().contains(entity));
+            }
+            snapshot(&mut world);
+            world.resource_mut::<DecoratorBlueprints>().map.remove(&7);
+            *world.resource_mut::<WallHoles>() = WallHoles::default();
+            world
+                .resource_mut::<WindowAutoClutterCandidates>()
+                .0
+                .clear();
+            world
+                .run_system_once(instantiate_blueprint_visual_state)
+                .unwrap();
+            for entity in edited {
+                assert!(!world.entities().contains(entity));
+            }
+            assert!(
+                world
+                    .resource::<DecoratorVisualState>()
+                    .persistent_entities_of(7)
+                    .is_none()
+            );
+            let physics = world.resource::<DecoratorPhysicsColliders>();
+            assert!(physics.first.is_empty() && physics.second.is_empty());
+            assert!(world.resource::<WindowAutoClutterCandidates>().0.is_empty());
+        }
+    }
+
+    #[test]
+    fn original_door_pose_2080_native_cases_include_actual_projective_rotation() {
+        for (case, line) in include_str!(
+            "../../../../../reports/module-recovery-2026-10-23/1407f0900-1407f3da0-pose-native.txt"
+        )
+        .lines()
+        .enumerate()
+        {
+            let row: Vec<u32> = line
+                .split_ascii_whitespace()
+                .map(|v| u32::from_str_radix(v, 16).unwrap())
+                .collect();
+            let first = Vec3::new(
+                f32::from_bits(row[1]),
+                f32::from_bits(row[2]),
+                f32::from_bits(row[3]),
+            );
+            let second = Vec3::new(
+                f32::from_bits(row[4]),
+                f32::from_bits(row[5]),
+                f32::from_bits(row[6]),
+            );
+            let actual = if row[0] == 0 {
+                cottage_pose_from_samples(first, second, first.y)
+            } else {
+                super::super::gothic_balcony_door::gothic_pose_from_samples(first, second)
+            };
+            let mut words = actual.translation.to_array().map(f32::to_bits).to_vec();
+            words.extend(actual.rotation.to_array().map(f32::to_bits));
+            assert_eq!(words, row[7..], "原数值段case {case}");
+        }
+    }
+
+    #[test]
+    fn actual_named_water_controls_low_sill_stairs_and_path_cannot_substitute() {
+        use country_core::resources::{
+            walls::decorator::DecoratorDst, world_raster_defs::PathRaster,
         };
-        assert_eq!(old.position, transform.translation);
-        assert_eq!(new.position, shifted.translation);
-        assert!(Arc::ptr_eq(&old.mesh, &new.mesh));
+        for subtype in [4, 9] {
+            for covered in [false, true] {
+                let mut world = world(subtype, 1);
+                let mut path = PathRaster::new(DirtyTilePublisher::unique());
+                path.composite_mut().fill(255);
+                world.insert_resource(path);
+                if covered {
+                    world
+                        .resource_mut::<WaterRaster>()
+                        .composite_mut()
+                        .fill(255);
+                }
+                {
+                    let mut terrain = world.resource_mut::<TerrainHeightsData>();
+                    terrain.set_height_range(0.0, 2.0);
+                    for row in terrain.heights_mut().chunks_exact_mut(512) {
+                        row[239..242].fill(u16::MAX);
+                    }
+                }
+                {
+                    let mut storage = world.resource_mut::<DecoratorStorage>();
+                    let info = storage
+                        .per_wall
+                        .get_mut(&WallId(42))
+                        .unwrap()
+                        .get_mut(DecoratorId(7))
+                        .unwrap();
+                    let mut dst = info.destination().as_wall().clone();
+                    dst.coord = WallSpaceCoord::new_unchecked(4.0, 0.5);
+                    dst.bottom_as_door = true;
+                    info.set_destination(DecoratorDst::Wall(dst));
+                }
+                if subtype == 4 {
+                    world
+                        .run_system_once(generate_cottage_balcony_doors)
+                        .unwrap();
+                } else {
+                    world
+                        .run_system_once(
+                            super::super::gothic_balcony_door::generate_gothic_balcony_doors,
+                        )
+                        .unwrap();
+                }
+                let bp = world.resource::<DecoratorBlueprints>().get(7).unwrap();
+                assert_eq!(
+                    bp.door_stairs_assembly.is_some(),
+                    covered,
+                    "subtype {subtype}"
+                );
+                if let Some(stairs) = &bp.door_stairs_assembly {
+                    let values = stairs.words.map(f32::from_bits);
+                    assert_eq!(
+                        [
+                            values[0], values[1], values[4], values[5], values[6], values[7]
+                        ],
+                        [-4., 0., 2., -0.8, 0., 4.]
+                    );
+                    assert!((values[2] + 1.0).abs() < f32::EPSILON);
+                    assert!(values[3].abs() < f32::EPSILON);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn original_gothic_placeholder_color_only_and_strict_missing_modified_record() {
+        for subtype in [4, 9] {
+            let mut world = world(subtype, 1);
+            world
+                .resource_mut::<DecoratorStorage>()
+                .per_wall
+                .get_mut(&WallId(42))
+                .unwrap()
+                .get_mut(DecoratorId(7))
+                .unwrap()
+                .u28 = 999;
+            if subtype == 4 {
+                world
+                    .run_system_once(generate_cottage_balcony_doors)
+                    .unwrap();
+            } else {
+                world
+                    .run_system_once(
+                        super::super::gothic_balcony_door::generate_gothic_balcony_doors,
+                    )
+                    .unwrap();
+            }
+            let bp = world.resource::<DecoratorBlueprints>().get(7).unwrap();
+            for visual in &bp.visual_entities {
+                assert_eq!(
+                    visual.color_id,
+                    Some(ColorId(if subtype == 9 { 0 } else { 999 }))
+                );
+            }
+            world.resource_mut::<DecoratorBlueprints>().map.clear();
+            world
+                .resource_mut::<DecoratorStorage>()
+                .per_wall
+                .get_mut(&WallId(42))
+                .unwrap()
+                .remove(DecoratorId(7));
+            assert!(
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    if subtype == 4 {
+                        world
+                            .run_system_once(generate_cottage_balcony_doors)
+                            .unwrap();
+                    } else {
+                        world
+                            .run_system_once(
+                                super::super::gothic_balcony_door::generate_gothic_balcony_doors,
+                            )
+                            .unwrap();
+                    }
+                }))
+                .is_err()
+            );
+            assert!(world.resource::<DecoratorBlueprints>().map.is_empty());
+        }
     }
 }

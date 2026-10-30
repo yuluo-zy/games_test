@@ -1,191 +1,216 @@
-//! B `systems/wall/shapes/circle/signifiers/edit_arrow.rs` (VA `0x140b35120`, 3 params).
-//!
-//! PDB: 1 `Query<(&EditCircleSignifier,&mut Transform)>`, 2 `Res<AnimatedCircleSignifierResource>`,
-//! 3 `Res<UiSignifierStream>`.
-//!
-//! Gate `tag != 2` (hover 0 / active 1 emit; absent 2 does not). `tag != 2` →
-//! `quat = rotation_from_normal(resource.normal)`, `pos = resource.position`; emit
-//! `edit_circle_{WidgetId-hash}_arrow` through the real factory path and write
-//! `Transform{rotation,translation}` to every `EditCircleSignifier` entity. Marker only —
-//! `EditCircleSignifier` fields are not read.
-
+//! 原 B 140b35120：活动圆编辑资源驱动箭头工厂和已有实体的变换。
+use super::super::ui_edit_circle::AnimatedCircleSignifierResource;
+use crate::{
+    systems::ui::signifiers::{SignifierEntityBuilder, SignifierFactory, UiSignifierStream},
+    utils::components::transform::Transform,
+};
 use bevy_ecs::prelude::*;
-use glam::Vec3;
 use std::sync::Arc;
 
-use crate::systems::ui::signifiers::signifier_create::UiSignifierStream;
-use crate::systems::ui::signifiers::signifier_factory::{
-    SignifierEntityBuilder, SignifierFactory, SignifierMesh,
-};
-use crate::systems::wall::shapes::circle::ui_edit_circle::AnimatedCircleSignifierResource;
-use crate::utils::components::transform::Transform;
+/// 原组件为零大小标记；圆弧实体也携带此标记以共享实时位置和法线。
+#[derive(Component, Clone, Copy, Debug, Default)]
+pub struct EditCircleSignifier;
 
-/// Native `EditCircleSignifier` (size `0x58`). Query marker; fields not read here.
-#[derive(Component, Clone)]
-pub struct EditCircleSignifier(pub [u8; 0x58]);
-
-impl Default for EditCircleSignifier {
-    fn default() -> Self {
-        Self([0; 0x58])
-    }
-}
-
-/// Native required-components descriptor (`0x140b35ba0`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ComponentRegistration {
-    pub size: usize,
-    pub type_id: (u64, u64),
-    pub name: &'static str,
-}
-
-/// B `0x140b35ba0`: `EditCircleSignifier` size `0x58`, TypeId
-/// `(0x1ae899de41d987a3, 0xc0085b7b93938bcb)`, name `...edit_arrow::EditCircleSignifier`.
-pub fn register_required_components() -> ComponentRegistration {
-    ComponentRegistration {
-        size: 0x58,
-        type_id: (0x1ae899de41d987a3, 0xc0085b7b93938bcb),
-        name: "country_core::systems::wall::shapes::circle::signifiers::edit_arrow::EditCircleSignifier",
-    }
-}
-
-/// B `0x140002370`: clone behavior marker (returns 0).
-pub fn clone_behavior() -> u8 {
-    0
-}
-
-/// B `signifier_edit_circle_arrow` (`0x140b35120`).
 pub fn signifier_edit_circle_arrow(
-    mut query: Query<(&EditCircleSignifier, &mut Transform)>,
-    resource: Res<AnimatedCircleSignifierResource>,
+    mut query: Query<&mut Transform, With<EditCircleSignifier>>,
+    subject: Res<AnimatedCircleSignifierResource>,
     mut stream: ResMut<UiSignifierStream>,
 ) {
-    let tag = resource.tag;
-    if tag != 2 {
-        let quat = ::utils::rotation_from_normal(resource.normal);
-        let pos = resource.position;
-        // WidgetId lives at resource +0x00; name = `edit_circle_{WidgetId:?}_arrow`
-        // (native `FUN_140b35b50`). Arrow mesh = Named asset `"flat_arrow"` (builder tag 0 →
-        // Named branch, resolved via `FUN_14092d570`; missing asset panics) + `vertex_color_shader`.
-        // Record 0x30 `{1, 1, Quat, Vec3}` is carried by the closure (rotation/position).
-        let widget_id = u64::from_le_bytes(resource.unknown_00[..8].try_into().unwrap());
-        let name = format!(
-            "edit_circle_{:?}_arrow",
-            crate::systems::ui::resources::ui_state::WidgetId(widget_id)
-        );
-        let mut factory = SignifierFactory::from_closure(
-            &name,
-            Arc::new(move |meshes, shaders, commands| {
-                let entity =
-                    SignifierEntityBuilder::new(SignifierMesh::Named("flat_arrow".to_string()))
-                        .rotation(quat)
-                        .position(pos)
-                        .disable_default_animation()
-                        .animation_duration(0.0)
-                        .custom_shader("vertex_color_shader")
-                        .build(meshes, shaders, commands);
-                vec![entity]
-            }),
-        );
-        // Native factory/record marker `0x142aed888`.
-        factory.marker = 0x142aed888;
-        stream.write_factory(&factory);
-
-        for (_marker, mut transform) in query.iter_mut() {
-            transform.rotation = quat;
-            transform.translation = pos;
-        }
+    if subject.dragging.is_none() {
+        return;
+    }
+    let rotation = utils::geometry::rotation_from_normal(subject.normal);
+    let position = subject.position;
+    let mut factory = SignifierFactory::from_closure(
+        &format!(
+            "edit_circle_WidgetId {{ hash: {} }}_arrow",
+            subject.widget.0
+        ),
+        Arc::new(move |meshes, shaders, commands| {
+            let entity = SignifierEntityBuilder::from_mesh_name("flat_arrow")
+                .rotation(rotation)
+                .position(position)
+                .scale(2.0)
+                .animation_duration(0.0)
+                .build(meshes, shaders, commands);
+            commands.entity(entity).insert(EditCircleSignifier);
+            vec![entity]
+        }),
+    );
+    factory.marker = 0x142aed888;
+    stream.write_factory(&factory);
+    for mut transform in &mut query {
+        // 原查询写旋转和位置，保留动画系统拥有的 scale。
+        transform.rotation = rotation;
+        transform.translation = position;
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod world_tests {
     use super::*;
-    use crate::utils::components::transform::Transform;
-    use bevy_ecs::system::RunSystemOnce;
-    use glam::Quat;
-    use std::mem::{offset_of, size_of};
-
-    fn resource(tag: u8) -> AnimatedCircleSignifierResource {
-        AnimatedCircleSignifierResource {
-            angle_base: 0.0,
-            position: Vec3::new(1.0, 2.0, 3.0),
-            normal: Vec3::Y,
-            tag,
-            ..AnimatedCircleSignifierResource::default()
+    use crate::{
+        asset_libraries::{
+            Handle,
+            mesh_library::{AssetMeshLibrary, MeshAsset},
+            shader_library::AssetShaderLibrary,
+        },
+        render::{mesh::Mesh, shader::RasterShaderProgram, test_device::TestDevice},
+        resources::walls::WallId,
+        systems::ui::{
+            resources::ui_state::{UiState, WidgetId},
+            signifiers::{SignifierAnimation, signifier_create::UiSignifierEntry},
+        },
+        systems::wall::shapes::circle::signifiers::edit_line::{
+            SignifierEditCircleShapeLine, signifier_edit_circle_line,
+        },
+    };
+    use bevy_ecs::{system::RunSystemOnce, world::CommandQueue};
+    use glam::{Vec2, Vec3};
+    fn wake(world: &mut World, shaders: &AssetShaderLibrary) -> Vec<Entity> {
+        let entries = world.resource_mut::<UiSignifierStream>().take_entries();
+        let meshes = world.remove_resource::<AssetMeshLibrary>().unwrap();
+        let mut queue = CommandQueue::default();
+        let mut entities = Vec::new();
+        let widget = world.resource::<AnimatedCircleSignifierResource>().widget;
+        let mut identities = Vec::new();
+        for entry in entries {
+            let UiSignifierEntry::Factory(factory) = entry else {
+                panic!("圆编辑禁止旧数值记录");
+            };
+            let spawned = factory.wake(&meshes, shaders, &mut Commands::new(&mut queue, world));
+            for &entity in &spawned {
+                identities.push((
+                    entity,
+                    crate::systems::ui::signifiers::SignifierId(
+                        crate::systems::ui::signifiers::signifier_create::record_id(
+                            widget,
+                            factory.name(),
+                        ),
+                        widget,
+                    ),
+                ));
+            }
+            entities.extend(spawned);
         }
+        queue.apply(world);
+        for (entity, identity) in identities {
+            world.entity_mut(entity).insert(identity);
+        }
+        world.insert_resource(meshes);
+        entities
     }
-
-    fn setup(tag: u8) -> (World, Entity) {
+    #[test]
+    fn real_world_arrow_arc_follow_subject_reverse_animation_and_release_transient_mesh() {
         let mut world = World::new();
-        world.insert_resource(resource(tag));
-        world.init_resource::<UiSignifierStream>();
-        let entity = world
-            .spawn((
-                EditCircleSignifier::default(),
-                Transform {
-                    rotation: Quat::IDENTITY,
-                    translation: Vec3::ZERO,
-                    scale: Vec3::ONE,
-                },
-            ))
-            .id();
-        (world, entity)
-    }
-
-    #[test]
-    fn freehand_tag2_neither_emits_nor_writes_transform() {
-        let (mut world, entity) = setup(2);
-        world.run_system_once(signifier_edit_circle_arrow).unwrap();
-        let transform = world.get::<Transform>(entity).unwrap();
-        assert_eq!(transform.rotation, Quat::IDENTITY);
-        assert_eq!(transform.translation, Vec3::ZERO);
-        assert_eq!(world.resource::<UiSignifierStream>().committed_len(), 0);
-    }
-
-    #[test]
-    fn circle_tag0_rotates_writes_transform_and_emits() {
-        let (mut world, entity) = setup(0);
-        world.run_system_once(signifier_edit_circle_arrow).unwrap();
-        let transform = world.get::<Transform>(entity).unwrap();
-        assert_eq!(transform.translation, Vec3::new(1.0, 2.0, 3.0));
-        assert_eq!(transform.rotation, ::utils::rotation_from_normal(Vec3::Y));
-        assert!(world.resource::<UiSignifierStream>().committed_len() > 0);
-    }
-
-    #[test]
-    fn rectangle_tag1_rotates_writes_transform_and_emits() {
-        let (mut world, entity) = setup(1);
-        world.run_system_once(signifier_edit_circle_arrow).unwrap();
-        let transform = world.get::<Transform>(entity).unwrap();
-        assert_eq!(transform.translation, Vec3::new(1.0, 2.0, 3.0));
-        assert_eq!(transform.rotation, ::utils::rotation_from_normal(Vec3::Y));
-        assert!(world.resource::<UiSignifierStream>().committed_len() > 0);
-    }
-
-    #[test]
-    fn resource_layout_matches_native_offsets() {
-        assert_eq!(size_of::<AnimatedCircleSignifierResource>(), 64);
-        assert_eq!(
-            offset_of!(AnimatedCircleSignifierResource, angle_base),
-            0x18
+        let meshes = AssetMeshLibrary::new();
+        meshes.add(MeshAsset::new(
+            Mesh::new("flat_arrow"),
+            Some("flat_arrow".to_owned()),
+        ));
+        let shaders = AssetShaderLibrary::new();
+        shaders.add_raster(
+            RasterShaderProgram::new_draw(
+                "vertex_color_shader",
+                Default::default(),
+                &TestDevice(1),
+            ),
+            false,
         );
-        assert_eq!(offset_of!(AnimatedCircleSignifierResource, position), 0x20);
-        assert_eq!(offset_of!(AnimatedCircleSignifierResource, normal), 0x2c);
-        assert_eq!(offset_of!(AnimatedCircleSignifierResource, tag), 0x38);
-    }
-
-    #[test]
-    fn component_registration_matches_native() {
-        let registration = register_required_components();
-        assert_eq!(registration.size, 0x58);
+        world.insert_resource(meshes);
+        world.insert_resource(UiState::at_startup());
+        world.init_resource::<UiSignifierStream>();
+        world.insert_resource(AnimatedCircleSignifierResource {
+            widget: WidgetId(41),
+            wall: WallId(9),
+            circle: utils::geometry::Circle2d::new(Vec2::new(2.0, 3.0), 4.0),
+            position: Vec3::new(6.0, 2.0, 3.0),
+            normal: Vec3::X,
+            dragging: Some(false),
+        });
+        world.run_system_once(signifier_edit_circle_arrow).unwrap();
+        world.run_system_once(signifier_edit_circle_line).unwrap();
+        let entities = wake(&mut world, &shaders);
+        assert_eq!(entities.len(), 2);
+        let arrow = entities[0];
+        let line = entities[1];
+        assert!(world.get::<SignifierEditCircleShapeLine>(line).is_some());
+        assert!(world.get::<EditCircleSignifier>(line).is_some());
+        let arrow_animation = world.get::<SignifierAnimation>(arrow).unwrap();
+        assert_eq!(arrow_animation.duration, 0.0);
+        assert_eq!(arrow_animation.value, 2.0);
+        let line_animation = world.get::<SignifierAnimation>(line).unwrap();
+        assert_eq!(line_animation.duration, 0.3);
+        assert_eq!(line_animation.flag_8, 1);
+        let handle = *world.get::<Handle<Mesh>>(line).unwrap();
+        for progress in [0.0, 0.5, 1.0] {
+            world.get_mut::<SignifierAnimation>(line).unwrap().eased = progress;
+            world.run_system_once(signifier_edit_circle_line).unwrap();
+            world.resource_mut::<UiSignifierStream>().take_entries();
+            let mesh = world.resource::<AssetMeshLibrary>().get(handle).unwrap();
+            assert!(mesh.positions_without_indices().len() >= 2);
+        }
+        world
+            .resource_mut::<AnimatedCircleSignifierResource>()
+            .position = Vec3::new(9.0, 4.0, 8.0);
+        world
+            .resource_mut::<AnimatedCircleSignifierResource>()
+            .normal = Vec3::Z;
+        world.run_system_once(signifier_edit_circle_arrow).unwrap();
+        for &entity in &entities {
+            assert_eq!(
+                world.get::<Transform>(entity).unwrap().translation,
+                Vec3::new(9.0, 4.0, 8.0)
+            );
+        }
+        world.resource_mut::<UiSignifierStream>().take_entries();
+        world
+            .resource_mut::<AnimatedCircleSignifierResource>()
+            .dragging = None;
+        world.get_mut::<SignifierAnimation>(line).unwrap().eased = 0.25;
+        world.run_system_once(signifier_edit_circle_arrow).unwrap();
+        world.run_system_once(signifier_edit_circle_line).unwrap();
+        assert_eq!(world.resource::<UiSignifierStream>().committed_len(), 0);
         assert_eq!(
-            registration.type_id,
-            (0x1ae899de41d987a3, 0xc0085b7b93938bcb)
+            world.get::<Transform>(arrow).unwrap().translation,
+            Vec3::new(9.0, 4.0, 8.0)
         );
         assert!(
-            registration
-                .name
-                .ends_with("edit_arrow::EditCircleSignifier")
+            world
+                .resource::<AssetMeshLibrary>()
+                .modified_meshes
+                .contains(&handle)
         );
+        world.get_mut::<SignifierAnimation>(line).unwrap().t = 1.0;
+        world.insert_resource(crate::resources::time::GameTime {
+            delta: 0.1,
+            ..Default::default()
+        });
+        let mut cleanup = Schedule::default();
+        cleanup.add_systems(
+            (
+                crate::systems::ui::signifiers::signifier_mark_for_delete::signfier_mark_for_delete,
+                crate::systems::ui::signifiers::animation::signifier_animation_t,
+                signifier_edit_circle_line,
+                crate::systems::ui::signifiers::signifier_mark_for_delete::despawn_marked,
+            )
+                .chain(),
+        );
+        cleanup.run(&mut world);
+        assert!(world.get_entity(arrow).is_err());
+        assert!(world.get_entity(line).is_ok(), "圆弧必须完成0.3秒反向动画");
+        for _ in 0..3 {
+            cleanup.run(&mut world);
+        }
+        assert_eq!(world.entities().len(), 0);
+        let mut meshes = world.remove_resource::<AssetMeshLibrary>().unwrap();
+        assert_eq!(*meshes.transient_meshes().lock().unwrap(), vec![handle]);
+        crate::asset_libraries::transient_mesh::delete_dropped_transient_meshes(
+            &TestDevice(1),
+            &mut meshes,
+            &mut crate::asset_libraries::vao_library::AssetVAOLibrary::new(),
+        );
+        assert!(meshes.get(handle).is_none());
+        assert!(meshes.transient_meshes().lock().unwrap().is_empty());
     }
 }

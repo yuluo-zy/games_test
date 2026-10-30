@@ -30,6 +30,7 @@ pub fn register_ivy_storage(world: &mut World) {
     world.init_resource::<Events<IvySegmentDoneGrowingMsg>>();
     world.init_resource::<Events<IvyLeafIsGrowing>>();
     world.init_resource::<Events<RemoveIvyCmd>>();
+    // 原两个独立reader共用生产者的真实事件身份。
     world.init_resource::<Events<CmdCheckForSheepInsideBuilding>>();
     world.init_resource::<Events<OnCircleRotated>>();
 }

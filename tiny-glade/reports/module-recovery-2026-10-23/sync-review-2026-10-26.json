@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-26",
+  "source_commit": "858da5891b0744cd35353c9c1e85e84f442f0b35",
+  "checkout": "detached origin/main; prior render branch retained at 8fd2a3c2c",
+  "business_code_changed_this_review": false,
+  "verification_scope": "源码与真实生产注册的限定进度复核；新增本机编译及CPU测试，不是全域原指令对比/整游戏验收",
+  "checks": [
+    {
+      "command": "cargo check --offline -p tiny-glade --tests",
+      "exit_code": 0,
+      "log": "baseline-2026-10-26/sync-macos-check.log",
+      "sha256": "7d0a0915dd8c7ca00c65f53d0fcc2a550404f86677e7d92e7be86645cfa99243"
+    },
+    {
+      "command": "cargo test --offline -p system-onboarding --lib",
+      "exit_code": 0,
+      "log": "baseline-2026-10-26/sync-macos-onboarding.log",
+      "sha256": "722befd37b296b290237516c06ea6e2467c1620b980acec772e6b8da80175724"
+    },
+    {
+      "command": "TG_INSTALL_ROOT=<B installation> cargo test --offline -p system-onboarding --lib -- --ignored",
+      "exit_code": 0,
+      "log": "baseline-2026-10-26/sync-macos-onboarding-assets.log",
+      "sha256": "3294e3352ef432f0355761a9d217d2e9de872ad45ca6d1601f50f11877f33bdd"
+    }
+  ],
+  "cpu_results": {
+    "onboarding_regular": {
+      "passed": 74,
+      "ignored": 2
+    },
+    "onboarding_original_assets": {
+      "passed": 2,
+      "ignored": 0
+    }
+  },
+  "source_sha256": {
+    "crates/tiny-glade/src/run_game.rs": "097aca0004b5e918263f10f54060eeab6e4333ddbdee5be93b1932e345018804",
+    "crates/tiny-glade/src/history_runtime.rs": "258a929e15a51e2cbe3503e6961527938bc2eb45982bf64a17e7166c24f558e0",
+    "crates/tiny-glade/src/production_renderer.rs": "2762d17698410ff1c3e6dc7c8c00143ff5571c17d16d28a64456f58fbfecc8e5",
+    "crates/tiny-glade/src/render_cpu_probe.rs": "5ea7ea885cb3012858ac7e13bb2cc00659af9769435e7b22ff81964b72032aef",
+    "crates/tiny-glade/src/app_systems.rs": "dbcb60eb7475759a4340f79bd142c16d61752d989edc32bac0448003ba01bce4",
+    "crates/country-core/src/systems/ui_edit_focus.rs": "8e63d29cde3d8503968372bdd5b19240f8f9c61d9ca4b5d2b7b9fb00ab6f9c8c",
+    "crates/country-core/src/systems/wall/shapes/circle/ui_edit_circle.rs": "67845d14d1456381c43068fc125bbee1fdc800fe033d05de3bcb3fe4e27b104f",
+    "crates/country-core/src/systems/wall/shapes/circle/ui_rotate_circle.rs": "b9f628d45d2274de0d9c5800dff0e15f9d3fd303b395f680065a560913ca6714",
+    "crates/country-core/src/systems/wall/shapes/rectangle/ui_edit_rectangle_dims.rs": "2c67d8988f6506a464897e1750d41dd83bf66549654f1994d52e7ddd1c74cf33",
+    "crates/systems/onboarding/src/hint_focused_edit.rs": "5e300ff24f202f9ee9a99440fba4aa8190bb70df2fab6580da0cb7776991da4f",
+    "crates/systems/onboarding/src/hint_display_system.rs": "9b965f79c39c733fa2f1c2c5058db945059f6a479f60e5d9404e8354eacde177",
+    "crates/systems/onboarding/src/hint_orchestrator.rs": "7e15f7a70a65b7f173c0847d44b01212ef20db8c606eb49300dd231c8eeacf99",
+    "crates/systems/wall-constructor/src/construct_floors.rs": "f8c31a184239a3c4f038dc83f977fb63ebcf2b43104b07a0bf6cfcd1eceb1d5e",
+    "crates/rhapsody/src/raw/swapchain.rs": "d0e198b02226a67db7d1a90ae5d8a92e24dcb5eacc691f59c5bda370833ade4b"
+  },
+  "findings": [
+    {
+      "id": "SYNC-1",
+      "status": "open",
+      "finding": "原形状编辑A/B/C完整树未恢复，实际宿主仅10叶必要子链；圆编辑/旋转和矩形尺寸仍为替代事件/代理输入。"
+    },
+    {
+      "id": "SYNC-2",
+      "status": "open",
+      "finding": "FocusSubjectByte的生产来源缺失：workspace仅测试spawn，影响undo焦点计时和focused-edit确认音效分支。"
+    },
+    {
+      "id": "SYNC-3",
+      "status": "not_a_current_gap",
+      "finding": "HintPlacement WorldPoint/Bounds内零payload不能单独当成画面零点缺陷；真实hint_position_update读PreviewCircle/Rectangle与placement_y，且Subject完整几何分支存在。"
+    },
+    {
+      "id": "SYNC-4",
+      "status": "open_later_module",
+      "finding": "楼板、支撑/柱、抹灰等真实构造入口仍todo且未挂生产，后续建筑业务未完成。"
+    },
+    {
+      "id": "SYNC-5",
+      "status": "needs_revalidation",
+      "finding": "Windows最新基线保留常量页cancel/completion后allocate Timeout；本次未运行GPU，不能称已修或已在Mac复现。"
+    },
+    {
+      "id": "SYNC-6",
+      "status": "hardware_boundary",
+      "finding": "Strict WSI要求swapchainMaintenance1；AcquireOnly禁止present。Windows UHD630报告不支持，不可泛化成本机Mac或所有平台都不能present。"
+    }
+  ],
+  "limits": [
+    "真实Steam SDK仍按用户决定排除",
+    "未发送OS输入或操作游戏窗口",
+    "未重跑GPU/WSI/长稳与性能",
+    "旧V31 8.24/22.66ms不是本次858da5891新性能测量",
+    "代码树已同步但主线报告布局与渲染分支不同"
+  ]
+}

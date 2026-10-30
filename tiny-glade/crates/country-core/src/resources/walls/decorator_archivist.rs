@@ -539,6 +539,24 @@ impl LiveDecoratorArchivist {
         address: DecoratorStorageAddr,
         storage: &LiveDecoratorStorage,
         resources: &DecoratorArchivalResources<'_>,
+        source: &str,
+    ) {
+        self.archive_current_decorators_at_with_owners(address, storage,
+            &resources.raycast_world,
+            #[cfg(feature = "native-physics")]
+            &resources.colliders,
+            source);
+    }
+
+    /// 原维护楼梯图已经持有ResMut<RaycastWorld>，只读归档借用同一owner。
+    /// 不另建SystemParam、克隆碰撞世界或遗漏原两张碰撞表；原入口也委派此实现。
+    pub fn archive_current_decorators_at_with_owners(
+        &mut self,
+        address: DecoratorStorageAddr,
+        storage: &LiveDecoratorStorage,
+        raycast_world: &crate::systems::collision::world::RaycastWorld,
+        #[cfg(feature = "native-physics")]
+        colliders: &crate::resources::walls::decorator_collision::DecoratorPhysicsColliders,
         _source: &str,
     ) {
         let exists = match address {
@@ -563,18 +581,18 @@ impl LiveDecoratorArchivist {
             archive_live_collider_map(
                 &mut self.collision_a,
                 decorators,
-                &resources.colliders.first,
-                &resources.raycast_world,
+                &colliders.first,
+                raycast_world,
             );
             archive_live_collider_map(
                 &mut self.collision_b,
                 decorators,
-                &resources.colliders.second,
-                &resources.raycast_world,
+                &colliders.second,
+                raycast_world,
             );
         }
         #[cfg(not(feature = "native-physics"))]
-        let _ = resources;
+        let _ = raycast_world;
     }
 }
 

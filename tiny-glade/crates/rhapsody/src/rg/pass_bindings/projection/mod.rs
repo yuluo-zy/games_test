@@ -71,6 +71,7 @@ pub(super) struct ProjectionState {
     growths: u64,
     allocations: u64,
     reused: u64,
+    has_constants_pages: bool,
     memory: CpuMemoryReservation,
 }
 impl ProjectionState {
@@ -85,6 +86,7 @@ impl ProjectionState {
             growths: 0,
             allocations: 0,
             reused: 0,
+            has_constants_pages: false,
             memory: budget.reserve_cpu_bytes(bytes, BudgetCategory::Live)?,
         })
     }
@@ -94,7 +96,30 @@ impl ProjectionState {
         self.resolved.clear();
         clear_registry(current);
         clear_registry(&mut self.staging);
+        self.has_constants_pages = false;
         self.memory.reclassify(BudgetCategory::Cache);
+    }
+    fn release_constants_pages(&mut self, current: &mut ManagedBindingRegistry) {
+        if !self.has_constants_pages {
+            return;
+        }
+        // 常量页属于有界上传环，不能像普通物理资源一样由空闲投影长期缓存。
+        // 仅唯一拥有的快照可以到这里；在途命令的独立 owner 和时间线仍保护 GPU 读取。
+        for row in &mut current.backing_resources {
+            let constants = match row {
+                RegistryResource::OwnedBuffer(buffer) | RegistryResource::UnownedBuffer(buffer) =>
+                    buffer.handle.resource().is_dynamic_constants_page(),
+                _ => false,
+            };
+            if constants {
+                *row = RegistryResource::Empty;
+            }
+        }
+        // 删除对应物理索引，避免下次同地址复用命中已退役的 managed handle。
+        self.index.retain(|(_, physical)| {
+            !matches!(current.backing_resources[*physical as usize], RegistryResource::Empty)
+        });
+        self.has_constants_pages = false;
     }
 }
 /// Grow using a replacement allocation. Both backings are charged until the
@@ -377,6 +402,10 @@ impl ManagedPassResources {
         std::mem::swap(&mut state.index, &mut state.next_index);
         state.next_index.clear();
         clear_registry(&mut state.staging);
+        state.has_constants_pages = state.resolved.iter().any(|row| {
+            matches!(&row.resource, super::super::vulkan::GpuResource::Buffer(buffer)
+                if buffer.is_dynamic_constants_page())
+        });
         Ok(())
     }
 }
@@ -481,6 +510,7 @@ impl ManagedProjectionPool {
     pub(crate) fn park_idle(&mut self) {
         for slot in &mut self.slots {
             if let Some(value) = Arc::get_mut(&mut slot.value) {
+                value.projection.release_constants_pages(&mut value.registry);
                 value.projection.memory.reclassify(BudgetCategory::Cache);
             }
         }

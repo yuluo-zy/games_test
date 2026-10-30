@@ -2,7 +2,7 @@
 //!
 //! `hint_focused_edit_condition`：GameProfile+0x1f5!=0 → 状态置 1 返回；否则读工具变化
 //! 事件（ModeJustChanged），工具∈{1,2}（`*piVar5-1U<2`）→ 置状态、写完成事件 tag 1；
-//! 焦点实体工具字节==1 → 写事件 tag 0x13。
+//! 当前提示 HintType==FocusedEdit → 写事件 tag 0x13。
 //! `hint_focused_edit_hint`：state.hint_done==0 时读
 //! `EventReader<NotifyHintSystemShapeEditWasPerformed>`（有事件 → count++、
 //! `state@+9 = 4<count`）；`Query<(&Roof,&RoofTriggerVolume)>` 非空 &&
@@ -31,17 +31,11 @@ pub struct FocusedEditHintConditions {
     pub state: u8,
 }
 
-/// 焦点实体工具字节（O：condition/hint 的 Query 读首实体组件首字节——真实组件类型 U，
-/// seam）。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct FocusSubjectByte(pub u8);
-
 /// hint_focused_edit_condition（O 0x14227da70）：profile 0x1f5!=0 → hint_done=1 返回；
 /// 读 `ModeJustChanged`（0x28B），末事件当前模式 tag ∈ {1,2}（`*piVar5-1U<2`）→ hint_done=1；
-/// 未 done 且工具不满足 → false；写 TutorialHintComplete(id 1)；焦点实体字节==1 →
+/// 未 done 且工具不满足 → false；写 TutorialHintComplete(id 1)；当前提示 HintType==FocusedEdit →
 /// PlayUiSound(kind 0x13)。
-/// **重建（2026-10-17，ModeJustChanged + GameProfile 落库）**；分歧点：焦点字节 Query
-/// 组件类型 U（seam `FocusSubjectByte`）；音效实例 EventId 由 Bevy 管理。
+/// PDB FunctionSystem 参数明确为 Query<&HintType>，读取 orchestrator 的真实提示实体。
 // O：反编译返回 void（0x14227da70 / 0x141c3d890 全部 `return;`），且原 add_onboarding 经 InfallibleSystemWrapper
 // 以普通系统入链（Out=()）；早先 `-> bool` 属误判，已改为 `()`，各早退路径语义不变。
 pub fn hint_focused_edit_condition(
@@ -50,7 +44,7 @@ pub fn hint_focused_edit_condition(
     mut mode: EventReader<country_core::resources::events::ModeJustChanged>,
     mut completed: EventWriter<crate::tutorial_completion::TutorialHintComplete>,
     mut sound: EventWriter<country_core::systems::ui::resources::widget_params::PlayUiSound>,
-    query: Query<&FocusSubjectByte>,
+    query: Query<&crate::HintType>,
 ) {
     if profile.focused_edit_completed {
         state.hint_done = true;
@@ -66,7 +60,7 @@ pub fn hint_focused_edit_condition(
         return;
     }
     completed.write(crate::tutorial_completion::TutorialHintComplete { id: 1 });
-    if query.iter().next().is_some_and(|b| b.0 == 1) {
+    if query.iter().next() == Some(&crate::HintType::FocusedEdit) {
         let _ = sound.write(
             country_core::systems::ui::resources::widget_params::PlayUiSound {
                 kind: 0x13,

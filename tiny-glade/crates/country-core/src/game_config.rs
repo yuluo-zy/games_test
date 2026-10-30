@@ -171,18 +171,18 @@ impl Default for GameSettings {
     }
 }
 
-/// `developer_hotkeys_enabled` @0x14090e070（O：读全局字节 0x14362d6dd）。
-/// 与 `is_within_glade_shape`（0x14090dfe0，椭圆边界测试启用位）共用。
-pub const DEVELOPER_MODE_FLAG_ADDR: u64 = 0x1_4362_d6dd;
+/// 原getter14090e070读取143634cd8，由main从dev.internal_hotkeys一次初始化。
+/// demo/glade边界读取另一个143634d90，不能共用该热键门。
+pub const DEVELOPER_MODE_FLAG_ADDR: u64 = 0x1_4363_4cd8;
 
-/// 开发者模式建模（I：宿主按全局字节接线；真值 = 开发者热键/glade 椭圆测试启用）。
+/// 原进程级开发者热键门；按启动快照读取，不逐帧镜像配置或demo开关。
 pub fn developer_hotkeys_enabled() -> bool {
     DEVELOPER_MODE.load(core::sync::atomic::Ordering::Relaxed)
 }
 static DEVELOPER_MODE: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
 
 /// The original main function writes `GameConfig.dev.internal_hotkeys` to the
-/// same byte read by `developer_hotkeys_enabled` (B 0x14362d6dd).
+/// same byte read by `developer_hotkeys_enabled` (B 0x143634cd8).
 /// Atomic storage permits the source host's OS/game threads to share that byte.
 pub fn set_developer_hotkeys_enabled(enabled: bool) {
     DEVELOPER_MODE.store(enabled, core::sync::atomic::Ordering::Relaxed);

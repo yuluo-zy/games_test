@@ -1,0 +1,188 @@
+{
+  "result": "passed",
+  "scope": "Original global Rapier::raycast786B/terrain wrapper383B + canonical converter1398B; native service-isolated original code and actual Rust World/Rapier integration",
+  "native_global_cases": 82,
+  "native_global_panics": 10,
+  "native_predicate_cases": 204,
+  "native_terrain_wrapper_cases": 16,
+  "true_world_global_word_cases": 70,
+  "resolved_final_converter_cases": 75,
+  "true_world_predicate_cases": 204,
+  "added_world_tests": 8,
+  "world_regression_passed": 71,
+  "roof_regression_passed": 25,
+  "original_converter_numeric_regression_cases": 259,
+  "arithmetic_bridges": [],
+  "service_boundaries": [
+    "QueryPipeline intersection fixtures respecting max_toi",
+    "ColliderSet fixture lookups",
+    "TerrainHeightsData Option<TOI,point> fixtures respecting max_toi",
+    "panic entry capture"
+  ],
+  "actual_rust_physics": true,
+  "original_qbvh_executed": false,
+  "os_input": false,
+  "rhapsody_changed": false,
+  "commands": [
+    "CARGO_INCREMENTAL=0 cargo test -p country-core --lib systems::collision::world --features native-physics --offline",
+    "CARGO_INCREMENTAL=0 cargo test -p country-core --lib resources::roofs::roof_shape --features native-physics --offline"
+  ],
+  "original_mapped_scopes": {
+    "global": "0x1408cdc60/786B",
+    "global_wrapper": "0x1408cc870/39B",
+    "terrain_wrapper": "0x1408cd430/383B",
+    "converter": "0x1408ce4a0/1398B"
+  },
+  "strict_comparison": "All original active words. Primitive extra, miss payload and terrain union inactive bytes remain excluded because original does not write them; no float tolerance used.",
+  "preserved_scope_fingerprints": {
+    "update_rapier_colliders": "87f839066cf228cef587f6e2f0839c65c21a040bca7a0a7b23e267301b1ec0c0",
+    "update_roof_colliders_inner": "a8fb948251375aecdb676721fe83623d25e3be654df116d46a83ea1a316dbefb",
+    "update_auto_clutter_colliders_inner": "1ae6f7a4070c93ecbba74e1a4cd5cf0c980a361dce4204cb256fbf71a93ef71f"
+  },
+  "approved_changes": [
+    "Deferred final-winner converter with live pose/source/Feature",
+    "Global receipt raw generation OR1 only",
+    "Result is_hit accepts0 and1",
+    "Canonical Some(empty) pointer-presence keeps original bounds",
+    "Terrain wrapper copies actual TerrainRayHit.position",
+    "Bounded simple excluding-wall thin adapter requested by central",
+    "Correct old Roof empty-UV fixture to Some(empty) panic"
+  ],
+  "not_claimed": [
+    "Whole-game Place/history/window GPU acceptance",
+    "Entire simple/spherecast/all-intersections family",
+    "Original Windows Rapier/SDK full runtime equivalence"
+  ],
+  "files": [
+    {
+      "path": "crates/country-core/src/systems/collision/world.rs",
+      "bytes": 269968,
+      "sha256": "ebbf2066555c5e23e540a6765cec9fed493c8ebbddb27ef7b8c5545ffe11e546"
+    },
+    {
+      "path": "crates/country-core/src/resources/roofs/roof_shape.rs",
+      "bytes": 94855,
+      "sha256": "e9de658919219cdf3ab51e2b5e8a1818b2e69cc64aeb9e752ed743acb80133b5"
+    },
+    {
+      "path": "crates/country-core/src/resources/terrain_height.rs",
+      "bytes": 18212,
+      "sha256": "eb0d37483c0791733570869a3ededcef1eb698cb163bc21f7e75feec8af0a946"
+    },
+    {
+      "path": "tests/fixtures/native/m01-global-ray.json",
+      "bytes": 292769,
+      "sha256": "da30b6ebde60b3b9f32de2acaf86b6c5abbf56b7a5908b011be5aedc49e34456"
+    },
+    {
+      "path": "Cargo.lock",
+      "bytes": 170567,
+      "sha256": "0672d9698227283eabd807a67ad6488d3c9a71cfbae8527edbcdae3535a7503a"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-identity.json",
+      "bytes": 4519,
+      "sha256": "c324b4946dfe884bbee1eca79fe34d605c556c0efc89b0a3402d3112c05a6333"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-fresh.json",
+      "bytes": 15392,
+      "sha256": "5bcf1ba7b5137532c2133f506c4518653d2ceb53dd5da27eb50e8f9f0ba13ff2"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-native.py",
+      "bytes": 10940,
+      "sha256": "1e174af1fcf8f7543e1c27a92e526dd918e0e50e148287ccb1663524929d252f"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-native.json",
+      "bytes": 1044,
+      "sha256": "5c711be1a764e180ba21a9324786c00a718456b97dc8e9ee1f6bdd1e7256a635"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-1408cdc60.asm",
+      "bytes": 10151,
+      "sha256": "be59089ab536393ee5cb75e059213697ccf71256520fdcccc50e9d36b9c0d240"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-1408cc870.asm",
+      "bytes": 840,
+      "sha256": "dbf7b3005fd00b73efc4dc17b8f4b233cf8f341d354a1d3690925fcecb8a6da2"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-1408cd430.asm",
+      "bytes": 5827,
+      "sha256": "6ebf04f3001481abc059db3b590c0e81f07d0089b3f8c12f1cae6cf032dafe58"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-1408ce4a0.asm",
+      "bytes": 21172,
+      "sha256": "3d32d842e1874a77b2c8f435ac7a12f17599f4ee7e8da214bb569b5ad181b68c"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-predicate.asm",
+      "bytes": 2993,
+      "sha256": "2d7bad0027be2b02c0b7e0b15a9bf7b94c5cb6b11a6b07fe3f8cf33e9722e840"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "bytes": 6396,
+      "sha256": "6951a1619b11b2c4404408aeb93176ff04af0c39f80687aea0880c45d5877203"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-roof-uv-native.json",
+      "bytes": 388,
+      "sha256": "845af6b7a4cac08a45658a74b72e57eaa02a4a63519642e924249c5c5c76c8aa"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-roof-uv-native-cases.rs",
+      "bytes": 146014,
+      "sha256": "f9d04b1ed53e430ea499f1a8b9b1fac60267e95993f1db708c7f82ea70d37a67"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-roof-uv-control-native.json",
+      "bytes": 5454,
+      "sha256": "59b2aaac2aefe2b3b85704e940a5cc229c573394506c5c02d20b785a052dc0a6"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-world-final.log",
+      "bytes": 39863,
+      "sha256": "54a2f1171a7508981b34d740a3626603a553d33e7a8df765fdfc9753e30167b8"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-roof-final.log",
+      "bytes": 33497,
+      "sha256": "611cb69c2536612d36afe4c57243642f420566075a6c0a1d79482d2ef2aec87e"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-old-even-fixture-failure.log",
+      "bytes": 38990,
+      "sha256": "5f7871441989f19770c122dae321fa002e68f81efaef833df542e502e4fc5ac7"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-terrain-fixture-failure.log",
+      "bytes": 31675,
+      "sha256": "ac87d95e646c898aedf5b481ad287719a1c4316c225d6a949897b2387f78beca"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-eight-tests-final.log",
+      "bytes": 31821,
+      "sha256": "587c33018c1644b1bcefe06c9e95e50bf333d03cd8c8deb4892678bd98c8a10d"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-shared-focus-compile-failure.log",
+      "bytes": 12863,
+      "sha256": "9675d599d381509779d4e9a4ccb45fbe5d8a2afad5a493327782d0da37fa2884"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-roof-some-empty-failure.log",
+      "bytes": 34103,
+      "sha256": "3d5de498785a69f15d6c56021ffacf843c51daed83e913fcd66642ca904d7d31"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-global-ray-native-final.log",
+      "bytes": 68,
+      "sha256": "bef94578c1a058a06e3492a7469012ff496d7128bcfe7598442180bcc661130c"
+    }
+  ]
+}

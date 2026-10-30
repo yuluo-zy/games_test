@@ -668,9 +668,8 @@ mod tests {
                     (
                         ui_continue_wall,
                         draw_wall,
-                        finish_wall,
-                        history_record_wall_changed,
-                        record_wall_history::<()>,
+                        finish_wall::<()>,
+                        history_record_wall_changed::<()>,
                     )
                         .chain(),
                 );
@@ -836,7 +835,7 @@ mod tests {
                 let mut schedule = Schedule::default();
                 schedule.add_systems(control_input_replay.before(ui_continue_wall));
                 add_wall_drawing_cpu_systems::<()>(&mut schedule);
-                schedule.add_systems(record_wall_history::<()>.in_set(HistoryCpuStage::Record));
+
                 add_recording_systems::<()>(&mut schedule);
                 let start = if extend_start { Vec3::ZERO } else { Vec3::X };
                 let next = if extend_start {

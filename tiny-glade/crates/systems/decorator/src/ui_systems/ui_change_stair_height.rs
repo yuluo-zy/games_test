@@ -234,9 +234,10 @@ pub fn build_stair_height_op(
     height: f32,
 ) -> DecoratorOp {
     DecoratorOp::from_change(addr, crate::apply_decorator_op::DecoratorChangePatch {
-        id, destination: None, rank: None, ty: None, word_2c_delta: None,
+        id, destination: None, rank: None, ty: None, word_2c_delta: None, seed_demo_mode: false,
         extra_low: Some(height.to_bits()), extra_high: None, extra_byte: None,
         event_position: glam::Vec3::ZERO,
+        event_position_flag: 0,
     })
 }
 

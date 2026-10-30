@@ -1088,6 +1088,87 @@ mod tests {
     }
 
     #[test]
+    fn real_hint_entities_drive_focus_completion_sound_and_profile_restore() {
+        use bevy_ecs::system::RunSystemOnce;
+        use country_core::{game_profile::{GameProfile, SaveGameProfileCmd},
+            resources::events::ModeJustChanged, systems::{mode_manager::{AppMode, EditSubject},
+            ui::resources::widget_params::PlayUiSound}};
+        for (hint_type, subject, expected_sound, complete_id) in [
+            (HintType::FocusedEdit, EditSubject::Wall(4), true, 1),
+            // 原杂物提示复用 FocusedEdit 展示文本；不把它误写为 ClutterFocus 来强行播放声音。
+            (HintType::FocusedEdit, EditSubject::DecoClutter { decorator_id: 7 }, false, 9),
+            (HintType::ClutterFocus, EditSubject::DecoClutter { decorator_id: 7 }, true, 9),
+        ] {
+            let mut world = orchestrator_world();
+            world.insert_resource(GameProfile::default());
+            world.init_resource::<Events<ModeJustChanged>>();
+            world.init_resource::<Events<PlayUiSound>>();
+            world.init_resource::<Events<crate::tutorial_completion::TutorialHintComplete>>();
+            world.init_resource::<Events<SaveGameProfileCmd>>();
+            world.run_system_once(crate::hints_startup::hints_startup).unwrap();
+            write_request(&mut world, DisplayHintRequest::new(BindingHintDisplay::Key(Some(crate::KeyCode::KeyE)), hint_type, 0));
+            run_orchestrator(&mut world);
+            assert_eq!(hint_entities(&mut world).len(), 1);
+            world.send_event(ModeJustChanged { previous: AppMode::default(), current: AppMode::Editing(subject) });
+            if complete_id == 1 {
+                world.run_system_once(crate::hint_focused_edit::hint_focused_edit_condition).unwrap();
+            } else {
+                world.run_system_once(crate::hint_clutter_focus_edit::hint_clutter_focused_edit_condition).unwrap();
+            }
+            let sounds: Vec<_> = world.resource_mut::<Events<PlayUiSound>>().drain().map(|e| e.kind).collect();
+            assert_eq!(sounds, if expected_sound { vec![0x13] } else { vec![] });
+            world.run_system_once(crate::tutorial_completion::tutorial_completion).unwrap();
+            assert_eq!(world.resource::<Events<SaveGameProfileCmd>>().len(), 1);
+            // 使用原 GameProfile RON schema，校验完成数据恢复到重新进入时的条件资源。
+            let text = ron::to_string(world.resource::<GameProfile>()).unwrap();
+            let loaded: GameProfile = ron::from_str(&text).unwrap();
+            assert_eq!(loaded.focused_edit_completed, complete_id == 1);
+            assert_eq!(loaded.clutter_focused_edit_completed, complete_id == 9);
+            let mut reentered = World::new();
+            reentered.insert_resource(loaded);
+            reentered.run_system_once(crate::hints_startup::hints_startup).unwrap();
+            assert_eq!(reentered.resource::<crate::hint_focused_edit::FocusedEditHintConditions>().hint_done, complete_id == 1);
+            assert_eq!(reentered.resource::<crate::hint_clutter_focus_edit::FocusedClutterHintConditions>().hint_done, complete_id == 9);
+        }
+    }
+
+    #[test]
+    fn erased_hint_producer_reaches_real_undo_timer_and_completion_save() {
+        use bevy_ecs::system::RunSystemOnce;
+        use country_core::{game_profile::{GameProfile, SaveGameProfileCmd},
+            input::action_set::MainActionSet, resources::{time::GameTime,
+            onboarding::NotifyHintSystemSomethingWasErased}};
+        let mut world = orchestrator_world();
+        world.insert_resource(GameProfile::default());
+        world.insert_resource(MainActionSet::default());
+        world.insert_resource(GameTime { delta: 5., ..Default::default() });
+        world.init_resource::<crate::hint_undo::UndoHintConditions>();
+        world.init_resource::<Events<NotifyHintSystemSomethingWasErased>>();
+        world.init_resource::<Events<crate::tutorial_completion::TutorialHintComplete>>();
+        world.init_resource::<Events<SaveGameProfileCmd>>();
+        world.send_event(NotifyHintSystemSomethingWasErased::default());
+        let mut undo = Schedule::default();
+        undo.add_systems(crate::hint_undo::hint_undo);
+        undo.run(&mut world);
+        assert_eq!(world.resource::<crate::hint_undo::UndoHintConditions>().timer, 0.);
+        run_orchestrator(&mut world);
+        let entity = hint_entities(&mut world)[0];
+        assert_eq!(world.get::<HintType>(entity), Some(&HintType::Undo));
+        assert!(world.get::<BindingHintDisplay>(entity).is_some());
+        assert!(world.get::<crate::hint_display_system::HintText>(entity).unwrap().text.contains('/'));
+        undo.run(&mut world);
+        undo.run(&mut world);
+        assert_eq!(world.resource::<crate::hint_undo::UndoHintConditions>().timer, 10.);
+        assert_eq!(world.resource::<Events<crate::tutorial_completion::TutorialHintComplete>>().len(), 0);
+        undo.run(&mut world);
+        world.run_system_once(crate::tutorial_completion::tutorial_completion).unwrap();
+        assert!(world.resource::<GameProfile>().undo_completed);
+        assert_eq!(world.resource::<Events<SaveGameProfileCmd>>().len(), 1);
+        let loaded: GameProfile = ron::from_str(&ron::to_string(world.resource::<GameProfile>()).unwrap()).unwrap();
+        assert!(loaded.undo_completed);
+    }
+
+    #[test]
     fn orchestrator_spawns_first_sorted_request() {
         // O：事件 collect → id 升序排序 → 只取首个请求 spawn。
         let mut world = orchestrator_world();

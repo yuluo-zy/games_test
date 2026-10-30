@@ -106,7 +106,6 @@ pub fn register_ui_resources(app: &mut bevy_app::App) {
     app.init_resource::<ui_move_decorator::MoveDecoratorDeltaPositions>();
     app.init_resource::<ui_stairs_viz::InsertPointState>();
     app.init_resource::<ui_place_decorator::PlaceDecoratorInteractionState>();
-    app.init_resource::<ui_place_decorator::TransientDecoratorIdBase>();
     app.add_event::<ui_place_decorator::EvInitPlaceDecoratorInteractionState>();
 }
 

@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-29",
+  "scope": "完整楼梯每帧复位原函数及原unset helper；非M01父链接线验收",
+  "original_entry": "0x14079c350",
+  "original_body_bytes": 80,
+  "original_unset_helper": "0x1408fe880",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "native_cases": 126,
+  "rust_legal_cases": 123,
+  "excluded_native_cases": "mode11 payload62/64/255未构造非法Rust枚举",
+  "business_bridges": [],
+  "verified": [
+    "原ResMut changed tick先于门控写入，保留分支也标changed",
+    "mode4或mode11且type63保留全部24B端点，其余只将首u64改3",
+    "真实World图和backup保留、重复同值复位仍changed"
+  ],
+  "source": "tiny-glade/crates/systems/decorator/src/ui_systems/ui_stairs_misc.rs",
+  "source_sha256": "40d5d4660db48ecddfde8ddfb476aecb3b5229907081ce7f62c281e5c984275e",
+  "oracle_sha256": "199120d001d15257e73e18786229bf4c2c587ee208707e6468c18931ac6637c7",
+  "test_command": "CARGO_INCREMENTAL=0 cargo test --offline -p system-decorator --lib complete_reset_matches_original_endpoint_and_change_tracking",
+  "test_result": "1 passed, 0 failed, 548 filtered",
+  "log": "/private/tmp/m01-root-stairs-reset-test-20261029.log",
+  "limitations": [
+    "生产父链未接入；不是交互/视觉/历史/整App验收",
+    "M0性能验收用户明确不要求，OS输入暂缓",
+    "共享源后续改动按影响范围复验"
+  ]
+}

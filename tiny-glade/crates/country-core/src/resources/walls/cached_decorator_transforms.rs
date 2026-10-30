@@ -47,9 +47,36 @@ impl CachedDecoratorTransform {
 
 /// B CachedDecoratorTransformStorage：缓存存储（HashMap<u32, CachedDecoratorTransform>；
 /// `get` 0x140a1af40 探针头 {ctrl@+0, mask@+8, len@+0x10, seed@+0x18, hasher@+0x20}）。
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct CachedDecoratorTransformStorage {
     map: HashMap<u32, CachedDecoratorTransform>,
+}
+
+impl Clone for CachedDecoratorTransformStorage {
+    fn clone(&self) -> Self { Self { map: self.map.clone() } }
+    fn clone_from(&mut self, source: &Self) {
+        // 原回滚覆盖同一缓存表，不额外产生一张临时map。
+        self.map.clone_from(&source.map);
+    }
+}
+
+#[cfg(test)]
+mod backup_clone_tests {
+    use super::*;
+    #[test]
+    fn backup_transform_clone_from_reuses_matching_capacity_without_aliasing() {
+        let mut source = CachedDecoratorTransformStorage { map: HashMap::with_capacity(64) };
+        let mut target = CachedDecoratorTransformStorage { map: HashMap::with_capacity(64) };
+        let transform = CachedDecoratorTransform { rotation: Quat::IDENTITY, translation: Vec3::X, scale: Vec3::ONE };
+        source.insert(7, transform);
+        for id in 0..64 { target.insert(id, CachedDecoratorTransform::default()); }
+        let capacity = target.map.capacity();
+        target.clone_from(&source);
+        assert_eq!(target.map.capacity(), capacity);
+        assert_eq!(target.map.len(), 1);
+        source.clear();
+        assert_eq!(target.get(7), Some(&transform));
+    }
 }
 
 impl CachedDecoratorTransformStorage {

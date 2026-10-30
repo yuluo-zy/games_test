@@ -1,4 +1,17 @@
 use super::*;
+include!(concat!(env!("CARGO_MANIFEST_DIR"),
+    "/../../reports/module-recovery-2026-10-23/m01-camera-xz-native.rs"));
+
+#[test]
+fn original_xz_projective_rotation_complete_function_vectors() {
+    for (case, (matrix, expected)) in ORIGINAL_CAMERA_XZ.iter().enumerate() {
+        let camera = CameraMatrices { projection: Mat4::IDENTITY,
+            inverse_view: Mat4::from_cols_array(&matrix.map(f32::from_bits)) };
+        let actual = camera.xz_projective_rotation().to_array().map(f32::to_bits);
+        assert_eq!(actual, *expected, "original camera case {case}: {matrix:x?}");
+    }
+    assert_eq!(ORIGINAL_CAMERA_XZ.len(), 785);
+}
 fn compare(actual: &[f32], expected: &[u32]) {
     for (a, bits) in actual.iter().zip(expected) {
         let e = f32::from_bits(*bits);

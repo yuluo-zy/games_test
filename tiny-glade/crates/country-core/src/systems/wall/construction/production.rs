@@ -165,6 +165,17 @@ pub fn produce_wall(
     input: PlainWallProductionInput<'_>,
     branch: WallProductionBranch,
 ) -> Result<Vec<WallBrickInstance>, WallProductionError> {
+    let mut output = Vec::new();
+    produce_wall_into(input, branch, &mut output)?;
+    Ok(output)
+}
+
+/// 原from_curve追加到已包含墙角／裙边的主数组，保留其顺序及分配。
+pub fn produce_wall_into(
+    input: PlainWallProductionInput<'_>,
+    branch: WallProductionBranch,
+    output: &mut Vec<WallBrickInstance>,
+) -> Result<(), WallProductionError> {
     let kind = branch.kind;
     let top = branch.top;
     if !matches!(kind, 0 | 1 | 2 | 3) || !matches!(top.tag, 0 | 1 | 2) {
@@ -195,7 +206,7 @@ pub fn produce_wall(
         .copied()
         .fold(f32::NEG_INFINITY, f32::max);
     if arch_max_height == 0.0 {
-        return Ok(Vec::new());
+        return Ok(());
     }
     if !(arch_max_height > 0.0 && arch_max_height.is_finite()) {
         return Err(WallProductionError::InvalidInput);
@@ -235,7 +246,6 @@ pub fn produce_wall(
             .wrapping_mul(0x17d32)
             .wrapping_add(count.wrapping_mul(0x8ba)),
     );
-    let mut output = Vec::new();
     for (row_index, row) in rows.iter().enumerate() {
         let row_draw = (row_rng.f32() * 2.0 - 1.0) * input.row_end_perturbation;
         if row.height[1] <= row.height[0] {
@@ -501,7 +511,7 @@ pub fn produce_wall(
             }
         }
     }
-    Ok(output)
+    Ok(())
 }
 
 fn last_row_edges(

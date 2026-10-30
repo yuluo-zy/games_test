@@ -47,6 +47,35 @@ pub fn setup_glade_border(
 }
 
 impl GladeBorder {
+    /// 原 B 0x140ad2ce0：逐个检查 t=0/20..19/20，遇到首个越界即返回前一形状。
+    /// 原算法不采样终点，也不二分；起点已越界时保留起点，异种形状触发原 guard。
+    pub fn search_lerped_shape_that_fits_into_glade(
+        &self,
+        before: crate::systems::wall::valid_enclosure::ShapeParameters,
+        after: crate::systems::wall::valid_enclosure::ShapeParameters,
+    ) -> crate::systems::wall::valid_enclosure::ShapeParameters {
+        use crate::systems::wall::valid_enclosure::{Shape, ShapeParameters};
+        let interpolate = |factor| match (before.get_shape(), after.get_shape()) {
+            (Some(Shape::Circle(a)), Some(Shape::Circle(b))) => Shape::Circle(a.lerp(b, factor)),
+            (Some(Shape::Rectangle(a)), Some(Shape::Rectangle(b))) => {
+                Shape::Rectangle(a.lerp(b, factor))
+            }
+            _ => panic!("原边界插值只接受同种预制形状"),
+        };
+        let mut accepted = before;
+        for step in 0..20 {
+            let candidate = interpolate(step as f32 / 20.0);
+            let boundary = match candidate {
+                Shape::Circle(circle) => BorderShape::Circle(circle),
+                Shape::Rectangle(rectangle) => BorderShape::Rectangle(rectangle),
+            };
+            if !self.is_shape_inside(boundary) {
+                break;
+            }
+            accepted = ShapeParameters::from_shape(candidate);
+        }
+        accepted
+    }
     pub fn is_pos_inside(&self, point: Vec2) -> bool {
         match self.0 {
             BorderShape::Circle(circle) => circle.is_point_inside(point),
@@ -63,7 +92,7 @@ impl GladeBorder {
             (BorderShape::Circle(border), BorderShape::Rectangle(subject)) => subject
                 .as_points2()
                 .into_iter()
-                .all(|point| border.is_point_inside(point)),
+                .all(|point| border.contains_point(point)),
             (BorderShape::Rectangle(border), BorderShape::Circle(subject)) => subject
                 .as_points2(1.0)
                 .all(|point| border.contains_point(point)),
@@ -79,7 +108,7 @@ impl GladeBorder {
     /// First candidate (`t = 0 = lo`) invalid → `lo`. Uses `Circle2d::lerp` /
     /// `Rectangle2d::lerp` (native `FUN_140c98170` / `FUN_140c9c730`); mismatched kinds panic
     /// (native unwrap at 0x140ad3029).
-    pub fn search_lerped_shape_that_fits_into_glade(
+    pub fn search_lerped_border_shape_that_fits_into_glade(
         &self,
         lo: BorderShape,
         hi: BorderShape,
@@ -101,7 +130,7 @@ impl GladeBorder {
     }
 }
 
-/// BorderShape lerp for [`GladeBorder::search_lerped_shape_that_fits_into_glade`].
+/// BorderShape lerp for [`GladeBorder::search_lerped_border_shape_that_fits_into_glade`].
 fn lerp_border_shape(lo: BorderShape, hi: BorderShape, t: f32) -> BorderShape {
     match (lo, hi) {
         (BorderShape::Circle(a), BorderShape::Circle(b)) => BorderShape::Circle(a.lerp(b, t)),
@@ -132,6 +161,40 @@ mod tests {
     use super::*;
     use bevy_ecs::system::RunSystemOnce;
     use crate::systems::backend::input::translate_input::DemoModeEnabled;
+
+    #[test]
+    fn original_search_complete_function_preserves_steps_guards_and_before_bytes() {
+        use crate::systems::wall::valid_enclosure::{Shape, ShapeParameters};
+        let fixtures: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../tests/fixtures/native/m01-shared-geometry.json")).unwrap();
+        let record = |value: &serde_json::Value| -> [u8; 28] {
+            let mut result = [0u8; 28];
+            for (i, value) in value.as_array().unwrap().iter().enumerate() {
+                result[4*i..4*i+4].copy_from_slice(&(value.as_u64().unwrap() as u32).to_le_bytes());
+            }
+            result
+        };
+        for (index, row) in fixtures["search"].as_array().unwrap().iter().enumerate() {
+            let border = match ShapeParameters::from_observed(record(&row["border"])).get_shape().unwrap() {
+                Shape::Circle(circle) => GladeBorder(BorderShape::Circle(circle)),
+                Shape::Rectangle(rectangle) => GladeBorder(BorderShape::Rectangle(rectangle)),
+            };
+            let before = ShapeParameters::from_observed(record(&row["before"]));
+            let after = ShapeParameters::from_observed(record(&row["after"]));
+            let result = std::panic::catch_unwind(|| border.search_lerped_shape_that_fits_into_glade(before, after));
+            assert_eq!(result.is_err(), row["panic"].as_bool().unwrap(), "原 search guard {index}: {row}");
+            if let Ok(actual) = result {
+                let expected = record(&row["output"]);
+                // 原圆成功输出尾8B没有初始化；起点失败必须完整保留输入，包括尾部哨兵字节。
+                let bytes = if row["preserved_before"].as_bool().unwrap() || actual.tag() == 1 { 28 } else { 20 };
+                assert_eq!(&actual.bytes()[..bytes], &expected[..bytes],
+                    "原 search 输出 {index}（原 inside 次数 {}）: {row}", row["inside_calls"]);
+                if row["preserved_before"].as_bool().unwrap() {
+                    assert_eq!(actual.bytes(), before.bytes(), "起点失败需逐字节返回 before {index}");
+                }
+            }
+        }
+    }
     #[test]
     fn native_border_setup_uses_the_same_demo_gate_as_toolbar() {
         for demo in [false,true] {
@@ -146,18 +209,19 @@ mod tests {
     #[test]
     fn search_lerped_finds_largest_fitting_circle() {
         let border = GladeBorder(BorderShape::Circle(Circle2d::new(Vec2::ZERO, 15.0)));
-        let lo = BorderShape::Circle(Circle2d::new(Vec2::ZERO, 10.0));
-        let hi = BorderShape::Circle(Circle2d::new(Vec2::ZERO, 20.0));
-        match border.search_lerped_shape_that_fits_into_glade(lo, hi) {
-            BorderShape::Circle(c) => assert!((c.radius - 14.5).abs() < 1e-4, "radius {}", c.radius),
+        use crate::systems::wall::valid_enclosure::{Shape, ShapeParameters};
+        let lo = ShapeParameters::from_shape(Shape::Circle(Circle2d::new(Vec2::ZERO, 10.0)));
+        let hi = ShapeParameters::from_shape(Shape::Circle(Circle2d::new(Vec2::ZERO, 20.0)));
+        match border.search_lerped_shape_that_fits_into_glade(lo, hi).get_shape() {
+            Some(Shape::Circle(c)) => assert!((c.radius - 14.5).abs() < 1e-4, "radius {}", c.radius),
             _ => panic!("expected circle"),
         }
-        // `lo` already outside the glade → returns `lo` unchanged.
-        let far = BorderShape::Circle(Circle2d::new(Vec2::new(100.0, 0.0), 1.0));
+        // 起点越界保留完整原形状记录。
+        let far = ShapeParameters::from_shape(Shape::Circle(Circle2d::new(Vec2::new(100.0, 0.0), 1.0)));
         assert_eq!(border.search_lerped_shape_that_fits_into_glade(far, far), far);
         // The original loop stops at 19/20 even when the target fits.
         let inside_hi = BorderShape::Circle(Circle2d::new(Vec2::ZERO, 12.0));
-        match border.search_lerped_shape_that_fits_into_glade(lo, inside_hi) {
+        match border.search_lerped_border_shape_that_fits_into_glade(lo, inside_hi) {
             BorderShape::Circle(c) => assert!((c.radius - 11.9).abs() < 1e-4),
             _ => panic!("expected circle"),
         }
@@ -168,7 +232,7 @@ mod tests {
         let border = GladeBorder(BorderShape::Rectangle(Rectangle2d::new_centered_axis_aligned(Vec2::splat(100.0))));
         let from = BorderShape::Rectangle(Rectangle2d::new(Vec2::ZERO, Vec2::splat(2.0), Vec2::X));
         let to = BorderShape::Rectangle(Rectangle2d::new(Vec2::new(20.0, 0.0), Vec2::splat(2.0), Vec2::X));
-        let BorderShape::Rectangle(result) = border.search_lerped_shape_that_fits_into_glade(from, to) else { panic!("rectangle result") };
+        let BorderShape::Rectangle(result) = border.search_lerped_border_shape_that_fits_into_glade(from, to) else { panic!("rectangle result") };
         assert_eq!(result.center, Vec2::new(19.0, 0.0));
     }
 
@@ -177,11 +241,11 @@ mod tests {
         let border = GladeBorder(BorderShape::Circle(Circle2d::new(Vec2::ZERO, 10.0)));
         let outside = BorderShape::Circle(Circle2d::new(Vec2::new(100.0, 0.0), 1.0));
         let rect = BorderShape::Rectangle(Rectangle2d::new(Vec2::ZERO, Vec2::splat(2.0), Vec2::X));
-        assert!(std::panic::catch_unwind(|| border.search_lerped_shape_that_fits_into_glade(outside, rect)).is_err());
+        assert!(std::panic::catch_unwind(|| border.search_lerped_border_shape_that_fits_into_glade(outside, rect)).is_err());
         // Interpolation at zero must still evaluate the target; NaN target
         // produces an outside initial candidate, so the exact original lo returns.
         let lo = BorderShape::Circle(Circle2d::new(Vec2::ZERO, 1.0));
         let hi = BorderShape::Circle(Circle2d::new(Vec2::new(f32::NAN, 0.0), 1.0));
-        assert_eq!(border.search_lerped_shape_that_fits_into_glade(lo, hi), lo);
+        assert_eq!(border.search_lerped_border_shape_that_fits_into_glade(lo, hi), lo);
     }
 }

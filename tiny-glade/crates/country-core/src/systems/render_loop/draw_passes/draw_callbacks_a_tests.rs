@@ -885,12 +885,36 @@ fn cloth_third_key_scans_session_bytes_for_values_up_to_one() {
 }
 
 #[test]
+fn flag_cloth_uses_actual_session_mutators_for_every_glade() {
+    use crate::resources::session::{GladeType, SessionMutator};
+    // 原字节循环的所有有效值及其组合，使用真实会话资源而不是独立 View。
+    for glade in GladeType::ALL {
+        for bits in 0..8 {
+            let mutators: Vec<_> = [SessionMutator::Halloween2024,
+                SessionMutator::Halloween2025, SessionMutator::Xmas2024]
+                .into_iter().enumerate()
+                .filter_map(|(index, value)| ((bits & (1 << index)) != 0).then_some(value))
+                .collect();
+            let bytes: Vec<_> = mutators.iter().map(|value| *value as u8).collect();
+            let mut world = World::new();
+            world.insert_resource(test_session(glade, mutators));
+            let roof = world.spawn((RoofFlagClothView(9), ColorId(4))).id();
+            let wall = world.spawn((WallFlagClothView { id: 8, f4: 0.5,
+                f8: 0.7, fc: 0.9, flag: true }, ColorId(6))).id();
+            assert_eq!(read_env23(&world, roof).cloth_texture, cloth_key_c(&bytes));
+            assert_eq!(read_env22(&world, wall).cloth_texture, cloth_key_c(&bytes));
+        }
+    }
+}
+
+#[test]
 fn env23_roof_cloth_sequence() {
     let mut w = World::new();
-    w.insert_resource(ActiveSessionView {
-        variant: 1,
-        glade_bytes: vec![5, 0, 9],
-    });
+    w.insert_resource(test_session(
+        crate::resources::session::GladeType::Summer,
+        vec![crate::resources::session::SessionMutator::Xmas2024,
+             crate::resources::session::SessionMutator::Halloween2024],
+    ));
     let e = w.spawn((RoofFlagClothView(0xdead), ColorId(42))).id();
     let i = read_env23(&w, e);
     let mut rig = Rig::new(&[], &[COLOR_ID_UNIFORM, CLOTH_ID_UNIFORM]);
@@ -911,10 +935,10 @@ fn env23_roof_cloth_sequence() {
 #[test]
 fn env22_wall_cloth_sequence() {
     let mut w = World::new();
-    w.insert_resource(ActiveSessionView {
-        variant: 1,
-        glade_bytes: vec![5, 6],
-    });
+    w.insert_resource(test_session(
+        crate::resources::session::GladeType::Summer,
+        vec![crate::resources::session::SessionMutator::Xmas2024],
+    ));
     let cloth = WallFlagClothView {
         id: -3,
         f4: 0.5,
@@ -959,7 +983,7 @@ fn env22_wall_cloth_sequence() {
 #[test]
 fn cloth_callbacks_require_color_id() {
     let mut w = World::new();
-    w.insert_resource(ActiveSessionView::default());
+    w.insert_resource(test_session(crate::resources::session::GladeType::Summer, vec![]));
     let e = w.spawn(RoofFlagClothView(1)).id();
     assert!(run_panics(env23, &mut w, &params(e)).contains(NONE_MSG));
 }
@@ -1143,11 +1167,14 @@ fn env3_flags_are_false_for_other_values() {
 #[test]
 fn env14_wooden_gate_sequence() {
     let g = WoodenGateView {
-        q18: 0x1_0000_0005,
-        d30: -9,
+        top_positions: vec![[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
+        wall: crate::resources::walls::WallId(0x1_0000_0005),
+        endpoint_directions: [[1.0, 0.0], [0.0, -1.0]],
+        seed: (-9i32) as u32,
+        clutter_version: 7,
     };
     let mut w = World::new();
-    let e = w.spawn(g).id();
+    let e = w.spawn(g.clone()).id();
     assert_eq!(*comp::<WoodenGateView>(&w, e), g);
     let mut rig = Rig::new(&[E14_GATE_COLOR_BINDING], &[E14_I32_A, CLOTH_ID_UNIFORM]);
     let mut data = Vec::new();

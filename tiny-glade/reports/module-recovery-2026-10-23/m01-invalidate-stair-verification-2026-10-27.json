@@ -1,0 +1,192 @@
+{
+  "date": "2026-10-27",
+  "scope": "M01 slot14 invalidate 8-resource system and necessary visual/RT removal lifetimes; not full slot14 assembly, GPU, or host registration",
+  "original": {
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "source_path": "crates/country-core/src/resources/stairs/invalidate.rs",
+    "source_sha256": "2df6a65f318e64092045d693466db99099201f3b89202adb459da3285a03de85",
+    "va": "0x140b37180",
+    "physical_span": 4290,
+    "body_size": 3455
+  },
+  "source_snapshots": [
+    {
+      "path": "crates/country-core/src/resources/stairs/invalidate.rs",
+      "size": 17790,
+      "sha256": "0c9333d2e8c524cd18da9a39a6016d2b08371f0cb6dfd4832fc888c2a05cf293"
+    },
+    {
+      "path": "crates/country-core/src/resources/stairs/visual.rs",
+      "size": 22857,
+      "sha256": "512379dbf27e61d65e3c6a40ad76e892b6c9efe96e07b56f07a59550e50d603c"
+    },
+    {
+      "path": "crates/country-core/src/resources/stairs/mod.rs",
+      "size": 907,
+      "sha256": "6ff12d6183ae6e3b782a0a384f801872f676747c7ee53d5fd6feb19609f491c4"
+    },
+    {
+      "path": "crates/country-core/src/resources/rt.rs",
+      "size": 37244,
+      "sha256": "a7e14b425f739328fe0fcf433f52ea39adbf22cdf94b0c8cec2a9529b7b10453"
+    }
+  ],
+  "narrow_blocks": [
+    {
+      "path": "crates/country-core/src/resources/stairs/invalidate.rs",
+      "symbol": "pub fn invalidate_dirty_stair_artifacts(",
+      "start_line": 16,
+      "sha256": "6cb930367b6693e88c13e223a77d5c664b70c36f357d9e0fc9d4b8961b1490e2"
+    },
+    {
+      "path": "crates/country-core/src/resources/stairs/visual.rs",
+      "symbol": "pub fn remove_edge_with_commands(",
+      "start_line": 140,
+      "sha256": "e5e5ffe43d035949c103b5c76cc1c97bf331e6d12d91fd5f802d99ac82992731"
+    },
+    {
+      "path": "crates/country-core/src/resources/stairs/visual.rs",
+      "symbol": "fn take_edge_for_removal(",
+      "start_line": 146,
+      "sha256": "6e9c0594b2752a4bfd5bea954bcc9cad77b1607dcb9c4a763abddd16cc5d48bb"
+    },
+    {
+      "path": "crates/country-core/src/resources/rt.rs",
+      "symbol": "pub fn remove_mesh_if_present(",
+      "start_line": 345,
+      "sha256": "13609badaf4865a6b89e9819c067ab33cb7d16c2be146ed5590c31fd1c19a613"
+    }
+  ],
+  "oracle": {
+    "native_entry": "0x141477ff0",
+    "raw_abi_cases": 18,
+    "safe_canonical_world_cases": 12,
+    "outside_safe_domain_reversed_raw_cases": 6,
+    "bridged_library_boundaries": [
+      "0x1405b1be0 hash_one",
+      "0x1402c8640 output HashSet insert"
+    ],
+    "no_candidate_as_oracle": true
+  },
+  "validation": [
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test -p country-core --lib --offline --features native-physics resources::stairs::invalidate -- --test-threads=1",
+      "result": "6 passed, 0 failed; 3033 filtered; 0.11s",
+      "log": "m01-invalidate-stair-tests-final-empty-gate-v2.log"
+    },
+    {
+      "result": "7 passed, 0 failed (existing visual helpers)",
+      "log": "m01-invalidate-stair-visual-helper-tests.log"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo check -p country-core --offline",
+      "result": "success",
+      "log": "m01-invalidate-stair-default-cfg-check.log"
+    }
+  ],
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+  "shared_test_binary_snapshot": {
+    "path": "target/debug/deps/country_core-b1ebfe0653338e18",
+    "size": 141520848,
+    "sha256": "d54a5c34730806d48fe46f03ca57c1e587faf83fe35a15e19fb44c9aa2d5b6df"
+  },
+  "snapshot_note": "Whole source/binary snapshots record verification time, not exclusive authorship; shared cargo outputs can be rebuilt by other workers. Narrow blocks identify task-owned implementation.",
+  "artifacts": [
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-default-cfg-check.log",
+      "size": 27810,
+      "sha256": "33ec5711d76ee4a0e60a043898f80dbceadd2d6e3db733249633f438fdadb394"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-dirty-requests-141477ff0-full.asm",
+      "size": 7548,
+      "sha256": "afa93a049def742a613202dc555d0b7f7a93fc7c7ede54a57f5c3578778b722b"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-helpers-native.json",
+      "size": 43008,
+      "sha256": "6db1f8c4bb8c97e35ca8b78a1c5e9b0bb9dc0e8663d4339b66d53f433e3d8387"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-main-140b37180-full.asm",
+      "size": 59651,
+      "sha256": "746803bb050898aa666f76c75ac8122231c88588d71d3199cd6cfad60f7dc56a"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-native.json",
+      "size": 52786,
+      "sha256": "1487f6d0ec3f6abfe5a21d6143abb7fd46cbc478d954b590fce2b587f7f78be8"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-original-identities.json",
+      "size": 2803,
+      "sha256": "f1e2abea7026eb5a619b982a04e035f22585f9889a58addaf85cc5f77c1d0c9b"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-recovery-2026-10-27.md",
+      "size": 7684,
+      "sha256": "5962aa79105f3a39364079affffb9514b0f0a1480c91e5fc53d9e71e71c34d40"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-remove-edge-140aa8620-full.asm",
+      "size": 17116,
+      "sha256": "98b2dcc1d806dd742d0f16dd37fe37bc22150a0527c8bc1f6fb14e08fdcd0e1a"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-request-predicate-cases.rs",
+      "size": 502,
+      "sha256": "ba650f9f30eabc495752b3b33b6ca4b67f7b240935927331979fd2c603362067"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-request-predicate-native.json",
+      "size": 4612,
+      "sha256": "a308033b3f8bcf9c8d17da6e1627205c9b3395cd2cff0d511dd824d7b8a0900f"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-request-predicate-native.py",
+      "size": 2502,
+      "sha256": "2d3223ad33a6d4125afc86f0542f27c3bfae2fb92a6b4ef7d71d98ba30494be5"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-reset-edge-140aa8a60-full.asm",
+      "size": 33158,
+      "sha256": "a3dceac99f16c327f2526edbd933b914777a18066b160c52a8458bcd68951153"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-tests-final-empty-gate-v2.log",
+      "size": 30867,
+      "sha256": "b9fc0f11232b0ffd8e4f53f011f586fed6f721e93077faddba3c8b049c84c840"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-tests-final-empty-gate.log",
+      "size": 14220,
+      "sha256": "af015c82c34c54c4228dd85c5e94a447f062810589e1dfa08cc4c7d318f6338f"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-tests-final.log",
+      "size": 30733,
+      "sha256": "520facfa1d9581a12e2cae56c4ff4276d0c5c1f23829648efd8adc98df3ce013"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-tests-first.log",
+      "size": 31878,
+      "sha256": "0b8fd22e635de20abd162ead7cbbce12a507876a50a9087386b759bcd85dd3fb"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-tests-native.log",
+      "size": 30733,
+      "sha256": "f789878742ffc7787f7f5762e70287fa034c07386db888b295771310353c2579"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-tests-second.log",
+      "size": 31117,
+      "sha256": "e0c0ef570bbe7e921055b5d1a16107e3793392ffb4fc8a8a7421f9e7d319e433"
+    },
+    {
+      "path": "reports/module-recovery-2026-10-23/m01-invalidate-stair-visual-helper-tests.log",
+      "size": 30745,
+      "sha256": "f1d3945b2d2b9c6e10523cfb629b2f273526ce8773460576b32c865e77e65fa7"
+    }
+  ]
+}

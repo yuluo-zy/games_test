@@ -3,9 +3,7 @@
 //! 证据：
 //! - `intersect_wall_decorators<F>` 0x141fe5900（merge proposal 实例）/
 //!   0x141fe5c20（interaction 实例）：`groupD/misc/decomp/decomp-141fe5900.txt`
-//!   与 `toolchain/decor-trunk/decompiled/141fe5900_*.c`。两实例仅在
-//!   `ComparativeSpace`（开墙 `ZeroBoundedComparativeSpace` / 闭环
-//!   `CircularComparativeSpace`）上不同；遍历 `Decorators` 内嵌 map，逐条
+//!   与 `toolchain/decor-trunk/decompiled/141fe5900_*.c`。两实例各自拥有开墙/闭环单态闭包，且排除集合同不同；遍历 `Decorators` 内嵌 map，逐条
 //!   (DecoratorId, DecoratorInfo) 调闭包，命中把 id push 到输出 Vec。
 //! - 谓词闭包 `propose_wall_decorator_merge_position_inner::closure_env$1`
 //!   0x141fe5310：`groupD/misc/decomp/decomp-141fe5310.txt`。公式（O）：
@@ -69,8 +67,8 @@ pub struct WallIntersectCandidate {
 
 /// `intersect_wall_decorators`（0x141fe5900 / 0x141fe5c20，O 结构）：
 /// 对 `Decorators` 内嵌 map 逐装饰调 `predicate(id, info)`；命中 id 收集返回。
-/// （原闭包实参 = (DecoratorId, DecoratorInfo)；两 ComparativeSpace 变体只影响
-/// 宿主外层，谓词本体相同。）
+/// （原闭包实参 = (DecoratorId, DecoratorInfo)；真实空间门与各自排除集
+/// 由对应typed predicate承载。）
 pub fn intersect_wall_decorators<F>(decorators: &Decorators, mut predicate: F) -> Vec<u32>
 where
     F: FnMut(u32, &DecoratorInfo) -> bool,
@@ -176,6 +174,75 @@ pub fn wall_decorator_intersects_existing(
         info.ty,
         excluded,
     )
+}
+
+/// B142007170：闭环相交使用两条弧长的较小值，原指令不先取模。
+/// 输入通常已经由WallSpace投影；仍保留超范围/NaN时的原单次运算。
+pub(crate) fn wall_intersection_distance(
+    space: &utils::wall_space::WallSpace,
+    a: f32,
+    b: f32,
+) -> f32 {
+    let direct = (a - b).abs();
+    if !space.is_loop {
+        return direct;
+    }
+    let wrapped = (space.length - direct).abs();
+    if direct.is_nan() || wrapped < direct {
+        wrapped
+    } else {
+        direct
+    }
+}
+
+/// B141fe5c20的两项真实单态闭包（141fe5530闭环、141fe5720开墙）。
+/// 与merge闭包不同，这里只排除当前独立ID，不能从Info的word2c猜ID。
+pub fn intersect_wall_decorators_for_intent(
+    decorators: &Decorators,
+    current_id: country_core::resources::walls::decorator::DecoratorId,
+    candidate: WallIntersectCandidate,
+    space: &utils::wall_space::WallSpace,
+    derived: country_core::resources::walls::decorator_subtype::DerivedDecoratorInfoView<'_>,
+) -> Vec<u32> {
+    intersect_wall_decorators(decorators, |id, info| {
+        wall_decorator_intersects_in_space(candidate, id, info, derived, space, &[current_id.0])
+    })
+}
+
+/// 合并/Intent共用原几何主体；排除项必须先于side/mesh读取，缺owner照原panic。
+pub(crate) fn wall_decorator_intersects_in_space(
+    candidate: WallIntersectCandidate,
+    id: u32,
+    info: &DecoratorInfo,
+    derived: country_core::resources::walls::decorator_subtype::DerivedDecoratorInfoView<'_>,
+    space: &utils::wall_space::WallSpace,
+    excluded: &[u32],
+) -> bool {
+    if excluded.contains(&id) {
+        return false;
+    }
+    let side = wall_attachment_side(info.dst_tag());
+    if side == 1 {
+        return false;
+    }
+    assert_eq!(side, 0, "internal error: entered unreachable code");
+    let metrics =
+        existing_collision_metrics(id, info, derived.subtype_library(), derived.mesh_library());
+    let existing = info.wall_space_coord();
+    let dy = (candidate.coord.y - existing.y).abs();
+    let (margin, extra) = if info.ty == 0x3a {
+        (0.2, 1.0)
+    } else {
+        if 0.3 * metrics.vertical_extent < dy {
+            return false;
+        }
+        (0.6, 0.0)
+    };
+    if !(dy < (metrics.vertical_extent + extra) * 0.5 + candidate.vertical_extent * 0.5) {
+        return false;
+    }
+    wall_intersection_distance(space, candidate.coord.u, existing.u)
+        < candidate.along_width * 0.5 + (metrics.along_width + margin) * 0.5
 }
 
 /// 旧名保留（lib.rs 文档提到）；语义 = region 相交 + 吸附方向一致性。
@@ -329,9 +396,11 @@ mod tests {
 
     #[test]
     fn project_to_wall_space_uses_nearest_curve_u() {
-        let curve =
-            SamplingCurve2::try_new_from_points(vec![Vec2::new(0.0, 0.0), Vec2::new(4.0, 0.0)], false)
-                .unwrap();
+        let curve = SamplingCurve2::try_new_from_points(
+            vec![Vec2::new(0.0, 0.0), Vec2::new(4.0, 0.0)],
+            false,
+        )
+        .unwrap();
         let projected =
             DecoratorWorldSpace::project_to_wall_space(Vec3::new(1.0, 2.0, 0.0), &curve);
         assert!((projected.u - 1.0).abs() < 1e-5);
@@ -346,13 +415,13 @@ mod tests {
 #[cfg(test)]
 mod canonical_metrics_regressions {
     use super::*;
-    use std::sync::Arc;
     use country_core::resources::walls::decorator_subtype::{
         DecoratorCollision, DecoratorCollisionOutline, DecoratorOutline, DecoratorSubtype,
     };
     use country_core::systems::collision::world::RaycastMeshData;
     use country_core::systems::wall::shapes::rectangle::ui_edit_rectangle_orientation::box_trigger_volume;
     use country_core::utils::components::transform::Transform;
+    use std::sync::Arc;
     use utils::geometry::Rectangle3d;
 
     #[test]
@@ -363,27 +432,47 @@ mod canonical_metrics_regressions {
         let key = DecoratorLibKey::new(7, 2);
         let size = Vec3::new(2.0, 4.0, 7.0);
         let center = Vec3::new(5.0, 13.0, -2.0);
-        let transform = Transform { translation: center, ..Transform::identity() };
+        let transform = Transform {
+            translation: center,
+            ..Transform::identity()
+        };
         let mesh = Arc::new(RaycastMeshData::new_cuboid_at(size, center));
         let probe = Arc::clone(&mesh);
-        library.insert_collision_and_interaction_as_same(key, DecoratorCollision {
-            triangles: box_trigger_volume(size.x, size.y, size.z, &transform),
-            mesh,
-            // 旋转footprint使AABB的X跨度与原逻辑width不同，底高也不为零。
-            bounds: Rectangle3d::new(center, size, Vec2::Y),
-        }, DecoratorOutline::None, DecoratorCollisionOutline::None);
-        let mut info = DecoratorInfo::default(); info.rank = 2;
+        library.insert_collision_and_interaction_as_same(
+            key,
+            DecoratorCollision {
+                triangles: box_trigger_volume(size.x, size.y, size.z, &transform),
+                mesh,
+                // 旋转footprint使AABB的X跨度与原逻辑width不同，底高也不为零。
+                bounds: Rectangle3d::new(center, size, Vec2::Y),
+            },
+            DecoratorOutline::None,
+            DecoratorCollisionOutline::None,
+        );
+        let mut info = DecoratorInfo::default();
+        info.rank = 2;
         let count = Arc::strong_count(&probe);
-        assert_eq!(existing_collision_metrics(41, &info, &subtypes, &library),
-            DecoratorCollisionMetrics { along_width: 2.0, vertical_extent: 4.0 });
+        assert_eq!(
+            existing_collision_metrics(41, &info, &subtypes, &library),
+            DecoratorCollisionMetrics {
+                along_width: 2.0,
+                vertical_extent: 4.0
+            }
+        );
         assert_eq!(Arc::strong_count(&probe), count);
         info.rank = 1;
-        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            existing_collision_metrics(41, &info, &subtypes, &library)
-        })).is_err());
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                existing_collision_metrics(41, &info, &subtypes, &library)
+            }))
+            .is_err()
+        );
         info.rank = 2;
-        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            existing_collision_metrics(42, &info, &subtypes, &library)
-        })).is_err());
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                existing_collision_metrics(42, &info, &subtypes, &library)
+            }))
+            .is_err()
+        );
     }
 }

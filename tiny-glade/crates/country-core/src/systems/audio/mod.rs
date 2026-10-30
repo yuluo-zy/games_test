@@ -161,6 +161,8 @@ pub struct PlayWallUiSound {
 #[derive(Event, Clone, Copy, Debug, Default, PartialEq)]
 pub struct PlayDecoratorSoundCmd {
     pub kind: u8,
+    /// 原+1：带类型的一次性事件保存真实ClutterMeshTy，不占用强度字段。
+    pub selector: u8,
     /// Original event value +4; rotation uses abs(old-new)/GameTime.delta.
     pub ratio: f32,
     /// Original +8 position-context word. Rotation preserves source storage
@@ -173,7 +175,7 @@ pub struct PlayDecoratorSoundCmd {
 impl PlayDecoratorSoundCmd {
     /// One-shot payload; the loop intensity/context fields are inactive.
     pub fn at(kind: u8, position: Vec3) -> Self {
-        Self { kind, position, ratio: 0.0, position_context: 0, flag: false }
+        Self { kind, selector: 0, position, ratio: 0.0, position_context: 0, flag: false }
     }
 }
 
@@ -195,7 +197,7 @@ pub struct PlayTimberframeSound {
 }
 
 /// `PlayElevationSupportSoundCmd` (elevation_supports_audio). Kind selects one
-/// of the three support events.
+/// 静默0或三种支撑音效1..=3；不对非法字节做clamp。
 #[derive(Event, Clone, Copy, Debug, PartialEq)]
 pub struct PlayElevationSupportSoundCmd {
     pub kind: u8,

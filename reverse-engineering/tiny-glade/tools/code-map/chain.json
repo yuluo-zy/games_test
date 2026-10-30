@@ -1,0 +1,418 @@
+{
+  "schema": 1,
+  "title": "Roof collision producer -> receipt lifecycle -> global ray -> UV -> terrain -> Raycasting consumer",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "evidence": [
+    {
+      "path": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "sha256": "6951a1619b11b2c4404408aeb93176ff04af0c39f80687aea0880c45d5877203",
+      "role": "existing_original_evidence_or_validation"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-rapier-producer-recovery-2026-10-27.md",
+      "sha256": "694d3d5ab70ab87dd7d180266ae22b6305acbf15121dae1c03e6d98cf9fbd57e",
+      "role": "existing_original_evidence_or_validation"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-roof-trigger-floor-recovery-2026-10-27.md",
+      "sha256": "1b0ae00fb6a0b2a9c8b0eae4b3fcc147a4760863c3a701091b42f0f51ef13856",
+      "role": "existing_original_evidence_or_validation"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-identity.json",
+      "sha256": "c324b4946dfe884bbee1eca79fe34d605c556c0efc89b0a3402d3112c05a6333",
+      "role": "existing_original_evidence_or_validation"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-validation.json",
+      "sha256": "e7282cc7a28940b84a2db34e752b468ebb3ed5c37a07977cdaded3d585a9e2e5",
+      "role": "existing_original_evidence_or_validation"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-rapier-producer-final-validation.json",
+      "sha256": "d385c1e9367a5200e83815383736d2b958cc8266c5c41cdeefb16834c9c75181",
+      "role": "existing_original_evidence_or_validation"
+    },
+    {
+      "path": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "sha256": "ebbf2066555c5e23e540a6765cec9fed493c8ebbddb27ef7b8c5545ffe11e546",
+      "role": "current_implementation_snapshot_not_revalidated"
+    }
+  ],
+  "nodes": [
+    {
+      "key": "state:B:RoofTriggerVolume",
+      "kind": "State",
+      "name": "RoofTriggerVolume: triangles, normals and UVs",
+      "version": "B",
+      "status": "confirmed",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-roof-trigger-floor-recovery-2026-10-27.md"
+    },
+    {
+      "key": "state:B:WorldRoofTable",
+      "kind": "State",
+      "name": "World roof entity collider table +0x3df8",
+      "version": "B",
+      "status": "confirmed",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-rapier-producer-recovery-2026-10-27.md"
+    },
+    {
+      "key": "state:B:ColliderReceipt",
+      "kind": "State",
+      "name": "Collider mesh registry receipt and generation",
+      "version": "B",
+      "status": "confirmed",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md"
+    },
+    {
+      "key": "implementation:B:world",
+      "kind": "Implementation",
+      "name": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "version": "B",
+      "status": "current_snapshot_unvalidated",
+      "sha": "ebbf2066555c5e23e540a6765cec9fed493c8ebbddb27ef7b8c5545ffe11e546",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs"
+    },
+    {
+      "key": "contract:B:winner_after_loop",
+      "kind": "Contract",
+      "name": "Keep only the winner in the loop; convert once after the loop",
+      "version": "B",
+      "status": "confirmed",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "basis": "existing_original_evidence_review"
+    },
+    {
+      "key": "contract:B:uv_hit_limits_terrain",
+      "kind": "Contract",
+      "name": "Hit tags 0 and 1 both limit terrain TOI",
+      "version": "B",
+      "status": "confirmed",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "basis": "existing_original_evidence_review"
+    },
+    {
+      "key": "contract:B:option_presence",
+      "kind": "Contract",
+      "name": "None differs from Some(empty); retain bounds failure order",
+      "version": "B",
+      "status": "confirmed",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "basis": "existing_original_evidence_review"
+    },
+    {
+      "key": "contract:B:generation_or_one",
+      "kind": "Contract",
+      "name": "Global predicate and winner validate raw_generation | 1",
+      "version": "B",
+      "status": "confirmed",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "basis": "existing_original_evidence_review"
+    },
+    {
+      "key": "contract:B:remove_release",
+      "kind": "Contract",
+      "name": "Removed/Added-delete/reload retire receipts and release mesh owners",
+      "version": "B",
+      "status": "confirmed",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-rapier-producer-recovery-2026-10-27.md",
+      "basis": "existing_original_evidence_review"
+    },
+    {
+      "key": "contract:B:roof_floor_once",
+      "kind": "Contract",
+      "name": "Floor projection occurs in triangle points; collider pose is identity",
+      "version": "B",
+      "status": "confirmed",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-roof-trigger-floor-recovery-2026-10-27.md",
+      "basis": "existing_original_evidence_review"
+    },
+    {
+      "key": "contract:B:roof_missing_wall",
+      "kind": "Contract",
+      "name": "Roof may remove on missing public wall; wall path retains required failure",
+      "version": "B",
+      "status": "confirmed",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-rapier-producer-recovery-2026-10-27.md",
+      "basis": "existing_original_evidence_review"
+    },
+    {
+      "key": "proof:B:0",
+      "kind": "Evidence",
+      "name": "m01-global-ray-recovery-2026-10-27.md",
+      "version": "B",
+      "sha": "6951a1619b11b2c4404408aeb93176ff04af0c39f80687aea0880c45d5877203",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "role": "existing_original_evidence_or_validation"
+    },
+    {
+      "key": "proof:B:1",
+      "kind": "Evidence",
+      "name": "m01-rapier-producer-recovery-2026-10-27.md",
+      "version": "B",
+      "sha": "694d3d5ab70ab87dd7d180266ae22b6305acbf15121dae1c03e6d98cf9fbd57e",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-rapier-producer-recovery-2026-10-27.md",
+      "role": "existing_original_evidence_or_validation"
+    },
+    {
+      "key": "proof:B:2",
+      "kind": "Evidence",
+      "name": "m01-roof-trigger-floor-recovery-2026-10-27.md",
+      "version": "B",
+      "sha": "1b0ae00fb6a0b2a9c8b0eae4b3fcc147a4760863c3a701091b42f0f51ef13856",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-roof-trigger-floor-recovery-2026-10-27.md",
+      "role": "existing_original_evidence_or_validation"
+    },
+    {
+      "key": "proof:B:3",
+      "kind": "Evidence",
+      "name": "m01-global-ray-identity.json",
+      "version": "B",
+      "sha": "c324b4946dfe884bbee1eca79fe34d605c556c0efc89b0a3402d3112c05a6333",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-identity.json",
+      "role": "existing_original_evidence_or_validation"
+    },
+    {
+      "key": "proof:B:4",
+      "kind": "Evidence",
+      "name": "m01-global-ray-validation.json",
+      "version": "B",
+      "sha": "e7282cc7a28940b84a2db34e752b468ebb3ed5c37a07977cdaded3d585a9e2e5",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-validation.json",
+      "role": "existing_original_evidence_or_validation"
+    },
+    {
+      "key": "proof:B:5",
+      "kind": "Evidence",
+      "name": "m01-rapier-producer-final-validation.json",
+      "version": "B",
+      "sha": "d385c1e9367a5200e83815383736d2b958cc8266c5c41cdeefb16834c9c75181",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-rapier-producer-final-validation.json",
+      "role": "existing_original_evidence_or_validation"
+    },
+    {
+      "key": "proof:B:6",
+      "kind": "Evidence",
+      "name": "world.rs",
+      "version": "B",
+      "sha": "ebbf2066555c5e23e540a6765cec9fed493c8ebbddb27ef7b8c5545ffe11e546",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "role": "current_implementation_snapshot_not_revalidated"
+    }
+  ],
+  "edges": [
+    {
+      "source": "function:B:21a3220",
+      "target": "state:B:RoofTriggerVolume",
+      "kind": "PRODUCES",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-roof-trigger-floor-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8d0490",
+      "target": "state:B:RoofTriggerVolume",
+      "kind": "CONSUMES",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-roof-trigger-floor-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8d0490",
+      "target": "state:B:WorldRoofTable",
+      "kind": "WRITES",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-rapier-producer-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8d0490",
+      "target": "state:B:ColliderReceipt",
+      "kind": "WRITES",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-rapier-producer-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8cdc60",
+      "target": "state:B:WorldRoofTable",
+      "kind": "READS",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8cdc60",
+      "target": "state:B:ColliderReceipt",
+      "kind": "READS",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8ce4a0",
+      "target": "state:B:ColliderReceipt",
+      "kind": "READS",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8cdc60",
+      "target": "contract:B:winner_after_loop",
+      "kind": "HAS_CONTRACT",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8cdc60",
+      "target": "implementation:B:world",
+      "kind": "IMPLEMENTED_BY",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "status": "candidate",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8cd430",
+      "target": "contract:B:uv_hit_limits_terrain",
+      "kind": "HAS_CONTRACT",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8cd430",
+      "target": "implementation:B:world",
+      "kind": "IMPLEMENTED_BY",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "status": "candidate",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8ce4a0",
+      "target": "contract:B:option_presence",
+      "kind": "HAS_CONTRACT",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8ce4a0",
+      "target": "implementation:B:world",
+      "kind": "IMPLEMENTED_BY",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "status": "candidate",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8cdc60",
+      "target": "contract:B:generation_or_one",
+      "kind": "HAS_CONTRACT",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-global-ray-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8cdc60",
+      "target": "implementation:B:world",
+      "kind": "IMPLEMENTED_BY",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "status": "candidate",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8d0490",
+      "target": "contract:B:remove_release",
+      "kind": "HAS_CONTRACT",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-rapier-producer-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8d0490",
+      "target": "implementation:B:world",
+      "kind": "IMPLEMENTED_BY",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "status": "candidate",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8d0490",
+      "target": "contract:B:roof_floor_once",
+      "kind": "HAS_CONTRACT",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-roof-trigger-floor-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8d0490",
+      "target": "implementation:B:world",
+      "kind": "IMPLEMENTED_BY",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "status": "candidate",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8d0490",
+      "target": "contract:B:roof_missing_wall",
+      "kind": "HAS_CONTRACT",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/reports/module-recovery-2026-10-23/m01-rapier-producer-recovery-2026-10-27.md",
+      "status": "confirmed",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8d0490",
+      "target": "implementation:B:world",
+      "kind": "IMPLEMENTED_BY",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "status": "candidate",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8d0490",
+      "target": "implementation:B:world",
+      "kind": "IMPLEMENTED_BY",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "status": "candidate",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8cdc60",
+      "target": "implementation:B:world",
+      "kind": "IMPLEMENTED_BY",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "status": "candidate",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8ce4a0",
+      "target": "implementation:B:world",
+      "kind": "IMPLEMENTED_BY",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "status": "candidate",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8cd430",
+      "target": "implementation:B:world",
+      "kind": "IMPLEMENTED_BY",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "status": "candidate",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    },
+    {
+      "source": "function:B:8cc2e0",
+      "target": "implementation:B:world",
+      "kind": "IMPLEMENTED_BY",
+      "evidence": "/Users/yuluo/Desktop/game/tiny-glade/crates/country-core/src/systems/collision/world.rs",
+      "status": "candidate",
+      "basis": "reviewed_existing_evidence_not_new_execution"
+    }
+  ],
+  "limitations": [
+    "Semantic relations are curated from existing original evidence, not inferred automatically by the graph.",
+    "Current Rust snapshot is recorded but old validation receipts do not prove it has been revalidated.",
+    "Full application scheduling, window, GPU and whole-software semantic closure remain outside this chain proof."
+  ]
+}

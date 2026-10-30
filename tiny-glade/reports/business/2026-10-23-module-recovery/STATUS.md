@@ -1,6 +1,156 @@
 # 业务流恢复台账
 
-### 2026-10-28 用户停止点（优先于下方历史计划）
+### 2026-10-29 提交推送检查点（按用户要求先保存全部当前进展）
+
+本轮先提交当前代码与分析状态，暂停继续实现。**M6 尚未完成；后续顺序仍为 M6 收口→M7 屋顶→M8 楼梯／平台／扶手。** 性能与长稳不列入本轮验收，真实 OS 输入暂缓。
+
+- 通用柱已恢复三向量缓存消费、原自由墙端点调整、石／木记录及逐项写入失败顺序，并接正式 set28（fences 后、主墙前）。五种 GPU allocation owner 分离，避免通用柱、高程支撑和半木互相清除。round57 wall-constructor 191/191 通过，含 arches→石柱、lintels→木柱；之后新增单独洞口重算场景断言尚未重跑，不能把旧结果套到最新文件。
+- round60 本机真实 Vulkan 建筑测试通过：生产半木／抹灰→正常渲染图；有界真实抹灰 raster 诊断空表覆盖0、抹灰表覆盖2325深度像素；Reload 回收66个抹灰实体／owner，重入 Game。该证明不等同最终颜色逐像素归因。此后追加楼板 Nani owner、半木颜色保存／重载断言尚未复验。
+- 闭墙实际 App 首轮 round59 发现吸附提示仍写错误 Raw 载荷；已依原版改为现有预览实体与真实线／球工厂，round62 显式 native-physics 定向3/3通过。round63 已能通过绘墙、自闭合和撤销，**重做后权威墙严格比较失败**，完整闭墙保存恢复尚未通过，保留为下一轮首要问题。
+- 楼板跨进程 round61 为6通过／1失败，恢复阶段缺墙。定位为测试反复 run_system_once 丢失保存系统 Local 稳定门，未形成所需 snapshot；现改用持久 Schedule 并要求真实快照引用与文件。新修正及 Nani 退役断言未复验；同 App Reload 组合仍未完成。
+- 新独立审查确认墙体 bulldozer 当前假拾取／Raw 请求仍不完整。原1409de190的两张跳表已在唯一 worker 修复，获得完整原控制流，尚未回写实现；不得把旧命中即发动画命令算作原交互恢复。
+- 颜色菜单上游仍有原主函数空实现／data-only菜单，正式 setter 本身不记录 History；半木颜色完整菜单交互与历史尚未成立，不能在测试中手造历史掩盖。该依赖已定位，仍需按原版恢复。
+
+本轮失败及未验项保留，不声明 M6 整模块验收。中央轮次记录见 `root-m0-m6-independent-review-2026-10-29.json`；后续继续复用原证和当前 B 目录，避免重复逆向。
+
+
+### 2026-10-29 用户确认推进顺序与本轮恢复（进行中）
+
+**顺序固定为M6全部功能收口→M7屋顶→M8楼梯／平台／扶手。** M7、M8尚未进入完整实现轮；当前仅处理其真实阻断M6的共用依赖。继续保留B目录和现有rhapsody重构；性能／长稳验证排除，真实OS输入暂缓，合成真实App功能验收继续。
+
+通用柱调查发现前轮遗漏的真实上游合同：原0x88掩码还含28B柱提案、score和key三Vec，由arches及lintels两种生产者写出，place消费。当前已补三个字段、实际两端采集／回写候选，并取得arches51组、lintels51组原指令逐记录对照；完整父体与生产链尚未验。主place仍未完整恢复，不注册空候选。独立原tuple取证确认place在set28、平台楼梯后／主墙前，非猜测set26。
+
+中央另纠正GPU sidecar的allocation合并：原通用拱/过梁/柱读取Public+120砖、+130木，高程支撑分别+150砖、+140木，半木+180独立。此前support误与通用map合并会互相clear；现已在原gpu_output.rs内分五owner，append按业务part选择，新增真实稀疏分配互不清除／共同删除回归，尚待round50。没有新增渲染架构或改rhapsody。
+
+finish_wall已补预制续画No与自吸附Yes的同步EnclosureChange、权威修改、原失败及清progress顺序候选；中央round49显式native-physics定向8项通过。真实App合成画布闭墙→undo/redo→saveworker→新进程恢复候选已写，尚未运行；不得以定向测试宣称两条完整功能收口。楼板真实UI抬升／历史／磁盘／新进程候选另待集中测试。
+
+本轮经验：静态调用图没有add_proposal调用并不证明无producer，lintels含内联等价写入，必须核原Vecheader/data迁移。原同SSBO类型、同WallId不等于同allocation；先按PublicWall基址绑定真实字段与clear/append/drop，再增量修现有sidecar。
+
+### 2026-10-29 M06 最新剩余项审计（用户排除性能／长稳）
+
+本轮按用户最新要求，性能与长稳验证移出完成条件，不再安排 release／长帧测量。扩大到整个M06源码和真实宿主，确认以下**实现缺口**；此前三支撑、半木与抹灰窄范围审查的“未发现缺算法”不能外推全M06。
+
+1. **通用柱放置主入口尚未恢复。** `crates/systems/wall-constructor/src/place_pillars.rs:273–316`（B140753670）仍按1.2米间距、64个上限造占位proposal，未恢复完整双缓冲候选、原段／曲线切片、石木柱装配和material统计。正式宿主只初始化`PillarProposals`，系统只见兼容`lib.rs`注册，没有生产注册。这是M06墙构造归属，与已完成的圆支撑／矩形柱／矩形托架三个入口不同，也不属于M08排除项。
+2. **墙端点自吸附闭合缺少权威与历史尾链。** `country-core/src/systems/wall/finish_wall.rs:171–176,229–233`在同墙同kind端点吸附时仅记录`ClosedLoopEnclosureNotRecovered`，缺原enclosure CompoundEdit及权威状态更新，不能算闭合绘墙完成。
+3. **预制墙续画完成分支尚未恢复。** `finish_wall.rs:133–142`对`curve_kind_tag<2`的续画只记录`UnsupportedFinish`并直接返回；完成阶段与历史／状态收尾未闭合。
+
+**已有实现但验证边界未闭合**：半木圆窗允许窗下曲率写入、更多重叠／跨缝洞和高层组合、多个subtype3与地形组合、roof_outline／木地板边条退化及端帽原差分；支撑多墙组合、楼板编辑→历史→保存重启画面；圆／矩、洞口、支撑、抹灰与半木的完整功能场景联合验收。目标抹灰的生产raster／像素归因仍需独立功能验证，首轮cull诊断不能替代。以上未验不自动等于缺代码。
+
+**已通过、不可继续列作阻断**：round46正式建筑生成→半木23／目标抹灰32→正常生产图→原重复Create保留的66个实体及owner全部卸载→Reload后Game重入8帧真实GPU通过；round48真实UI局部拆墙→全墙源位模式／颜色／屋顶／装饰ID undo比较→redo实际GPU／碰撞owner释放→save worker→新进程正式加载、剩余墙与完整末项历史严格文本JSON比较父子均通过。输入为合成，真实OS输入按用户先前决定继续暂缓。额外抹灰旧实体在创建时保留符合原指令，最终正常退出实际回收，不当作候选泄漏修正。
+
+下一轮先恢复通用柱放置，再收口闭合绘墙及预制墙续画；随后按功能场景联合验收，不再把性能或长稳排队。仍排除用户指定的Steam SDK、许可证、Credits及其他已决定排除内容；M08楼梯TODO不计作M06缺口。
+
+### 2026-10-29 M06 round35–42 当前验收快照（仍未完成）
+
+- 显式native-physics碰撞100项通过（round35），原Reload保留Publisher/待flush脏区/旧订阅的回归包含其中。显式native-physics墙组253项通过（round40），包含原五桶顺序的非空组断言。wall-constructor全库round38为177项通过，八米两层双窗双洞80／41条木板完整记录逐64B比较通过。
+- 正式App `CreateRectangleCmd→Roof关联→样式3→23半木实例→颜色4→32抹灰实体→完整生产图` round36真实GPU1项通过；[单帧可见建筑截图](m06-created-building-round36-20261029.png)。round41在相同生产路径连续60帧、原frames-in-flight节流和owner存活检查1项通过；debug CPU update+图+提交+等待p50=96.84ms、p95=135.26ms，**不是GPU计时或release性能通过**。
+- 强化小刷拆墙round37/39真实GPU失败揭露擦除历史五组装配顺序错误；独立原C/ASM确认原5b8→5a0→588→570→558，已修并保留原缺墙panic。最新真实UI、逐字段undo/redo、GPU owner、存档及子进程恢复round42在运行，不能引用旧宽刷round26的通过代替。
+- 增强验收还补上真正回放完成条件，不能只见原墙创建就立即发送redo。原重复Create抹灰旧Vec<Entity>释放不销毁其实体，额外实例可能符合原行为；最终全局OnExit despawn与subset清理须覆盖这些未登记旧实体。中央已加按墙registered/unregistered/key及owner诊断与正式Reload逐实体回收检查，待运行。
+- 当前明确待收口：强化拆墙历史实测、最新原Reload状态机App回归、建筑稳态截图/额外抹灰实体归属/最终全局卸载、完整M06联合与性能证据。原统计跨会话的间接清理仍无充分证据，保持已核原读写，不擅自清零。
+
+### 2026-10-29 M06 Reload 原证纠错（当前优先于下方早期记录）
+
+中央独立重审原 `RaycastWorld::on_level_reload@1408d8710`，否定了本轮早期“重建全部发布器，必须OnEnter重订阅”的结论。原先构造新物理世界，再把旧17槽的Publisher、DirtyTiles及dirty标志迁回，同时保留全局ColliderDiff Publisher；待消费通知与Startup订阅延续。原`+0x10←+0x1c`写入属于ResMut系统参数中的Bevy变更tick，不是RaycastWorld注册计数器。当前Rust已按此纠正，撤销新增OnEnter重绑，只保留原Startup；更强回归待重新构建。
+
+round30 core无native-physics墙组251项通过；round31无native-physics碰撞组19项通过，这两组不能冒称实际Rapier分支覆盖。round32先前OnEnter适配夹具1项通过，仅保留为错误实现时代记录，**不作为当前Reload验收**。正在以显式`--features native-physics`重测。round29创建建筑画面测试因增强擦除测试的JSON Value API误用未编译，已修，尚无建筑画面结果。M06仍未整模块完成。
+
+经验：重建对象不能只看前半段memcpy或Default构造；必须追后续旧owner迁回和新owner析构。通过“补适配”掩盖原函数误恢复会制造第二套错误时序；先独立核完整父体，再修改接线。Cargo记录必须包含features，缺native-physics的core过滤组不覆盖生产Rapier实现。
+
+### 2026-10-29 M06 完整恢复持续轮：原父链顺序纠错与生产验收
+
+本轮仍在实施，**M06尚未完成**。支撑三个主入口已落现有模块：圆支撑、矩形柱及柱碰撞位于正式set24，矩形大小托架位于set36；同一set28墙父链同步执行半木／山墙边框，set32维护抹灰与曲面半木／木塔实体。主算法已增加完整记录对照，但尚不能由局部输出或注册情况宣布模块完成。
+
+- 集中wall-constructor库round6为154通过／4失败，round7为161通过／1失败，round8为161通过／2失败。圆材料全链原96B砖／64B木板、真实owner与会话短路组在round7已通过；小托架round8已通过。round8剩余为旧抹灰roof标记断言及半木完整入口夹具的5点数组／prepared路径不一致，原始失败保留。新修正仍需重新验证，不能把旧日志套到新源码。
+- 中央与独立owner交叉核原ASM发现并纠正接线错误：原140758cf3墙角→局部洞finalize→半木及事件→裙边→阶梯指示砖→14075925f主体from_curve；主体使用局部洞并追加同一砖Vec。此前before-commit在主体之后的候选顺序撤销，旧接口单测仅证明回调所有权，不能证明原调用顺序。现改before-production，保留一次采样、一份数组和同一Vec；新增真实World回归验证局部洞切掉主体且附加砖在前，全局洞不被污染。core父链4项通过，日志`/private/tmp/root-m6-local-holes-parent-round8-20261029.log`。正式外层已落真实参数接线，完整App／画面仍待验。
+- `stairs_signifiers`是M06墙构造器的真实产砖callee，按kind1／3调用。已补真实地形采样、洞扣除、区间与96B输出候选；圆／矩形、双洞及非平坦地形等有限原对照存在，须在最新共享utils重新编译后再验。未将其仅因名称归到M08而漏掉。
+- 抹灰原完整入口网格间距0.4、最大侧scratch一次分配／复用、洞SDF和48B顶点／条带的有限原差分已取得；真实Vulkan四项有界create／maintain／delete通过，未提交最终shader draw。颜色setter正在补原SSBO前置查验、事件消费及整表一次上传，拒绝原先逐事件晚上传的时序替代；第一次GPU构建E0308已保留，修正当前设备边界后等待重测。
+- CPU历史同步写入已恢复，真实save worker→新进程加载的编辑与屋顶snapshot组分别通过；屋顶v3日志`/private/tmp/root-m6-roof-snapshot-round5-v3-20261029.log`。真实橡皮擦UI／分段重建／装饰归档与rewire仍未完整，不把局部高度或区间测试当交互验收。
+- 真实Vulkan App Game→Reload退出测试已通过：支撑brick／plank及独立半木plank owner清除，回收后draw-range为空，三张整GPU颜色表读回均0。日志`/private/tmp/root-m6-real-exit-gpu-v2-20261029.log`；输入为生命周期夹具，不证明生成算法／实际画面或在途多帧稳定性。
+- 完整App先前失败在autoclutter假脏格producer，日志`/private/tmp/root-m6-production-world-20261029.log`保留。现按原region、真实mesh/source／权重、落点、地形／屋顶ray及碰撞逐支恢复，round7 autoclutter45项通过；之后新增默认／节庆／屋顶分支待统一验证。鸟巢另发现Arc<()>擦除真实owner，已派共享core生产者与clutter消费者协同恢复；空候选自然无输出不是非空链验收。
+
+本轮经验（下一轮先复用）：①必须核父函数真实call顺序、栈参数和同一Vec，不能只看叶函数可调用；②完整原输出能揭露共享数学中的同源误差，SSE平方和／smoothstep乘法顺序、原重采样后length不可代换；③不要按名字修正原语义，Rectangle unsigned distance和Roof +3d非零分支均须保留实际机器行为；④原区间减法允许零长、倒序与无序值，旧“幂等／去重／保护assert”并非原算法，修共享实现并保留真实原连续序列回归；⑤缺原owner时不得从脏格伪造mesh/source；⑥原缺墙panic与事件游标、同步History写入、延迟Commands和GPU写入顺序都属于业务合同；⑦共享Cargo串行、局部native差分／World／真实GPU／完整App验收分别记录；⑧模型容量失败保留checkpoint有限重试，不停止或重建平行实现。
+
+### 2026-10-29 M06 后续批次 round9–29（进行中）
+
+- 三支撑完整入口、真实Rapier大托架与稀疏槽回收过滤组67项通过（round11-v2）；随后wall-constructor全库round16为172项通过，round20为175项通过。最新圆墙山墙真实publication原入口产生7木／7曲面，已新增全记录对照，尚待下一批编译。矩形山墙、窗型3、圆墙跨缝洞、容量32／0等仅在各自夹具覆盖范围成立，不作全域等价声明。
+- 正式父链局部洞→附加砖→主体同Vec的4项World回归通过；真实父链另3项World回归通过。完整App原会话→正式颜色命令→非空抹灰实体→真实生产图→480×270截图已通过round11。生产画面检查仍是低石墙场景，不是完整建筑／所有材料验收。
+- round18真实GPU诊断首轮Nani剔除选择了目标抹灰dense[0,1]，间接命令为[192,2,0,0,2522112]。该独立诊断额外启用TRANSFER_SRC，未执行raster；正式生产帧末第二轮列表可为空，不能用该时点代替首轮绘制证明。目标材质raster／像素归因仍未验收。
+- 最新真实擦除主入口纳入生产set19，补齐0／1／多保留段、预制墙rewire、装饰归档及同步History；core round19为249通过／1失败，失败为兼容注册缺碰撞归档owner。中央补该真实owner，后续round24重测中。正式App合成输入→真实UI→擦除→undo/redo→生产save worker→新进程正式加载候选已追加，尚未实际通过，真实OS输入继续暂缓。
+- 网格交线新增真实六资源入口、ColliderDiff集合和真实砖图边／鸟巢载荷；原折线合并102组有限输入完整记录对照一致，容器／哈希由桥提供，非有限未覆。round21为9通过／1失败（反向夹具期望错误，已按原输出修正），最新源码待重测。正式宿主挂原Startup订阅及set36入口；当前App跨Reload保留，而原OnExit替换publisher，新增OnEnter重绑明确为宿主适配，原版重订阅时点尚未证实。有界真实状态机回归已写，待测。
+- 自动杂物round22为60通过／1失败：窗口真实producer输出被原高度门拒绝。测试地形零编码对应-2.5米，而墙publication使用0米；仅修正测试地形使权威输入一致。窗口→非空Nani／失效退役与真实屋顶交线→鸟巢→杂物候选均待重测；初始正式App杂物为0，不能从旧截图推断非空杂物通过。
+- Neo4j受管console恢复同一snapshot053060f0c5d388b353567d8b，实际查询通过；未重建数据库、未降级。工具恢复不计业务完成。tiny-glade最新单目标检查round23退出0，仍不代表运行验收。
+
+后续复验：round24 core墙250通过／1失败（兼容入口两个事件尚缺），中央补PlayWallAudio／ReanchorDecorators，待重跑。round26真实GPU正式App擦除→undo/redo→save worker→子进程正式Reload恢复父1项／子1项通过，日志`/private/tmp/root-m6-real-ui-history-save-round26-20261029.log`；当时宽刷全部删墙、仅存在性判据，不能称所有字段保真。后续已扩展小刷保留其他墙、全源位模式/元数据/颜色/屋顶/装饰ID比较及GPU owner退役，增强版待测。round27 wall-constructor177项通过，最新低墙/双窗/真实多层新增断言待编译。round28 clutter62项通过，包括真实窗口源→Nani→退役，以及两真实屋顶碰撞→交线→非空鸟巢→消费者→退役；它是World夹具，不等于正式App各场景联合验收。round29开始正式CreateRectangleCmd→样式3→半木owner→颜色→抹灰→生产图测试，尚无结果。
+
+本批经验：先核原比较helper完整同槽分支，不把Ghidra摘要误写成共享Ord；GraphMap依(slot,index,generation)规范化。反编译的条件表达式必须回MAXSS操作数和unordered规则，不能按C改NaN语义。GPU读回必须注明剔除阶段、真实物理owner及诊断描述符；帧末列表不等于所有早期draw。真实UI新参数进入生产后应同步复核兼容入口全部SystemParam；不能跳过系统消除失败。生产入口、原侧差分、App状态机、GPU图与跨进程持久化的结论分别保存。
+
+### 2026-10-29 M06 源码与整合复核（更早快照，以上方持续轮为准）
+
+**M06=墙体建筑，仍未完成。以下为本次源码快照；下方同日早期记录仅保留历史。** 不用文件数量、测试数量或逆向样本数量计算完成率。
+
+| 业务链 | 已有实现及证据 | 当前阻断 |
+| --- | --- | --- |
+| 墙体权威状态／楼板 | 生产set19发布、set28墙构造与楼板已接；楼板World及App Reload已有有界验证。统一逐墙before-commit回调接口已恢复，未创建第二份墙循环 | 半木完整算法尚不能经该接口接入；全建筑画面及跨模块历史／保存仍须联合验证 |
+| 圆／矩形高程支撑 | detector、typed stats、碰撞与真实稀疏owner已有候选；圆底层、cross-brick、矩形提案及部分底层取得原输出差分 | `construct_circle_supports`、`construct_rectangle_columns`、`construct_rectangle_brackets`三个主入口仍TODO；圆柱／木塔、矩形木柱石基／托架等依赖未齐，正式set24／36尚未完整接线 |
+| 抹灰 | 复杂采样／孔洞SDF、48B顶点、条带、实体owner及lease已实现候选；正式set32已挂create→maintain两项；真实Vulkan非空创建／重建／删除及Nani CPU shadow已有通过日志 | 整个原generator同输入全输出差分未完成；原最大侧grid一次预分配复用与当前逐侧分配的失败语义尚有差异；真实shader draw、完整App动画／Reload／历史／存档／重启未验 |
+| 半木 | 窗口／underwindow、木边条与roof_outline有候选及有界测试；roof_outline八组544条记录与原B按字节一致；原half主入口首次完整有效输入样本取得57条木板输出 | `half_timbering`在层高／区域准备之后仍TODO；采样、区间扣除、逐梁、随机消耗、curved几何等主逻辑未完成。57条是原侧基线，尚非Rust主函数差分；生产父链尚未接通 |
+| 生命周期与音频 | 半木+180与支撑+140/+150分离；成功发布才退役旧半木槽，非法发布保留旧槽的World测试通过。支撑音效跳表纠正为0静默／1木托／2石柱／3木柱，位置型播放World组3项通过 | 正式OnExit重置sidecar已补，尚缺完整App实际卸载及GPU在途资源联合验收；不得以独立owner测试代替 |
+
+本次中央冻结三个owner源码后，`CARGO_INCREMENTAL=0 cargo test --offline -p system-wall-constructor --lib -- --test-threads=1` **107通过、0失败、0忽略**（`/private/tmp/root-m6-module-review-20261029.log`）；`CARGO_INCREMENTAL=0 cargo check --offline -p tiny-glade --tests`退出0（`/private/tmp/root-m6-progress-integration-20261029.log`）。这些只证明当前候选可编译及已覆盖测试，不证明TODO可执行、正式App运行或整M06验收。最新增强抹灰测试在`RHAPSODY_REQUIRE_VULKAN=1`的真实设备上1项通过（`/private/tmp/root-m6-progress-plaster-gpu-20261029.log`），覆盖非空创建→重算替换→剥离动画／音效→删除及Nani CPU shadow；未提交draw，且动画输入直接改测试Public状态，不能升级为真实编辑／历史闭环。
+
+独立review纠错：Public+284是按原MAXSS／MINSS夹取的source extra height，现有生产投影原本正确，撤销“默认0／直接写常量”的诊断；+280为elevation；半木与支撑同类型SSBO不得混用allocation；旋转helper保留原完整cross与signed-zero，utils全库187项通过。原侧probe必须冻结所有有效owner和数组，不能以某条路径恰好未读零header就称完整输入；half主probe v1因此撤销，补全后v2输出一致。原例[报告](../../module-recovery-2026-10-23/m06-half-main-oracle-flat-v2-20261029.json)保留桥接与验证边界。
+
+后续按依赖收口：支撑底层／木柱石基／托架与三个消费者 → set24／36及碰撞／统计／音效；半木完整主生成器 → 57条基线逐字节差分 → 圆墙／山墙／窗口等分支 → 唯一墙父链及实体维护；抹灰完整原generator对照与分配复用 → 实际shader draw。最后在同一App验证编辑→undo／redo→保存→重启恢复→Reload／卸载和资源稳定性。保持当前B文件归属，不改并行渲染重构架构。
+
+### 2026-10-29 编号确认后的当前轮：M0／M1／M6
+
+用户已明确：**M0=公共交互／toolbar，M1=地形，M6=墙体建筑**。本轮按此编号执行；下方历史M01／M02不再作为当前编号。M0免性能验收，原算法与业务完整性仍须保证。许可证、Credits、反馈及真实Steam SDK等既定排除项延续，OS输入验收继续暂缓。楼梯M8主装配及原交互helper调查保存现状，只有实际阻断本轮三模块的依赖继续修复，不扩大成完整楼梯任务。
+
+三个Terra owner持续工作，中央维护共享宿主、独立原证review及构建轮转；图DB恢复后已逐一通知，实际查询保持原snapshot，不降级为无图调查。
+
+| 模块 | 本轮已实际取得的结果 | 仍须闭合的边界 |
+| --- | --- | --- |
+| M0 toolbar | 库109项、9项原B模板／字体专项及CPU主链8项通过；生产共用的输入／模式／摄影／菜单安装器在同一真实App、MEI和Vulkan设备中完成Welcome抢占、当前几何点击、Held Reload及释放后新点击，第16轮通过（`/private/tmp/m0-real-app-16-20261029.log`） | TOD／菜单set39内三个type-erased配置的相对依赖尚未确认；Daily真实外网响应、窗口设备设置应用／vsync及完整场景画面未验。真实OS输入按用户要求暂缓；跨进程保存与Reload结果不升级为整游戏保存／GPU验收。M0性能免验 |
+| M1 地形 | 编辑／历史／保存worker→新进程加载已有证据；本轮同World真实GPU联合测试修复旧会话污染，覆盖不同存档和同存档ID Reload、旧缓存／确认位／晚到票据、新双高度场与脏区／通知；统一回归通过，见M02历史存档审计的2026-10-29侧任务增量 | floor／rocky-depth完整场景上游及可见场景保存恢复仍未验，实际完整App被autoclutter kind3 mesh/source owner缺口阻断（未跳过）。MouseActivityTimer仅证构造／插入，未发现业务消费者，字段语义保持待原证。OS输入暂缓；局部GPU与数据层证据不算整模块完成 |
+| M6 墙体建筑 | 楼板生产set28与StoneFloor消费已接；独立review纠正public+0x280应为elevation而非height，撤销旧高度相等夹具的验收结论，已用不同height／elevation重验楼板World3项及App Reload1项通过。石柱真实Rectangle3d／Rapier消费与卸载已测。finder三分支已有候选与组合测试，33组原高度门控与Rust对照通过（`/private/tmp/m06-finder-native-height.log`），只证明该分支。中央新增抹灰／半木真实Nani ECS消费及两个半木事件注册；两项实际World上传／过滤／颜色回退／退役测试通过（MockDevice） | 支撑finder完整原侧差分、detector、圆／矩形producer仍未完成，set24不挂空producer。抹灰maintain／create／复杂孔洞网格生成及GPU lease整链未完成；半木half_timbering／roof_outline、实体维护和木边条仍未完成。真实完整GPU画面、编辑／历史／保存恢复、同App Reload及完整卸载尚须联合验收。局部构建和测试不算模块完成 |
+
+中央独立复核发现并推动修复：原StoneColumn `clear_and_get_mut@140a78880`无条件push脏墙，旧`Vec.contains`去重改变原语义且使批量清理为O(n²)；现已改回保留重复与顺序，重复dirty回归通过。Cache中对Entity私有高位的检查也已移除，使用canonical Option／Query.get校验，并增加存活但无Roof的反例待验。全局OnExit确已同时重置完整RaycastWorld与柱registry，不额外创造逐柱删除顺序。见[独立原证记录](../../module-recovery-2026-10-23/root-m0-m6-independent-review-2026-10-29.json)。本表不宣称三个模块已全部完成。
+
+本轮共享渲染增量：`nani_update_plaster_ecs`保留原Changed过滤，动画map单独改变不触发写入，须由原maintain重建；`nani_update_curved_halftimber_ecs`每帧读取完整实例，按真实Roof组件／代数解析颜色，绕过活动键的变更检测缓存维护。生产启动已原有安装两个对应subset，新增消费者沿既有set44注册；核心事件还须在最早`startup_event_runtime::install`先注册：独立review确认实际`build_game`先调用`startup_construction_runtime`兼容初始化、之后才`add_wall_events`，仅在后者补注册会漏掉事件维护；现已补早注册，真实App三帧过期反例待验。整合check首次通过日志`/private/tmp/root-m6-nani-integration-20261029.log`，后续仍有并行改动，不能视为最终源码快照通过。新测试首轮缺测试import而编译失败，修正夹具后抹灰v2与半木测试各1项通过，失败日志保留。完整Nani回归首轮33过／2失败：发现RoofFloor前置检查未要求Roof或Floor，以及旧Roof-only错误断言未随真实Floor接入更新。补前置检查并保留两种payload与缺失失败，v2的35项全部通过（`/private/tmp/root-m6-nani-regression-v2-20261029.log`）。
+
+原版半木墙砖循环无条件发重建事件：非半木／无屋顶时空Vec负责删除旧实体；半木且屋顶存在时必须执行完整`half_timbering`，gable另追加`roof_outline`。当前helper未完成，因此不以统一发空Vec替代。抹灰重算writer同时修复原changed与recalc不同的缺墙策略、排序去重和在网格工作前发事件；实际World反例待轮转验收。GPU-only Buffer是Copy回执，owner必须持真实同设备lease并在Drop释放；宿主FrameBufferSnapshot与rhapsody按last_use退役的现有链负责物理存活，不另造3个CPU帧释放队列。已在本机Vulkan、`RHAPSODY_REQUIRE_VULKAN=1`执行既有`frozen_ids_survive_release_and_reuse_and_only_frame_local_new_ids_are_visible`，1项通过（`/private/tmp/root-m6-gpu-buffer-lease-20261029.log`）；覆盖真实分配、冻结旧帧、释放／复用代数与旧分配保留，不覆盖完整抹灰draw或生成器卸载。
+
+
+
+本轮最终构建：`CARGO_INCREMENTAL=0 cargo check --offline -p tiny-glade --tests`再次通过，日志`/private/tmp/root-m6-final-integration-v2-20261029.log`。最早App注册三种M6重算事件的真实三帧过期测试1项通过（`/private/tmp/root-m6-event-maintenance-v2-20261029.log`）；首轮过滤路径错误实际0项，未计通过。本轮finder统一组10项、半木实体父链2项、抹灰组9项通过；分别仍是有界原输出／World／MockDevice范围，不能合并成M6验收。
+
+生产接线独立纠正：半木父链只在兼容`add_wall_constructor_systems(Schedule)`有注册，正式App逐项安装，未调用该整包入口；因此此前任何“已经生产注册”的判断撤销。原`add_wall_systems@140493120`的set32由`140272c20`三元tuple的`chain_ignore_deferred`构造，原typed顺序为`create_plaster → maintain_plaster → curved_halftimber_maintain_entities`，不能照兼容入口的先maintain后create顺序挂载。正式set32待完整几何依赖恢复再接，未用局部父链掩盖generator／木边条TODO。
+
+抹灰maintain／create前置控制流已落候选，复杂生成器仍显式阻断；独立review再次发现音效与side采样误称Public+0x280为height，已改真实elevation，并以height7/elevation4/maxY10验证音效Y=7及side offset=6。半木父链已恢复删除／primary／secondary顺序、真实Nani实例及空列表卸载，目标孔木边条仍未恢复。`half_timbering`仍待完整实现，另两个旧静默空helper改为显式TODO属于防伪成功保护，不计恢复完成。源指纹、失败与原set32合同并入[中央独立review记录](../../module-recovery-2026-10-23/root-m0-m6-independent-review-2026-10-29.json)。下一源码批次继续支撑detector统计与生成、抹灰SDF／采样完整网格、半木复杂helper；无新Git提交。
+
+后续支撑增量：原15参数detector已恢复为当前16参数安全owner适配，真实World的事件／脏订阅／跨帧选择与零高程清柱／stats／空木塔消息2项通过（`/private/tmp/root-m6-detector-current-epoch-20261029.log`），typed circle分类3项通过。stats恢复StoneColumn Vec、小／大托架计数、单位尚未证的`circle_output: u64`及分类标志；不把未知圆形输出误称柱数量。原初始化由`run_game_thread@1405a1e45`明确插入此资源，已在正式App与兼容资源入口接同一owner；跨Reload清理时点仍待原证，不凭整洁而重置。detector与支撑生成器仍未正式挂载；圆／矩producer未完成。
+
+半木生产集成另有明确依赖：目前正式`construct_walls`重导出core实现，而复杂半木helper归wall-constructor，不能让core反向依赖该crate。接线须保持一份权威逐墙处理，在原网格后、实例／RT提交前同步调用完整半木算法；不后补扫成功事件改变原空输出和失败顺序。现存`ConstructorGpuOutput`是可复用的持久sidecar，但原半木allocation与既有plank槽是否同一仍须查store／clear，不能仅按缓冲类型或WallId合并。
+
+支撑后续过滤组21项通过（`/private/tmp/m06-support-group-epoch.log`），含真实稀疏owner先有数据再清空；stats正式构造接线后整合check再次退出0（`/private/tmp/root-m6-stats-registration-integration-20261029.log`）。独立slot取证进一步确认：半木+0x180和支撑+0x140/+0x150来自同一PublicWallState基址的不同allocation，下一轮在既有sidecar中维护独立半木槽，绝不因同为plank合并。当前新派发还包括抹灰maintain/create真实设备World控制流验证；这些待测项不计本轮通过。
+
+### 2026-10-29 编号确认前的执行记录（历史，以上方当前轮为准）
+
+按用户最新要求：先完成M01装饰父链／楼梯装配／自动杂物所有权与M02地形指定任务，再集中推进M06墙体、楼板、支撑、抹灰和半木。M0不要求性能验收；算法正确性、完整性和真实生产接线仍必须核验。已删除模块、许可证、Credits、反馈和真实Steam SDK仍排除；真实OS输入验收继续暂缓。中央负责review与宿主，三个子任务均已使用`gpt-6.1-terra`接续，不增下级agent。
+
+此前10月27日至29日增量原证在[现存工作报告](../../module-recovery-2026-10-23/STATUS.md)，不把本文件下方10月24日历史状态作为最新源码结论。函数先盘点、复用完整证据、批量补缺再实现；证据／算法／接线／验证四列独立记录。装饰UI的[63个规范procedure入口基线](../../module-recovery-2026-10-23/m01-ui-function-inventory-2026-10-29.json)不是全部源码函数集合或完成率分母。
+
+本轮中央修复原`stairs_reset_for_new_frame@14079c350`读错owner：改为AppMode／StairsState，保留原无条件changed tick及unset只写端点首u64。完整80B及原unset helper无业务桥执行126例，123例合法Rust输入逐项对照真实World的24B端点、图、backup和重复变更，定向测试1通过。见[原侧／源码／验收绑定](../../module-recovery-2026-10-23/m01-root-stairs-reset-review-2026-10-29.json)。此结果不证明父链、视觉和整App完成。
+
+M01结构变形已有候选与有限数值／World验证；装配主函数仍在恢复，不能先挂空父链。collider已确认Option<RaycastMesh>的17 niche与恒等pose，真实World创建／保持／替换／移除1项通过。M02既有W5实际三GPU帧／六tickets读回测试日志已确认通过，Local陡度累计已由共享Resource迁回系统本地，原编辑23项及新增实例隔离／跨帧累计1项通过；原Local构造初值仍待证实。M06已补Floor候选类型、构造和原StoneFloor消费者，构建检查通过，真实生命周期与原位宽仍在核验，生产注册尚未验收。
+
+图服务ConnectionRefused已修复：后台daemon被宿主回收，改为受管console终端持续运行，保留原snapshot`053060f0c5d388b353567d8b`和认证，实际查询两原入口并完成focus／viz邻接分页。三个agent均已通知，M01和M06已返回图查询证据。见[恢复回执](../../module-recovery-2026-10-23/root-code-map-runtime-recovery-2026-10-29.json)；未重建／替换数据库，也未将工具恢复计为游戏业务完成。
+
+本轮宿主整合复核：楼板已在实际`WallSystems::add_wall_systems`的set28内，紧随construct_walls且早于debug／outline，保持chain_ignore_deferred；`run_game`继续调用该权威入口。`CARGO_INCREMENTAL=0 cargo check --offline -p tiny-glade --tests`通过，日志`/private/tmp/root-m01-m02-m06-integration-check-20261029.log`。楼板创建／替换／删除、同帧delete+change、非法生成状态与MockDevice的真实Nani槽分配／退役测试分别通过；原rank差分、完整App Reload与真实GPU输出仍待验，不能把MockDevice称本机GPU。M01真实generate→interpolate→distortion两帧组合已通过，确认producer每帧新建aux Vec，原resize不能改为fill；主装配／Arch／Bracket／杂物仍阻断整链。
+
+当时模块：**M01与M02指定任务收口中，M06已开始有界恢复，均未整模块验收**。以下按日期保留历史决定与当时验证范围；编号和进入要求以上方2026-10-29最新用户确认的M0／M1／M6为准。本文件合并维护状态与业务流合同，优先增量修改现有文件，不为模板拆出多套文档。旧报告、候选代码及临时日志只作为指定版本的历史证据，不是平行进度表。
+
+### 2026-10-28 本地形状编辑检查点（历史记录）
 
 用户最新要求：确认圆形编辑与历史回放的采样差异后，更新进度、提交当前文件并停止，不继续推进。分析与实现 agent 已停止；不自动续做 M06。
 

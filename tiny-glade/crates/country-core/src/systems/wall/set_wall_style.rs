@@ -3,17 +3,16 @@
 //! PDB proves the final writer is PlayWallUiSound, not material audio.
 use crate::{
     resources::{
-        history::wall_edit::{
+        history::{EditType, History, wall_edit::{
             SavedWallStyle, WallCompoundHistoryEdit, WallHistoryEdit, WallTerrainPolicy,
             WallValueEdit,
-        },
+        }},
         walls::{InnerWalls, public_walls::PublicWalls},
     },
     systems::{
         audio::PlayWallUiSound,
         wall::{
             SetFreehandHeightTypeCmd, SetPlasterPeelAmountCmd, SetWallStyleCmd,
-            history_recording::RecordWallHistory,
         },
     },
 };
@@ -34,10 +33,14 @@ fn style(value: u8) -> SavedWallStyle {
         _ => panic!("invalid saved wall style {value}"),
     }
 }
-fn record(records: &mut EventWriter<RecordWallHistory>, edits: Vec<WallHistoryEdit>) {
-    records.write(RecordWallHistory(Arc::new(WallCompoundHistoryEdit {
+fn record<S>(history: &mut History<S>, edits: Vec<WallHistoryEdit>) {
+    let edit = EditType::Wall(Arc::new(WallCompoundHistoryEdit {
         groups: edits.into_iter().map(|edit| vec![edit]).collect(),
-    })));
+    }));
+    // 原 1409a2290 在每条命令的权威写入后直接调用 History::add。
+    history.add(edit.clone()).unwrap_or_else(|_| {
+        panic!("Tried writing {edit:?} to History when the input recording is finished")
+    });
 }
 /// Native samples the original mapped Curve3, before path-intersection edits;
 /// its cached U is retained. Missing public rows produce the original origin
@@ -63,13 +66,13 @@ fn audio_position(public: &PublicWalls, wall: crate::resources::walls::WallId) -
         t * b[axis] + a[axis] * (1.0 - t)
     }))
 }
-pub fn set_wall_style(
+pub fn set_wall_style<S: Send + Sync + 'static>(
     mut styles: EventReader<SetWallStyleCmd>,
     mut freehand: EventReader<SetFreehandHeightTypeCmd>,
     mut plaster: EventReader<SetPlasterPeelAmountCmd>,
     mut inner: ResMut<InnerWalls>,
     public: Res<PublicWalls>,
-    mut history: EventWriter<RecordWallHistory>,
+    mut history: ResMut<History<S>>,
     mut audio: EventWriter<PlayWallUiSound>,
 ) {
     for command in styles.read() {
@@ -163,7 +166,8 @@ mod tests {
         world.init_resource::<Events<SetWallStyleCmd>>();
         world.init_resource::<Events<SetFreehandHeightTypeCmd>>();
         world.init_resource::<Events<SetPlasterPeelAmountCmd>>();
-        world.init_resource::<Events<RecordWallHistory>>();
+        world.insert_resource(History::<()>::empty_glade());
+        world.resource_mut::<History<()>>().start_input_recording(0).unwrap();
         world.init_resource::<Events<PlayWallUiSound>>();
         let id = WallId(38);
         world.resource_mut::<InnerWalls>().new_wall_with_id(
@@ -203,7 +207,7 @@ mod tests {
                 record_history: 1,
             });
         let mut schedule = bevy_ecs::schedule::Schedule::default();
-        schedule.add_systems(set_wall_style);
+        schedule.add_systems(set_wall_style::<()>);
         schedule.run(&mut world);
         let walls = world.resource::<InnerWalls>();
         let wall = walls.get(id).unwrap();
@@ -212,26 +216,27 @@ mod tests {
         assert_eq!(wall.arch_type(), 1);
         assert_eq!(wall.plaster_peel_amount(), 0.75);
         assert!(walls.changes().updated.contains(&id));
-        let records: Vec<_> = world
-            .resource_mut::<Events<RecordWallHistory>>()
-            .drain()
-            .collect();
+        let records = &world.resource::<History<()>>().pending().unwrap().edits;
         assert_eq!(records.len(), 3);
+        let rows: Vec<_> = records.iter().map(|record| match record {
+            EditType::Wall(edit) => edit,
+            _ => panic!("应记录墙体编辑"),
+        }).collect();
         assert!(matches!(
-            records[0].0.groups[0][0],
+            rows[0].groups[0][0],
             WallHistoryEdit::ChangeStyle(_)
         ));
         assert!(matches!(
-            records[1].0.groups[0][0],
+            rows[1].groups[0][0],
             WallHistoryEdit::ChangePlasterPeelAmount(_)
         ));
-        assert_eq!(records[2].0.groups.len(), 2);
+        assert_eq!(rows[2].groups.len(), 2);
         assert!(matches!(
-            records[2].0.groups[0][0],
+            rows[2].groups[0][0],
             WallHistoryEdit::ChangeFreehandHeightType(_)
         ));
         assert!(matches!(
-            records[2].0.groups[1][0],
+            rows[2].groups[1][0],
             WallHistoryEdit::ChangeArchType(_)
         ));
         let sounds: Vec<_> = world
@@ -253,7 +258,29 @@ mod tests {
             });
         schedule.run(&mut world);
         assert_eq!(world.resource::<InnerWalls>().get(id).unwrap().style(), 0);
-        assert!(world.resource::<Events<RecordWallHistory>>().is_empty());
+        assert_eq!(world.resource::<History<()>>().pending().unwrap().edits.len(), 3);
         assert!(world.resource::<Events<PlayWallUiSound>>().is_empty());
+    }
+
+    #[test]
+    fn original_style_write_panics_after_authority_change_when_not_recording() {
+        let mut world = World::new();
+        let mut walls = InnerWalls::new();
+        let id = walls.new_wall(WallState::new(Curve2::try_new(vec![[0., 0.], [2., 0.]], false).unwrap(), 3., 0, 0, false));
+        world.insert_resource(walls);
+        world.insert_resource(PublicWalls::default());
+        world.insert_resource(History::<()>::empty_glade());
+        world.init_resource::<Events<SetWallStyleCmd>>();
+        world.init_resource::<Events<SetFreehandHeightTypeCmd>>();
+        world.init_resource::<Events<SetPlasterPeelAmountCmd>>();
+        world.init_resource::<Events<PlayWallUiSound>>();
+        world.resource_mut::<Events<SetWallStyleCmd>>().send(SetWallStyleCmd {
+            wall_id: id, from: 0, to: 2, record_history: 1, play_sound: 0,
+        });
+        let mut schedule = bevy_ecs::schedule::Schedule::default();
+        schedule.add_systems(set_wall_style::<()>);
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule.run(&mut world))).is_err());
+        assert_eq!(world.resource::<InnerWalls>().get_unwrapped(id).style(), 2);
+        assert!(world.resource::<History<()>>().pending().is_none());
     }
 }

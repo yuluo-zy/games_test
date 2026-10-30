@@ -212,6 +212,35 @@ mod original_creation_tests {
         assert_eq!(w.query::<&SignifierId>().iter(&w).count(), 0);
     }
     #[test]
+    fn real_picker_no_hit_retains_finite_requests_until_a_later_widget_owns_them() {
+        let (mut world, mut schedule) = setup();
+        let calls = Arc::new(AtomicUsize::new(0));
+        let pending = factory("focused-preview", calls.clone());
+        // 使用真实 picker/update。屏幕上有注册 widget，但鼠标连续落在其外，
+        // 与直接写 UiInteraction 的合成状态不同；这里只锁定原流的所有权合同。
+        world.resource_mut::<CursorPositionSS>().0 = Vec2::splat(90.);
+        for frame in 1..=32 {
+            world.resource_mut::<UiSignifierStream>().write_factory(&pending);
+            register_widget(&world);
+            schedule.run(&mut world);
+            assert_eq!(world.resource::<UiState>().interaction().native_tag, 0);
+            assert_eq!(world.resource::<UiSignifierStream>().committed_len(), frame);
+            assert_eq!(calls.load(Ordering::Relaxed), 0);
+        }
+        // 第一个命中的当前 widget 接管整批旧请求；原 consumer 不记录请求产生者，
+        // 且本帧开始的 entity 快照不会对同名请求互相去重。
+        world.resource_mut::<CursorPositionSS>().0 = Vec2::splat(50.);
+        register_widget(&world);
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<UiSignifierStream>().committed_len(), 0);
+        assert_eq!(calls.load(Ordering::Relaxed), 32);
+        assert_eq!(world.query::<&SignifierId>().iter(&world).count(), 32);
+        assert!(world.query::<&SignifierId>().iter(&world).all(|id| {
+            id.1 == WidgetId(91) && id.0 == record_id(WidgetId(91), Some("focused-preview"))
+        }));
+    }
+
+    #[test]
     fn mark_keeps_minimum_lifespan_but_nan_matches_original_ucomiss() {
         use bevy_ecs::system::RunSystemOnce;
         let (mut w, _) = setup();

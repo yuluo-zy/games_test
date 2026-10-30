@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-27",
+  "owner": "m01_height",
+  "original_va": "0x1407a9c10",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "cargo": "CARGO_INCREMENTAL=0 cargo test --offline -p system-decorator (existing target/profile)",
+  "runs": [
+    {
+      "filter": "ui_place_decorator::",
+      "passed": 13,
+      "exit_code": 0,
+      "log": "reports/module-recovery-2026-10-23/1407a9c10-place-public-final.log",
+      "log_sha256": "da29ee122f68f41bbd1ef63addf9516d0a84b1ded748039629d947598f4dcdc5"
+    },
+    {
+      "filter": "stair_placement_tests::",
+      "passed": 2,
+      "exit_code": 0,
+      "log": "reports/module-recovery-2026-10-23/1407a7e80-place-candidate-final.log",
+      "log_sha256": "6618c1cccad23fe1545e5ce6ad680c2caab96247434e75f8a4887b9379cf90c0"
+    },
+    {
+      "filter": "apply_decorator_op::",
+      "passed": 12,
+      "exit_code": 0,
+      "log": "reports/module-recovery-2026-10-23/141276e30-place-apply-final.log",
+      "log_sha256": "6565848d1bbdc6c24044f66e33967d7c539896064149fa44fb2cbf944a9bf84d"
+    },
+    {
+      "filter": "core_paths_integration+decorator_unload_lifecycle",
+      "passed": 13,
+      "exit_code": 0,
+      "log": "reports/module-recovery-2026-10-23/1407a9c10-place-integration-final.log",
+      "log_sha256": "c97a601e39b107dfd4996ad29f6b7dad4de6d15377e3f2b1a46e506a8f629024"
+    }
+  ],
+  "source_snapshots": {
+    "crates/systems/decorator/src/ui_systems/ui_place_decorator.rs": "11e15624a9b14026bda398638ed38e2ebcd30ab4ee7fb56c08be813209437903",
+    "crates/systems/decorator/src/ui_systems/ui_move_decorator.rs": "c41ed25e610c89cae4d6a271272dba5a8db7eb383b6a80c4820c33413f845fdc",
+    "crates/systems/decorator/src/apply_decorator_op.rs": "c4121d8bb509b2dd2164bc782c8f0d5c4eaed6e35d4b4130512139e575acae44",
+    "crates/systems/decorator/tests/core_paths_integration.rs": "caf3c5afdc7c609ed3892c65fb545beabd054d5ce65c5a5f5a9d2ea5cf83c5c3",
+    "crates/systems/decorator/tests/decorator_unload_lifecycle.rs": "6e3ccab7473fcb75beaf0644ea99109a9ac06818e91b5f1cab41e4d1c5873fb5"
+  },
+  "shared_file_boundary": "ui_move main and apply typed Change/remove belong to other owners; whole-file SHA binds tested snapshot, not ownership or recovery claim",
+  "fixtures": {
+    "1407a7e80-stair-height-native.txt": "95be417433488e72b393e5479a5ce32563710679958eacdc67d34d5a5c160079",
+    "141276e30-place-native.txt": "c72a0d5ba93ebe8fcde0cfea9b15248011d12a526a37d3772b1c02df60d6bce7",
+    "1407abd63-place-quat-native.txt": "c28b28d4206ec7e3589d30d91bf0c7f1263ccb4dc0cfe82faa31e244d5eaa0b5",
+    "1407ad8c0-stair-slope-native.txt": "cfeb5f1a4c22db846dcb13bb225d4284d0558caf5bb699509eb2c73a672ef008",
+    "1407acc79-stair-height-native.txt": "359e83460256906e31d1dacac554f74c6c16fcc4f1b85deb4a7fee6ada53e5ea"
+  },
+  "proofs": {
+    "max_clamp_raw_cases": 1206,
+    "place_info_event_native_cases": 512,
+    "relative_quaternion_native_cases": 560,
+    "stair_slope_cases": 547,
+    "stair_slope_native_executions": 1094,
+    "post_lookup_stair_height_native_cases": 602
+  },
+  "boundary": [
+    "public ECS World + real canonical storage/archive/history/graph/cache owners",
+    "no OS input, production GPU visual or complete original main execution claim",
+    "no complete save/restart/undo/redo claim",
+    "old integration backup has no collider payload and only tests bucket round-trip"
+  ],
+  "known_resolved_fixture_failures": [
+    "Windows ABI original runner RSP alignment corrected to entry modulo16=8 and all512 rerun",
+    "inactive Terrain/Stair wall payload comparison removed from active-byte comparison mask",
+    "backup compatibility fixture lacked four required owners and archived address",
+    "backup compatibility Pop removed map without d2s; migrated to authoritative apply_decorator_remove"
+  ]
+}

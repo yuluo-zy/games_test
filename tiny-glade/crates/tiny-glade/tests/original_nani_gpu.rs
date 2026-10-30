@@ -410,3 +410,159 @@ fn verify_original_nani(kind: GpuWorldSubsetKind, instance_count: usize, part_co
     );
     bridge.collect_completed_frames().unwrap();
 }
+
+/// 原数值fixture→同World真实ECS→生产flush→Vulkan缓冲读回，独立于绘制列表测试。
+#[test]
+fn original_two_bricks_ecs_uploads_match_native_words_and_retire_dense_instances() {
+    use bevy_ecs::{prelude::*, schedule::{ApplyDeferred, IntoScheduleConfigs}};
+    use country_core::{components::{BrickColor, GothicWindowBrickDeformation},
+        components::drawable::{NaniBundle, NaniInstanceDesc},
+        render::{device::GraphicsDeviceResource, nani::{gpu_world::{GpuWorldSubset, InstanceDataBuffer,
+            InstanceDataMarker, InstanceKey, OwnedGpuWorldSubset},
+            instance_data::{GothicWindowBricksInstanceData, SolidVertexColorBricksInstanceData},
+            systems::{NaniMeshSelector, nani_maintain_instances_ecs,
+                nani_update_gothic_window_bricks_ecs, nani_update_solid_vertex_color_bricks_ecs,
+                nani_flush_instance_updates_ecs}}},
+        resources::render::mesh_atlas_library::MeshAtlasLibrary,
+        utils::components::transform::Transform};
+
+    fn spawn(world: &mut World, gothic: bool) -> Entity {
+        let desc=NaniInstanceDesc {mesh:NaniMeshSelector::Named(NameHash::compute(
+            if gothic {"gothic_bricks_gpu"} else {"solid_bricks_gpu"})),subset_kind:if gothic {
+            GpuWorldSubsetKind::GothicWindowBricks}else{GpuWorldSubsetKind::SolidVertexColorBricks}};
+        if gothic {world.spawn((NaniBundle::<GothicWindowBricksInstanceData> {desc,transform:Transform::identity(),
+            marker:InstanceDataMarker::default()},BrickColor([0;24]),GothicWindowBrickDeformation([0;60]))).id()}
+        else {world.spawn((NaniBundle::<SolidVertexColorBricksInstanceData> {desc,transform:Transform::identity(),
+            marker:InstanceDataMarker::default()},BrickColor([0;24]))).id()}
+    }
+    fn data_buffer(gpu: &GpuWorld, kind: GpuWorldSubsetKind) -> Buffer {
+        let subset=gpu.owned_subset_mut(kind);
+        match kind {
+            GpuWorldSubsetKind::SolidVertexColorBricks=>subset.data().as_any()
+                .downcast_ref::<InstanceDataBuffer<SolidVertexColorBricksInstanceData>>().unwrap().shadow.buffer.buffer,
+            GpuWorldSubsetKind::GothicWindowBricks=>subset.data().as_any()
+                .downcast_ref::<InstanceDataBuffer<GothicWindowBricksInstanceData>>().unwrap().shadow.buffer.buffer,
+            _=>panic!("非砖GPU测试kind"),
+        }
+    }
+    fn apply_case(world: &mut World, entity: Entity, case: &serde_json::Value) {
+        let words=|name:&str|case[name].as_array().unwrap().iter().map(|v|v.as_u64().unwrap() as u32).collect::<Vec<_>>();
+        let tr=words("transform");let f=|i|f32::from_bits(tr[i]);
+        let mut brick=[0;24];for(i,w)in words("brick").iter().enumerate(){brick[i*4..i*4+4].copy_from_slice(&w.to_le_bytes());}
+        world.entity_mut(entity).insert((Transform {rotation:glam::Quat::from_xyzw(f(0),f(1),f(2),f(3)),
+            translation:glam::Vec3::new(f(4),f(5),f(6)),scale:glam::Vec3::new(f(7),f(8),f(9))},BrickColor(brick)));
+        if case["kind"].as_u64().unwrap()==1 {
+            let mut deformation=[0;60];for(i,w)in words("deformation").iter().enumerate(){deformation[i*4..i*4+4].copy_from_slice(&w.to_le_bytes());}
+            world.entity_mut(entity).insert(GothicWindowBrickDeformation(deformation));
+        }
+    }
+
+    let device=match rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless()) {
+        Ok(device)=>device,Err(error)=>{
+            assert!(!std::env::var("RHAPSODY_REQUIRE_VULKAN").is_ok_and(|v|v=="1"),"strict bricks GPU initialization: {error}");
+            eprintln!("SKIP bricks GPU initialization: {error}");return;
+        }
+    };
+    let physical=device.physical_device_info();
+    eprintln!("M01 bricks GPU: {} vendor={:#x} device={:#x} driver={:#x}",physical.name(),
+        physical.properties.vendor_id,physical.properties.device_id,physical.properties.driver_version);
+    let bridge=CoreRenderBridge::new(device.clone(),".",Arc::new(AssetShaderLibrary::new())).unwrap();
+    let buffers=bridge.hosts().buffers.clone();let diagnostic=DiagnosticDevice(buffers.clone());
+    let mut world=World::new();bridge.install_asset_libraries(&mut world).unwrap();
+    assert!(world.contains_resource::<GraphicsDeviceResource>());
+    let mut gpu=GpuWorld::new(&diagnostic);
+    gpu.assign_subset(GpuWorldSubsetKind::SolidVertexColorBricks,GpuWorldSubset::Owned(
+        OwnedGpuWorldSubset::new::<SolidVertexColorBricksInstanceData>(&diagnostic,GpuWorldSubsetKind::SolidVertexColorBricks,1)));
+    gpu.assign_subset(GpuWorldSubsetKind::GothicWindowBricks,GpuWorldSubset::Owned(
+        OwnedGpuWorldSubset::new::<GothicWindowBricksInstanceData>(&diagnostic,GpuWorldSubsetKind::GothicWindowBricks,1)));
+    let kinds=[GpuWorldSubsetKind::SolidVertexColorBricks,GpuWorldSubsetKind::GothicWindowBricks];
+    let data=kinds.map(|kind|data_buffer(&gpu,kind));
+    let cull=kinds.map(|kind|gpu.owned_subset_mut(kind).cull_buffer().buffer);
+    world.insert_resource(gpu);
+    let mut atlas=MeshAtlasLibrary::default();
+    for (kind,name) in [(kinds[0],"solid_bricks_gpu"),(kinds[1],"gothic_bricks_gpu")] {
+        let mut mesh=Mesh::new(name);mesh.set_attribute(ATTR_POSITION,vec![glam::Vec3::ZERO,glam::Vec3::X,glam::Vec3::Y]);
+        mesh.set_indices(vec![0,1,2]);atlas.add(kind,name,&mesh);
+    }
+    world.insert_resource(atlas);
+    test_support::until_ready(||buffers.poll_pending_uploads()).unwrap();
+    test_support::until_ready(||bridge.hosts().textures.poll_pending_uploads()).unwrap();
+    device.poll().unwrap();
+    let idle=device.retirement_stats().idle_waits;
+    let owner_count=buffers.freeze_frame_resources().buffer_count();
+    let native_owners=data.map(|handle|Arc::as_ptr(&buffers.managed_buffer(&handle).unwrap().shared()));
+
+    // 实际required组件失配在发布前失败，不创建空载荷实例，也不制造额外GPU owner。
+    let invalid=spawn(&mut world,false);world.entity_mut(invalid).remove::<BrickColor>();
+    let mut preflight=Schedule::default();preflight.add_systems(nani_maintain_instances_ecs);
+    assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(||preflight.run(&mut world))).is_err());
+    assert!(world.get::<InstanceKey>(invalid).is_none());world.despawn(invalid);world.clear_trackers();
+    assert_eq!(world.resource::<GpuWorld>().total_instance_count,0);
+    assert_eq!(buffers.freeze_frame_resources().buffer_count(),owner_count);
+
+    let entities=[[spawn(&mut world,false),spawn(&mut world,false)],
+        [spawn(&mut world,true),spawn(&mut world,true)]];
+    let fixture:serde_json::Value=serde_json::from_str(include_str!("../../../tests/fixtures/native/m01-bricks-nani.json")).unwrap();
+    // 每个kind选同一组四分量非零四元数和高flag案例，重复帧验证同一批物理缓冲。
+    let cases=fixture["cases"].as_array().unwrap();
+    let mut schedule=Schedule::default();schedule.add_systems((nani_maintain_instances_ecs,ApplyDeferred,
+        (nani_update_solid_vertex_color_bricks_ecs,nani_update_gothic_window_bricks_ecs),
+        nani_flush_instance_updates_ecs).chain_ignore_deferred());
+    for frame in 0..16 {
+        let pair=if frame<4 {[2,6,10,14][frame]}else{14};
+        for kind in 0..2 {for &entity in &entities[kind] {apply_case(&mut world,entity,&cases[pair+kind]);}}
+        schedule.run(&mut world);test_support::until_ready(||buffers.poll_pending_uploads()).unwrap();
+        for kind in 0..2 {
+            let expected:Vec<u32>=cases[pair+kind]["expected_words"].as_array().unwrap().iter().map(|v|v.as_u64().unwrap() as u32).collect();
+            for &entity in &entities[kind] {
+                let key=*world.get::<InstanceKey>(entity).unwrap();assert_eq!(key.kind,kinds[kind]);
+                let bytes=read_range(&device,&buffers,&data[kind],key.index as usize*expected.len()*4,expected.len()*4);
+                let actual:Vec<u32>=bytes.chunks_exact(4).map(|w|u32::from_le_bytes(w.try_into().unwrap())).collect();
+                assert_eq!(actual,expected,"GPU kind={kind} frame={frame} dense={}",key.index);
+                let actual=read_range(&device,&buffers,&cull[kind],key.index as usize*16,16);
+                let source=world.get::<Transform>(entity).unwrap();
+                assert_eq!(actual[..12],source.translation.to_array().into_iter().flat_map(f32::to_le_bytes).collect::<Vec<_>>());
+                assert_eq!(data_buffer(world.resource::<GpuWorld>(),kinds[kind]),data[kind]);
+                assert_eq!(Arc::as_ptr(&buffers.managed_buffer(&data[kind]).unwrap().shared()),native_owners[kind]);
+            }
+        }
+        // poll只更新完成值；正常帧还必须运行有界retirement回收，释放完成的录制owner。
+        device.try_collect_garbage().unwrap();assert_eq!(buffers.freeze_frame_resources().buffer_count(),owner_count);
+        assert_eq!(device.retirement_stats().idle_waits,idle);world.clear_trackers();
+    }
+    let survivor_keys=entities.map(|pair|*world.get::<InstanceKey>(pair[1]).unwrap());
+    for pair in entities {world.despawn(pair[0]);}
+    schedule.run(&mut world);test_support::until_ready(||buffers.poll_pending_uploads()).unwrap();
+    for kind in 0..2 {
+        let key=*world.get::<InstanceKey>(entities[kind][1]).unwrap();assert_eq!(key.id,survivor_keys[kind].id);assert_eq!(key.index,0);
+        let expected:Vec<u8>=cases[14+kind]["expected_words"].as_array().unwrap().iter()
+            .flat_map(|w|(w.as_u64().unwrap() as u32).to_le_bytes()).collect();
+        assert_eq!(read_range(&device,&buffers,&data[kind],0,expected.len()),expected);
+        assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(kinds[kind]).instance_count(),1);
+    }
+    world.clear_trackers();for pair in entities {world.despawn(pair[1]);}schedule.run(&mut world);
+    for kind in kinds {assert_eq!(world.resource::<GpuWorld>().owned_subset_mut(kind).instance_count(),0);}
+    // 原remove即使删除末个元素也执行copy并标脏；最后一帧的已接受上传必须先由
+    // 同一宿主提交，随后以实际copy完成证明结束，不能把尚未提交的Job owner当泄漏。
+    test_support::until_ready(||buffers.poll_pending_uploads()).unwrap();
+    for kind in 0..2 {
+        let expected:Vec<u8>=cases[14+kind]["expected_words"].as_array().unwrap().iter()
+            .flat_map(|w|(w.as_u64().unwrap() as u32).to_le_bytes()).collect();
+        assert_eq!(read_range(&device,&buffers,&data[kind],0,expected.len()),expected);
+        let translation:Vec<u8>=cases[14+kind]["transform"].as_array().unwrap()[4..7].iter()
+            .flat_map(|w|(w.as_u64().unwrap() as u32).to_le_bytes()).collect();
+        assert_eq!(read_range(&device,&buffers,&cull[kind],0,12),translation);
+    }
+    drop(schedule);drop(preflight);drop(world);
+    let handles=[data[0],data[1],cull[0],cull[1]];
+    let weak=handles.map(|handle|Arc::downgrade(&buffers.managed_buffer(&handle).unwrap().shared()));
+    for handle in handles {assert!(buffers.release(&handle));assert!(buffers.managed_buffer(&handle).is_none());}
+    let before=weak.each_ref().map(|owner|owner.strong_count());
+    let collected=device.try_collect_all_completed().unwrap();
+    eprintln!("M01 bricks teardown: completed-owner drain={collected}, prior strong={before:?}, pending={}",device.retirement_stats().pending);
+    let live_buffers=buffers.freeze_frame_resources().buffer_count();
+    assert_eq!(live_buffers,owner_count-4,"仅删除两种实例的data/cull物理owner，其它宿主缓冲保持存活");
+    assert!(weak.iter().all(|owner|owner.upgrade().is_none()));
+    assert_eq!(device.retirement_stats().idle_waits,idle);
+    eprintln!("M01 bricks GPU passed: native16/28words,16frames,4instances→2→0,stable owners,{} live→{} live buffers",owner_count,live_buffers);
+}

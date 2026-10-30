@@ -19,6 +19,26 @@ pub struct EditFreehandCache {
     pub selected_point: Vec2,
 }
 
+fn edit_point(curve: &Curve2, index: usize, target: Vec2, shape_tag: u32) -> Curve2 {
+    let mut points = curve.points.clone();
+    points[index] = target.to_array();
+    if shape_tag != 2 {
+        let last = points.len() - 1;
+        if index == 0 { points[last] = target.to_array(); }
+        else if index == last { points[0] = target.to_array(); }
+    }
+    Curve2::try_new(points, false).expect("原自由墙曲线重建失败")
+}
+
+fn adjacent_edges_valid(curve: &Curve2, index: usize, target: Vec2) -> bool {
+    let valid = |neighbor: usize| curve.points.get(neighbor).is_none_or(|point| {
+        let dx = point[0] - target.x;
+        let dy = point[1] - target.y;
+        !((dy * dy + dx * dx).sqrt() < 0.1)
+    });
+    valid(index + 1) && (index == 0 || valid(index - 1))
+}
+
 pub fn ui_edit_freehand_walls<S: Send + Sync + 'static>(
     (mode, public, mut inner, cursor, terrain, ui): (
         Res<crate::systems::mode_manager::AppMode>,
@@ -36,13 +56,15 @@ pub fn ui_edit_freehand_walls<S: Send + Sync + 'static>(
         ResMut<History<S>>,
         ResMut<crate::systems::ui::signifiers::signifier_create::UiSignifierStream>,
     ),
-    (border, mut edited, mut trees, mut display, mut feedback, mut pins): (
+    (border, mut edited, mut trees, mut display, mut feedback, mut pins, mut audio_moved, mut audio): (
         Res<crate::resources::glade_border::GladeBorder>,
         EventWriter<crate::resources::events::OnFreehandWallEdited>,
         EventWriter<crate::resources::tree_storage::HideTreesNextToWallCmd>,
         EventWriter<crate::resources::glade_border::DisplayOutOfBorder>,
         EventWriter<crate::resources::glade_border::FeedbackInputOutOfBorder>,
         EventWriter<crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>,
+        EventReader<crate::resources::window::AudioCursorMoved>,
+        EventWriter<crate::systems::audio::RequestWallMaterialAudio>,
     ),
 ) {
     use crate::systems::mode_manager::{AppMode, EditSubject};
@@ -94,7 +116,8 @@ pub fn ui_edit_freehand_walls<S: Send + Sync + 'static>(
             );
         factory.marker = 0x142ae0940;
         signifiers.write_factory(&factory);
-        match context.dragged().wrapping_sub(2).min(3) {
+        let dragged = context.dragged();
+        match dragged.wrapping_sub(2).min(3) {
             1 => {
                 archivist.archive_current_decorators_in_storages_with_resources(
                     &[
@@ -138,27 +161,15 @@ pub fn ui_edit_freehand_walls<S: Send + Sync + 'static>(
                 cache.grab_delta = Vec2::new(pos.x, pos.z) - point;
             }
             2 => {
-                let mut points = inner
+                let current = &inner
                     .get(wall)
                     .expect("freehand edit authority missing")
                     .source()
-                    .curve
-                    .points
-                    .clone();
+                    .curve;
                 let pos = cursor.position();
                 let candidate = Vec2::new(pos.x, pos.z) - cache.grab_delta;
-                points[index] = candidate.to_array();
-                if state.shape().tag() != 2 && (index == 0 || index + 1 == points.len()) {
-                    let other = if index == 0 { points.len() - 1 } else { 0 };
-                    points[other] = candidate.to_array();
-                }
-                let new_curve =
-                    Curve2::try_new(points, false).expect("invalid edited freehand curve");
-                let too_close = (index > 0
-                    && (candidate - Vec2::from_array(new_curve.points[index - 1])).length() < 0.1)
-                    || (index + 1 < new_curve.points.len()
-                        && (candidate - Vec2::from_array(new_curve.points[index + 1])).length()
-                            < 0.1);
+                let new_curve = edit_point(current, index, candidate, state.shape().tag());
+                let too_close = !adjacent_edges_valid(&new_curve, index, candidate);
                 let outside = new_curve
                     .points
                     .iter()
@@ -178,7 +189,8 @@ pub fn ui_edit_freehand_walls<S: Send + Sync + 'static>(
                     wall,
                     finished: false,
                 });
-                pins.write(crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter::Wall { wall });
+                pins.write(crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter::for_wall(wall));
+                if outside || too_close { continue; }
             }
             3 => {
                 use crate::resources::history::{
@@ -217,12 +229,58 @@ pub fn ui_edit_freehand_walls<S: Send + Sync + 'static>(
             }
             _ => {}
         }
+        if dragged != 2 && audio_moved.read().last().is_some() {
+            audio.write(crate::systems::audio::RequestWallMaterialAudio {
+                id: wall.0,
+                position,
+                kind: 0,
+                flag: state.authority.source_flag_65().wrapping_mul(2),
+            });
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_neighbor_threshold_fixture_matches_branch() {
+        let cases: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../reports/module-recovery-2026-10-23/m01-freehand-native.json"
+        )))
+        .unwrap();
+        let pair = |p: &serde_json::Value| {
+            [
+                f32::from_bits(p[0].as_u64().unwrap() as u32),
+                f32::from_bits(p[1].as_u64().unwrap() as u32),
+            ]
+        };
+        for case in cases["edges"].as_array().unwrap() {
+            let target = Vec2::from_array(pair(&case["target"]));
+            let curve = Curve2 {
+                points: vec![target.to_array(), pair(&case["neighbor"])],
+                points_u: vec![0., 1.],
+                length: 1.,
+            };
+            assert_eq!(
+                !adjacent_edges_valid(&curve, 0, target),
+                case["rejected"].as_bool().unwrap()
+            );
+        }
+    }
+    #[test]
+    fn closed_endpoints_and_neighbor_minimum_follow_original_branches() {
+        let source = Curve2::try_new(vec![[0., 0.], [2., 0.], [2., 2.], [0., 0.]], false).unwrap();
+        let first = edit_point(&source, 0, Vec2::new(1., 1.), 3);
+        assert_eq!(first.points[0], first.points[3]);
+        let last = edit_point(&source, 3, Vec2::new(1., 1.), 3);
+        assert_eq!(last.points[0], last.points[3]);
+        assert!(adjacent_edges_valid(&source, 0, Vec2::new(1.9, 0.)));
+        assert!(!adjacent_edges_valid(&source, 0, Vec2::new(1.95, 0.)));
+        let open = edit_point(&source, 0, Vec2::new(1., 1.), 2);
+        assert_eq!(open.points[3], source.points[3]);
+    }
     use crate::resources::walls::{
         WallState,
         public_walls::{WallPublicationDirty, WallSpatialHash},
@@ -273,6 +331,8 @@ mod tests {
             ),
         ));
         world.init_resource::<Events<crate::resources::events::OnFreehandWallEdited>>();
+        world.init_resource::<Events<crate::resources::window::AudioCursorMoved>>();
+        world.init_resource::<Events<crate::systems::audio::RequestWallMaterialAudio>>();
         world.init_resource::<Events<crate::resources::tree_storage::HideTreesNextToWallCmd>>();
         world.init_resource::<Events<crate::resources::glade_border::DisplayOutOfBorder>>();
         world.init_resource::<Events<crate::resources::glade_border::FeedbackInputOutOfBorder>>();

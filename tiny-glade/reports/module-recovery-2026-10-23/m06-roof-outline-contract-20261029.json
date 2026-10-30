@@ -1,0 +1,68 @@
+{
+  "scope": "B roof_outline 141217be0, bounded resolved geometry and sparse writer adaptation",
+  "identity": {
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "snapshot": "053060f0c5d388b353567d8b"
+  },
+  "original": {
+    "pdb_range": "141217be0..141218e21",
+    "measured_entry": "141217d88",
+    "measured_exit": "1412188e0",
+    "instances": 544,
+    "cases": 8,
+    "boundaries": "allocator, deallocator, memcpy, Darwin powf/roundf and SSBO push bridged; original geometry body and helpers executed. No claim of Windows CRT bit equality for all values, original outer SSBO lookup, lock and ECS dispatch not executed."
+  },
+  "fields": "rectangle guard; expanded top/bottom, ridge direction and roof tip; normalized profile sample along arc, world profile selects round(length).max(2) subdivisions; two WoodenPlankSsbo records per interval, 0.4/0.25/length+0.05 and 0.1875/0.1875/0.7; both tail {0,WallId low32,WallId low32,1}; writer exhaustion ignored per 14121862b/889c; original lock acquisition and tail chunk read 141217ceb..d4c",
+  "validation": {
+    "command": "cargo test -p system-wall-constructor roof_outline_matches_b_original_rectangular_profile --lib",
+    "log": "/private/tmp/m6-roof-outline-test-final.log",
+    "result": "1 passed; all 544 records exact, shape nonrectangle skip and append lifecycle test",
+    "first_failure": "/private/tmp/m6-roof-outline-test-v1.log (14 signed-zero differences, fixed by shared original 140c90a40 first-cross correction; no relaxed comparison)",
+    "owner_world": {
+      "command": "cargo test -p system-wall-constructor roof_outline_ --lib",
+      "log": "/private/tmp/m6-roof-outline-owner-v2.log",
+      "result": "2 passed; real World AssetSsboLibrary and ConstructorGpuOutput: freehand no library/slot returns; rectangle missing library or slot panics; existing half record preserved and roof relocks and appends; foreign physical storage rejected; 8 x 544 original-byte comparison retained",
+      "first_fixture_failure": "/private/tmp/m6-roof-outline-owner-v1.log (resource_scope removed World resource when caught panic; test corrected to remove/reinsert explicitly)"
+    }
+  },
+  "files": [
+    {
+      "path": "tiny-glade/reports/module-recovery-2026-10-23/m06-roof-outline-oracle.py",
+      "sha256": "13ea049775e96fad2b8a9d4e296a0935f7c2efa4585c18583fed50ba9a9f89ae"
+    },
+    {
+      "path": "tiny-glade/reports/module-recovery-2026-10-23/m06-roof-outline-native-output.bin",
+      "sha256": "e38d90c3da058812b0f07e76ee95cc005388f10871e224cd1910b4b72fd83a22"
+    },
+    {
+      "path": "tiny-glade/reports/module-recovery-2026-10-23/m06-roof-outline-native-output-1.bin",
+      "sha256": "3f834f6767903673fb057e6c96a615c3e2995b0ba3dc244ea1f3fe3667775077"
+    },
+    {
+      "path": "tiny-glade/reports/module-recovery-2026-10-23/m06-roof-outline-native-output-2.bin",
+      "sha256": "30e51818a3e75638ea9662c25ae43e0163fbfdc79f4b163227e13b1efb5905df"
+    },
+    {
+      "path": "tiny-glade/reports/module-recovery-2026-10-23/m06-roof-outline-native-output-3.bin",
+      "sha256": "3dc6c5651362a7a2fd13f31717390f592962d90f792713c6390debd614213d8e"
+    },
+    {
+      "path": "tiny-glade/reports/module-recovery-2026-10-23/m06-roof-outline-native-output-4.bin",
+      "sha256": "a6286ccde8afcb8e73ab998bd3e53d1458e248b45151519bb5e576a32b38e71b"
+    },
+    {
+      "path": "tiny-glade/reports/module-recovery-2026-10-23/m06-roof-outline-native-output-5.bin",
+      "sha256": "2d3759ffd78110de9669a7a035e94b10730a0e95cce6644efb56b314f3f2d2ef"
+    },
+    {
+      "path": "tiny-glade/reports/module-recovery-2026-10-23/m06-roof-outline-native-output-6.bin",
+      "sha256": "227bde811ccbc97a87b5c0cbd6a2857e7f53796665171573f630cc533aa5b6fb"
+    },
+    {
+      "path": "tiny-glade/reports/module-recovery-2026-10-23/m06-roof-outline-native-output-7.bin",
+      "sha256": "fff1ba0a916c628e3eda706572be02e8e2bd51fbd297dc697c56933472e2a9ef"
+    }
+  ],
+  "remaining": "Original outer SSBO lookup/locking instructions not dynamically executed; World uses current library and allocation. Production callback, Nani/GPU and removal remain parent owned. Invalid/degenerate inputs, non-unit axes, Windows CRT across all inputs, A/C unverified."
+}

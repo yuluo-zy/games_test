@@ -140,13 +140,17 @@ impl ThresholdedCurveCoord {
     }
 }
 
-/// Safe projection of original 136B WallPathSegmentationMask. The three lazy
-/// cache Vec fields start empty in process_segment and are not read by the
-/// currently recovered materializer; their element schemas remain opaque.
+/// 原 136B 掩码的安全投影；柱提案由后续 arches 构造阶段填充。
 #[derive(Clone, Debug)]
 pub struct WallPathSegmentationMask {
     pub flags: Vec<u8>,
     pub coords: Vec<ThresholdedCurveCoord>,
+    /// 原 +0x30：每条 28 字节柱提案。
+    pub pillar_proposals: Vec<[u8; 28]>,
+    /// 原 +0x48：相同坐标归并时的最小高度。
+    pub pillar_scores: Vec<f32>,
+    /// 原 +0x60：提案在分段坐标数组中的索引。
+    pub pillar_keys: Vec<usize>,
     pub range: WallLoopRange,
     pub length: f32,
 }
@@ -381,6 +385,9 @@ pub fn process_segment(
     Ok(WallPathSegmentationMask {
         flags,
         coords,
+        pillar_proposals: Vec::new(),
+        pillar_scores: Vec::new(),
+        pillar_keys: Vec::new(),
         range,
         length,
     })

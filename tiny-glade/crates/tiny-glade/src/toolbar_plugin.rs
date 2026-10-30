@@ -15,6 +15,30 @@ impl Plugin for ToolbarPlugin {
     fn build(&self, app: &mut App) { build(app); }
 }
 
+/// 原14068dd10..dd96的摄影宿主组；生产入口和调度验收复用同一注册体。
+pub fn install_photomode_host_systems(app: &mut App) {
+    use country_core::systems::backend::photomode as photo;
+    app.add_systems(Update, (
+        photo::update_photomode_visibility,
+        photo::process_photomode_transitions,
+        toolbar::photomode::timelapse::restore_after_timelapse,
+        photo::finish_photomode_frame,
+    ).chain_ignore_deferred().in_set(GameSystemSet(8)).run_if(
+        bevy_state::condition::in_state(country_core::app_loading_state::AppLoadingState::Game)));
+}
+
+/// 原set10的模式请求消费者，生产宿主与工具栏App验收共用。
+pub fn install_mode_consumers(app: &mut App) {
+    use country_core::{resources::history::{EditType, MaybePendingSnapshotId},
+        systems::mode_manager};
+    app.add_systems(Update, (
+        mode_manager::synchronize_mode_manager_ui_context,
+        mode_manager::mode_manager::<EditType, MaybePendingSnapshotId>,
+        country_core::systems::timelapse_replay::start_timelapse,
+        mode_manager::send_mode_just_changed_event.in_set(mode_manager::ModeChangePublication),
+    ).chain_ignore_deferred().in_set(GameSystemSet(10)));
+}
+
 pub fn build(app: &mut App) {
     use toolbar::{ui_interaction as ui, ui_presentation as presentation,
         toolbar_button as button, toolbar_systems as systems,
@@ -237,6 +261,8 @@ mod registration_tests {
             app.configure_sets(Update, GameSystemSet(stage).before(GameSystemSet(stage + 1)));
         }
         crate::mei_host::install_mei_frame_systems(&mut app);
+        // 对照 run_game 的摄影 tuple，验证与本插件约束合并后没有循环。
+        install_photomode_host_systems(&mut app);
         build(&mut app);
         app.world_mut().schedule_scope(Update, |world, schedule| {
             schedule.initialize(world).expect("real toolbar registration must initialize");
@@ -257,6 +283,10 @@ mod registration_tests {
                 ][..],
                 &["::toolbar_size_mult_update", "::toolbar_steal_mouse_input",
                     "::switch_toolbar_category_button"][..],
+                &["::update_photomode_visibility", "::process_photomode_transitions",
+                    "::restore_after_timelapse", "::photomode_focus",
+                    "::photomode_buttons", "::finish_photomode_frame",
+                    "::toolbar_auto_hide"][..],
             ] {
                 for pair in sequence.windows(2) {
                     assert!(position(pair[0]) < position(pair[1]), "{pair:?}: {names:?}");

@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-27",
+  "original": [
+    {
+      "va": "0x140276e80",
+      "pdb_length": 30178,
+      "code_sha256": "daaf6d8ceba8096d195a35d8559203c238a625f62e9fa41d5e396a004f12fab5",
+      "prior_identity_bound_decompile": "eb65ccff042e64349ab90e4d5a4a66348b71608bf9ffa079b65d23cf9b7d89a9"
+    },
+    {
+      "va": "0x1407cf500",
+      "pdb_length": 8622,
+      "code_sha256": "741d1435167b9c633ff02c1119500f9f486fa30981fa86f0c1b1e4cd2af3e313",
+      "prior_identity_bound_decompile": "48aa11e70c02a2606ed23d1864328c14d8adb5fc2650eff00f64491fb024033e"
+    }
+  ],
+  "native_kernel": {
+    "range": "1407cfe5a..1407cff72",
+    "vectors": 128,
+    "all_bits_equal": true,
+    "unicorn_initial_sandbox_attempt": "exit132; existing Unicorn JIT required approved unsandboxed retry",
+    "scope": "scalar/vector SSE interpolation, normalization and ordered moved bit only; no callee injection or full game execution"
+  },
+  "tests": [
+    {
+      "filter": "decorator_visual::stairs::tests::",
+      "passed": 54,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 400,
+      "seconds": 0.06,
+      "log": "m01-stair-requests-tests-final.log"
+    },
+    {
+      "filter": "interpolate_history_tests",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 439,
+      "seconds": 0.01,
+      "log": "m01-stair-interpolation-tests-final.log"
+    }
+  ],
+  "scope_limits": [
+    "54 includes six stair visual tests; do not sum as disjoint coverage",
+    "CPU tests use native-physics; GPU/OS input not performed",
+    "Parent owns schedule integration and other slot3 members",
+    "Independent stair assembly support/brick/subscription gaps remain outside scope"
+  ],
+  "source_sha256_snapshot": {
+    "tiny-glade/crates/systems/decorator/src/decorator_visual/stairs.rs": "11109364b4a71129eb6193aef69e3f5aff419c07e16b9e7341cd8ebc9e008d8d",
+    "tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs": "b62ca72f545e78e862c91addf19cc8859f6af5ba008382a32556b08378af0e6c"
+  }
+}

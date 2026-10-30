@@ -224,7 +224,9 @@ pub fn construct_freehand_wall_arches(
         gate_commands: Vec::new(),
         segment_count: 0,
         segments: Vec::new(),
+        pillar_caches: Vec::new(),
     };
+    let mut touched_start = false;
     let mut all = Vec::new();
     for mask in input.masks {
         let mut ss = materialize_wall_segments(WallSegmentSource {
@@ -274,6 +276,9 @@ pub fn construct_freehand_wall_arches(
             );
             all.push((s.clone(), trim));
         }
+        let mut cache = (mask.pillar_proposals.clone(), mask.pillar_scores.clone(), mask.pillar_keys.clone());
+        for segment in &ss { super::arches::collect_pillar_endpoints(segment, &mut cache, &mut touched_start, false); }
+        out.pillar_caches.push(cache);
     }
     for (s, trim) in &all {
         let c = if *trim == [0., 1.] {

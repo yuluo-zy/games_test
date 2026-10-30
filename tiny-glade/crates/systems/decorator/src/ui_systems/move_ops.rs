@@ -8,10 +8,8 @@
 //!   48B Arc 载荷 = `{Quat 16B, Vec3}`；`SignifierFactory::new` 写 40B 记录
 //!   `{name_len,name_ptr,name_len_dup,inner,marker}` → `UiSignifierStream::write`。
 //!
-//! U 登记：`SignifierFactory::new` 的 marker 实参在 B 为静态地址
-//! 0x142c24800（类型标记），本实现以 0 承载；`xz_projective_rotation_bad`
-//! 在 crate utils 中当前为 Mat3 近似（B 返回 16B，见该函数注释），本处按其
-//! 输出的前 4 个 f32 存储（字节位型一致）。
+//! 原闭包141280020使用decorator_delete_scribble、零动画时长和完整姿态；
+//! 拥有工厂捕获值直至唤醒/回收，不能保存函数返回后已释放的Arc裸地址。
 //!
 //! - `calculate_move_dst` B1412801f0/512B takes the selected interaction
 //!   candidate, not an existing DecoratorInfo. Candidate tags 0/1/2/3 are
@@ -27,10 +25,9 @@ use country_core::resources::walls::decorator_storage::DecoratorStorageAddr;
 use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::resources::walls::WallId;
 use country_core::systems::ui::signifiers::signifier_create::UiSignifierStream;
-use country_core::systems::ui::signifiers::SignifierFactory;
+use country_core::systems::ui::signifiers::signifier_factory::{SignifierFactory, SignifierEntityBuilder};
 use glam::{Vec2, Vec3};
 
-use crate::utils::xz_projective_rotation_bad;
 use utils::wall_space::WallSpaceCoord;
 
 /// `show_decorator_remove_signifier` 的装饰侧输入（B RDX 结构）：
@@ -68,23 +65,18 @@ pub fn show_decorator_remove_signifier(
     let position = source.position + dist * source.direction;
 
     // 0x14127fe9b：rotation = xz_projective_rotation_bad(dir)（B 输出 16B）。
-    let rotation = xz_projective_rotation_bad(Vec2::new(source.direction.x, source.direction.z));
-    let mut rotation_bytes = [0.0f32; 4];
-    rotation_bytes.copy_from_slice(&rotation.to_cols_array()[..4]);
+    let rotation = ::utils::xz_projective_rotation_bad(source.direction);
 
     // 0x14127fed2..0x14127ff05：format!("despawn_decorator_{:?}_{:?}", id, pos)。
     let name = format!("despawn_decorator_{:?}_{:?}", id, position);
 
     // 0x14127ff43..0x14127ff61：48B ArcInner {strong=1,weak=1,payload}；
     // payload = {rotation 16B, position 12B}。
-    let payload = Arc::new(RemoveSignifierPayload {
-        rotation: rotation_bytes,
-        position,
-    });
-
-    // 0x14127ff7d：SignifierFactory::new(name, inner=Arc payload, marker)。
-    // U：B marker = 静态 0x142c24800（类型标记），本实现填 0。
-    let factory = SignifierFactory::new(name.as_bytes(), Arc::as_ptr(&payload) as *const u8, 0);
+    let factory = SignifierFactory::from_closure(&name, Arc::new(move |meshes, shaders, commands| {
+        vec![SignifierEntityBuilder::from_mesh_name("decorator_delete_scribble")
+            .animation_duration(0.0).position(position).rotation(rotation)
+            .build(meshes, shaders, commands)]
+    }));
     // 0x14127ffa1：UiSignifierStream::write(factory 40B 记录)。
     stream.write_factory(&factory);
     // 0x14127ffa6..0x14127ffb9：名字 String 释放（Rust String drop 等价）。

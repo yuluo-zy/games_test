@@ -1,0 +1,33 @@
+{
+  "scope": "M01 necessary Reload dependency only",
+  "original_va": "0x140347090",
+  "pdb_code_size": 9451,
+  "ghidra_body_count": 5395,
+  "original_pdb_module": 141,
+  "pdb_record_offset": 113876,
+  "existing_B_path_actually_read": "reverse-engineering/tiny-glade/skeleton/B/crates/tiny-glade/src/decorator_plugin.rs",
+  "production_path": "tiny-glade/crates/tiny-glade/src/decorator_plugin.rs",
+  "source_sha256": "b79938cd1562e0643243779eeccc0392630fabfc7a609ea512087394b8971c18",
+  "native_evidence": "m01-decorator-unload-evidence-report.json",
+  "test": {
+    "command": "CARGO_INCREMENTAL=0 cargo test -p tiny-glade --lib --offline decorator_unload_tests -- --nocapture",
+    "native_physics": "enabled by tiny-glade dependency, no fallback cfg",
+    "passed": 1,
+    "failed": 0,
+    "ignored": 0,
+    "filtered_out": 277,
+    "elapsed_test_seconds": 0.02,
+    "log": "m01-decorator-unload-tests.log"
+  },
+  "production_registration": "central owner to mount original OnExit and relative order",
+  "outstanding_shared_owner_boundaries": [
+    "RaycastWorld::on_level_reload lacks production registration before this handoff; central owner notified",
+    "StairsVisualState original opaque entity slots remain incomplete in shared model",
+    "StairsTopDownMesh numeric ManagedHandle removal is not proof of actual GPU buffer retirement"
+  ],
+  "not_validated": [
+    "real GPU unload/reload",
+    "OS input",
+    "entire game Reload"
+  ]
+}

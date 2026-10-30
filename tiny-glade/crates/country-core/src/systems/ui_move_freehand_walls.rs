@@ -19,9 +19,87 @@ pub struct MoveFreehandCache {
     pub grab_offset: Vec2,
 }
 
+pub(crate) fn archive_freehand(
+    archivist: &mut LiveDecoratorArchivist,
+    storage: &DecoratorStorage,
+    resources: &DecoratorArchivalResources<'_>,
+    wall: WallId,
+    reason: &str,
+) {
+    archivist.archive_current_decorators_in_storages_with_resources(
+        &[DecoratorStorageAddr::Wall(wall), DecoratorStorageAddr::Terrain], storage, resources, reason,
+    );
+    archivist.decorator_cull_allow_wall(wall, storage);
+    if let Some(terrain) = storage.get(DecoratorStorageAddr::Terrain) {
+        archivist.culling.allowed_ids.extend(terrain.decorators().keys().copied());
+    }
+}
+
+pub(crate) fn anchor_xz(info: &crate::resources::walls::decorator::DecoratorInfo) -> Vec2 {
+    Vec2::new(f32::from_bits((info.dst_payload >> 32) as u32), f32::from_bits((info.u18 >> 32) as u32))
+}
+
+pub(crate) fn wall_anchor(info: &crate::resources::walls::decorator::DecoratorInfo) -> bool {
+    match info.dst_tag() {
+        2 => false,
+        3 => panic!("自由墙装饰不能附着楼梯"),
+        4 => unreachable!("自由墙装饰目的地无效"),
+        _ => true,
+    }
+}
+
+fn move_anchor(curve: &Curve2, eye: Vec3) -> (Vec2, Vec2, Vec2) {
+    let midpoint = Vec2::from_array(curve.pos_at_u(0.5));
+    let (segment, _) = curve.coord_at_u(0.5);
+    let tangent = Vec2::from_array(curve.points[segment + 1]) - Vec2::from_array(curve.points[segment]);
+    let inverse = 1.0 / (tangent.y * tangent.y + tangent.x * tangent.x).sqrt();
+    let normal = Vec2::new(-tangent.y * inverse, tangent.x * inverse);
+    let inverse_eye = 1.0 / (eye.z * eye.z + eye.x * eye.x).sqrt();
+    let dot = inverse_eye * eye.z * normal.y + inverse_eye * eye.x * normal.x;
+    let offset = if dot < 0.0 { normal } else { -normal };
+    (midpoint, midpoint + offset, normal)
+}
+
+fn translate_curve(curve: &Curve2, cursor: Vec2, offset: Vec2) -> Curve2 {
+    let first = curve.points.first().expect("自由墙曲线不能为空");
+    let delta = Vec2::new((cursor.x - offset.x) - first[0], (cursor.y - offset.y) - first[1]);
+    let mut result = curve.clone();
+    translate_points(&mut result.points, delta);
+    result
+}
+
+fn translate_points(points: &mut [[f32; 2]], delta: Vec2) {
+    for point in points { point[0] += delta.x; point[1] += delta.y; }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn native_scalar_translation_fixture_matches_bits() {
+        let cases: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"), "/../../reports/module-recovery-2026-10-23/m01-freehand-native.json"
+        ))).unwrap();
+        let read_pair = |pair: &serde_json::Value| [
+            f32::from_bits(pair[0].as_u64().unwrap() as u32),
+            f32::from_bits(pair[1].as_u64().unwrap() as u32),
+        ];
+        for case in cases["translations"].as_array().unwrap() {
+            let mut points: Vec<[f32; 2]> = case["points"].as_array().unwrap().iter().map(read_pair).collect();
+            translate_points(&mut points, Vec2::from_array(read_pair(&case["delta"])));
+            let bits: Vec<u32> = points.iter().flatten().map(|x| x.to_bits()).collect();
+            let expected: Vec<u32> = case["output"].as_array().unwrap().iter().map(|x| x.as_u64().unwrap() as u32).collect();
+            assert_eq!(bits, expected);
+        }
+    }
+    #[test]
+    fn translation_keeps_original_cache_and_grab_offset() {
+        let source = Curve2 { points: vec![[1., 2.], [3., 5.], [8., 7.]], points_u: vec![0., 0.271, 1.], length: 123.4 };
+        let result = translate_curve(&source, Vec2::new(6., 9.), Vec2::new(2., 3.));
+        assert_eq!(result.points, vec![[4., 6.], [6., 9.], [11., 11.]]);
+        assert_eq!(result.points_u, source.points_u);
+        assert_eq!(result.length.to_bits(), source.length.to_bits());
+    }
     use crate::resources::walls::{
         WallState,
         public_walls::{WallPublicationDirty, WallSpatialHash},
@@ -30,6 +108,222 @@ mod tests {
     use crate::systems::mode_manager::{AppMode, EditSubject};
     use crate::systems::ui::resources::ui_state::WidgetId;
 
+    #[test]
+    fn real_world_move_edit_border_release_and_unload() {
+        use crate::{
+            input::action_set::ActionSetStates,
+            resources::{
+                cursor_terrain_raycast::CursorTerrainRaycast,
+                events::{OnFreehandWallEdited, OnShapeMoved},
+                glade_border::{DisplayOutOfBorder, FeedbackInputOutOfBorder, GladeBorder},
+                history::{EditType, MaybePendingSnapshotId, wall_edit::WallHistoryEdit},
+                tree_storage::HideTreesNextToWallCmd,
+                window::AudioCursorMoved,
+                walls::{
+                    WallState, public_walls::WallPublicationDirty,
+                    publication_source::TerrainHeightGrid512,
+                },
+            },
+            systems::{
+                audio::RequestWallMaterialAudio,
+                camera_rig::MainCamera,
+                ui::resources::ui_state::{UiInteraction, WidgetId},
+                ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter,
+                ui_edit_freehand_walls::ui_edit_freehand_walls,
+                wall::wall_state::wall_spatial_hash::WallSpatialHash,
+            },
+        };
+        let source = Curve2::try_new(vec![[0., 0.], [2., 0.], [3., 2.]], false).unwrap();
+        let mut inner = InnerWalls::new();
+        let wall = inner.new_wall(WallState::new(source.clone(), 4., 0, 0, false));
+        let mut world = World::new();
+        world.insert_resource(inner);
+        world.init_resource::<PublicWalls>();
+        fn publish(world: &mut World) {
+            let mut inner = world.remove_resource::<InnerWalls>().unwrap();
+            let terrain = TerrainHeightGrid512 {
+                encoded: vec![0u16; 512 * 512].into(),
+                minimum_y: 0.,
+                maximum_y: 0.,
+                sampling_fix: false,
+            };
+            world.resource_mut::<PublicWalls>().consume_with_paths(
+                &mut inner,
+                &terrain,
+                None,
+                &WallPublicationDirty::default(),
+                &WallSpatialHash::default(),
+            );
+            world.insert_resource(inner);
+        }
+        publish(&mut world);
+        world.insert_resource(AppMode::Editing(EditSubject::Wall(wall.0)));
+        world.insert_resource(CursorTerrainRaycast {
+            tag: 1,
+            pos: Vec3::ZERO,
+            ..Default::default()
+        });
+        world.init_resource::<DecoratorStorage>();
+        world.init_resource::<LiveDecoratorArchivist>();
+        world.init_resource::<crate::systems::collision::world::RaycastWorld>();
+        #[cfg(feature="native-physics")]
+        world.init_resource::<crate::resources::walls::decorator_collision::DecoratorPhysicsColliders>();
+        let mut history = History::<MaybePendingSnapshotId>::empty_glade();
+        history.start_input_recording(0).unwrap();
+        world.insert_resource(history);
+        let mut heights = TerrainHeightsData::<TerrainHeightSsbo>::new();
+        heights.set_height_range(0., 0.);
+        world.insert_resource(heights);
+        world.insert_resource(MainCamera::new(1.));
+        world.init_resource::<ActionSetStates>();
+        world.init_resource::<UiSignifierStream>();
+        world.insert_resource(GladeBorder(
+            crate::resources::glade_border::BorderShape::Rectangle(
+                ::utils::geometry::Rectangle2d::new_centered_axis_aligned(Vec2::splat(130.)),
+            ),
+        ));
+        world.init_resource::<Events<AudioCursorMoved>>();
+        world.init_resource::<Events<RequestWallMaterialAudio>>();
+        world.init_resource::<Events<DisplayOutOfBorder>>();
+        world.init_resource::<Events<FeedbackInputOutOfBorder>>();
+        world.init_resource::<Events<OnShapeMoved>>();
+        world.init_resource::<Events<OnFreehandWallEdited>>();
+        world.init_resource::<Events<HideTreesNextToWallCmd>>();
+        world.init_resource::<Events<ShowPinnedDecoClutter>>();
+        let widget = WidgetId::from_name(&format!("move_shape{wall}"));
+        let interact = |world: &mut World, phase, widget| {
+            let mut ui = UiState::new(UiInteraction {
+                native_tag: 2,
+                native_phase: phase,
+                widget,
+            });
+            ui.set_intersection_tag(0);
+            world.insert_resource(ui);
+        };
+        let mut movement = Schedule::default();
+        movement.add_systems(ui_move_freehand_walls::<MaybePendingSnapshotId>);
+        interact(&mut world, 3, widget);
+        movement.run(&mut world);
+        let registered = world.resource::<UiState>().widget(widget).unwrap();
+        assert!(matches!(
+            registered.geometry,
+            Some(crate::systems::ui::resources::widget_params::WidgetGeometry::TriangleMesh(_))
+        ));
+        world.resource_mut::<CursorTerrainRaycast>().pos = Vec3::new(4., 0., 2.);
+        interact(&mut world, 4, widget);
+        movement.run(&mut world);
+        let translated = world
+            .resource::<InnerWalls>()
+            .get(wall)
+            .unwrap()
+            .source()
+            .curve
+            .clone();
+        assert_eq!(translated.points, vec![[4., 2.], [6., 2.], [7., 4.]]);
+        assert_eq!(translated.points_u, source.points_u);
+        publish(&mut world);
+        world.resource_mut::<CursorTerrainRaycast>().pos = Vec3::new(200., 0., 200.);
+        interact(&mut world, 4, widget);
+        movement.run(&mut world);
+        assert_eq!(
+            world
+                .resource::<InnerWalls>()
+                .get(wall)
+                .unwrap()
+                .source()
+                .curve
+                .points,
+            translated.points
+        );
+        assert_eq!(
+            world.resource::<Events<FeedbackInputOutOfBorder>>().len(),
+            1
+        );
+        interact(&mut world, 0, widget);
+        movement.run(&mut world);
+        assert_eq!(
+            world.resource::<History>().pending().unwrap().edits.len(),
+            1
+        );
+        // 同一World转入逐点编辑；Local跨帧持有真实起点与曲线，而不是注入编辑命令。
+        let point_widget = WidgetId::from_name(&format!("edit_wall_{wall}_1"));
+        let mut editing = Schedule::default();
+        editing.add_systems(ui_edit_freehand_walls::<MaybePendingSnapshotId>);
+        world.resource_mut::<CursorTerrainRaycast>().pos = Vec3::new(6., 0., 2.);
+        interact(&mut world, 3, point_widget);
+        editing.run(&mut world);
+        assert_eq!(
+            world
+                .resource::<UiState>()
+                .widget(point_widget)
+                .unwrap()
+                .volume
+                .size
+                .x,
+            0.75
+        );
+        world.resource_mut::<CursorTerrainRaycast>().pos = Vec3::new(7., 0., 3.);
+        interact(&mut world, 4, point_widget);
+        editing.run(&mut world);
+        assert_eq!(
+            world
+                .resource::<InnerWalls>()
+                .get(wall)
+                .unwrap()
+                .source()
+                .curve
+                .points[1],
+            [7., 3.]
+        );
+        publish(&mut world);
+        interact(&mut world, 1, point_widget);
+        editing.run(&mut world);
+        let pending = world.resource::<History>().pending().unwrap();
+        assert_eq!(pending.edits.len(), 2);
+        let saved = serde_json::to_vec(&pending.edits).unwrap();
+        let restored: Vec<EditType> = serde_json::from_slice(&saved).unwrap();
+        assert_eq!(restored.len(), 2);
+        let EditType::Wall(restored_wall) = &restored[1] else {
+            panic!("自由墙历史恢复必须保留业务类型");
+        };
+        let WallHistoryEdit::MorphFreehandWall(change) = &restored_wall.groups[0][0] else {
+            panic!("自由墙历史恢复必须保留曲线编辑");
+        };
+        let current_curve = &world
+            .resource::<InnerWalls>()
+            .get(wall)
+            .unwrap()
+            .source()
+            .curve;
+        assert_eq!(change.after.points, current_curve.points);
+        assert_eq!(change.after.points_u, current_curve.points_u);
+        assert_eq!(
+            change.after.length.to_bits(),
+            current_curve.length.to_bits()
+        );
+        for edit in &pending.edits {
+            let EditType::Wall(edit) = edit else {
+                panic!("必须记录墙复合编辑");
+            };
+            assert_eq!(edit.groups.len(), 1);
+            assert!(matches!(
+                edit.groups[0][0],
+                WallHistoryEdit::MorphFreehandWall(_)
+            ));
+        }
+        assert_eq!(world.resource::<Events<OnShapeMoved>>().len(), 2);
+        assert_eq!(world.resource::<Events<OnFreehandWallEdited>>().len(), 2);
+        let tree: Vec<_> = world
+            .resource_mut::<Events<HideTreesNextToWallCmd>>()
+            .drain()
+            .collect();
+        assert_eq!(tree.iter().filter(|e| e.finished).count(), 2);
+        world.resource_mut::<UiSignifierStream>().take_entries();
+        // 卸载World和两个Schedule会销毁Local曲线/闭包/归档，无裸指针借用残留。
+        drop(editing);
+        drop(movement);
+        drop(world);
+    }
     #[test]
     fn real_picker_moves_freehand_and_records_history() {
         let curve = Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap();
@@ -367,20 +661,14 @@ pub fn ui_move_freehand_walls<S: Send + Sync + 'static>(
     if state.shape().tag() < 2 {
         return;
     }
-    let p = curve.pos_at_u(0.5);
-    let midpoint = Vec2::new(p[0], p[1]);
-    let tangent = curve.tangent_at_u(0.5);
-    let original_normal = Vec2::new(-tangent[1], tangent[0]);
-    let mut normal = original_normal;
-    let eye = camera.eye_forward();
-    if normal.dot(Vec2::new(eye.x, eye.z)) > 0.0 {
-        normal = -normal;
-    }
-    let terrain_y = terrain.sample_at_world_xz(midpoint.x + normal.x, midpoint.y + normal.y);
+    let (midpoint, handle, original_normal) = move_anchor(curve, camera.eye_forward());
+    let terrain_y = terrain.sample_at_world_xz(handle.x, handle.y);
+    let elevation = state.authority.elevation();
+    let height = if terrain_y.is_nan() || elevation > terrain_y { elevation } else { terrain_y };
     let anchor = Vec3::new(
-        midpoint.x + normal.x,
-        state.authority.elevation().max(terrain_y),
-        midpoint.y + normal.y,
+        handle.x,
+        height,
+        handle.y,
     );
     let rotation =
         ::utils::xz_projective_rotation_bad(Vec3::new(original_normal.x, 0.0, original_normal.y));
@@ -394,7 +682,8 @@ pub fn ui_move_freehand_walls<S: Send + Sync + 'static>(
         terrain_y,
         &mut signifiers,
     );
-    match context.dragged().wrapping_sub(2).min(3) {
+    let dragged = context.dragged();
+    match dragged.wrapping_sub(2).min(3) {
         1 => {
             archivist.archive_current_decorators_in_storages_with_resources(
                 &[
@@ -429,29 +718,15 @@ pub fn ui_move_freehand_walls<S: Send + Sync + 'static>(
             cache.initial = Some(curve.clone());
             let pos = cursor.position();
             cache.grab_offset = Vec2::new(pos.x, pos.z) - Vec2::from_array(curve.points[0]);
-            if audio_cursor.read().count() != 0 {
-                material.write(crate::systems::audio::RequestWallMaterialAudio {
-                    id: wall.0,
-                    position: anchor,
-                    kind: 1,
-                    flag: 0,
-                });
-            }
         }
         2 => {
-            let mut candidate = inner
+            let current = &inner
                 .get(wall)
                 .expect("freehand move authority missing")
                 .source()
-                .curve
-                .clone();
-            let first =
-                Vec2::from_array(*candidate.points.first().expect("freehand move curve empty"));
+                .curve;
             let pos = cursor.position();
-            let delta = Vec2::new(pos.x, pos.z) - cache.grab_offset - first;
-            for point in &mut candidate.points {
-                *point = (Vec2::from_array(*point) + delta).to_array();
-            }
+            let candidate = translate_curve(current, Vec2::new(pos.x, pos.z), cache.grab_offset);
             let inside = candidate
                 .points
                 .iter()
@@ -472,18 +747,9 @@ pub fn ui_move_freehand_walls<S: Send + Sync + 'static>(
                 finished: false,
             });
             pins.write(
-                crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter::Wall {
-                    wall,
-                },
+                crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter::for_wall(wall),
             );
-            if inside && audio_cursor.read().count() != 0 {
-                material.write(crate::systems::audio::RequestWallMaterialAudio {
-                    id: wall.0,
-                    position: anchor,
-                    kind: 1,
-                    flag: 0,
-                });
-            }
+            if !inside { return; }
         }
         3 => {
             use crate::resources::history::{
@@ -522,5 +788,13 @@ pub fn ui_move_freehand_walls<S: Send + Sync + 'static>(
             });
         }
         _ => {}
+    }
+    if dragged != 2 && audio_cursor.read().last().is_some() {
+        material.write(crate::systems::audio::RequestWallMaterialAudio {
+            id: wall.0,
+            position: anchor,
+            kind: 1,
+            flag: 0,
+        });
     }
 }

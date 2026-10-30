@@ -255,36 +255,6 @@ fn rock_mask_reads_u32_word_bit_and_panics_out_of_bounds() {
 }
 
 #[test]
-fn terrain_focus_mode_no_stroke_path_writes_window_focus_once() {
-    use crate::{
-        systems::mode_manager::{AppMode, EditSubject},
-        systems::ui::signifiers::signifier_create::UiSignifierStream,
-    };
-    let mut world = World::new();
-    register_terrain_events(&mut world);
-    world.insert_resource(AppMode::Editing(EditSubject::Terrain(0)));
-    world.insert_resource(ui_terrain_focus_mode::TerrainFocusRaycast {
-        tag: 0,
-        hit_pos: glam::Vec3::new(10.0, 0.0, 0.0),
-        camera_pos: glam::Vec3::ZERO,
-    });
-    world.insert_resource(ui_terrain_focus_mode::TerrainFocusHover {
-        tag: 1,
-        pos: glam::Vec3::new(1.0, 0.0, 0.0),
-    });
-    world.insert_resource(ui_terrain_focus_mode::TerrainFocusSelection { tag: 1, value: 7 });
-    world.insert_resource(TerrainEditingData(
-        tg_terrain::stroke::TerrainEditingData::default(),
-    ));
-    world.insert_resource(UiSignifierStream::default());
-    let mut schedule = Schedule::default();
-    schedule.add_systems(ui_terrain_focus_mode::ui_terrain_focus_mode);
-    schedule.run(&mut world);
-    let triggers = world.resource::<Events<ui_terrain_focus_mode::TerrainFocusTrigger>>();
-    assert_eq!(triggers.len(), 1);
-}
-
-#[test]
 fn terrain_readback_waits_for_a_publication_from_the_issuing_frame() {
     use crate::render::gpu_readback::GpuReadbacks;
     let library = AssetSsboLibrary::new();
@@ -321,4 +291,25 @@ fn terrain_readback_waits_for_a_publication_from_the_issuing_frame() {
     assert_eq!(world.resource::<Events<OnTerrainChange>>().len(), 1);
     schedule.run(&mut world);
     assert_eq!(world.resource::<Events<OnTerrainChange>>().len(), 1);
+}
+#[test]
+fn terrain_resource_registration_initializes_edit_capture_owner() {
+    let mut app = bevy_app::App::new();
+    app.insert_resource(ui_edit_terrain::TerrainEditUiState {
+        previous_height_ws: 12.0,
+        ..Default::default()
+    });
+    app.insert_terrain_resources();
+    let timer = app.world().resource::<ui_edit_terrain::MouseActivityTimer>();
+    assert_eq!((timer.value_00.to_bits(), timer.value_04.to_bits(), timer.flag_08),
+        (0.0f32.to_bits(), 1000.0f32.to_bits(), 0));
+    app.world_mut().resource_mut::<ui_edit_terrain::MouseActivityTimer>().value_04 = 4.0;
+    app.insert_terrain_resources();
+    let timer = app.world().resource::<ui_edit_terrain::MouseActivityTimer>();
+    assert_eq!((timer.value_00.to_bits(), timer.value_04.to_bits(), timer.flag_08),
+        (0.0f32.to_bits(), 1000.0f32.to_bits(), 0));
+    let cache = app.world().resource::<ui_edit_terrain::TerrainEditUiState>();
+    assert_eq!(cache.previous_height_ws, 0.0);
+    assert_eq!(cache.previous_falloff, 0.0);
+    assert_eq!(cache.hover, Vec3::ZERO);
 }

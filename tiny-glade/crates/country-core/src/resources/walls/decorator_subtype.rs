@@ -57,17 +57,53 @@ impl IntoDecoratorSubtype for DecoratorSubtype {
     }
 }
 
-/// 装饰网格逻辑键：subtype与rank；保留现variant字段名称作为rank。
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// 原键有 Subtype{rank,subtype} 与 LanternTerrainRotation 两支。
+/// 保留原重构的字段 API；26/0 是 unit 分支的宿主载体，不是第27种 subtype。
+#[derive(Clone, Copy, Default, Serialize, Deserialize)]
 pub struct DecoratorLibKey {
     pub subtype: u8,
     pub variant: u8,
 }
 
 impl DecoratorLibKey {
+    pub const LANTERN_TERRAIN_ROTATION: Self = Self { subtype: 0x1a, variant: 0 };
+
+    pub const fn is_lantern_terrain_rotation(self) -> bool {
+        self.subtype == 0x1a
+    }
+
     /// 0x140b25c90（O；PDB 名与 impl$1::get::closure$0 两参交换同址）：构造。
     pub fn new(subtype: u8, rank: u8) -> Self {
         Self { subtype, variant: rank }
+    }
+}
+
+impl PartialEq for DecoratorLibKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.subtype == other.subtype
+            && (self.is_lantern_terrain_rotation() || self.variant == other.variant)
+    }
+}
+impl Eq for DecoratorLibKey {}
+impl std::hash::Hash for DecoratorLibKey {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        std::hash::Hash::hash(&self.subtype, state);
+        // 原1407af100的unit比较只读tag；第二字节不活跃，不可参与等价键的hash。
+        if !self.is_lantern_terrain_rotation() {
+            std::hash::Hash::hash(&self.variant, state);
+        }
+    }
+}
+impl std::fmt::Debug for DecoratorLibKey {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.is_lantern_terrain_rotation() {
+            // 原1407af06c读取142a834e2，22字节。
+            formatter.write_str("LanternTerrainRotation")
+        } else {
+            // 普通分支保留现宿主字段显示；不冒称其DecoratorSubtype私有enum的Debug ABI。
+            formatter.debug_struct("DecoratorLibKey")
+                .field("subtype", &self.subtype).field("variant", &self.variant).finish()
+        }
     }
 }
 
@@ -160,9 +196,36 @@ impl IntoDecoratorSubtype for LegacyDerivedDecoratorInfoRecord {
 }
 
 /// 原装饰ID到子类型的唯一权威表，payload直接是DecoratorSubtype。
-#[derive(bevy_ecs::resource::Resource, Clone, Debug, Default)]
+#[derive(bevy_ecs::resource::Resource, Debug, Default)]
 pub struct DerivedDecoratorSubtypes {
     map: HashMap<u32, DecoratorSubtype>,
+}
+
+impl Clone for DerivedDecoratorSubtypes {
+    fn clone(&self) -> Self { Self { map: self.map.clone() } }
+    fn clone_from(&mut self, source: &Self) {
+        // 原备份三map通过clone_from覆盖，复用目标表的分配。
+        self.map.clone_from(&source.map);
+    }
+}
+
+#[cfg(test)]
+mod backup_clone_tests {
+    use super::*;
+    #[test]
+    fn backup_subtype_clone_from_preserves_source_and_reuses_matching_table_capacity() {
+        let mut source = DerivedDecoratorSubtypes { map: HashMap::with_capacity(64) };
+        let mut target = DerivedDecoratorSubtypes { map: HashMap::with_capacity(64) };
+        source.insert(7, DecoratorSubtype(9));
+        for id in 0..64 { target.insert(id, DecoratorSubtype(3)); }
+        let capacity = target.map.capacity();
+        target.clone_from(&source);
+        assert_eq!(target.map.capacity(), capacity);
+        assert_eq!(target.map.len(), 1);
+        assert_eq!(target.get(7), DecoratorSubtype(9));
+        source.insert(7, DecoratorSubtype(4));
+        assert_eq!(target.get(7), DecoratorSubtype(9));
+    }
 }
 
 impl DerivedDecoratorSubtypes {
@@ -319,6 +382,12 @@ impl<'a> DerivedDecoratorInfoView<'a> {
     /// 借出同一四表资源，消费者按实际key读取真实mesh与bounds。
     pub fn mesh_library(&self) -> &'a DecoratorMeshLibrary {
         self.mesh_lib
+    }
+
+    /// B 141fdc7b0：以实际子类型及原样 rank 查碰撞表，复制其中的局部范围。
+    /// 缺键时沿用 mesh library 的必需资源失败；不从 interaction 表回退。
+    pub fn bbx_ls(&self, subtype: DecoratorSubtype, rank: u8) -> Rectangle3d {
+        self.mesh_lib.collision_record(DecoratorLibKey::new(subtype.0, rank)).bounds
     }
 }
 
@@ -504,6 +573,35 @@ mod canonical_collision_regressions {
         assert_eq!(c.bounds.top - c.bounds.bottom, 3.0);
         assert_eq!(i.bounds.footprint.size.x, 5.0);
         assert_eq!(i.bounds.top - i.bounds.bottom, 6.0);
+        let subtypes = DerivedDecoratorSubtypes::default();
+        let view = DerivedDecoratorInfoView::new(&subtypes, &lib);
+        assert_eq!(view.bbx_ls(DecoratorSubtype(7), 5), c.bounds);
+        assert_ne!(view.bbx_ls(DecoratorSubtype(7), 5), i.bounds);
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            view.bbx_ls(DecoratorSubtype(7), 4)
+        })).is_err());
+    }
+
+    #[test]
+    fn bbx_ls_returns_all_eight_original_words_from_collision_owner() {
+        let mut lib = DecoratorMeshLibrary::default();
+        let mut item = collision(Vec3::ONE);
+        let bits: [u32; 8] = std::array::from_fn(|j| 0x3f00_0000 + j as u32 * 0x1_0001);
+        let words = bits.map(f32::from_bits);
+        item.bounds = Rectangle3d {
+            footprint: utils::geometry::Rectangle2d {
+                axis: Vec2::new(words[0], words[1]),
+                center: Vec2::new(words[2], words[3]),
+                size: Vec2::new(words[4], words[5]),
+            },
+            bottom: words[6], top: words[7],
+        };
+        lib.collision.insert(DecoratorLibKey::new(3, 1), item);
+        let subtypes = DerivedDecoratorSubtypes::default();
+        let b = DerivedDecoratorInfoView::new(&subtypes, &lib).bbx_ls(DecoratorSubtype(3), 1);
+        let actual = [b.footprint.axis.x, b.footprint.axis.y, b.footprint.center.x,
+            b.footprint.center.y, b.footprint.size.x, b.footprint.size.y, b.bottom, b.top];
+        assert_eq!(actual.map(f32::to_bits), bits);
     }
 
     #[test]
@@ -533,5 +631,38 @@ mod canonical_collision_regressions {
         assert_eq!(cuboid.half_extents.z, 0.0);
         assert_eq!(empty.bounds, Rectangle3d::new(Vec3::ZERO, Vec3::ONE, Vec2::X));
         assert_eq!(empty.mesh.local_transform().translation, Vec3::ZERO);
+    }
+}
+
+#[cfg(test)]
+mod lantern_rotation_unit_key_tests {
+    use super::*;
+    use std::hash::{Hash, Hasher};
+
+    #[test]
+    fn native_unit_key_ignores_its_inactive_second_byte_and_keeps_a_distinct_identity() {
+        let key = DecoratorLibKey::LANTERN_TERRAIN_ROTATION;
+        assert_eq!(format!("{key:?}"), "LanternTerrainRotation");
+        let mut map = std::collections::HashMap::new();
+        map.insert(key, "原unit值");
+        let hash = |key: DecoratorLibKey| {
+            let mut hash = std::collections::hash_map::DefaultHasher::new();
+            key.hash(&mut hash);
+            hash.finish()
+        };
+        for byte in 0..=u8::MAX {
+            let same = DecoratorLibKey { subtype: 0x1a, variant: byte };
+            assert_eq!(same, key);
+            assert_eq!(hash(same), hash(key));
+            assert_eq!(map.get(&same), Some(&"原unit值"));
+        }
+        for subtype in 0..26 {
+            for rank in 1..=3 {
+                let normal = DecoratorLibKey::new(subtype, rank);
+                assert_ne!(normal, key);
+                assert!(!normal.is_lantern_terrain_rotation());
+                assert!(!map.contains_key(&normal));
+            }
+        }
     }
 }

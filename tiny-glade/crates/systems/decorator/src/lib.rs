@@ -195,9 +195,9 @@ pub fn register_cull_oob_systems<C: Send + Sync + 'static>(app: &mut bevy_app::A
         bevy_app::Update,
         (
             cull_oob_decorators::auto_allow_decorator_culling::<C>,
-            cull_oob_decorators::cull_oob_decorators::<C>,
-            cull_oob_decorators::cull_stair_attached_decorators::<C>,
-            cull_oob_decorators::cull_stair_attached_decorators_on_invalid_stairs::<C>,
+            cull_oob_decorators::cull_oob_decorators,
+            cull_oob_decorators::cull_stair_attached_decorators,
+            cull_oob_decorators::cull_stair_attached_decorators_on_invalid_stairs,
         )
             .chain(),
     );
@@ -209,8 +209,6 @@ pub fn add_decorator_events_and_resources(world: &mut World) {
     world.init_resource::<window_lights::GlobalWindowLightsControl>();
     world.init_resource::<chimney_smoke_anim_thickness::ChimneySmokeThickness>();
     world.init_resource::<chimney_smoke_anim_thickness::TimeOfDayCycle>();
-    // 灯笼灯光双缓冲（0x140790400 新旧 0x1cB 列表比较输出）。
-    world.init_resource::<decorator_visual::lantern::LanternLightLists>();
     // integration-registration 2026-10-17：add_decorator_systems 新增 4 系统所需的
     // crate 本地资源（幂等 init；DecoratorBackup/DeferredDecoratorEditHistory 亦在
     // ui_systems::register_ui_systems 初始化，双路径并存无冲突）。

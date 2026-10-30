@@ -214,3 +214,29 @@ fn explicit_decorator_nulls_keep_nan_while_missing_fields_keep_original_defaults
     }
     Ok(())
 }
+
+#[test]
+fn m06_actual_color_plugin_registers_one_synchronous_style_writer_in_original_chain() {
+    use bevy_app::{App, Update};
+    use bevy_ecs::schedule::Schedules;
+    use system_color::ColorSystems;
+    let mut app = App::new();
+    app.add_color();
+    let schedules = app.world().resource::<Schedules>();
+    let graph = schedules.get(Update).unwrap().graph();
+    let systems: Vec<_> = graph.systems().map(|(id, system, _)| (id, system.name().to_string())).collect();
+    let find = |suffix: &str| {
+        let matches: Vec<_> = systems.iter().filter(|(_, name)| name.contains(suffix)).collect();
+        assert_eq!(matches.len(), 1, "系统必须唯一：{suffix}");
+        matches[0].0
+    };
+    let previous = find("set_halftimber_color_id");
+    let style = find("set_wall_style");
+    let next = find("set_flag_connection_and_chimney_smoke");
+    let dependencies = graph.dependency().graph();
+    assert!(dependencies.contains_edge(previous, style));
+    assert!(dependencies.contains_edge(style, next));
+    let set = graph.system_sets().find(|(_, set, _)| format!("{set:?}") == "GameSystemSet(31)")
+        .map(|(id, _, _)| id).expect("原 color 系统集31");
+    assert!(graph.hierarchy().graph().contains_edge(set, style));
+}

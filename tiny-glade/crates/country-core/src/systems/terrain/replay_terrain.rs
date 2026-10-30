@@ -107,7 +107,7 @@ fn advance_with_effects(
                 index.0 < tg_terrain::stroke::ID_COUNTER_LIMIT,
                 "terrain stroke ID exceeds native counter limit"
             );
-            editing.next_index = editing.next_index.max(index.0 + 1);
+            editing.next_index = editing.next_index.max(u64::from(index.0) + 1);
             editing.strokes.insert(
                 *index,
                 TerrainStroke {

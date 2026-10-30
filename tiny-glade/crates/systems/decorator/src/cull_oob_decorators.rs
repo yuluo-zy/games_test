@@ -1,6 +1,6 @@
 //! 原B完整位置检查14080f470/8143B及必要1203B脊线/200B角吸附。
 //! 原判别11有效，0至10携带真实失败原因；验证入口供同世界蓝图反馈消费。
-//! 其它剔除、归档与事件订阅函数仍保留旧部分实现，不能据此注册为完整业务。
+//! 主剔除接真实墙事件、活桶、物理归档和延迟删除；楼梯独立路径另行验收。
 
 use bevy_ecs::prelude::*;
 use country_core::resources::history::History;
@@ -529,237 +529,293 @@ pub fn auto_allow_decorator_culling<C: Send + Sync + 'static>(
     archivist.decorator_cull_allow();
 }
 
-/// `cull_oob_decorators`（0x14080d540，O 结构）：越界装饰剔除主系统。
-/// 逐归档装饰：cull 放行 ∧ 位置无效 → "oob backup" 归档 + remove 操作 +
-/// 蓝图删除。
-pub fn cull_oob_decorators<C: Send + Sync + 'static>(
-    mut storage: ResMut<DecoratorStorage>,
-    mut archivist: ResMut<DecoratorArchivist<C>>,
-    transforms: Res<CachedDecoratorTransforms>,
-    mut blueprints: ResMut<DecoratorBlueprints>,
-    history: Res<History>,
+/// 原14080d540：只检查仍存在的受影响墙，遍历当前桶而非归档中的旧 ID。
+/// 收集阶段不删除；首次越界备份先于缓存位置读取，全部检查结束后才应用删除。
+pub fn cull_oob_decorators(
     walls: Res<PublicWalls>,
+    history: Res<History>,
+    mut storage: ResMut<DecoratorStorage>,
+    mut archivist: ResMut<
+        country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist,
+    >,
+    events: Res<country_core::resources::walls::decorator::DeferredDecoratorOpEvents>,
+    mut blueprints: ResMut<DecoratorBlueprints>,
+    mut heights: EventReader<country_core::systems::wall::adjust_wall_height::AdjustWallHeightCmd>,
+    mut changes: EventReader<country_core::resources::walls::public_walls::OnWallChanged>,
+    mut roofs_edited: EventReader<country_core::resources::roofs::commands::EditRoofCmd>,
     roofs: Query<&Roof>,
+    archival: country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,
     derived: DerivedDecoratorInfoResources,
-    raycast: Res<RaycastWorld>,
+    transforms: Res<CachedDecoratorTransforms>,
+    mut scratch: Local<CullScratch>,
 ) {
+    let CullScratch {
+        walls: affected,
+        removals,
+    } = &mut *scratch;
+    affected.clear();
+    removals.clear();
+    // 原141264200保留 PublicWalls 中的归档墙键；special 桶不属于此系统。
+    affected.extend(
+        archivist
+            .walls
+            .keys()
+            .map(|wall| WallId(wall.0))
+            .filter(|wall| walls.get_unchecked(*wall).is_some()),
+    );
+    for wall in heights
+        .read()
+        .map(|event| WallId(event.0.wall.0))
+        .chain(changes.read().map(|event| event.0))
+        .chain(roofs_edited.read().map(|event| WallId(event.0.wall_id)))
+    {
+        if walls.get_unchecked(wall).is_some() {
+            affected.insert(wall);
+        }
+    }
     let recording = history.is_recording();
-    // 事件队列（I：原 DeferredDecoratorOpEvents 共享面由 D3 接线；本面以
-    // 默认空队列承载，RESTORE.md 登记）。
-    let events = country_core::resources::walls::decorator::DeferredDecoratorOpEvents::default();
-    // 墙桶（O：归档墙表；clone 避免借用冲突 —— 原实现 0x30B 双表遍历）。
-    let archived_wall_buckets: Vec<(u64, Vec<u32>)> = archivist
-        .walls
-        .iter()
-        .map(|(wall, d)| (wall.0, d.items.keys().copied().collect()))
-        .collect();
-    for (wall, ids) in archived_wall_buckets {
-        for id in ids {
-            cull_one(
+    for &wall in affected.iter() {
+        let address = DecoratorStorageAddr::Wall(wall);
+        let Some(bucket) = storage.wall_decorators(wall) else {
+            continue;
+        };
+        let mut backed_up = false;
+        for (&id, info) in &bucket.decorators {
+            if !cull_one(
                 id,
-                &mut storage,
-                &mut archivist,
+                info,
+                wall,
+                &archivist,
                 &transforms,
-                &mut blueprints,
-                recording,
-                &events,
-                WallId(wall),
+                &blueprints,
                 &walls,
                 &roofs,
                 derived.as_view(),
-                &raycast,
+                &archival.raycast_world,
+            ) {
+                continue;
+            }
+            if recording && !backed_up {
+                archivist.archive_current_decorators_at_with_resources(
+                    address,
+                    &storage,
+                    &archival,
+                    "oob backup",
+                );
+                backed_up = true;
+            }
+            // 原缺失缓存会在归档后失败；不能用零位置或 Info 的局部坐标代替。
+            removals.insert(
+                country_core::resources::walls::decorator::DecoratorLocator::new(address, id),
+                transforms.position(id),
             );
         }
     }
-    // special 桶（I：O 双表 = 墙 + 楼梯；special 语义登记 RESTORE.md）。
-    let specials: Vec<Vec<u32>> = [&archivist.special1, &archivist.special2]
-        .into_iter()
-        .flatten()
-        .map(|d| d.items.keys().copied().collect())
-        .collect();
-    for ids in specials {
-        for id in ids {
-            cull_one(
-                id,
-                &mut storage,
-                &mut archivist,
-                &transforms,
-                &mut blueprints,
-                recording,
-                &events,
-                WallId(u64::MAX),
-                &walls,
-                &roofs,
-                derived.as_view(),
-                &raycast,
-            );
-        }
+    for (locator, position) in removals.drain() {
+        assert!(archivist.is_decorator_cull_allowed(locator.decorator));
+        blueprints.remove(locator.decorator);
+        // apply 的预览归档始终执行；同地址已存在的首快照和碰撞载荷不可覆盖。
+        archivist.archive_current_decorators_at_with_resources(
+            locator.addr,
+            &storage,
+            &archival,
+            crate::apply_decorator_op::LABEL_REMOVE,
+        );
+        let info = *storage
+            .get(locator.addr)
+            .and_then(|bucket| bucket.get(DecoratorId(locator.decorator)))
+            .expect("culled decorator lost its owning record");
+        let op = DecoratorOp::remove_at(DecoratorId(locator.decorator), info, position, !recording);
+        // 原 EDX=0；!recording 位于位置载荷+12，即事件+0x7c，不能混入+0x80。
+        apply_decorator_op(
+            &op,
+            0,
+            locator.addr,
+            &mut storage,
+            Some(&mut archivist),
+            None,
+            &events,
+        );
     }
 }
 
-/// 单装饰剔除（O 结构）。
-fn cull_one<C: Send + Sync + 'static>(
+/// 复用逐帧临时表的容量；键仍是原完整定位器，不改变去重或候选集合语义。
+#[derive(Default)]
+pub struct CullScratch {
+    walls: hashbrown::HashSet<WallId>,
+    removals: hashbrown::HashMap<country_core::resources::walls::decorator::DecoratorLocator, Vec3>,
+}
+
+/// 原类型门仅含建筑装饰56..63且排除62；有效位置仍需真实蓝图碰撞检查。
+#[allow(clippy::too_many_arguments)]
+fn cull_one(
     id: u32,
-    storage: &mut DecoratorStorage,
-    archivist: &mut DecoratorArchivist<C>,
-    transforms: &CachedDecoratorTransforms,
-    blueprints: &mut DecoratorBlueprints,
-    _recording: bool,
-    events: &country_core::resources::walls::decorator::DeferredDecoratorOpEvents,
+    info: &DecoratorInfo,
     wall: WallId,
+    archivist: &country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist,
+    transforms: &CachedDecoratorTransforms,
+    blueprints: &DecoratorBlueprints,
     walls: &PublicWalls,
     roofs: &Query<&Roof>,
     derived: DerivedDecoratorInfoView<'_>,
     raycast: &RaycastWorld,
-) {
-    // cull 放行（O：is_decorator_cull_allowed 0x140b2bd90）。
+) -> bool {
     if !archivist.is_decorator_cull_allowed(id) {
-        return;
+        return false;
     }
-    // 存储记录（O：lookup_decorator_info 0x140a1c930）。
-    let Some(info) = storage.lookup_decorator_info(DecoratorId::new(id)) else {
-        return;
-    };
-    // 只迁移必要验证入口；本文件其它归档/事件订阅路径仍须其原消费闭包。
-    let actual_dst = storage
-        .lookup_storage(DecoratorId::new(id))
-        .expect("decorator has no storage address");
-    let result = is_decorator_location_valid(
+    let family = info.ty.wrapping_sub(0x38);
+    if family >= 8 || family == 6 {
+        return false;
+    }
+    if !is_decorator_location_valid(
         DecoratorId(id),
         info,
-        actual_dst,
+        DecoratorStorageAddr::Wall(wall),
         walls,
         roofs,
         derived,
         transforms,
         raycast,
-    );
-    if result.is_valid() {
-        return;
+    )
+    .is_valid()
+    {
+        return true;
     }
-    // 移除（O：KIND_REMOVE=4；"oob backup" 归档标签 0x142a8e950 ——
-    // 归档面由 D3 archive_decorator_state 承载，本面经 apply 链登记）。
-    blueprints.remove(id);
-    let op = DecoratorOp {
-        kind: DecoratorOp::KIND_REMOVE,
-        decorator_id: DecoratorId(id),
-        info: *info,
-        extra: [0; 0x20],
-        change: None,
-        dst: None,
+    let Some(blueprint) = blueprints.get(id) else {
+        return false;
     };
-    let dst = storage
-        .lookup_storage(DecoratorId::new(id))
-        .unwrap_or(DecoratorStorageAddr::Wall(wall));
-    apply_decorator_op(&op, 0, dst, storage, Some(archivist), None, events);
+    let crate::blueprint::BlueprintMeshSlot::Mesh(mesh) = &blueprint.collision_mesh else {
+        return false;
+    };
+    let shape = crate::blueprint::validation_overlap_shape(mesh);
+    // 原ordered=true：同墙、非自身且ID更小的真实碰撞对象才构成阻挡。
+    raycast
+        .decorator_overlaps_with_others(&shape, DecoratorId(id), wall, true)
+        .is_some()
 }
 
-/// `cull_stair_attached_decorators_impl`（0x1412b6c30 / 0x1412b6420，O 结构）：
-/// 楼梯附着装饰剔除实现（双实例 = 边失效 / 楼梯失效）。
-pub fn cull_stair_attached_decorators_impl<C: Send + Sync + 'static>(
-    storage: &mut DecoratorStorage,
-    mut archivist: Option<&mut DecoratorArchivist<C>>,
-    transforms: &CachedDecoratorTransforms,
-    blueprints: &mut DecoratorBlueprints,
-    stairs: &StairsState,
-    events: &country_core::resources::walls::decorator::DeferredDecoratorOpEvents,
-    check_edge: bool,
+/// 原B1412b6c30/1412b6420两个单态：先收集完整定位器，再归档并删除。
+/// 保留ResMut包装，空候选帧不会因借出普通&mut而伪造owner变更。
+#[allow(clippy::too_many_arguments)]
+pub fn cull_stair_attached_decorators_impl(
+    history: Res<History>,
+    mut storage: ResMut<DecoratorStorage>,
+    mut archivist: ResMut<
+        country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist,
+    >,
+    events: Res<country_core::resources::walls::decorator::DeferredDecoratorOpEvents>,
+    mut blueprints: ResMut<DecoratorBlueprints>,
+    archival: country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,
+    transforms: Res<CachedDecoratorTransforms>,
+    mut should_remove: impl FnMut(&DecoratorInfo) -> bool,
 ) {
-    let mut remove_ids = Vec::new();
-    for decorators in storage.iter_stair_decorators() {
-        for (id, info) in decorators.decorators.iter() {
-            // 断言（O：assertion failed: is_decorator_cull_allowed
-            // (locator.decorator)，0x142c2be40）。
-            assert!(
-                archivist
-                    .as_ref()
-                    .is_none_or(|a| a.is_decorator_cull_allowed(*id)),
-                "assertion failed: decorator_archivist.is_decorator_cull_allowed(locator.decorator)"
-            );
-            let _ = transforms.try_position(*id);
-            // 边检查（O：contains_edge_or_stub；invalid_stairs 实例缺该检查）。
-            if check_edge {
-                let Some(extra) = info.extra().try_as_stair() else {
-                    continue;
-                };
-                let a = u32::from_le_bytes(extra.0[0..4].try_into().unwrap());
-                let b = u32::from_le_bytes(extra.0[4..8].try_into().unwrap());
-                if stairs.contains_edge_or_stub(a, b) {
-                    continue;
-                }
+    use country_core::resources::walls::decorator::DecoratorLocator;
+    let mut removals = hashbrown::HashMap::<DecoratorLocator, Vec3>::new();
+    for bucket in storage.iter_stair_decorators() {
+        for (&id, info) in bucket.decorators() {
+            // 原初筛没有许可时跳过；仅apply前的第二次检查是断言。
+            if !archivist.is_decorator_cull_allowed(id) || !should_remove(info) {
+                continue;
             }
-            remove_ids.push(*id);
+            // 原1412b6d84..6db4：无缓存时保留(-0,-1000,-0)，不能panic或取局部坐标。
+            let position = transforms
+                .try_position(id)
+                .unwrap_or(Vec3::new(-0.0, -1000.0, -0.0));
+            removals.insert(
+                DecoratorLocator::new(DecoratorStorageAddr::Stair, id),
+                position,
+            );
         }
     }
-    for id in remove_ids {
-        let Some(info) = storage.lookup_decorator_info(DecoratorId::new(id)).copied() else {
-            continue;
-        };
-        blueprints.remove(id);
-        let op = DecoratorOp {
-            kind: DecoratorOp::KIND_REMOVE,
-            decorator_id: DecoratorId(id),
+    for (locator, position) in removals {
+        assert!(
+            archivist.is_decorator_cull_allowed(locator.decorator),
+            "assertion failed: decorator_archivist.is_decorator_cull_allowed(locator.decorator)"
+        );
+        // 原先移出/释放蓝图Arc，再经apply归档与删除；全体收集失败时不先删任何实体。
+        blueprints.remove(locator.decorator);
+        archivist.archive_current_decorators_at_with_resources(
+            locator.addr,
+            &storage,
+            &archival,
+            crate::apply_decorator_op::LABEL_REMOVE,
+        );
+        let info = *storage
+            .get(locator.addr)
+            .and_then(|bucket| bucket.get(DecoratorId(locator.decorator)))
+            .expect("culled stair decorator lost its owning record");
+        let op = DecoratorOp::remove_at(
+            DecoratorId(locator.decorator),
             info,
-            extra: [0; 0x20],
-            change: None,
-            dst: None,
-        };
-        let dst = storage
-            .lookup_storage(DecoratorId::new(id))
-            .unwrap_or(DecoratorStorageAddr::Stair);
-        // 逐迭代重借（Option<&mut> 非 Copy）。
+            position,
+            !history.is_recording(),
+        );
         apply_decorator_op(
             &op,
             0,
-            dst,
-            storage,
-            archivist.as_mut().map(|r| &mut **r),
+            locator.addr,
+            &mut storage,
+            Some(&mut archivist),
             None,
-            events,
+            &events,
         );
     }
 }
 
-/// `cull_stair_attached_decorators`（0x14080ec10，O）：楼梯边失效剔除。
-pub fn cull_stair_attached_decorators<C: Send + Sync + 'static>(
-    mut storage: ResMut<DecoratorStorage>,
-    mut archivist: ResMut<DecoratorArchivist<C>>,
-    transforms: Res<CachedDecoratorTransforms>,
-    mut blueprints: ResMut<DecoratorBlueprints>,
+/// 原14080ec10八参入口：图中任意合法边或stub均保留，不按类型近似判断。
+pub fn cull_stair_attached_decorators(
+    history: Res<History>,
+    storage: ResMut<DecoratorStorage>,
+    archivist: ResMut<country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist>,
+    events: Res<country_core::resources::walls::decorator::DeferredDecoratorOpEvents>,
+    blueprints: ResMut<DecoratorBlueprints>,
     stairs: Res<StairsState>,
+    archival: country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,
+    transforms: Res<CachedDecoratorTransforms>,
 ) {
-    // 事件队列（I：D3 共享面；默认空队列承载，登记 RESTORE.md）。
-    let events = country_core::resources::walls::decorator::DeferredDecoratorOpEvents::default();
     cull_stair_attached_decorators_impl(
-        &mut storage,
-        Some(&mut archivist),
-        &transforms,
-        &mut blueprints,
-        &stairs,
-        &events,
-        true,
+        history,
+        storage,
+        archivist,
+        events,
+        blueprints,
+        archival,
+        transforms,
+        |info| {
+            let info = info.dst_as_stair();
+            !stairs.contains_edge_or_stub(info.dst_wall as u32, (info.dst_wall >> 32) as u32)
+        },
     );
 }
 
-/// `cull_stair_attached_decorators_on_invalid_stairs`（0x14080f040，O）：
-/// 楼梯整体失效剔除（边检查关闭）。
-pub fn cull_stair_attached_decorators_on_invalid_stairs<C: Send + Sync + 'static>(
-    mut storage: ResMut<DecoratorStorage>,
-    mut archivist: ResMut<DecoratorArchivist<C>>,
+/// 原14080f040八参入口：请求+128的两个端点逐32位精确相等，非图边存在性检查。
+pub fn cull_stair_attached_decorators_on_invalid_stairs(
+    history: Res<History>,
+    storage: ResMut<DecoratorStorage>,
+    archivist: ResMut<country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist>,
+    events: Res<country_core::resources::walls::decorator::DeferredDecoratorOpEvents>,
+    blueprints: ResMut<DecoratorBlueprints>,
+    requests: Res<
+        country_core::resources::stairs::stairs_assembly_params::PlayermadeStairsAssemblyRequests,
+    >,
+    archival: country_core::resources::walls::decorator_archivist::DecoratorArchivalResources,
     transforms: Res<CachedDecoratorTransforms>,
-    mut blueprints: ResMut<DecoratorBlueprints>,
-    stairs: Res<StairsState>,
 ) {
-    // 事件队列（I：D3 共享面；默认空队列承载，登记 RESTORE.md）。
-    let events = country_core::resources::walls::decorator::DeferredDecoratorOpEvents::default();
     cull_stair_attached_decorators_impl(
-        &mut storage,
-        Some(&mut archivist),
-        &transforms,
-        &mut blueprints,
-        &stairs,
-        &events,
-        false,
+        history,
+        storage,
+        archivist,
+        events,
+        blueprints,
+        archival,
+        transforms,
+        |info| {
+            let info = info.dst_as_stair();
+            !requests.requests.iter().any(|request| {
+                let (a, b) = request.segment.nodes();
+                a.0 == info.dst_wall as u32 && b.0 == (info.dst_wall >> 32) as u32
+            })
+        },
     );
 }
 
@@ -1180,5 +1236,887 @@ mod location_native_tests {
         let amount = f32::INFINITY;
         let top = location_elevated(Vec3::ONE, amount);
         assert!(top.x.is_nan() && top.z.is_nan() && top.y.is_infinite());
+    }
+
+    // 以下验收使用真实 Bevy World、公共墙发布和原生 Rapier，不以人工候选表代替系统参数。
+    use crate::blueprint::{BlueprintMeshSlot, DecoratorBlueprint, PositionedDecoratorMesh};
+    use country_core::resources::roofs::commands::EditRoofCmd;
+    use country_core::resources::walls::decorator::DeferredDecoratorOpEvents;
+    use country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist;
+    use country_core::resources::walls::decorator_collision::DecoratorPhysicsColliders;
+    use country_core::resources::walls::public_walls::OnWallChanged;
+    use country_core::systems::collision::world::{RaycastGeoSource, upsert_collider};
+    use country_core::systems::wall::adjust_wall_height::AdjustWallHeightCmd;
+
+    impl Fixture {
+        fn into_cull_world(self, recording: bool) -> World {
+            let mut world = self.world;
+            world.insert_resource(self.walls);
+            world.insert_resource(self.subtypes);
+            world.insert_resource(self.meshes);
+            world.insert_resource(self.cache);
+            world.insert_resource(self.raycast);
+            world.init_resource::<DecoratorStorage>();
+            world.init_resource::<LiveDecoratorArchivist>();
+            world.init_resource::<DecoratorBlueprints>();
+            world.init_resource::<DecoratorPhysicsColliders>();
+            world.init_resource::<DeferredDecoratorOpEvents>();
+            world.init_resource::<Events<AdjustWallHeightCmd>>();
+            world.init_resource::<Events<OnWallChanged>>();
+            world.init_resource::<Events<EditRoofCmd>>();
+            let mut history: History = History::empty_glade();
+            if recording {
+                history.start_input_recording(0).unwrap();
+            }
+            world.insert_resource(history);
+            world
+        }
+    }
+    fn cull_schedule() -> Schedule {
+        let mut schedule = Schedule::default();
+        schedule.add_systems(cull_oob_decorators);
+        schedule
+    }
+    fn put_cull_decorator(
+        world: &mut World,
+        address: DecoratorStorageAddr,
+        id: u32,
+        ty: u8,
+        tag: u8,
+    ) -> DecoratorInfo {
+        // 正式记录的extra变体须与类型一致；历史会按原ty表重建该判别。
+        let style = match ty {
+            56..=58 => 6,
+            59 => 4,
+            60 => 7,
+            61 => 5,
+            _ => 0,
+        };
+        let info = DecoratorInfo {
+            ty,
+            u20: u32::from(tag) << 16,
+            u40: style << 8,
+            decorator_id: 9000 + id,
+            rank: 1,
+            ..Default::default()
+        };
+        world
+            .resource_mut::<DecoratorStorage>()
+            .apply_decorator_place(address, DecoratorId(id), &info);
+        world.resource_mut::<CachedDecoratorTransforms>().insert(
+            id,
+            CachedDecoratorTransform {
+                translation: Vec3::new(id as f32, 2.25, -3.5),
+                rotation: glam::Quat::IDENTITY,
+                scale: Vec3::ONE,
+            },
+        );
+        info
+    }
+    fn changed(world: &mut World, wall: u64) {
+        world
+            .resource_mut::<Events<OnWallChanged>>()
+            .send(OnWallChanged(WallId(wall)));
+    }
+    fn has_cull_decorator(world: &World, address: DecoratorStorageAddr, id: u32) -> bool {
+        world
+            .resource::<DecoratorStorage>()
+            .get(address)
+            .is_some_and(|bucket| bucket.get(DecoratorId(id)).is_some())
+    }
+    fn allow_all(world: &mut World) {
+        world
+            .resource_mut::<LiveDecoratorArchivist>()
+            .decorator_cull_allow_any();
+    }
+
+    #[test]
+    fn cull_native_each_real_candidate_source_uses_current_wall_bucket_and_shared_queue() {
+        let address = DecoratorStorageAddr::Wall(WallId(42));
+        for source in 0..4 {
+            let mut world = Fixture::new(0, 1).into_cull_world(true);
+            // 旧快照中没有71：必须扫描活桶。归档的首状态本应在当前编辑之前。
+            if source == 0 {
+                world.resource_mut::<LiveDecoratorArchivist>().walls.insert(
+                    country_core::resources::walls::publication_fields::WallId(42),
+                    Default::default(),
+                );
+            }
+            let info = put_cull_decorator(&mut world, address, 71, 56, 2);
+            allow_all(&mut world);
+            match source {
+                1 => {
+                    world
+                        .resource_mut::<Events<AdjustWallHeightCmd>>()
+                        .send(AdjustWallHeightCmd(
+                            country_core::systems::wall::height_command::AdjustWallHeightRequest {
+                                anchor: None,
+                                mode: 0,
+                                value: 2.0,
+                                wall: country_core::resources::walls::publication_fields::WallId(
+                                    42,
+                                ),
+                                observed_audio_flag: 0,
+                            },
+                        ));
+                }
+                2 => changed(&mut world, 42),
+                3 => {
+                    let mut raw = [0; 64];
+                    raw[32..40].copy_from_slice(&42_u64.to_le_bytes());
+                    world.resource_mut::<Events<EditRoofCmd>>().send(EditRoofCmd(
+                        country_core::resources::roofs::geometry::edit_rules::RoofEditEvent::from_observed(&raw)));
+                }
+                _ => {}
+            }
+            let mut schedule = cull_schedule();
+            schedule.run(&mut world);
+            assert!(
+                !has_cull_decorator(&world, address, 71),
+                "candidate source {source}"
+            );
+            world
+                .resource::<DeferredDecoratorOpEvents>()
+                .with_events(|events| {
+                    assert_eq!(events.len(), 1);
+                    let event = &events[0];
+                    assert_eq!(&event[..8], &4_u64.to_le_bytes());
+                    assert_eq!(&event[8..16], &[0; 8]);
+                    assert_eq!(&event[16..24], &42_u64.to_le_bytes());
+                    assert_eq!(
+                        &event[0x18..0x60],
+                        &crate::apply_decorator_op::info_to_bytes(info)
+                    );
+                    assert_eq!(&event[0x60..0x64], &71_u32.to_le_bytes());
+                    for (index, value) in [71.0_f32, 2.25, -3.5].into_iter().enumerate() {
+                        assert_eq!(
+                            &event[0x70 + index * 4..0x74 + index * 4],
+                            &value.to_le_bytes()
+                        );
+                    }
+                    assert_eq!(event[0x7c], 0);
+                    assert_eq!(event[0x80], 0);
+                    assert_eq!(event[0x81], 56);
+                });
+            schedule.run(&mut world);
+            assert_eq!(
+                world
+                    .resource::<DeferredDecoratorOpEvents>()
+                    .with_events(|events| events.len()),
+                1
+            );
+            if source == 0 {
+                assert!(
+                    world
+                        .resource::<LiveDecoratorArchivist>()
+                        .walls
+                        .values()
+                        .next()
+                        .unwrap()
+                        .items
+                        .is_empty()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn cull_native_filters_public_presence_permissions_and_all_256_type_tags_without_touching_specials()
+     {
+        let address = DecoratorStorageAddr::Wall(WallId(42));
+        let absent = DecoratorStorageAddr::Wall(WallId(999));
+        let mut world = Fixture::new(0, 1).into_cull_world(false);
+        for ty in 0_u8..=255 {
+            put_cull_decorator(&mut world, address, 1000 + u32::from(ty), ty, 2);
+        }
+        put_cull_decorator(&mut world, address, 77, 56, 2); // 未允许，必须保留。
+        for addr in [
+            absent,
+            DecoratorStorageAddr::Terrain,
+            DecoratorStorageAddr::Stair,
+        ] {
+            put_cull_decorator(
+                &mut world,
+                addr,
+                80 + match addr {
+                    DecoratorStorageAddr::Wall(_) => 0,
+                    DecoratorStorageAddr::Terrain => 1,
+                    _ => 2,
+                },
+                56,
+                2,
+            );
+        }
+        {
+            let mut archive = world.resource_mut::<LiveDecoratorArchivist>();
+            archive.culling.allowed_ids.extend(1000..1256);
+            archive.culling.allowed_ids.extend(80..83);
+            archive.walls.insert(
+                country_core::resources::walls::publication_fields::WallId(999),
+                Default::default(),
+            );
+            archive.special1 = Some(Default::default());
+            archive.special2 = Some(Default::default());
+        }
+        let mut schedule = cull_schedule();
+        schedule.run(&mut world);
+        assert_eq!(
+            world
+                .resource::<DeferredDecoratorOpEvents>()
+                .with_events(|events| events.len()),
+            0
+        );
+        changed(&mut world, 42);
+        changed(&mut world, 999);
+        changed(&mut world, 42);
+        schedule.run(&mut world);
+        for ty in 0_u8..=255 {
+            let culled = (56..64).contains(&ty) && ty != 62;
+            assert_eq!(
+                has_cull_decorator(&world, address, 1000 + u32::from(ty)),
+                !culled,
+                "type {ty}"
+            );
+        }
+        for (addr, id) in [
+            (address, 77),
+            (absent, 80),
+            (DecoratorStorageAddr::Terrain, 81),
+            (DecoratorStorageAddr::Stair, 82),
+        ] {
+            assert!(has_cull_decorator(&world, addr, id));
+        }
+        world
+            .resource::<DeferredDecoratorOpEvents>()
+            .with_events(|events| {
+                assert_eq!(events.len(), 7);
+                assert!(
+                    events
+                        .iter()
+                        .all(|event| event[0x7c] == 1 && event[0x80] == 0)
+                );
+            });
+    }
+
+    #[test]
+    fn cull_native_valid_location_needs_original_collision_slot_same_wall_lower_id_and_external_local_pose()
+     {
+        let address = DecoratorStorageAddr::Wall(WallId(42));
+        for (blocker, blocker_addr, enabled, should_remove) in [
+            (6, address, true, true),
+            (7, address, true, false),
+            (8, address, true, false),
+            (6, DecoratorStorageAddr::Wall(WallId(999)), true, false),
+            (6, DecoratorStorageAddr::Terrain, true, false),
+            (6, address, false, false),
+        ] {
+            let mut world = Fixture::new(0, 1).into_cull_world(false);
+            put_cull_decorator(&mut world, address, 7, 56, 3); // 原位置直接有效分支。
+            let mesh = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(0.2), Vec3::X));
+            let rotation = glam::Quat::from_rotation_y(std::f32::consts::FRAC_PI_2);
+            let mut blueprint = DecoratorBlueprint::default();
+            // external*local中心=(10,0,-1)，反序会是(11,0,0)，两者不重叠。
+            let positioned = PositionedDecoratorMesh {
+                mesh,
+                position: Vec3::new(10.0, 0.0, 0.0),
+                rotation,
+            };
+            blueprint.interaction_mesh = BlueprintMeshSlot::Mesh(positioned.clone());
+            blueprint.collision_mesh = if enabled {
+                BlueprintMeshSlot::Mesh(positioned)
+            } else {
+                BlueprintMeshSlot::Disabled
+            };
+            world
+                .resource_mut::<DecoratorBlueprints>()
+                .insert(7, blueprint);
+            let blocker_mesh =
+                Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(0.2), Vec3::ZERO));
+            world.resource_scope(|world, mut raycast: Mut<RaycastWorld>| {
+                let mut colliders = world.resource_mut::<DecoratorPhysicsColliders>();
+                upsert_collider(
+                    &mut raycast,
+                    &mut colliders.first,
+                    DecoratorId(blocker),
+                    RaycastGeoSource::decorator(DecoratorId(blocker), blocker_addr),
+                    blocker_mesh,
+                    Vec3::new(10.0, 0.0, -1.0),
+                    glam::Quat::IDENTITY,
+                );
+                raycast.flush_colliders();
+            });
+            allow_all(&mut world);
+            changed(&mut world, 42);
+            cull_schedule().run(&mut world);
+            assert_eq!(
+                !has_cull_decorator(&world, address, 7),
+                should_remove,
+                "blocker {blocker} {blocker_addr:?}, enabled {enabled}"
+            );
+            assert_eq!(
+                world.resource::<DecoratorBlueprints>().get(7).is_none(),
+                should_remove
+            );
+        }
+    }
+
+    #[test]
+    fn cull_native_archives_before_missing_position_and_deletes_nothing_on_collection_failure() {
+        let address = DecoratorStorageAddr::Wall(WallId(42));
+        let mut world = Fixture::new(0, 1).into_cull_world(true);
+        put_cull_decorator(&mut world, address, 71, 56, 2);
+        put_cull_decorator(&mut world, address, 72, 56, 2);
+        world.insert_resource(CachedDecoratorTransforms::default());
+        allow_all(&mut world);
+        changed(&mut world, 42);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            cull_schedule().run(&mut world)
+        }));
+        assert!(result.is_err());
+        assert!(has_cull_decorator(&world, address, 71));
+        assert!(has_cull_decorator(&world, address, 72));
+        assert_eq!(
+            world
+                .resource::<LiveDecoratorArchivist>()
+                .walls
+                .values()
+                .next()
+                .unwrap()
+                .items
+                .len(),
+            2
+        );
+        assert_eq!(
+            world
+                .resource::<DeferredDecoratorOpEvents>()
+                .with_events(|events| events.len()),
+            0
+        );
+    }
+
+    #[test]
+    fn cull_native_first_snapshot_retains_live_collider_payload_and_multiframe_history_undo_redo() {
+        use country_core::resources::walls::decorator::DecoratorIdGen;
+        use country_core::resources::walls::decorator_storage::DecoratorColliderMaps;
+        let address = DecoratorStorageAddr::Wall(WallId(42));
+        let mut world = Fixture::new(0, 1).into_cull_world(true);
+        let first = put_cull_decorator(&mut world, address, 71, 56, 2);
+        let second = put_cull_decorator(&mut world, address, 72, 57, 2);
+        let mesh = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO));
+        let weak = Arc::downgrade(&mesh);
+        world.resource_scope(|world, mut raycast: Mut<RaycastWorld>| {
+            let mut colliders = world.resource_mut::<DecoratorPhysicsColliders>();
+            upsert_collider(
+                &mut raycast,
+                &mut colliders.first,
+                DecoratorId(71),
+                RaycastGeoSource::decorator(DecoratorId(71), address),
+                mesh,
+                Vec3::new(71.0, 2.25, -3.5),
+                glam::Quat::IDENTITY,
+            );
+        });
+        allow_all(&mut world);
+        changed(&mut world, 42);
+        let mut schedule = cull_schedule();
+        schedule.run(&mut world);
+        {
+            let archive = world.resource::<LiveDecoratorArchivist>();
+            let bucket = archive.walls.values().next().unwrap();
+            assert_eq!(bucket.items.len(), 2);
+            assert_eq!(
+                bucket.items[&71].0,
+                crate::apply_decorator_op::info_to_bytes(first)
+            );
+            assert_eq!(
+                bucket.items[&72].0,
+                crate::apply_decorator_op::info_to_bytes(second)
+            );
+            assert_eq!(
+                archive.collision_a[&71].0.translation,
+                Vec3::new(71.0, 2.25, -3.5)
+            );
+            assert!(Arc::ptr_eq(
+                archive.collision_a[&71].1.data(),
+                &weak.upgrade().unwrap()
+            ));
+        }
+        schedule.run(&mut world);
+        assert_eq!(
+            world
+                .resource::<DeferredDecoratorOpEvents>()
+                .with_events(|events| events.len()),
+            2
+        );
+        let mut storage = world.remove_resource::<DecoratorStorage>().unwrap();
+        let diff = world
+            .resource_mut::<LiveDecoratorArchivist>()
+            .extract_diff(&storage, false);
+        assert_eq!(diff[&address].before.states.len(), 2);
+        assert!(diff[&address].after.states.is_empty());
+        let mut raycast = world.remove_resource::<RaycastWorld>().unwrap();
+        let mut colliders = world
+            .remove_resource::<DecoratorPhysicsColliders>()
+            .unwrap();
+        let mut maps = DecoratorColliderMaps {
+            world: &mut raycast,
+            collision_a: &mut colliders.first,
+            collision_b: &mut colliders.second,
+        };
+        let mut ids = DecoratorIdGen::default();
+        let events = world.resource::<DeferredDecoratorOpEvents>();
+        storage.restore_decorators(&diff, true, &mut ids, &mut maps, events);
+        assert_eq!(
+            storage.get(address).unwrap().get(DecoratorId(71)),
+            Some(&first)
+        );
+        assert_eq!(storage.lookup_storage(DecoratorId(72)), Some(address));
+        storage.restore_decorators(&diff, false, &mut ids, &mut maps, events);
+        assert!(storage.lookup_storage(DecoratorId(71)).is_none());
+        assert!(storage.lookup_storage(DecoratorId(72)).is_none());
+        drop(maps);
+        drop(colliders);
+        drop(raycast);
+        assert!(
+            weak.upgrade().is_none(),
+            "真实物理表和归档释放后不得残留mesh owner"
+        );
+    }
+}
+
+#[cfg(test)]
+mod stair_cull_native_tests {
+    use super::*;
+    use crate::blueprint::DecoratorBlueprint;
+    use bevy_ecs::system::RunSystemOnce;
+    use country_core::resources::{
+        stairs::{
+            stairs_assembly_params::{
+                PlayermadeStairsAssemblyParams, PlayermadeStairsAssemblyRequests, StairNodeAnchor,
+            },
+            stairs_state::StairSegment,
+        },
+        walls::{
+            cached_decorator_transforms::CachedDecoratorTransform,
+            decorator::DeferredDecoratorOpEvents, decorator_archivist::LiveDecoratorArchivist,
+            decorator_collision::DecoratorPhysicsColliders,
+        },
+    };
+
+    fn stair_world(recording: bool) -> World {
+        let mut world = World::new();
+        let mut history: History = History::empty_glade();
+        if recording {
+            history.start_input_recording(0).unwrap();
+        }
+        world.insert_resource(history);
+        world.init_resource::<DecoratorStorage>();
+        world.init_resource::<LiveDecoratorArchivist>();
+        world.init_resource::<CachedDecoratorTransforms>();
+        world.init_resource::<DecoratorBlueprints>();
+        world.init_resource::<DeferredDecoratorOpEvents>();
+        world.init_resource::<StairsState>();
+        world.init_resource::<PlayermadeStairsAssemblyRequests>();
+        world.init_resource::<DecoratorPhysicsColliders>();
+        world.insert_resource(RaycastWorld::new());
+        world
+    }
+    fn put(
+        world: &mut World,
+        addr: DecoratorStorageAddr,
+        id: u32,
+        a: u32,
+        b: u32,
+    ) -> DecoratorInfo {
+        let info = DecoratorInfo {
+            dst_wall: u64::from(a) | (u64::from(b) << 32),
+            u20: 4 << 16,
+            decorator_id: id + 1000,
+            rank: 1,
+            ..Default::default()
+        };
+        world
+            .resource_mut::<DecoratorStorage>()
+            .apply_decorator_place(addr, DecoratorId(id), &info);
+        world
+            .resource_mut::<DecoratorBlueprints>()
+            .insert(id, DecoratorBlueprint::new());
+        info
+    }
+    fn has(world: &World, addr: DecoratorStorageAddr, id: u32) -> bool {
+        world
+            .resource::<DecoratorStorage>()
+            .get(addr)
+            .is_some_and(|bucket| bucket.get(DecoratorId(id)).is_some())
+    }
+    fn allow(world: &mut World) {
+        world
+            .resource_mut::<LiveDecoratorArchivist>()
+            .decorator_cull_allow_any();
+    }
+    fn request(a: u32, b: u32) -> PlayermadeStairsAssemblyParams {
+        PlayermadeStairsAssemblyParams {
+            curve: utils::curve::Curve2::crashy_new_from_points(vec![Vec2::ZERO, Vec2::X], true),
+            heights: vec![0.0, 0.0],
+            widths: vec![1.0, 1.0],
+            tangents: vec![Vec2::X, Vec2::X],
+            auxiliary_samples: vec![0.0, 0.0],
+            interpolated_curve: None,
+            nodes: [(StairNodeAnchor::Terrain { height: 0.0 }, 0); 2],
+            terrain_contacts: [false, false].into_iter().collect(),
+            segment: StairSegment::new(DecoratorId(a), DecoratorId(b)),
+            sub_segments: Default::default(),
+            dirty: false,
+        }
+    }
+
+    #[test]
+    fn stair_cull_invalid_1024_original_native_request_scans_use_actual_resource_and_shared_events()
+    {
+        let fixture = include_str!(
+            "../../../../reports/module-recovery-2026-10-23/1412b6420-stair-cull-predicate.txt"
+        );
+        for (case, line) in fixture.lines().enumerate() {
+            let row: Vec<u32> = line
+                .split_ascii_whitespace()
+                .map(|word| u32::from_str_radix(word, 16).unwrap())
+                .collect();
+            let mut world = stair_world(false);
+            let addr = DecoratorStorageAddr::Stair;
+            put(&mut world, addr, 7, row[0], row[1]);
+            allow(&mut world);
+            for pair in row[3..3 + row[2] as usize * 2].chunks_exact(2) {
+                world
+                    .resource_mut::<PlayermadeStairsAssemblyRequests>()
+                    .requests
+                    .push(request(pair[0], pair[1]));
+            }
+            world
+                .run_system_once(cull_stair_attached_decorators_on_invalid_stairs)
+                .unwrap();
+            let removed = *row.last().unwrap() != 0;
+            assert_eq!(!has(&world, addr, 7), removed, "原请求扫描case {case}");
+            assert_eq!(
+                world.resource::<DecoratorBlueprints>().get(7).is_none(),
+                removed
+            );
+            assert_eq!(
+                world
+                    .resource::<DeferredDecoratorOpEvents>()
+                    .with_events(|events| events.len()),
+                usize::from(removed)
+            );
+            if removed {
+                assert!(
+                    world
+                        .resource::<LiveDecoratorArchivist>()
+                        .special2
+                        .is_some()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn stair_cull_original_option_position_bits_and_recording_flags_reach_shared_remove_event() {
+        let fixture = include_str!(
+            "../../../../reports/module-recovery-2026-10-23/1412b6420-stair-cull-predicate.positions.txt"
+        );
+        for recording in [false, true] {
+            for line in fixture.lines() {
+                let row: Vec<u32> = line
+                    .split_ascii_whitespace()
+                    .map(|word| u32::from_str_radix(word, 16).unwrap())
+                    .collect();
+                let mut world = stair_world(recording);
+                put(&mut world, DecoratorStorageAddr::Stair, 7, 5, 9);
+                allow(&mut world);
+                if row[0] == 1 {
+                    world.resource_mut::<CachedDecoratorTransforms>().insert(
+                        7,
+                        CachedDecoratorTransform {
+                            translation: Vec3::new(
+                                f32::from_bits(row[1]),
+                                f32::from_bits(row[2]),
+                                f32::from_bits(row[3]),
+                            ),
+                            rotation: glam::Quat::IDENTITY,
+                            scale: Vec3::ONE,
+                        },
+                    );
+                }
+                world
+                    .run_system_once(cull_stair_attached_decorators)
+                    .unwrap();
+                world
+                    .resource::<DeferredDecoratorOpEvents>()
+                    .with_events(|events| {
+                        assert_eq!(events.len(), 1);
+                        let event = &events[0];
+                        assert_eq!(&event[..8], &4_u64.to_le_bytes());
+                        assert_eq!(&event[8..16], &2_u64.to_le_bytes());
+                        for (index, word) in row[4..].iter().enumerate() {
+                            assert_eq!(
+                                &event[0x70 + index * 4..0x74 + index * 4],
+                                &word.to_le_bytes()
+                            );
+                        }
+                        assert_eq!(event[0x7c], u8::from(!recording));
+                        assert_eq!(event[0x80], 0);
+                    });
+            }
+        }
+    }
+
+    #[test]
+    fn stair_cull_actual_graph_edges_stubs_permission_and_storage_domains_are_distinct() {
+        let mut world = stair_world(false);
+        let stair = DecoratorStorageAddr::Stair;
+        for (id, a, b) in [(1, 5, 9), (2, 12, 12), (3, 8, 9), (4, 20, 20)] {
+            put(&mut world, stair, id, a, b);
+        }
+        put(&mut world, DecoratorStorageAddr::Terrain, 30, 8, 9);
+        put(&mut world, DecoratorStorageAddr::Wall(WallId(42)), 31, 8, 9);
+        // 未许可的损坏记录不能触发dst_as_stair断言。
+        put(&mut world, stair, 5, 1, 2);
+        world
+            .resource_mut::<DecoratorStorage>()
+            .get_mut(stair)
+            .unwrap()
+            .get_mut(DecoratorId(5))
+            .unwrap()
+            .u20 = 0;
+        world
+            .resource_mut::<LiveDecoratorArchivist>()
+            .culling
+            .allowed_ids
+            .extend([1, 2, 3, 4, 30, 31]);
+        world.resource_mut::<StairsState>().add_edge(5, 9);
+        world.resource_mut::<StairsState>().add_node(12);
+        world
+            .run_system_once(cull_stair_attached_decorators)
+            .unwrap();
+        for id in [1, 2, 5] {
+            assert!(has(&world, stair, id));
+        }
+        for id in [3, 4] {
+            assert!(!has(&world, stair, id));
+        }
+        assert!(has(&world, DecoratorStorageAddr::Terrain, 30));
+        assert!(has(&world, DecoratorStorageAddr::Wall(WallId(42)), 31));
+        assert_eq!(
+            world
+                .resource::<DeferredDecoratorOpEvents>()
+                .with_events(|events| events.len()),
+            2
+        );
+    }
+
+    #[test]
+    fn stair_cull_all_type_bytes_use_destination_and_malformed_collection_is_atomic() {
+        let mut world = stair_world(false);
+        let addr = DecoratorStorageAddr::Stair;
+        for ty in 0_u8..=255 {
+            let id = 1000 + u32::from(ty);
+            put(&mut world, addr, id, 5, 9);
+            world
+                .resource_mut::<DecoratorStorage>()
+                .get_mut(addr)
+                .unwrap()
+                .get_mut(DecoratorId(id))
+                .unwrap()
+                .ty = ty;
+        }
+        allow(&mut world);
+        world
+            .run_system_once(cull_stair_attached_decorators)
+            .unwrap();
+        assert!(
+            world
+                .resource::<DecoratorStorage>()
+                .get(addr)
+                .unwrap()
+                .decorators()
+                .is_empty()
+        );
+        assert_eq!(
+            world
+                .resource::<DeferredDecoratorOpEvents>()
+                .with_events(|events| events.len()),
+            256
+        );
+        for invalid_requests in [false, true] {
+            let mut world = stair_world(false);
+            put(&mut world, addr, 7, 5, 9);
+            put(&mut world, addr, 8, 6, 10);
+            world
+                .resource_mut::<DecoratorStorage>()
+                .get_mut(addr)
+                .unwrap()
+                .get_mut(DecoratorId(8))
+                .unwrap()
+                .u20 = 0;
+            allow(&mut world);
+            assert!(
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    if invalid_requests {
+                        world
+                            .run_system_once(cull_stair_attached_decorators_on_invalid_stairs)
+                            .unwrap();
+                    } else {
+                        world
+                            .run_system_once(cull_stair_attached_decorators)
+                            .unwrap();
+                    }
+                }))
+                .is_err()
+            );
+            assert!(has(&world, addr, 7) && has(&world, addr, 8));
+            assert_eq!(world.resource::<DecoratorBlueprints>().map.len(), 2);
+            assert!(
+                world
+                    .resource::<LiveDecoratorArchivist>()
+                    .special2
+                    .is_none()
+            );
+            assert_eq!(
+                world
+                    .resource::<DeferredDecoratorOpEvents>()
+                    .with_events(|events| events.len()),
+                0
+            );
+        }
+    }
+
+    #[test]
+    fn stair_cull_real_physics_archive_first_snapshot_history_undo_redo_and_unload() {
+        use country_core::resources::walls::{
+            decorator::DecoratorIdGen, decorator_storage::DecoratorColliderMaps,
+        };
+        use country_core::systems::collision::world::{
+            RaycastGeoSource, RaycastMeshData, upsert_collider,
+        };
+        use std::sync::Arc;
+        let mut world = stair_world(true);
+        let addr = DecoratorStorageAddr::Stair;
+        let first = put(&mut world, addr, 7, 5, 9);
+        let second = put(&mut world, addr, 8, 5, 10);
+        allow(&mut world);
+        let mesh = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO));
+        let weak = Arc::downgrade(&mesh);
+        world.resource_scope(|world, mut raycast: Mut<RaycastWorld>| {
+            let mut colliders = world.resource_mut::<DecoratorPhysicsColliders>();
+            upsert_collider(
+                &mut raycast,
+                &mut colliders.first,
+                DecoratorId(7),
+                RaycastGeoSource::decorator(DecoratorId(7), addr),
+                mesh,
+                Vec3::new(3., 4., 5.),
+                glam::Quat::IDENTITY,
+            );
+        });
+        world
+            .run_system_once(cull_stair_attached_decorators)
+            .unwrap();
+        {
+            let archive = world.resource::<LiveDecoratorArchivist>();
+            let bucket = archive.special2.as_ref().unwrap();
+            assert_eq!(bucket.items.len(), 2);
+            assert_eq!(
+                bucket.items[&7].0,
+                crate::apply_decorator_op::info_to_bytes(first)
+            );
+            assert_eq!(
+                bucket.items[&8].0,
+                crate::apply_decorator_op::info_to_bytes(second)
+            );
+            assert_eq!(archive.collision_a[&7].0.translation, Vec3::new(3., 4., 5.));
+            assert!(Arc::ptr_eq(
+                archive.collision_a[&7].1.data(),
+                &weak.upgrade().unwrap()
+            ));
+        }
+        world
+            .run_system_once(cull_stair_attached_decorators)
+            .unwrap();
+        assert_eq!(
+            world
+                .resource::<DeferredDecoratorOpEvents>()
+                .with_events(|events| events.len()),
+            2
+        );
+        // 同生产碰撞consumer卸载活句柄；归档仍独立持有真实mesh，不依赖已卸载的物理对象。
+        world.init_resource::<crate::blueprint::PrevDecoratorBlueprints>();
+        world
+            .run_system_once(crate::blueprint::instantiate_blueprint_colliders)
+            .unwrap();
+        let maps = world.resource::<DecoratorPhysicsColliders>();
+        assert!(maps.first.is_empty() && maps.second.is_empty());
+        assert!(weak.upgrade().is_some());
+        let mut storage = world.remove_resource::<DecoratorStorage>().unwrap();
+        let diff = world
+            .resource_mut::<LiveDecoratorArchivist>()
+            .extract_diff(&storage, false);
+        assert_eq!(diff[&addr].before.states.len(), 2);
+        assert!(diff[&addr].after.states.is_empty());
+        let mut raycast = world.remove_resource::<RaycastWorld>().unwrap();
+        let mut colliders = world
+            .remove_resource::<DecoratorPhysicsColliders>()
+            .unwrap();
+        let mut maps = DecoratorColliderMaps {
+            world: &mut raycast,
+            collision_a: &mut colliders.first,
+            collision_b: &mut colliders.second,
+        };
+        let mut ids = DecoratorIdGen::default();
+        let events = world.resource::<DeferredDecoratorOpEvents>();
+        storage.restore_decorators(&diff, true, &mut ids, &mut maps, events);
+        assert_eq!(storage.get(addr).unwrap().get(DecoratorId(7)), Some(&first));
+        assert_eq!(storage.lookup_storage(DecoratorId(8)), Some(addr));
+        storage.restore_decorators(&diff, false, &mut ids, &mut maps, events);
+        assert!(storage.lookup_storage(DecoratorId(7)).is_none());
+        drop(maps);
+        drop(colliders);
+        drop(raycast);
+        assert!(weak.upgrade().is_none());
+    }
+    #[test]
+    fn stair_cull_noop_frames_preserve_real_owner_change_ticks() {
+        for reason in 0..3 {
+            for invalid_requests in [false, true] {
+                let mut world = stair_world(false);
+                if reason != 0 {
+                    put(&mut world, DecoratorStorageAddr::Stair, 7, 5, 9);
+                }
+                if reason == 2 {
+                    allow(&mut world);
+                    world.resource_mut::<StairsState>().add_edge(5, 9);
+                    world
+                        .resource_mut::<PlayermadeStairsAssemblyRequests>()
+                        .requests
+                        .push(request(5, 9));
+                }
+                world.clear_trackers();
+                if invalid_requests {
+                    world
+                        .run_system_once(cull_stair_attached_decorators_on_invalid_stairs)
+                        .unwrap();
+                } else {
+                    world
+                        .run_system_once(cull_stair_attached_decorators)
+                        .unwrap();
+                }
+                assert!(!world.is_resource_changed::<DecoratorStorage>());
+                assert!(!world.is_resource_changed::<LiveDecoratorArchivist>());
+                assert!(!world.is_resource_changed::<DecoratorBlueprints>());
+                assert_eq!(
+                    world
+                        .resource::<DeferredDecoratorOpEvents>()
+                        .with_events(|events| events.len()),
+                    0
+                );
+            }
+        }
     }
 }

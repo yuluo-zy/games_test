@@ -1,7 +1,7 @@
 //! 玩家楼梯的图到几何计算，沿既有模块逐段恢复原 B 业务。
 //!
 //! 已按完整原码恢复权威图、对齐、形状/样条、失败回退到本轮装配请求。
-//! 实际宿主 specialization、装饰生成和图编辑仍需各自闭包；
+//! 本轮装饰节点已恢复原交互蓝图、轮廓及墙洞；实际宿主 specialization 与图编辑仍需各自闭包；
 //! 不通过空资源、默认请求或本地简化样条代替尚未接线的上游。
 
 use bevy_ecs::prelude::*;
@@ -334,14 +334,158 @@ fn make_short_stair_request(
     })
 }
 
-/// 0x140803dd0（O 结构）：生成玩家楼梯装饰视觉（walk_shape 消费 + 蓝图）。
+/// 原14080478x..4960：墙附着节点按完整有向邻接生成四类交互外形。
+/// 返回(原四项判别、局部Z偏移、是否允许墙洞)，不把None邻接漏出计数。
+fn stair_decorator_interaction_kind(
+    address: DecoratorStorageAddr,
+    id: DecoratorId,
+    width: f32,
+    requests: &PlayermadeStairsAssemblyRequests,
+) -> (u8, f32, bool) {
+    if address.try_as_wall().is_none() { return (0, 0.0, false); }
+    let mut outgoing = 0usize;
+    let mut straight = false;
+    let mut turn = false;
+    let mut flags = 0u8;
+    for (_, _, alignment) in requests.alignments.edges_directed(id, petgraph::Direction::Outgoing) {
+        outgoing += 1;
+        if alignment.tag != 2 {
+            if alignment.tag == 0 {
+                straight = true;
+                flags |= alignment.flag | alignment.byte_2;
+            } else {
+                turn = true;
+                flags |= alignment.flag;
+            }
+        }
+    }
+    if flags & 1 != 0 { return (3, width * 0.5, false); }
+    if straight {
+        assert!(!(turn && outgoing != 0), "assertion failed: !any_normal");
+        return (1, 0.5, true);
+    }
+    if outgoing == 0 { (1, 0.5, true) }
+    else if turn { (2, width * 0.5, false) }
+    else { (0, 0.0, false) }
+}
+
+fn stair_decorator_interaction_dimensions(kind: u8, width: f32) -> Vec3 {
+    let expanded = width + f32::from_bits(0x3dcc_cccd);
+    match kind {
+        0 => Vec3::new(expanded + f32::from_bits(0x3dcc_cccd), 1.0, 0.95),
+        1 => Vec3::new(expanded + f32::from_bits(0x3dcc_cccd), 1.0, 1.0),
+        2 => Vec3::new(0.65, 1.0, expanded + f32::from_bits(0x3dcc_cccd)),
+        3 => Vec3::new(expanded, 0.65, expanded),
+        _ => unreachable!("原四项stair interaction跳表"),
+    }
+}
+
+/// 原SSE四元数向量乘法的完整非单位公式；不归一化或使用单位四元数简式。
+fn rotate_stair_decorator_local(rotation: glam::Quat, local: Vec3) -> Vec3 {
+    let q = rotation;
+    let length_sq = q.z * q.z + (q.y * q.y + q.x * q.x);
+    let dot = q.z * local.z + (q.y * local.y + q.x * local.x);
+    let twice_dot = dot + dot;
+    let scalar = q.w * q.w - length_sq;
+    let twice_w = q.w + q.w;
+    Vec3::new(
+        twice_w * (q.y * local.z - q.z * local.y) + (twice_dot * q.x + scalar * local.x),
+        twice_w * (q.z * local.x - q.x * local.z) + (twice_dot * q.y + scalar * local.y),
+        twice_w * (q.x * local.y - q.y * local.x) + (twice_dot * q.z + scalar * local.z),
+    )
+}
+
+/// 原1408050b5..52eb：只有真实平顶规则建筑上的墙节点才补顶端缺口。
+fn stair_decorator_wall_hole(
+    address: DecoratorStorageAddr,
+    info: &DecoratorInfo,
+    width: f32,
+    walls: &PublicWalls,
+    roofs: &Query<&country_core::resources::roofs::roof_shape::Roof>,
+) -> Option<country_core::resources::walls::wall_holes::RawWallHole> {
+    let wall_id = address.try_as_wall()?;
+    let wall = walls.get(wall_id)?;
+    let roof = roofs.get(walls.roof_entity(wall_id)?).ok()?;
+    if (2..=4).contains(&info.dst_tag()) || !wall.is_premade_shape() || !roof.is_flat() { return None; }
+    // 原flat style的Option niche3回到Matching，而非把None当Override。
+    let bytes: [u8; 12] = roof.observed()[0x40..0x4c].try_into().expect("原Roof flat style");
+    let tag = if bytes[0] == 3 { 0 } else { bytes[0] };
+    let wooden = match tag {
+        0 => wall.building_projection().is_halftimbered(),
+        1 => false,
+        _ => bytes[1] & 1 != 0,
+    };
+    let maximum_y = wall.max_y();
+    let coord = info.wall_space_coord();
+    if !(maximum_y - coord.y < f32::from_bits(0x3f59_999a)) { return None; }
+    let rim = if wooden { f32::from_bits(0x3f42_8f5d) } else { f32::from_bits(0x3f28_f5c3) };
+    Some(country_core::resources::walls::wall_holes::RawWallHole {
+        center: [coord.u, (maximum_y - rim) + 5.0], dimensions: [width, 10.0], kind: 4,
+    })
+}
+
+/// 原140803dd0/9024B：生成节点的交互primitive/compound、描边和必要墙洞。
+/// 楼梯砖视觉由独立stairs_assemble消费assembly requests，不在此发明第二套模型。
 pub fn generate_playermade_stair_decorators(
-    _storage: Res<DecoratorStorage>,
-    _derived: Res<DerivedDecoratorSubtypes>,
-    _blueprints: ResMut<DecoratorBlueprints>,
-    _transient: ResMut<crate::decorator_visual_state::DecoratorTransientVisualState>,
+    storage: Res<DecoratorStorage>,
+    cached: Res<CachedDecoratorTransforms>,
+    requests: Res<PlayermadeStairsAssemblyRequests>,
+    mut blueprints: ResMut<DecoratorBlueprints>,
+    walls: Res<PublicWalls>,
+    roofs: Query<&country_core::resources::roofs::roof_shape::Roof>,
+    _signifiers: Res<country_core::systems::ui::signifiers::UiSignifierStream>,
+    demo: Res<country_core::systems::backend::input::translate_input::DemoModeEnabled>,
 ) {
-    // U：楼梯视觉生成主体待取证。
+    // 原全局三态只在值1时返回；现代宿主借用与请求producer相同的唯一Demo owner。
+    if demo.0 { return; }
+    let buckets = storage.iter_walls().map(|(wall, bucket)| (DecoratorStorageAddr::Wall(wall), bucket))
+        .chain(storage.iter_terrain_decorators().map(|bucket| (DecoratorStorageAddr::Terrain, bucket)))
+        .chain(storage.iter_stair_decorators().map(|bucket| (DecoratorStorageAddr::Stair, bucket)));
+    for (address, bucket) in buckets {
+        for (raw_id, info) in bucket.iter_modified() {
+            if info.ty != b'?' { continue; }
+            let id = DecoratorId(raw_id);
+            let transform = cached.transform(raw_id);
+            let blueprint = blueprints.insert_for(raw_id, address, info.state());
+            // 原1408047bd：insert返回Arc+16的数据指针，data+129即Arc+139独立交互位。
+            blueprint.interaction_source_flags = 1;
+            let extra = info.extra().as_stair();
+            let height = f32::from_le_bytes(extra.0[..4].try_into().expect("原楼梯高度"));
+            let width = f32::from_le_bytes(extra.0[4..8].try_into().expect("原楼梯宽度"));
+            let (kind, offset, creates_wall_hole) = stair_decorator_interaction_kind(address, id, width, &requests);
+            let mut outline = transform;
+            outline.translation += rotate_stair_decorator_local(transform.rotation, Vec3::new(0.0, 0.25, offset));
+            blueprint.set_cached_transform(outline);
+            let expanded = width + f32::from_bits(0x3dcc_cccd);
+            let dimensions = stair_decorator_interaction_dimensions(kind, width);
+            let base = country_core::systems::collision::world::RaycastMeshData::new_cuboid_at(dimensions, Vec3::new(0.0, 0.0, offset));
+            let mesh = if (2..=3).contains(&info.dst_tag()) {
+                let panel_y = (-0.25 - height) + 0.5;
+                let panel = country_core::systems::collision::world::RaycastMeshData::new_cuboid_at(
+                    Vec3::new(expanded + f32::from_bits(0x3dcc_cccd), 1.0, 1.0),
+                    Vec3::new(panel_y * 0.0, panel_y, panel_y * 0.0),
+                );
+                let top = country_core::systems::collision::world::RaycastMeshData::new_cuboid_at(
+                    Vec3::new(0.87, 1.8, 0.3), Vec3::new(0.0, 1.3, offset + 0.0),
+                );
+                // 原Vec为base/top/panel，hash折叠顺序不能交换；外层为identity pose。
+                country_core::systems::collision::world::RaycastMeshData::new_compound(
+                    vec![base, top, panel], [0, 0, 0, 0, 0, 0, 0, 1.0f32.to_bits()],
+                )
+            } else {
+                if info.dst_tag() == 4 { unreachable!(); }
+                base
+            };
+            blueprint.set_interaction_mesh(std::sync::Arc::new(mesh), &transform.translation, &transform.rotation);
+            if creates_wall_hole {
+                if let Some(hole) = stair_decorator_wall_hole(address, info, width, &walls, &roofs) {
+                    blueprint.wall_holes.push(hole);
+                }
+            }
+            // 原80531x明确unset collision，节点只保留上面的交互mesh。
+            blueprint.collision_mesh = crate::blueprint::BlueprintMeshSlot::Disabled;
+        }
+    }
 }
 
 /// 原 false140276e80 / true14027e470：权威图到完整本轮请求和双向几何图。
@@ -776,14 +920,329 @@ fn walk_shape(
     }
 }
 
-/// 0x140806110（O 结构，8 参面）：维护楼梯图（StairsState 消费 +
-/// apply_decorator_op 应用）。U：图维护主体。
+/// 原140806110：九组资源维护同一楼梯图、碰撞与归档；附加资源只承接
+/// core::_DEV_OVERRIDE_IS_DEMO_MODE@143634d90，不是开发者热键@143634cd8。
+/// 失效节点先入栈，记录态逐个剔除获准的叶邻居，之后按原lane0识别过期边。
+#[allow(clippy::too_many_arguments)]
 pub fn maintain_stair_graph(
-    _storage: Res<DecoratorStorage>,
-    _stairs: Res<country_core::resources::stairs::stairs_state::StairsState>,
-    _commands: Commands,
+    history: Res<country_core::resources::history::History>,
+    physics: Res<country_core::resources::walls::decorator_collision::DecoratorPhysicsColliders>,
+    mut storage: ResMut<DecoratorStorage>,
+    mut archivist: ResMut<country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist>,
+    mut stairs: ResMut<StairsState>,
+    mut structural: ResMut<country_core::resources::stairs::structural_graph::StairsStructuralGraph>,
+    mut raycast: ResMut<country_core::systems::collision::world::RaycastWorld>,
+    mut colliders: ResMut<country_core::resources::stairs::stairs_collider::StairColliderRegistry>,
+    events: Res<country_core::resources::walls::decorator::DeferredDecoratorOpEvents>,
+    demo: Res<country_core::DevOverrideIsDemoMode>,
 ) {
-    // U。
+    use country_core::systems::collision::world::{dispose_collider_mesh_instance, remove_collider};
+    // 原140806149..153：main从dev.demo写入的bool非零才返回，不依赖internal_hotkeys。
+    if demo.0 { return; }
+    let recording = history.is_recording();
+    let mut culled = Vec::new();
+    // 原try_lookup miss可剔除；索引命中却无桶必须在任何图修改前panic。
+    let mut pending: Vec<_> = stairs.graph().nodes().filter(|&id| {
+        match storage.try_lookup_storage(DecoratorId(id)) {
+            None => true,
+            Some(addr) => storage.get(addr).expect("maintain_stair_graph: missing storage")
+                .get(DecoratorId(id)).is_none(),
+        }
+    }).collect();
+    while let Some(id) = pending.pop() {
+        if recording {
+            for neighbor in stairs.graph().neighbors(id) {
+                // 原len*8-8<8同时要求len非零，恰为degree1，不是degree<=1。
+                // petgraph0.8.1无向Neighbors的size_hint即邻接slice.len，匹配原O(1)读取。
+                if stairs.graph().neighbors(neighbor).size_hint().0 == 1
+                    && archivist.is_decorator_cull_allowed(neighbor)
+                {
+                    culled.push(neighbor);
+                    pending.push(neighbor);
+                }
+            }
+        }
+        stairs.remove_node(id);
+        let endpoint = stairs.endpoint();
+        if !endpoint.is_unset() && endpoint.node() == id {
+            stairs.unset_endpoint();
+        }
+    }
+    // 原集合只来自lane0；不能把结构采样自身额外失效的边补进来，改变原生命周期。
+    let stale: std::collections::HashSet<_> = colliders.edge_colliders[0].keys().copied()
+        .filter(|edge| { let (a, b) = edge.nodes(); !stairs.contains_edge_or_stub(a, b) })
+        .collect();
+    colliders.structural_colliders.retain(|(edge, _), instance| {
+        if !stale.contains(edge) { return true; }
+        dispose_collider_mesh_instance(&mut raycast, instance);
+        false
+    });
+    for edge in stale {
+        // 原先structural retain，后三lane依次remove，再删segment_counts。
+        // 结构图节点由真实ColliderDiff消费者清理，不能提前伪造额外remove_node。
+        for lane in &mut colliders.edge_colliders {
+            remove_collider(&mut raycast, lane, &edge);
+        }
+        structural.parts_mut().segment_counts.remove(&edge);
+    }
+    for id in culled {
+        if let Some(addr) = storage.try_lookup_storage(DecoratorId(id)) {
+            archivist.archive_current_decorators_at_with_owners(addr, &storage,
+                &raycast, &physics, crate::apply_decorator_op::LABEL_REMOVE);
+            // 原806bff只写位置Option判别2(None)，xyz为inactive，不伪造实际零位姿。
+            let mut extra = [0; 32];
+            extra[12] = 2;
+            let op = crate::apply_decorator_op::DecoratorOp {
+                kind: crate::apply_decorator_op::DecoratorOp::KIND_REMOVE,
+                decorator_id: DecoratorId(id), extra, ..Default::default()
+            };
+            crate::apply_decorator_op::apply_decorator_op(&op, 0, addr,
+                &mut storage, Some(&mut archivist), None, &events);
+        }
+    }
+}
+
+#[cfg(test)]
+mod maintain_stair_graph_recovery_tests {
+    use super::*;
+    use bevy_ecs::system::RunSystemOnce;
+    use country_core::{
+        resources::{history::History, stairs::{stairs_collider::StairColliderRegistry,
+            stairs_state::ObservedStairEndpoint, structural_graph::StairsStructuralGraph},
+            walls::{WallId, decorator::DeferredDecoratorOpEvents,
+                decorator_collision::DecoratorPhysicsColliders,
+                decorator_archivist::LiveDecoratorArchivist}},
+        systems::{backend::input::translate_input::DemoModeEnabled,
+            collision::world::{RaycastWorld, RaycastMeshData, RaycastGeoSource, upsert_collider}},
+    };
+    use std::{panic::{catch_unwind, AssertUnwindSafe}, sync::Arc};
+    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reports/module-recovery-2026-10-23/m01-demo-gates-native-cases.rs"));
+
+    fn world(recording: bool, allowed: bool) -> World {
+        let mut world = World::new();
+        let mut history: History = History::empty_glade();
+        if recording { history.start_input_recording(0).unwrap(); }
+        world.insert_resource(history);
+        world.init_resource::<DecoratorStorage>();
+        world.init_resource::<DecoratorPhysicsColliders>();
+        let mut archivist = LiveDecoratorArchivist::default();
+        if allowed { archivist.decorator_cull_allow_any(); }
+        world.insert_resource(archivist);
+        world.init_resource::<StairsState>();
+        world.init_resource::<StairsStructuralGraph>();
+        world.init_resource::<RaycastWorld>();
+        world.init_resource::<StairColliderRegistry>();
+        world.init_resource::<DeferredDecoratorOpEvents>();
+        world.insert_resource(DemoModeEnabled(false));
+        world
+    }
+
+    fn place(world: &mut World, id: u32) {
+        world.resource_mut::<DecoratorStorage>().apply_decorator_place(
+            DecoratorStorageAddr::Terrain, DecoratorId(id), &DecoratorInfo {
+                decorator_id: id, ty: 5, rank: 1, u28: 0x1234_5678,
+                ..Default::default()
+            });
+    }
+
+    fn endpoint(world: &mut World, id: u32) {
+        let mut bytes = [0; 24];
+        bytes[..4].copy_from_slice(&1u32.to_le_bytes());
+        bytes[16..20].copy_from_slice(&id.to_le_bytes());
+        world.resource_mut::<StairsState>().try_set_endpoint(ObservedStairEndpoint::from_observed(bytes));
+    }
+
+    #[test]
+    fn demo_gate_precedes_corrupt_storage_and_all_graph_mutation() {
+        let mut world = world(true, true);
+        world.resource_mut::<StairsState>().add_node(7);
+        world.resource_mut::<DecoratorStorage>().decorator_to_storage
+            .insert(DecoratorId(7), DecoratorStorageAddr::Wall(WallId(99)));
+        world.resource_mut::<DemoModeEnabled>().0 = true;
+        world.run_system_once(maintain_stair_graph).unwrap();
+        assert!(world.resource::<StairsState>().graph().contains_node(7));
+        world.resource_mut::<DemoModeEnabled>().0 = false;
+        assert!(catch_unwind(AssertUnwindSafe(|| world.run_system_once(maintain_stair_graph).unwrap())).is_err());
+        assert!(world.resource::<StairsState>().graph().contains_node(7));
+    }
+
+    #[test]
+    fn original_main_two_independent_gates_preserve_same_type_id_and_actual_maintain_behavior() {
+        use country_core::{DevOverrideIsDemoMode, game_config::GameConfig,
+            resources::{history::wall_edit::WallHistoryMetadata, walls::decorator::anchors::{
+                DecoratorPlaceRequestObserved, decorator_source_from_place}}};
+        assert_eq!(std::any::TypeId::of::<DemoModeEnabled>(),std::any::TypeId::of::<DevOverrideIsDemoMode>());
+        for &(demo,hotkeys,enters,place_u45,wall_source69) in ORIGINAL_DEMO_GATES {
+            let mut config=GameConfig::default(); config.dev.demo=demo; config.dev.internal_hotkeys=hotkeys;
+            let mut world=world(false,false);
+            // 原两个writer分别取dev+6和dev+2；本系统的唯一demo owner只接前者。
+            world.insert_resource(DemoModeEnabled(config.dev.demo)); world.insert_resource(config);
+            world.resource_mut::<StairsState>().add_node(7);
+            world.run_system_once(maintain_stair_graph).unwrap();
+            assert_eq!(!world.resource::<StairsState>().graph().contains_node(7),enters,
+                "原demo{demo}/hotkeys{hotkeys}的实际维护门");
+            let placed=decorator_source_from_place(&DecoratorPlaceRequestObserved([0;88]),
+                world.resource::<DevOverrideIsDemoMode>().0,0,false).unwrap();
+            assert_eq!(placed.info.bytes()[0x45],place_u45);
+            assert_eq!(WallHistoryMetadata::for_new_wall(world.resource::<DevOverrideIsDemoMode>().0).source_69,wall_source69);
+        }
+    }
+
+    #[test]
+    fn required_bucket_failure_precedes_removing_already_collected_missing_nodes() {
+        let mut world = world(false, false);
+        world.resource_mut::<StairsState>().add_node(1);
+        world.resource_mut::<StairsState>().add_node(2);
+        world.resource_mut::<DecoratorStorage>().decorator_to_storage
+            .insert(DecoratorId(2), DecoratorStorageAddr::Wall(WallId(99)));
+        assert!(catch_unwind(AssertUnwindSafe(|| world.run_system_once(maintain_stair_graph).unwrap())).is_err());
+        assert_eq!(world.resource::<StairsState>().graph().node_count(), 2);
+        assert!(world.resource::<LiveDecoratorArchivist>().special1.is_none());
+    }
+
+    #[test]
+    fn missing_record_removes_node_and_endpoint_but_does_not_invent_storage_cleanup() {
+        let mut world = world(false, true);
+        place(&mut world, 7);
+        world.resource_mut::<DecoratorStorage>().get_mut(DecoratorStorageAddr::Terrain).unwrap()
+            .decorators.remove(&7);
+        world.resource_mut::<StairsState>().add_node(7);
+        endpoint(&mut world, 7);
+        world.run_system_once(maintain_stair_graph).unwrap();
+        let stairs = world.resource::<StairsState>();
+        assert!(!stairs.graph().contains_node(7));
+        assert!(stairs.endpoint().is_unset());
+        assert_eq!(world.resource::<DecoratorStorage>().try_lookup_storage(DecoratorId(7)), Some(DecoratorStorageAddr::Terrain));
+        assert!(world.resource::<DeferredDecoratorOpEvents>().with_events(|events| events.is_empty()));
+    }
+
+    #[test]
+    fn recording_and_cull_permission_both_gate_actual_leaf_decorator_removal() {
+        for (recording, allowed) in [(false, true), (true, false), (true, true)] {
+            let mut world = world(recording, allowed);
+            for id in [2, 3, 4] { place(&mut world, id); }
+            {
+                let mut stairs = world.resource_mut::<StairsState>();
+                stairs.add_edge(1, 2); stairs.add_edge(1, 3); stairs.add_edge(3, 4);
+            }
+            endpoint(&mut world, 1);
+            world.run_system_once(maintain_stair_graph).unwrap();
+            let stairs = world.resource::<StairsState>();
+            assert!(!stairs.graph().contains_node(1));
+            assert!(stairs.endpoint().is_unset());
+            assert!(stairs.graph().contains_edge(3, 4));
+            let culled = recording && allowed;
+            assert_eq!(stairs.graph().contains_node(2), !culled);
+            assert_eq!(world.resource::<DecoratorStorage>().try_lookup_storage(DecoratorId(2)).is_none(), culled);
+            world.resource::<DeferredDecoratorOpEvents>().with_events(|events| {
+                assert_eq!(events.len(), usize::from(culled));
+                if culled {
+                    let event = events[0];
+                    assert_eq!(u64::from_le_bytes(event[..8].try_into().unwrap()), 4);
+                    assert_eq!(u32::from_le_bytes(event[0x60..0x64].try_into().unwrap()), 2);
+                    assert_eq!(event[0x7c], 2); // 原None位置载荷，不把未初始化xyz解释成实际零位置。
+                    assert_eq!(event[0x80], 0);
+                    assert_eq!(event[0x81], 5);
+                }
+            });
+            if recording { assert!(world.resource::<History>().pending().unwrap().edits.is_empty()); }
+        }
+    }
+
+    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reports/module-recovery-2026-10-23/m01-maintain-stair-graph-original-predicate-cases.rs"));
+
+    #[test]
+    fn real_graph_neighbor_degrees_match_original_instruction_and_policy_outputs() {
+        for &(degree, allowed, expected_cull) in ORIGINAL_STAIR_CULL_PREDICATES {
+            let mut world = world(true, allowed);
+            place(&mut world, 2);
+            if degree == 0 {
+                world.resource_mut::<StairsState>().add_node(1);
+                world.resource_mut::<StairsState>().add_node(2);
+            } else {
+                world.resource_mut::<StairsState>().add_edge(1, 2);
+                for neighbor in 3..=degree + 1 {
+                    place(&mut world, neighbor);
+                    world.resource_mut::<StairsState>().add_edge(2, neighbor);
+                }
+            }
+            world.run_system_once(maintain_stair_graph).unwrap();
+            assert_eq!(!world.resource::<StairsState>().graph().contains_node(2), expected_cull,
+                "原degree/policy分支：degree={degree}, allow={allowed}");
+            assert_eq!(world.resource::<DecoratorStorage>().try_lookup_storage(DecoratorId(2)).is_none(), expected_cull);
+        }
+    }
+
+    #[test]
+    fn cull_archives_both_real_decorator_collision_owners_before_removal() {
+        let mut world = world(true, true);
+        place(&mut world, 2);
+        world.resource_mut::<StairsState>().add_edge(1, 2);
+        let first = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::Y));
+        let second = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(2.0), Vec3::X));
+        let mut raycast = world.remove_resource::<RaycastWorld>().unwrap();
+        let mut maps = world.remove_resource::<DecoratorPhysicsColliders>().unwrap();
+        upsert_collider(&mut raycast, &mut maps.first, DecoratorId(2),
+            RaycastGeoSource::decorator(DecoratorId(2), DecoratorStorageAddr::Terrain),
+            first.clone(), Vec3::new(3.0, 4.0, 5.0), glam::Quat::IDENTITY);
+        upsert_collider(&mut raycast, &mut maps.second, DecoratorId(2),
+            RaycastGeoSource::decorator_interaction(DecoratorId(2), DecoratorStorageAddr::Terrain, 0),
+            second.clone(), Vec3::new(-2.0, 1.0, 8.0), glam::Quat::IDENTITY);
+        world.insert_resource(raycast); world.insert_resource(maps);
+        world.run_system_once(maintain_stair_graph).unwrap();
+        let archivist = world.resource::<LiveDecoratorArchivist>();
+        assert!(Arc::ptr_eq(&archivist.collision_a[&2].1.data, &first));
+        assert!(Arc::ptr_eq(&archivist.collision_b[&2].1.data, &second));
+        // 原归档取实际rapier世界位姿，包含mesh local center，不是传入external位姿。
+        assert_eq!(archivist.collision_a[&2].0.translation, Vec3::new(3.0, 5.0, 5.0));
+        assert_eq!(archivist.collision_b[&2].0.translation, Vec3::new(-1.0, 1.0, 8.0));
+        // 原此处仅装饰存储移除；装饰物理实体由后续fullvisual消费，不额外提前清它。
+        assert_eq!(world.resource::<DecoratorPhysicsColliders>().first.len(), 1);
+    }
+
+    #[test]
+    fn stale_lane_zero_disposes_all_real_stair_lanes_and_samples_only_for_its_edges() {
+        let mut world = world(false, false);
+        place(&mut world, 5); place(&mut world, 6);
+        world.resource_mut::<StairsState>().add_edge(5, 6);
+        let stale = StairGraphEdge::new(1, 2);
+        let live = StairGraphEdge::new(5, 6);
+        let structural_only = StairGraphEdge::new(91, 92);
+        let mut raycast = world.remove_resource::<RaycastWorld>().unwrap();
+        let mut registry = world.remove_resource::<StairColliderRegistry>().unwrap();
+        let mut removed = Vec::new();
+        let data = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO));
+        for lane in &mut registry.edge_colliders {
+            for edge in [stale, live] {
+                upsert_collider(&mut raycast, lane, edge, RaycastGeoSource::PlatformStair,
+                    data.clone(), Vec3::ZERO, glam::Quat::IDENTITY);
+                if edge == stale { removed.push(lane[&edge]); }
+            }
+        }
+        for (edge, sample) in [(stale, 0), (stale, 1), (live, 0), (structural_only, 3)] {
+            upsert_collider(&mut raycast, &mut registry.structural_colliders, (edge, sample),
+                RaycastGeoSource::PlatformStair, data.clone(), Vec3::ZERO, glam::Quat::IDENTITY);
+            if edge == stale { removed.push(registry.structural_colliders[&(edge, sample)]); }
+        }
+        world.resource_mut::<StairsStructuralGraph>().parts_mut().segment_counts.insert(stale, 2);
+        world.resource_mut::<StairsStructuralGraph>().parts_mut().segment_counts.insert(live, 1);
+        world.resource_mut::<StairsStructuralGraph>().parts_mut().segment_counts.insert(structural_only, 4);
+        world.insert_resource(raycast); world.insert_resource(registry);
+        world.run_system_once(maintain_stair_graph).unwrap();
+        let registry = world.resource::<StairColliderRegistry>();
+        for lane in &registry.edge_colliders { assert_eq!(lane.len(), 1); assert!(lane.contains_key(&live)); }
+        assert_eq!(registry.structural_colliders.len(), 2);
+        assert!(registry.structural_colliders.contains_key(&(structural_only, 3)));
+        let counts = world.resource::<StairsStructuralGraph>().segment_counts();
+        assert!(!counts.contains_key(&stale)); assert_eq!(counts[&live], 1);
+        assert_eq!(counts[&structural_only], 4);
+        for collider in removed {
+            assert!(world.resource_mut::<RaycastWorld>().get_rapier_collider(collider.slot, collider.collider).is_none());
+        }
+        // 第二次同owner执行应保持活边、孤立结构记录与图一致，不制造新事件。
+        world.run_system_once(maintain_stair_graph).unwrap();
+        assert_eq!(world.resource::<StairColliderRegistry>().structural_colliders.len(), 2);
+    }
 }
 
 /// 原计算器按所有权移动的四个覆盖项；Some(empty) 与 None 保持区分。
@@ -1981,6 +2440,248 @@ mod tests {
         assert_eq!(requests.requests[0].heights, vec![0.0, 1.0]);
         assert_eq!(requests.requests[0].segment.nodes(), (DecoratorId(1), DecoratorId(2)));
         assert_eq!(requests.adjusted_edges.edge_count(), 0);
+    }
+
+    fn install_stair_fullvisual(world: &mut World) {
+        world.init_resource::<crate::blueprint::PrevDecoratorBlueprints>();
+        world.init_resource::<crate::decorator_visual_state::DecoratorVisualState>();
+        world.init_resource::<country_core::resources::walls::wall_holes::WallHoles>();
+        world.init_resource::<country_core::systems::collision::world::RaycastWorld>();
+        world.init_resource::<country_core::resources::walls::decorator_collision::DecoratorPhysicsColliders>();
+        world.init_resource::<country_core::systems::collision::WindowAutoClutterCandidates>();
+        world.init_resource::<crate::decorator_visual::deco_differential_state::WallAttachedDecoTracker<crate::decorator_visual::chimney_assemble_bricks::ChimneyAssemblyParams>>();
+        world.init_resource::<crate::decorator_visual::deco_differential_state::WallAttachedDecoTracker<crate::decorator_visual::door_stairs_assemble_bricks::DoorStairsAssemblyParams>>();
+        world.insert_resource(country_core::asset_libraries::mesh_library::AssetMeshLibrary::new());
+        world.insert_resource(country_core::asset_libraries::shader_library::SharedAssetShaderLibrary(std::sync::Arc::new(country_core::asset_libraries::shader_library::AssetShaderLibrary::new())));
+        // CPU descriptor fixture，未创建真实GPU资源或验证画面。
+        world.insert_resource(country_core::asset_libraries::texture_library::AssetTextureLibrary::new(&country_core::render::test_device::TestDevice(0)));
+        world.init_resource::<Events<country_core::resources::walls::public_walls::OnWallDeleted>>();
+    }
+
+    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reports/module-recovery-2026-10-23/m01-stair-visual-native-vectors.rs"));
+
+    fn visual_alignments(case: u8) -> PlayermadeStairsAssemblyRequests {
+        let mut requests = PlayermadeStairsAssemblyRequests::default();
+        let kinds: &[(u8, u8)] = match case {
+            0 => &[], 1 => &[(0, 0)], 2 => &[(0, 1)], 3 => &[(1, 0)],
+            4 => &[(1, 1)], 5 => &[(2, 0)], 6 => &[(2, 0), (1, 0)],
+            7 => &[(0, 0), (1, 0)], _ => unreachable!(),
+        };
+        for (i, &(tag, flag)) in kinds.iter().enumerate() {
+            requests.alignments.add_edge(DecoratorId(41), DecoratorId(50 + i as u32),
+                AlignKind { tag, flag, ..AlignKind::default() });
+        }
+        requests
+    }
+
+    #[test]
+    fn stair_visual_profile_and_shape_switch_match_42_original_sse_vectors() {
+        use country_core::resources::walls::WallId;
+        for &(case, width, kind, offset, hole, dims) in STAIR_VISUAL_NATIVE {
+            let width = f32::from_bits(width);
+            let requests = visual_alignments(case);
+            let actual = stair_decorator_interaction_kind(DecoratorStorageAddr::Wall(WallId(7)), DecoratorId(41), width, &requests);
+            assert_eq!((actual.0, actual.1.to_bits(), actual.2), (kind, offset, hole));
+            assert_eq!(stair_decorator_interaction_dimensions(kind, width).to_array().map(f32::to_bits), dims);
+        }
+        let mut incoming = visual_alignments(0);
+        incoming.alignments.add_edge(DecoratorId(90), DecoratorId(41), AlignKind::default());
+        assert_eq!(stair_decorator_interaction_kind(DecoratorStorageAddr::Wall(WallId(7)), DecoratorId(41), 1.0, &incoming), (1, 0.5, true));
+        assert!(std::panic::catch_unwind(|| stair_decorator_interaction_kind(
+            DecoratorStorageAddr::Wall(WallId(7)), DecoratorId(41), 1.0, &visual_alignments(7))).is_err());
+    }
+
+    fn stair_visual_world(tag: u8) -> World {
+        use country_core::resources::walls::cached_decorator_transforms::CachedDecoratorTransform;
+        let mut world = World::new();
+        let mut storage = DecoratorStorage::default();
+        let mut info = stair_info(tag, 0.8, 1.2);
+        info.ty = b'?';
+        storage.apply_decorator_place(DecoratorStorageAddr::Terrain, DecoratorId(41), &info);
+        world.insert_resource(storage);
+        let mut transforms = CachedDecoratorTransforms::default();
+        transforms.insert(41, CachedDecoratorTransform {
+            translation: Vec3::new(3.0, 2.0, 4.0), rotation: glam::Quat::from_rotation_y(0.7),
+            scale: Vec3::new(2.0, 3.0, 4.0),
+        });
+        world.insert_resource(transforms);
+        world.init_resource::<PlayermadeStairsAssemblyRequests>();
+        world.init_resource::<DecoratorBlueprints>();
+        world.init_resource::<PublicWalls>();
+        world.init_resource::<country_core::systems::ui::signifiers::UiSignifierStream>();
+        world.insert_resource(country_core::systems::backend::input::translate_input::DemoModeEnabled(false));
+        world
+    }
+
+    #[test]
+    fn stair_visual_original_compound_reaches_fullvisual_and_reclaims_live_interaction() {
+        use bevy_ecs::system::RunSystemOnce;
+        use crate::blueprint::{BlueprintMeshSlot, PrevDecoratorBlueprints};
+        use country_core::resources::walls::decorator_collision::DecoratorPhysicsColliders;
+        for tag in [2, 3] {
+            let mut world = stair_visual_world(tag);
+            world.run_system_once(generate_playermade_stair_decorators).unwrap();
+            let blueprint = world.resource::<DecoratorBlueprints>().get(41).unwrap();
+            assert!(blueprint.visual_entities.is_empty(), "原节点不生成第二套楼梯砖模型");
+            assert!(matches!(blueprint.collision_mesh, BlueprintMeshSlot::Disabled));
+            let BlueprintMeshSlot::Mesh(mesh) = &blueprint.interaction_mesh else { panic!("不能丢进legacy interaction字段"); };
+            let weak = std::sync::Arc::downgrade(&mesh.mesh);
+            let compound = mesh.mesh.shape_ref().unwrap().as_compound().unwrap();
+            assert_eq!(compound.shapes().len(), 3);
+            let centers: Vec<_> = compound.shapes().iter().map(|(pose, _)| [pose.translation.x, pose.translation.y, pose.translation.z]).collect();
+            assert_eq!(centers[0], [0.0, 0.0, 0.0]);
+            assert_eq!(centers[1], [0.0, 1.3, 0.0]);
+            assert_eq!(centers[2][1], (-0.25f32 - 0.8) + 0.5);
+            assert_eq!(mesh.position, Vec3::new(3.0, 2.0, 4.0));
+            assert_eq!(blueprint.transform.unwrap().translation, Vec3::new(3.0, 2.25, 4.0));
+            install_stair_fullvisual(&mut world);
+            world.run_system_once(crate::blueprint::instantiate_blueprints).unwrap();
+            let maps = world.resource::<DecoratorPhysicsColliders>();
+            assert!(maps.first.is_empty());
+            assert_eq!(maps.second.len(), 1);
+            let instance = maps.second[&DecoratorId(41)];
+            let handle = instance.handle();
+            assert_eq!(world.resource::<country_core::systems::collision::world::RaycastWorld>().get_collider_mesh(instance.registry_index, instance.generation).source,
+                country_core::systems::collision::world::RaycastGeoSource::decorator_interaction(DecoratorId(41), DecoratorStorageAddr::Terrain, 1));
+            assert_eq!(world.resource::<country_core::systems::collision::world::RaycastWorld>().get_collider(handle).position, Vec3::new(3.0, 2.0, 4.0));
+            let mut previous = PrevDecoratorBlueprints::default();
+            world.resource::<DecoratorBlueprints>().copy_blueprints_to_prev(&mut previous);
+            world.insert_resource(previous);
+            world.resource_mut::<DecoratorBlueprints>().map.clear();
+            world.run_system_once(crate::blueprint::instantiate_blueprints).unwrap();
+            assert!(world.resource::<DecoratorPhysicsColliders>().second.is_empty());
+            *world.resource_mut::<PrevDecoratorBlueprints>() = Default::default();
+            assert!(weak.upgrade().is_none());
+        }
+    }
+
+    #[test]
+    fn stair_visual_demo_and_type_gates_precede_cache_and_extra_failures() {
+        use bevy_ecs::system::RunSystemOnce;
+        let mut world = stair_visual_world(3);
+        world.resource_mut::<country_core::systems::backend::input::translate_input::DemoModeEnabled>().0 = true;
+        world.insert_resource(CachedDecoratorTransforms::default());
+        world.run_system_once(generate_playermade_stair_decorators).unwrap();
+        assert!(world.resource::<DecoratorBlueprints>().map.is_empty());
+        world.resource_mut::<country_core::systems::backend::input::translate_input::DemoModeEnabled>().0 = false;
+        world.resource_mut::<DecoratorStorage>().get_mut(DecoratorStorageAddr::Terrain).unwrap().get_mut(DecoratorId(41)).unwrap().ty = 0;
+        world.run_system_once(generate_playermade_stair_decorators).unwrap();
+        assert!(world.resource::<DecoratorBlueprints>().map.is_empty());
+    }
+
+    fn regular_stair_visual_world(style: u8, flat_style: u8, material: u8) -> (World, country_core::resources::walls::WallId, Entity) {
+        use country_core::resources::walls::{InnerWalls, WallState, publication_fields::WallShapeSnapshot, publication_source::TerrainHeightGrid512};
+        let mut world = stair_visual_world(0);
+        let curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(
+            vec![[-2.0,-2.0],[2.0,-2.0],[2.0,2.0],[-2.0,2.0]], true).unwrap();
+        let state = WallState::new(curve, 4.0, style, 0, false);
+        let mut snapshot = state.snapshot().clone();
+        let mut shape = [0u8;28]; shape[..4].copy_from_slice(&1u32.to_le_bytes());
+        for (offset,value) in [(4,1.0f32),(8,0.0),(12,0.0),(16,0.0),(20,4.0),(24,4.0)] {
+            shape[offset..offset+4].copy_from_slice(&value.to_le_bytes());
+        }
+        snapshot.source.shape = WallShapeSnapshot::from_observed(shape);
+        let mut inner = InnerWalls::new();
+        let wall_id = inner.new_wall(WallState::from_snapshot(snapshot, 0));
+        let mut public = PublicWalls::default();
+        public.consume_with_paths(&mut inner, &TerrainHeightGrid512 {encoded: vec![0;512*512].into(), minimum_y:0.0, maximum_y:0.0,sampling_fix:false},
+            None, &Default::default(), &Default::default());
+        assert!(public.get(wall_id).unwrap().is_premade_shape());
+        let mut roof = [0u8;88]; roof[..8].copy_from_slice(&wall_id.0.to_le_bytes());
+        roof[8..36].copy_from_slice(&shape); roof[0x40]=flat_style; roof[0x41]=material;
+        let roof_entity = world.spawn(country_core::resources::roofs::roof_shape::Roof::from_observed(roof)).id();
+        public.associate_roof(wall_id, roof_entity);
+        world.insert_resource(public);
+        let mut info = stair_info(0, 0.8, 1.2); info.ty=b'?';
+        info.dst_wall = u64::from(1.0f32.to_bits()) | (u64::from(3.5f32.to_bits())<<32);
+        let mut storage = DecoratorStorage::default();
+        storage.apply_decorator_place(DecoratorStorageAddr::Wall(wall_id), DecoratorId(41), &info);
+        world.insert_resource(storage);
+        (world,wall_id,roof_entity)
+    }
+
+    #[test]
+    fn stair_visual_wall_hole_uses_real_regular_wall_flat_roof_material_and_original_ordered_gap() {
+        use bevy_ecs::system::RunSystemOnce;
+        for (style,flat,material,wooden) in [(0,0,0,false),(2,0,0,true),(2,1,0,false),(0,2,1,true),(2,3,0,true)] {
+            let (mut world,wall,_) = regular_stair_visual_world(style,flat,material);
+            let maximum = world.resource::<PublicWalls>().get(wall).unwrap().max_y();
+            world.run_system_once(generate_playermade_stair_decorators).unwrap();
+            let hole = world.resource::<DecoratorBlueprints>().get(41).unwrap().wall_holes[0];
+            assert_eq!(hole.center[0], 1.0);
+            assert_eq!(hole.center[1].to_bits(), ((maximum - if wooden {f32::from_bits(0x3f428f5d)} else {f32::from_bits(0x3f28f5c3)})+5.0).to_bits());
+            assert_eq!(hole.dimensions,[1.2,10.0]); assert_eq!(hole.kind,4);
+            install_stair_fullvisual(&mut world);
+            world.run_system_once(crate::blueprint::instantiate_blueprints).unwrap();
+            assert!(world.resource::<country_core::resources::walls::wall_holes::WallHoles>().storage.contains_key(&wall));
+        }
+        for roof_missing in [false,true] {
+            let (mut world,_,roof_entity) = regular_stair_visual_world(0,0,0);
+            if roof_missing {world.entity_mut(roof_entity).remove::<country_core::resources::roofs::roof_shape::Roof>();}
+            else {world.entity_mut(roof_entity).get_mut::<country_core::resources::roofs::roof_shape::Roof>().unwrap().observed_mut()[0x30..0x34].copy_from_slice(&0.5f32.to_le_bytes());}
+            world.run_system_once(generate_playermade_stair_decorators).unwrap();
+            assert!(world.resource::<DecoratorBlueprints>().get(41).unwrap().wall_holes.is_empty());
+        }
+        let (mut world,wall,_) = regular_stair_visual_world(0,0,0);
+        world.resource_mut::<DecoratorStorage>().get_mut(DecoratorStorageAddr::Wall(wall)).unwrap().get_mut(DecoratorId(41)).unwrap().dst_wall =
+            u64::from(1.0f32.to_bits()) | (u64::from(f32::NAN.to_bits())<<32);
+        world.run_system_once(generate_playermade_stair_decorators).unwrap();
+        assert!(world.resource::<DecoratorBlueprints>().get(41).unwrap().wall_holes.is_empty());
+    }
+
+    #[test]
+    fn stair_visual_original_failure_points_keep_only_prior_mutations() {
+        use bevy_ecs::system::RunSystemOnce;
+        for bad_extra in [false, true] {
+            let mut world = stair_visual_world(if bad_extra { 3 } else { 4 });
+            if bad_extra {
+                let mut storage = world.resource_mut::<DecoratorStorage>();
+                let info = storage.get_mut(DecoratorStorageAddr::Terrain).unwrap().get_mut(DecoratorId(41)).unwrap();
+                info.set_extra(country_core::resources::walls::decorator::DecoratorExtraInfo::Window(
+                    country_core::resources::walls::decorator::WindowExtra(0)));
+            }
+            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                world.run_system_once(generate_playermade_stair_decorators).unwrap();
+            })).is_err());
+            let blueprint = world.resource::<DecoratorBlueprints>().get(41).expect("原insert先于失败");
+            assert_eq!(blueprint.interaction_source_flags, 1, "原独立标记先于as_stair与目的判别失败");
+            assert_eq!(blueprint.transform.is_none(), bad_extra);
+            assert!(matches!(blueprint.collision_mesh, crate::blueprint::BlueprintMeshSlot::Unspecified), "原collision Disabled在末尾，不能提前写");
+            assert!(matches!(blueprint.interaction_mesh, crate::blueprint::BlueprintMeshSlot::Unspecified));
+        }
+    }
+
+    #[test]
+    fn stair_visual_preview_skip_and_permanent_interaction_flag_are_independent_across_frames() {
+        use bevy_ecs::system::RunSystemOnce;
+        use crate::blueprint::{BlueprintMeshSlot, PrevDecoratorBlueprints};
+        use country_core::resources::walls::decorator_collision::DecoratorPhysicsColliders;
+        let mut world = stair_visual_world(3);
+        world.resource_mut::<DecoratorStorage>().get_mut(DecoratorStorageAddr::Terrain).unwrap().get_mut(DecoratorId(41)).unwrap().state = 1;
+        world.run_system_once(generate_playermade_stair_decorators).unwrap();
+        let preview = world.resource::<DecoratorBlueprints>().get(41).unwrap();
+        assert_eq!((preview.u138, preview.interaction_source_flags), (1, 1));
+        assert!(preview.transform.is_some());
+        let BlueprintMeshSlot::Mesh(mesh) = &preview.interaction_mesh else { panic!("预览仍构造原交互载荷"); };
+        let weak = std::sync::Arc::downgrade(&mesh.mesh);
+        install_stair_fullvisual(&mut world);
+        world.run_system_once(crate::blueprint::instantiate_blueprints).unwrap();
+        assert!(world.resource::<DecoratorPhysicsColliders>().first.is_empty());
+        assert!(world.resource::<DecoratorPhysicsColliders>().second.is_empty());
+        let mut previous = PrevDecoratorBlueprints::default();
+        world.resource::<DecoratorBlueprints>().copy_blueprints_to_prev(&mut previous);
+        world.insert_resource(previous);
+        let mut normal = *world.resource::<DecoratorStorage>().get(DecoratorStorageAddr::Terrain).unwrap().get(DecoratorId(41)).unwrap();
+        normal.state = 0;
+        world.resource_mut::<DecoratorStorage>().apply_decorator_place(DecoratorStorageAddr::Terrain, DecoratorId(41), &normal);
+        world.run_system_once(generate_playermade_stair_decorators).unwrap();
+        let normal = world.resource::<DecoratorBlueprints>().get(41).unwrap();
+        assert_eq!((normal.u138, normal.interaction_source_flags), (0, 1));
+        world.run_system_once(crate::blueprint::instantiate_blueprints).unwrap();
+        assert!(world.resource::<DecoratorPhysicsColliders>().first.is_empty());
+        assert_eq!(world.resource::<DecoratorPhysicsColliders>().second.len(), 1);
+        *world.resource_mut::<PrevDecoratorBlueprints>() = Default::default();
+        assert!(weak.upgrade().is_none(), "旧预览mesh不应被活物理世界持有");
     }
 
 }

@@ -1,0 +1,335 @@
+{
+  "pid": 35397,
+  "binary": "/tmp/tg-render-perf-production-v19-performance",
+  "binary_sha256": "f95314589172c3e4a91e7989c978a3a58c943d3f1b69e4ee6bd3235570c6a55c",
+  "parallel_evidence": null,
+  "frozen_build_manifest": "/Users/yuluo/Desktop/game/tiny-glade/reports/runtime/2026-10-22-render-thread/performance-2026-10-24/production-v19-performance-build.json",
+  "audited_source_archive_sha256": "807a3cd771fbd9d101e59706ae261f5363aa80cd8fd93df4a24b014e905eea5f",
+  "scenario": "many_draws",
+  "mode": "parallel",
+  "warmup": 300,
+  "frames": 1500,
+  "stack_sampling": false,
+  "gpu_timestamps": false,
+  "stage_timing": true,
+  "cpu_sampling": true,
+  "started_utc": "2026-10-25T09:31:40.662618+00:00",
+  "workspace_sha256_at_start": {
+    "Cargo.lock": "fa00a6d4615d9e970bf10fde1483fe8bf1cf6acd46b5a1b93c8881c71eb4de0b",
+    "crates/tiny-glade/tests/original_loading_present.rs": "f7d71a6b802d0bc9c9b5a32ccc27b9cbacfa862ad24003bd58be77b2f087b486",
+    "crates/tiny-glade/src/production_renderer.rs": "c7efa09c182c72ced299929f01b64c0d0eda8a9c4fa247d04a5b12a7af5fd3b3"
+  },
+  "environment": {
+    "MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS": "1",
+    "VK_ICD_FILENAMES": "/opt/homebrew/etc/vulkan/icd.d/MoltenVK_icd.json",
+    "VK_LAYER_PATH": "/opt/homebrew/share/vulkan/explicit_layer.d",
+    "DYLD_FALLBACK_LIBRARY_PATH": "/opt/homebrew/lib",
+    "RHAPSODY_REQUIRE_VULKAN": "1",
+    "MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS": "1",
+    "TG_INSTALL_ROOT": "/Users/yuluo/Desktop/game/B版本内容",
+    "TG_VALIDATE_GAMEPLAY_WSI": "1",
+    "TG_VALIDATE_WORLD_FRAMES": "1800",
+    "TG_VALIDATE_TIMEOUT_SECONDS": "600",
+    "TG_PERF_SCENARIO": "many_draws",
+    "TG_FRAME_TIMING": "1",
+    "TG_FRAME_TIMING_EVERY": "1",
+    "TG_DRAW_COLLECT_CHUNK": "64",
+    "TG_REQUIRE_CROSS_PASS": "1",
+    "TG_PROFILE_OUT": "/Users/yuluo/Desktop/game/tiny-glade/reports/runtime/2026-10-22-render-thread/performance-2026-10-24/cpu-diagnostics-production-v19/many_draws-parallel-round1/cpu-stacks.folded",
+    "TG_PROFILE_DELAY": "20",
+    "TG_PROFILE_SECS": "10"
+  },
+  "exit_code": 0,
+  "elapsed_s": 132.8433381661307,
+  "log_sha256": "024a0dd8f028bbeea4348ee757394a73ae279e05137e976d5aa506f637a8fbdd",
+  "cpu": {
+    "average_process_cpu_percent": 137.39708157835372,
+    "sampled_cpu_ms_per_observed_frame": 94.52109845947756,
+    "peak_rss_kib": 1042192,
+    "observed_frame_range": [
+      305,
+      1798
+    ],
+    "scope": "1-second process snapshots; 100% is one CPU core; sampled subrange excludes startup/warmup, not exact full-frame CPU attribution."
+  },
+  "thread_cpu": {
+    "threads": [
+      {
+        "thread_id": "6196949216",
+        "name": "tg-render",
+        "cpu_ms_per_observed_frame": 45.90975284661755,
+        "user_ms_per_observed_frame": 42.921711989283324,
+        "system_ms_per_observed_frame": 2.9880408573342265
+      },
+      {
+        "thread_id": "6170472672",
+        "name": "tg-compute (3)",
+        "cpu_ms_per_observed_frame": 6.575295378432686,
+        "user_ms_per_observed_frame": 5.721483590087073,
+        "system_ms_per_observed_frame": 0.8538117883456129
+      },
+      {
+        "thread_id": "6168326368",
+        "name": "tg-compute (2)",
+        "cpu_ms_per_observed_frame": 6.476105157401206,
+        "user_ms_per_observed_frame": 5.631425318151374,
+        "system_ms_per_observed_frame": 0.8446798392498326
+      },
+      {
+        "thread_id": "6164033760",
+        "name": "tg-compute (0)",
+        "cpu_ms_per_observed_frame": 6.376371734762224,
+        "user_ms_per_observed_frame": 5.543348961821835,
+        "system_ms_per_observed_frame": 0.8330227729403885
+      },
+      {
+        "thread_id": "6172618976",
+        "name": "tg-compute (4)",
+        "cpu_ms_per_observed_frame": 6.33275619557937,
+        "user_ms_per_observed_frame": 5.510262558606832,
+        "system_ms_per_observed_frame": 0.8224936369725385
+      },
+      {
+        "thread_id": "6174765280",
+        "name": "tg-compute (5)",
+        "cpu_ms_per_observed_frame": 6.271081044876088,
+        "user_ms_per_observed_frame": 5.43059343603483,
+        "system_ms_per_observed_frame": 0.8404876088412592
+      },
+      {
+        "thread_id": "6166180064",
+        "name": "tg-compute (1)",
+        "cpu_ms_per_observed_frame": 6.222079035498996,
+        "user_ms_per_observed_frame": 5.419984594775619,
+        "system_ms_per_observed_frame": 0.8020944407233758
+      },
+      {
+        "thread_id": "8741482848",
+        "name": "main",
+        "cpu_ms_per_observed_frame": 4.174359678499665,
+        "user_ms_per_observed_frame": 2.3387126590756866,
+        "system_ms_per_observed_frame": 1.8356470194239787
+      },
+      {
+        "thread_id": "6180204768",
+        "name": "",
+        "cpu_ms_per_observed_frame": 1.1539805760214334,
+        "user_ms_per_observed_frame": 0.19934092431346281,
+        "system_ms_per_observed_frame": 0.9546396517079706
+      },
+      {
+        "thread_id": "6199668960",
+        "name": "",
+        "cpu_ms_per_observed_frame": 1.070093101138647,
+        "user_ms_per_observed_frame": 0.21139852645679838,
+        "system_ms_per_observed_frame": 0.8586945746818486
+      },
+      {
+        "thread_id": "6179631328",
+        "name": "",
+        "cpu_ms_per_observed_frame": 0.935430676490288,
+        "user_ms_per_observed_frame": 0.15187675820495647,
+        "system_ms_per_observed_frame": 0.7835539182853315
+      },
+      {
+        "thread_id": "6181351648",
+        "name": "",
+        "cpu_ms_per_observed_frame": 0.8890006697923644,
+        "user_ms_per_observed_frame": 0.17900133958472875,
+        "system_ms_per_observed_frame": 0.7099993302076356
+      },
+      {
+        "thread_id": "6179057888",
+        "name": "bvh_builder_worker",
+        "cpu_ms_per_observed_frame": 0.5937856664434026,
+        "user_ms_per_observed_frame": 0.0930977896851976,
+        "system_ms_per_observed_frame": 0.500687876758205
+      },
+      {
+        "thread_id": "6190510304",
+        "name": "",
+        "cpu_ms_per_observed_frame": 0.26401540522438044,
+        "user_ms_per_observed_frame": 0.05000803750837241,
+        "system_ms_per_observed_frame": 0.21400736771600803
+      },
+      {
+        "thread_id": "6176911584",
+        "name": "Async save",
+        "cpu_ms_per_observed_frame": 0.11487943737441392,
+        "user_ms_per_observed_frame": 0.0630100468854655,
+        "system_ms_per_observed_frame": 0.051869390488948425
+      },
+      {
+        "thread_id": "6183497952",
+        "name": "reqwest-internal-sync-runtime",
+        "cpu_ms_per_observed_frame": 0.006397186872069659,
+        "user_ms_per_observed_frame": 0.005440723375753516,
+        "system_ms_per_observed_frame": 0.000956463496316142
+      },
+      {
+        "thread_id": "6185644256",
+        "name": "theme-delivery",
+        "cpu_ms_per_observed_frame": 0.00045077026121902213,
+        "user_ms_per_observed_frame": 0.000130609511051574,
+        "system_ms_per_observed_frame": 0.00032016075016744807
+      },
+      {
+        "thread_id": "6180778208",
+        "name": "com.apple.NSEventThread",
+        "cpu_ms_per_observed_frame": 0.00014668452779638313,
+        "user_ms_per_observed_frame": 2.947086403215003e-05,
+        "system_ms_per_observed_frame": 0.00011721366376423308
+      },
+      {
+        "thread_id": "6199095520",
+        "name": "window-lifecycle-watchdog",
+        "cpu_ms_per_observed_frame": 0.0,
+        "user_ms_per_observed_frame": 0.0,
+        "system_ms_per_observed_frame": 0.0
+      },
+      {
+        "thread_id": "6194802912",
+        "name": "rhapsody-pipeline-0",
+        "cpu_ms_per_observed_frame": 0.0,
+        "user_ms_per_observed_frame": 0.0,
+        "system_ms_per_observed_frame": 0.0
+      },
+      {
+        "thread_id": "6189936864",
+        "name": "rhapsody-pipeline-0",
+        "cpu_ms_per_observed_frame": 0.0,
+        "user_ms_per_observed_frame": 0.0,
+        "system_ms_per_observed_frame": 0.0
+      }
+    ],
+    "observed_frame_range": [
+      305,
+      1798
+    ],
+    "persistent_threads_cpu_ms_per_observed_frame": 93.3659812458138,
+    "threads_exited": [
+      "6161887456"
+    ],
+    "threads_started": [],
+    "scope": "Actual user+kernel CPU time; GPU execution and sleeping waits excluded. Means over observed frame range, not per-frame p95 or a parallel critical-path measurement. Exited/new threads excluded from the persistent-thread sum."
+  },
+  "measurement_runner_sha256": "43709cbfba03789a8e76483aa69b9673caca6f3a57b1c96f42a8710dc14aba97",
+  "measurement": {
+    "frames": 1500,
+    "warmup": 300,
+    "observed_fps": 14.506822583893406,
+    "allocator": "mimalloc",
+    "measured_upload_pending_yields": {
+      "rows": 1500,
+      "total": 0,
+      "maximum": 0
+    },
+    "metrics": {
+      "observed_native_frame_interval_ms": {
+        "n": 1500,
+        "p50": 66.690917,
+        "p95": 95.925708,
+        "p99": 119.571041
+      },
+      "acquire_ms": {
+        "n": 1500,
+        "p50": 0.037,
+        "p95": 0.08,
+        "p99": 0.158
+      },
+      "collect_ms": {
+        "n": 1500,
+        "p50": 1.566,
+        "p95": 2.608,
+        "p99": 3.902
+      },
+      "compile_ms": {
+        "n": 1500,
+        "p50": 1.672,
+        "p95": 2.37,
+        "p99": 3.824
+      },
+      "declare_ms": {
+        "n": 1500,
+        "p50": 12.857,
+        "p95": 21.39,
+        "p99": 32.98
+      },
+      "draw_lists_ms": {
+        "n": 1500,
+        "p50": 0.41,
+        "p95": 0.879,
+        "p99": 1.327
+      },
+      "frame_throttle_ms": {
+        "n": 1500,
+        "p50": 0.001,
+        "p95": 4.919,
+        "p99": 11.716
+      },
+      "observed_completion_wall_ms": {
+        "n": 1500,
+        "p50": 66.395,
+        "p95": 91.939,
+        "p99": 108.358
+      },
+      "present_ms": {
+        "n": 1500,
+        "p50": 0.021,
+        "p95": 0.039,
+        "p99": 0.07
+      },
+      "present_ticket_wait_ms": {
+        "n": 1500,
+        "p50": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      },
+      "queue_trim_actual_ms": {
+        "n": 1500,
+        "p50": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      },
+      "queue_trim_budget_ms": {
+        "n": 1500,
+        "p50": 0.0,
+        "p95": 0.0,
+        "p99": 0.0
+      },
+      "record_submit_ms": {
+        "n": 1500,
+        "p50": 44.263,
+        "p95": 64.3,
+        "p99": 80.289
+      },
+      "resolve_inclusive_ms": {
+        "n": 1500,
+        "p50": 0.54,
+        "p95": 0.957,
+        "p99": 1.747
+      }
+    },
+    "render_stage_rows": 1500,
+    "gpu_window_count": 0,
+    "gpu_windows_with_samples": 0,
+    "collect_measured": {
+      "rows": 1500,
+      "tasks": 30000.0,
+      "cross_pass_tasks": 13500.0
+    },
+    "collect_totals_all_gameplay": {
+      "tasks": 36213.0,
+      "cross_pass_tasks": 16152.0
+    },
+    "startup_line": "PERF_WORLD_FIRST scenario=many_draws wall_ms=3650.060 world=WorldId(0)",
+    "scope": "Real desktop loop and native WSI; render-feedback intervals measure throughput, not GPU completion or photon latency. Stage wall times overlap CPU/GPU work and must not be summed. Missing timing rows/counters mean instrumentation was disabled."
+  },
+  "parallel_acceptance": true,
+  "cpu_profile_sha256": "df94b76adeb69412bfcea2868fb722d47e3cf293918b306c019b1f361e8c9f25",
+  "cpu_profile_source_identity": {
+    "valid": false,
+    "reason": "V19 folded includes V20-only bindless::LeaseSlot (9 samples), and line numbers follow overwritten V20 object debug-map. Frozen binary CPU clocks remain valid; Rust source/inline hotspot comparison is rejected.",
+    "evidence": "cpu-stacks.folded: drop_glue<rhapsody::bindless::LeaseSlot>; V19 source archive has no LeaseSlot."
+  }
+}

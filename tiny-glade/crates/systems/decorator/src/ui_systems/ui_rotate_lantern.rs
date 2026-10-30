@@ -53,7 +53,8 @@ pub fn ui_rotate_decorator<C: Send+Sync+'static>(
     ui: Res<UiState>, mut stream: ResMut<UiSignifierStream>, mut local: Local<EditingState>,
     ray: Res<CameraCursorRay>, terrain: Res<TerrainHeightsData<TerrainHeightSsbo>>,
     transforms: Res<CachedDecoratorTransforms>, dispatcher: Res<DecoratorAffordanceDispatcher>,
-    mut audio: EventWriter<PlayDecoratorSoundCmd>, time: Res<GameTime>,
+    mut audio: EventWriter<PlayDecoratorSoundCmd>,
+    (time,demo): (Res<GameTime>,Res<country_core::systems::backend::input::translate_input::DemoModeEnabled>),
     (mut storage,mut archivist,events): (ResMut<DecoratorStorage>,ResMut<DecoratorArchivist<C>>,Res<DeferredDecoratorOpEvents>),
     (camera,window,depth): (Res<MainCamera>,Res<WindowSize>,Res<MouseDepthValue>),
     mut history: ResMut<DeferredDecoratorEditHistory>,mut backup: ResMut<DecoratorBackup>,
@@ -94,6 +95,7 @@ pub fn ui_rotate_decorator<C: Send+Sync+'static>(
                 let mut patch=DecoratorChangePatch::rotation(request.decorator_id,addr,destination,transforms.position(request.decorator_id.0));
                 patch.destination=None;
                 patch.word_2c_delta=Some(1);
+                patch.seed_demo_mode=demo.0;
                 apply_decorator_op(&DecoratorOp::from_change(addr,patch),u8::from(raw>1),addr,&mut storage,Some(&mut *archivist),Some(&mut *history),&events);
             } else {
                 let angle=DecoratorRotationXZ::from_xz_forward_vector(Vec2::new(cursor.x-center.x,cursor.z-center.z));
@@ -103,7 +105,7 @@ pub fn ui_rotate_decorator<C: Send+Sync+'static>(
                 apply_decorator_op(&DecoratorOp::from_change(addr,patch),u8::from(raw>1),addr,&mut storage,Some(&mut *archivist),Some(&mut *history),&events);
                 local.latest_yaw=yaw.0;
                 let position_context=match addr {country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Wall(_)=>0,country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Terrain=>1,country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Stair=>2};
-                audio.write(PlayDecoratorSoundCmd {kind:rotation_audio_kind(request.ty),ratio:(current_yaw.0-yaw.0).abs()/time.delta,position_context,position:cursor,flag:false});
+                audio.write(PlayDecoratorSoundCmd {kind:rotation_audio_kind(request.ty),selector:0,ratio:(current_yaw.0-yaw.0).abs()/time.delta,position_context,position:cursor,flag:false});
             }
         }
         _=>unreachable!(),

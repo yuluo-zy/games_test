@@ -1,9 +1,16 @@
 //! Original clear_canvas140a7b2da/2e6 clears two48B hash maps in order.
 //! Callee140aaae80 and remove_wall_id140aa9380 prove both exact key/value types.
 //! Field names describe their storage order; full geometry producer is separate.
-use bevy_ecs::{resource::Resource,entity::Entity};
+use bevy_ecs::{component::Component,resource::Resource,entity::Entity};
 use std::collections::HashMap;
 use super::WallId;
+
+/// 原半木实体携带的颜色键与直接索引标志；非零标志按原路径直接查色。
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CurvedHalfTimber {
+    pub key: u64,
+    pub direct: u8,
+}
 
 #[derive(Resource,Clone,Debug,Default)]
 pub struct CurvedHalfTimberDrawables {

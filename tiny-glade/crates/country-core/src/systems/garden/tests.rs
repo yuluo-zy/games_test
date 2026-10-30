@@ -112,6 +112,11 @@ fn garden_drag_border_resume_commit_records_the_live_raster_once() {
         world.resource::<Events<GardenPinnedClutterCircle>>().len(),
         1
     );
+    let pins = world.resource::<Events<crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>>();
+    let mut reader = pins.get_cursor();
+    assert!(matches!(reader.read(pins).last(), Some(
+        GardenPinnedClutterCircle::Circle { vertical: [0.0, 1.5], containment: true, exclude_wall: None, .. }
+    )));
     assert!(world
         .resource::<GardenRaster>()
         .scratch()

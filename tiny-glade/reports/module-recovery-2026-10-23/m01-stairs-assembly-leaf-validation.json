@@ -1,0 +1,108 @@
+{
+  "status": "five necessary leaves recovered and verified; main true/false assembly INCOMPLETE, not registered as restored",
+  "original_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "source_sha256": {
+    "tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs": "6f1b51abd59563377d1174f64feeba12a6ff2516aefd504d5b3042f57b9db742",
+    "tiny-glade/crates/country-core/src/resources/stairs/visual.rs": "219298dceda706a8c05965b4f33ce5810f0f90b687a5be70d8e6d81e972b15d4"
+  },
+  "native_cases": {
+    "determine_ladder_support": 1440,
+    "gen_stairs_collider_and_rt_geo": 68,
+    "construct_ladder": 180,
+    "split_segment_into_supported_and_unsupported_subsegments": 192,
+    "floor_tri_count_to_atlas_idx": 253
+  },
+  "native_payloads": {
+    "collider_segments": 101,
+    "ladder_records_64B": 1512,
+    "support_rays": 774
+  },
+  "validation": [
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test --offline -p system-decorator --lib original_stair_",
+      "passed": 6,
+      "failed": 0,
+      "log": "m01-stair-native-all-tests-v2.log"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test --offline -p system-decorator --lib original_ladder_support_all_five",
+      "passed": 1,
+      "failed": 0,
+      "log": "m01-ladder-support-tests.log"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test --offline -p country-core --lib resources::stairs::visual::tests",
+      "passed": 7,
+      "failed": 0,
+      "log": "m01-stair-magic-clear-tests.log"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test --offline -p system-decorator --lib stair_",
+      "passed": 48,
+      "failed": 0,
+      "log": "m01-stair-native-and-sparse-tests.log",
+      "limit": "before support partition and atlas additions; historical regression receipt only"
+    }
+  ],
+  "limits": [
+    "Original new_convex is a resolved boundary capturing 8 input points and returning None; no original Parry hull equivalence claim. Rust real Parry hull path tested independently.",
+    "Original support partition fixture resolves World queries + wall_normal + standard Vec allocation; production adapter additionally tested with real RaycastWorld add/edit/remove and mask/maxTOI.",
+    "Ladder original full function retains RNG and all geometry; only ceilf and actual sparse writer emission boundary resolved; finite words exact, NaN class only across architectures.",
+    "No OS/GPU/window/main assembly/reload complete claim.",
+    "No inferred opaque new request/cache arrays added."
+  ],
+  "follow_up_steps_mat3_disjoint": {
+    "status": "steps complete numeric writer kernel, actual World/terrain/Sparse lifecycle still pending; main incomplete",
+    "native_steps_cases": 928,
+    "native_brick_records_96B": 6460,
+    "native_mat3_cases": 169,
+    "steps_test": {
+      "passed": 1,
+      "failed": 0,
+      "log": "m01-stair-steps-tests.log"
+    },
+    "mat3_test": {
+      "passed": 1,
+      "failed": 0,
+      "log": "m01-stair-xz-mat3-tests.log"
+    },
+    "disjoint_test": {
+      "passed": 9,
+      "failed": 0,
+      "log": "m01-stair-disjoint-tests.log",
+      "owned_passed": 6,
+      "note": "filter also ran3 existing unrelated disjoint tests; all9 passed"
+    },
+    "sources": {
+      "tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs": "71d1e439e9d2a0bb0ac5c2b81c886840a1478f2214f0102d577a6758e25d7fc3",
+      "tiny-glade/crates/utils/src/lib.rs": "f8261886f1c1b89454f715c06ac59472e23ea8f799b0a9801cdb452ab73d08e7",
+      "tiny-glade/crates/country-core/src/frozen_map.rs": "3cff522fb4391cae152ef95435325cad5dbda4be39c05c307ca1364b2f9d0863",
+      "tiny-glade/crates/country-core/src/asset_libraries/ssbo_library.rs": "20fb34e09697247be8cb1beaae238615b490acf16f38881638f6832374313a6c"
+    }
+  },
+  "follow_up_magic_wall_cutout_resource_adapter": {
+    "status": "typed64B magic+24B wallcutout and actual wallhole consumer verified; main/reset and aux producer incomplete",
+    "native_hole_cache_cases": 28,
+    "native_hole_cache_records": 156,
+    "validation": [
+      {
+        "command": "CARGO_INCREMENTAL=0 cargo test --offline -p country-core --lib resources::stairs::visual::tests",
+        "passed": 8,
+        "failed": 0,
+        "log": "m01-stair-magic-vector-tests.log"
+      },
+      {
+        "command": "CARGO_INCREMENTAL=0 cargo test --offline -p system-decorator --lib original_stair_",
+        "passed": 9,
+        "failed": 0,
+        "log": "m01-stair-own-final-tests.log"
+      }
+    ],
+    "resource_boundary": "actual step resource adapter uses World original request geometry, true TerrainHeightSsbo and actual BrickSparse dirty/stable/drop. aux=.75 is explicit test input because original upstream aux producer not yet recovered; NOT complete production assembly proof. RecordingDevice is CPU upload-boundary proof, NOT real GPU.",
+    "source_sha256": {
+      "tiny-glade/crates/country-core/src/resources/stairs/visual.rs": "89d01a793e8cce2b642d9bc43bbaa13f9061a04c4973ba355c7c71cdb540d0e3",
+      "tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs": "e332c8887e757b12ea5e6c73d7ad95b89f46eb624d424e63a5fb6890c58efa69"
+    }
+  }
+}

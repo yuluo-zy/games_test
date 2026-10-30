@@ -145,7 +145,7 @@ fn install_domain_lifecycles(app: &mut App) {
     app.add_systems(
         Update,
         (
-            system_color::write_roof_color_id_to_gpu::write_wall_color_ids_to_gpu,
+            system_color::write_roof_color_id_to_gpu::write_gate_and_halftimber_color_ids_to_gpu,
         )
             .after(GameSystemSet(40))
             .before(GameSystemSet(41))

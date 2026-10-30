@@ -7,6 +7,7 @@ pub mod stairs_top_down;
 pub mod structural_graph;
 pub mod visual;
 
+#[cfg(feature = "native-physics")]
 pub use invalidate::invalidate_dirty_stair_artifacts;
 pub use stairs_assembly_params::{
     length_ws, AlignKind, ObservedAlignKind, ObservedStairNodeAnchor,

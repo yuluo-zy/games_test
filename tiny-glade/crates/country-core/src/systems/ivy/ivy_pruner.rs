@@ -3,6 +3,7 @@
 //! ivy's tail/root against the wall spatial hash plus the arch height band.
 use crate::resources::{
     critters::sheep::CmdCheckForSheepInsideBuilding,
+    events::OnCircleRotated,
     ivy::{IvyId, IvyLeafStorage, IvyStorage},
     walls::{
         WallId, public_wall_state::PublicWallState, public_walls::PublicWalls,
@@ -267,6 +268,7 @@ fn revalidate_ivy(
 /// (0x140997a58..ae3). Emptied ivies are `remove_entry`-deleted from the
 /// storage map after the loop (0x140998711..1312).
 ///
+/// 圆旋转使用原跨域事件，不能以所有墙变化代替，以免触发额外修剪。
 pub fn ivy_pruner(
     mut storage: ResMut<IvyStorage>,
     mut leaves: ResMut<IvyLeafStorage>,
@@ -274,7 +276,7 @@ pub fn ivy_pruner(
     spatial: Res<WallSpatialHash>,
     prev_holes: Res<PrevWallHoles>,
     mut sheep_cmds: EventReader<CmdCheckForSheepInsideBuilding>,
-    mut changed: EventReader<crate::resources::events::OnCircleRotated>,
+    mut changed: EventReader<OnCircleRotated>,
 ) {
     // Each native reader drains its unread batch but retains only its last
     // wall. Earlier events must not trigger pruning or missing-wall failures.

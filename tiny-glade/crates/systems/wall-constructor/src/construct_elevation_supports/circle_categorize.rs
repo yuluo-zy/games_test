@@ -41,7 +41,6 @@
 //! **登记（core-api-missing）**：建议 core 提供
 //! `WallShapeSnapshot::contains_point(Vec2)`（或 `as_border_shape()`），
 //! 落库后本文件的本地转换可删除。
-use country_core::resources::walls::WallId;
 use country_core::resources::walls::public_walls::PublicWalls;
 use country_core::resources::walls::publication_fields::WallShapeSnapshot;
 use glam::Vec2;
@@ -49,26 +48,8 @@ use ::utils::scalar::clamp01;
 use utils::geometry::Circle2d;
 use utils::geometry::Rectangle2d;
 
-/// 墙条目（stride 0x50；机器只读 `+0x38` 的 wall id。字段其余语义 U）。
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
-pub struct WallEntry50(pub [u8; 0x50]);
-
-impl Default for WallEntry50 {
-    fn default() -> Self {
-        Self([0u8; 0x50])
-    }
-}
-
-impl WallEntry50 {
-    /// wall id @+0x38（机器 `MOV RDX,[R12+0x38]`）。
-    pub fn wall_id(&self) -> WallId {
-        WallId(u64::from_le_bytes(self.0[0x38..0x40].try_into().unwrap()))
-    }
-}
-
 /// `WallShapeSnapshot` 字节 → core 几何查询（见模块注释；0x140ad2950 语义）。
-fn shape_contains(shape: &WallShapeSnapshot, point: Vec2) -> bool {
+pub(crate) fn shape_contains(shape: &WallShapeSnapshot, point: Vec2) -> bool {
     let b = shape.bytes();
     let f = |o: usize| f32::from_le_bytes(b[o..o + 4].try_into().unwrap());
     let tag = u32::from_le_bytes(b[0..4].try_into().unwrap());
@@ -92,7 +73,7 @@ fn shape_contains(shape: &WallShapeSnapshot, point: Vec2) -> bool {
 /// B `circle_categorize`（0x14124af60）：圆形墙的支柱覆盖占比判定。
 ///
 /// 机器实参：`RCX = &Circle2d`、`R8 = &墙条目容器`（+8 指针 / +0x10 长度，
-/// 条目 stride 0x50）、`R9 = &PublicWalls`。返回
+/// 原条目 stride 0x50，现用已证字段 `OverhangSegment::wall`）、`R9 = &PublicWalls`。返回
 /// `in_wall / inside < threshold`（低半径早退返回 `walls.is_empty()`）。
 ///
 /// NaN/∞ 语义按机器逐字保留（FIX-G1）：
@@ -101,7 +82,7 @@ fn shape_contains(shape: &WallShapeSnapshot, point: Vec2) -> bool {
 ///   `ratio < threshold` **或 unordered**（NaN → 返回 true）。
 pub fn circle_categorize(
     circle: &Circle2d,
-    walls: &[WallEntry50],
+    walls: &[super::find_overlap_segments::OverhangSegment],
     public_walls: &PublicWalls,
 ) -> bool {
     let radius = circle.radius;
@@ -128,7 +109,7 @@ pub fn circle_categorize(
             inside += 1.0;
             for wall in walls {
                 let state = public_walls
-                    .get(wall.wall_id())
+                    .get(wall.wall)
                     .expect("circle_categorize: PublicWalls::get 缺失（原版 unwrap）");
                 let shape = state.get_wall_shape();
                 if shape_contains(shape, point) {
@@ -152,8 +133,25 @@ mod tests {
     fn small_circle_returns_walls_empty() {
         let circle = Circle2d::new(Vec2::ZERO, 1.0);
         assert!(circle_categorize(&circle, &[], &PublicWalls::default()));
-        let walls = [WallEntry50([0u8; 0x50])];
+        let walls = [super::super::find_overlap_segments::OverhangSegment {
+            curve: country_core::resources::roofs::geometry::surface::Curve2 { points: vec![], points_u: vec![], length: 0.0 },
+            wall: country_core::resources::walls::WallId(0),
+            interval: [utils::curve::CurveU::from_raw(0.0), utils::curve::CurveU::from_raw(0.0)],
+            flag: false,
+        }];
         assert!(!circle_categorize(&circle, &walls, &PublicWalls::default()));
+    }
+
+    #[test]
+    #[should_panic(expected = "circle_categorize: PublicWalls::get 缺失")]
+    fn sampled_circle_fails_when_segment_wall_is_missing() {
+        let wall = super::super::find_overlap_segments::OverhangSegment {
+            curve: country_core::resources::roofs::geometry::surface::Curve2 { points: vec![], points_u: vec![], length: 0.0 },
+            wall: country_core::resources::walls::WallId(12345),
+            interval: [utils::curve::CurveU::from_raw(0.0), utils::curve::CurveU::from_raw(0.0)],
+            flag: false,
+        };
+        circle_categorize(&Circle2d::new(Vec2::ZERO, 2.0), &[wall], &PublicWalls::default());
     }
 
     #[test]

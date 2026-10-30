@@ -1,0 +1,35 @@
+{
+  "identity": {
+    "rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+    "pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+    "graph_snapshot": "053060f0c5d388b353567d8b"
+  },
+  "functions": {
+    "pillar": "0x14124ba30",
+    "turret": "0x14124cc30",
+    "caller": "0x140788160"
+  },
+  "original_evidence": {
+    "pillar": "m06-circle-pillar-native-neighbor-{0,1}.json and m06-circle-pillar-native-contained.json: lookup and ground/terrain bridged, original neighbor filtering, nearest axis, proposal and collision executed",
+    "turret": "m06-circle-turret-native-{0,1}.json and m06-circle-turret-native-offset-{0,1}.json: public lookup, allocator, math, SSBO bridges; original geometry, RNG and event writes executed",
+    "empty": "m06-circle-turret-native-empty-0.json: one empty event, no resource lookup",
+    "failures": "m06-circle-turret-native-failure-{0,1}.json: event first, then unwrap at 14124e1e5 (library) or 14124e201 (owner), no pushes",
+    "staging": "原 14124da.. 以 0x50 步长保存 affine+seed+wall_distance，14124d175 先发事件，之后 14124dc.. 在砖 owner 持锁内转换成 0x60B 并写；当前 Rust 使用 16 对齐 80B 安全暂存。",
+    "failure_write": "m06-circle-turret-native-push-fail.json：全部132次 push 模拟失败，原仍返回，逐条继续",
+    "combined_pillar_materials": "m06-circle-pillar-full-probe.py：原圆柱入口与材质消费者均执行；样本0石材144砖、样本4半木12木+32石基砖、偏移旋转样本1石材300砖；m06-circle-pillar-full-rotwood-probe.py偏移旋转半木15木+60石基砖。terrain/start_y、SSBO lookup、writer及系统入口桥接。",
+    "brace_trace": "m06-circle-pillar-full-quat-delta-probe.py：第三柱第二斜撑原端点、单位向量、原 quaternion 直接断点；端点一致后顺序 (y²+x²)+z² 可逐位复算原向量"
+  },
+  "verification": {
+    "central_121": "先前版本 /private/tmp/root-m6-support-half-plaster-round3-20261029.log: 基础圆柱、132/169砖、两组五条 curved 和公共墙塔目标通过；80B 暂存版本尚待重验",
+    "new_tests": "pillar neighbor and containment plus turret World failure tests awaiting central Cargo",
+    "central_134": "/private/tmp/root-m6-comprehensive-round4-20261029.log: 133/134, turret 80B/两组原记录/World 全过；圆柱邻矩形失败后确认 140c9a750 unsigned 原非对称",
+    "central_distance": "/private/tmp/root-m6-rectangle-distance-utils-v2-20261029.log: 187/187；独立原样本确认 140c9a750 非对称 unsigned distance；圆柱 smooth 依 14124be38..51 次序修正并在 round5 通过",
+    "central_round5": "/private/tmp/root-m6-algorithms-history-integration-round5-20261029.log: lib 141/141；圆柱邻矩形、邻圆和包含过滤的提案/碰撞逐位通过，圆塔80B暂存、132/169砖、两组5 curved及World失败顺序通过",
+    "circle_world": "round5 日志中 detector_circle_supports_update_formal_owners_and_stats 与 circle_turret_sends_event_before_missing_brick_owner_panics 通过；主支撑 owner 确认覆盖检测、4柱/碰撞、重算及删除",
+    "combined_pillar_materials": "round7 /private/tmp/root-m6-native-parent-round7-20261029.log 两项通过：基准144砖、12木/32石基；偏移旋转300砖、15木/60石基，全部字段逐位。原侧仍桥terrain/start_y、SSBO等。round7全lib 161/162，另一个失败不属圆材料链。"
+  },
+  "remaining": [
+    "原圆柱依赖原侧 terrain/start_y 仍为桥接，非原宿主整体比较",
+    "非空邻墙圆主入口材质与真实宿主画面/卸载整链验收由主支撑与中央统筹"
+  ]
+}

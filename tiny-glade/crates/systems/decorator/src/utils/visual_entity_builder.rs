@@ -165,47 +165,23 @@ pub mod pending_core {
         };
     }
 
-    raw_component!(
-        /// B `components::GothicWindowBrickDeformation`（builder +0x44 载荷，0x3c B，U）。
-        GothicWindowBrickDeformation,
-        0x3c
-    );
-    raw_component!(
-        /// B `components::BrickColor`（builder +0x100 载荷，0x18 B，U）。
-        BrickColor,
-        0x18
-    );
+    // 原24B/60B载荷与实际Nani Query共享唯一核心类型，保留已有导入路径。
+    pub use country_core::components::{BrickColor, GothicWindowBrickDeformation};
     // One canonical12-byte value, also read by the actual Nani ECS query.
     pub use country_core::components::drawable::ClothlineCloth;
     // 与窗灯系统和 Nani 玻璃查询共享同一个键值组件。
     pub use country_core::resources::window_lights::WindowLight;
     // Same six-value component read by the actual auto-clutter balcony gate.
     pub use country_core::components::drawable::BalconyDoor;
-    raw_component!(
-        /// B `components::Smoke`（u64(id) + u32 0 + u8 + u8，14 B，U）。
-        Smoke,
-        14
-    );
+    // 原注册size16/align8；与厚度Query和Nani updater共享唯一组件身份。
+    pub use country_core::components::Smoke;
     // The core u64 owner already exists. Preserve this public import path
     // while inserting the exact component read by Nani Uber.
     pub use country_core::components::drawable::AlbedoMap;
     // Existing disk-texture NameHash owner, not a local raw component.
     pub use country_core::components::NormalMap;
-    raw_component!(
-        /// B `components::RoofFlagCloth`（u32，U）。
-        RoofFlagCloth,
-        4
-    );
-    raw_component!(
-        /// B `components::WallFlagCloth`（u64 + u64 + u32，0x14 B，U）。
-        WallFlagCloth,
-        0x14
-    );
-    raw_component!(
-        /// B `components::LanternLightParams`（旋转方向 12 B + 原始 16 B + u32 + u8，0x24 B，U）。
-        LanternLightParams,
-        0x24
-    );
+    pub use country_core::components::drawable::{RoofFlagCloth, WallFlagCloth};
+    pub use country_core::components::drawable::LanternLightParams;
     raw_component!(
         /// B `components::SittableForBirds`（u32(id) + u64 + u32，0x10 B，U）。
         SittableForBirds,
@@ -620,12 +596,9 @@ impl WindowVisualEntityBuilder {
         }
         // 8 Smoke（u64(id) + u32 0 + u8 + u8）
         if let Some((tag, sub)) = self.smoke.filter(|value| value.0 != 2) {
-            let mut payload = [0u8; 14];
-            payload[0..8].copy_from_slice(&u64::from(id).to_le_bytes());
-            payload[8..12].copy_from_slice(&0u32.to_le_bytes());
-            payload[12] = tag;
-            payload[13] = sub;
-            commands.entity(entity).insert(Smoke(payload));
+            commands.entity(entity).insert(Smoke {
+                key: id as usize, thickness: 0.0, kind: tag, enabled: sub,
+            });
         }
         // 9 AlbedoMap
         if let Some(handle) = self.albedo_map {
@@ -643,20 +616,22 @@ impl WindowVisualEntityBuilder {
         if let Some(value) = self.roof_flag_cloth {
             commands
                 .entity(entity)
-                .insert(RoofFlagCloth(value.to_le_bytes()));
+                .insert(RoofFlagCloth(value));
         }
         // 12 WallFlagCloth（+0x13c != 2）
         if let Some((a, b, tag)) = self.wall_flag_cloth.filter(|value| value.2 as u8 != 2) {
-            let mut payload = [0u8; 0x14];
-            payload[0..8].copy_from_slice(&a.to_le_bytes());
-            payload[8..16].copy_from_slice(&b.to_le_bytes());
-            payload[16..20].copy_from_slice(&tag.to_le_bytes());
-            commands.entity(entity).insert(WallFlagCloth(payload));
+            // 原写面只有低字节为bool，余三字节是padding；安全类型不制造无效bool。
+            commands.entity(entity).insert(WallFlagCloth {
+                id: a as u32 as i32, f4: f32::from_bits((a >> 32) as u32),
+                f8: f32::from_bits(b as u32), fc: f32::from_bits((b >> 32) as u32),
+                flag: tag as u8 != 0,
+            });
         }
-        // 13 LanternLightParams（旋转方向 3×f32 + 原始 4×f32 + id + u8 0）
+        // 13 原1412a9b30：局部灯位旋转后加世界平移，再保留原局部参数和id。
         if let Some(dir) = self.lantern_light_params {
             let mut payload = [0u8; 0x24];
-            let rotated = transform.rotation * Vec3::new(dir[0], dir[1], dir[2]);
+            let rotated = transform.translation
+                + transform.rotation * Vec3::new(dir[0], dir[1], dir[2]);
             payload[0..4].copy_from_slice(&rotated.x.to_le_bytes());
             payload[4..8].copy_from_slice(&rotated.y.to_le_bytes());
             payload[8..12].copy_from_slice(&rotated.z.to_le_bytes());
@@ -994,14 +969,16 @@ mod tests {
                 &meshes, &shaders, &mut state);
             queue.apply(&mut world);
             assert_eq!(world.get::<BrickColor>(entity).unwrap().0, brick);
-            let smoke = &world.get::<Smoke>(entity).unwrap().0;
-            assert_eq!(&smoke[0..8], &43u64.to_le_bytes());
-            assert_eq!(&smoke[8..12], &0u32.to_le_bytes());
-            assert_eq!(&smoke[12..14], &[tag, 0x7e]);
-            let wall = &world.get::<WallFlagCloth>(entity).unwrap().0;
-            assert_eq!(&wall[0..8], &a.to_le_bytes());
-            assert_eq!(&wall[8..16], &b.to_le_bytes());
-            assert_eq!(&wall[16..20], &wall_tag.to_le_bytes());
+            let smoke = world.get::<Smoke>(entity).unwrap();
+            assert_eq!(smoke.key, 43);
+            assert_eq!(smoke.thickness.to_bits(), 0);
+            assert_eq!((smoke.kind, smoke.enabled), (tag, 0x7e));
+            let wall = world.get::<WallFlagCloth>(entity).unwrap();
+            assert_eq!(wall.id as u32, a as u32);
+            assert_eq!(wall.f4.to_bits(), (a >> 32) as u32);
+            assert_eq!(wall.f8.to_bits(), b as u32);
+            assert_eq!(wall.fc.to_bits(), (b >> 32) as u32);
+            assert_eq!(wall.flag, tag != 0);
             assert_eq!(state.entities_of(43), Some([entity].as_slice()));
         }
     }

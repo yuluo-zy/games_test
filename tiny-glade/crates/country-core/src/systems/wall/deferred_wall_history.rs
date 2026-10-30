@@ -8,14 +8,14 @@ use utils::curve::Curve2 as InputCurve;
 
 use crate::{
     resources::{
-        history::wall_edit::{
+        history::{History, wall_edit::{
             CompoundEditBuilder, WallAuthoritySnapshot, WallCompoundHistoryEdit, WallHistoryEdit,
             record_deleted_wall,
-        },
+        }},
         roofs::geometry::surface::Curve2,
         walls::{InnerWalls, WallId, WallState},
     },
-    systems::wall::history_recording::RecordWallHistory,
+    systems::wall::history_recording::{RecordWallHistory, record_wall_immediately},
 };
 
 #[derive(Clone, Debug)]
@@ -134,15 +134,13 @@ impl PendingWallChanged {
     }
 }
 
-/// Original 0x1408dccf0 drains once into one concurrent-edit group. Feed the
-/// already installed RecordWallHistory consumer so its transaction/error path
-/// remains shared with other live wall edits.
-pub fn history_record_wall_changed(
+/// 原 1408dccf0 取出 pending 后直接写入同一个 History。
+pub fn history_record_wall_changed<S: Send + Sync + 'static>(
     mut pending: ResMut<PendingWallHistory>,
-    mut records: EventWriter<RecordWallHistory>,
+    mut history: ResMut<History<S>>,
 ) {
     if let Some(changed) = pending.wall_changed.take() {
-        records.write(RecordWallHistory(Arc::new(changed.into_compound())));
+        record_wall_immediately(RecordWallHistory(Arc::new(changed.into_compound())), &mut history);
     }
 }
 
@@ -157,27 +155,26 @@ fn recovered(wall: WallId) -> crate::resources::walls::publication_fields::WallI
 /// `wall_color_a`, `DeleteWall(wall_b)` with `wall_color_b`, and `CreateWall`
 /// for the merged wall cloned from the *current* `InnerWalls` row (color =
 /// `merged_color_id`, restored height/elevation = that row's +0x54/+0x58).
-/// The original adds to `History` directly; both records go through the
-/// shared `RecordWallHistory` consumer here, like `history_record_wall_changed`.
+/// 两次写入均在本系统内同步完成。
 ///
 /// The merged-wall lookup panics (`Option::unwrap`) exactly where the original
 /// does: after the adjust-height record, before the compound is built.
-pub fn history_record_merge_walls(
+pub fn history_record_merge_walls<S: Send + Sync + 'static>(
     mut pending: ResMut<PendingWallHistory>,
     inner_walls: Res<InnerWalls>,
-    mut records: EventWriter<RecordWallHistory>,
+    mut history: ResMut<History<S>>,
 ) {
     let Some(merge) = pending.merge_walls.take() else {
         return;
     };
     if let Some(adjust) = merge.adjust_height {
-        records.write(RecordWallHistory(Arc::new(WallCompoundHistoryEdit {
+        record_wall_immediately(RecordWallHistory(Arc::new(WallCompoundHistoryEdit {
             groups: vec![vec![WallHistoryEdit::AdjustHeight {
                 wall: recovered(adjust.wall),
                 from: adjust.from,
                 to: adjust.to,
             }]],
-        })));
+        })), &mut history);
     }
     let merged = inner_walls.get(merge.merged_wall_id).unwrap();
     let mut builder = CompoundEditBuilder::default();
@@ -198,5 +195,5 @@ pub fn history_record_merge_walls(
         restored_height: merged.height(),
         restored_elevation: merged.elevation(),
     });
-    records.write(RecordWallHistory(Arc::new(builder.build())));
+    record_wall_immediately(RecordWallHistory(Arc::new(builder.build())), &mut history);
 }

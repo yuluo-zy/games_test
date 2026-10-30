@@ -34,6 +34,13 @@ use rhapsody::transfer::{ReadbackTicket, TransferConfig, TransferManager};
 
 use crate::render_host::BufferHost;
 
+// 复用游戏侧同一来源类型，避免缓存和票据对生命周期作不同解释。
+pub(crate) use country_core::render::gpu_readback::TerrainReadbackEpoch as TerrainReadbackSession;
+
+pub(crate) fn terrain_session(world: &bevy_ecs::world::World) -> TerrainReadbackSession {
+    world.get_resource::<TerrainReadbackSession>().copied().unwrap_or_else(|| TerrainReadbackSession::capture(world))
+}
+
 /// 暂存槽：最大回读（两个地形高度各 512 KiB）放得进一个槽；按帧在途数留余量。
 const SLOT_BYTES: u64 = 512 << 10;
 const SLOTS: u32 = 48;
@@ -77,6 +84,7 @@ struct Pending {
     ticket: ReadbackTicket,
     source: bevy_ecs::world::WorldId,
     frame: u64,
+    terrain_session: TerrainReadbackSession,
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -197,14 +205,16 @@ impl ReadbackPublisher {
                 acks.acknowledge_entries(operations, note.map(|(_, frame)| frame));
                 if let Some(frame) = completed { acks.gpu_completed(frame); }
             }
-            if !ready.iter().any(|(_, _, _, world, _)| applies(*world)) && !note.is_some_and(|(world, _)| applies(world)) {
+            if !ready.iter().any(|(_, _, _, world, _, _)| applies(*world)) && !note.is_some_and(|(world, _)| applies(world)) {
                 return;
             }
+            let current_session = TerrainReadbackSession::capture(game);
             let mut readbacks = game.get_resource_or_init::<GpuReadbacks>();
             let mut returned = Vec::new();
-            for (ty, words, bytes, world, frame) in ready {
-                if !applies(world) { returned.push(words); continue; }
-                if let Some(old) = readbacks.publish_words(ty, words, bytes, frame) { returned.push(old); }
+            for (ty, words, bytes, world, frame, session) in ready {
+                let terrain = ty == TypeId::of::<TerrainHeightSsbo>() || ty == TypeId::of::<VisualTerrainHeightSsbo>();
+                if !applies(world) || (terrain && session != current_session) { returned.push(words); continue; }
+                if let Some(old) = readbacks.publish_words_for_epoch(ty, words, bytes, frame, terrain.then_some(session)) { returned.push(old); }
             }
             if let Some((world, frame)) = note && applies(world) {
                 readbacks.note_submitted(frame);
@@ -216,7 +226,8 @@ impl ReadbackPublisher {
         });
     }
 
-    fn collect(&mut self, ready: &mut Vec<(TypeId, Vec<u128>, usize, bevy_ecs::world::WorldId, u64)>) {
+    fn collect(&mut self, ready: &mut Vec<(TypeId, Vec<u128>, usize, bevy_ecs::world::WorldId, u64,
+        TerrainReadbackSession)>) {
         while self.pending.len() > MAX_PENDING {
             self.pending.pop_front();
             self.stats.dropped += 1;
@@ -236,7 +247,7 @@ impl ReadbackPublisher {
                 }
                 Ok(Some(len)) => {
                     let pending = self.pending.remove(index).expect("pending readback index");
-                    ready.push((pending.ty, words, len, pending.source, pending.frame));
+                    ready.push((pending.ty, words, len, pending.source, pending.frame, pending.terrain_session));
                     self.stats.published += 1;
                 }
                 Err(error) => {
@@ -268,7 +279,8 @@ impl ReadbackPublisher {
             let result = self.transfer().and_then(|transfer| transfer.read_buffer(&managed.shared(), 0, bytes));
             match result {
                 Ok(ticket) => {
-                    self.pending.push_back(Pending { ty: source_desc.ty, ticket, source, frame });
+                    self.pending.push_back(Pending { ty: source_desc.ty, ticket, source, frame,
+                        terrain_session: terrain_session(render) });
                     if !self.published_once.contains(&source_desc.ty) { self.published_once.push(source_desc.ty); }
                     self.owed.retain(|ty| *ty != source_desc.ty);
                     self.stats.issued += 1;

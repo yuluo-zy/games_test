@@ -1,5 +1,5 @@
 //! Camera transforms, infinite reverse-Z perspective, and lens state.
-use glam::{Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
+use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 #[derive(Clone, Copy, Debug)]
 pub struct CameraProjectionParams {
     pub aspect: f32,
@@ -86,18 +86,24 @@ impl CameraMatrices {
         self.projection.y_axis.y / self.projection.x_axis.x
     }
     pub fn xz_projective_rotation(self) -> Quat {
-        let right = self.eye_right();
-        let projected = if right.x.abs().max(right.z.abs()) > 0.00001 {
-            Vec2::new(right.z, -right.x)
+        // 原140c96e70把Vec4轴乘完整inverse_view；w=0项也参与，
+        // 不能用忽略平移列的transform_vector3替代异常值/负零传播。
+        let matrix = self.inverse_view;
+        let y_zero = matrix.y_axis * 0.0;
+        let w_zero = matrix.w_axis * 0.0;
+        let right = ((matrix.x_axis + y_zero) + matrix.z_axis * 0.0) + w_zero;
+        let reciprocal = 1.0 / ((right.y * right.y + right.x * right.x)
+            + right.z * right.z).sqrt();
+        let projected = Vec2::new(right.z * reciprocal, -right.x * reciprocal);
+        let projected = if projected.x.abs().max(projected.y.abs()) > 0.00001 {
+            projected
         } else {
-            let direction = self.eye_direction();
-            Vec2::new(direction.x, direction.z)
+            let forward = ((matrix.x_axis * 0.0 + y_zero) - matrix.z_axis) + w_zero;
+            let reciprocal = 1.0 / ((forward.y * forward.y + forward.x * forward.x)
+                + forward.z * forward.z).sqrt();
+            Vec2::new(forward.x * reciprocal, forward.z * reciprocal)
         };
-        // Build a stable upright basis from the horizontal camera orientation.
-        let projected = projected.normalize_or(Vec2::X);
-        let forward = Vec3::new(projected.x, 0.0, projected.y);
-        let right = Vec3::Y.cross(forward).normalize();
-        Quat::from_mat3(&Mat3::from_cols(-right, Vec3::Y, -forward))
+        crate::xz_rotation_from_forward(projected)
     }
 }
 #[derive(Clone, Copy, Debug)]

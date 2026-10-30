@@ -135,7 +135,12 @@ fn coordinates_reject_nonfinite_values_without_deserializer_panics() {
                 .is_err()
         );
     }
-    assert!(Curve3XZ::try_new(vec![Vec3::ZERO, Vec3::new(1.0, f32::NAN, 0.0)], false).is_err());
+    // 原 1412699d0 的参数化只用 XZ（141269a80..141269b0c）；
+    // 高度非有限值保留给后续 XYZ 输出校验，不能在 XZ 构造阶段拒绝。
+    let xz = Curve3XZ::try_new(vec![Vec3::ZERO, Vec3::new(1.0, f32::NAN, 0.0)], false)
+        .expect("原 XZ 参数化不扫描 Y");
+    assert_eq!(xz.length, 1.0);
+    assert!(xz.points[1].y.is_nan());
 }
 
 #[test]

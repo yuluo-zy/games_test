@@ -2,7 +2,7 @@
 //! make_focus_or_camera_binding_hint 0x141c3de00）。
 //!
 //! `hint_clutter_focused_edit_condition`：GameProfile+0x200!=0 → 状态置 1 返回；工具
-//! ==3 → 置状态、写完成事件 tag 9；焦点实体工具字节==9 写事件 tag 0x13。
+//! ==3 → 置状态、写完成事件 tag 9；当前提示 HintType==ClutterFocus 写事件 tag 0x13。
 //! `hint_clutter_focused_edit_hint`：state.hint_done==0 时读
 //! `EventReader<NotifyHintSystemClutterWasMoved>`（未读事件**一次性耗尽** →
 //! state@+1=1）；
@@ -73,9 +73,8 @@ pub fn make_focus_or_camera_binding_hint(
 
 /// hint_clutter_focused_edit_condition（O 0x141c3d890）：profile 0x200!=0 →
 /// hint_done=1 返回；读 `ModeJustChanged`，末事件当前模式 tag==3 → hint_done=1；未 done 且
-/// 工具!=3 → false；写 TutorialHintComplete(id 9)；焦点实体字节==9 → PlayUiSound(kind 0x13)。
-/// **重建（2026-10-17，ModeJustChanged + GameProfile 落库）**；分歧点：焦点字节 Query
-/// 组件类型 U（seam `FocusSubjectByte`）；音效实例 EventId 由 Bevy 管理。
+/// 工具!=3 → false；写 TutorialHintComplete(id 9)；当前提示 HintType==ClutterFocus → PlayUiSound(kind 0x13)。
+/// PDB FunctionSystem 参数明确为 Query<&HintType>，读取 orchestrator 的真实提示实体。
 // O：反编译返回 void（0x14227da70 / 0x141c3d890 全部 `return;`），且原 add_onboarding 经 InfallibleSystemWrapper
 // 以普通系统入链（Out=()）；早先 `-> bool` 属误判，已改为 `()`，各早退路径语义不变。
 pub fn hint_clutter_focused_edit_condition(
@@ -84,7 +83,7 @@ pub fn hint_clutter_focused_edit_condition(
     mut mode: EventReader<country_core::resources::events::ModeJustChanged>,
     mut completed: EventWriter<crate::tutorial_completion::TutorialHintComplete>,
     mut sound: EventWriter<country_core::systems::ui::resources::widget_params::PlayUiSound>,
-    query: Query<&crate::hint_focused_edit::FocusSubjectByte>,
+    query: Query<&crate::HintType>,
 ) {
     if profile.clutter_focused_edit_completed {
         state.hint_done = true;
@@ -100,7 +99,7 @@ pub fn hint_clutter_focused_edit_condition(
         return;
     }
     completed.write(crate::tutorial_completion::TutorialHintComplete { id: 9 });
-    if query.iter().next().is_some_and(|b| b.0 == 9) {
+    if query.iter().next() == Some(&crate::HintType::ClutterFocus) {
         let _ = sound.write(
             country_core::systems::ui::resources::widget_params::PlayUiSound {
                 kind: 0x13,

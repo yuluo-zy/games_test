@@ -78,6 +78,38 @@ pub fn random_splits_into(
     out.push(1.0);
 }
 
+/// 原B 140c90ed0：水平朝向的真实Mat3，不能经Quat往返替代。
+/// 保留第一归一化的正有限倒数门，以及右轴独立的第二次归一化顺序。
+pub fn xz_rotation_mat3_bad(direction: glam::Vec2) -> glam::Mat3 {
+    let reciprocal = 1.0 / (direction.y * direction.y + direction.x * direction.x).sqrt();
+    let forward = if reciprocal > 0.0 && reciprocal.is_finite() {
+        glam::Vec3::new(direction.x * reciprocal, 0.0, direction.y * reciprocal)
+    } else {
+        glam::Vec3::X
+    };
+    // 原没有将这些零乘减简化成常量；负零属于Mat3写面的一部分。
+    let right_y = forward.x * 0.0 - forward.z * 0.0;
+    let right_z = 0.0 - forward.x;
+    let right_inverse = 1.0 / (right_z * right_z
+        + (right_y * right_y + forward.z * forward.z)).sqrt();
+    glam::Mat3::from_cols(glam::Vec3::new(forward.z * right_inverse,
+        right_y * right_inverse, right_z * right_inverse), glam::Vec3::Y, forward)
+}
+
+#[cfg(test)]
+mod original_xz_mat3_tests {
+    #[test]
+    fn original_full_xz_mat3_signed_zero_subnormals_extremes_and_nan_inputs() {
+        let cases: &[([u32; 2], [u32; 9])] = include!(concat!(env!("CARGO_MANIFEST_DIR"),
+            "/../../reports/module-recovery-2026-10-23/m01-stair-xz-mat3-native-fixtures.rs"));
+        for (input, expected) in cases {
+            let output = super::xz_rotation_mat3_bad(glam::Vec2::from_array(input.map(f32::from_bits)));
+            assert_eq!(output.to_cols_array().map(f32::to_bits), *expected,
+                "原253B Mat3 input {input:x?}");
+        }
+    }
+}
+
 /// Original B 0x140c90fd0: face the x/z direction with a +X fallback.
 /// Reuse pinned glam's normalization and basis-to-quaternion conversion;
 /// atan2/from_rotation_y can choose another quaternion sign branch.
@@ -114,8 +146,18 @@ pub fn xz_rotation_from_forward(direction: glam::Vec2) -> glam::Quat {
     let direction = direction.try_normalize().unwrap_or(glam::Vec2::X);
     let forward = glam::Vec3::new(direction.x, 0.0, direction.y);
     let up = glam::Vec3::Y;
-    let right = up.cross(forward).normalize();
+    // 原140c914af..cc按(z²+x²)+y²求长度后逐lane除，
+    // 不是Vec3::normalize的倒长度乘法；两者可相差1ULP。
+    let right = up.cross(forward);
+    let length = ((right.z * right.z + right.x * right.x) + right.y * right.y).sqrt();
+    let right = right / length;
     glam::Quat::from_mat3(&glam::Mat3::from_cols(-right, up, -forward))
+}
+
+/// 原140c91640：仅把三维输入的XZ投影送入原负Z朝向构造。
+/// PDB内联链与完整机器码均证明其复用xz_rotation_from_forward；Y不参与归一化。
+pub fn xz_projective_rotation_from_forward(direction: glam::Vec3) -> glam::Quat {
+    xz_rotation_from_forward(glam::Vec2::new(direction.x, direction.z))
 }
 
 #[cfg(test)]
@@ -391,5 +433,23 @@ mod projective_rotation_tests {
         assert!(negative_x.y > 0.0 && negative_x.w < 0.0);
         assert_eq!(xz_projective_rotation_bad(Vec3::Z).w, 1.0);
         assert_eq!(xz_projective_rotation_bad(-Vec3::Z).y, 1.0);
+    }
+}
+
+#[cfg(test)]
+mod original_projective_forward_tests {
+    #[allow(dead_code)]
+    mod original {
+        include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../reports/module-recovery-2026-10-23/m01-move-math-native-cases.rs"));
+    }
+    #[test]
+    fn projected_forward_matches_128_full_original_functions() {
+        for &(input,expected) in original::rotation_cases() {
+            let value=super::xz_projective_rotation_from_forward(glam::Vec3::from_array(input.map(f32::from_bits)));
+            for (actual,expected) in value.to_array().into_iter().zip(expected) {
+                if f32::from_bits(expected).is_nan() { assert!(actual.is_nan()); }
+                else { assert_eq!(actual.to_bits(),expected,"input={input:?}"); }
+            }
+        }
     }
 }

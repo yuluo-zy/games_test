@@ -5,6 +5,13 @@
 
 use bevy_ecs::event::Event;
 
+// 复用编辑归属模块的矩形事件；自由墙事件在本模块定义并由生产者与消费者共享。
+pub use crate::systems::wall::shapes::rectangle::OnRectangleEdited;
+
+/// 原 B 圆旋转通知；EventInstance的另一qword是Bevy事件计数，不属于业务载荷。
+#[derive(Event, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OnCircleRotated(pub crate::resources::walls::WallId);
+
 /// B run_game_thread 0x14059d450 registers this unit event under native
 /// resource TypeId low word 0x2e383ebb9376bfa1. OS close sends it; the game
 /// shutdown system decides when the loop can finish.
@@ -48,10 +55,9 @@ pub use crate::systems::mode_manager::AppModeChanged as ModeJustChanged;
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct EscapeMenuJustOpened;
 
-/// 点灯命令（O：`resources::events::LightLanternCmd`；color_menu 0x142291230
-/// 的 EventWriter 面。载荷语义 U）。
+/// 原点灯命令携带装饰物ID；事件实例另有Bevy EventId，不能丢成unit。
 #[derive(Event, Clone, Copy, Debug, Default)]
-pub struct LightLanternCmd;
+pub struct LightLanternCmd(pub u32);
 
 /// B1407b5980 消费最后一个未读点灯命令的装饰物编号。
 /// 原事件记录的 u32 载荷位于 +8，事件队列的头部与填充不属于业务字段。
@@ -115,5 +121,7 @@ pub struct OnFreehandWallEdited {
     pub wall: crate::resources::walls::WallId,
 }
 
-#[derive(Event, Clone, Copy, Debug)]
-pub struct OnCircleRotated(pub crate::resources::walls::WallId);
+/// 原墙附着重建事件；14081b5e0第四reader逐条读取8字节WallId载荷。
+/// add_wall_events@1404936b0注册，不能用无生产者的WallHeightChangedEvent替代。
+#[derive(Event, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ReanchorDecorators(pub crate::resources::walls::WallId);

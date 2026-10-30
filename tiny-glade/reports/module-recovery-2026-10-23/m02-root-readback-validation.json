@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-27T01:03:34.361253+00:00",
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "scope": "Central M02 asynchronous readback and terrain rock-mask consumer wiring; not M02 acceptance or full scene acceptance.",
+  "source_snapshot": {
+    "tiny-glade/crates/tiny-glade/src/render_extract.rs": "aa599b8c161c7ecc2393042de4f531670c478f0af77cf2f200808152e60a3a55",
+    "tiny-glade/crates/systems/clutter/src/autoclutter/populate_autoclutter_regions.rs": "bd474bdecc8311c5bf935c449c7faead6cf430c22a706a5c889c983396380160",
+    "tiny-glade/crates/systems/clutter/src/lib.rs": "5bd6fbceee1b6dfd7fda29fb8d6689549ed7c2ffcefbb14d53ef052d95c6df86",
+    "tiny-glade/crates/tiny-glade/src/startup_construction_runtime.rs": "3450f1c5eacbc3f5c331e5ebd214305c58b07c5fdf0a4d5c787f517b39ff8e50",
+    "tiny-glade/crates/tiny-glade/src/run_game.rs": "72f6b62f5b7776449db4438919593c79782af39fca8595ee2861e9f505f46757"
+  },
+  "checks": [
+    {
+      "log": "m02-root-readback-before-exact.log",
+      "result": "1 executed, 1 failed",
+      "role": "before-fix reproduction with live CPU delay system between extract and submitted feedback"
+    },
+    {
+      "log": "m02-root-readback-after-chain.log",
+      "result": "8 passed",
+      "role": "after-fix feedback tests; new case continues through actual two-frame delay and both CPU height copies"
+    },
+    {
+      "log": "m02-root-rock-readback-tests.log",
+      "result": "3 passed",
+      "role": "canonical completed rock mask reaches actual World population consumer; no local mirror"
+    },
+    {
+      "log": "m02-root-production-gpu-before.log",
+      "result": "1 failed",
+      "role": "real Vulkan full App, stopped at empty RockMaskData index bounds"
+    },
+    {
+      "log": "m02-root-production-gpu-after-rock-fix.log",
+      "result": "1 failed",
+      "role": "real Vulkan full App passes previous failure, stops at manage_autoclutter_entities selected mesh/source owner erased"
+    }
+  ],
+  "limits": [
+    "Full-scene GPU run is blocked by the explicit M11 autoclutter owner gap; no system was removed to force a pass.",
+    "Full-scene binary predates the new Mode5 focus and u64 counter work; cannot certify those source edits.",
+    "No OS input, window present, restart/save acceptance or performance claim.",
+    "Clutter population algorithm retains previously documented unresolved branches; only canonical terrain-mask input was repaired."
+  ],
+  "logs": {
+    "m02-root-readback-before-exact.log": "819d1ab22e2e238bfd19d6b012b683b17bed6da167ace6ea4122f455b566c23a",
+    "m02-root-readback-after-chain.log": "62fcd3d3f95524b1115883cb6a7a2b0a4975a21535508f2ba957183180dad3cd",
+    "m02-root-rock-readback-tests.log": "5f0ad9a2c58b96997d1cf2ef597d5a89f38d6a4cdd66d932b74d66a6b69814c1",
+    "m02-root-production-gpu-before.log": "1b833083e5d7fd44deca6d92659009e83473e6d797b42295e8a08118ffffb2e3",
+    "m02-root-production-gpu-after-rock-fix.log": "fb24b70f9cb8e1fd84e1b34c8c075f2eae6a782e221e903e2ce4196c99717629"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "scope": "M01 original wall-domain cull14080d540 and necessary remove/archive141276e30; main/physics business tests, not production GPU or full-module completion",
+  "validation": [
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test -p system-decorator --lib cull_oob_decorators --offline",
+      "passed": 15,
+      "failed": 0,
+      "log": "m01-cull-native-tests.log"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test -p system-decorator --lib --offline",
+      "passed": 428,
+      "failed": 0,
+      "ignored": 2,
+      "ignored_reason": "existing TG_INSTALL_ROOT full B installation asset tree tests",
+      "log": "m01-cull-decorator-all-tests.log"
+    }
+  ],
+  "post_test_changes": "Only scoped mechanical rustfmt and explanatory comments; no production/test behavior changed after green suite.",
+  "files": {
+    "crates/systems/decorator/src/cull_oob_decorators.rs": "ae9039b68e0909af09ea4b20498cc590eca59a1d7615e3064182e3b733f08ace",
+    "crates/systems/decorator/src/apply_decorator_op.rs": "fd8466a23773bb6f5b67ad6d4ba24f7cc6226661a2b5055c18c8cf3070b24ccf",
+    "reports/module-recovery-2026-10-23/m01-cull-oob-recovery-2026-10-27.md": "c1dd76d8048c1100856e6784c7f1e399d8412c0852c5f2216b488b5eabe8c96c",
+    "reports/module-recovery-2026-10-23/m01-cull-apply-fresh.c": "336a255fbd0936029e6beedc5e78b613dbd94bde1c9b058aec1afafe2dc2d754",
+    "reports/module-recovery-2026-10-23/m01-cull-apply.asm": "b8b63c227fd6528b9daf7ff8d016e585bf9277b98eed1fcaa44eee1e18bb2bb6",
+    "reports/module-recovery-2026-10-23/m01-cull-build-before-owner-registration.log": "f15cd96069d4e85cde3e840147dac464a508d0952509b36acb594b51b276a336",
+    "reports/module-recovery-2026-10-23/m01-cull-decorator-all-tests.log": "f4ea054c5a7f08126ec5d0d7ddf9bd9d594ed157f24cabf7379bb78086845554",
+    "reports/module-recovery-2026-10-23/m01-cull-filter-fresh.c": "07f8d15fa6f143d91a1ea07911d80ee5bb5410ea586f1ebf8347fcd63df32847",
+    "reports/module-recovery-2026-10-23/m01-cull-main.asm": "d7a77e346d22929b8c2d8f1514e6a109dec599c1e896636099aa20d9210c72a4",
+    "reports/module-recovery-2026-10-23/m01-cull-native-identity.json": "266484a3e6822ca2636a33ce0e8b4a678ce1b523cb83a0974a73aa2b14f13f26",
+    "reports/module-recovery-2026-10-23/m01-cull-native-tests.log": "23cae33a61dda619a39e4193cc3c99ecaa9ba71d986b80260282b7a066a4988c",
+    "reports/module-recovery-2026-10-23/m01-cull-oob-fresh.c": "cadfcaa256488e6a45bafce5d2f6e7c0368b98be45692d8bb6f4af3fe75b6f7c",
+    "reports/module-recovery-2026-10-23/m01-cull-test-compile-v1.log": "d9276aec0ce60877e7c726051e19deae46853c3f46d358a0613cc4666ea62f52",
+    "reports/module-recovery-2026-10-23/m01-cull-test-invalid-fixture-v2.log": "d740185b101ee310c58efea15dfc8216a192431e29ad1dac2b30890d5eb5ef8b",
+    "reports/module-recovery-2026-10-23/m01-cull-transform-fresh.c": "e844cd2a1c2f32c5585a5b0f752aaae280c673175f1d853e74ffe979a87c71bf"
+  },
+  "shared_blueprint_helper_sha256": "6db411528db8255338f255a844f4a038d7e56408aebd6dc17394d9a1c89aa871",
+  "shared_blueprint_change": "visibility fn→pub(crate) only; body reused unchanged, whole shared file not frozen by this report"
+}

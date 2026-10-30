@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-27",
+  "original_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "original_pdb_sha256": "2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911",
+  "sources": {
+    "crates/country-core/src/resources/roofs/roof_trigger_volume.rs": "8e32d28cc9db4aadd6c5326ccc53d136f238c180bc49b4ac228e5e9e048bdd54",
+    "crates/systems/roof/src/roof_trigger_volume.rs": "84ba321a41078e99ccb26e0dde6e04da316ba1a589eda76b2931ec4df490ea7f",
+    "Cargo.lock": "4371d7f680a21f3e1666c35e6f20eaa816168e39f699e9a5b16405f0fe2839ec"
+  },
+  "command": "CARGO_INCREMENTAL=0 cargo test --offline -p country-core --lib original_roof_floor_projection",
+  "passed": 1,
+  "failed": 0,
+  "native": {
+    "full_getter": "1408e4560",
+    "full_collector": "140dce1d0/421B",
+    "inputs": 54,
+    "original_empty_volume_panics": 9,
+    "finite_floor_inputs_exact_bits": 30,
+    "finite_floor_coordinate_words_exact_bits": 810,
+    "infinite_and_nan_floor_inputs": 15,
+    "nonfinite_comparison": "NaN classification exact; all non-NaN output words exact bits; original NaN payload/sign not claimed cross x86/ARM",
+    "bridge": "allocator only; no CRT/math/getter/output bridge"
+  },
+  "business": "Existing complex system-roof calculate_roof_trigger_volumes1421a3220 retained. Added floor-mapped borrowed ExactSizeIterator<Triangle> on existing canonical RoofTriggerVolume; GPU owner integrates new_unindexed + identity transform in original 12-param updater.",
+  "remaining": "GPU owner unified real World registration + RoofUV shapecast + edit/delete/Reload acceptance; no RaycastMesh ECS Component was introduced.",
+  "existing_complex_producer_reuse_check": {
+    "command": "CARGO_INCREMENTAL=0 cargo test --offline -p system-roof --lib whole_trigger_producer_matches_original_rne_shape_branches -- --nocapture",
+    "passed": 1,
+    "failed": 0,
+    "actual_binary_fixture_shapes": 28,
+    "maximum_absolute_error": 5.9604645e-08,
+    "unequal_float_bits": 354,
+    "comparison_bound": 2e-05,
+    "note": "Existing complex producer unchanged. This is numeric reuse verification, not whole-geometry bit identity."
+  }
+}

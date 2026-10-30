@@ -797,7 +797,7 @@ fn original_b_intervals_with_corrected_boundary_cases() {
         (
             [0, 1065353216],
             (0, 1065353216, true),
-            &[(1065353216, 1065353216, false)],
+            &[(0, 0, false), (1065353216, 1065353216, false)],
         ),
         (
             [0, 1065353216],
@@ -819,11 +819,11 @@ fn original_b_intervals_with_corrected_boundary_cases() {
             (1065353216, 1073741824, true),
             &[(0, 1065353216, false)],
         ),
-        ([0, 1065353216], (0, 0, false), &[(0, 1065353216, false)]),
+        ([0, 1065353216], (0, 0, false), &[(0, 0, false), (0, 1065353216, false)]),
         (
             [0, 1065353216],
             (1065353216, 1065353216, false),
-            &[(0, 1065353216, false)],
+            &[(0, 1065353216, false), (1065353216, 1065353216, false)],
         ),
     ];
     for (range, cut, expected) in fixtures {

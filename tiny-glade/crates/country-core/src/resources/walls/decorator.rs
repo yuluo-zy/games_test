@@ -101,6 +101,18 @@ pub struct DecoratorIdGen {
 }
 
 impl DecoratorIdGen {
+    /// 原瞬时生成器非提交路径只观察当前基数；预览不能消耗正式装饰 ID。
+    #[inline]
+    pub fn peek(&self) -> DecoratorId {
+        DecoratorId(self.next)
+    }
+
+    /// 原1408339c0：预览借用当前基数，提交直写同一个正式计数器。
+    /// 借用绑定整个栈上生成器，不能在计数器释放或再次借用后继续生成ID。
+    pub fn transient(&mut self, direct_write: bool) -> TransientDecoratorIdGen<'_> {
+        TransientDecoratorIdGen::new(&mut self.next, direct_write)
+    }
+
     /// 行 806（内联）：预留到至少 `id`。fresh `restore_decorators` 0x14155c4e1 逐句：
     /// `next = max(u32(next), u32(id) + 1)`（`MOV RDX,id; INC RDX; CMP RDX,next;
     /// CMOVBE RDX,next; MOV [gen],EDX`——64 位加/比较后截断存 u32）。用于历史回放
@@ -121,24 +133,21 @@ impl DecoratorIdGen {
 }
 
 /// B TransientDecoratorIdGen：瞬时 id 生成器（0x1408339c0/0x1408339e0，O）。
-/// 结构：`{base:*mut u32@+0, +0x8:u64 偏移游标, +0x10:bool 直写模式}`。
+/// 原结构：`{base:*mut u32@+0, +0x8:u64 偏移游标, +0x10:bool 直写模式}`。
 /// `generate`：直写模式（flag=1）→ `*base += 1` 返回旧值；否则 `+0x8 += 1`，
-/// 返回 `*base + 旧偏移`。base 为外部共享计数器指针（U 待取证：调用方所有权）。
-pub struct TransientDecoratorIdGen {
-    /// +0x00：共享基数指针（外部所有权）。
-    base: *mut u32,
+/// 返回 `*base + 旧偏移`。现代接口保留对正式计数器的独占借用，不保留悬空裸地址。
+pub struct TransientDecoratorIdGen<'a> {
+    /// +0x00：栈上暂借调用者的正式基数。
+    base: &'a mut u32,
     /// +0x08：偏移游标。
     offset: u64,
     /// +0x10：直写模式。
     direct_write: bool,
 }
 
-// SAFETY: 原 struct 不携带 Sync 保证（内部裸指针只经 TransientDecoratorIdGen 方法使用）。
-// Rust 中裸指针默认 !Send/!Sync，保持与所有权未定（U）一致，不额外标注。
-
-impl TransientDecoratorIdGen {
-    /// 0x1408339c0（I：构造器初值；游标/模式初值待取证）。
-    pub fn new(base: *mut u32, direct_write: bool) -> Self {
+impl<'a> TransientDecoratorIdGen<'a> {
+    /// 原1408339c0：offset=0，模式来自调用者的实际预览/提交阶段。
+    pub fn new(base: &'a mut u32, direct_write: bool) -> Self {
         Self {
             base,
             offset: 0,
@@ -150,15 +159,14 @@ impl TransientDecoratorIdGen {
     /// 返回 `*base + 旧偏移`。
     pub fn generate(&mut self) -> u32 {
         if self.direct_write {
-            // base 非空为调用方合同；空指针保持原崩溃语义。
-            let slot = unsafe { &mut *self.base };
+            let slot = &mut *self.base;
             let old = *slot;
             *slot = old.wrapping_add(1);
             old
         } else {
             let old = self.offset;
             self.offset = old.wrapping_add(1);
-            let base = unsafe { *self.base };
+            let base = *self.base;
             base.wrapping_add(old as u32)
         }
     }
@@ -943,15 +951,49 @@ pub struct DeferredDecoratorOpEvents {
 
 impl Clone for DeferredDecoratorOpEvents {
     fn clone(&self) -> Self {
-        // 原资源语义：共享同一内部队列（资源级并发句柄）。Arc 包装见 send 注释。
+        // 原1408335a0在共享锁内克隆事件Vec，备份队列与活队列独立拥有载荷。
         DeferredDecoratorOpEvents {
             inner: Mutex::new(self.inner.lock().unwrap().clone()),
             wake: Condvar::new(),
         }
     }
+    fn clone_from(&mut self, source: &Self) {
+        // 保留现有同步对象身份；独占目标资源时只覆盖锁内Vec并复用容量。
+        self.inner.get_mut().unwrap().clone_from(&source.inner.lock().unwrap());
+    }
+}
+
+#[cfg(test)]
+mod backup_queue_tests {
+    use super::*;
+    #[test]
+    fn backup_queue_clone_from_preserves_lock_owner_and_vector_capacity() {
+        let source = DeferredDecoratorOpEvents::default();
+        let mut target = DeferredDecoratorOpEvents::default();
+        let mut event = [7; 0x88]; event[..8].copy_from_slice(&1u64.to_le_bytes());
+        source.send(event);
+        for _ in 0..64 { target.send([0; 0x88]); }
+        let lock = &target.inner as *const _ as usize;
+        let wake = &target.wake as *const _ as usize;
+        let (pointer, capacity) = { let data = target.inner.lock().unwrap(); (data.as_ptr() as usize, data.capacity()) };
+        target.clone_from(&source);
+        assert_eq!(&target.inner as *const _ as usize, lock);
+        assert_eq!(&target.wake as *const _ as usize, wake);
+        let data = target.inner.lock().unwrap();
+        assert_eq!(data.as_ptr() as usize, pointer); assert_eq!(data.capacity(), capacity);
+        assert_eq!(&*data, &[event]); drop(data);
+        source.send([9; 0x88]);
+        assert_eq!(target.with_events(|events| events.len()), 1);
+        assert_eq!(target.with_events(|events| events[0]), event);
+        assert_eq!(source.with_events(|events| events.len()), 2);
+    }
 }
 
 impl DeferredDecoratorOpEvents {
+    /// 原备份与楼梯继续消费在锁内借用完整队列，不排空、不复制0x88B载荷。
+    pub fn with_events<R>(&self, read: impl FnOnce(&[[u8; 0x88]]) -> R) -> R {
+        read(&self.inner.lock().unwrap())
+    }
     /// 0x14067dd80（O）：恒等返回（共享内部队列句柄）。
     pub fn events(&self) -> &Self {
         self
@@ -1052,12 +1094,27 @@ impl DecoratorRotationXZ {
         Self((-v.x).atan2(-v.y))
     }
 
-    /// 0x140833a20（O）：`atan2(2(wy+zx), w²+z²-x²-y²)`（fresh 反编译展开；
-    /// 对纯 Y 旋转 {y=sin(a/2), w=cos(a/2)} 退化为 a）。
+    /// B140833a20先完整旋转NEG_Z，再把(-x,-z)送到atan2f；不能代数约简。
+    /// 非单位四元数、signed-zero与NaN仍保留原乘加顺序，不归一化。
     pub fn from_quat(q: Quat) -> Self {
-        let y_arg = 2.0 * (q.w * q.y + q.z * q.x);
-        let x_arg = q.w * q.w + q.z * q.z - q.x * q.x - q.y * q.y;
-        Self(y_arg.atan2(x_arg))
+        let forward = Self::negative_z_from_quat(q);
+        Self((-forward.x).atan2(-forward.z))
+    }
+
+    /// 原同一SSE内联主体，供Intent的支持探针复用；不是新的旋转策略。
+    pub fn negative_z_from_quat(q: Quat) -> Vec3 {
+        let length_sq = q.z * q.z + (q.y * q.y + q.x * q.x);
+        let dot = q.z * -1.0 + (q.y * -0.0 + q.x * -0.0);
+        let twice_dot = dot + dot;
+        let twice_w = q.w + q.w;
+        Vec3::new(
+            twice_w * (q.y * -1.0 - q.z * -0.0)
+                + (twice_dot * q.x + (q.w * q.w - length_sq) * -0.0),
+            twice_w * (q.z * -0.0 - q.x * -1.0)
+                + (twice_dot * q.y + (q.w * q.w - length_sq) * 0.0),
+            twice_w * (q.x * -0.0 - q.y * -0.0)
+                + (twice_dot * q.z + (q.w * q.w - length_sq) * -1.0),
+        )
     }
 
     /// 0x140833ac0（O）：(x=0, y=sin(a·0.5), z=0, w=cos(a·0.5))。
@@ -1444,19 +1501,48 @@ mod tests {
     }
 
     #[test]
+    fn decorator_preview_does_not_consume_committed_id() {
+        let mut ids = DecoratorIdGen::default();
+        assert_eq!(ids.peek(), DecoratorId(0));
+        assert_eq!(ids.peek(), DecoratorId(0));
+        assert_eq!(ids.generate(), DecoratorId(0));
+        assert_eq!(ids.peek(), DecoratorId(1));
+        ids.reserve(DecoratorId(u32::MAX));
+        assert_eq!(ids.peek(), DecoratorId(0));
+    }
+
+    #[test]
     fn transient_id_gen_modes() {
         let mut base = 100u32;
         // 直写模式：返回旧值并递增共享基数。
-        let mut id_gen = TransientDecoratorIdGen::new(&mut base as *mut u32, true);
+        let mut id_gen = TransientDecoratorIdGen::new(&mut base, true);
         assert_eq!(id_gen.generate(), 100);
         assert_eq!(id_gen.generate(), 101);
         assert_eq!(base, 102);
 
         // 偏移模式：返回 base + 偏移，基数不变。
-        let mut id_gen = TransientDecoratorIdGen::new(&mut base as *mut u32, false);
+        let mut id_gen = TransientDecoratorIdGen::new(&mut base, false);
         assert_eq!(id_gen.generate(), 102);
         assert_eq!(id_gen.generate(), 103);
         assert_eq!(base, 102);
+    }
+
+    #[test]
+    fn canonical_transient_generation_preserves_preview_and_failure_side_effects() {
+        let mut ids = DecoratorIdGen { next: u32::MAX };
+        {
+            let mut preview = ids.transient(false);
+            assert_eq!(preview.generate(), u32::MAX);
+            assert_eq!(preview.generate(), 0);
+        }
+        assert_eq!(ids.peek(), DecoratorId(u32::MAX));
+        let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let mut committed = ids.transient(true);
+            assert_eq!(committed.generate(), u32::MAX);
+            panic!("模拟原下游资源查找失败");
+        }));
+        assert!(failure.is_err());
+        assert_eq!(ids.peek(), DecoratorId(0));
     }
 
     #[test]
@@ -1643,5 +1729,27 @@ impl TryFrom<u8> for StairRailingType {
     type Error=u8;
     fn try_from(value:u8)->Result<Self,u8> {
         match value {0=>Ok(Self::None),1=>Ok(Self::Low),2=>Ok(Self::High),3=>Ok(Self::Wooden),_=>Err(value)}
+    }
+}
+
+#[cfg(test)]
+mod m01_original_quaternion_angle_tests {
+    use super::*;
+    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../reports/module-recovery-2026-10-23/m01-decorator-quat-atan-native-vectors.rs"));
+
+    #[test]
+    fn original_complete_quaternion_atan_inputs_preserve_finite_bits_and_nonfinite_class() {
+        for &(bits,expected) in DECORATOR_QUAT_ATAN_NATIVE {
+            let forward=DecoratorRotationXZ::negative_z_from_quat(Quat::from_array(bits.map(f32::from_bits)));
+            let actual=[(-forward.x).to_bits(),(-forward.z).to_bits()];
+            if bits.iter().all(|x| f32::from_bits(*x).is_finite()) {
+                assert_eq!(actual,expected,"原有限四元数{bits:x?}");
+            } else {
+                // 原入口先断言所有分量有限；孤立数学helper仍可传播NaN。
+                // ARM/x86对Inf*0所产NaN符号不同，不伪称此无效输入位型跨平台一致。
+                assert_eq!(actual.map(|x|f32::from_bits(x).is_nan()),expected.map(|x|f32::from_bits(x).is_nan()));
+            }
+            // 此测试的证据边界是Windows atan2f之前的两个输入，未伪称CRT最终角度逐位。
+        }
     }
 }

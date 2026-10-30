@@ -25,7 +25,6 @@ pub fn build(app: &mut App) {
     app.init_resource::<system_wall_constructor::construct_arches::WallPathSegmentationMasks>();
     app
         .init_resource::<system_wall_constructor::construct_lintels::WallPathSegmentationMasksMinusStairs>();
-    app.init_resource::<system_wall_constructor::place_pillars::PillarProposals>();
     app.init_resource::<system_wall_constructor::construct_platform_stairs::PlatformStairsStorage>(
     );
 }
@@ -54,7 +53,7 @@ mod tests {
         );
         assert!(
             app.world()
-                .get_resource::<system_wall_constructor::place_pillars::PillarProposals>()
+                .get_resource::<system_wall_constructor::construct_lintels::WallPathSegmentationMasksMinusStairs>()
                 .is_some()
         );
         assert!(

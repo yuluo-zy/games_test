@@ -3,63 +3,20 @@
 //!
 //! Evidence: `chapters/systems/wall/shapes/rectangle/ui_edit_rectangle_orientation.rs.md`
 //! (O, 0x140ad8000 / do_ui_edit_rectangle_rotate 0x140ad8be0). The rotation
-//! angle uses the fast 8-coefficient acos polynomial; the sign comes from the
-//! cross product. Wip variant 1 stores the original and current rectangles.
-//! ShowPinned and host schedule ordering remain open.
+//! angle uses the full eight-coefficient acos with its π branch. The original
+//! Wip variant1, time interpolation, stepped border limit and final effects
+//! are preserved through independent producer and consumer systems.
 
 use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
 
-use super::finish_edit_rectangle::RectangleEditUiState;
 use utils::geometry::intersect::Triangle;
 
-/// B 0x14083d3f0: geometry for a corner rotation widget.
-fn corner_widget_geometry(
-    wall: &crate::resources::walls::public_wall_state::PublicWallState,
-    corner: usize,
-    selected: bool,
-) -> crate::systems::ui::resources::widget_params::WidgetGeometry {
-    use crate::systems::ui::resources::widget_params::WidgetGeometry;
-    let rect = crate::systems::wall::valid_enclosure::ShapeParameters::from_snapshot(wall.shape())
-        .as_rectangle();
-    let point = rect.get_point(corner);
-    let points = &wall
-        .prepared_path
-        .as_ref()
-        .expect("rectangle corner requires prepared path")
-        .positions;
-    let coord = ::utils::curve::approx_curve_coord(points, point, |p| Vec2::new(p[0], p[2]));
-    let i = coord.segment;
-    let t = coord.t;
-    let blend = |a: f32, b: f32| b * t + a * (1.0 - t);
-    let y = blend(points[i][1], points[i + 1][1]) + 1.0;
-    if selected {
-        let [a, b] = rect.get_edge_dirs_from_corner_id(corner);
-        let pairs = [(a, Vec2::new(a.y, -a.x)), (b, Vec2::new(-b.y, b.x))];
-        let mut triangles = Vec::with_capacity(24);
-        for (along, across) in pairs {
-            let p = point + along * f32::from_bits(0xbdccccc8) + across * 0.7;
-            let transform = crate::utils::components::transform::Transform {
-                translation: Vec3::new(p.x, y + 0.1, p.y),
-                rotation: ::utils::xz_rotation_bad(along),
-                scale: Vec3::ONE,
-            };
-            triangles.extend(box_trigger_volume(0.7, 0.5, 1.9, &transform));
-        }
-        WidgetGeometry::TriangleMesh(triangles)
-    } else {
-        let height =
-            (wall.segment_heights[i + 1] - wall.segment_heights[i]) * t + wall.segment_heights[i];
-        let normal = rect.get_corner_normal(corner);
-        let center = point - normal * 0.3;
-        let transform = crate::utils::components::transform::Transform {
-            translation: Vec3::new(center.x, y + 0.5 * (height - y), center.y),
-            rotation: glam::Quat::from_mat3(&rect.orientation_mat3()),
-            scale: Vec3::ONE,
-        };
-        WidgetGeometry::TriangleMesh(box_trigger_volume(1.5, height - y, 1.5, &transform))
-    }
-}
+/// 8 fast-acos coefficients (0x142ae0d44..0x142ae0d60).
+const ACOS_COEFFS: [u32; 8] = [
+    0xbaa57a2c, 0x3bda90c5, 0xbc8bfc66, 0x3cfd10f8, 0xbd4d8392, 0x3db63a9e, 0xbe5bbfca, 0x3fc90fda,
+];
+/// pi (0x40490fdb @0x1429edba4).
 
 /// B 0x140ad9f10: skewed box trigger volume.
 ///
@@ -194,310 +151,282 @@ fn box_trigger_triangles(
         .collect()
 }
 
-#[derive(Event, Clone, Debug)]
-pub struct DoUiEditRectangleRotate {
-    pub intersection: [u8; 56],
-    pub wall: crate::resources::walls::WallId,
-    pub rectangle: ::utils::geometry::Rectangle2d,
-    pub corner: u64,
-    pub phase: u8,
-}
-
-#[derive(Resource, Default)]
+/// B原16B Local：一次拖拽期间锁定最近相机角点，结束后才允许重新选择。
+#[derive(Clone, Copy, Debug)]
 pub struct ClosestCornerCache {
-    pub corner: u64,
-    pub dirty: bool,
+    pub corner: usize,
+    pub recalculate: bool,
 }
-
-fn corner_widget_id(
-    wall: crate::resources::walls::WallId,
-    corner: u64,
-) -> crate::systems::ui::resources::ui_state::WidgetId {
-    crate::systems::ui::resources::ui_state::WidgetId(
-        ::utils::calculate_hash(&(wall.0, corner)) ^ 0xa8f64de710aa4d92,
-    )
-}
-
-fn corner_cache_dirty(hover: u8, active_matches: bool, dragged: u8) -> bool {
-    hover < 2 || !active_matches || dragged == 2
-}
-
-fn rotate_angle(a: Vec2, b: Vec2) -> f32 {
-    a.normalize().angle_to(b.normalize())
-}
-
-fn smooth_rotation_delta(angle: f32, dt: f32) -> f32 {
-    let smooth = angle * (1.0 - (-20.0 * dt).exp());
-    let limited = if angle.is_nan() {
-        f32::NAN
-    } else {
-        angle.abs().min(2.0 * dt).copysign(angle)
-    };
-    if smooth.abs() > limited.abs() {
-        smooth
-    } else {
-        limited
+impl Default for ClosestCornerCache {
+    fn default() -> Self {
+        Self {
+            corner: 0,
+            recalculate: true,
+        }
     }
 }
 
-/// B 0x140ad8000: register corner widgets and forward the real intersection.
+/// B140ad8000原十组参数；真实widget交互写完整DO事件。
+#[allow(clippy::too_many_arguments)]
 pub fn ui_edit_rectangle_orientation(
     mode: Res<crate::systems::mode_manager::AppMode>,
+    walls: Res<crate::resources::walls::public_walls::PublicWalls>,
+    mut stream: ResMut<crate::systems::ui::signifiers::UiSignifierStream>,
     ui: Res<crate::systems::ui::resources::ui_state::UiState>,
+    camera: Res<crate::systems::camera_rig::MainCamera>,
     ray: Res<crate::resources::mouse_terrain_raycast::CameraCursorRay>,
-    camera: Res<crate::systems::camera_rig::main_camera::MainCamera>,
-    public: Res<crate::resources::walls::public_walls::PublicWalls>,
-    mut camera_moved: EventReader<crate::systems::camera_rig::main_camera::MainCameraMoved>,
-    mut cache: ResMut<ClosestCornerCache>,
-    mut output: EventWriter<DoUiEditRectangleRotate>,
+    mut moved: EventReader<crate::systems::camera_rig::main_camera::MainCameraMoved>,
+    mut cache: Local<ClosestCornerCache>,
+    mut events: EventWriter<DoUiEditRectangleRotate>,
     mut commands: Commands,
 ) {
-    use crate::systems::mode_manager::{AppMode, EditSubject};
-    use crate::systems::ui::resources::widget_params::WidgetParams;
-    use crate::systems::wall::valid_enclosure::ShapeParameters;
-    use ::utils::geometry::{Aabb2, Ray2};
-    if mode.native_tag() >= 6 {
-        cache.dirty = true;
+    use super::ui_modes::edit_orientation::UiRectangleOrientationEdit;
+    use crate::systems::{
+        mode_manager::{AppMode, EditSubject},
+        ui::resources::ui_state::DragState,
+        wall::valid_enclosure::ShapeParameters,
+    };
+    if mode.native_tag() > 5 {
         return;
     }
-    let moved = camera_moved.read().count() != 0;
-    let selected = match *mode {
-        AppMode::Editing(EditSubject::Wall(id) | EditSubject::Roof(id)) => {
-            Some(crate::resources::walls::WallId(id))
-        }
-        AppMode::Editing(EditSubject::None) => None,
-        _ => return,
-    };
-    for (id, _) in public.all() {
-        if selected.is_some_and(|wall| wall != id) {
+    let camera_moved = moved.read().last().is_some();
+    for (wall, state) in walls.all() {
+        if state.shape().tag() != 1 {
             continue;
         }
-        let wall = public.get(id).expect("iterated wall");
-        if wall.shape().tag() != 1 {
-            continue;
-        }
-        let rect = ShapeParameters::from_snapshot(wall.shape()).as_rectangle();
-        let is_selected = selected == Some(id);
-        if is_selected && cache.dirty {
+        let selected = match *mode {
+            AppMode::Editing(EditSubject::None) => false,
+            AppMode::Editing(EditSubject::Wall(id) | EditSubject::Roof(id)) if id == wall.0 => true,
+            _ => continue,
+        };
+        let rectangle = ShapeParameters::from_snapshot(state.shape()).as_rectangle();
+        if selected && cache.recalculate {
             let eye = camera.eye_position();
             let eye = Vec2::new(eye.x, eye.z);
-            let mut best = f32::INFINITY;
-            for corner in 0..4 {
-                let distance = (rect.get_point(corner) - eye).length();
-                if distance < best {
-                    best = distance;
-                    cache.corner = corner as u64;
+            let distance = |corner| {
+                let d = rectangle.get_point(corner) - eye;
+                (d.y * d.y + d.x * d.x).sqrt()
+            };
+            let first = distance(0);
+            let second = distance(1);
+            let mut corner = usize::from(second < first);
+            let mut closest = if first <= second { first } else { second };
+            for next in 2..4 {
+                let d = distance(next);
+                if d < closest {
+                    closest = d;
+                    corner = next;
                 }
             }
+            cache.corner = corner;
         }
-        let (enter, exit) = Aabb2::from_points(rect.as_points2()).intersect_ray_interval(Ray2 {
-            origin: Vec2::new(ray.origin.x, ray.origin.z),
-            direction: Vec2::new(ray.dir.x, ray.dir.z),
-        });
-        let hits = 0.0 <= exit && enter <= exit;
-        for corner in 0..4u64 {
-            if is_selected && corner != cache.corner {
+        for corner in 0..4 {
+            if selected && cache.corner != corner {
                 continue;
             }
-            let widget = corner_widget_id(id, corner);
-            if !is_selected
-                && !hits
-                && !(ui.active_widget() == widget
-                    && ui.hover_byte() != 0
-                    && ui.intersection_tag() != 2)
+            let mut widget = UiRectangleOrientationEdit::new(wall, rectangle, corner, selected);
+            let previous = ui.widget_context(widget.widget_id());
+            if !selected
+                && !super::ui_edit_rectangle_dims::candidate_hit(rectangle, &ray)
+                && !previous.is_active()
             {
                 continue;
             }
-            let geometry = corner_widget_geometry(wall, corner as usize, is_selected);
-            let mut params = WidgetParams::default().geometry(geometry);
-            params.occlude_by_world = !is_selected;
-            let enabled = u32::from(!moved);
-            for (i, (slot, kind)) in params
-                .sounds
-                .slots
-                .iter_mut()
-                .zip([1u32, 2, 3, 3])
-                .enumerate()
-            {
-                slot[..4].copy_from_slice(&(kind * enabled).to_le_bytes());
-                params.fields[[3, 5, 6, 7][i]] = kind * enabled;
-            }
-            let context = ui.add_with_id(widget, params);
-            cache.dirty = corner_cache_dirty(
-                ui.hover_byte(),
-                ui.active_widget() == widget,
-                context.dragged(),
-            );
-            if moved
-                && !is_selected
-                && !(ui.hover_byte() > 1 && ui.active_widget() == widget && ui.click_byte() != 2)
-            {
+            let context = widget.widget(&ui, state, camera_moved);
+            if camera_moved && !selected && context.dragged() == 2 {
                 continue;
             }
-            if !context.is_active() {
-                continue;
-            }
-            if !is_selected && ui.hover_byte() == 1 && ui.click_byte() == 1 {
+            widget.signifier(&context, &mut stream);
+            if !selected && context.hovered() == 1 {
                 commands.queue(move |world: &mut World| {
                     world.send_event(crate::systems::wall::wall_highlight::HighlightWallCmd {
-                        wall: id,
+                        wall,
                         ty: 2,
                     });
                 });
             }
-            let phase = if ui.hover_byte() == 1 {
-                2
-            } else {
-                context.dragged()
-            };
-            output.write(DoUiEditRectangleRotate {
-                intersection: context.intersecting(),
-                wall: id,
-                rectangle: rect,
-                corner,
-                phase,
-            });
+            cache.recalculate = ui.hover_byte() < 2 || context.dragged() == 2;
+            let intersection = context.intersecting();
+            if u32::from_le_bytes(intersection[..4].try_into().unwrap()) != 2 {
+                events.write(DoUiEditRectangleRotate {
+                    intersection,
+                    wall,
+                    rectangle,
+                    corner,
+                    phase: DragState(context.dragged()),
+                });
+                // B140ad898c..8997写出唯一交互后直接结束；继续枚举会破坏角点锁存。
+                return;
+            }
         }
     }
 }
 
-/// B 0x140ad8be0; ShowPinned is pending restoration of its shared owner.
-pub fn do_ui_edit_rectangle_rotate(
-    mut input: EventReader<DoUiEditRectangleRotate>,
-    (public, ray, border, time): (
-        Res<crate::resources::walls::public_walls::PublicWalls>,
-        Res<crate::resources::mouse_terrain_raycast::CameraCursorRay>,
-        Res<crate::resources::glade_border::GladeBorder>,
-        Res<crate::resources::time::GameTime>,
-    ),
-    mut wip: ResMut<RectangleEditUiState>,
-    (mut edits, mut finish, mut trees, mut display, mut feedback, mut pins): (
-        EventWriter<super::super::EditRectangleCmd>,
-        EventWriter<super::super::FinishEditRectangleCmd>,
-        EventWriter<crate::resources::tree_storage::HideTreesinAreaCmd>,
-        EventWriter<crate::resources::glade_border::DisplayOutOfBorder>,
-        EventWriter<crate::resources::glade_border::FeedbackInputOutOfBorder>,
-        EventWriter<crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>,
-    ),
-) {
-    use crate::resources::glade_border::{
-        BorderShape, DisplayOutOfBorder, FeedbackInputOutOfBorder,
+/// 原旋转事件完整载荷，和尺寸事件保持各自独立reader。
+#[derive(Event, Clone, Copy, Debug)]
+pub struct DoUiEditRectangleRotate {
+    pub intersection: [u8; 56],
+    pub wall: crate::resources::walls::WallId,
+    pub rectangle: utils::geometry::Rectangle2d,
+    pub corner: usize,
+    pub phase: crate::systems::ui::resources::ui_state::DragState,
+}
+
+/// 原glam acos多项式必须有负值π分支，不能将abs(cos)多项式直接当acos。
+pub fn original_rectangle_signed_angle(a: Vec2, b: Vec2) -> f32 {
+    let an = 1.0 / (a.y * a.y + a.x * a.x).sqrt();
+    let bn = 1.0 / (b.y * b.y + b.x * b.x).sqrt();
+    let a = Vec2::new(a.x * an, a.y * an);
+    let b = Vec2::new(b.x * bn, b.y * bn);
+    let cos = (b.x * a.x + b.y * a.y) / ((b.y * b.y + b.x * b.x) * (a.y * a.y + a.x * a.x)).sqrt();
+    let x = cos.abs();
+    let root = 1.0 - x;
+    let root = if root.is_nan() || root >= 0.0 {
+        root
+    } else {
+        0.0
     };
-    use crate::resources::tree_storage::{HideTreesinAreaCmd, TreeHideArea};
-    use crate::systems::wall::valid_enclosure::{Shape, ShapeParameters};
-    let Some(event) = input.read().last() else {
+    let mut polynomial = f32::from_bits(ACOS_COEFFS[0]);
+    for coefficient in &ACOS_COEFFS[1..] {
+        polynomial = polynomial * x + f32::from_bits(*coefficient);
+    }
+    let angle = polynomial * root.sqrt();
+    let angle = if cos < 0.0 {
+        f32::from_bits(0x40490fdb) - angle
+    } else {
+        angle
+    };
+    let cross = b.y * a.x - a.y * b.x;
+    let sign = if cross.is_nan() {
+        f32::from_bits(0x7fc00000)
+    } else {
+        f32::from_bits((cross.to_bits() & 0x80000000) | 0x3f800000)
+    };
+    sign * angle
+}
+fn original_rotate_axis(axis: Vec2, angle: f32) -> Vec2 {
+    let sin = angle.sin();
+    let cos = angle.cos();
+    Vec2::new(axis.y * (-sin) + axis.x * cos, axis.y * cos + axis.x * sin)
+}
+
+/// B140ad8be0完整held分支由原ASM恢复，旧反编译在jumptable错误后遗漏了此分支。
+#[allow(clippy::too_many_arguments)]
+pub fn do_ui_edit_rectangle_rotate(
+    walls: Res<crate::resources::walls::public_walls::PublicWalls>,
+    mut wip: ResMut<super::WipRectangle>,
+    mut edit: EventWriter<super::super::EditRectangleCmd>,
+    mut finish: EventWriter<super::super::FinishEditRectangleCmd>,
+    time: Res<crate::resources::time::GameTime>,
+    ray: Res<crate::resources::mouse_terrain_raycast::CameraCursorRay>,
+    border: Res<crate::resources::glade_border::GladeBorder>,
+    mut display: EventWriter<crate::resources::glade_border::DisplayOutOfBorder>,
+    mut feedback: EventWriter<crate::resources::glade_border::FeedbackInputOutOfBorder>,
+    mut trees: EventWriter<crate::resources::tree_storage::HideTreesinAreaCmd>,
+    mut pins: EventWriter<crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>,
+    mut events: EventReader<DoUiEditRectangleRotate>,
+) {
+    use super::super::utils::shape_signifier_lerp::{ShapeVal, lerp_shape};
+    use crate::resources::{
+        glade_border::{BorderShape, DisplayOutOfBorder, FeedbackInputOutOfBorder},
+        tree_storage::{HideTreesinAreaCmd, TreeHideArea},
+    };
+    let Some(event) = events.read().last() else {
         return;
     };
     if u32::from_le_bytes(event.intersection[..4].try_into().unwrap()) == 2 {
         return;
     }
-    let wall = public
-        .get(event.wall)
-        .expect("rectangle rotate wall missing");
-    let rect = event.rectangle;
-    let corner = event.corner as usize;
-    let f = |at| f32::from_le_bytes(event.intersection[at..at + 4].try_into().unwrap());
-    let hit_y = f(0x28);
-    let intersect = |height: f32| {
-        let t = (height - ray.origin.y) / ray.dir.y;
-        Vec2::new(ray.origin.x + t * ray.dir.x, ray.origin.z + t * ray.dir.z)
+    // Once a drag starts, the Wip owns the target even if a later widget event
+    // names another wall. The corner is locked in the same record below.
+    let target_wall = if !event.phase.is_started() && wip.tag() == 1 {
+        crate::resources::walls::WallId(u64::from_le_bytes(wip.0[16..24].try_into().unwrap()))
+    } else {
+        event.wall
     };
-    let write_rect =
-        |bytes: &mut [u8], value| bytes.copy_from_slice(&Shape::Rectangle(value).to_record()[4..]);
-    let read_rect = |bytes: &[u8]| {
-        let mut record = [0u8; 28];
-        record[..4].copy_from_slice(&1u32.to_le_bytes());
-        record[4..].copy_from_slice(bytes);
-        ShapeParameters::from_observed(record).as_rectangle()
-    };
-    match event.phase.wrapping_sub(2).min(3) {
-        1 => {
-            let angle = rotate_angle(
-                rect.get_point(corner) - rect.center,
-                intersect(hit_y) - rect.center,
-            );
-            wip.0[..4].copy_from_slice(&1u32.to_le_bytes());
-            wip.0[4..8].copy_from_slice(&hit_y.to_le_bytes());
-            wip.0[8..12].copy_from_slice(&angle.to_le_bytes());
-            wip.0[16..24].copy_from_slice(&event.wall.0.to_le_bytes());
-            wip.0[24..32].copy_from_slice(&event.corner.to_le_bytes());
-            write_rect(&mut wip.0[32..56], rect);
-            write_rect(&mut wip.0[56..80], rect);
-        }
-        2 => {
-            assert_eq!(
-                u32::from_le_bytes(wip.0[..4].try_into().unwrap()),
-                1,
-                "rectangle rotate requires active Wip"
-            );
-            let corner = u64::from_le_bytes(wip.0[24..32].try_into().unwrap()) as usize;
-            let edit_wall = crate::resources::walls::WallId(u64::from_le_bytes(
-                wip.0[16..24].try_into().unwrap(),
-            ));
-            let height = f32::from_le_bytes(wip.0[4..8].try_into().unwrap());
-            let grab = f32::from_le_bytes(wip.0[8..12].try_into().unwrap());
-            let current = read_rect(&wip.0[56..80]);
-            let angle = rotate_angle(
-                current.get_point(corner) - current.center,
-                intersect(height) - current.center,
-            ) - grab;
-            let angle = smooth_rotation_delta(angle, time.delta);
-            let rotate = |axis: Vec2, angle: f32| {
-                let (sin, cos) = angle.sin_cos();
-                Vec2::new(axis.x * cos - axis.y * sin, axis.x * sin + axis.y * cos)
-            };
-            let mut candidate = current;
-            candidate.axis = rotate(current.axis, angle);
+    let wall = walls.get(target_wall).expect("矩形旋转墙尚未发布");
+    if event.phase.0 == 2 {
+        return;
+    }
+    if event.phase.is_started() {
+        let y = f32::from_le_bytes(event.intersection[40..44].try_into().unwrap());
+        let point = ray.intersect_with_xz_plane(y);
+        let rectangle = event.rectangle;
+        let angle = original_rectangle_signed_angle(
+            rectangle.get_point(event.corner) - rectangle.center,
+            Vec2::new(point.x, point.z) - rectangle.center,
+        );
+        wip.begin_rotation(event.wall, event.corner, rectangle, y, angle);
+        return;
+    }
+    if event.phase.is_finished() {
+        finish.write(super::super::FinishEditRectangleCmd);
+        trees.write(HideTreesinAreaCmd {
+            area: TreeHideArea::Rectangle(event.rectangle),
+            height_limit: wall.authority.arch_height(),
+            expansion: 1.5,
+            finished: true,
+        });
+        return;
+    }
+    assert_eq!(wip.tag(), 1, "矩形旋转held缺少Started状态");
+    let before = wip.current();
+    let point = ray.intersect_with_xz_plane(wip.scalar(4));
+    let corner = u64::from_le_bytes(wip.0[24..32].try_into().unwrap()) as usize;
+    let angle = original_rectangle_signed_angle(
+        before.get_point(corner) - before.center,
+        Vec2::new(point.x, point.z) - before.center,
+    ) - wip.scalar(8);
+    let angle = lerp_shape(ShapeVal::Circle(0.0), ShapeVal::Circle(angle), time.delta).get_radius();
+    let mut after = before;
+    after.axis = original_rotate_axis(before.axis, angle);
+    if !border.is_shape_inside(BorderShape::Rectangle(after)) {
+        display.write(DisplayOutOfBorder);
+        feedback.write(FeedbackInputOutOfBorder);
+        // 原版按正向0.1弧度步进，每次先保存前一有效值；负角越界直接保持before。
+        let mut step = 0.0;
+        let mut candidate = before;
+        loop {
+            after = candidate;
+            if !(angle > step) {
+                break;
+            }
+            step += 0.1;
+            candidate.axis = original_rotate_axis(before.axis, step);
             if !border.is_shape_inside(BorderShape::Rectangle(candidate)) {
-                display.write(DisplayOutOfBorder);
-                feedback.write(FeedbackInputOutOfBorder);
-                let mut axis = current.axis;
-                let mut step = 0.0;
-                while step < angle {
-                    step += 0.1;
-                    let mut trial = current;
-                    trial.axis = rotate(current.axis, step);
-                    if !border.is_shape_inside(BorderShape::Rectangle(trial)) {
-                        break;
-                    }
-                    axis = trial.axis;
-                }
-                candidate.axis = axis;
-            }
-            pins.write(crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter::Rectangle {
-                rectangle: rect, bottom: wall.authority.elevation(), top: wall.max_y(), exclude_wall: Some(event.wall),
-            });
-            trees.write(HideTreesinAreaCmd {
-                area: TreeHideArea::Rectangle(rect),
-                height_limit: wall.authority.elevation(),
-                expansion: 1.5,
-                finished: false,
-            });
-            if (candidate.axis - current.axis).length() > 0.0 {
-                let movement = (candidate.get_point(corner) - current.get_point(corner)).length();
-                write_rect(&mut wip.0[56..80], candidate);
-                let before = read_rect(&wip.0[32..56]);
-                edits.write(super::super::EditRectangleCmd {
-                    wall: edit_wall,
-                    center: candidate.center,
-                    dimensions: candidate.size,
-                    orientation: candidate.axis,
-                    position: Vec3::new(before.center.x, height, before.center.y),
-                    movement,
-                    rotating: true,
-                });
+                break;
             }
         }
-        3 => {
-            finish.write(super::super::FinishEditRectangleCmd { wall: event.wall });
-            trees.write(HideTreesinAreaCmd {
-                area: TreeHideArea::Rectangle(rect),
-                height_limit: wall.authority.elevation(),
-                expansion: 1.5,
-                finished: true,
-            });
-        }
-        _ => {}
+    }
+    pins.write(
+        crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter::rectangle(
+            after,
+            wall.authority.arch_height(),
+            wall.max_y_gable(),
+            Some(target_wall),
+        ),
+    );
+    trees.write(HideTreesinAreaCmd {
+        area: TreeHideArea::Rectangle(after),
+        height_limit: wall.authority.arch_height(),
+        expansion: 1.5,
+        finished: false,
+    });
+    let d = after.axis - before.axis;
+    if (d.y * d.y + d.x * d.x).sqrt() > 0.0 {
+        let previous_corner = before.get_point(corner);
+        let current_corner = after.get_point(corner);
+        let d = current_corner - previous_corner;
+        wip.set_current(after);
+        edit.write(super::super::EditRectangleCmd {
+            wall: target_wall,
+            center: after.center,
+            dimensions: after.size,
+            orientation: after.axis,
+            position: Vec3::new(after.center.x, wip.scalar(4), after.center.y),
+            movement: (d.y * d.y + d.x * d.x).sqrt(),
+            rotating: true,
+        });
     }
 }
 
@@ -506,89 +435,147 @@ mod tests {
     use super::*;
 
     #[test]
-    fn corner_cache_marks_other_widget_and_hover_dirty() {
-        assert!(corner_cache_dirty(1, true, 3));
-        assert!(corner_cache_dirty(2, false, 3));
-        assert!(corner_cache_dirty(2, true, 2));
-        assert!(!corner_cache_dirty(2, true, 3));
-    }
-
-    #[test]
-    fn rotation_angle_matches_original_instruction_fragment() {
-        let fixture: serde_json::Value = serde_json::from_str(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../reverse-engineering/tiny-glade/evidence/country-core-deep/wall/m01-rotate-fast-acos-fragment-fixture.json"))).unwrap();
-        let inputs = [
-            (Vec2::X, Vec2::X),
-            (Vec2::X, Vec2::Y),
-            (Vec2::X, -Vec2::Y),
-            (Vec2::X, Vec2::new(-1.0, 1.0)),
-            (Vec2::X, -Vec2::X),
-            (Vec2::ZERO, Vec2::X),
-            (Vec2::new(f32::NAN, 0.0), Vec2::X),
-            (Vec2::new(1.0, -0.0), Vec2::new(1.0, -0.0)),
-            (Vec2::new(3.0, 4.0), Vec2::new(5.0, 7.0)),
-            (Vec2::new(3.0, 7.0), Vec2::new(-9.0, 4.0)),
-            (Vec2::splat(1.0e-20), Vec2::new(1.0e-20, -1.0e-20)),
-        ];
-        for (case, (a, b)) in fixture["cases"].as_array().unwrap().iter().zip(inputs) {
-            let expected = u32::from_str_radix(case["angle_bits"].as_str().unwrap(), 16).unwrap();
-            assert_eq!(rotate_angle(a, b).to_bits(), expected, "{}", case["name"]);
+    fn original_rectangle_signed_angle_native_bits() {
+        let cases: &[([u32; 2], [u32; 2], u32)] = include!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../reports/module-recovery-2026-10-23/m01-rectangle-angle-native-cases.rs"
+        ));
+        for (index, (a, b, expected)) in cases.iter().copied().enumerate() {
+            let angle = original_rectangle_signed_angle(
+                Vec2::from_array(a.map(f32::from_bits)),
+                Vec2::from_array(b.map(f32::from_bits)),
+            );
+            assert_eq!(angle.to_bits(), expected, "原旋转角片段差异case {index}");
         }
     }
 
     #[test]
-    fn corner_widget_uses_published_path_for_both_geometries() {
-        use crate::resources::walls::public_wall_state::PublicWallState;
-        use crate::resources::walls::{WallState, publication_source::TerrainHeightGrid512};
-        use crate::systems::ui::resources::widget_params::WidgetGeometry;
-        use crate::systems::wall::valid_enclosure::{Shape, ShapeParameters};
-        let rect = ::utils::geometry::Rectangle2d::new(Vec2::ZERO, Vec2::splat(4.0), Vec2::X);
-        let mut authority = WallState::new(
-            crate::systems::wall::shapes::to_authority_curve(&rect.as_curve2()),
-            4.0,
-            0,
-            0,
-            false,
-        );
-        authority.snapshot.source.shape =
-            ShapeParameters::from_shape(Shape::Rectangle(rect)).to_snapshot();
-        authority.snapshot.source.curve_kind_tag = 1;
-        let grid = TerrainHeightGrid512 {
-            encoded: vec![0; 512 * 512].into(),
-            minimum_y: 0.0,
-            maximum_y: 0.0,
-            sampling_fix: true,
+    fn skewed_box_volume_keeps_corner_order_and_fixed_index_pattern() {
+        let a = [
+            Vec3::new(0.0, 0.0, 0.0),
+            Vec3::new(1.0, 0.0, 0.0),
+            Vec3::new(1.0, 1.0, 0.0),
+            Vec3::new(0.0, 1.0, 0.0),
+        ];
+        let b = [
+            Vec3::new(0.0, 0.0, 1.0),
+            Vec3::new(1.0, 0.0, 1.0),
+            Vec3::new(1.0, 1.0, 1.0),
+            Vec3::new(0.0, 1.0, 1.0),
+        ];
+        let (vertices, indices) = skewed_box_trigger_vol(&a, &b, 10);
+        // arg3 (loop_b) first, then arg2 (loop_a).
+        assert_eq!(vertices[0], b[0]);
+        assert_eq!(vertices[3], b[3]);
+        assert_eq!(vertices[4], a[0]);
+        assert_eq!(vertices[7], a[3]);
+        // First and last triangles.
+        assert_eq!(&indices[..3], &[10, 11, 12]);
+        assert_eq!(&indices[33..36], &[17, 14, 10]);
+        // 12 triangles over 8 vertices, all within [base, base+8).
+        assert_eq!(indices.len(), 36);
+        assert!(indices.iter().all(|&i| (10..18).contains(&i)));
+        // 32-bit wrapping like the native LEA.
+        let (_, wrapped) = skewed_box_trigger_vol(&a, &b, u32::MAX);
+        assert_eq!(wrapped[1], 0);
+    }
+
+    #[test]
+    fn box_trigger_volume_transforms_triangle_positions() {
+        let mut positions = [Vec3::ZERO; 24];
+        positions[0] = Vec3::new(1.0, 2.0, 3.0);
+        positions[1] = Vec3::new(4.0, 5.0, 6.0);
+        positions[2] = Vec3::new(7.0, 8.0, 9.0);
+        let shifted = glam::Mat4::from_translation(Vec3::new(10.0, 0.0, 0.0));
+        let triangles = box_trigger_triangles(&[0, 1, 2], &shifted, &positions);
+        assert_eq!(triangles.len(), 1);
+        assert_eq!(triangles[0].points[0], Vec3::new(11.0, 2.0, 3.0));
+        assert_eq!(triangles[0].points[2], Vec3::new(17.0, 8.0, 9.0));
+        // Two chunks -> two triangles.
+        let two = box_trigger_triangles(&[0, 1, 2, 2, 1, 0], &glam::Mat4::IDENTITY, &positions);
+        assert_eq!(two.len(), 2);
+        assert_eq!(two[1].points[0], Vec3::new(7.0, 8.0, 9.0));
+    }
+
+    #[test]
+    #[should_panic]
+    fn box_trigger_volume_rejects_out_of_range_vertex() {
+        let positions = [Vec3::ZERO; 24];
+        let _ = box_trigger_triangles(&[0, 1, 24], &glam::Mat4::IDENTITY, &positions);
+    }
+    #[test]
+    fn box_trigger_volume_has_all_native_faces_and_srt() {
+        use crate::utils::components::transform::Transform;
+        // 原24点/36索引独立标量lift在尺寸2/4/6下的十二个三角形。
+        let expected = [
+            [[-1., -2., 3.], [1., -2., 3.], [1., 2., 3.]],
+            [[1., 2., 3.], [-1., 2., 3.], [-1., -2., 3.]],
+            [[-1., 2., -3.], [1., 2., -3.], [1., -2., -3.]],
+            [[1., -2., -3.], [-1., -2., -3.], [-1., 2., -3.]],
+            [[1., -2., -3.], [1., 2., -3.], [1., 2., 3.]],
+            [[1., 2., 3.], [1., -2., 3.], [1., -2., -3.]],
+            [[-1., -2., 3.], [-1., 2., 3.], [-1., 2., -3.]],
+            [[-1., 2., -3.], [-1., -2., -3.], [-1., -2., 3.]],
+            [[1., 2., -3.], [-1., 2., -3.], [-1., 2., 3.]],
+            [[-1., 2., 3.], [1., 2., 3.], [1., 2., -3.]],
+            [[1., -2., 3.], [-1., -2., 3.], [-1., -2., -3.]],
+            [[-1., -2., -3.], [1., -2., -3.], [1., -2., 3.]],
+        ];
+        let triangles = box_trigger_volume(2., 4., 6., &Transform::identity());
+        assert_eq!(triangles.len(), 12);
+        for (actual, points) in triangles.iter().zip(expected) {
+            assert_eq!(actual.points, points.map(Vec3::from_array));
+        }
+        let transform = Transform {
+            rotation: glam::Quat::from_xyzw(0., 1., 0., 0.),
+            translation: Vec3::new(10., 20., 30.),
+            scale: Vec3::new(2., 3., 4.),
         };
-        let mut wall = PublicWallState::collect(&authority, &grid).unwrap();
-        let paths =
-            crate::systems::wall::wall_state::path_preparation::PathRasters512::from_encoded(
-                std::array::from_fn(|_| std::sync::Arc::from(vec![0u8; 512 * 512])),
-                true,
-            )
-            .unwrap();
-        wall.prepare_paths(&paths).unwrap();
-        for corner in 0..4 {
-            let WidgetGeometry::TriangleMesh(selected) =
-                corner_widget_geometry(&wall, corner, true)
-            else {
-                panic!("selected mesh")
-            };
-            let WidgetGeometry::TriangleMesh(ordinary) =
-                corner_widget_geometry(&wall, corner, false)
-            else {
-                panic!("ordinary mesh")
-            };
-            assert_eq!(selected.len(), 24);
-            assert_eq!(ordinary.len(), 12);
-            assert!(
-                selected
-                    .iter()
-                    .chain(&ordinary)
-                    .flat_map(|t| t.points)
-                    .all(|p| p.is_finite())
+        let triangles = box_trigger_volume(2., 4., 6., &transform);
+        for (actual, points) in triangles.iter().zip(expected) {
+            assert_eq!(
+                actual.points,
+                points.map(|[x, y, z]| Vec3::new(10. - 2. * x, 20. + 3. * y, 30. - 4. * z))
             );
         }
     }
 
+    #[test]
+    fn box_trigger_volume_keeps_reflection_degeneracy_and_nonfinite_lanes() {
+        use crate::utils::components::transform::Transform;
+        let identity = Transform::identity();
+        let positive = box_trigger_volume(2., 4., 6., &identity);
+        let reflected = box_trigger_volume(-2., 4., 6., &identity);
+        for (actual, original) in reflected.iter().zip(&positive) {
+            assert_eq!(
+                actual.points,
+                original.points.map(|p| Vec3::new(-p.x, p.y, p.z))
+            );
+        }
+        let flat = box_trigger_volume(0., 4., 6., &identity);
+        assert_eq!(flat.len(), 12);
+        assert!(flat.iter().flat_map(|t| t.points).all(|p| p.x == 0.));
+        let nonfinite = box_trigger_volume(f32::INFINITY, 4., 6., &identity);
+        assert_eq!(nonfinite.len(), 12);
+        assert!(
+            nonfinite
+                .iter()
+                .flat_map(|t| t.points)
+                .all(|p| !p.is_finite())
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn box_trigger_triangle_mapper_keeps_short_chunk_failure() {
+        let _ = box_trigger_triangles(&[0, 1], &glam::Mat4::IDENTITY, &[Vec3::ZERO; 24]);
+    }
+}
+
+#[cfg(test)]
+mod picker_chain_tests {
+    use super::*;
+    use super::super::finish_edit_rectangle::RectangleEditUiState;
     #[test]
     fn rotate_schedule_captures_wip_and_releases() {
         use crate::resources::walls::{
@@ -657,12 +644,12 @@ mod tests {
         world.insert_resource(crate::systems::camera_rig::main_camera::MainCamera::new(
             1.0,
         ));
-        world.init_resource::<ClosestCornerCache>();
+        world.init_resource::<crate::systems::ui::signifiers::UiSignifierStream>();
         world.init_resource::<Events<crate::systems::camera_rig::main_camera::MainCameraMoved>>();
         let mut producer = Schedule::default();
         producer.add_systems(ui_edit_rectangle_orientation);
         producer.run(&mut world);
-        let widget = corner_widget_id(wall, 0);
+        let widget = super::super::ui_modes::edit_orientation::UiRectangleOrientationEdit::new(wall, rect, 0, true).widget_id();
         assert!(
             world
                 .resource::<crate::systems::ui::resources::ui_state::UiState>()
@@ -731,7 +718,7 @@ mod tests {
             .drain()
             .collect();
         assert_eq!(picked.len(), 1);
-        assert_eq!(picked[0].phase, 2);
+        assert_eq!(picked[0].phase.0, 2);
         assert_eq!(picked[0].wall, wall);
         world.init_resource::<Events<super::super::super::EditRectangleCmd>>();
         world.init_resource::<Events<super::super::super::FinishEditRectangleCmd>>();
@@ -943,7 +930,7 @@ mod tests {
             wall,
             rectangle: rect,
             corner: 0,
-            phase: 3,
+            phase: crate::systems::ui::resources::ui_state::DragState(3),
         };
         world.send_event(cross.clone());
         schedule.run(&mut world);
@@ -952,7 +939,7 @@ mod tests {
             .origin = Vec3::new(2.0, 10.0, -2.0);
         cross.wall = other;
         cross.corner = 1;
-        cross.phase = 4;
+        cross.phase = crate::systems::ui::resources::ui_state::DragState(4);
         world.send_event(cross);
         schedule.run(&mut world);
         let commands: Vec<_> = world
@@ -964,125 +951,4 @@ mod tests {
         assert!(commands[0].orientation.y.abs() > 0.01);
     }
 
-    #[test]
-    fn skewed_box_volume_keeps_corner_order_and_fixed_index_pattern() {
-        let a = [
-            Vec3::new(0.0, 0.0, 0.0),
-            Vec3::new(1.0, 0.0, 0.0),
-            Vec3::new(1.0, 1.0, 0.0),
-            Vec3::new(0.0, 1.0, 0.0),
-        ];
-        let b = [
-            Vec3::new(0.0, 0.0, 1.0),
-            Vec3::new(1.0, 0.0, 1.0),
-            Vec3::new(1.0, 1.0, 1.0),
-            Vec3::new(0.0, 1.0, 1.0),
-        ];
-        let (vertices, indices) = skewed_box_trigger_vol(&a, &b, 10);
-        // arg3 (loop_b) first, then arg2 (loop_a).
-        assert_eq!(vertices[0], b[0]);
-        assert_eq!(vertices[3], b[3]);
-        assert_eq!(vertices[4], a[0]);
-        assert_eq!(vertices[7], a[3]);
-        // First and last triangles.
-        assert_eq!(&indices[..3], &[10, 11, 12]);
-        assert_eq!(&indices[33..36], &[17, 14, 10]);
-        // 12 triangles over 8 vertices, all within [base, base+8).
-        assert_eq!(indices.len(), 36);
-        assert!(indices.iter().all(|&i| (10..18).contains(&i)));
-        // 32-bit wrapping like the native LEA.
-        let (_, wrapped) = skewed_box_trigger_vol(&a, &b, u32::MAX);
-        assert_eq!(wrapped[1], 0);
-    }
-
-    #[test]
-    fn box_trigger_volume_transforms_triangle_positions() {
-        let mut positions = [Vec3::ZERO; 24];
-        positions[0] = Vec3::new(1.0, 2.0, 3.0);
-        positions[1] = Vec3::new(4.0, 5.0, 6.0);
-        positions[2] = Vec3::new(7.0, 8.0, 9.0);
-        let shifted = glam::Mat4::from_translation(Vec3::new(10.0, 0.0, 0.0));
-        let triangles = box_trigger_triangles(&[0, 1, 2], &shifted, &positions);
-        assert_eq!(triangles.len(), 1);
-        assert_eq!(triangles[0].points[0], Vec3::new(11.0, 2.0, 3.0));
-        assert_eq!(triangles[0].points[2], Vec3::new(17.0, 8.0, 9.0));
-        // Two chunks -> two triangles.
-        let two = box_trigger_triangles(&[0, 1, 2, 2, 1, 0], &glam::Mat4::IDENTITY, &positions);
-        assert_eq!(two.len(), 2);
-        assert_eq!(two[1].points[0], Vec3::new(7.0, 8.0, 9.0));
-    }
-
-    #[test]
-    #[should_panic]
-    fn box_trigger_volume_rejects_out_of_range_vertex() {
-        let positions = [Vec3::ZERO; 24];
-        let _ = box_trigger_triangles(&[0, 1, 24], &glam::Mat4::IDENTITY, &positions);
-    }
-    #[test]
-    fn box_trigger_volume_has_all_native_faces_and_srt() {
-        use crate::utils::components::transform::Transform;
-        // 原24点/36索引独立标量lift在尺寸2/4/6下的十二个三角形。
-        let expected = [
-            [[-1., -2., 3.], [1., -2., 3.], [1., 2., 3.]],
-            [[1., 2., 3.], [-1., 2., 3.], [-1., -2., 3.]],
-            [[-1., 2., -3.], [1., 2., -3.], [1., -2., -3.]],
-            [[1., -2., -3.], [-1., -2., -3.], [-1., 2., -3.]],
-            [[1., -2., -3.], [1., 2., -3.], [1., 2., 3.]],
-            [[1., 2., 3.], [1., -2., 3.], [1., -2., -3.]],
-            [[-1., -2., 3.], [-1., 2., 3.], [-1., 2., -3.]],
-            [[-1., 2., -3.], [-1., -2., -3.], [-1., -2., 3.]],
-            [[1., 2., -3.], [-1., 2., -3.], [-1., 2., 3.]],
-            [[-1., 2., 3.], [1., 2., 3.], [1., 2., -3.]],
-            [[1., -2., 3.], [-1., -2., 3.], [-1., -2., -3.]],
-            [[-1., -2., -3.], [1., -2., -3.], [1., -2., 3.]],
-        ];
-        let triangles = box_trigger_volume(2., 4., 6., &Transform::identity());
-        assert_eq!(triangles.len(), 12);
-        for (actual, points) in triangles.iter().zip(expected) {
-            assert_eq!(actual.points, points.map(Vec3::from_array));
-        }
-        let transform = Transform {
-            rotation: glam::Quat::from_xyzw(0., 1., 0., 0.),
-            translation: Vec3::new(10., 20., 30.),
-            scale: Vec3::new(2., 3., 4.),
-        };
-        let triangles = box_trigger_volume(2., 4., 6., &transform);
-        for (actual, points) in triangles.iter().zip(expected) {
-            assert_eq!(
-                actual.points,
-                points.map(|[x, y, z]| Vec3::new(10. - 2. * x, 20. + 3. * y, 30. - 4. * z))
-            );
-        }
-    }
-
-    #[test]
-    fn box_trigger_volume_keeps_reflection_degeneracy_and_nonfinite_lanes() {
-        use crate::utils::components::transform::Transform;
-        let identity = Transform::identity();
-        let positive = box_trigger_volume(2., 4., 6., &identity);
-        let reflected = box_trigger_volume(-2., 4., 6., &identity);
-        for (actual, original) in reflected.iter().zip(&positive) {
-            assert_eq!(
-                actual.points,
-                original.points.map(|p| Vec3::new(-p.x, p.y, p.z))
-            );
-        }
-        let flat = box_trigger_volume(0., 4., 6., &identity);
-        assert_eq!(flat.len(), 12);
-        assert!(flat.iter().flat_map(|t| t.points).all(|p| p.x == 0.));
-        let nonfinite = box_trigger_volume(f32::INFINITY, 4., 6., &identity);
-        assert_eq!(nonfinite.len(), 12);
-        assert!(
-            nonfinite
-                .iter()
-                .flat_map(|t| t.points)
-                .all(|p| !p.is_finite())
-        );
-    }
-
-    #[test]
-    #[should_panic]
-    fn box_trigger_triangle_mapper_keeps_short_chunk_failure() {
-        let _ = box_trigger_triangles(&[0, 1], &glam::Mat4::IDENTITY, &[Vec3::ZERO; 24]);
-    }
 }

@@ -105,61 +105,23 @@ pub struct WindowAutoClutterCandidates(pub Vec<WindowAutoClutterCandidate>);
 
 impl bevy_ecs::resource::Resource for WindowAutoClutterCandidates {}
 
-/// `BirdNestCandidateLocation`（O：`country_core::systems::collision::BirdNestCandidateLocation`，
-/// **0x40 B** 元素）。
-///
-/// fresh 锚定（`spec_extend<BirdNestCandidateLocation, …>` 0x1412f9800 的逐元素拷贝序列，
-/// 2026-10-17）：元素按 0x40 stride 拷贝，字段形状：
-///
-/// | +0x00 | +0x08 | +0x0c | +0x10 | +0x14 | +0x18 | +0x20 | +0x28 | +0x30 | +0x38 | +0x3c |
-/// |---|---|---|---|---|---|---|---|---|---|---|
-/// | `Arc<T>`（refcount ++） | u32 | u32 | u32 | u32 | u64 | u64 | u64 | u64 | u32 | u32 |
-///
-/// 拷贝序列对 +0 处的 `Arc` 做 `LOCK; refcount += 1`，证明其为共享引用；被指向类型
-/// （`T`）未锚定，Rust 侧以 `Arc<()>` 保留 8 B 引用计数语义，字段名以 `_unk*` 登记。
+/// 原 64 字节鸟巢候选：碰撞折线共享切片、全局身份、目的信息和位姿。
+/// B 0x1412f9800 复制并增加 Arc 引用，0x1422c9c70 消费对应字段。
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct BirdNestCandidateLocation {
-    /// +0x00：共享引用（pointee 类型未锚定；refcount 语义已锚定）。
-    pub shared: std::sync::Arc<()>,
-    /// +0x08。
-    pub _unk08: u32,
-    /// +0x0c。
-    pub _unk0c: u32,
-    /// +0x10。
-    pub _unk10: u32,
-    /// +0x14。
-    pub _unk14: u32,
-    /// +0x18。
-    pub _unk18: u64,
-    /// +0x20。
-    pub _unk20: u64,
-    /// +0x28。
-    pub _unk28: u64,
-    /// +0x30。
-    pub _unk30: u64,
-    /// +0x38。
-    pub _unk38: u32,
-    /// +0x3c。
-    pub _unk3c: u32,
-}
-
-impl Default for BirdNestCandidateLocation {
-    fn default() -> Self {
-        Self {
-            shared: std::sync::Arc::new(()),
-            _unk08: 0,
-            _unk0c: 0,
-            _unk10: 0,
-            _unk14: 0,
-            _unk18: 0,
-            _unk20: 0,
-            _unk28: 0,
-            _unk30: 0,
-            _unk38: 0,
-            _unk3c: 0,
-        }
-    }
+    /// +0：共享折线切片（胖指针，长度位于 +8）。
+    pub points: std::sync::Arc<[glam::Vec3]>,
+    /// +0x10：用于自动装饰身份的 GlobalId 原始值。
+    pub global_id: u64,
+    /// +0x18：OnBuilding 目标的 WallId 原始值。
+    pub destination_wall: u64,
+    /// +0x20：原字段未闭合，逐字节保留。
+    pub unknown_20: u64,
+    /// +0x28：候选位置。
+    pub position: glam::Vec3,
+    /// +0x34：候选方向。
+    pub forward: glam::Vec3,
 }
 
 /// `BirdNestCandidateLocations`（O：`Res<BirdNestCandidateLocations>` 资源，`insert_resource`
@@ -170,7 +132,7 @@ pub struct BirdNestCandidateLocations(pub Vec<BirdNestCandidateLocation>);
 
 impl bevy_ecs::resource::Resource for BirdNestCandidateLocations {}
 
-/// `MeshIntersectionArtifacts`（O：`intersect_meshes` 图边载荷，**0x40 B**）。
+/// `PendingMeshIntersection`（O：`intersect_meshes` 临时相交记录，**0x40 B**）。
 ///
 /// fresh 锚定（`intersect_newly_added_colliders::closure_env$0` 0x1417d1440 的 0x40 B
 /// push 序列，2026-10-17）——精确字段：
@@ -184,10 +146,8 @@ impl bevy_ecs::resource::Resource for BirdNestCandidateLocations {}
 /// - `a` = 新增句柄 {index@+0x28, generation@+0x2c, slot@+0x30}；
 /// - `b` = 候选句柄 {index@+0x34, generation@+0x38, slot@+0x3c}。
 ///
-/// 原边载荷**不含**独立的 `Vec<BirdNestCandidateLocation>`；`spec_extend` 的鸟巢候选来源
-/// （closure_env$3）未锚定，单列依赖登记。
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct MeshIntersectionArtifacts {
+pub struct PendingMeshIntersection {
     /// 折线（O：+0x00，`Vec<Polyline>`）。
     pub polylines: Vec<intersect_meshes::Polyline>,
     /// 左侧 collider 注册表条目的 `+0x08` qword（O：+0x18）。
@@ -198,6 +158,13 @@ pub struct MeshIntersectionArtifacts {
     pub a: world::SubworldColliderHandle,
     /// 右侧 collider 句柄（O：+0x34，候选句柄）。
     pub b: world::SubworldColliderHandle,
+}
+
+/// 原 GraphMap 边持有候选和真实砖实例分配；删除边时分配的 Drop 退役。
+#[derive(Clone, Debug)]
+pub struct MeshIntersectionArtifacts {
+    pub bird_nests: Vec<BirdNestCandidateLocation>,
+    pub bricks: crate::render::sparse_instance_buffer::SparseInstanceBufferAllocation<crate::geometry::instanced_wall::BrickTransformSsbo>,
 }
 
 /// `MeshIntersectionGraph`（O：`petgraph::graphmap::GraphMap<SubworldColliderHandle,
@@ -337,22 +304,12 @@ mod tests {
     #[test]
     fn bird_nest_candidate_location_is_forty_bytes_with_arc_first() {
         assert_eq!(core::mem::size_of::<BirdNestCandidateLocation>(), 0x40);
-        assert_eq!(
-            core::mem::offset_of!(BirdNestCandidateLocation, shared),
-            0x00
-        );
-        assert_eq!(
-            core::mem::offset_of!(BirdNestCandidateLocation, _unk08),
-            0x08
-        );
-        assert_eq!(
-            core::mem::offset_of!(BirdNestCandidateLocation, _unk38),
-            0x38
-        );
-        assert_eq!(
-            core::mem::offset_of!(BirdNestCandidateLocation, _unk3c),
-            0x3c
-        );
+        assert_eq!(core::mem::offset_of!(BirdNestCandidateLocation, points), 0x00);
+        assert_eq!(core::mem::offset_of!(BirdNestCandidateLocation, global_id), 0x10);
+        assert_eq!(core::mem::offset_of!(BirdNestCandidateLocation, destination_wall), 0x18);
+        assert_eq!(core::mem::offset_of!(BirdNestCandidateLocation, unknown_20), 0x20);
+        assert_eq!(core::mem::offset_of!(BirdNestCandidateLocation, position), 0x28);
+        assert_eq!(core::mem::offset_of!(BirdNestCandidateLocation, forward), 0x34);
     }
 }
 

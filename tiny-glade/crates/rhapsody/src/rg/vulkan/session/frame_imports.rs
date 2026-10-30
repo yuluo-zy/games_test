@@ -248,24 +248,25 @@ impl VulkanGraphSession {
     }
 
     pub(super) fn collect_recorded_imports(&mut self, recorded: Option<(crate::rg::resource::GraphId, &[u16])>) {
-        let Some(imports) = &mut self.frame_imports else {
-            return;
-        };
         let backend = &mut self.backend;
         let mut removed_any = false;
-        imports.collect(recorded, |token| {
-            removed_any = true;
-            backend.resources.remove(&token);
-            backend.import_families.remove(&token);
-            backend.history_validity.remove(&token);
-        });
+        if let Some(imports) = &mut self.frame_imports {
+            imports.collect(recorded, |token| {
+                removed_any = true;
+                backend.resources.remove(&token);
+                backend.import_families.remove(&token);
+                backend.history_validity.remove(&token);
+            });
+        }
         if removed_any {
             // Declaration tokens expired; the bounded idle CPU projections
             // retain only physical owners and cannot revive old graph handles.
             let mut projection = backend.caches.projection();
             projection.snapshot.take();
-            projection.pool.park_idle();
         }
+        // 外部Arc/Weak可能刚释放；无新token退役时也重试归还空闲常量页。
+        // 活动快照仍由独立Arc保护，不修改在途帧持有的资源。
+        backend.caches.projection().pool.park_idle();
     }
 
     /// 释放单个导入资源（`bind_import*` 登记的 token），不需要整设备空闲，也不清别的缓存。

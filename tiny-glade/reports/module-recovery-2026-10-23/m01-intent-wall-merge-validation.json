@@ -1,0 +1,53 @@
+{
+  "scope": "M01 necessary Place dependency: native Intent + wall merge + canonical quaternion kernel",
+  "date": "2026-10-27",
+  "original_rne_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "native_cases": {
+    "full_intent_stair": 128,
+    "full_intent_terrain": 2,
+    "full_quat_atan_inputs": 96,
+    "full_wall_proposal": 352,
+    "wall_intent_predicates": 160,
+    "full_wall_minimum": 24
+  },
+  "rust_receipts": [
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test -p system-decorator --lib original_intent_tests --offline",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 486,
+      "log": "m01-intent-final-tests.log"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test -p system-decorator --lib original_wall_merge_tests --offline",
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 486,
+      "log": "m01-wall-merge-final-tests.log"
+    },
+    {
+      "command": "CARGO_INCREMENTAL=0 cargo test -p country-core --features native-physics --lib m01_original_quaternion_angle_tests --offline",
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "filtered": 3044,
+      "log": "m01-intent-rotation-final-tests.log"
+    }
+  ],
+  "boundaries": [
+    "Native PE full Intents130 + angle96 via Rosetta, only panic/CRT bridges. Native leaf replay536 via Unicorn, resolved container/subtype/collision boundaries.",
+    "93 finite atan inputs exact bit patterns; 3 nonfinite inputs retain NaN class, ARM/x86 NaN signs differ. Windows CRT final atan2 output is not claimed bit exact.",
+    "Roof leaf owned and validated separately by freehand. Parent Intent consumes same real API.",
+    "Production Place owner height and central host/GPU/history/input acceptance remain coordinated integration work, not claimed complete by these CPU tests."
+  ],
+  "source_sha256": {
+    "tiny-glade/crates/systems/decorator/src/ui_systems/decorator_interaction_intent.rs": "3103abe471b41ab98e82fafbd800d00e540cc72d63b9bcc5101de5d522818376",
+    "tiny-glade/crates/systems/decorator/src/merge_proposal_wall_decorators.rs": "de2466d52b21fca03528a63fc4533878a9e412dc2eaad28b330b0be71e9946a5",
+    "tiny-glade/crates/systems/decorator/src/collision_detection.rs": "042a61c0987f40733c1f51a824933bf129ec9fd9b8837120e5b2964893fc3dff",
+    "tiny-glade/crates/country-core/src/resources/walls/decorator.rs": "afae40dcf1edec779d681ff64dcf876423cf7b520c673e9014c858b846047c1c"
+  },
+  "formatted_source_validation": "Intent3/3 PASS and wall3/3 PASS after own-only rustfmt(skip_children); core1/1 PASS; git diff --check PASS",
+  "repeatable_original_replay": "probe_m01_intent_stair_native.py rerun:226 original executions, active outputs match retained oracle"
+}

@@ -116,11 +116,12 @@ impl Circle2d {
         let discriminant = (-4.0 * a)
             * ((relative.y * relative.y + relative.x * relative.x) - self.radius * self.radius)
             + b * b;
-        if discriminant >= 0.0 {
+        // 原指令只在有序且严格小于零时拒绝；NaN 继续传播到调用者。
+        if discriminant < 0.0 {
+            None
+        } else {
             let root = discriminant.sqrt();
             Some(((-b - root) / (a + a), (root - b) / (a + a)))
-        } else {
-            None
         }
     }
     /// B 140c97a40：只有两次有序严格大于返回None；退化/NaN载荷仍可为Some。
@@ -250,6 +251,41 @@ impl std::iter::FusedIterator for CirclePoints2<'_> {}
 #[cfg(test)]
 mod native_circle_intersection_tests {
     use super::*;
+
+    #[test]
+    fn original_ray_nan_payload_cases() {
+        let data: serde_json::Value = serde_json::from_str(include_str!("../../../../reports/module-recovery-2026-10-23/m06-circle-ray-nan-oracle.json")).unwrap();
+        for row in data["rows"].as_array().unwrap() {
+            let values = row["input_bits"].as_array().unwrap();
+            let f = |i: usize| f32::from_bits(values[i].as_u64().unwrap() as u32);
+            let result = Circle2d::new(Vec2::new(f(0), f(1)), f(2)).intersect_ray(crate::geometry::ray::Ray2 {
+                origin: Vec2::new(f(3), f(4)), direction: Vec2::new(f(5), f(6)),
+            });
+            let words = row["rosetta_words"].as_array().unwrap();
+            assert_eq!(result.is_some(), words[0].as_u64().unwrap() != 0, "{row}");
+            if let Some((a,b)) = result {
+                assert_eq!([a.to_bits(),b.to_bits()], [words[1].as_u64().unwrap() as u32,words[2].as_u64().unwrap() as u32], "{row}");
+            }
+        }
+    }
+
+    #[test]
+    fn ray_discriminant_preserves_nan_and_zero_direction_contract() {
+        let circle = Circle2d::new(Vec2::ZERO, 2.0);
+        for x in [f32::from_bits(0x7fc12345), f32::from_bits(0x7f812345), f32::INFINITY] {
+            let (a, b) = circle.intersect_ray(crate::geometry::ray::Ray2 { origin: Vec2::new(x, 0.0), direction: Vec2::X }).unwrap();
+            assert!(a.is_nan() && b.is_nan());
+        }
+        // 原机器码结果记录于 m06-circle-ray-oracle；含已有 NaN 负载。
+        for bits in [0x7fc12345, 0x7f812345] {
+            let (a, b) = circle.intersect_ray(crate::geometry::ray::Ray2 { origin: Vec2::new(f32::from_bits(bits), 0.0), direction: Vec2::X }).unwrap();
+            assert_eq!([a.to_bits(), b.to_bits()], [0xffc12345, 0x7fc12345]);
+        }
+        for x in [0.0, -0.0] {
+            assert_eq!(circle.intersect_ray(crate::geometry::ray::Ray2 { origin: Vec2::ZERO, direction: Vec2::new(x, 0.0) }), None);
+        }
+        assert!(circle.intersect_ray(crate::geometry::ray::Ray2 { origin: Vec2::new(-3.0, 2.0), direction: Vec2::X }).is_some());
+    }
 
     #[test]
     fn original_point_order_and_both_tangency_boundaries_are_preserved() {

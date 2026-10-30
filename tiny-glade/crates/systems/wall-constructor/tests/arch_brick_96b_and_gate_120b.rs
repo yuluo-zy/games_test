@@ -79,6 +79,7 @@ fn u32_at(bytes: &[u8; 96], offset: usize) -> u32 {
 
 fn flat_mask(points: usize) -> WallPathSegmentationMask {
     WallPathSegmentationMask {
+        pillar_proposals: Vec::new(), pillar_scores: Vec::new(), pillar_keys: Vec::new(),
         flags: {
             let mut flags = vec![0u8; points];
             flags[0] = 8;

@@ -1,0 +1,127 @@
+
+void __cdecl country_core::resources::audio_resources::AudioCoreInner::instantiate_audio(void)
+
+{
+  void *extraout_RAX;
+  undefined8 extraout_RAX_00;
+  undefined8 uVar1;
+  undefined8 extraout_RAX_01;
+  undefined8 *in_RCX;
+  void *_Dst;
+  void *in_R8;
+  size_t in_R9;
+  longlong local_170;
+  undefined8 uStack_168;
+  undefined ***local_138;
+  code *local_130;
+  undefined *local_128 [2];
+  undefined **local_118;
+  undefined8 uStack_110;
+  undefined ****local_108;
+  undefined8 local_100;
+  undefined8 local_f8;
+  undefined8 local_e8;
+  undefined ***local_e0;
+  code *local_d8;
+  undefined **local_c8;
+  code *pcStack_c0;
+  undefined ****local_b8;
+  undefined8 uStack_b0;
+  undefined8 local_a8;
+  undefined8 uStack_a0;
+  undefined8 local_98;
+  undefined **local_88;
+  undefined8 uStack_80;
+  undefined ***local_78;
+  undefined8 uStack_70;
+  undefined8 local_68;
+  undefined8 uStack_60;
+  undefined8 local_58;
+  undefined1 local_41;
+  undefined8 local_40;
+  
+  local_40 = 0xfffffffffffffffe;
+  libfmod::Studio::get_event();
+  if (local_c8 == (undefined **)0x8000000000000004) {
+    local_e8 = pcStack_c0;
+    libfmod::EventDescription::create_instance();
+    if (local_170 == -0x7ffffffffffffffc) {
+      if (-1 < (longlong)in_R9) {
+        if (in_R9 == 0) {
+          _Dst = (void *)0x1;
+        }
+        else {
+          std::alloc::__default_lib_allocator::__rust_alloc();
+          _Dst = extraout_RAX;
+          if (extraout_RAX == (void *)0x0) goto LAB_140a54735;
+        }
+        memcpy(_Dst,in_R8,in_R9);
+        *in_RCX = 1;
+        in_RCX[1] = uStack_168;
+        in_RCX[2] = in_R9;
+        in_RCX[3] = _Dst;
+        in_RCX[4] = in_R9;
+        *(undefined1 *)(in_RCX + 5) = 2;
+        return;
+      }
+LAB_140a54735:
+                    // WARNING: Subroutine does not return
+      alloc::raw_vec::handle_error();
+    }
+    local_e0 = &local_88;
+    local_d8 = libfmod::impl$341::fmt;
+    local_c8 = (undefined **)&DAT_142ad2d88;
+    pcStack_c0 = (code *)0x1;
+    local_b8 = &local_e0;
+    uStack_b0 = 1;
+    local_a8 = 0;
+    alloc::fmt::format::format_inner();
+    anyhow::Error::msg<alloc::string::String>();
+    core::ptr::drop_in_place<enum2_<libfmod::Error>_>();
+    local_c8 = (undefined **)&DAT_142ad2a88;
+    pcStack_c0 = (code *)0xf;
+    local_88 = (undefined **)0x3;
+    anyhow::Error::construct<anyhow::error::ContextError<ref_<str_>,anyhow::Error>_>();
+    uVar1 = extraout_RAX_01;
+  }
+  else {
+    local_58 = local_98;
+    local_68 = local_a8;
+    uStack_60 = uStack_a0;
+    local_78 = (undefined ***)local_b8;
+    uStack_70 = uStack_b0;
+    local_88 = local_c8;
+    uStack_80 = pcStack_c0;
+    local_138 = &local_88;
+    local_130 = libfmod::impl$341::fmt;
+    local_118 = (undefined **)&DAT_142ad2d88;
+    uStack_110 = 1;
+    local_108 = &local_138;
+    local_100 = 1;
+    local_f8 = 0;
+    alloc::fmt::format::format_inner();
+    anyhow::Error::msg<alloc::string::String>();
+    core::ptr::drop_in_place<enum2_<libfmod::Error>_>();
+    local_c8 = local_128;
+    pcStack_c0 = core::fmt::impl$74::fmt<str_>;
+    local_88 = &anon_de0eed98b15ac5150e4d56a6eb006e4c_140_llvm_7941911296138889869;
+    uStack_80 = 2;
+    uStack_70 = 1;
+    local_68 = 0;
+    local_41 = 1;
+    local_78 = &local_c8;
+    alloc::fmt::format::format_inner();
+    local_b8 = local_108;
+    local_c8 = local_118;
+    pcStack_c0 = (code *)uStack_110;
+    local_88 = (undefined **)0x3;
+    local_41 = 0;
+    anyhow::Error::construct<anyhow::error::ContextError<alloc::string::String,anyhow::Error>_>();
+    uVar1 = extraout_RAX_00;
+  }
+  in_RCX[1] = uVar1;
+  *in_RCX = 2;
+  return;
+}
+
+

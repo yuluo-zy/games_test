@@ -1,314 +1,357 @@
-//! B circle rotation interaction, 0x1409ac910, with owned gizmo factories.
-use crate::resources::history::History;
-use crate::resources::walls::decorator_archivist::{
-    DecoratorArchivalResources, LiveDecoratorArchivist,
+//! 原 B 1409ac910：左侧投影轮廓选择、真实旋转手柄、装饰/屋顶通知和Concurrent历史。
+use super::super::to_authority_curve;
+use crate::{
+    resources::{
+        events::OnCircleRotated,
+        history::{
+            EditType, History,
+            wall_edit::{MorphPremadeShapeEdit, WallCompoundHistoryEdit, WallHistoryEdit},
+        },
+        mouse_terrain_raycast::CameraCursorRay,
+        onboarding::NotifyHintSystemShapeEditWasPerformed,
+        roofs::commands::RecalculateRoofCmd,
+        time::GameTime,
+        walls::{
+            InnerWalls, WallId,
+            decorator_archivist::{DecoratorArchivalResources, LiveDecoratorArchivist},
+            decorator_storage::{DecoratorStorage, DecoratorStorageAddr},
+            public_walls::PublicWalls,
+            publication_fields::{WallId as RecordedWallId, WallShapeSnapshot},
+        },
+        window::WindowSize,
+    },
+    systems::{
+        audio::PlayBuildingAudio,
+        camera_rig::MainCamera,
+        mode_manager::{AppMode, EditSubject},
+        ui::{
+            resources::{
+                ui_state::UiState,
+                widget_params::{PlayUiSound, WidgetParams},
+            },
+            signifiers::{SignifierEntityBuilder, SignifierFactory, UiSignifierStream},
+        },
+        ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter,
+        wall::{
+            shapes::rectangle::ui_edit_rectangle_orientation::box_trigger_volume,
+            valid_enclosure::{Shape, ShapeParameters},
+        },
+    },
+    utils::{components::transform::Transform, debug_viz::DebugLine},
 };
-use crate::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
-use crate::resources::walls::{InnerWalls, WallId, public_walls::PublicWalls};
-use crate::systems::wall::valid_enclosure::{Shape, ShapeParameters};
 use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
+use utils::{circular_f32::CircularF32, geometry::Circle2d};
 
+/// 原局部抓取记录28B；前三个角与交点持续到释放及回位音效结束。
 #[derive(Default)]
 pub struct RotateCircleCache {
-    pub gizmo_offset: f32,
-    pub cursor_angle: f32,
-    pub initial_rotation: f32,
-    pub grab: Vec3,
-    pub state: u8,
+    angle_offset: f32,
+    initial_cursor_angle: f32,
+    initial_rotation: f32,
+    anchor: Vec3,
+    return_sound: u8,
 }
 #[derive(Default)]
-pub struct CurrentAngleGizmo {
-    pub active: bool,
-    pub angle: ::utils::circular_f32::CircularF32,
-}
+pub struct CurrentAngleGizmo(Option<CircularF32>);
 
-/// Update both authoritative curve and enclosure using the native 0.5 step.
-pub fn rotate_circle_wall(
-    inner: &mut InnerWalls,
-    wall: WallId,
-    mut circle: ::utils::geometry::Circle2d,
-    angle: f32,
-) {
+pub fn rotate_circle_wall(inner: &mut InnerWalls, wall: WallId, angle: f32) -> bool {
+    let Some(state) = inner.get(wall) else {
+        return false;
+    };
+    let Some(params) = state.get_enclosure_params() else {
+        return false;
+    };
+    let mut circle = ShapeParameters::from_snapshot(params).as_circle();
     circle.rotation = angle;
-    inner.update_wall_state_curve(
-        wall,
-        super::super::to_authority_curve(&circle.as_curve2(0.5)),
-    );
+    inner.update_wall_state_curve(wall, to_authority_curve(&circle.as_curve2(0.5)));
     inner.update_wall_state_enclosure(
         wall,
-        ShapeParameters::from_shape(Shape::Circle(circle)).to_snapshot(),
+        WallShapeSnapshot::from_observed(
+            ShapeParameters::from_shape(Shape::Circle(circle)).to_record(),
+        ),
     );
+    true
 }
 
+/// 保留原两级矩阵乘与最小屏幕X比较；不以世界X或圆解析极值代替轮廓采样。
+fn leftmost_outline(points: &[[f32; 3]], camera: &MainCamera, width: u32) -> Vec3 {
+    assert!(!points.is_empty(), "圆旋转轮廓不能为空");
+    let view = camera.read_matrix(0x80);
+    let projection = camera.read_matrix(0);
+    let transform = |matrix: glam::Mat4, point: Vec3| {
+        ((matrix.x_axis * point.x + matrix.y_axis * point.y) + matrix.z_axis * point.z)
+            + matrix.w_axis
+    };
+    let mut chosen = Vec3::from_array(points[0]);
+    let mut minimum = 10_000_000.0;
+    for &point in points {
+        let point = Vec3::from_array(point);
+        let clip = transform(projection, transform(view, point).truncate());
+        let screen_x = ((clip.x / clip.w) * 0.5 + 0.5) * width as f32;
+        if screen_x < minimum {
+            chosen = point;
+        }
+        minimum = if minimum <= screen_x {
+            minimum
+        } else {
+            screen_x
+        };
+    }
+    chosen
+}
+fn angle(point: Vec3, center: Vec2) -> f32 {
+    (point.z - center.y).atan2(point.x - center.x)
+}
+fn clamp_audio(value: f32) -> f32 {
+    let lower = if 0.0 <= value { value } else { 0.0 };
+    if lower <= 1.0 { lower } else { 1.0 }
+}
+
+/// 原16组/21展开SystemParam；事件与装饰/屋顶consumer共享身份。
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 pub fn ui_rotate_circle<S: Send + Sync + 'static>(
-    (mode, public, mut inner, camera, window, ray, ui, time): (
-        Res<crate::systems::mode_manager::AppMode>,
-        Res<PublicWalls>,
-        ResMut<InnerWalls>,
-        Res<crate::systems::camera_rig::main_camera::MainCamera>,
-        Res<crate::resources::window::WindowSize>,
-        Res<crate::resources::mouse_terrain_raycast::CameraCursorRay>,
-        Res<crate::systems::ui::resources::ui_state::UiState>,
-        Res<crate::resources::time::GameTime>,
-    ),
-    (mut cache, mut angle_gizmo, mut storage, mut archivist, archival, mut history): (
-        Local<RotateCircleCache>,
-        Local<CurrentAngleGizmo>,
-        ResMut<DecoratorStorage>,
-        ResMut<LiveDecoratorArchivist>,
+    mode: Res<AppMode>,
+    mut inner: ResMut<InnerWalls>,
+    public: Res<PublicWalls>,
+    (archival, mut archivist, storage): (
         DecoratorArchivalResources,
-        ResMut<History<S>>,
+        ResMut<LiveDecoratorArchivist>,
+        ResMut<DecoratorStorage>,
     ),
-    (mut rotated, mut roof, mut hint, mut audio, mut ui_sound, mut pins, mut signifiers): (
-        EventWriter<crate::resources::events::OnCircleRotated>,
-        EventWriter<crate::resources::roofs::commands::RecalculateRoofCmd>,
-        EventWriter<crate::resources::onboarding::NotifyHintSystemShapeEditWasPerformed>,
-        EventWriter<crate::systems::audio::PlayBuildingAudio>,
-        EventWriter<crate::systems::ui::resources::widget_params::PlayUiSound>,
-        EventWriter<crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>,
-        ResMut<crate::systems::ui::signifiers::signifier_create::UiSignifierStream>,
-    ),
+    (ui, mut stream): (Res<UiState>, ResMut<UiSignifierStream>),
+    (window, camera, ray): (Res<WindowSize>, Res<MainCamera>, Res<CameraCursorRay>),
+    mut history: ResMut<History<S>>,
+    mut rotated: EventWriter<OnCircleRotated>,
+    mut roofs: EventWriter<RecalculateRoofCmd>,
+    mut pins: EventWriter<ShowPinnedDecoClutter>,
+    mut hints: EventWriter<NotifyHintSystemShapeEditWasPerformed>,
+    mut building_audio: EventWriter<PlayBuildingAudio>,
+    mut ui_audio: EventWriter<PlayUiSound>,
+    mut cache: Local<RotateCircleCache>,
+    mut gizmo: Local<CurrentAngleGizmo>,
+    time: Res<GameTime>,
 ) {
-    use crate::systems::mode_manager::{AppMode, EditSubject};
-    use crate::systems::ui::resources::widget_params::{WidgetGeometry, WidgetParams};
-    let selected = match *mode {
-        AppMode::Editing(EditSubject::Wall(id) | EditSubject::Roof(id)) => WallId(id),
+    let wall = match *mode {
+        AppMode::Editing(EditSubject::Wall(wall) | EditSubject::Roof(wall)) => WallId(wall),
         _ => {
-            angle_gizmo.active = false;
+            gizmo.0 = None;
             return;
         }
     };
-    let wall = public.get(selected).expect("circle rotation wall missing");
-    if wall.shape().tag() != 0 {
-        angle_gizmo.active = false;
+    let state = public.get(wall).expect("圆旋转目标公共墙不存在");
+    let Some(circle) = state.is_circle() else {
+        gizmo.0 = None;
         return;
-    }
-    let circle = ShapeParameters::from_snapshot(wall.shape()).as_circle();
-    let mut best = 1.0e7f32;
-    let mut point = Vec3::from_array(
-        *wall
-            .geometry
-            .outline
-            .first()
-            .expect("circle rotation curve is empty"),
-    );
-    for p in wall.geometry.outline.iter() {
-        let p = Vec3::from_array(*p);
-        let screen = crate::utils::world_space_to_screen_space(
-            p,
-            window.width as f32,
-            window.height as f32,
-            &camera.read_matrix(0x80),
-            &camera.read_matrix(0),
-        );
-        if screen.x < best {
-            best = screen.x;
-            point = p;
-        }
-    }
-    let d = Vec2::new(point.x, point.z) - circle.center;
-    let normal = d / (d.y * d.y + d.x * d.x).sqrt();
-    let direction = Vec3::new(normal.x, 0.0, normal.y);
-    let gizmo = point + direction;
-    let transform = crate::utils::components::transform::Transform {
-        translation: gizmo + direction * 0.3,
-        rotation: ::utils::xz_rotation_bad(normal),
+    };
+    // 原公共状态+0x40是地形映射原轮廓，不是+0x88的路径切分轮廓。
+    let left = leftmost_outline(&state.geometry.outline, &camera, window.width);
+    let relative = Vec2::new(left.x, left.z) - circle.center;
+    let inverse = 1.0 / (relative.y * relative.y + relative.x * relative.x).sqrt();
+    let normal = relative * inverse;
+    let rotation = utils::xz_rotation_bad(normal);
+    let outward = Vec3::new(normal.x, 0.0, normal.y);
+    let handle = left + outward;
+    let trigger = handle + outward * 0.3;
+    let transform = Transform {
+        rotation,
+        translation: trigger,
         scale: Vec3::ONE,
     };
-    let mesh = super::super::rectangle::ui_edit_rectangle_orientation::box_trigger_volume(
-        3.5, 0.5, 1.5, &transform,
-    );
-    let mut params = WidgetParams::default().geometry(WidgetGeometry::TriangleMesh(mesh));
-    params.occlude_by_world = false;
-    for (slot, kind) in params.sounds.slots.iter_mut().zip([1u32, 2, 3, 3]) {
-        slot[..4].copy_from_slice(&kind.to_le_bytes());
-    }
-    let context = ui.add(&format!("rotate_circle_{selected}"), params);
-    let phase = context.dragged().wrapping_sub(2).min(3);
-    let intersect = |height: f32| {
-        let t = (height - ray.origin.y) / ray.dir.y;
-        ray.origin + ray.dir * t
-    };
-    let polar = |p: Vec2| p.y.atan2(p.x);
+    let params = WidgetParams::default()
+        .mesh_volume(box_trigger_volume(3.5, 0.5, 1.5, &transform))
+        .occlude_by_world(false);
+    let context = ui.add(&format!("rotate_circle_{}", wall.0), params);
+    let phase = context.dragged();
+    let mut immediate_angle = None;
     match phase {
-        1 => {
-            archivist.archive_current_decorators_in_storages_with_resources(
-                &[DecoratorStorageAddr::Wall(selected)],
+        3 => {
+            archivist.archive_current_decorators_at_with_resources(
+                DecoratorStorageAddr::Wall(wall),
                 &storage,
                 &archival,
                 "circle rotate",
             );
-            archivist.decorator_cull_allow_wall(selected, &storage);
-            let grab = intersect(gizmo.y);
-            let cursor = polar(Vec2::new(grab.x, grab.z) - circle.center);
-            cache.gizmo_offset = polar(Vec2::new(gizmo.x, gizmo.z) - circle.center) - cursor;
-            cache.cursor_angle = cursor;
-            cache.initial_rotation =
-                ::utils::circular_f32::CircularF32::new(circle.rotation).as_f32();
-            cache.grab = grab;
-            cache.state = 0;
+            archivist.decorator_cull_allow_wall(wall, &storage);
+            let hit = ray.intersect_with_xz_plane(trigger.y);
+            cache.initial_cursor_angle = angle(hit, circle.center);
+            cache.angle_offset = angle(trigger, circle.center) - cache.initial_cursor_angle;
+            cache.initial_rotation = CircularF32::new(circle.rotation).as_f32();
+            cache.anchor = hit;
+            cache.return_sound = 0;
         }
-        2 => {
-            let grab = intersect(cache.grab.y);
-            let angle = ::utils::circular_f32::CircularF32::new(
-                cache.initial_rotation - cache.cursor_angle
-                    + polar(Vec2::new(grab.x, grab.z) - circle.center),
+        4 => {
+            let hit = ray.intersect_with_xz_plane(cache.anchor.y);
+            let cursor_angle = angle(hit, circle.center);
+            let wanted = CircularF32::new(
+                (cache.initial_rotation - cache.initial_cursor_angle) + cursor_angle,
             )
             .as_f32();
-            if angle != circle.rotation {
-                let distance =
-                    ::utils::circular_f32::CircularF32::new(angle).distance(circle.rotation);
-                let speed = distance / time.delta / 15.0;
-                let speed = if speed >= 0.0 { speed } else { 0.0 };
-                let speed = if speed <= 1.0 { speed } else { 1.0 };
-                audio.write(crate::systems::audio::PlayBuildingAudio {
-                    id: selected.0,
-                    position: Vec3::new(circle.center.x, gizmo.y, circle.center.y),
-                    editing_speed: speed,
+            if wanted != circle.rotation {
+                let position = Vec3::new(circle.center.x, trigger.y, circle.center.y);
+                building_audio.write(PlayBuildingAudio {
+                    id: wall.0,
+                    position,
+                    editing_speed: clamp_audio(utils::scalar::inverse_lerp(
+                        0.0,
+                        15.0,
+                        CircularF32::new(wanted).distance(circle.rotation) / time.delta,
+                    )),
                     kind: 2,
                 });
-                rotate_circle_wall(&mut inner, selected, circle, angle);
-                if let Some(entity) = public.roof_entity(selected) {
-                    roof.write(crate::resources::roofs::commands::RecalculateRoofCmd {
+                assert!(rotate_circle_wall(&mut inner, wall, wanted));
+                if let Some(entity) = public.roof_entity(wall) {
+                    roofs.write(RecalculateRoofCmd {
                         entity,
-                        wall: selected,
+                        wall,
                         kind: 2,
                     });
                 }
             }
-            rotated.write(crate::resources::events::OnCircleRotated(selected));
-            pins.write(
-                crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter::Circle {
-                    circle,
-                    flag: true,
-                    bottom: wall.authority.elevation(),
-                    top: wall.max_y(),
-                    exclude_wall: Some(selected),
-                },
-            );
-        }
-        3 => {
-            use crate::resources::history::{
-                EditType,
-                wall_edit::{MorphPremadeShapeEdit, WallCompoundHistoryEdit, WallHistoryEdit},
-            };
-            rotated.write(crate::resources::events::OnCircleRotated(selected));
-            let mut before = circle;
-            before.rotation = cache.initial_rotation;
-            let edit = WallHistoryEdit::MorphPremadeShape(MorphPremadeShapeEdit::new(
-                crate::resources::walls::publication_fields::WallId(selected.0),
-                ShapeParameters::from_shape(Shape::Circle(before)),
-                ShapeParameters::from_shape(Shape::Circle(circle)),
+            DebugLine::new(vec![
+                hit,
+                Vec3::new(circle.center.x, trigger.y, circle.center.y),
+            ])
+            .show(&mut stream);
+            rotated.write(OnCircleRotated(wall));
+            pins.write(ShowPinnedDecoClutter::for_circle(
+                circle,
+                state.authority.elevation(),
+                state.max_y(),
+                Some(wall),
             ));
-            history
-                .add(EditType::Wall(std::sync::Arc::new(
-                    WallCompoundHistoryEdit {
-                        groups: vec![vec![edit]],
-                    },
-                )))
-                .expect("circle rotate history recording");
-            hint.write(crate::resources::onboarding::NotifyHintSystemShapeEditWasPerformed);
-            cache.state = 1;
+            immediate_angle = Some(CircularF32::new(cursor_angle + cache.angle_offset));
         }
-        _ => {}
+        2 => {}
+        _ => {
+            rotated.write(OnCircleRotated(wall));
+            let before = Circle2d {
+                rotation: CircularF32::new(cache.initial_rotation).as_f32(),
+                ..circle
+            };
+            let edit = WallCompoundHistoryEdit {
+                groups: vec![vec![WallHistoryEdit::MorphPremadeShape(
+                    MorphPremadeShapeEdit::new(
+                        RecordedWallId(wall.0),
+                        ShapeParameters::from_shape(Shape::Circle(before)),
+                        ShapeParameters::from_shape(Shape::Circle(circle)),
+                    ),
+                )]],
+            };
+            history
+                .add(EditType::Wall(std::sync::Arc::new(edit)))
+                .expect("圆旋转释放时历史事务不可写");
+            hints.write(NotifyHintSystemShapeEditWasPerformed);
+            cache.return_sound = 1;
+        }
     }
-    let target = if phase == 2 {
-        let projected = intersect(cache.grab.y);
-        ::utils::circular_f32::CircularF32::new(
-            cache.gizmo_offset + polar(Vec2::new(projected.x, projected.z) - circle.center),
+    let target = CircularF32::new(angle(handle, circle.center));
+    let previous = gizmo.0;
+    let displayed = if let Some(immediate) = immediate_angle {
+        immediate
+    } else if let Some(previous) = previous {
+        previous.lerp(
+            target.as_f32(),
+            utils::time_continuous_lerp_factor(time.delta, 10.0),
         )
     } else {
-        ::utils::circular_f32::CircularF32::new(polar(Vec2::new(gizmo.x, gizmo.z) - circle.center))
+        target
     };
-    let was_active = angle_gizmo.active;
-    let previous_angle = angle_gizmo.angle;
-    if was_active {
-        angle_gizmo.angle = if phase == 2 {
-            target
-        } else {
-            angle_gizmo
-                .angle
-                .lerp(target.as_f32(), 1.0 - (-10.0 * time.delta).exp())
-        };
-    } else {
-        angle_gizmo.active = true;
-        angle_gizmo.angle = target;
-    }
-    if was_active && cache.state == 1 {
-        let distance = previous_angle.distance(angle_gizmo.angle.as_f32());
-        if !(distance > 0.01) {
-            ui_sound.write(crate::systems::ui::resources::widget_params::PlayUiSound {
-                kind: 0x23,
+    gizmo.0 = Some(displayed);
+    let theta = displayed.as_f32();
+    let direction = Vec2::new(theta.cos(), theta.sin());
+    let point = direction * (circle.radius + 1.0) + circle.center;
+    let position = Vec3::new(point.x, trigger.y, point.y);
+    if let Some(previous) = previous.filter(|_| cache.return_sound == 1) {
+        let distance = previous.distance(displayed.as_f32());
+        if distance <= 0.01 {
+            ui_audio.write(PlayUiSound {
+                kind: 35,
                 ..Default::default()
             });
-            cache.state = 2;
+            cache.return_sound = 2;
         } else {
-            let value = ::utils::scalar::inverse_lerp(0.4, 0.0, distance);
-            let value = if value >= 0.0 { value } else { 0.0 };
-            let value = if value <= 1.0 { value } else { 1.0 };
-            let a = angle_gizmo.angle.as_f32();
-            let position = Vec3::new(
-                circle.center.x + (circle.radius + 1.0) * a.cos(),
-                gizmo.y,
-                circle.center.y + (circle.radius + 1.0) * a.sin(),
-            );
             let mut payload = [0u8; 20];
-            payload[..4].copy_from_slice(&value.to_le_bytes());
-            for (i, v) in position.to_array().into_iter().enumerate() {
-                payload[4 + i * 4..8 + i * 4].copy_from_slice(&v.to_le_bytes());
+            payload[..4].copy_from_slice(
+                &clamp_audio(utils::scalar::inverse_lerp(0.4, 0.0, distance)).to_le_bytes(),
+            );
+            for (slot, component) in position.to_array().into_iter().enumerate() {
+                payload[4 + slot * 4..8 + slot * 4].copy_from_slice(&component.to_le_bytes());
             }
-            ui_sound.write(crate::systems::ui::resources::widget_params::PlayUiSound {
-                kind: 0x22,
+            ui_audio.write(PlayUiSound {
+                kind: 34,
                 _payload: payload,
             });
         }
     }
-    let a = angle_gizmo.angle.as_f32();
-    let position = Vec3::new(
-        circle.center.x + (circle.radius + 1.0) * a.cos(),
-        gizmo.y,
-        circle.center.y + (circle.radius + 1.0) * a.sin(),
-    );
-    let delta = Vec2::new(position.x, position.z) - circle.center;
-    let normal = delta / (delta.y * delta.y + delta.x * delta.x).sqrt();
-    let rotation = ::utils::xz_rotation_bad(normal);
-    let interaction = ui.interaction();
-    let scale = if interaction.native_tag != 0
-        && interaction.widget == context.id
-        && interaction.native_phase != 2
-    {
-        1.0f32
-    } else {
-        0.8f32
-    };
-    for (tag, mesh) in [(0, "corner_arrow"), (1, "corner_arrow_outline")] {
-        use crate::systems::ui::signifiers::signifier_factory::{
-            SignifierEntityBuilder, SignifierFactory, SignifierMesh,
-        };
-        let name = format!("circle_{selected:?}_rotate_{position:?}{scale}");
-        let mut factory = SignifierFactory::from_closure(
+    let rotation = utils::xz_rotation_bad(direction);
+    let scale = if context.is_active() { 1.0 } else { 0.8 };
+    let name = format!("circle_{wall:?}_rotate_{position:?}{scale}");
+    for (mesh, pass) in [("corner_arrow", 0), ("corner_arrow_outline", 1)] {
+        let factory = SignifierFactory::from_closure(
             &name,
             std::sync::Arc::new(move |meshes, shaders, commands| {
                 vec![
-                    SignifierEntityBuilder::new(SignifierMesh::Named(mesh.into()))
-                        .position(position)
+                    SignifierEntityBuilder::from_mesh_name(mesh)
+                        .set_ui_pass(pass)
                         .rotation(rotation)
+                        .position(position)
                         .scale(scale)
-                        .set_ui_pass(tag)
                         .animation_duration(0.0)
-                        .custom_shader("vertex_color_shader")
                         .build(meshes, shaders, commands),
                 ]
             }),
         );
-        factory.marker = 0x142abddc0;
-        signifiers.write_factory(&factory);
+        stream.write_factory(&factory);
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod native_gizmo_tests {
+    use super::*;
+    #[test]
+    fn circle_rotate_projected_choice_and_trigger_match_original_instructions() {
+        let report: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../reports/module-recovery-2026-10-23/m01-circle-rotate-gizmo-native.json"
+        )))
+        .unwrap();
+        assert_eq!(
+            report["binary_sha256"],
+            "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03"
+        );
+        assert_eq!(report["rows"].as_array().unwrap().len(), 24);
+        for (case, row) in report["rows"].as_array().unwrap().iter().enumerate() {
+            let input = &row["input"];
+            let points: Vec<[f32; 3]> = serde_json::from_value(input["points"].clone()).unwrap();
+            let center: [f32; 2] = serde_json::from_value(input["center"].clone()).unwrap();
+            let mut camera = MainCamera::new(1.0);
+            for (name, offset) in [("view", 0x80), ("projection", 0)] {
+                let values: [f32; 16] = serde_json::from_value(input[name].clone()).unwrap();
+                camera.write_matrix(offset, &glam::Mat4::from_cols_array(&values));
+            }
+            let left = leftmost_outline(&points, &camera, input["width"].as_u64().unwrap() as u32);
+            let relative = Vec2::new(left.x, left.z) - Vec2::from_array(center);
+            let normal =
+                relative * (1.0 / (relative.y * relative.y + relative.x * relative.x).sqrt());
+            let outward = Vec3::new(normal.x, 0.0, normal.y);
+            let rotation = utils::xz_rotation_bad(normal);
+            let position = (left + outward) + outward * 0.3;
+            let actual = rotation
+                .to_array()
+                .into_iter()
+                .chain(position.to_array())
+                .chain(Vec3::ONE.to_array())
+                .map(f32::to_bits)
+                .collect::<Vec<_>>();
+            let expected: Vec<u32> = serde_json::from_value(row["transform"].clone()).unwrap();
+            assert_eq!(actual, expected, "原圆旋转几何case{case}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod local_merge_tests {
     use super::*;
     use crate::resources::walls::{
         WallState,

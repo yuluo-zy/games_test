@@ -5,7 +5,6 @@
 //! `system_wall_constructor::construct_arches`/`construct_lintels` 消费/写回）。
 use bevy_ecs::{component::Component, resource::Resource};
 
-use crate::Gap;
 
 /// Native104B record: Vec<f32>, Vec<Vec3>, Vec<f32>, then source/range metadata.
 /// Reuse the original materialization owner rather than retaining opaque Gap.
@@ -18,13 +17,13 @@ pub struct ArchSegments(pub std::collections::HashMap<super::WallId, Vec<ArchSeg
 #[derive(Resource, Clone, Debug, Default, PartialEq)]
 pub struct BuildingHadArchesLastFrame(pub std::collections::HashMap<u64, bool>);
 
-/// 一段过梁（O 名；布局 U）。
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct LintelSegment(pub Gap);
+/// 原14076e3xx逐字段move的104B过梁段，与拱段共享真实三Vec/索引/LoopRange所有者。
+/// 原writer替换heights后保留positions、points_u及range，不能以空Gap代替。
+pub type LintelSegment = crate::systems::wall::construction::structures::MaterializedWallSegment;
 
-/// 过梁集合（O 名；容器）。
+/// 原有序过梁段按WallId保留，供碰撞主系统逐段消费并在下一次重建时替换释放。
 #[derive(Resource, Clone, Debug, Default)]
-pub struct LintelSegments(pub Gap);
+pub struct LintelSegments(pub std::collections::HashMap<super::WallId, Vec<LintelSegment>>);
 
 /// 拱段实体标记（Query 过滤；O 名）。
 #[derive(Component, Clone, Copy, Debug, Default)]

@@ -1,0 +1,91 @@
+{
+  "binary_sha256": "f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03",
+  "program": "tiny-glade.exe",
+  "scope": "Original B terrain registration and CPU delay; current asynchronous renderer adaptation must retain submission acknowledgments for the same owner.",
+  "functions": {
+    "0x140aabdd0": {
+      "name": "delayed_terrain_changed_msg",
+      "size": 1023,
+      "address": "140aabdd0",
+      "entry_point": "140aabdd0",
+      "decompiled_code": "\nvoid __cdecl\ncountry_core::systems::terrain::delayed_terrain_changed_msg::delayed_terrain_changed_msg(void)\n\n{\n  int *piVar1;\n  char cVar2;\n  undefined4 uVar3;\n  undefined4 uVar4;\n  undefined4 uVar5;\n  undefined4 *puVar6;\n  undefined4 *puVar7;\n  undefined4 *puVar8;\n  undefined8 uVar9;\n  byte bVar10;\n  int iVar11;\n  undefined8 *extraout_RAX;\n  longlong lVar12;\n  undefined8 *extraout_RAX_00;\n  longlong lVar13;\n  longlong *in_RDX;\n  longlong lVar14;\n  longlong *in_R8;\n  ulonglong uVar15;\n  longlong *in_R9;\n  int *piVar16;\n  longlong lVar17;\n  longlong lVar18;\n  longlong in_stack_00000028;\n  longlong in_stack_00000030;\n  \n  lVar14 = in_R8[1];\n  lVar18 = in_R8[2];\n  if (lVar18 != 0) {\n    uVar3 = *(undefined4 *)(in_stack_00000028 + 0x1c);\n    puVar6 = *(undefined4 **)(in_stack_00000028 + 0x10);\n    uVar4 = *(undefined4 *)(in_stack_00000030 + 0x1c);\n    puVar7 = *(undefined4 **)(in_stack_00000030 + 0x10);\n    uVar5 = *(undefined4 *)((longlong)in_R9 + 0x1c);\n    lVar13 = *in_R9;\n    puVar8 = (undefined4 *)in_R9[2];\n    lVar17 = 0;\n    bVar10 = 0;\n    do {\n      piVar1 = (int *)(lVar14 + lVar17);\n      *piVar1 = *piVar1 + -1;\n      if (!(bool)(*piVar1 != 0 | bVar10)) {\n        frozen::FrozenMap::\n        get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>\n                  ();\n        if (extraout_RAX == (undefined8 *)0x0) {\nLAB_140aac1c6:\n                    // WARNING: Subroutine does not return\n          core::option::unwrap_failed();\n        }\n        if ((extraout_RAX[3] != 0x3a) ||\n           (iVar11 = memcmp(&anon_107183261458dea85466985370debbb6_78_llvm_3641509820080252961,\n                            (void *)extraout_RAX[2],0x3a), iVar11 != 0)) {\nLAB_140aac193:\n                    // WARNING: Subroutine does not return\n          core::panicking::assert_failed<ref_<str_>,ref_<str_>_>();\n        }\n        lVar12 = (**(code **)(extraout_RAX[1] + 0x18))(*extraout_RAX);\n        if (lVar12 == 0) goto LAB_140aac1c6;\n        *puVar6 = uVar3;\n        resources::terrain_height::TerrainHeightsData::\n        copy_from_gpu<country_core::resources::terrain_height::TerrainHeightSsbo>();\n        *puVar8 = uVar5;\n        lVar12 = *(longlong *)(lVar13 + 0x30);\n        uVar9 = *(undefined8 *)(lVar13 + 0x40);\n        if (lVar12 == *(longlong *)(lVar13 + 0x20)) {\n          alloc::raw_vec::RawVec::\n          grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>\n                    ();\n        }\n        *(undefined8 *)(*(longlong *)(lVar13 + 0x28) + lVar12 * 8) = uVar9;\n        *(longlong *)(lVar13 + 0x30) = lVar12 + 1;\n        *(longlong *)(lVar13 + 0x40) = *(longlong *)(lVar13 + 0x40) + 1;\n        frozen::FrozenMap::\n        get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>\n                  ();\n        if (extraout_RAX_00 == (undefined8 *)0x0) {\nLAB_140aac1d2:\n                    // WARNING: Subroutine does not return\n          core::option::unwrap_failed();\n        }\n        if ((extraout_RAX_00[3] != 0x40) ||\n           (iVar11 = memcmp(&anon_107183261458dea85466985370debbb6_88_llvm_3641509820080252961,\n                            (void *)extraout_RAX_00[2],0x40), iVar11 != 0)) goto LAB_140aac193;\n        lVar12 = (**(code **)(extraout_RAX_00[1] + 0x18))(*extraout_RAX_00);\n        if (lVar12 == 0) goto LAB_140aac1d2;\n        *puVar7 = uVar4;\n        resources::terrain_height::TerrainHeightsData::\n        copy_from_gpu<country_core::resources::terrain_height::TerrainHeightSsbo>();\n        bVar10 = 1;\n      }\n      lVar17 = lVar17 + 4;\n    } while (lVar18 * 4 - lVar17 != 0);\n  }\n  *(undefined4 *)in_RDX[2] = *(undefined4 *)((longlong)in_RDX + 0x1c);\n  cVar2 = *(char *)(*in_RDX + 8);\n  *(undefined1 *)(*in_RDX + 8) = 0;\n  if (cVar2 != '\\0') {\n    if (lVar18 == *in_R8) {\n      alloc::raw_vec::RawVec::\n      grow_one<country_core::render::sparse_instance_buffer::ChunkId,alloc::alloc::Global>();\n      lVar14 = in_R8[1];\n    }\n    *(undefined4 *)(lVar14 + lVar18 * 4) = 2;\n    lVar18 = lVar18 + 1;\n    in_R8[2] = lVar18;\n  }\n  if (lVar18 != 0) {\n    piVar1 = (int *)in_R8[1];\n    lVar13 = 1;\n    lVar14 = 1;\n    if (*piVar1 != 0) {\n      lVar17 = 1;\n      do {\n        if (lVar18 == lVar17) {\n          lVar13 = 0;\n          goto LAB_140aac178;\n        }\n        lVar14 = lVar17 + 1;\n        piVar16 = piVar1 + lVar17;\n        lVar17 = lVar14;\n      } while (*piVar16 != 0);\n    }\n    uVar15 = lVar18 - lVar14;\n    if (uVar15 != 0) {\n      if (lVar18 == lVar14 + 1) {\n        lVar13 = 1;\n      }\n      else {\n        piVar16 = piVar1 + lVar14 + 1;\n        lVar13 = 1;\n        lVar17 = 0;\n        do {\n          while (lVar12 = lVar17, piVar16[-1] == 0) {\n            lVar13 = lVar13 + 1;\n            iVar11 = *piVar16;\n            if (iVar11 == 0) goto LAB_140aac14a;\nLAB_140aac100:\n            piVar16[-lVar13] = iVar11;\n            piVar16 = piVar16 + 2;\n            lVar17 = lVar12 + -2;\n            if (-(lVar12 + -2) == (uVar15 & 0xfffffffffffffffe)) goto LAB_140aac15a;\n          }\n          piVar16[-1 - lVar13] = piVar16[-1];\n          iVar11 = *piVar16;\n          if (iVar11 != 0) goto LAB_140aac100;\nLAB_140aac14a:\n          lVar13 = lVar13 + 1;\n          piVar16 = piVar16 + 2;\n          lVar17 = lVar12 + -2;\n        } while (-(lVar12 + -2) != (uVar15 & 0xfffffffffffffffe));\nLAB_140aac15a:\n        lVar14 = lVar14 - (lVar12 + -2);\n      }\n      if ((uVar15 & 1) != 0) {\n        if (piVar1[lVar14] == 0) {\n          lVar13 = lVar13 + 1;\n        }\n        else {\n          piVar1[lVar14 - lVar13] = piVar1[lVar14];\n        }\n      }\n    }\nLAB_140aac178:\n    in_R8[2] = lVar18 - lVar13;\n  }\n  return;\n}\n\n",
+      "callee_count": 7,
+      "callees": [
+        {
+          "name": "assert_failed<ref$<str$>,ref$<str$>_>",
+          "address": "1428cab41"
+        },
+        {
+          "name": "copy_from_gpu<country_core::resources::terrain_height::TerrainHeightSsbo>",
+          "address": "1409ea020"
+        },
+        {
+          "name": "get<country_core::asset_libraries::ssbo_library::SsboId,alloc::boxed::Box<country_core::asset_libraries::ssbo_library::BufferState,alloc::alloc::Global>,core::hash::BuildHasherDefault<nohash_hasher::NoHashHasher<country_core::asset_libraries::ssbo_library::SsboId>_>,country_core::asset_libraries::ssbo_library::SsboId>",
+          "address": "140969720"
+        },
+        {
+          "name": "grow_one<bevy_ecs::event::base::EventInstance<tiny_glade::app_config::WriteSettingsFileCmd>,alloc::alloc::Global>",
+          "address": "140562870"
+        },
+        {
+          "name": "grow_one<country_core::render::sparse_instance_buffer::ChunkId,alloc::alloc::Global>",
+          "address": "140b5f870"
+        },
+        {
+          "name": "memcmp",
+          "address": "142923bf0"
+        },
+        {
+          "name": "unwrap_failed",
+          "address": "1428d9310"
+        }
+      ],
+      "revision": {
+        "token": "1791719479858:445f58e8:3",
+        "epoch": "445f58e8",
+        "modification_number": 3,
+        "saved_time": 1791719479858,
+        "unsaved_changes": false,
+        "decompiled": true
+      }
+    },
+    "0x1409455f0": {
+      "name": "add_terrain_systems",
+      "size": 356,
+      "address": "1409455f0",
+      "entry_point": "1409455f0",
+      "decompiled_code": "\nvoid __cdecl country_core::systems::terrain::impl$0::add_terrain_systems(void)\n\n{\n  _ZN8bevy_ecs8schedule6config19IntoScheduleConfigs21chain_ignore_deferred17he4795a12699db259E();\n  bevy_ecs::intern::Interner::intern<dyn_<bevy_ecs::schedule::set::SystemSet>_>();\n  bevy_ecs::schedule::config::ScheduleConfigs::\n  in_set_inner<bevy_ecs::intern::Interned<dyn_<bevy_ecs::schedule::set::SystemSet>_>_>();\n  bevy_ecs::schedule::config::IntoScheduleConfigs::\n  in_set<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::terrain::deferred_terrain_history::PendingTerrainHistory>,bevy_ecs::event::writer::EventWriter<country_core::systems::history::history_process::DebugHistoryMsg>),alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple_<bevy_ecs::schedule::config::Infallible,tuple_<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::terrain::deferred_terrain_history::PendingTerrainHistory>,bevy_ecs::event::writer::EventWriter<country_core::systems::history::history_process::DebugHistoryMsg>)>_>,country_core::systems::GameSystemSet>\n            ();\n  bevy_app::sub_app::SubApp::\n  add_systems<tuple_<bevy_ecs::schedule::config::ScheduleConfigTupleMarker,tuple_<>,tuple_<>_>,bevy_app::main_schedule::Update,tuple_<enum2_<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>,enum2_<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn_<bevy_ecs::system::system::System<assoc_<In,tuple_<>_>,assoc_<Out,enum2_<core::result::Result<tuple_<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>_>\n            ();\n  return;\n}\n\n",
+      "callee_count": 5,
+      "callees": [
+        {
+          "name": "_ZN8bevy_ecs8schedule6config19IntoScheduleConfigs21chain_ignore_deferred17he4795a12699db259E",
+          "address": "141755b40"
+        },
+        {
+          "name": "add_systems<tuple$<bevy_ecs::schedule::config::ScheduleConfigTupleMarker,tuple$<>,tuple$<>_>,bevy_app::main_schedule::Update,tuple$<enum2$<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>,enum2$<bevy_ecs::schedule::config::ScheduleConfigs<alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>_>_>_>_>",
+          "address": "140b679c0"
+        },
+        {
+          "name": "in_set<void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::terrain::deferred_terrain_history::PendingTerrainHistory>,bevy_ecs::event::writer::EventWriter<country_core::systems::history::history_process::DebugHistoryMsg>),alloc::boxed::Box<dyn$<bevy_ecs::system::system::System<assoc$<In,tuple$<>_>,assoc$<Out,enum2$<core::result::Result<tuple$<>,bevy_ecs::error::bevy_error::BevyError>_>_>_>_>,alloc::alloc::Global>,tuple$<bevy_ecs::schedule::config::Infallible,tuple$<bevy_ecs::system::function_system::IsFunctionSystem,void_(*)(bevy_ecs::change_detection::ResMut<country_core::resources::history::History>,bevy_ecs::change_detection::ResMut<country_core::systems::terrain::deferred_terrain_history::PendingTerrainHistory>,bevy_ecs::event::writer::EventWriter<country_core::systems::history::history_process::DebugHistoryMsg>)>_>,country_core::systems::GameSystemSet>",
+          "address": "1416f6850"
+        },
+        {
+          "name": "in_set_inner<bevy_ecs::intern::Interned<dyn$<bevy_ecs::schedule::set::SystemSet>_>_>",
+          "address": "141453000"
+        },
+        {
+          "name": "intern<dyn$<bevy_ecs::schedule::set::SystemSet>_>",
+          "address": "140b218a0"
+        }
+      ],
+      "revision": {
+        "token": "1791719479858:445f58e8:3",
+        "epoch": "445f58e8",
+        "modification_number": 3,
+        "saved_time": 1791719479858,
+        "unsaved_changes": false,
+        "decompiled": true
+      }
+    }
+  }
+}

@@ -1,5 +1,8 @@
 # Tiny Glade 逆向工具链
 
+全量汇编与 Neo4j 代码地图入口：[`code-map`](../reverse-engineering/tiny-glade/tools/code-map/README.md)。
+源码与查询工具在逆向域维护；本目录 `code-map-runtime/` 只保存本机运行时、图数据库、分层汇编和检查点，不提交。
+
 2026-10-24：修复 Ghidra 共享进程查询故障、默认结果路径和语义健康检查，补全 ReVa 工具分页与有实际除法数据流的 P-code 样例。现场结果见 [修复复验记录](../reverse-engineering/tiny-glade/evidence/toolchain-revalidation/ai-guide/tool-repair-2026-10-24.json)；下面 2026-10-11 的数量是历史范围，不能替代本轮复验或游戏业务验收。
 
 2026-10-11重新实测后，默认MCP为Ghidra和ReVa；REA、radare2、RE-MCP保留为按需SDK工具。

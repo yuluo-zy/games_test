@@ -174,24 +174,14 @@ pub use crate::resources::gui::DebugGui as DebugGuiView;
 pub use crate::resources::walls::EraserSizeMultiplier;
 /// `resources::roofs::roof_highlight::RoofHighlight`（TypeId 0x9311cf2688353878/0xfd54118f9a9ee3d4）：`u32 @+0`、`tag @+8`。
 pub use super::draw_callbacks_a::RoofHighlight;
-/// `ActiveSession`（TypeId 0x74430dfcc6d8719b/0xca5591f7e464509c，真实类型 `glade: Gap`）：`byte @+0x58`（变体）与
-/// 字节序列（`ptr @+8`、`len @+0x10`）。
-#[derive(Resource, Clone, Debug, Default, PartialEq, Eq)]
-pub struct ActiveSessionView {
-    pub variant: u8,
-    pub glade_bytes: Vec<u8>,
-}
 /// `LogoAnimation`（TypeId 0x98df08dcfa7ea5ba/0x67b117a60e632bc3；真实类型没有 `Resource` 派生）：`f32 @+8`、`f32 @+0x10`。
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
 pub struct LogoAnimationView {
     pub f8: f32,
     pub f10: f32,
 }
-/// `RoofFlagCloth`（组件，TypeId 0x983a5c6eded1c4e5/0x929a707bdcc6a79c，真实类型 `(pub Gap)`）：`u32 @+0`。
-#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
-#[component(on_insert = crate::render::extract::record_component_change::<Self>,
-    on_remove = crate::render::extract::record_component_change::<Self>)]
-pub struct RoofFlagClothView(pub u32);
+// 两套原draw回调读取同一个实际生成组件。
+pub use crate::components::drawable::RoofFlagCloth as RoofFlagClothView;
 pub use crate::resources::critters::CritterControl;
 /// `components::drawable::PrevTransform`（TypeId 0xa0da022fc84ca3d9/0xfc62e38c26a7c4c9，真实类型 `(pub Gap)`）：
 /// 鸭 shader 读它的 `Transform` 布局（旋转 @0、平移 @0x10、缩放 @0x1c）。
@@ -552,8 +542,8 @@ pub struct Env21Inputs {
     pub roof_flag_cloth: u32,
     /// `ColorId.0`。
     pub color_id: u32,
-    /// `ActiveSession` 字节序列。
-    pub session_bytes: Vec<u8>,
+    /// 从权威 ActiveSession.meta.mutators 读取的布面纹理。
+    pub cloth_texture: u64,
 }
 /// 末张磁盘纹理的文件键：会话字节里存在 `<= 1` 的字节 → `0x4c58d4d61ec450d2`，否则 `-0x1adc8a43cd569b5c`
 /// （O 0x1409b8b60 循环：`cmp byte,1; ja continue`）。
@@ -576,18 +566,19 @@ pub fn env21_bind<'p>(b: DrawBuilder<'p>, i: &Env21Inputs) -> DrawBuilder<'p> {
     let b = b.uniform(0x2cfad118d3ecc02c, i.roof_flag_cloth as i32);
     let b = b.uniform(0xbf98c47fe61d9aa0, i.color_id as i32);
     let b = bind_disk(b, 0xb72fba719985a58c, 0x83b632dfd4a3558c);
-    bind_disk(b, env21_last_texture(&i.session_bytes), 0xce84646a28bf8813)
+    bind_disk(b, i.cloth_texture, 0xce84646a28bf8813)
 }
 pub fn env21(b: DrawBuilder<'_>, p: &EntityDrawParams, w: &World) {
     let roof_flag_cloth = comp::<RoofFlagClothView>(w, p.entity).0;
     let color_id = comp::<ColorId>(w, p.entity).0;
-    let session_bytes = res::<ActiveSessionView>(w).glade_bytes.clone();
+    // 原 1409b8b60 与另两旗帜回调读取同一会话 mutator 集合。
+    let cloth_texture = super::draw_callbacks_a::session_cloth_texture(res::<ActiveSession>(w));
     env21_bind(
         b,
         &Env21Inputs {
             roof_flag_cloth,
             color_id,
-            session_bytes,
+            cloth_texture,
         },
     )
     .draw();
@@ -742,7 +733,6 @@ pub fn render_extract(m: &mut impl crate::render::extract::RenderExtract) {
     m.resource::<WallHighlight>();
     m.resource::<RockyTerrainMeshVertCount>();
     m.resource_projected::<crate::systems::camera_rig::main_camera::MainCamera>(crate::systems::camera_rig::main_camera::MainCamera::render_snapshot);
-    m.resource::<ActiveSessionView>();
     m.resource::<crate::resources::logo_animation::LogoAnimation>();
     m.resource::<Weather>();
     m.resource_projected::<MainCamera>(MainCamera::render_snapshot);
@@ -1277,7 +1267,7 @@ mod tests {
         let i = Env21Inputs {
             roof_flag_cloth: 5,
             color_id: 11,
-            session_bytes: vec![7, 7],
+            cloth_texture: env21_last_texture(&[7, 7]),
         };
         let uniforms = [
             0x6183d59b2f20cb8a,
@@ -1304,10 +1294,13 @@ mod tests {
     #[test]
     fn env21_reads_two_components_and_the_session() {
         let mut w = World::new();
-        w.insert_resource(ActiveSessionView {
-            variant: 0,
-            glade_bytes: vec![1],
-        });
+        w.insert_resource(ActiveSession::new(
+            crate::resources::session::SessionId(uuid::Uuid::nil()),
+            crate::resources::session::SessionMeta {
+                mutators: vec![crate::resources::session::SessionMutator::Halloween2025],
+                ..Default::default()
+            },
+        ));
         let e = w.spawn((RoofFlagClothView(3), ColorId(4))).id();
         let mut rig = Rig::new(&[], &[]);
         env21(rig.builder(), &params(e), &mut w);
@@ -1568,7 +1561,6 @@ mod tests {
     }
 }
 
-impl crate::render::extract::JournaledComponent for RoofFlagClothView {}
 impl crate::render::extract::JournaledComponent for InstancedDrawFromPlacementData {}
 impl crate::render::extract::JournaledComponent for Duck {}
 impl crate::render::extract::JournaledComponent for DuckState {}
