@@ -128,3 +128,51 @@ v5后修正M2测试宿主：新增`m2_tick_production_app`，真实App::update�
 为下一观察补齐原draw读取项，已准备**未apply**的小补丁`D:/game/tmp-merge/m1-runtime-input-observation-addendum.patch`，只增加CPU dump的PrevTransform与Weather。普通`git apply --check`因当前CRLF上下文失败；`git apply --check --ignore-space-change`通过。源文件持续冻结，本段无新增Cargo/GPU执行。没有降低严格像素要求，没有把合法动态合同或未证因果混列业务缺失；B全部函数复核仍保留后序。
 
 落叶零dt结论另用已安装spirv-cross对同一原SPIR-V重新转译确认（stdin以`-`输入，不写renderer/shader或执行GPU）：原输出`_440 = _205.xz + (...).xz * 0.1`与后续`_441.x = _440.x - (...)*0.0056*...`均无delta因子，与现有lifted HLSL一致。首次误用该版本不支持的`--stdin`参数返回usage/exit1，改用文档指定`-`后exit0；这只是静态读码，不计游戏恢复或新测试通过。原动画跳表16B也直接由RNE解码为`14231a729,14231aa29,14231aade,14231a729`，进一步确认state0/3保持帧索引而非重置。
+
+## 2026-10-31 跨进程最终画面：生产修复与原版非确定性实测
+
+本轮使用正式 App、发行资产和本机 MoltenVK，保留 `m02_actual_terrain_history_save_new_process_reload_and_image` 的整图零差异断言。**修复了实际所有权／内容依赖和测试错帧问题，但严格整图仍失败，不能声明 M2 或任意运行态截图恢复已验收。** 独立只读审核 agent `m2_image_independent_review` 逐项复核原 B 类型签名、机器码、原 SPIR-V、修复 diff 及采集同步；审核没有运行 Cargo/GPU，以下运行由主 agent 完成。
+
+### 已落地的修复
+
+1. **保存和截图绑定同一 App 帧。** 原测试在截图后才发送 SaveGameCmd，等待过程继续推进羊的位置和移动计时。现在在捕获帧前发送真实命令，要求 set43 同帧同步 flush 并收到该存档的 SavingGameComplete；落盘 Sheep 的 position／goal／move_state 按查询顺序逐浮点 bits 核对，日照三个 f32 的逐位断言保留。没有改存档 schema 或补存原版未保存的动画状态。
+2. **动物 RNG 恢复原资源写访问及两条独立流。** 羊、蝴蝶两系统、萤火虫、鸭目标更新由 Res＋Mutex 恢复 ResMut，移除调度器不可见的锁；鸭出生、离场、轨迹规划改回同一个 DuckTrajectoryPlanner 内的独立 PerchanceContext。B 插件 `14067d5b4` 的原始状态 `0x66e610699` 对应 perchance 0.4.0 seed `0x33730834c`；共享动物目标流仍为原始状态 `0xc0df`／seed `0x606f`。原 tuple、chain_ignore_deferred 边界、分支、抽样先后及 Vec 容量复用均未改变。原证为 `evidence/parallel-critters/B-firefly-public-related.json` 的类型化 FunctionSystem 符号、`evidence/round12/startup-critters/plugin-config-name-evidence.json` 与 `14067d440.original.asm`，不能把八个系统统改为同一 RNG。
+3. **Filter GI 补齐真实内容依赖。** 原 blur shader 读取 `temporal_stats_out_tex` 的计数来选择滤波步长；原 SPIR-V 对它有一次 ImageRead、没有 ImageWrite。当前图原先把 native 0x37 当无需旧内容的写，缺少保留声明。现仅增加 `preserve_storage_texture_contents(TEMPORAL_STATS_OUT_TEX)`，保留原 0x37、描述符、绑定、uniform、dispatch 和 shader 数学。真实捕获的四帧中，Filter 前后的统计纹理原字节均未改变。
+
+精确分段采集复用现有 screenshot_capture::Requests 和渲染图：源 image 0x25 → GpuToCpu buffer 0x34 → export 0x26；成功提交时核 GraphId／export／目标物理 Arc，统一等待该帧一次后读取全部结果。16 个 stage、64 MiB 固定上限。瞬态源在生产边界立刻声明 copy，不能提交后按退役 token 猜源；persistent shadow atlas／terrain lighting 则持有同 receipt 的真实 preset owner，覆盖三层深度／全部五层 mip。诊断 feature 与额外 TRANSFER_SRC capability 不改变普通构造的描述符，不替换 shader、实体或业务输入。
+
+### 两个全新进程的严格分段对照
+
+冻结同一份真实存档、使用同一个可执行文件，分别经过独立临时账户的 Intro → 生产 Reload → 原输入／dt／提交序列。末帧均为 frame384，实际 GI `history_valid=true`、`allow_non_determinism=true`、`ShaderRefactoringState.disc=0`。CPU dump 的全部记录字段一致，真实 Lantern instance_count=0；不能把其它未采集字段也泛称全部输入已证相等。
+
+| 真实捕获内容 | 原始字节大小 | 两新进程不同 u32 word 数 |
+|---|---:|---:|
+| GPU ColorLibrary | 592 | 0 |
+| LeafParticle／ParticleEmitter／SheepAnimation | 26,624／17,600／853,120 | 均 0 |
+| 三层 shadow atlas | 17,280,000 | 0 |
+| terrain lighting 全部五层 mip | 1,396,736 | 0 |
+| GBuffer／depth／velocity／geometry color | 1,105,920／552,960／1,105,920／552,960 | 均 0 |
+| Eval screen radiance 后 | 829,440 | 0 |
+| Reproject GI 后 | 829,440 | **36,467** |
+| Reproject GI 统计 | 138,240 | **485** |
+| Filter GI 后 | 829,440 | 111,574 |
+| deferred color | 552,960 | 24,927 |
+| DoF 后 TAA 输入／TAA 输出 | 552,960／552,960 | 20,811／21,262 |
+
+最终 480×270 RGBA 有 **16,329／129,600 像素不同**，最大通道差 4，RGB MAE 0.0526054527；实际 ShadowMaskMean 两边同为 bits1060712785。**首个观测分歧位于 Reproject GI，已排除这次末帧的地形高度／光照纹理、阴影、GBuffer、深度、速度、GPU 调色板、曝光均值和叶片差异作为首发点。** 之前帧的全部时序历史并未逐张采集，不能将本表升级为所有历史输入的穷尽证明。
+
+原版 `gi/reproject_screen_radiance.cs.hlsl` 在 `updated && allow_non_determinism` 分支中，对同一 dispatch 内的 output／stats storage image 做 5×5 邻域读取并原地写回。独立审核从原 SPIR-V 确认读写指令存在，ControlBarrier／MemoryBarrier 均为 0；这是原版明确允许的非确定性，不能通过清零纹理、双缓冲改写、强加同步或关闭分支来宣称忠实恢复。实际安装容器与原 oracle SHA 完全一致：Reproject `ba4f117f62426f66b00a2be1ca79f5d44259ad7f4895328f11710f033391e113`，其 SPIR-V `8bedd322f9df10fbd11bc43cdbfa096e91d73451b93c8b7219833b551bf14a19`；Filter `1ab4c5120fa042b8eeeaf7f3452d3504eeb88299fe46b88cc47ee74592256b4e`。本轮没有重新运行 Windows 原作，原侧结论是原容器／机器码静态证据，实际 GPU 为 Rust 生产消费者执行同一发行 shader。
+
+### 命令、结果及证据边界
+
+- `CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=1 cargo test --offline -p system-critters --lib`：**36/36 通过**，包含实际调度的 RNG 写冲突、鸭 planner 独立流、音频完整构造和跨帧容量保留。新调度断言修复前已真实失败于 update_butterfly_states。日志 `/private/tmp/m2-critter-rng-before-exact-20261030.log`、`m2-critter-rng-after-20261030.log`。
+- `CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=1 cargo test --offline -p country-core --features surface-compare-test --lib eval_gi_screen_radiance::tests -- --nocapture`：**7/7 通过**，日志 `/private/tmp/m2-gi-content-contract-tests-20261031.log`。
+- `CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=1 cargo test --offline -p rhapsody --lib rg::test_image_copy::tests -- --nocapture`：**3/3 通过**，日志 `/private/tmp/m2-raw-image-copy-tests-v2-20261031.log`。首轮新 shape 夹具漏 sampled capability 导致 1 项失败，已纠正；没有放宽原描述符校验。
+- `CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=1 cargo check --offline -p tiny-glade --lib`：普通非诊断路径构建通过，日志 `/private/tmp/m2-image-default-check-20261031.log`。实际 GPU 测试前另以相同变量执行 `cargo test --offline -p tiny-glade --features surface-compare-test --test original_gameplay_chain --no-run`。
+- v4 实际 GPU 主命令：发行安装根、严格 Vulkan 与本机 MoltenVK 环境下，`/private/tmp/m2-image-root-20261031-v4/original_gameplay_chain m02_actual_terrain_history_save_new_process_reload_and_image --exact --nocapture --test-threads=1`，设置 `TG_M2_DUMP_DIR=/private/tmp/m2-image-root-20261031-v4 TG_M2_RAW_INPUTS=1`。**父目标 213.41 秒失败，内含子目标 106.80 秒失败**：保存、完整历史／游标、笔画／counter、同来源双 512² 高度和日照 bits 通过，保存前运行帧到重启帧仍有 34,839 像素不同。该比较还包含原版未保存的叶片／羊动画运行态，不能算严格图像通过。
+- 冻结存档再次启动同一子入口，指定 `TG_M2_SAVE_CHILD=1` 及 `frozen-recovery.json` 里的 session／save／recovery 路径；独立进程耗时 **86.20 秒**，仍保留其与保存前帧的失败。随后用原 bytes 对比两个子进程，得到上表，不将两次失败包装为整项通过。
+- 实际二进制 SHA256 **`ca758178909d5417f21e8daa7238bea5612f5d977cef75bf29be5bcc30320087`**；源码 SHA、构建记录、与基线的 patch 在 `/private/tmp/m2-image-root-20261031-v4/build-manifest.json`。共享工作区在运行中由其它聊天提交为 `5566d2cc9`／`39d013a7d`；本报告以可执行文件和逐文件 SHA 绑定实测，不把其它工作域算作本轮验证。
+- 完整原始输出、三层／五 mip manifest、两个子进程比较 JSON、冻结存档在 `/private/tmp/m2-image-root-20261031-v4/` 和 `...-v4-repeat/`；日志分别为同前缀 `-gpu.log`。临时目录是本机可复核工件，并非已入库的大二进制。v1／v2 失败及 v3 诊断自身重复等待错误也保留，未记作通过。
+- `cargo fmt --all -- --check` **未通过**，首先命中未改动的 `country-core/build.rs` 等既有格式；strict clippy `-p system-critters --lib --no-deps -- -D warnings` **未通过**，报告现有 61 项 lint。未改原浮点分支来迎合 lint，也未将二者标绿。日志 `/private/tmp/m2-image-fmt-check-20261031.log`、`m2-critter-strict-clippy-20261031.log`。本轮没有 Release FPS、4× scaling 或长稳性能结论；正常热路径未新增实体状态复制，RNG 改为 ECS 可变借用并移除锁。
+
+**当前裁定：** 真实缺陷修复已完成并取得上述有界验证；普通原版 GI 不具备普遍的跨进程逐 bit 画面确定性，原存档也不承诺保存任意动态运行态。原整图零差异用例继续保留为未通过，M2 不据本次结果升级整模块验收。若后续要求无条件整图一致，需要单独约定确定性渲染／完整运行态持久化合同，不能混作原版缺失算法或偷偷改变默认行为。
