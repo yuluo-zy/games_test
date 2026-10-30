@@ -1,0 +1,352 @@
+{
+  "audit": "M02 business-function lexical review queue with cross-module mapping",
+  "date": "2026-10-30",
+  "repo_commit": "aa37abb24",
+  "inventory_index_sha256": "61a747815e31f7f080bf88b95d307c15750ea2090aec2226c0198673f4a9f711",
+  "method": "Consumes the current B-MODULE-INVENTORY.json and retains mechanical/generic-owner exclusions separately. The five lexical unmatched M02 functions were manually checked against current source. Source mapping is not original-equivalence, production-chain, or module-acceptance proof.",
+  "summary": {
+    "raw_m02_groups": 19,
+    "inventory_included_groups": 13,
+    "business_relevant_groups": 14,
+    "included_status_counts": {
+      "body_candidate": 8,
+      "unmatched_review": 5
+    },
+    "excluded_mechanical_groups": 5,
+    "excluded_generic_owner_groups": 1,
+    "resolution_counts": {
+      "cross_module_mapped": 2,
+      "generic_constructor_needs_review": 1,
+      "same_file_impl_mapped": 3,
+      "unique_body_candidate": 8
+    },
+    "business_by_category": {
+      "GPU 回读与延迟发布": 3,
+      "地形 hover 与拾取": 1,
+      "地形历史录制": 1,
+      "地形系统注册与资源生命周期": 3,
+      "地形绘制与编辑 UI": 3,
+      "笔画编辑与变更传播": 2,
+      "编辑资源构造": 1
+    }
+  },
+  "business_functions": [
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/delayed_terrain_changed_msg.rs",
+      "b_name": "country_core::systems::terrain::delayed_terrain_changed_msg::ScheduledTerrainReadback::on_gpu_copy_issued",
+      "b_ids": [
+        "097d717a2c206df5ff"
+      ],
+      "candidates": [],
+      "status": "unmatched_review",
+      "business_category": "GPU 回读与延迟发布",
+      "current_location": "crates/country-core/src/systems/render_loop/compute_passes/read_terrain_data.rs:138",
+      "resolution": "cross_module_mapped",
+      "review_note": "由地形回读资源的跨模块定义承载；写入 changed_tick，随后 swap(0) 取走 pending，并以 OR 语义保留 copy_issued。"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/delayed_terrain_changed_msg.rs",
+      "b_name": "country_core::systems::terrain::delayed_terrain_changed_msg::ScheduledTerrainReadback::on_terrain_modified",
+      "b_ids": [
+        "4461f5904295b5873c"
+      ],
+      "candidates": [],
+      "status": "unmatched_review",
+      "business_category": "GPU 回读与延迟发布",
+      "current_location": "crates/country-core/src/systems/render_loop/compute_passes/read_terrain_data.rs:134",
+      "resolution": "cross_module_mapped",
+      "review_note": "由地形回读资源的跨模块定义承载；对 pending 做 fetch_add(1)，由 draw/edit 等真实编辑消费者共同调用。"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/delayed_terrain_changed_msg.rs",
+      "b_name": "country_core::systems::terrain::delayed_terrain_changed_msg::delayed_terrain_changed_msg",
+      "b_ids": [
+        "36a4db736aa303ae82"
+      ],
+      "candidates": [
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/terrain/delayed_terrain_changed_msg.rs",
+          "line": 21,
+          "state": "body_candidate",
+          "sha256": "38a923ecd93dcb5b1b8fa8f2c6c2ccb0cca23e15763c895972b1dc68de7c1f5f"
+        }
+      ],
+      "status": "body_candidate",
+      "business_category": "GPU 回读与延迟发布",
+      "current_location": "tiny-glade/crates/country-core/src/systems/terrain/delayed_terrain_changed_msg.rs:21",
+      "resolution": "unique_body_candidate",
+      "review_note": "两帧软件延迟读取真实 GPU 发布副本，并分别提交权威高度场与视觉高度场；中间发送 OnTerrainChange。"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/terrain_hover_idx.rs",
+      "b_name": "country_core::systems::terrain::terrain_hover_idx::terrain_hover_idx",
+      "b_ids": [
+        "e98170b2fec3b4d061"
+      ],
+      "candidates": [
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/terrain/terrain_hover_idx.rs",
+          "line": 43,
+          "state": "body_candidate",
+          "sha256": "40aa82199f9bb6474b6d780e6b88e39f7e50df5ee3b937692538f0c227a3bd4f"
+        }
+      ],
+      "status": "body_candidate",
+      "business_category": "地形 hover 与拾取",
+      "current_location": "tiny-glade/crates/country-core/src/systems/terrain/terrain_hover_idx.rs:43",
+      "resolution": "unique_body_candidate",
+      "review_note": "从真实鼠标地形射线与 GPU 回读选择 hover 笔画，生产 HoveredTerrainStrokeId。"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/deferred_terrain_history.rs",
+      "b_name": "country_core::systems::terrain::deferred_terrain_history::history_record_terrain",
+      "b_ids": [
+        "902b4b49f54bada3e3"
+      ],
+      "candidates": [
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/terrain/deferred_terrain_history.rs",
+          "line": 32,
+          "state": "body_candidate",
+          "sha256": "36ac8dae2a54f80e1b373fdec60a7de1803c89238f530fcb418e92fecf12eb48"
+        }
+      ],
+      "status": "body_candidate",
+      "business_category": "地形历史录制",
+      "current_location": "tiny-glade/crates/country-core/src/systems/terrain/deferred_terrain_history.rs:32",
+      "resolution": "unique_body_candidate",
+      "review_note": "地形编辑历史录制系统；需要继续核对完整 typed history、游标与失败语义。"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/mod.rs",
+      "b_name": "country_core::systems::terrain::impl$0::add_terrain_events",
+      "b_ids": [
+        "b2b31a30cb095b176b"
+      ],
+      "candidates": [],
+      "status": "unmatched_review",
+      "business_category": "地形系统注册与资源生命周期",
+      "current_location": "crates/country-core/src/systems/terrain/mod.rs:238",
+      "resolution": "same_file_impl_mapped",
+      "review_note": "实现在 TerrainSystems trait impl 中；按原观察顺序注册 6 个地形事件。"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/mod.rs",
+      "b_name": "country_core::systems::terrain::impl$0::add_terrain_systems",
+      "b_ids": [
+        "fbb335a35602b11d90"
+      ],
+      "candidates": [],
+      "status": "unmatched_review",
+      "business_category": "地形系统注册与资源生命周期",
+      "current_location": "crates/country-core/src/systems/terrain/mod.rs:205",
+      "resolution": "same_file_impl_mapped",
+      "review_note": "实现在 TerrainSystems trait impl 中；挂载工具 UI/编辑/回读链和历史录制系统。"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/mod.rs",
+      "b_name": "country_core::systems::terrain::impl$0::insert_terrain_resources",
+      "b_ids": [
+        "012a2af50c87d571d5"
+      ],
+      "candidates": [],
+      "status": "unmatched_review",
+      "business_category": "地形系统注册与资源生命周期",
+      "current_location": "crates/country-core/src/systems/terrain/mod.rs:226",
+      "resolution": "same_file_impl_mapped",
+      "review_note": "实现在 TerrainSystems trait impl 中；初始化编辑状态、双高度场、hover 与 ScheduledTerrainReadback。"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/ui_draw_terrain.rs",
+      "b_name": "country_core::systems::terrain::ui_draw_terrain::ui_draw_terrain",
+      "b_ids": [
+        "bbc3dc2932dd95f4f4"
+      ],
+      "candidates": [
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs",
+          "line": 74,
+          "state": "body_candidate",
+          "sha256": "6f1aa3eae6a4d6ed210fecd39dada8880093f7c974ff8c0bf3d8e11fd783a211"
+        }
+      ],
+      "status": "body_candidate",
+      "business_category": "地形绘制与编辑 UI",
+      "current_location": "tiny-glade/crates/country-core/src/systems/terrain/ui_draw_terrain.rs:74",
+      "resolution": "unique_body_candidate",
+      "review_note": "真实画布交互到地形绘制命令/编辑路径的 UI 生产端。"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/ui_edit_terrain.rs",
+      "b_name": "country_core::systems::terrain::ui_edit_terrain::ui_edit_terrain",
+      "b_ids": [
+        "12b1453d09b3053d6a"
+      ],
+      "candidates": [
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs",
+          "line": 180,
+          "state": "body_candidate",
+          "sha256": "66447c04a48619261295d581a84e9e374f4423c451a036078e0dd137dd2747da"
+        }
+      ],
+      "status": "body_candidate",
+      "business_category": "地形绘制与编辑 UI",
+      "current_location": "tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs:180",
+      "resolution": "unique_body_candidate",
+      "review_note": "地形坡度、高度、falloff、焦点、历史哨兵、提示和装饰剔除等编辑交互主系统。"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/ui_terrain_focus_mode.rs",
+      "b_name": "country_core::systems::terrain::ui_terrain_focus_mode::ui_terrain_focus_mode",
+      "b_ids": [
+        "429b93ae1c25d0ce50"
+      ],
+      "candidates": [
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/terrain/ui_terrain_focus_mode.rs",
+          "line": 173,
+          "state": "body_candidate",
+          "sha256": "57b0576dba8a205a749e9694b00a5406ff5170447ef83657411f8b1388d1783d"
+        }
+      ],
+      "status": "body_candidate",
+      "business_category": "地形绘制与编辑 UI",
+      "current_location": "tiny-glade/crates/country-core/src/systems/terrain/ui_terrain_focus_mode.rs:173",
+      "resolution": "unique_body_candidate",
+      "review_note": "地形 focus 模式的真实 UI 输入与模式切换衔接。"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/draw_terrain_stroke.rs",
+      "b_name": "country_core::systems::terrain::draw_terrain_stroke::terrain_stroke_changed",
+      "b_ids": [
+        "8ee19c8a8bfd9cad6f"
+      ],
+      "candidates": [
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/terrain/draw_terrain_stroke.rs",
+          "line": 15,
+          "state": "body_candidate",
+          "sha256": "36a483fc7439ab9ed49655d8a46b266d1b4819f5c586b32d5f4c33e4e53d7a4a"
+        }
+      ],
+      "status": "body_candidate",
+      "business_category": "笔画编辑与变更传播",
+      "current_location": "tiny-glade/crates/country-core/src/systems/terrain/draw_terrain_stroke.rs:15",
+      "resolution": "unique_body_candidate",
+      "review_note": "地形笔画变更后发出重算、修改通知与 StrokeChanged 声音事件。"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/edit_terrain_stroke.rs",
+      "b_name": "country_core::systems::terrain::edit_terrain_stroke::edit_terrain_stroke",
+      "b_ids": [
+        "b111120dd786b76b79"
+      ],
+      "candidates": [
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/terrain/edit_terrain_stroke.rs",
+          "line": 27,
+          "state": "body_candidate",
+          "sha256": "38314db469221ed9dd7fd0c8e1157684a58641f358a9d5ec7f6bc9e861f848a0"
+        }
+      ],
+      "status": "body_candidate",
+      "business_category": "笔画编辑与变更传播",
+      "current_location": "tiny-glade/crates/country-core/src/systems/terrain/edit_terrain_stroke.rs:27",
+      "resolution": "unique_body_candidate",
+      "review_note": "消费笔画添加/修改命令，更新地形权威数据，并请求重算和延迟回读。"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/ui_edit_terrain.rs",
+      "b_name": "country_core::systems::terrain::ui_edit_terrain::MouseActivityTimer::new",
+      "b_ids": [
+        "3f74db2d6b867cf4da"
+      ],
+      "candidates": [],
+      "reason": "generic_method_requires_owner_evidence",
+      "status": "generic_owner_review",
+      "business_category": "编辑资源构造",
+      "current_location": "crates/country-core/src/systems/terrain/ui_edit_terrain.rs:83",
+      "resolution": "generic_constructor_needs_review",
+      "review_note": "没有同名 new；当前生产通过 Default 构造，字段初值已记录，但业务消费者和 new 是否对应独立原步骤仍待原证。"
+    }
+  ],
+  "excluded_mechanical": [
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/deferred_terrain_history.rs",
+      "b_name": "country_core::systems::terrain::deferred_terrain_history::impl$0::default",
+      "b_ids": [
+        "ffbf66ecc5fa9919e9"
+      ],
+      "candidates": [],
+      "reason": "mechanical_name_no_business_association"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/delayed_terrain_changed_msg.rs",
+      "b_name": "country_core::systems::terrain::delayed_terrain_changed_msg::impl$3::default",
+      "b_ids": [
+        "b6c6616e0188d46c25"
+      ],
+      "candidates": [],
+      "reason": "mechanical_name_no_business_association"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/delayed_terrain_changed_msg.rs",
+      "b_name": "country_core::systems::terrain::delayed_terrain_changed_msg::impl$1::default",
+      "b_ids": [
+        "1f717b099cde121984"
+      ],
+      "candidates": [],
+      "reason": "mechanical_name_no_business_association"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/ui_edit_terrain.rs",
+      "b_name": "country_core::systems::terrain::ui_edit_terrain::impl$2::default",
+      "b_ids": [
+        "ee17ba64be74378c0b"
+      ],
+      "candidates": [],
+      "reason": "mechanical_name_no_business_association"
+    },
+    {
+      "module": "M02",
+      "b_path": "crates/country-core/src/systems/terrain/ui_terrain_focus_mode.rs",
+      "b_name": "country_core::systems::terrain::ui_terrain_focus_mode::impl$1::default",
+      "b_ids": [
+        "05ab4a38bbb5c621e2"
+      ],
+      "candidates": [],
+      "reason": "mechanical_name_no_business_association"
+    }
+  ],
+  "module_boundary": {
+    "statement": "B-MODULE-INVENTORY 的 M02 主体只覆盖 systems::terrain 直接路径。地形高度资源、GPU compute pass、光标射线、渲染与共享历史仍位于 SHARED 或其它模块路径，不能据本清单宣称整个 M2 已做全函数审计。",
+    "known_cross_module_families": [
+      "resources/terrain_height.rs",
+      "resources/cursor_terrain_raycast.rs",
+      "resources/mouse_terrain_raycast.rs",
+      "systems/render_loop/compute_passes/read_terrain_data.rs",
+      "systems/render_loop/compute_passes/rasterize_terrain_stroke.rs",
+      "systems/render_loop/compute_passes/highlight_active_terrain_stroke.rs",
+      "tiny-glade/src/world_terrain.rs"
+    ]
+  }
+}

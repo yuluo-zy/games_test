@@ -3,8 +3,7 @@
 //! 机器码证据（fresh RE-MCP `groupD/decomp/decomp-0x140817a40-*.txt`，
 //! 47KB）：
 //! 1. `mark_mutable(storage)`（0x140a1c2b0）；
-//! 2. 历史游标守卫（EventReader/ReplayBuffer 双游标 + 状态字节 `(9,1)`
-//!    快速路径——U：状态语义）；
+//! 2. ModeJustChanged 游标与墙擦除模式快速路径；
 //! 3. `DecoratorArchivist::all_storages`（0x140b2bb80）→ 逐地址 `get_mut` +
 //!    `clear_modification_tracking`（0x141257900）；
 //! 4. `all_decorators`（0x140b2bb00）→ 逐装饰：地址桶缺失 → archivist 侧
@@ -14,8 +13,7 @@
 //!    字节==2 → `d2s insert`（0x140a1b4e0）否则 `d2s update`（0x140a1b5a0）；
 //! 5. `decorator_colliders`（0x140005c60）/`decorator_interactions`
 //!    （0x1403c03c0）→ Arc 克隆 + 落位（FUN_141298110，U 身份）；
-//! 6. 游标条件 → `extract_diff`（0x140b2cb30）+ 0x70B 记录冲刷
-//!    （FUN_140b743e0）。
+//! 6. 模式事件 → `extract_diff`（0x140b2cb30），返回表立即析构；不提交历史。
 //!
 //! core 对接：`restore_archived_decorators`（shared building modules，等价
 //! extract_and_restore_to_storage 0x140b2c4b0）+ `DecoratorStorage` 桶 API +
@@ -29,6 +27,11 @@ use bevy_ecs::prelude::*;
 
 use country_core::resources::stairs::stairs_state::StairsState;
 use country_core::resources::walls::decorator_archivist::DecoratorArchivist;
+use country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist;
+use country_core::resources::walls::decorator_collision::DecoratorPhysicsColliders;
+use country_core::resources::events::ModeJustChanged;
+use country_core::systems::collision::world::{RaycastWorld, upsert_archived_collider};
+use country_core::systems::mode_manager::{AppMode, EraserLayer};
 use country_core::resources::walls::decorator_storage::{
     DecoratorStorage, DecoratorStorageAddr,
 };
@@ -90,38 +93,68 @@ pub(crate) fn tracked_at<C: Send + Sync + 'static>(
     }
 }
 
-/// `restore_archived_decorators` @0x140817a40（O 结构；core 模型面）。
-///
-/// 机器码 ECS 面（候选 I）：`(History 状态, EventReader×2, ResMut<Decorator
-/// Archivist>, ResMut<DecoratorStorage>, ResMut<StairsState>, ResMut<辅助>,
-/// ResMut<回放/游标资源>)`——本实现按核心模型落地可接线部分：
-/// 1. `mark_mutable`；2. 逐存储清修改追踪；3. 逐装饰落位（get_or_insert
-/// default + d2s 索引 + 状态字节 2 → insert）；4. 楼梯 restore_backup；
-/// 5. 尾部 core `restore_archived_decorators` 原子落位 + archivist 清空。
-pub fn restore_archived_decorators<C: Send + Sync + 'static>(
-    mut storage: ResMut<DecoratorStorage>,
-    archivist: ResMut<DecoratorArchivist<C>>,
-    mut stairs: ResMut<StairsState>,
+/// B 140817a40：原八参数合同，恢复装饰桶及两类碰撞，模式变化时丢弃差分。
+pub fn restore_archived_decorators(
+    mode: Res<AppMode>,
     inner_walls: Res<InnerWalls>,
+    mut archivist: ResMut<LiveDecoratorArchivist>,
+    mut storage: ResMut<DecoratorStorage>,
+    mut colliders: ResMut<DecoratorPhysicsColliders>,
+    mut world: ResMut<RaycastWorld>,
+    mut stairs: ResMut<StairsState>,
+    mut mode_changed: EventReader<ModeJustChanged>,
 ) {
-    let _ = inner_walls;
     storage.mark_mutable();
-    // 机器码步骤 3：逐 archivist 地址 get_mut + clear_modification_tracking。
-    for address in archivist_all_storages(&archivist) {
-        if let Some(bucket) = storage.get_mut(addr_from_address(address)) {
-            bucket.clear_modification_tracking();
+    let changed = !mode_changed.is_empty();
+    mode_changed.clear();
+    if std::env::var_os("TG_M6_DECORATOR_TRACE").is_some() {
+        eprintln!("M6_RESTORE before mode={mode:?} changed={changed} archive={:?} live={:?}",
+            archivist_all_storages(&archivist),
+            storage.per_wall.iter().map(|(wall, bucket)| (*wall, bucket.decorators.iter().map(|(id, info)| (*id, info.state)).collect::<Vec<_>>())).collect::<Vec<_>>());
+    }
+    if changed || !matches!(*mode, AppMode::Eraser(EraserLayer::Wall)) {
+        for address in archivist_all_storages(&archivist) {
+            let Some(bucket) = storage.get_mut(addr_from_address(address)) else { continue };
+            bucket.modified_ids.clear();
+            bucket.removed_ids.extend(bucket.decorators.keys().copied());
+            let old = std::mem::take(&mut bucket.decorators);
+            for (id, info) in old {
+                // 141257a20..a89 扫描 0x50 字节桶项，直接读取项末字节
+                //（DecoratorInfo +0x47）；值 2 跳至清表出口，不是仅由空迭代器生成的值。
+                // 原 hashbrown 扫描序与当前 HashMap 的桶序不保证跨平台一致。
+                if info.state == 2 { break; }
+                storage.decorator_to_storage.remove(DecoratorId(id))
+                    .expect("d2s remove in Decorators::clear: no such decorator");
+            }
+        }
+        for address in archivist_all_storages(&archivist) {
+            if let DecoratorStorageAddress::Wall(wall) = address {
+                if inner_walls.get(WallId(wall.0)).is_none() { continue; }
+            }
+            let ids: Vec<_> = tracked_at(&archivist, address).unwrap().items.keys().copied().collect();
+            storage.get_or_insert_default(addr_from_address(address));
+            for id in &ids {
+                overwrite_decorator_state_from_archivist(&mut storage, &archivist, address, *id);
+            }
+            for id in &ids {
+                if let Some((pose, mesh)) = archivist.collision_a.get(id) {
+                    upsert_archived_collider(&mut world, &mut colliders.first, DecoratorId(*id), mesh, pose);
+                }
+            }
+            for id in &ids {
+                if let Some((pose, mesh)) = archivist.collision_b.get(id) {
+                    upsert_archived_collider(&mut world, &mut colliders.second, DecoratorId(*id), mesh, pose);
+                }
+            }
         }
     }
-    // 机器码步骤 4：逐装饰落位（含 d2s 状态字节 2 → insert）。
-    for (address, id) in archivist_all_decorators(&archivist) {
-        overwrite_decorator_state_from_archivist(&mut storage, &archivist, address, id);
-    }
-    // 机器码步骤：楼梯备份恢复。
     stairs.restore_backup();
-    // 机器码步骤 5/6（U：colliders/interactions 落位 FUN_141298110 身份 +
-    // extract_diff 冲刷）——colliders/interactions 落位在 core 归档类型
-    // （DecoratorArchivist collision_a/b）接线后补齐；extract_diff 冲刷属
-    // 历史差异链（core add_decorator_diff 缺口，见 RESTORE.md）。
+    // 原版模式变更时只提取并丢弃差分；历史提交由录制结束系统负责。
+    if changed { drop(archivist.extract_diff(&storage, true)); }
+    if std::env::var_os("TG_M6_DECORATOR_TRACE").is_some() {
+        eprintln!("M6_RESTORE after archive={:?} live={:?}", archivist_all_storages(&archivist),
+            storage.per_wall.iter().map(|(wall, bucket)| (*wall, bucket.decorators.iter().map(|(id, info)| (*id, info.state)).collect::<Vec<_>>())).collect::<Vec<_>>());
+    }
 }
 
 /// 单装饰归档状态覆盖（0x140817a40 步骤 4 内联）：archivist 条目的
@@ -176,6 +209,101 @@ mod tests {
         ObservedDecoratorInfo, TrackedDecorators,
     };
     use country_core::resources::walls::publication_fields::WallId as ArchivedWallId;
+
+    #[test]
+    fn wall_eraser_mode_event_restores_once_and_drains_archive() {
+        let mut ecs = World::new();
+        let mut archive = LiveDecoratorArchivist::default();
+        let info = country_core::resources::walls::decorator::DecoratorInfo {
+            decorator_id: 7, ..Default::default()
+        };
+        archive.special1 = Some(TrackedDecorators {
+            items: [(7, ObservedDecoratorInfo(crate::apply_decorator_op::info_to_bytes(info)))].into(),
+            ..Default::default()
+        });
+        let mut storage = DecoratorStorage::default();
+        let address = DecoratorStorageAddr::Terrain;
+        storage.get_or_insert_default(address).insert(DecoratorId(8),
+            country_core::resources::walls::decorator::DecoratorInfo { decorator_id: 8, ..Default::default() });
+        storage.decorator_to_storage.insert(DecoratorId(8), address);
+        storage.mark_immutable();
+        let mut stairs = StairsState::new();
+        stairs.make_backup();
+        ecs.insert_resource(storage); ecs.insert_resource(archive); ecs.insert_resource(stairs);
+        ecs.insert_resource(AppMode::Eraser(EraserLayer::Wall)); ecs.insert_resource(InnerWalls::default());
+        ecs.insert_resource(DecoratorPhysicsColliders::default()); ecs.insert_resource(RaycastWorld::new());
+        ecs.insert_resource(Events::<ModeJustChanged>::default());
+        let mut schedule = Schedule::default();
+        schedule.add_systems(restore_archived_decorators);
+        schedule.run(&mut ecs);
+        assert!(!ecs.resource::<DecoratorStorage>().immutable);
+        assert!(ecs.resource::<DecoratorStorage>().lookup_decorator_info(DecoratorId(8)).is_some());
+        assert!(ecs.resource::<LiveDecoratorArchivist>().special1.is_some());
+        ecs.resource_mut::<Events<ModeJustChanged>>().send(ModeJustChanged {
+            current: AppMode::Eraser(EraserLayer::Wall), previous: AppMode::default(),
+        });
+        schedule.run(&mut ecs);
+        assert!(ecs.resource::<DecoratorStorage>().lookup_decorator_info(DecoratorId(8)).is_none());
+        assert!(ecs.resource::<DecoratorStorage>().lookup_decorator_info(DecoratorId(7)).is_some());
+        assert!(ecs.resource::<LiveDecoratorArchivist>().special1.is_none());
+        ecs.resource_mut::<LiveDecoratorArchivist>().special1 = Some(TrackedDecorators::default());
+        schedule.run(&mut ecs);
+        assert!(ecs.resource::<LiveDecoratorArchivist>().special1.is_some());
+    }
+
+    #[test]
+    fn restore_reinstates_both_collision_owners_at_archived_final_pose() {
+        use country_core::systems::collision::world::{RaycastGeoSource, RaycastMesh, RaycastMeshData, upsert_collider};
+        use std::sync::Arc;
+        let id = DecoratorId(10);
+        let address = DecoratorStorageAddr::Terrain;
+        let info = country_core::resources::walls::decorator::DecoratorInfo { decorator_id: id.0, ..Default::default() };
+        let mut archive = LiveDecoratorArchivist::default();
+        archive.special1 = Some(TrackedDecorators {
+            items: [(id.0, ObservedDecoratorInfo(crate::apply_decorator_op::info_to_bytes(info)))].into(),
+            ..Default::default()
+        });
+        let data = Arc::new(RaycastMeshData::new_cuboid_at(glam::Vec3::ONE, glam::Vec3::Y));
+        let distinct_shape = Arc::new(RaycastMeshData::new_cuboid_at(glam::Vec3::splat(2.0), glam::Vec3::ZERO));
+        let pose = country_core::resources::walls::decorator_archivist::ArchivedColliderTransform {
+            translation: glam::Vec3::new(2., 3., 4.), rotation: glam::Quat::IDENTITY,
+            shape: distinct_shape.shape.as_ref().unwrap().0.clone(),
+        };
+        archive.collision_a.insert(id.0, (pose.clone(), RaycastMesh::new(data.clone(), RaycastGeoSource::decorator(id, address))));
+        archive.collision_b.insert(id.0, (pose, RaycastMesh::new(data.clone(), RaycastGeoSource::decorator_interaction(id, address, 0))));
+        let mut live_world = RaycastWorld::new();
+        let mut live_maps = DecoratorPhysicsColliders::default();
+        // 同一个注册 mesh/source 和最终位姿，但活 shape 与归档 shape 不同。
+        // 恢复必须替换碰撞体，不能走仅比较 mesh 与位姿的快速路径。
+        upsert_collider(&mut live_world, &mut live_maps.first, id,
+            RaycastGeoSource::decorator(id, address), data.clone(), glam::Vec3::new(2., 2., 4.), glam::Quat::IDENTITY);
+        upsert_collider(&mut live_world, &mut live_maps.second, id,
+            RaycastGeoSource::decorator_interaction(id, address, 0), data.clone(), glam::Vec3::new(2., 2., 4.), glam::Quat::IDENTITY);
+        for map in [&live_maps.first, &live_maps.second] {
+            let live = live_world.into_transformed_shape(map[&id].handle());
+            assert_eq!(live.position, glam::Vec3::new(2., 3., 4.));
+            assert!(!Arc::ptr_eq(&live.shape, &distinct_shape.shape.as_ref().unwrap().0));
+        }
+        let mut stairs = StairsState::new(); stairs.make_backup();
+        let mut ecs = World::new();
+        ecs.insert_resource(archive); ecs.insert_resource(DecoratorStorage::default()); ecs.insert_resource(stairs);
+        ecs.insert_resource(AppMode::default()); ecs.insert_resource(InnerWalls::default());
+        ecs.insert_resource(live_maps); ecs.insert_resource(live_world);
+        ecs.insert_resource(Events::<ModeJustChanged>::default());
+        let mut schedule = Schedule::default(); schedule.add_systems(restore_archived_decorators);
+        schedule.run(&mut ecs);
+        assert_eq!(ecs.resource::<DecoratorStorage>().lookup_storage(id), Some(address));
+        let maps = ecs.resource::<DecoratorPhysicsColliders>();
+        let world = ecs.resource::<RaycastWorld>();
+        for map in [&maps.first, &maps.second] {
+            let instance = map[&id];
+            assert!(Arc::ptr_eq(&world.get_collider_mesh(instance.registry_index, instance.generation).data, &data));
+            let actual = world.get_collider(instance.handle());
+            assert_eq!(actual.position, glam::Vec3::new(2., 3., 4.));
+            assert_eq!(actual.rotation, glam::Quat::IDENTITY);
+            assert!(Arc::ptr_eq(&world.into_transformed_shape(instance.handle()).shape, &distinct_shape.shape.as_ref().unwrap().0));
+        }
+    }
 
     #[test]
     fn overwrite_restores_entry_and_d2s() {

@@ -27,22 +27,30 @@ fn raw_bounds_and_unsupported_formats_fail_closed() {
         .unwrap(),
         1280 * 720 * 4
     );
-    assert!(
+    assert_eq!(
         raw_byte_count(
             vk::Format::R16G16B16A16_SFLOAT,
             [8, 4],
             vk::ImageAspectFlags::COLOR
         )
-        .is_err()
+        .unwrap(),
+        8 * 4 * 8
     );
-    assert!(
+    assert_eq!(
         raw_byte_count(
             vk::Format::R8G8B8A8_UNORM,
             [8, 4],
             vk::ImageAspectFlags::COLOR
         )
-        .is_err()
+        .unwrap(),
+        8 * 4 * 4
     );
+    assert!(raw_byte_count(vk::Format::R8_UNORM, [8, 4], vk::ImageAspectFlags::COLOR).is_err());
+    for (format, texel_bytes) in [(vk::Format::R32G32_UINT, 8), (vk::Format::R16G16_SFLOAT, 4)] {
+        assert_eq!(raw_byte_count(format, [8, 4], vk::ImageAspectFlags::COLOR).unwrap(),
+            8 * 4 * texel_bytes);
+        assert!(image_shape(&TextureDesc::new_2d(8, 4, format).sampled()).is_ok());
+    }
     assert!(
         raw_byte_count(
             vk::Format::B10G11R11_UFLOAT_PACK32,

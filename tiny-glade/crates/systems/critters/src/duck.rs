@@ -57,10 +57,29 @@ pub struct TrajectoryPlan {
     pub age: u32,
 }
 
-/// `DuckTrajectoryPlanner`（duck.rs PDB 命名实体；plan 系统持有的轨迹集合）。
-#[derive(Resource, Clone, Debug, Default)]
+/// B build@14067d5b4 stores raw Perchance state 0x66e610699.
+/// perchance 0.4.0 constructs that state as (seed << 1) | 1.
+pub const DUCK_PLANNER_RNG_SEED_B: u128 = 0x3_3730_834c;
+
+/// The original planner owns both its RNG and plans. Duck birth/departure
+/// sampling must not consume the separate CritterRng used by animal goals.
+#[derive(Resource, Clone)]
 pub struct DuckTrajectoryPlanner {
+    pub(crate) rng: PerchanceContext,
     pub plans: Vec<TrajectoryPlan>,
+}
+
+impl Default for DuckTrajectoryPlanner {
+    fn default() -> Self {
+        Self { rng: PerchanceContext::new(DUCK_PLANNER_RNG_SEED_B), plans: Vec::new() }
+    }
+}
+
+impl std::fmt::Debug for DuckTrajectoryPlanner {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("DuckTrajectoryPlanner").field("plans", &self.plans)
+            .finish_non_exhaustive()
+    }
 }
 
 /// `PlanPurpose`（duck.rs PDB 命名实体；热键 A/B 两路径的语义标注）。
@@ -122,7 +141,6 @@ pub fn plan_duck_trajectories(
     mut planner: ResMut<DuckTrajectoryPlanner>,
     mut commands: Commands,
     time: Res<GameTime>,
-    rng: Res<CritterRng>,
     raycast: Option<Res<crate::shared::RaycastWorldHandle>>,
     cursor: Option<Res<CursorTerrainRaycast>>,
     mesh_library: Option<Res<MeshLibraryHandle>>,
@@ -131,7 +149,7 @@ pub fn plan_duck_trajectories(
     mut ducks: Query<(Entity, ComponentWrite<Duck>, ComponentWrite<DuckState>, &Transform)>,
 ) {
     let _ = time;
-    let mut rng_ctx = rng.0.lock().unwrap();
+    let DuckTrajectoryPlanner { rng: rng_ctx, plans: pending_plans } = &mut *planner;
 
     // ── dev 热键 A：光标 3 点轨迹（O 0x14231020c–0x142310429）────────────────────
     if dev.enabled && dev.just_pressed_a {
@@ -144,8 +162,8 @@ pub fn plan_duck_trajectories(
                 points.push(base + x0y(golden_spiral(k as f32 + u)));
             }
             let u = rng_ctx.uniform_f32();
-            let circle = uniform_sample_circle(&mut rng_ctx, u);
-            planner.plans.push(TrajectoryPlan {
+            let circle = uniform_sample_circle(rng_ctx, u);
+            pending_plans.push(TrajectoryPlan {
                 trajectories: vec![Trajectory { points, done: false }],
                 offset: [circle.x, circle.y],
                 key: 0,
@@ -164,12 +182,12 @@ pub fn plan_duck_trajectories(
                 continue;
             }
             let key = entity.to_bits();
-            if planner.plans.iter().any(|plan| plan.key == key) {
+            if pending_plans.iter().any(|plan| plan.key == key) {
                 continue;
             }
             let u = rng_ctx.uniform_f32();
-            let circle = uniform_sample_circle(&mut rng_ctx, u);
-            planner.plans.push(TrajectoryPlan {
+            let circle = uniform_sample_circle(rng_ctx, u);
+            pending_plans.push(TrajectoryPlan {
                 trajectories: vec![Trajectory {
                     points: vec![p],
                     done: false,
@@ -181,7 +199,7 @@ pub fn plan_duck_trajectories(
         }
     }
 
-    let mut plans = std::mem::take(&mut planner.plans);
+    let mut plans = std::mem::take(pending_plans);
     for plan in &mut plans {
         let max_iter = if plan.key == 0 { 1 } else { 0x14 };
         let shape_key = plan.key;
@@ -247,7 +265,7 @@ pub fn plan_duck_trajectories(
             if resample {
                 // O：uniform_f32 + uniform_sample_circle 重写偏移，所有轨迹重置为 1 点。
                 let u = rng_ctx.uniform_f32();
-                let circle = uniform_sample_circle(&mut rng_ctx, u);
+                let circle = uniform_sample_circle(rng_ctx, u);
                 plan.offset = [circle.x, circle.y];
                 for traj in &mut plan.trajectories {
                     traj.points.truncate(1);
@@ -325,7 +343,7 @@ pub fn plan_duck_trajectories(
         }
     }
     plans.retain(|plan| plan.age < 0x12d);
-    planner.plans = plans;
+    *pending_plans = plans;
 }
 
 /// move_ducks_along_trajectories（0x142312200）。
@@ -565,7 +583,7 @@ pub fn update_duck_goals(
     time: Res<GameTime>,
     water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     path_rasters: PathRastersResources,
-    rng: Res<CritterRng>,
+    mut rng: ResMut<CritterRng>,
     mut query: Query<(
         &Transform,
         ComponentWrite<Duck>,
@@ -574,7 +592,7 @@ pub fn update_duck_goals(
     )>,
 ) {
     let dt = time.delta;
-    let mut rng_ctx = rng.0.lock().unwrap();
+    let rng_ctx = &mut rng.0;
     let w = (*water).as_ref();
     for (transform, mut duck, state, mut goal) in &mut query {
         let pos = transform.translation;
@@ -587,7 +605,7 @@ pub fn update_duck_goals(
             pos,
             rotation,
             dt,
-            &mut rng_ctx,
+            rng_ctx,
             &|_x, _z| false, // is_within_glade_shape（dev 门控 false；见模块注）
             &|x, z| w.bilinear_sample_at_world_xz(x, z, 130.0, 130.0),
             &|x, z| {
@@ -826,13 +844,13 @@ pub const DUCK_WATER_SAMPLES: [(f32, f32); 4] = [(0.0, 0.0), (0.8, 0.0), (0.0, 0
 
 /// 共享 Perchance RNG（build 时传入 B 种子 0xc0df → PerchanceContext；插件持有）。
 #[derive(Resource)]
-pub struct CritterRng(pub std::sync::Mutex<PerchanceContext>);
+pub struct CritterRng(pub PerchanceContext);
 
 impl Default for CritterRng {
     fn default() -> Self {
-        Self(std::sync::Mutex::new(PerchanceContext::new(
+        Self(PerchanceContext::new(
             crate::CRITTER_RNG_SEED_B,
-        )))
+        ))
     }
 }
 

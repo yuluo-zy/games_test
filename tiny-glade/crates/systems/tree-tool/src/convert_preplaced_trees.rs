@@ -26,6 +26,8 @@ pub const TREE_WALL_GAP: f32 = 7.0;
 pub struct Wait {
     pub count: u64,
     pub flag: bool,
+    // 异步 readback 可能跨越 Game 的退出／重入；延迟工作只能消费原会话。
+    epoch: Option<(country_core::resources::session::SessionId, bevy_ecs::component::Tick)>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -43,17 +45,31 @@ pub fn convert_preplaced_trees<S: Send + Sync + 'static>(
     mut history: ResMut<History<S>>,
     readbacks: Option<Res<country_core::render::gpu_readback::GpuReadbacks>>,
     mut spawned_after: Local<u64>,
+    session: Res<country_core::resources::session::ActiveSession>,
+    loading: Res<bevy_state::state::State<country_core::app_loading_state::AppLoadingState>>,
 ) {
     let readbacks = readbacks.as_deref();
+    let epoch = (session.id, loading.last_changed());
     // Native reader advances to the end of both event buffers, coalescing all
     // requests. Taking just .next() would retrigger the delay for each event.
     if spawns.read().count() != 0 {
         wait.count = 1;
         wait.flag = true;
+        wait.epoch = Some(epoch);
         *spawned_after = readbacks.map_or(0, |readbacks| readbacks.submitted_frame());
+        if std::env::var_os("TG_M6_TRACE_PREPLACED").is_some() {
+            eprintln!("M6_PREPLACED request cursor={} entries={} submitted={}", history.ledger().cursor, history.ledger().entries.len(), *spawned_after);
+        }
         return;
     }
     if !wait.flag {
+        return;
+    }
+    if wait.epoch != Some(epoch) {
+        // 原版在第二帧直接消费映射；异步宿主仍在等旧回读时若已卸载，
+        // 不能把旧请求写进新会话的 History。新请求仍按原路径独立处理。
+        wait.flag = false;
+        wait.epoch = None;
         return;
     }
     wait.count = wait.count.wrapping_add(1);
@@ -73,6 +89,10 @@ pub fn convert_preplaced_trees<S: Send + Sync + 'static>(
         return;
     };
     wait.flag = false;
+    wait.epoch = None;
+    if std::env::var_os("TG_M6_TRACE_PREPLACED").is_some() {
+        eprintln!("M6_PREPLACED convert cursor={} entries={} waited={} submitted_after={} readback_frame={}", history.ledger().cursor, history.ledger().entries.len(), wait.count, *spawned_after, readbacks.and_then(|r| r.get::<TerrainRockMaskSsbo>()).map_or(0, |r| r.frame));
+    }
     log::info!("Adding converted pre-placed trees to history");
     let mut edits = Vec::new();
     for (id, entry) in storage.iter() {

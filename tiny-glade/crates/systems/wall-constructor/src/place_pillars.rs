@@ -437,13 +437,22 @@ pub fn place_pillars(
     mut ssbo: ResMut<AssetSsboLibrary>,
     masks: Res<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>,
     mut output: ResMut<crate::construct_arches::WallConstructorOutput>,
+    mut trace_frame: Local<u64>,
 ) {
-    let mut recalc: Vec<u64> = changed
-        .read()
-        .map(|e| e.0.0)
-        .chain(bricks.read().map(|e| e.0.0))
-        .chain(create_roof.read().map(|e| e.0.wall_id().0))
-        .collect();
+    *trace_frame = trace_frame.wrapping_add(1);
+    let changed_ids: Vec<_> = changed.read().map(|e| e.0.0).collect();
+    let brick_ids: Vec<_> = bricks.read().map(|e| e.0.0).collect();
+    let roof_ids: Vec<_> = create_roof.read().map(|e| e.0.wall_id().0).collect();
+    if std::env::var_os("TG_M6_PILLAR_TRACE").is_some() {
+        for &wall in changed_ids.iter().chain(&brick_ids).chain(&roof_ids) {
+            if walls.get(country_core::resources::walls::WallId(wall)).is_none() {
+                eprintln!("M6_PILLAR_MISSING frame={} wall={} changed={} bricks={} create_roof={} published_delta_changed={:?} published_delta_removed={:?}",
+                    *trace_frame, wall, changed_ids.contains(&wall), brick_ids.contains(&wall), roof_ids.contains(&wall),
+                    walls.last_delta.changed, walls.last_delta.removed);
+            }
+        }
+    }
+    let mut recalc: Vec<u64> = changed_ids.into_iter().chain(brick_ids).chain(roof_ids).collect();
     // 原 140753cxx 将三组事件的墙 ID 合并后无符号排序、去重。
     recalc.sort_unstable();
     recalc.dedup();

@@ -1,0 +1,808 @@
+{
+  "schema": 1,
+  "scope": "Review inputs anchored to retained ledger and current source; no automatic recovery acceptance",
+  "findings": [
+    {
+      "id": "BIZ-01",
+      "modules": [
+        "M01",
+        "SHARED"
+      ],
+      "title": "MEI 节点执行顺序",
+      "classification": "confirmed_algorithm_order_difference",
+      "finding": "当前 mei_pre_update 按 GlobalId 排序；独立原指令审查记录原表按 HashMap control 字节桶顺序执行。算法顺序存在差异，事件/声音影响范围尚未闭合。",
+      "chain": "MEI 节点表 → pre_update/交互遍历 → vtable 输入/声音/事件",
+      "next_step": "按当前源码SHA核两轮循环与原桶序；验证不同插入/冲突序的可观察副作用，不按同名函数判等。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/toolbar/src/mei/systems.rs",
+          "name": "mei_pre_update"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "mei_pre_update"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-02",
+      "modules": [
+        "M01",
+        "SHARED"
+      ],
+      "title": "MEI 键盘/剪贴板生产入口",
+      "classification": "source_wiring_gap",
+      "finding": "原侧宿主明确调用 on_key_event/on_clipboard_paste；当前源码实查仅方法定义，宿主事件仍走 core/Bevy。直接生产入口缺口已记录，具体控件影响及间接路径仍待核。",
+      "chain": "OS/宿主键盘与剪贴板 → MeiContext 队列 → MEI 控件",
+      "next_step": "核真实 game_loop/输入分派到同一 MEI 队列及payload/tag；不要把所有键盘交互概括为失效。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/toolbar/src/mei/core.rs",
+          "name": "on_key_event"
+        },
+        {
+          "path": "tiny-glade/crates/systems/toolbar/src/mei/core.rs",
+          "name": "on_clipboard_paste"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "1404dc465"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-03",
+      "modules": [
+        "M02",
+        "SHARED"
+      ],
+      "title": "地形跨进程最终画面",
+      "classification": "observed_acceptance_failure",
+      "finding": "已有编辑、双高度场、CPU/碰撞、历史及部分GPU证据；跨进程严格最终图像多轮失败，ShadowMaskMean/AppMode等运行态诊断不能当成已确定唯一根因。",
+      "chain": "真实地形输入 → 同epoch GPU/CPU高度 → 墙/lighting → 保存/新进程 → 最终帧",
+      "next_step": "用存在的最新完整日志与源码指纹复核最终首差；当前缺失的 Windows 日志只保留报告级观察，不据此定新算法缺陷。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/terrain/ui_edit_terrain.rs",
+          "name": "ui_edit_terrain"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "M1正时间v4仍失败"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-04",
+      "modules": [
+        "M03"
+      ],
+      "title": "正式路径工具尚未装配",
+      "classification": "source_wiring_gap",
+      "finding": "draw_path、record_path_history及局部 PathsPlugin 已存在，但最新冻结记录仍明确正式 App 编辑未接入。当前主宿主静态搜索也无这两个安装点。",
+      "chain": "工具栏路径模式 → 正式 draw/record → 四栅格 → staging/声音/历史",
+      "next_step": "先核未决命令字段和九个回调，再按原注册安装正式父链；局部 World 测试不替代实际 App。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/paths.rs",
+          "name": "draw_path"
+        },
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/paths.rs",
+          "name": "record_path_history"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "路径正式 App 编辑未接入"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-05",
+      "modules": [
+        "M03"
+      ],
+      "title": "跨变体命令第二字和九个回调",
+      "classification": "original_contract_review",
+      "finding": "源码仍给跨变体 draw_raster 传三个空回调；已有证据只闭合部分 staging 及共享事件，不能判断全部原回调为空，也不能直接判为三个缺算法。目标/擦除 strength 字段定义仍 OPEN。",
+      "chain": "路径/铺石目标与跨变体擦除 → widget/active stroke/history第二字 → 间接消费者",
+      "next_step": "补目标 rsp+0x8c、擦除 rsp+0x9c 的定义及全部实际消费者；保留已闭合的 DrawState 叶函数结果。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/paths.rs",
+          "name": "draw_path"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "命令第二字来源、九个回调和完整实际消费者仍 OPEN"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-06",
+      "modules": [
+        "M03",
+        "SHARED"
+      ],
+      "title": "路径 recorder 失败合同",
+      "classification": "original_contract_review",
+      "finding": "record_path_history 仍有 let _ = record_raster_history；应核共享 helper 当前返回/原 History::add 的失败语义，不能沿用旧报告把花园、水也一并判为吞错误。",
+      "chain": "笔画提交 → 录制状态 → History::add → 复合事务提交/取消",
+      "next_step": "核当前 helper 与路径四槽的失败、事件先后和事务边界；只有确认可达差异后才列实现修复。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/paths.rs",
+          "name": "record_path_history"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "R-S2 历史失败语义"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-07",
+      "modules": [
+        "M04"
+      ],
+      "title": "花园最终 drawable、声音和 Reload",
+      "classification": "joint_validation_open",
+      "finding": "已有真实笔画→History→新进程及 GPU mask 通过记录，不能再列 draw/record 未装配。新增 draw-list 断言未实跑；实际非零实例/最终像素、同App重载和音频设备仍未闭合。",
+      "chain": "Garden UI → 栅格/History → 生成实例/石头小花绘制 → save/restart/卸载",
+      "next_step": "复用已有通过子链，补真正生产 draw owner、最终像素和多次Reload/音频生命周期；先核旧 Windows receipt 是否可取得。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/country-core/src/systems/garden/draw_garden.rs",
+          "name": "draw_garden"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "M04 新增生产 draw list 断言"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-08",
+      "modules": [
+        "M05"
+      ],
+      "title": "画水有效字段和边界输入",
+      "classification": "original_contract_review",
+      "finding": "strength=1.0 的原有效字段来源仍未闭合；界外候选曾被其它 widget 占有，不能把不满足原门的失败归为画水算法错误。",
+      "chain": "真实 widget/drag 门 → draw_water命令 → WaterRaster/地形读回通知",
+      "next_step": "按原版有效字段和真实widget所有权设计输入；不把 Max 省略字段与内存字段直接判为丢存档。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/water/src/draw_water.rs",
+          "name": "draw_water"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "M05 新夹具本轮运行边界"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-09",
+      "modules": [
+        "M05"
+      ],
+      "title": "水编辑完整持久化及声音/边界生命周期",
+      "classification": "joint_validation_open",
+      "finding": "现有正式水插件、即时回放、植被GPU读回不是待从零恢复项。最新 App 日志未到最终 test result，后续 undo/redo/保存/新进程和动态声音/边界尚无完整通过。",
+      "chain": "画水/擦水 → 地形/碰撞/植被/声音/边界 → History → 文件/新进程 → 清理",
+      "next_step": "完成有最终结果的真实 App 用例，分别核动态GPU水、完整History和FMOD/谷地边界释放。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/water/src/draw_water.rs",
+          "name": "draw_water"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "日志没有最终 test result"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-10",
+      "modules": [
+        "M06",
+        "M10",
+        "SHARED"
+      ],
+      "title": "保存加载后完整 typed history 丢首项",
+      "classification": "observed_acceptance_failure",
+      "finding": "当前复验在正式墙色链 child 缺父 Tree::Place(index100143)；后续阶段诊断显示落盘及加载完成时首项存在，缺口缩到加载后的变更。尚未确定生产原因，不能将墙色/保存全部列成没实现。",
+      "chain": "真实颜色编辑/完整ledger → save worker/磁盘 → load完成 → 后续runtime mutation",
+      "next_step": "保留已有父链与两端281项阶段证据，沿加载后的首个writer闭合；不跳树、不只比较末项、不放宽断言。",
+      "functions": [],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "最终运行态却缺首Tree::Place"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-11",
+      "modules": [
+        "M06",
+        "M09"
+      ],
+      "title": "归档恢复后新ID碰撞与最终删除",
+      "classification": "joint_validation_open",
+      "finding": "最新恢复父函数已接真实set42，live shape和mesh/source/位姿保留已回归通过；当前仍追新ID碰撞体最终删除消费者与完整App生命周期，不能倒退成恢复函数未实现。",
+      "chain": "归档Info → 原模式/事件守卫 → 新ID实体/碰撞 → 删除/Reload释放",
+      "next_step": "核同owner完整创建/UndoRedo/删除/重入及存活/退役基线，继续复用已有shape反例。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/decorator/src/restore_archived_decorators.rs",
+          "name": "restore_archived_decorators"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "新增ID碰撞体最终删除消费者"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-12",
+      "modules": [
+        "M06",
+        "SHARED"
+      ],
+      "title": "多allocation重发布与异常释放",
+      "classification": "original_contract_review",
+      "finding": "已有五类sidecar分离和+120/+160/+170 owner原证与部分回归；最后lane/退役顺序及缺库异常完整EH回收不能由旧窄范围owner测试外推。",
+      "chain": "发布成功/局部构造失败 → 独立砖木lanes → 实体/receipt → Drop/EH释放",
+      "next_step": "逐项核新旧owner、提交前缀和异常退出；按当前源码而非早期75%估计给出结论。",
+      "functions": [],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "缺库异常的完整原EH回收序列仍未逐项闭合"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-13",
+      "modules": [
+        "M07"
+      ],
+      "title": "屋顶形状/高度交互消费",
+      "classification": "confirmed_unrecovered_code",
+      "finding": "当前交互执行函数为空，原函数记录为实际业务体；已有setter/历史消费者不能替代缺少的触发体拾取、slider动作和事件/历史生产。",
+      "chain": "屋顶触发体/真实widget → DoUiEdit消费 → Roof字段/geometry事件 → History/墙联动",
+      "next_step": "复用已恢复setter，补原交互控制流、旧新值/取消/历史载荷和真实生产接线，再验编辑/回放/保存。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/roof/src/ui_edit_roof.rs",
+          "name": "do_ui_edit_roof"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/crates/systems/roof/src/ui_edit_roof.rs",
+          "anchor": "未实现"
+        }
+      ],
+      "requires_empty_or_stub": true
+    },
+    {
+      "id": "BIZ-14",
+      "modules": [
+        "M07"
+      ],
+      "title": "屋脊方向交互消费",
+      "classification": "confirmed_unrecovered_code",
+      "finding": "当前交互执行函数为空，原函数记录为实际业务体；已有setter/历史消费者不能替代缺少的触发体拾取、slider动作和事件/历史生产。",
+      "chain": "屋顶触发体/真实widget → DoUiEdit消费 → Roof字段/geometry事件 → History/墙联动",
+      "next_step": "复用已恢复setter，补原交互控制流、旧新值/取消/历史载荷和真实生产接线，再验编辑/回放/保存。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/roof/src/ui_edit_roof_ridge_dir.rs",
+          "name": "do_ui_edit_roof_ridge_dir"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/crates/systems/roof/src/ui_edit_roof_ridge_dir.rs",
+          "anchor": "未实现"
+        }
+      ],
+      "requires_empty_or_stub": true
+    },
+    {
+      "id": "BIZ-15",
+      "modules": [
+        "M07"
+      ],
+      "title": "屋脊长度交互消费",
+      "classification": "confirmed_unrecovered_code",
+      "finding": "当前交互执行函数为空，原函数记录为实际业务体；已有setter/历史消费者不能替代缺少的触发体拾取、slider动作和事件/历史生产。",
+      "chain": "屋顶触发体/真实widget → DoUiEdit消费 → Roof字段/geometry事件 → History/墙联动",
+      "next_step": "复用已恢复setter，补原交互控制流、旧新值/取消/历史载荷和真实生产接线，再验编辑/回放/保存。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/roof/src/ui_edit_roof_ridge_length.rs",
+          "name": "do_ui_edit_roof_ridge_length"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/crates/systems/roof/src/ui_edit_roof_ridge_length.rs",
+          "anchor": "未实现"
+        }
+      ],
+      "requires_empty_or_stub": true
+    },
+    {
+      "id": "BIZ-16",
+      "modules": [
+        "M08"
+      ],
+      "title": "玩家楼梯主装配循环",
+      "classification": "confirmed_unrecovered_code",
+      "finding": "playermade_stairs_assemble 主体为空。原两实例已修CFG取得完整C/ASM，工具超时已不再是缺口；已恢复插值/懒订阅/碰撞叶不能替代梯步、楼层、栏杆和两阶段主分支。",
+      "chain": "真实stairs请求/缓存 → 主装配 → 梯步/楼层/栏杆/碰撞 → 实体与视觉输出",
+      "next_step": "按原请求完整尾部/reset返回及分支恢复同一父循环；禁止挂空生产阶段。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/decorator/src/decorator_visual/stairs_assemble.rs",
+          "name": "playermade_stairs_assemble"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/reports/module-recovery-2026-10-23/m01-stairs-assembly-recovery-2026-10-27.md",
+          "anchor": null
+        }
+      ],
+      "requires_empty_or_stub": true
+    },
+    {
+      "id": "BIZ-17",
+      "modules": [
+        "M08"
+      ],
+      "title": "平台楼梯几何主入口",
+      "classification": "confirmed_unrecovered_code",
+      "finding": "construct_platform_stairs 当前直接 todo!，尚无真实80B装饰源→blockers→段/格/碰撞→砖/holes/stats 主体。",
+      "chain": "平台装饰/墙/地形 → blockers与platform分段 → 原96B砖和碰撞/holes/stats",
+      "next_step": "恢复原父体和同一storage的生产消费；不能用已有draw pass替代几何入口。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/wall-constructor/src/construct_platform_stairs/mod.rs",
+          "name": "construct_platform_stairs"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/crates/systems/wall-constructor/src/construct_platform_stairs/mod.rs",
+          "anchor": "0x1407744d0"
+        }
+      ],
+      "requires_empty_or_stub": true
+    },
+    {
+      "id": "BIZ-18",
+      "modules": [
+        "M08"
+      ],
+      "title": "玩家楼梯预处理及支撑/柱装配",
+      "classification": "confirmed_unrecovered_code",
+      "finding": "preprocess_curve、拱/墙主装配、柱proposal处理仍直接todo，brackets/magic_support/pillars_visual有明确未完成分支；它们是一条依赖链，不按单态化数重复算算法。",
+      "chain": "楼梯曲线 → 两路模式/重采样 → 墙拱/柱提案 → 托架/浮砖/柱视觉",
+      "next_step": "先恢复完整数据结构和原分支，再串支持请求/提案、生产几何、碰撞、历史和退役。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/wall-constructor/src/construct_playermade_stairs/mod.rs",
+          "name": "preprocess_curve"
+        },
+        {
+          "path": "tiny-glade/crates/systems/wall-constructor/src/construct_playermade_stairs/mod.rs",
+          "name": "construct_playermade_stairs_arches_n_walls"
+        },
+        {
+          "path": "tiny-glade/crates/systems/wall-constructor/src/construct_playermade_stairs/pillars_process_proposals.rs",
+          "name": "process_playermade_stair_pillars_proposals"
+        },
+        {
+          "path": "tiny-glade/crates/systems/wall-constructor/src/construct_playermade_stairs/brackets.rs",
+          "name": "construct_playermade_stair_brackets"
+        },
+        {
+          "path": "tiny-glade/crates/systems/wall-constructor/src/construct_playermade_stairs/magic_support.rs",
+          "name": "playermade_stair_floating_bricks"
+        },
+        {
+          "path": "tiny-glade/crates/systems/wall-constructor/src/construct_playermade_stairs/pillars_visual.rs",
+          "name": "construct_playermade_stair_pillars_visuals"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/reports/module-recovery-2026-10-23/m01-stairs-assembly-recovery-2026-10-27.md",
+          "anchor": null
+        }
+      ],
+      "requires_empty_or_stub": true
+    },
+    {
+      "id": "BIZ-19",
+      "modules": [
+        "M09"
+      ],
+      "title": "装饰set25真实配置树与全生命周期",
+      "classification": "registration_and_lifecycle_review",
+      "finding": "已有放置、重定位、完整Info归档和真实Rapier子链；独立审查曾否定把叶函数平铺等价原tuple/chain/flush。最新整树和全卸载不能仅由已过叶级测试证明。",
+      "chain": "真实请求 → 原注册父树/flush → 位置/mesh/碰撞 → 完整归档/UndoRedo/卸载",
+      "next_step": "按原配置数组逐槽审查当前DecoratorPlugin，再验非空对象、重复注册位置、完整ID/shape和清理。",
+      "functions": [],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "独立审计已否定初版set25简化接线"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-20",
+      "modules": [
+        "M10",
+        "M06",
+        "M09"
+      ],
+      "title": "多对象颜色菜单到真实GPU/历史",
+      "classification": "joint_validation_open",
+      "finding": "颜色setter、13类菜单及部分真实GPU/history已恢复；墙色完整新进程失败属于BIZ-10，装饰/rim/灯/楼梯等仍需逐对象非空交互、回滚与保存证据，不能统称所有菜单未实现。",
+      "chain": "真实菜单picker → canonical颜色权威 → 同物理owner上传 → 完整History/取消/重载",
+      "next_step": "逐对象复用已过子链，检查全表GPU、完整ledger、实体/菜单退役；设备丢失另查而非判算法失败。",
+      "functions": [],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "颜色库20项通过"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-21",
+      "modules": [
+        "M11"
+      ],
+      "title": "clutter生成权威与哈希/几何合同",
+      "classification": "original_contract_review",
+      "finding": "已有真实窗口/屋顶交线→鸟巢/杂物→退役的World通过，不能列为全无producer。原哈希、stitches/merlons细节及正式父链的完整场景合同仍需按当前路径审查，旧近似注释不自动变成新缺陷。",
+      "chain": "墙/屋顶/树/水权威 → dirty/候选/原hash几何 → Nani/碰撞 → 重建和退役",
+      "next_step": "区分已弃用近似helper和生产路径，补原具体候选与非空实际App证据。",
+      "functions": [],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "round28 clutter62项通过"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-22",
+      "modules": [
+        "M12"
+      ],
+      "title": "ivy完整注册、生长修剪与建筑联动",
+      "classification": "registration_and_lifecycle_review",
+      "finding": "函数有体和原9系统tuple的静态证据不能证明持续生长/避洞/修剪/叶片上传/声音整链；未取得全域当前验收，保留审查边界。",
+      "chain": "墙/洞/装饰变化 → 原spawner/grower/pruner调度 → 叶片/动画/声音 → 删除重入",
+      "next_step": "按原tuple和真实FunctionSystem name核当前父配置；用同株生命周期联动验证，不能按无TODO判恢复。",
+      "functions": [],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "M12 | ivy"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-23",
+      "modules": [
+        "M13"
+      ],
+      "title": "树工具同一权威的编辑与持久化",
+      "classification": "joint_validation_open",
+      "finding": "已恢复方法与非空函数体不是完整树工具验收；本轮没有新的原侧差分证据证明放置/弯曲/移动/隐藏/删除和历史存档联合闭合。",
+      "chain": "树工具输入 → TreeStorage → 几何/碰撞/渲染 → 历史/隐藏恢复/卸载",
+      "next_step": "按当前原证和真实同一TreeStorage审查，不把同名多个owner当已定位，也不把待验项全部判为缺算法。",
+      "functions": [],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "M13 | 树工具"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-24",
+      "modules": [
+        "M14",
+        "M13"
+      ],
+      "title": "森林预放树与树工具重载联动",
+      "classification": "joint_validation_open",
+      "finding": "森林转换、prefab与动画方法位置需与同一树权威核对，现无完整地形变化/批量重载/认领与资源释放验收。",
+      "chain": "预放树/prefab → 批量树权威/动画 → 地形/隐藏 → Reload订阅及GPU释放",
+      "next_step": "确认当前转换入口与真实资源所有权，检查不重复实例、不残留旧订阅。",
+      "functions": [],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "M14 | 森林"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-25",
+      "modules": [
+        "M15"
+      ],
+      "title": "鱼实体写面和状态2目标消费",
+      "classification": "original_contract_review",
+      "finding": "当前fish维护Boid位置，但生产Fish实体只写state；独立repel_from_fish_targets的原实体查询消费尚未接入。应核完整0x30记录与真正渲染/状态producer，不能把已补四路径采样再列为缺失。",
+      "chain": "鱼生成 → Boid/Fish实体完整写面 → 状态2近距目标/速度 → 动画/渲染/删除",
+      "next_step": "绑定原鱼实体记录与当前消费者，恢复确实缺少的生产字段/查询，再验真实鱼群；出生速度档另待原判别。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/critters/src/fish.rs",
+          "name": "fish"
+        },
+        {
+          "path": "tiny-glade/crates/systems/critters/src/fish.rs",
+          "name": "repel_from_fish_targets"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/crates/systems/critters/src/fish.rs",
+          "anchor": "生产侧 Fish 的 0x30"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-26",
+      "modules": [
+        "M15"
+      ],
+      "title": "羊/鸭抚摸交互反馈未齐",
+      "classification": "partial_implementation_review",
+      "finding": "当前timer、模式门、widget和部分frozen/音频已有；signifier、WindowFocus/decorator反馈及部分音频仍有明确未恢复边界。两处非空函数不能算宠物交互全部闭合。",
+      "chain": "真实动物命中/拖拽 → 宠物状态 → signifier/窗口/声音/装饰反馈 → 释放",
+      "next_step": "逐物种核原控制流中遗漏写面与各事件消费者，使用真实UI/音频 owner 验证。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/critters/src/ui_pet_ducks.rs",
+          "name": "ui_pet_ducks"
+        },
+        {
+          "path": "tiny-glade/crates/systems/critters/src/sheep/ui_pet_sheep.rs",
+          "name": "ui_pet_sheep"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/crates/systems/critters/src/ui_pet_ducks.rs",
+          "anchor": "原版 signifier、窗口事件与音频调用仍需补全"
+        },
+        {
+          "path": "tiny-glade/crates/systems/critters/src/sheep/ui_pet_sheep.rs",
+          "anchor": "signifier、WindowFocusEvent 和 decorator 事件仍未恢复"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-27",
+      "modules": [
+        "M15"
+      ],
+      "title": "蝴蝶组件写面与群体关联",
+      "classification": "original_contract_review",
+      "finding": "蝴蝶两个系统仍记录stride-4组件身份/写面未建模；wren群体关联亦有原结构未知。没有足够证据把未知组件翻译成猜测默认值，也不重提已纠正的旧boids近似。",
+      "chain": "目标/状态 → 原组件写面/群体关联 → 速度/动画/实体消费",
+      "next_step": "从typed query描述符与原writer读者确认身份，再审所有物种的完整调度、认领释放及混合场景。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/systems/critters/src/butterfly.rs",
+          "name": "update_butterfly_goals"
+        },
+        {
+          "path": "tiny-glade/crates/systems/critters/src/butterfly.rs",
+          "name": "set_butterfly_velocities_towards_goals"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/crates/systems/critters/src/butterfly.rs",
+          "anchor": "stride-4 写"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-28",
+      "modules": [
+        "M16"
+      ],
+      "title": "非Daily菜单和调试辅助边界",
+      "classification": "scope_and_source_review",
+      "finding": "普通新建/设置/窗口已有有界通过，不从早期未进入表回退；Daily暂停、Credits/许可证/报告删除、真实Steam SDK暂排除。调试GUI空壳独立列辅助项，不冒充游戏核心算法缺口。",
+      "chain": "实际页面命令 → 已存在的游戏消费者 → 配置/主题/提示/错误呈现",
+      "next_step": "核普通页面所有实际消费者与原调用；Daily和用户删除项不列当前阻断，调试工具另报范围。",
+      "functions": [
+        {
+          "path": "tiny-glade/crates/tiny-glade/src/gui/gui_debug.rs",
+          "name": "do_gui_debug"
+        }
+      ],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "用户范围更新：暂排除 Daily"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-29",
+      "modules": [
+        "SHARED",
+        "M03",
+        "M04",
+        "M05"
+      ],
+      "title": "公共栅格依赖身份与原输出",
+      "classification": "dependency_contract_review",
+      "finding": "zeno crates.io与原PounceLight fork同版本号不证明行为同源。已有私有基础库/渲染架构继续复用，不能因模块0个业务符号就判断缺整个库或强行回退架构。",
+      "chain": "原栅格/重采样 → 依赖调用及组合参数 → 四/六栅格权威 → 业务消费者",
+      "next_step": "先核当前锁和实际使用路径，仅对影响业务的fork差异做有界原输出对照，基础接口未明保留待核。",
+      "functions": [],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "R-S1 原算法与依赖身份"
+        }
+      ],
+      "requires_empty_or_stub": false
+    },
+    {
+      "id": "BIZ-30",
+      "modules": [
+        "M17"
+      ],
+      "title": "全软件跨模块联合验收",
+      "classification": "joint_validation_open",
+      "finding": "各叶函数、模块源码关联和局部场景通过均不足以证明全游戏完成；本轮只重统计和识别证据边界。",
+      "chain": "混合编辑 → 墙/屋顶/楼梯/装饰/地形/动物 → 完整History/磁盘 → 新进程/卸载重入",
+      "next_step": "按当前有效范围逐真实链验收；性能/长稳、真实OS输入按既有暂缓决定单列，不额外塞进本次函数统计分母。",
+      "functions": [],
+      "references": [
+        {
+          "path": "tiny-glade/reports/business/2026-10-23-module-recovery/STATUS.md",
+          "anchor": "M17"
+        }
+      ],
+      "requires_empty_or_stub": false
+    }
+  ],
+  "module_review_boundaries": [
+    {
+      "module": "M01",
+      "boundary": "toolbar/MEI：原桶序和键盘/剪贴板入口有具体差异；普通新建/窗口/设置有局部通过；547项原证不足记录不能当全原版等价。"
+    },
+    {
+      "module": "M02",
+      "boundary": "地形：13项非通名定义含5项已跨模块/同文件定位；最终跨进程画面和运行态依赖仍待核，不把原 MouseActivityTimer::new 算入机械清理后的业务分母。"
+    },
+    {
+      "module": "M03",
+      "boundary": "路径：正式输入父链缺接线，九回调/命令字段未闭合；DrawState全256³局部差分与7项局部测试已有，不从零重复。"
+    },
+    {
+      "module": "M04",
+      "boundary": "花园：真实输入/History/新进程/GPU mask已有旧receipt；最终drawable、像素、音频及Reload/资源基线仍待当前验收。"
+    },
+    {
+      "module": "M05",
+      "boundary": "水/谷地边界：插件和动态GPU子链已有；实际App末端无完整通过、有效字段/界外输入/声音/边界生命周期待核。"
+    },
+    {
+      "module": "M06",
+      "boundary": "墙建筑：原两个ret和原失败分支已排除假缺口；完整保存后Tree::Place首项变更、ID碰撞删除及异常资源释放仍待闭合。"
+    },
+    {
+      "module": "M07",
+      "boundary": "屋顶：形状/方向/长度交互执行端有真实空体；已有setter、几何/碰撞子链不能替代生产入口。"
+    },
+    {
+      "module": "M08",
+      "boundary": "楼梯/平台/扶手：主装配、平台、曲线预处理/支撑柱仍明确未恢复；插值/结构图/碰撞叶已有，不用draw存在冒充上游。"
+    },
+    {
+      "module": "M09",
+      "boundary": "装饰：真实注册父树/flush、完整Info/碰撞双表及最终删除重入继续审；不把已补恢复和重定位重列为空实现。"
+    },
+    {
+      "module": "M10",
+      "boundary": "颜色：部分真实菜单/同GPU owner及History已测，逐对象完整交互/取消/保存仍待证，不能把全部色菜单判为未实现。"
+    },
+    {
+      "module": "M11",
+      "boundary": "clutter：真实窗口/屋顶交线/鸟巢子链已有；哈希、其它几何族与正式父链完整场景合同需进一步原证。"
+    },
+    {
+      "module": "M12",
+      "boundary": "ivy：原9系统tuple与已有grow/prune源码需连到真实建筑变化、叶片/音频和删除生命周期；函数有体不算完成。"
+    },
+    {
+      "module": "M13",
+      "boundary": "树工具：同一TreeStorage的放置/移动/弯曲/隐藏、历史、渲染及保存卸载联合证据待逐链核对。"
+    },
+    {
+      "module": "M14",
+      "boundary": "森林：预放树转换、prefab、动画、地形变化和重载认领/释放需与树工具共同核对，不复用旧覆盖率作验收。"
+    },
+    {
+      "module": "M15",
+      "boundary": "小动物：鱼实体写面/状态2消费、羊鸭反馈、蝴蝶未知组件等需原证；逐物种记录，不能把历史已修近似一并重列。"
+    },
+    {
+      "module": "M16",
+      "boundary": "菜单/主题/引导：普通菜单/设置现有证据逐消费者复核，Daily暂缓和用户删除项独立排除；调试辅助不充业务算法分母。"
+    },
+    {
+      "module": "SHARED",
+      "boundary": "全部共享基础/渲染/宿主：按定义归属和原fork合同审；97结构模块中无业务定义者保留归属未决或依赖复用，不能算已恢复。"
+    },
+    {
+      "module": "M17",
+      "boundary": "联合验收：无独立函数分母；没有一条统计比例可替代全游戏真实链和跨进程/卸载验收。"
+    }
+  ]
+}

@@ -69,6 +69,10 @@ pub fn create_or_restore_decorator_backup<C: Send + Sync + 'static>(
 ) {
     // 原先置state=0；中途失败不会重试旧请求，也不会执行帧尾reset。
     let state = std::mem::take(&mut backup.state);
+    if std::env::var_os("TG_M6_DECORATOR_TRACE").is_some() {
+        eprintln!("M6_BACKUP state={state} created={} reset={} pending={} addresses={:?}", backup.created, backup.reset_after, deferred.pending,
+            archivist.all_storages().map(|(address, _)| address).collect::<Vec<_>>());
+    }
     if state == 1 {
         for (address, _) in archivist.all_storages() {
             // 原先创建目标备份桶，再读活桶并unwrap，失败顺序必须保留。

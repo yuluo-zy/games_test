@@ -216,8 +216,8 @@ mod tests {
         let mut schedule = Schedule::default();
         schedule.add_systems(
             (
-                ui_move_freehand_walls,
-                ui_edit_freehand_walls,
+                ui_move_freehand_walls::<MaybePendingSnapshotId>,
+                ui_edit_freehand_walls::<MaybePendingSnapshotId>,
                 publish,
                 decorator_on_move_shape,
                 crate::decorator_on_freehand_wall_edited::decorator_on_freehand_wall_edited,

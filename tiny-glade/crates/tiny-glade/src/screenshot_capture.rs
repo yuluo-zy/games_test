@@ -92,6 +92,119 @@ struct Requests {
     active: Vec<Request>,
     writers: Vec<JoinHandle<()>>,
     closing: bool,
+    #[cfg(feature = "surface-compare-test")]
+    raw_stages: Option<parking_lot::Mutex<Vec<RawStage>>>,
+}
+
+#[cfg(feature = "surface-compare-test")]
+struct RawStage {
+    role: &'static str,
+    source: RgTexture,
+    owner: ManagedBuffer,
+    logical: rhapsody::rg::ResourceHandle,
+    bytes: u64,
+    receipt_frame: Option<u64>,
+}
+
+/// Exact native-format diagnostics of one submitted frame. These are separate
+/// from the original screenshot conversion and never supply gameplay pixels.
+#[cfg(feature = "surface-compare-test")]
+pub struct RawStageBytes {
+    pub role: &'static str,
+    pub extent: [u32; 2],
+    pub format: u32,
+    pub aspect: u32,
+    pub bytes: Vec<u8>,
+}
+
+#[cfg(feature = "surface-compare-test")]
+pub fn arm_raw_stages(world: &mut World) -> rhapsody::Result<()> {
+    let mut owner = world.get_resource_mut::<Requests>().ok_or_else(missing_owner)?;
+    if owner.closing || owner.raw_stages.is_some() {
+        return Err(rhapsody::Error::invalid_usage("raw frame observation is already armed or closing"));
+    }
+    owner.raw_stages = Some(parking_lot::Mutex::new(Vec::new()));
+    Ok(())
+}
+
+#[cfg(feature = "surface-compare-test")]
+pub fn raw_stages_armed(world: &World) -> bool {
+    world.get_resource::<Requests>().is_some_and(|owner| owner.raw_stages.is_some())
+}
+
+/// Declare the copy at its actual producer boundary, before a later pass can
+/// mutate or alias this transient source. The normal graph has no extra work.
+#[cfg(feature = "surface-compare-test")]
+pub fn record_raw_stage(
+    frame: &mut CoreGraphFrame<'_>, world: &World,
+    role: &'static str, source: RgTexture,
+) -> rhapsody::Result<()> {
+    use rhapsody::rg::AccessRange;
+    let Some(requests) = world.get_resource::<Requests>() else { return Ok(()); };
+    let Some(stages) = &requests.raw_stages else { return Ok(()); };
+    let mut stages = stages.lock();
+    let aspect = if source.desc.format == ash::vk::Format::D32_SFLOAT_S8_UINT.as_raw() as u32 {
+        ash::vk::ImageAspectFlags::DEPTH
+    } else { ash::vk::ImageAspectFlags::COLOR };
+    let extent = source.desc.extent_2d();
+    let bytes = rhapsody::rg::test_image_copy::raw_byte_count(
+        ash::vk::Format::from_raw(source.desc.format as i32), extent, aspect)?;
+    if stages.len() >= 16 || stages.iter().any(|stage| stage.role == role)
+        || stages.iter().map(|stage| stage.bytes).sum::<u64>() + bytes > 64 * 1024 * 1024
+    {
+        return Err(rhapsody::Error::invalid_usage("raw frame observation exceeds its unique-stage/64 MiB bound"));
+    }
+    let owner = frame.hosts().buffers.graphics_device().create_buffer(
+        &rhapsody::resource::BufferDesc::new_gpu_to_cpu(bytes, ash::vk::BufferUsageFlags::TRANSFER_DST),
+        role, (),
+    )?;
+    let logical = frame.import_native_buffer(owner.shared(), 0)?;
+    frame.with_graph(|graph| {
+        let src = graph.resource_handle(source.resource)?;
+        let mut pass = graph.add_pass(format!("{role} raw capture"));
+        pass.on_queue(rhapsody::device::QueueClass::Graphics);
+        pass.add_resource_access_range(src, 0x25, 0, AccessRange::Texture {
+            aspect_mask: aspect.as_raw(), base_mip_level: 0, level_count: 1,
+            base_array_layer: 0, layer_count: 1,
+        })?;
+        pass.add_resource_access_range(logical, 0x34, 0, AccessRange::Buffer { offset: 0, size: bytes })?;
+        pass.render_with_result_context(move |ctx| {
+            rhapsody::rg::test_image_copy::copy_image_to_buffer(&ctx, src, logical, aspect)
+        });
+        graph.export(logical, 0x26)?;
+        Ok(())
+    })?;
+    stages.push(RawStage { role, source, owner, logical, bytes, receipt_frame: None });
+    Ok(())
+}
+
+#[cfg(feature = "surface-compare-test")]
+pub fn take_raw_stages(
+    world: &mut World, bridge: &mut crate::render_bridge::CoreRenderBridge,
+) -> rhapsody::Result<Vec<RawStageBytes>> {
+    let stages = world.get_resource_mut::<Requests>().ok_or_else(missing_owner)?
+        .raw_stages.take().ok_or_else(|| rhapsody::Error::invalid_usage("no raw frame observation was armed"))?
+        .into_inner();
+    if stages.is_empty() {
+        return Err(rhapsody::Error::invalid_usage("raw frame observation has no producer captures"));
+    }
+    let completed_frame = stages[0].receipt_frame.ok_or_else(||
+        rhapsody::Error::invalid_usage("raw frame has no confirmed submitted owner"))?;
+    if stages.iter().any(|stage| stage.receipt_frame != Some(completed_frame)) {
+        return Err(rhapsody::Error::invalid_usage("raw stages do not share one confirmed submitted frame"));
+    }
+    bridge.with_session(|session| session.wait_frame(completed_frame, 120_000_000_000))?;
+    let mut result = Vec::with_capacity(stages.len());
+    for stage in stages {
+        let mut bytes = vec![0; stage.bytes as usize];
+        stage.owner.read_bytes(0, &mut bytes)?;
+        result.push(RawStageBytes { role: stage.role, extent: stage.source.desc.extent_2d(),
+            format: stage.source.desc.format,
+            aspect: if stage.source.desc.format == ash::vk::Format::D32_SFLOAT_S8_UINT.as_raw() as u32 {
+                ash::vk::ImageAspectFlags::DEPTH.as_raw()
+            } else { ash::vk::ImageAspectFlags::COLOR.as_raw() }, bytes });
+    }
+    Ok(result)
 }
 
 impl Drop for Requests {
@@ -772,6 +885,25 @@ pub fn submitted(
         .remove_resource::<Requests>()
         .ok_or_else(missing_owner)?;
     let result = (|| {
+        #[cfg(feature = "surface-compare-test")]
+        for stage in owner.raw_stages.iter_mut().flat_map(|stages| stages.get_mut()) {
+            if stage.receipt_frame.is_some() || stage.logical.graph_id() != graph_id { continue; }
+            if receipt.receipts.is_empty() || !u16::try_from(stage.logical.raw())
+                .is_ok_and(|index| receipt.snapshot.exports.contains(&index))
+            {
+                return Err(rhapsody::Error::invalid_usage("raw stage has no successful exported submission"));
+            }
+            let actual = receipt.snapshot.physical_mapping.iter()
+                .find(|mapping| mapping.logical == stage.logical.raw())
+                .and_then(|mapping| mapping.token)
+                .and_then(|token| bridge.with_session(|session| session.backend.resource_clone(token)));
+            if !matches!(actual, Some(rhapsody::rg::GpuResource::Buffer(actual))
+                if Arc::ptr_eq(&actual, &stage.owner.shared()))
+            {
+                return Err(rhapsody::Error::invalid_usage("raw stage receipt belongs to a different owner"));
+            }
+            stage.receipt_frame = Some(receipt.frame);
+        }
         for request in &mut owner.active {
             let (logical, submitted) = match &request.capture {
                 Capture::Texture {
@@ -843,6 +975,10 @@ pub fn submitted(
 /// Reset only declarations from that graph; preserve older submitted requests.
 pub fn cancel_unsubmitted(world: &mut World, graph_id: rhapsody::rg::GraphId) {
     if let Some(mut owner) = world.get_resource_mut::<Requests>() {
+        #[cfg(feature = "surface-compare-test")]
+        if let Some(stages) = &mut owner.raw_stages {
+            stages.get_mut().retain(|stage| stage.logical.graph_id() != graph_id || stage.receipt_frame.is_some());
+        }
         for request in &mut owner.active {
             let reset = match &request.capture {
                 Capture::Texture {

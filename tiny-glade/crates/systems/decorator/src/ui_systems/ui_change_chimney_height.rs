@@ -216,8 +216,9 @@ mod tests {
         assert_eq!(actual.f, 2.0);
         assert_eq!(actual.smoke, 1);
         let archive = world.resource::<LiveDecoratorArchivist>();
-        assert_eq!(archive.collision_a[&id.0].0.translation, Vec3::new(3.0, 4.0, 5.0));
-        assert_eq!(archive.collision_b[&id.0].0.translation, Vec3::new(-2.0, 1.0, 8.0));
+        // 碰撞体保存的是外部位姿与网格局部位姿组合后的世界位姿。
+        assert_eq!(archive.collision_a[&id.0].0.translation, Vec3::new(3.0, 5.0, 5.0));
+        assert_eq!(archive.collision_b[&id.0].0.translation, Vec3::new(-1.0, 1.0, 8.0));
         assert!(Arc::ptr_eq(&archive.collision_a[&id.0].1.data, &mesh_a));
         assert!(Arc::ptr_eq(&archive.collision_b[&id.0].1.data, &mesh_b));
         let history = world.resource::<DeferredDecoratorEditHistory>();

@@ -5,6 +5,10 @@ shards. SQLite is an extraction/checkpoint manifest, not a graph-backend fallbac
 The original binaries, PDB exports, existing evidence and shared Ghidra/ReVa
 databases are preserved. This tool does not move production Rust code.
 
+For another computer, use the [portable setup and transfer guide](../../../../tools/code-map/README.md).
+It includes the launcher, hashed dependency lock, complete local evidence bundles,
+checkpoint rebuild and offline database dump/load. Cloning Git alone omits the data.
+
 Execution results and acceptance limits:
 [`2026-10-28 report`](../../evidence/code-map-2026-10-28/REPORT.md).
 Latest [query optimization results](../../evidence/code-map-2026-10-28/OPTIMIZATION.md)
@@ -12,6 +16,14 @@ supersede the original hot-query timings. End-to-end recovery efficiency and
 whole-software semantic review remain unverified.
 
 ## Current scope
+
+- Raw extraction remains complete. The business graph applies the global
+  `graph_filter.py` projection: mechanical/serde/trait helpers and unresolved
+  new/get/insert/remove name associations are omitted across all modules/versions.
+  Mixed physical aliases retain the real business symbol. Raw byte evidence and
+  the catalog remain available outside Neo4j. Existing stores can be migrated by
+  `prune-mechanical --apply`; deletion publishes a new snapshot and invalidates
+  the old snapshots instead of silently changing a published identity.
 
 - B: union of retained PDB procedures, identity-bound Ghidra functions and PE
   unwind coverage ranges. Unwind entries are not automatically functions.
@@ -29,14 +41,16 @@ whole-software semantic review remain unverified.
 
 ## Local layout and requirements
 
-All runtime files live under `/Users/yuluo/Desktop/game/tools/code-map-runtime/`,
+Runtime files default to `<workspace>/tools/code-map-runtime/`,
 already ignored by the workspace. `inventory.json` binds the inputs;
 `catalog.sqlite3` stores intervals, aliases and checkpoints; `assembly/*.zip`
 contains independently hashed records. Neo4j data, transaction logs and local
 credentials live in the same runtime directory. Credentials are mode 0600.
 
-Python 3.11+, local LLVM at `/opt/homebrew/opt/llvm`, and Java 21 are required.
-The local Java path is pinned in `graph.py`; global Java settings are unchanged.
+Python 3.11.8+, LLVM (X86 shared library and objdump), and Java 21 are required.
+Host paths are configurable in `tools/code-map.local.json` or `CODEMAP_*`
+environment variables; global Java settings are unchanged. The PE/PDB collector
+is vendored with its original hash, so no personal skill directory is required.
 Only `serve` needs `mcp==1.30.0`; the existing MCP project interpreter already has
 it. Core commands use the Python standard library.
 

@@ -5,7 +5,7 @@
 //! half-timber colour owner, archives/migrates decorators, and parks the
 //! history payload in `PendingWallHistory::merge_walls` for
 //! `history_record_merge_walls`.
-use bevy_ecs::{prelude::*, system::SystemParam};
+use bevy_ecs::prelude::*;
 use glam::{Vec2, Vec3};
 use utils::curve::Curve2 as InputCurve;
 
@@ -19,34 +19,19 @@ use crate::{
         terrain_height::TerrainHeightsData,
         walls::{
             InnerWalls, WallId, WallState,
-            decorator_archivist::LiveDecoratorArchivist,
-            decorator_storage::{Decorators, DecoratorStorage},
+            decorator_archivist::{DecoratorArchivalResources, LiveDecoratorArchivist},
+            decorator_storage::{DecoratorStorage, DecoratorStorageAddr},
             publication_fields::WallShapeSnapshot,
             publication_source::RawWallPublicationSource,
         },
     },
     systems::{
         audio::PlayWallUiSound,
-        collision::world::RaycastWorld,
         wall::deferred_wall_history::{
             PendingAdjustHeight, PendingMergeWalls, PendingWallHistory,
         },
     },
 };
-
-/// The original's second parameter is one derived SystemParam struct holding
-/// the raycast world and the decorator collider maps; both are only forwarded to
-/// `archive_current_decorators_in_storage` (collider payload rebuild, a
-/// registered gap of the local archivist). `DecoratorPhysicsColliders` exists
-/// only with `native-physics`.
-#[derive(SystemParam)]
-pub struct ArchiveCollisionParams<'w> {
-    #[allow(dead_code)]
-    raycast: Res<'w, RaycastWorld>,
-    #[cfg(feature = "native-physics")]
-    #[allow(dead_code)]
-    colliders: Res<'w, crate::resources::walls::decorator_collision::DecoratorPhysicsColliders>,
-}
 
 /// Original `DEV_OVERRIDE_IS_DEMO_MODE` (0x143634d90; `tiny_glade::main` always
 /// writes 0). Feeds the merged wall's metadata byte +0x69 (`demo ? 0 : 5`).
@@ -71,17 +56,6 @@ pub struct MergeWallsCmd {
     pub reverse_a: bool,
     /// Event +0x19: keep wall B's point order; false reverses it.
     pub keep_b_direction: bool,
-}
-
-/// `DecoratorArchivist::archive_current_decorators_in_storage` 0x1413e7230 for
-/// a wall address: archive the wall's current bucket, or an empty bucket when
-/// the storage has none. (Collider payload rebuild is the archivist's
-/// registered collision-domain gap.)
-fn archive_wall(archivist: &mut LiveDecoratorArchivist, storage: &DecoratorStorage, wall: WallId) {
-    match storage.per_wall.get(&wall) {
-        Some(decorators) => archivist.archive_storage_decorators(0, decorators, Some(wall)),
-        None => archivist.archive_storage_decorators(0, &Decorators::default(), Some(wall)),
-    }
 }
 
 /// Points of `state` as input vectors, reversed when `reverse`.
@@ -137,7 +111,7 @@ fn merged_state(curve: Curve2, b: &WallState) -> WallState {
 /// half-timber colour writer, half-timber colours.
 pub fn merge_walls(
     terrain: Res<TerrainHeightsData>,
-    _collision: ArchiveCollisionParams,
+    collision: DecoratorArchivalResources,
     mut archivist: ResMut<LiveDecoratorArchivist>,
     mut storage: ResMut<DecoratorStorage>,
     mut pending_wall_history: ResMut<PendingWallHistory>,
@@ -203,11 +177,18 @@ pub fn merge_walls(
             wall_color_cmds.write(SetWallColorIdCmd::new(merged_id, merged_wall_color, 0));
         }
 
-        archive_wall(&mut archivist, &storage, ev.wall_a);
+        // 原 1413e7230 同时归档桶和两张活碰撞表；按原调用顺序逐墙处理。
+        archivist.archive_current_decorators_at_with_resources(
+            DecoratorStorageAddr::Wall(ev.wall_a), &storage, &collision, "merge a",
+        );
         archivist.decorator_cull_allow_wall(ev.wall_a, &storage);
-        archive_wall(&mut archivist, &storage, ev.wall_b);
+        archivist.archive_current_decorators_at_with_resources(
+            DecoratorStorageAddr::Wall(ev.wall_b), &storage, &collision, "merge b",
+        );
         archivist.decorator_cull_allow_wall(ev.wall_b, &storage);
-        archive_wall(&mut archivist, &storage, merged_id);
+        archivist.archive_current_decorators_at_with_resources(
+            DecoratorStorageAddr::Wall(merged_id), &storage, &collision, "merge target",
+        );
         storage.on_walls_merged(ev.wall_a, ev.wall_b, merged_id);
 
         assert!(
@@ -256,6 +237,7 @@ mod tests {
             history_recording::{RecordWallHistory, record_wall_history},
             shapes::to_authority_curve,
         },
+        systems::collision::world::RaycastWorld,
     };
 
     fn state(points: &[(f32, f32)], height: f32, style: u8, flag65: u8) -> WallState {
@@ -319,6 +301,43 @@ mod tests {
 
     fn pts(world: &World, id: WallId) -> Vec<[f32; 2]> {
         world.resource::<InnerWalls>().get_unwrapped(id).source().curve.points.clone()
+    }
+
+    #[cfg(feature = "native-physics")]
+    #[test]
+    fn merge_archives_both_live_colliders_before_relocating_decorators() {
+        use crate::resources::walls::decorator_collision::DecoratorPhysicsColliders;
+        use crate::systems::collision::world::{RaycastGeoSource, RaycastMeshData, upsert_collider};
+        use glam::Quat;
+        use std::sync::Arc;
+
+        let mut f = fixture(
+            state(&[(0., 0.), (2., 0.)], 3.9, 0, 0),
+            state(&[(2., 0.), (4., 0.)], 3.9, 0, 0),
+        );
+        let id = DecoratorId(71);
+        let address = DecoratorStorageAddr::Wall(f.a);
+        {
+            let mut storage = f.world.resource_mut::<DecoratorStorage>();
+            storage.get_or_insert_default(address).insert(id, DecoratorInfo {
+                decorator_id: id.0, dst_wall: f.a.0, ..Default::default()
+            });
+            storage.decorator_to_storage.insert(id, address);
+        }
+        let mut raycast = f.world.remove_resource::<RaycastWorld>().unwrap();
+        let mut maps = f.world.remove_resource::<DecoratorPhysicsColliders>().unwrap();
+        let first = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::Y));
+        let second = Arc::new(RaycastMeshData::new_cuboid_at(Vec3::splat(2.0), Vec3::X));
+        upsert_collider(&mut raycast, &mut maps.first, id, RaycastGeoSource::decorator(id, address), first.clone(), Vec3::ZERO, Quat::IDENTITY);
+        upsert_collider(&mut raycast, &mut maps.second, id, RaycastGeoSource::decorator_interaction(id, address, 0), second.clone(), Vec3::Y, Quat::IDENTITY);
+        f.world.insert_resource(raycast);
+        f.world.insert_resource(maps);
+        let command = cmd(&f, 3.9, false, true);
+        run(&mut f, &[command]);
+        let archive = f.world.resource::<LiveDecoratorArchivist>();
+        assert!(Arc::ptr_eq(&archive.collision_a[&id.0].1.data, &first));
+        assert!(Arc::ptr_eq(&archive.collision_b[&id.0].1.data, &second));
+        assert_eq!(f.world.resource::<DecoratorStorage>().lookup_storage(id), Some(DecoratorStorageAddr::Wall(WallId(3))));
     }
 
     #[test]

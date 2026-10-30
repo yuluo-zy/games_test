@@ -1,5 +1,55 @@
 # 业务流恢复台账
 
+### 2026-10-31 M6 延续验证（进行中）
+
+删除联合v2最新结果：`/private/tmp/m6-delete-unload-v2-20261031.log` 实际运行80.14秒失败，已越过修正的装饰放置观察时点，随后`place_pillars.rs:454`接到引用缺失公开墙的事件并panic。缺墙原失败合同保持，下一步按changed／rebrick／createRoof分别追生产者与删除调度，不改skip。已交构造专岗继续定位。当前约80%工程估计不变，不将删除及最终卸载列作通过。
+
+
+当前M6按完整业务链工程估计约80%（75%–85%区间），不是原函数等价率、清单候选覆盖率或完整验收证明。墙色恢复及装饰放置／调色／历史／保存／新进程已取得上述实际链通过；删除／最终卸载联合、部分复杂原差分、清单剩余语义审核仍未收口。最新删除测试35.73秒停在复制的旧“按下后全帧权威预览”断言，同原版set42回滚语义冲突，正在按已证阶段probe修观察时点；尚未抵达实际删除／卸载，不算通过。
+
+
+装饰生产完整链最新通过：`/private/tmp/m6-decorator-commit-20261031.log` 父1/1（76.29秒）及child1/1（27.36秒）。包含合法输入与真实碰撞拾取、set25预览、释放提交完整Info/ID递增/d2s、下一帧稳定、放置Undo/Redo、颜色真实菜单、完整历史及真实磁盘→新进程恢复。保留存档 `/private/tmp/m6-retained-20261030/decorator-color/run-h8PdTl`。此前预览结束断言失败不算生产拒绝；原证确认set42回滚未提交预览，已改为阶段检查和释放后强断言。删除/完整卸载另由`/private/tmp/m6-delete-unload-20261031.log`集中运行，尚无最终结果，不扩大本项通过范围。
+
+
+- 预置树跨同session Reload和切换session的专用回归2/2通过，日志`/private/tmp/m6-preplaced-epoch-cases-20261031.log`，与真实保留存档child完整历史恢复通过相互补充。
+- 装饰真实App v2失败28.29秒，按下后全帧权威桶为空，未复现旧ID冲突。开trace复跑31.46秒明确记录phase3 Accepted、backup创建且地址Wall30，随后桶恢复。中央独立核原140817a40的145–155段：模式变化或mode!=9/sub!=1即走归档恢复，因此按下后的预览不是永久权威结果；原测试的检查时机错误。
+- 当前测试新增set25后/set26前实际预览检查，再要求释放后的完整Info、ID递增、d2s、录制历史、下一帧及Undo/Redo，不通过删除断言冒称提交。最新`/private/tmp/m6-decorator-commit-20261031.log`正在构建/运行，尚无验收结论。构建曾被另一工作域CritterRng去锁API未整合阻断，owner已对齐；未改其随机算法。
+
+### 2026-10-30 三专岗原证审查与生产修复（进行中）
+
+保存恢复根因与修复实测：v4显示Loaded阶段仍有281条首项编辑，随后旧预置树请求waited101、readback_frame1执行插入并导致完整历史失败。延迟工作现绑定发起时ActiveSession及Game状态changed tick；同session重入也会使旧等待失效，新请求仍按原路转换。保留存档`/private/tmp/m6-retained-20261030/wall-color/run-NZoce9`单独child复验1/1通过（30.83秒，`/private/tmp/m6-color-child-epoch-v1-20261030.log`），覆盖原失败存档的完整typed ledger、颜色GPU和后续Undo/Redo。system-tree现有库19/19通过；不是完整父子最新同轮通过，原父链与旧失败保留。新增专门epoch回归仍由owner完善。当前继续实际装饰创建/颜色/历史/存档场景`/private/tmp/m6-decorator-fullchain-20261030.log`，未宣布M6完成。
+
+
+后续增量：装饰恢复父函数按原模式／事件守卫接入真实set42，归档恢复保留live shape、mesh/source与最终位姿；碰撞upsert的已有对象快速路径也比较归档shape，避免同位姿却保留错误形状。restore组5/5通过（`/private/tmp/m6-restore-collision-v2-20261030.log`），随后加强的同mesh/source/位姿但不同shape恢复用例1/1通过（`/private/tmp/m6-restore-shape-20261030.log`）。源码首轮6个类型／夹具编译错误保留，不把首次未构建算通过。新增ID碰撞体最终删除消费者及完整App生命周期仍在追踪。
+
+墙色完整v3再次失败，阶段证明来源／目的存档及加载完成时第0项均有281条编辑，最终运行态却缺首Tree::Place；范围缩到加载后变更。v2未执行业务，因共享验证helper引用不存在的GpuResource::Texture编译失败（已由其owner对齐Image）。v4启用预置树阶段诊断和 `/private/tmp/m6-retained-20261030` 留存，正在运行；不宣称生产原因已确定或恢复通过。
+
+
+本轮按用户授权启用三个 Terra 专岗，中央独立 review、串行 Cargo／真实 Vulkan 验证。M6 尚未完成，仍先完成 M6 再进入 M7/M8。
+
+- 合并迁移装饰前漏掉两张活碰撞表归档，已改复用 canonical DecoratorArchivalResources，保持原逐墙归档次序。显式 native-physics 合并组12/12通过，日志 `/private/tmp/m6-merge-archive-v2-20261030.log`；完整 App 合并／UndoRedo／保存恢复尚待验。首轮新夹具误用索引导致 E0608，已改 canonical lookup_storage API，失败日志保留。
+- 正式 App 缺 PlayLineAcrossWall 事件轮换；补最早 startup_event_runtime 和 WallSystems 注册，避免兼容 World 已初始化 Events 后跳过维护注册。真实 App 三帧维护回归1/1通过，日志 `/private/tmp/m6-merge-event-maintenance-20261030.log`。
+- 半木通用查询误返回公共木槽，现按 HalfTimber 键返回独立 owner。最新 owner 组8/8通过，日志 `/private/tmp/m6-owner-audit-v2-20261030.log`；目前未发现生产调用该查询，不能将它计作新几何恢复。
+- 清单3项空／部分占位经原证复核：verify_integrity 和 debug_force_update_arches 在 B 为 ret；adjust_wall_height_impl 非0/1模式是原版 not yet implemented panic。明确保留原失败与先查模式后查墙的顺序，失败顺序1/1通过；不创造原版不存在的业务分支。
+- 本机严格真实 Vulkan 墙色完整链已运行159.72秒失败：child完整typed ledger的entry0缺父Tree::Place(index100143)。日志 `/private/tmp/m6-color-fullchain-20261030.log`。当前首差是缺业务项，不能通过只比较末项、跳过树或放宽数值断言修复。保存恢复专岗继续沿parse／migration／snapshot应用及后续mutation核原证。
+- Neo4j服务正常但早期查询遭遇不完整快照；随后当前Publication恢复，新快照5ac3dab66b4ac8c04a89025c，已通知专岗，未重建或绕过数据库。
+
+
+### 2026-10-30 M6 增量复验（未完成）
+
+针对最新工作区，`system-wall-constructor` 的 `gpu_output::` 8 项通过，覆盖已有分配槽及半木重发布；它不证明整条渲染链。烟囱拖动测试先因装饰移动测试调度缺少 `MaybePendingSnapshotId` 类型参数无法编译；明确使用该夹具实际 History 类型后，烟囱拖动／历史／双碰撞归档及自由墙 UI→发布→装饰消费者各 1 项通过。碰撞回归夹具原期望忽略了网格局部位姿，已按 `upsert_collider` 的 external × local 合同修正，保留首轮失败日志。日志分别为 `/private/tmp/m6-owner-recheck-20261030.log`、`/private/tmp/m6-chimney-recheck-v3-20261030.log`、`/private/tmp/m6-chimney-recheck-v4-20261030.log` 和 `/private/tmp/m6-freehand-decorator-recheck-20261030.log`。
+
+此前台账中的 `tmp-merge` 存档和日志在当前工作区未找到，历史加载首差仍待重新构造并验证。清单的 258 个待审函数是名称关联队列，必须结合 B 原证和实际生产调用判断；M6 的完整算法、交互、保存和卸载尚未完成。
+
+
+### 2026-10-30 M2 地形业务函数清单
+
+按与 M6 相同的函数组盘点逻辑整理当前 M2：直接 `systems::terrain` 路径共 19 个原始函数组，其中 14 个为业务相关项、5 个为机械派生实现。14 项中 8 项有唯一非空体候选；5 个词法未匹配项已逐个核对源码，3 个是 `TerrainSystems` 同一文件 trait impl，2 个已迁移到共享 render 回读文件，源码位置均已定位。`MouseActivityTimer::new` 仍属通用构造语义待证项，当前生产使用 `Default` 路径且三个字段的真实消费者尚未定位。完整分类、原路径、B ID、候选源码和跨模块边界见[M2 地形业务函数清单](M02-BUSINESS-FUNCTIONS-2026-10-30.md)及[机器可读 JSON](M02-BUSINESS-FUNCTIONS-2026-10-30.json)，生成入口为[`audit_m02_business_functions.py`](../../../tools/audit_m02_business_functions.py)。本清单只完成直接 M2 路径的源码定位整理，不代表原版算法等价或整模块验收；地形资源、GPU pass、光标 Raycast、共享历史等仍须按清单列出的跨模块边界继续审计。
+
+### 2026-10-30 M6 业务函数待审计清单
+
+按当前源码重新扫描 M06 的 900 个函数组，已从名称关联中清除 **278 组机械名称**与 **46 组仅凭 new/get/insert/remove 同名的通用接口关联**，剩 **576 个候选业务函数组**：315 个有唯一非空体候选（54.7%），384 个存在唯一或同名候选（66.7%），**258 个仍需逐项确认原始语义和当前归属**（69 个多候选、189 个未匹配）。另有 3 个空体或部分占位记录。被过滤项保留原 B ID 和排除理由，不计业务关联；通用接口若要重新关联，须提供类型 owner 与原证，不能据其名称判为无业务。完整分类、原路径、B ID 与候选源码见[M06 待核业务函数清单](M06-BUSINESS-FUNCTIONS-2026-10-30.md)及[机器可读 JSON](M06-BUSINESS-FUNCTIONS-2026-10-30.json)，生成入口为[`audit_m06_business_functions.py`](../../../tools/audit_m06_business_functions.py)。这组数量是人工语义审计队列，不是原版函数等价率或 M6 验收结论；M6 仍按调用链口径估计约 75%，未完成。
+
 ### 2026-10-30 M6 用户要求停止推进并保存提交
 
 按用户最新指令停止业务推进及新增验证，保存当前源码和文档检查点。**M6仍未完成，约75%工程估计不变**，以下候选不能冒称已通过。

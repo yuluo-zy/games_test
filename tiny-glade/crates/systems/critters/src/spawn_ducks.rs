@@ -29,7 +29,7 @@ use country_core::systems::paths::PathRastersResources;
 use glam::Vec3;
 
 use crate::components::{Duck, DuckSpawnLocations, DuckState, Transform};
-use crate::duck::{CritterRng, DuckTrajectoryPlanner, Trajectory, TrajectoryPlan};
+use crate::duck::{DuckTrajectoryPlanner, Trajectory, TrajectoryPlan};
 use crate::sample::{golden_spiral, uniform_sample_circle, x0y};
 
 /// `DespawnDuckCmd`（spawn_ducks.rs PDB 命名实体）：撤销鸭子事件（critters_avoid_collisions 写）。
@@ -56,7 +56,6 @@ pub fn spawn_ducks(
     terrain: Res<TerrainHeightsData>,
     mut locations: ResMut<DuckSpawnLocations>,
     mut planner: ResMut<DuckTrajectoryPlanner>,
-    rng: Res<CritterRng>,
     mut commands: Commands,
     query: Query<(), With<Duck>>,
 ) {
@@ -80,7 +79,7 @@ pub fn spawn_ducks(
 
     // 候选：深水 > 0.99 + 未用 + 地形高度 <= 0。真实为 sorted_by
     // 稳定序（comparator closure U）；本重建按候选下标序（DIVERGE，见模块注）。
-    let mut rng_ctx = rng.0.lock().unwrap();
+    let DuckTrajectoryPlanner { rng: rng_ctx, plans } = &mut *planner;
     let mut picked: Option<Vec3> = None;
     for i in 0..locations.candidates.len() {
         let c = locations.candidates[i];
@@ -116,14 +115,14 @@ pub fn spawn_ducks(
     }
     // 随机圆偏移（O：uniform_f32 + uniform_sample_circle）。
     let u = rng_ctx.uniform_f32();
-    let circle = uniform_sample_circle(&mut rng_ctx, u);
+    let circle = uniform_sample_circle(rng_ctx, u);
     let plan = TrajectoryPlan {
         trajectories: vec![Trajectory { points, done: false }],
         offset: [circle.x, circle.y],
         key: 0,
         age: 0,
     };
-    planner.plans.push(plan);
+    plans.push(plan);
     let _ = &mut commands;
 }
 
@@ -135,12 +134,11 @@ pub fn despawn_ducks(
     water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     path_rasters: PathRastersResources,
     mut planner: ResMut<DuckTrajectoryPlanner>,
-    rng: Res<CritterRng>,
     mut commands: Commands,
     query: Query<(Entity, &Transform, &Duck, &DuckState)>,
 ) {
     let _ = &time;
-    let mut rng_ctx = rng.0.lock().unwrap();
+    let DuckTrajectoryPlanner { rng: rng_ctx, plans } = &mut *planner;
     let w = (*water).as_ref();
     for (entity, transform, duck, state) in &query {
         let b = state.to_byte();
@@ -173,7 +171,7 @@ pub fn despawn_ducks(
         if leave {
             // O：离场计划 = **1 点** Trajectory + uniform_f32 + uniform_sample_circle 偏移。
             let u = rng_ctx.uniform_f32();
-            let circle = uniform_sample_circle(&mut rng_ctx, u);
+            let circle = uniform_sample_circle(rng_ctx, u);
             let plan = TrajectoryPlan {
                 trajectories: vec![Trajectory {
                     points: vec![transform.translation],
@@ -183,7 +181,7 @@ pub fn despawn_ducks(
                 key: 0,
                 age: 0,
             };
-            planner.plans.push(plan);
+            plans.push(plan);
             commands.entity(entity).despawn();
         }
     }

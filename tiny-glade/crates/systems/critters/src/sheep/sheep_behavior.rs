@@ -116,11 +116,11 @@ pub fn update_sheep_goals(
     camera: Res<MainCamera>,
     cursor: Res<CursorTerrainRaycast>,
     water: Res<country_core::resources::world_raster_defs::WaterRaster>,
-    rng: Res<CritterRng>,
+    mut rng: ResMut<CritterRng>,
     mut query: Query<(&Transform, ComponentWrite<Sheep>, &SheepTerrainState, &mut SheepGoal)>,
 ) {
     let dt = time.delta;
-    let mut rng_ctx = rng.0.lock().unwrap();
+    let rng_ctx = &mut rng.0;
     let w = (*water).as_ref();
     for (transform, mut sheep, terrain_state, mut goal) in &mut query {
         let pos = transform.translation;

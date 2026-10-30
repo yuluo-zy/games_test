@@ -3,7 +3,7 @@ import hashlib
 from pathlib import Path
 from functools import lru_cache
 import zipfile
-from artifacts import RUNTIME, WORKSPACE, db, digest, load, read_blob
+from artifacts import RUNTIME, WORKSPACE, db, digest, load, read_blob, resolve_evidence
 from graph import Graph, bounded, query_tool as graph_query
 from validation import evidence_status
 
@@ -67,11 +67,11 @@ def query_tool(tool,args):
             for row in result['rows']:
                 for entity in row.get('nodes',[])+row.get('relations',[]):
                     evidence=entity.get('evidence')
-                    if evidence and evidence.startswith(str(WORKSPACE)):
+                    if evidence and resolve_evidence(evidence).is_relative_to(WORKSPACE):
                         paths[evidence]=entity.get('name','')
             excerpts=[]
             for name,hint in sorted(paths.items())[:20]:
-                path=Path(name).resolve()
+                path=resolve_evidence(name).resolve()
                 if not path.is_relative_to(WORKSPACE) or not path.is_file():continue
                 if path.suffix not in ('.md','.rs','.json','.c','.asm'):continue
                 if path.stat().st_size>2**20:continue

@@ -16,7 +16,7 @@ from artifacts import (RUNTIME, WORKSPACE, PROJECT, SCHEMA, atomic, baseline, ca
                        coverage, db, digest, load, module_for, read_blob, space)
 
 NEO = RUNTIME / 'neo4j-community-5.26.32'
-JAVA = Path('/Users/yuluo/Library/Java/JavaVirtualMachines/corretto-21.0.5/Contents/Home')
+from settings import JAVA, option
 ARCHIVE_SHA = 'd279ae6a9b38034280681a558b0cd222dce89f87cc3d9867f1f7bd28ef5ebc30'
 
 def runtime(action):
@@ -27,10 +27,16 @@ def runtime(action):
         cfg = RUNTIME/'connection.json'
         if cfg.exists():
             raise RuntimeError('Already configured; credentials are preserved')
+        java_version=subprocess.check_output([str(JAVA/'bin/java'),'-version'],stderr=subprocess.STDOUT,text=True)
+        if 'version "21.' not in java_version and 'version "21"' not in java_version:
+            raise ValueError('Use an independent Java 21 installation')
+        http_port=int(option('http_port',17474));bolt_port=int(option('bolt_port',17687))
+        if not (1024<=http_port<=65535 and 1024<=bolt_port<=65535 and http_port!=bolt_port):
+            raise ValueError('Invalid or conflicting local ports')
         password=secrets.token_urlsafe(32)
         fd=os.open(cfg,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
         with os.fdopen(fd,'w') as f:
-            json.dump({'url':'http://127.0.0.1:17474','user':'neo4j','password':password},f)
+            json.dump({'url':f'http://127.0.0.1:{http_port}','user':'neo4j','password':password},f)
         conf='''server.default_listen_address=127.0.0.1
 server.default_advertised_address=127.0.0.1
 server.bolt.enabled=true
@@ -47,13 +53,16 @@ db.transaction.timeout=10s
 db.tx_log.rotation.retention_policy=512M size
 db.tx_log.rotation.size=64M
 '''
+        conf=conf.replace(':17474',f':{http_port}').replace(':17687',f':{bolt_port}')
         (NEO/'conf/neo4j.conf').write_text(conf)
         p=subprocess.run([str(NEO/'bin/neo4j-admin'),'dbms','set-initial-password',password],env=env,capture_output=True,text=True)
         if p.returncode:raise RuntimeError('Initial password setup failed: '+p.stderr.replace(password,'[redacted]'))
         atomic(RUNTIME/'runtime-lock.json',{'neo4j':'5.26.32','archive_sha256':ARCHIVE_SHA,
                 'download':'https://dist.neo4j.org/neo4j-community-5.26.32-unix.tar.gz',
-                'java_home':str(JAVA),'java_version':subprocess.check_output([str(JAVA/'bin/java'),'-version'],stderr=subprocess.STDOUT,text=True)})
-        return {'configured':True,'url':'http://127.0.0.1:17474','credentials_file':str(cfg)}
+                'java_home':str(JAVA),'java_version':java_version})
+        return {'configured':True,'url':f'http://127.0.0.1:{http_port}','credentials_file':str(cfg)}
+    if action == 'console':
+        return {'exit_code':subprocess.call([str(NEO/'bin/neo4j'),'console'],env=env)}
     if action not in ('start','stop','status'):raise ValueError('Invalid lifecycle action')
     p=subprocess.run([str(NEO/'bin/neo4j'),action],env=env,capture_output=True,text=True,timeout=60)
     return {'exit_code':p.returncode,'stdout':p.stdout,'stderr':p.stderr}
@@ -107,6 +116,7 @@ class Graph:
             'CREATE INDEX entity_kind IF NOT EXISTS FOR (n:Entity) ON (n.snapshot,n.kind)',
             'CREATE INDEX entity_address IF NOT EXISTS FOR (n:Entity) ON (n.snapshot,n.version,n.rva)',
             'CREATE INDEX entity_key IF NOT EXISTS FOR (n:Entity) ON (n.snapshot,n.key)',
+            'CREATE INDEX entity_snapshot IF NOT EXISTS FOR (n:Entity) ON (n.snapshot)',
             'CREATE FULLTEXT INDEX entity_names IF NOT EXISTS FOR (n:Entity) ON EACH [n.name]']:
             self.query(text)
 
@@ -121,7 +131,7 @@ def scope_class(name,paths,policy):
     if paths:return 'project_source_attribution'
     return 'unknown'
 
-def entities(con,snapshot):
+def all_entities(con,snapshot):
     inv=load(RUNTIME/'inventory.json')
     policy=load(PROJECT/'tracking/dependency-exclusions.json')
     for v in 'ABC':
@@ -176,7 +186,7 @@ def entities(con,snapshot):
     if semantic.exists():
         for node in load(semantic)['nodes']:yield node
 
-def links(con):
+def all_links(con):
     def link(a,b,kind,evidence,status='observed',**kw):
         return dict(source=a,target=b,kind=kind,evidence=evidence,status=status,**kw)
     for row in con.execute('SELECT * FROM functions'):
@@ -215,6 +225,16 @@ def links(con):
     if semantic.exists():
         for edge in load(semantic)['edges']:yield edge
 
+def entities(con,snapshot):
+    from graph_filter import Projection
+    policy=Projection(con)
+    yield from (row for row in all_entities(con,snapshot) if policy.allows_node(row))
+
+def links(con):
+    from graph_filter import Projection
+    policy=Projection(con)
+    yield from (row for row in all_links(con) if policy.allows_edge(row))
+
 def batches(iterator,size=1500):
     batch=[]
     for row in iterator:
@@ -222,12 +242,13 @@ def batches(iterator,size=1500):
         if len(batch)>=size:yield batch;batch=[]
     if batch:yield batch
 
-def import_graph():
-    space()
-    started=time.monotonic();con=db(True);g=Graph();g.schema()
+def snapshot_identity(con):
     inventory=load(RUNTIME/'inventory.json')
     # Source + completed assembly catalog + semantic evidence define an immutable graph snapshot.
     h=hashlib.sha256(canonical(inventory['inputs']))
+    # Generated evidence paths differ after relocation; do not reuse an old ID
+    # for different graph properties. A native dump retains the original ID.
+    h.update(canonical({'workspace':str(WORKSPACE),'runtime':str(RUNTIME)}))
     for row in con.execute('SELECT version,start,end,sha FROM assemblies ORDER BY version,start,end'):
         h.update(canonical(list(row)))
     # Bind all normalized graph inputs. Read API or index-only edits do not
@@ -238,12 +259,18 @@ def import_graph():
         h.update(table.encode())
         for row in con.execute(f'SELECT * FROM {table} ORDER BY {order}'):
             h.update(canonical(list(row)))
-    h.update(inspect.getsource(entities).encode());h.update(inspect.getsource(links).encode())
+    for function in (all_entities,all_links,entities,links):h.update(inspect.getsource(function).encode())
+    h.update(Path(__file__).with_name('graph_filter.py').read_bytes())
     h.update(inspect.getsource(scope_class).encode())
     h.update(digest(PROJECT/'tracking/dependency-exclusions.json').encode())
     p=Path(__file__).with_name('chain.json')
     if p.exists():h.update(p.read_bytes())
-    snapshot=h.hexdigest()[:24]
+    return h.hexdigest()[:24]
+
+def import_graph():
+    space()
+    started=time.monotonic();con=db(True);g=Graph();g.schema()
+    snapshot=snapshot_identity(con)
     exists=g.query('MATCH (s:Snapshot {id:$s}) RETURN s.complete AS complete',{'s':snapshot})
     if exists and exists[0]['complete']:
         atomic(RUNTIME/'published-catalog-binding.json',{'snapshot':snapshot,'catalog_sha256':digest(RUNTIME/'catalog.sqlite3')})

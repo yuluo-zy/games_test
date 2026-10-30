@@ -527,6 +527,10 @@ fn run_m2_production_frame(
             }],
         )?;
     }
+    #[cfg(feature = "surface-compare-test")]
+    let raw_stages_armed = mean_label.is_some() && std::env::var_os("TG_M2_RAW_INPUTS").is_some();
+    #[cfg(feature = "surface-compare-test")]
+    if raw_stages_armed { tiny_glade::screenshot::shared_texture_capture::arm_raw_stages(world)?; }
     let ready = tiny_glade::production_renderer::prepare_headless_gameplay_frame(bridge, world)
         .context("prepare M2 production world frame")?;
     bridge.prepare_test_execution()?;
@@ -557,6 +561,9 @@ fn run_m2_production_frame(
     }
     let input_owners = if mean_label.is_some() {
         m2_render_input_owners(world, bridge, graph)?
+    } else { Vec::new() };
+    let texture_owners = if mean_label.is_some() && std::env::var_os("TG_M2_RAW_INPUTS").is_some() {
+        m2_render_texture_owners(world, bridge, graph)?
     } else { Vec::new() };
     let mean_owner = if mean_label.is_some() {
         use country_core::{asset_libraries::ssbo_library::AssetSsboLibrary,
@@ -637,7 +644,15 @@ fn run_m2_production_frame(
     world
         .resource_mut::<country_core::render::RenderTemporalState>()
         .frame_render_returned();
+    #[cfg(not(feature = "surface-compare-test"))]
     bridge.with_session(|session| session.wait_frame(frame.receipt.frame, 120_000_000_000))?;
+    #[cfg(feature = "surface-compare-test")]
+    let raw_stages = if raw_stages_armed {
+        tiny_glade::screenshot::shared_texture_capture::take_raw_stages(world, bridge)?
+    } else {
+        bridge.with_session(|session| session.wait_frame(frame.receipt.frame, 120_000_000_000))?;
+        Vec::new()
+    };
     if let (Some(label), Some(owner)) = (mean_label, mean_owner) {
         let device = bridge.hosts().buffers.graphics_device().clone();
         let bytes = m6_read_diagnostic_native_range(&device, &owner, 0, 4)?;
@@ -647,6 +662,19 @@ fn run_m2_production_frame(
         std::fs::write(dir.join(format!("{label}-shadow-mean.json")),
             serde_json::to_vec_pretty(&serde_json::json!({"bits":bits,"value":f32::from_bits(bits)}))?)?;
         m2_dump_render_input_bytes(bridge, &dir, &label, input_owners)?;
+        m2_dump_render_texture_bytes(bridge, &dir, &label, texture_owners)?;
+        #[cfg(feature = "surface-compare-test")]
+        {
+            let mut manifest = Vec::with_capacity(raw_stages.len());
+            for stage in raw_stages {
+                let file = format!("{label}-stage-{}.bin", stage.role);
+                std::fs::write(dir.join(&file), &stage.bytes)?;
+                manifest.push(serde_json::json!({"role":stage.role,"extent":stage.extent,
+                    "format":stage.format,"aspect":stage.aspect,"bytes":stage.bytes.len(),"file":file,
+                    "actual_receipt_owner_confirmed":true,"receipt_frame":frame.receipt.frame}));
+            }
+            std::fs::write(dir.join(format!("{label}-raw-stages.json")), serde_json::to_vec_pretty(&manifest)?)?;
+        }
     }
     drop(frame);
     bridge.collect_completed_frames()?;
@@ -674,7 +702,7 @@ fn m2_render_input_owners(
     let mut result = Vec::new();
     for lease in library.snapshot_graph_leases() {
         let name = lease.canonical_type_name.rsplit("::").next().context("M2 registered input type")?;
-        if !matches!(name, "ColorLibrarySsbo" | "LeafParticleSsbo" | "ParticleEmitterSsbo"
+        if !matches!(name, "ColorLibrarySsbo" | "LeafParticleSsbo" | "ParticleEmitterSsbo" | "LanternSsbo"
             | "SheepAnimationSsbo" | "BrickTransformSsbo") { continue; }
         let owner = bridge.hosts().buffers.managed_buffer(lease.buffer())
             .with_context(|| format!("M2 registered {name} physical owner missing"))?.shared();
@@ -732,6 +760,134 @@ fn m2_dump_render_input_bytes(
     Ok(())
 }
 
+/// These two outputs are persistent preset allocations. Retain their actual
+/// receipt owners before retirement; unlike transient graph textures they are
+/// not eligible for aliasing between their producer and this completed frame.
+struct M2RenderTextureOwner {
+    name: &'static str,
+    owner: std::sync::Arc<rhapsody::resource::Texture>,
+    aspect: ash::vk::ImageAspectFlags,
+    accesses: Vec<(String, u32, u8)>,
+}
+
+fn m2_render_texture_owners(
+    world: &bevy_ecs::world::World,
+    bridge: &mut CoreRenderBridge,
+    graph: &rhapsody::rg::Snapshot,
+) -> Result<Vec<M2RenderTextureOwner>> {
+    use country_core::{asset_libraries::texture_library::AssetTextureLibrary,
+        resources::texture_presets::TexturePreset};
+    let library = world.resource::<AssetTextureLibrary>();
+    let mut result = Vec::new();
+    for (preset, name, aspect) in [
+        (0x11, "shadow-atlas", ash::vk::ImageAspectFlags::DEPTH),
+        (8, "terrain-lighting", ash::vk::ImageAspectFlags::COLOR),
+    ] {
+        let state = library.preset(TexturePreset(preset)).context("M2 persistent preset missing")?;
+        let owner = bridge.hosts().textures.get(&state.texture)
+            .context("M2 persistent preset physical owner missing")?.shared();
+        let logical = bridge.with_session(|session| graph.physical_mapping.iter().filter_map(|mapping| {
+            match mapping.token.and_then(|token| session.backend.resource_clone(token)) {
+                Some(rhapsody::rg::GpuResource::Image(actual)) if std::sync::Arc::ptr_eq(&actual, &owner)
+                    => Some(mapping.logical),
+                _ => None,
+            }
+        }).collect::<std::collections::HashSet<_>>());
+        let accesses = graph.pass_order.iter().enumerate().flat_map(|(index, pass)| {
+            graph.accesses[graph.pass_ranges[index].clone()].iter()
+                .filter(|access| logical.contains(&access.resource_index))
+                .map(move |access| (pass.clone(), access.resource_index, access.access_code))
+        }).collect::<Vec<_>>();
+        anyhow::ensure!(accesses.iter().any(|(pass, _, _)| pass == "Calculate Terrain Lighting Texture"),
+            "M2 {name} owner is absent from the observed terrain lighting pass");
+        if preset == 0x11 {
+            anyhow::ensure!(accesses.iter().any(|(pass, _, _)| pass == "Shadows"),
+                "M2 atlas owner is absent from the observed shadow pass");
+            anyhow::ensure!(owner.desc.array_elements == 3, "M2 shadow atlas must include all three cascades");
+        }
+        result.push(M2RenderTextureOwner { name, owner, aspect, accesses });
+    }
+    Ok(result)
+}
+
+fn m2_dump_render_texture_bytes(
+    bridge: &CoreRenderBridge,
+    dir: &std::path::Path,
+    label: &str,
+    textures: Vec<M2RenderTextureOwner>,
+) -> Result<()> {
+    use ash::vk;
+    use rhapsody::{command::{buffer_access, image_access}, native::AccessScope,
+        resource::{Buffer, BufferDesc}, tracking::OwnershipRange,
+        transfer::with_setup_command};
+    let device = bridge.hosts().buffers.graphics_device();
+    let queue = device.queue(rhapsody::device::QueueClass::Graphics).context("M2 readback graphics queue missing")?;
+    let mut manifest = Vec::new();
+    for texture in textures {
+        let desc = &texture.owner.desc;
+        anyhow::ensure!(matches!((desc.format, texture.aspect),
+            (vk::Format::D32_SFLOAT, vk::ImageAspectFlags::DEPTH)
+            | (vk::Format::B10G11R11_UFLOAT_PACK32, vk::ImageAspectFlags::COLOR)),
+            "M2 raw preset capture has an unsupported format/aspect");
+        anyhow::ensure!(desc.depth == 1 && desc.sample_count == 1
+            && desc.usage.contains(vk::ImageUsageFlags::TRANSFER_SRC),
+            "M2 raw preset capture requires a single-sample persistent transfer source");
+        let mut size = 0u64;
+        let mut regions = Vec::with_capacity(usize::from(desc.mip_levels));
+        let mut mips = Vec::with_capacity(usize::from(desc.mip_levels));
+        for mip in 0..u32::from(desc.mip_levels) {
+            let width = (desc.width >> mip).max(1);
+            let height = (desc.height >> mip).max(1);
+            let bytes = u64::from(width).checked_mul(u64::from(height))
+                .and_then(|bytes| bytes.checked_mul(u64::from(desc.array_elements)))
+                .and_then(|bytes| bytes.checked_mul(4))
+                .context("M2 raw preset mip size overflow")?;
+            regions.push(vk::BufferImageCopy::default().buffer_offset(size)
+                .image_subresource(vk::ImageSubresourceLayers::default()
+                    .aspect_mask(texture.aspect).mip_level(mip).layer_count(desc.array_elements))
+                .image_extent(vk::Extent3D { width, height, depth: 1 }));
+            mips.push(serde_json::json!({"mip":mip,"width":width,"height":height,
+                "layers":desc.array_elements,"offset":size,"bytes":bytes}));
+            size = size.checked_add(bytes).filter(|bytes| *bytes <= 64 * 1024 * 1024)
+                .context("M2 raw preset capture exceeds its 64 MiB bound")?;
+        }
+        anyhow::ensure!(size > 0, "M2 raw preset capture is empty");
+        let output = std::sync::Arc::new(Buffer::new(device.clone(),
+            &BufferDesc::new_gpu_to_cpu(size, vk::BufferUsageFlags::TRANSFER_DST))?);
+        // SAFETY: the exact receipt owner is persistent and the frame has
+        // completed. Both accesses are registered with the same device's
+        // state tracker; the regions cover every mip and its actual layers.
+        // No preset contents, render counter or gameplay state is changed.
+        with_setup_command(device, &[], |command| unsafe {
+            image_access(command, &texture.owner, queue, OwnershipRange::Image {
+                aspects: texture.aspect.as_raw(), base_mip: 0, mip_count: u32::from(desc.mip_levels),
+                base_layer: 0, layer_count: desc.array_elements,
+            }, AccessScope { stages: vk::PipelineStageFlags::TRANSFER,
+                access: vk::AccessFlags::TRANSFER_READ, write: false }, vk::ImageLayout::TRANSFER_SRC_OPTIMAL)?;
+            buffer_access(command, &output, queue, 0, size,
+                AccessScope { stages: vk::PipelineStageFlags::TRANSFER,
+                    access: vk::AccessFlags::TRANSFER_WRITE, write: true })?;
+            device.raw_device().cmd_copy_image_to_buffer(command.raw_handle(), texture.owner.raw_handle(),
+                vk::ImageLayout::TRANSFER_SRC_OPTIMAL, output.raw_handle(),
+                &regions);
+            buffer_access(command, &output, queue, 0, size,
+                AccessScope { stages: vk::PipelineStageFlags::HOST,
+                    access: vk::AccessFlags::HOST_READ, write: false })
+        })?.wait(rhapsody::transfer::SETUP_WAIT_TIMEOUT_NS)?;
+        let mut bytes = vec![0; usize::try_from(size)?];
+        output.read_bytes(0, &mut bytes)?;
+        let file = format!("{label}-raw-{}.bin", texture.name);
+        std::fs::write(dir.join(&file), bytes)?;
+        manifest.push(serde_json::json!({"role":texture.name,"file":file,
+            "format":desc.format.as_raw(),"aspect":texture.aspect.as_raw(),
+            "width":desc.width,"height":desc.height,"layers":desc.array_elements,
+            "mips":mips,"bytes":size,"actual_receipt_owner_confirmed":true,
+            "persistent_preset":true,"accesses":texture.accesses}));
+    }
+    std::fs::write(dir.join(format!("{label}-raw-textures.json")), serde_json::to_vec_pretty(&manifest)?)?;
+    Ok(())
+}
+
 fn copy_test_tree(from: &std::path::Path, to: &std::path::Path) -> Result<()> {
     std::fs::create_dir_all(to)?;
     for entry in std::fs::read_dir(from)? {
@@ -769,6 +925,32 @@ fn m2_camera_parameters(
     )?)
 }
 
+fn m2_assert_sheep_snapshot_bits(
+    expected: &country_core::resources::critters::sheep::control::SheepControlSnapshot,
+    actual: &country_core::resources::critters::sheep::control::SheepControlSnapshot,
+) -> Result<()> {
+    use country_core::resources::critters::sheep::SheepMoveState;
+    anyhow::ensure!(expected.sheep.len() == actual.sheep.len(), "M2 saved sheep count differs");
+    for (index, (expected, actual)) in expected.sheep.iter().zip(&actual.sheep).enumerate() {
+        anyhow::ensure!(expected.position.to_array().map(f32::to_bits)
+            == actual.position.to_array().map(f32::to_bits),
+            "M2 saved sheep {index} position bits differ");
+        anyhow::ensure!(expected.goal.map(|value| value.to_array().map(f32::to_bits))
+            == actual.goal.map(|value| value.to_array().map(f32::to_bits)),
+            "M2 saved sheep {index} goal bits differ");
+        let same_movement = match (expected.move_state, actual.move_state) {
+            (SheepMoveState::Idle { timeout_s: expected }, SheepMoveState::Idle { timeout_s: actual })
+                => expected.to_bits() == actual.to_bits(),
+            (SheepMoveState::Walking { timeout_s: et, goal_change_timeout: eg, force_reach_goal: ef },
+                SheepMoveState::Walking { timeout_s: at, goal_change_timeout: ag, force_reach_goal: af })
+                => et.to_bits() == at.to_bits() && eg.to_bits() == ag.to_bits() && ef == af,
+            _ => false,
+        };
+        anyhow::ensure!(same_movement, "M2 saved sheep {index} movement bits differ");
+    }
+    Ok(())
+}
+
 /// Optional diagnostics are taken at the game-world frame that requests the
 /// capture. FrameConstants are retained in full Debug form, including views;
 /// exposure is also exposed separately for easy parent/child comparison.
@@ -791,6 +973,7 @@ fn m2_dump_frame_state(world: &bevy_ecs::world::World, label: &str) -> Result<()
         Some(serde_json::json!({
             "sheep": value,
             "transform": format!("{:?}", entity.get::<Transform>()),
+            "previous_transform": format!("{:?}", entity.get::<country_core::components::drawable::PrevTransform>()),
             "walk": format!("{:?}", entity.get::<SheepWalkRecord>()),
             "goal": format!("{:?}", entity.get::<CritterGoal>()),
         }))
@@ -808,6 +991,9 @@ fn m2_dump_frame_state(world: &bevy_ecs::world::World, label: &str) -> Result<()
         "frame_render_config": format!("{render:#?}"),
         "video_settings": &config.video,
         "image_formation": formation,
+        "weather": format!("{:?}", world.resource::<country_core::resources::weather::Weather>()),
+        "shader_refactoring": format!("{:?}", world.resource::<country_core::resources::shader_refactoring_state::ShaderRefactoringState>()),
+        "bevy_time": format!("{:?}", world.resource::<bevy_time::Time>()),
         "color_library_cpu_bytes": bytemuck::bytes_of(world.resource::<country_core::asset_libraries::color_library::ColorLibrarySsbo>()),
         "leaf_particle_count": world.resource::<country_core::resources::glade_settings::GladeSettings>().leaf_particle_count,
         "loaded_particle_emitter_count": world.get_resource::<country_core::systems::render_loop::compute_passes::leaf_particles::LoadedParticleEmitterCount>().map(|count|count.0),
@@ -982,7 +1168,10 @@ fn boot_shipped_session_with_nani_readback(diagnostic_nani: bool) -> Result<Boot
         })
         .context("strict gameplay physical device")?;
     let shaders = app.world().resource::<ApplicationShaderLibrary>().0.clone();
-    let mut bridge = CoreRenderBridge::new(device.clone(), installed.clone(), shaders.clone())?;
+    let bridge = if std::env::var_os("TG_M2_RAW_INPUTS").is_some() {
+        CoreRenderBridge::new_with_extra_usage(device.clone(), installed.clone(), shaders.clone(),
+            ash::vk::BufferUsageFlags::TRANSFER_SRC, ash::vk::ImageUsageFlags::TRANSFER_SRC)?
+    } else { CoreRenderBridge::new(device.clone(), installed.clone(), shaders.clone())? };
     let mut final_post = None;
     country_core::startup::load_shaders::load_shaders(
         &shaders,
@@ -1807,12 +1996,30 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
     >::new()));
     let mut final_heights = None;
     let mut saved_phase = None;
+    use country_core::systems::save::save_game::{SaveGameCmd, SavingGameComplete};
+    let session = driver.app().world().resource::<ActiveSession>().id;
+    let folder = session.save_folder_path();
+    let mut save_completions = bevy_ecs::event::EventCursor::<SavingGameComplete>::default();
+    save_completions.read(driver.app().world().resource::<bevy_ecs::event::Events<SavingGameComplete>>())
+        .for_each(drop);
+    let mut saved_with_capture = false;
     for frame_index in 0..384 {
         let previous_counter = driver.app().world().resource::<country_core::render::frame_constants::FrameConstants>().frame_counter;
-        let request = frame_index >= 128 && previous_counter.wrapping_add(1) % 128 == 0;
+        let request = frame_index >= 128 && final_heights.is_some()
+            && previous_counter.wrapping_add(1) % 128 == 0;
+        if request {
+            // The real save system synchronously captures and flushes set43
+            // before this same App frame is rendered. Saving in a later tick
+            // changes the persisted sheep positions and movement timers.
+            driver.app_mut().world_mut().send_event(SaveGameCmd);
+        }
         let capture = request.then_some(("m2-saved", captured.clone()));
         let _ = run_m2_production_frame(&mut driver, &context, &mut bridge, capture)?;
         if request {
+            saved_with_capture = save_completions.read(driver.app().world()
+                .resource::<bevy_ecs::event::Events<SavingGameComplete>>())
+                .any(|event| event.path == folder);
+            anyhow::ensure!(saved_with_capture, "M2 production save did not complete in the captured frame");
             let counter = driver.app().world().resource::<country_core::render::frame_constants::FrameConstants>().frame_counter;
             anyhow::ensure!(counter % 128 == 0, "M2 parent capture missed requested render phase: {counter}");
             saved_phase = Some(counter % 128);
@@ -1835,10 +2042,16 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
         "M2 undo/redo 后 GPU 高度与编辑结果未逐 word 恢复"
     );
 
-    let session = driver.app().world().resource::<ActiveSession>().id;
-    let folder = session.save_folder_path();
     let recovery = folder.join("m2-save-recovery");
     std::fs::create_dir_all(&recovery)?;
+    let captured_sheep = {
+        use country_core::{resources::critters::{sheep::Sheep, CritterGoal},
+            utils::components::transform::Transform};
+        let world = driver.app_mut().world_mut();
+        let mut rows = world.query::<(&Transform, &Sheep, &CritterGoal)>();
+        country_core::resources::critters::sheep::control::capture_sheep_snapshot(rows.iter(world))
+    };
+    std::fs::write(recovery.join("sheep.json"), serde_json::to_vec(&captured_sheep)?)?;
     {
         let world = driver.app().world();
         let editing = world.resource::<TerrainEditingData>();
@@ -1916,24 +2129,8 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
         }))?,
     )?;
 
-    use country_core::systems::save::save_game::{SaveGameCmd, SavingGameComplete};
-    driver.app_mut().world_mut().send_event(SaveGameCmd);
-    let mut saved = false;
-    for _ in 0..600 {
-        m2_tick_production_app(&mut driver, &context, &bridge)?;
-        if driver
-            .app_mut()
-            .world_mut()
-            .resource_mut::<bevy_ecs::event::Events<SavingGameComplete>>()
-            .drain()
-            .any(|event| event.path == folder)
-        {
-            saved = true;
-            break;
-        }
-    }
     anyhow::ensure!(
-        saved
+        saved_with_capture
             && folder.join("history.json").is_file()
             && folder.join("meta.json").is_file(),
         "M2 terrain production save worker did not finish"
@@ -1955,6 +2152,10 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
     {
         let saved: serde_json::Value =
             serde_json::from_slice(&std::fs::read(folder.join("history.json"))?)?;
+        let disk_sheep: Option<country_core::resources::critters::sheep::control::SheepControlSnapshot> =
+            serde_json::from_value(saved["Sheep"].clone())?;
+        m2_assert_sheep_snapshot_bits(&captured_sheep,
+            disk_sheep.as_ref().context("M2 saved sheep snapshot is absent")?)?;
         let expected_tod: country_core::resources::time_of_day::TimeOfDay = serde_json::from_slice(&std::fs::read(recovery.join("tod.json"))?)?;
         let disk_tod: country_core::resources::time_of_day::TimeOfDay = serde_json::from_value(saved["Time of day"].clone())?;
         anyhow::ensure!([disk_tod.time_of_day.to_bits(), disk_tod.sun_xz_rotation.to_bits(), disk_tod.latitude_degrees.to_bits()]
@@ -1967,6 +2168,14 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
             saved.pointer("/History/history_start"),
             saved.pointer("/History/snapshots"),
         );
+    }
+
+    if let Some(dir) = std::env::var_os("TG_M2_DUMP_DIR") {
+        std::fs::write(PathBuf::from(dir).join("m2-recovery.json"),
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "session":session,"save_folder":folder,"recovery_folder":recovery,
+                "save_and_capture_same_app_frame":true,
+            }))?)?;
     }
 
     drop(driver);
@@ -4996,6 +5205,7 @@ fn m6_wall_color_scenario(cancel_preview: bool) -> Result<()> {
         .env("TG_M6_COLOR_CHILD", "1").env("TG_M6_COLOR_FOLDER", session.save_folder_path())
         .env("TG_M6_COLOR_SESSION", serde_json::to_string(&session)?)
         .env("TG_M6_COLOR_WALL", wall.0.to_string()).env("TG_M6_COLOR_VALUE", chosen.to_string())
+        .env("TG_M6_TRACE_PREPLACED", "1")
         .env("TG_M6_COLOR_HISTORY_FILE", &expected_path).status()?;
     anyhow::ensure!(status.success(), "new process failed color recovery: {status}");
     Ok(())
@@ -5273,6 +5483,24 @@ fn m06_gate_color_setter_uploads_complete_filtered_table() -> Result<()> {
     Ok(())
 }
 
+/// 在装饰生产者后、原归档恢复前观察预览，避免把帧末权威桶当预览存续时间。
+#[derive(bevy_ecs::prelude::Resource, Default)]
+struct M6PlacementObservation {
+    wall: u64,
+    preview: Vec<(u32, country_core::resources::walls::decorator::DecoratorInfo)>,
+}
+
+fn m6_observe_placement(
+    storage: bevy_ecs::prelude::Res<country_core::resources::walls::decorator_storage::DecoratorStorage>,
+    mut observation: bevy_ecs::prelude::ResMut<M6PlacementObservation>,
+) {
+    use country_core::resources::walls::{WallId, decorator_storage::DecoratorStorageAddr};
+    observation.preview = storage.get(DecoratorStorageAddr::Wall(WallId(observation.wall)))
+        .into_iter().flat_map(|bucket| bucket.decorators.iter())
+        .filter(|(_, info)| info.ty == b'8' && info.state() == 1)
+        .map(|(&id, info)| (id, *info)).collect();
+}
+
 #[test]
 fn m06_real_decorator_collision_picker_opens_matching_menu() -> Result<()> {
     use bevy_ecs::schedule::IntoScheduleConfigs;
@@ -5353,6 +5581,11 @@ fn m06_real_decorator_collision_picker_opens_matching_menu() -> Result<()> {
     m6_request_mode(&mut driver, &context, &mut bridge,
         AppMode::Decorator(country_core::systems::mode_manager::DecoratorType::CottageWindow))?;
     let widget = country_core::systems::ui::resources::ui_state::WidgetId::from_name("place_decorator");
+    let placement_id = driver.app().world().resource::<country_core::resources::walls::decorator::DecoratorIdGen>().peek();
+    let placement_history_before = driver.app().world().resource::<country_core::resources::history::History>().ledger().entries.len();
+    driver.app_mut().insert_resource(M6PlacementObservation { wall: created_wall.0, ..Default::default() });
+    driver.app_mut().add_systems(bevy_app::Update, m6_observe_placement
+        .after(country_core::systems::GameSystemSet(25)).before(country_core::systems::GameSystemSet(26)));
     let mut active = false;
     for attempt in 0..60 {
         m6_trace_decorator_id(driver.app().world(), &format!("before wait {attempt}"));
@@ -5371,6 +5604,7 @@ fn m06_real_decorator_collision_picker_opens_matching_menu() -> Result<()> {
         }
     }
     anyhow::ensure!(active, "central wall placement widget did not become active on the created wall");
+    let mut released_info = None;
     for phase in [Phase::Idle, Phase::JustPressed, Phase::JustReleased, Phase::Idle] {
         driver.app_mut().world_mut().resource_mut::<M6ColorInput>().click = phase;
         m6_trace_decorator_id(driver.app().world(), &format!("before placement {phase:?}"));
@@ -5387,8 +5621,17 @@ fn m06_real_decorator_collision_picker_opens_matching_menu() -> Result<()> {
         if phase == Phase::JustPressed {
             anyhow::ensure!(ui.widget_context(widget).is_active() && ui.widget_context(widget).dragged() == 3,
                 "window placement did not capture its real widget");
-            anyhow::ensure!(entries.iter().any(|&(_, ty, state)| ty == b'8' && state == 1),
+            anyhow::ensure!(world.resource::<M6PlacementObservation>().preview.iter().any(|(id, info)|
+                *id == placement_id.0 && info.ty == b'8' && info.state() == 1),
                 "central wall placement did not produce an accepted cottage-window preview");
+        }
+        if phase == Phase::JustReleased {
+            released_info = world.resource::<DecoratorStorage>().lookup_decorator_info(placement_id).copied();
+            anyhow::ensure!(released_info.is_some(), "window release did not commit complete info");
+        }
+        if phase == Phase::Idle && released_info.is_some() {
+            anyhow::ensure!(world.resource::<DecoratorStorage>().lookup_decorator_info(placement_id) == released_info.as_ref(),
+                "committed window changed on next frame");
         }
     }
     for _ in 0..20 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
@@ -5399,6 +5642,41 @@ fn m06_real_decorator_collision_picker_opens_matching_menu() -> Result<()> {
             .context("real placement did not commit a cottage window")?;
         DecoratorId(id)
     };
+    {
+        use country_core::resources::history::{EditType, History};
+        use country_core::resources::walls::decorator::DecoratorIdGen;
+        let world = driver.app().world();
+        let storage = world.resource::<DecoratorStorage>();
+        anyhow::ensure!(created_id == placement_id, "committed window did not retain preview ID");
+        anyhow::ensure!(world.resource::<DecoratorIdGen>().peek().0 == placement_id.0.wrapping_add(1), "placement did not advance ID once");
+        anyhow::ensure!(storage.lookup_storage(created_id) == Some(DecoratorStorageAddr::Wall(created_wall)), "committed window d2s address differs");
+        let info = storage.lookup_decorator_info(created_id).context("committed window info missing")?;
+        anyhow::ensure!(info.ty == b'8' && info.state() == 0, "committed window info is not final");
+        let history = world.resource::<History>();
+        anyhow::ensure!(history.ledger().entries.len() > placement_history_before && history.ledger().entries[placement_history_before..].iter().any(|entry|
+            entry.edits.iter().any(|edit| matches!(edit, EditType::Decorator(_) | EditType::DecoratorV5(_)))),
+            "placement did not commit decorator history");
+    }
+    let placement_cursor_history = driver.app().world().resource::<country_core::resources::history::History>().ledger().cursor;
+    let committed_info = released_info.context("released window info missing")?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, placement_cursor_history - 1, "window placement undo")?;
+    {
+        let storage = driver.app().world().resource::<DecoratorStorage>();
+        anyhow::ensure!(storage.lookup_storage(created_id).is_none() && storage.lookup_decorator_info(created_id).is_none(),
+            "window placement undo left its ID or info");
+    }
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, placement_cursor_history, "window placement redo")?;
+    {
+        let storage = driver.app().world().resource::<DecoratorStorage>();
+        anyhow::ensure!(storage.lookup_storage(created_id) == Some(DecoratorStorageAddr::Wall(created_wall)) &&
+            storage.lookup_decorator_info(created_id) == Some(&committed_info), "window placement redo did not restore complete info and d2s");
+    }
     let (id, kind, subtype, cursor) = {
         let world = driver.app().world();
         let camera = world.resource::<MainCamera>();
@@ -5622,9 +5900,25 @@ fn m6_color_reload_child() -> Result<()> {
         bridge.accept_gameplay_warmup(world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>())?;
     }
     copy_test_tree(&source, &session.save_folder_path())?;
+    // 记录复制后的实际目的文件与加载过程的首条历史，区分读错路径、
+    // 反序列化/迁移和加载完成后另一次录制。无需修改历史或生产调度。
+    let destination = session.save_folder_path();
+    let copied: serde_json::Value = serde_json::from_slice(&std::fs::read(destination.join("history.json"))?)?;
+    let copied_history: country_core::systems::save::load_game::HistorySectionJson =
+        serde_json::from_value(copied["History"].clone())?;
+    let expected_document: serde_json::Value = serde_json::from_slice(&std::fs::read(
+        std::env::var_os("TG_M6_COLOR_HISTORY_FILE").context("missing wall color history file")?)?)?;
+    let expected_copied_wire: Vec<String> = serde_json::from_value(expected_document["typed_history"].clone())?;
+    anyhow::ensure!(m6_history_wire(&copied_history.edit_chain)? == expected_copied_wire,
+        "wall color child destination differs from settled parent before Reload");
+    eprintln!("M6_COLOR_LOAD source={} destination={} version={} cursor={} snapshots={} first_edit_count={}",
+        source.display(), destination.display(), copied["Version"], copied["History"]["chain_index"],
+        copied["History"]["snapshots"].as_array().map_or(0, Vec::len),
+        copied["History"]["edit_chain"][0]["edits"].as_array().map_or(0, Vec::len));
     driver.app_mut().world_mut().resource_mut::<MetaCommander>().extend_script([MetaCommand::load_session(session, false)]);
     let mut saw_reload = false;
     let mut loaded = false;
+    let mut previous_history = None;
     for _ in 0..1200 {
         context.begin_frame(egui::RawInput::default());
         driver.app_mut().update();
@@ -5632,6 +5926,22 @@ fn m6_color_reload_child() -> Result<()> {
         bridge.prepare_test_execution()?;
         let world = driver.app().world();
         let state = world.resource::<bevy_state::prelude::State<country_core::app_loading_state::AppLoadingState>>().get();
+        let history = world.resource::<History>();
+        let load = world.resource::<LoadGameManager>();
+        let source_label = match &load.source {
+            country_core::systems::save::load_game::LoadGameSource::None => "none".to_owned(),
+            country_core::systems::save::load_game::LoadGameSource::Path(path) => path.display().to_string(),
+            country_core::systems::save::load_game::LoadGameSource::Parsed { .. } => "parsed".to_owned(),
+        };
+        let spawn_events = world.resource::<bevy_ecs::event::Events<
+            country_core::resources::history::tree_edit::SpawnPreplacedTrees>>().len();
+        let trace = (format!("{state:?}"), history.ledger().cursor, history.ledger().entries.len(),
+            history.ledger().entries.first().map(|entry| entry.edits.len()), history.is_recording(),
+            spawn_events, format!("{:?}", load.state), source_label);
+        if previous_history.as_ref() != Some(&trace) {
+            eprintln!("M6_COLOR_LOAD history={trace:?}");
+            previous_history = Some(trace);
+        }
         saw_reload |= *state == country_core::app_loading_state::AppLoadingState::Reload;
         if saw_reload && *state == country_core::app_loading_state::AppLoadingState::Game
             && world.get_resource::<ActiveSession>().is_some_and(|s| s.id == session)
@@ -5653,6 +5963,7 @@ fn m6_color_reload_child() -> Result<()> {
     for entry in actual.as_array_mut().context("history entries are not an array")? { canonicalize_decorator_diff_map(entry); }
     let cursor = i32::try_from(expected_json["cursor"].as_i64().context("missing saved color cursor")?)?;
     let expected_wire: Vec<String> = serde_json::from_value(expected_json["typed_history"].clone())?;
+    m6_check_disk_history(world, &destination, &expected_wire, "wall color child destination")?;
     m6_check_disk_history(world, &source, &expected_wire, "wall color child")?;
     m6_check_parent_history(&expected_json["history"], &actual, "wall color")?;
     if let Some((path, expected, actual)) = m6_first_json_difference(&expected_json["history"], &actual) {
@@ -5787,6 +6098,11 @@ fn m06_wall_bulldozer_decorator_lifecycle_save_reload() -> Result<()> {
         .before(mode_manager::mode_manager::<country_core::resources::history::EditType, MaybePendingSnapshotId>));
     let mut placement_active = false;
     let placement_widget = country_core::systems::ui::resources::ui_state::WidgetId::from_name("place_decorator");
+    let placement_id = driver.app().world().resource::<country_core::resources::walls::decorator::DecoratorIdGen>().peek();
+    let placement_history_before = driver.app().world().resource::<History>().ledger().entries.len();
+    driver.app_mut().insert_resource(M6PlacementObservation { wall: wall.0, ..Default::default() });
+    driver.app_mut().add_systems(bevy_app::Update, m6_observe_placement
+        .after(country_core::systems::GameSystemSet(25)).before(country_core::systems::GameSystemSet(26)));
     for _ in 0..60 {
         run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
         let world = driver.app().world();
@@ -5798,6 +6114,7 @@ fn m06_wall_bulldozer_decorator_lifecycle_save_reload() -> Result<()> {
         }
     }
     anyhow::ensure!(placement_active, "window placement widget did not become active");
+    let mut placement_info = None;
     for phase in [Phase::Idle, Phase::JustPressed, Phase::JustReleased, Phase::Idle] {
         driver.app_mut().world_mut().resource_mut::<M6ColorInput>().click = phase;
         run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
@@ -5806,9 +6123,18 @@ fn m06_wall_bulldozer_decorator_lifecycle_save_reload() -> Result<()> {
             let ui = world.resource::<country_core::systems::ui::resources::ui_state::UiState>();
             anyhow::ensure!(ui.widget_context(placement_widget).is_active() && ui.widget_context(placement_widget).dragged() == 3,
                 "window placement did not capture the real widget");
-            let bucket = world.resource::<DecoratorStorage>().get(DecoratorStorageAddr::Wall(wall));
-            anyhow::ensure!(bucket.is_some_and(|bucket| bucket.decorators.values().any(|info| info.ty == b'8' && info.state() == 1)),
+            anyhow::ensure!(world.resource::<M6PlacementObservation>().preview.iter().any(|(id, info)|
+                *id == placement_id.0 && info.ty == b'8' && info.state() == 1),
                 "central wall placement did not produce an accepted cottage-window preview");
+        }
+        if phase == Phase::JustReleased {
+            let world = driver.app().world();
+            placement_info = world.resource::<DecoratorStorage>().lookup_decorator_info(placement_id).copied();
+            anyhow::ensure!(placement_info.is_some(), "window release did not commit complete info");
+        }
+        if phase == Phase::Idle && placement_info.is_some() {
+            anyhow::ensure!(driver.app().world().resource::<DecoratorStorage>().lookup_decorator_info(placement_id) == placement_info.as_ref(),
+                "committed window changed on next frame");
         }
     }
     for _ in 0..20 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
@@ -5818,6 +6144,18 @@ fn m06_wall_bulldozer_decorator_lifecycle_save_reload() -> Result<()> {
         let (&id, &info) = bucket.decorators.iter().find(|(_, info)| info.ty == b'8' && info.state() == 0).context("window missing")?;
         (DecoratorId(id), info)
     };
+    {
+        use country_core::resources::history::EditType;
+        use country_core::resources::walls::decorator::DecoratorIdGen;
+        let world = driver.app().world();
+        let storage = world.resource::<DecoratorStorage>();
+        anyhow::ensure!(id == placement_id && Some(info) == placement_info, "committed window ID or full info differs from release");
+        anyhow::ensure!(world.resource::<DecoratorIdGen>().peek().0 == id.0.wrapping_add(1), "placement did not advance ID once");
+        anyhow::ensure!(storage.lookup_storage(id) == Some(addr), "committed window d2s address differs");
+        anyhow::ensure!(world.resource::<History>().ledger().entries[placement_history_before..].iter().any(|entry|
+            entry.edits.iter().any(|edit| matches!(edit, EditType::Decorator(_) | EditType::DecoratorV5(_)))),
+            "placement did not commit decorator history");
+    }
     m06_assert_deleted_decorator(driver.app().world(), id, false)?;
     let original_colliders = m06_decorator_collider_instances(driver.app().world(), id)?;
     let original_walls = m6_authority_map(driver.app().world());

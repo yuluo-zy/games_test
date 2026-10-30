@@ -570,6 +570,7 @@ mod duck_constructor_tests {
                 ],
                 ..Default::default()
             }],
+            ..Default::default()
         });
         let (original_capacity, original_pointer) = {
             let planner = world.resource::<DuckTrajectoryPlanner>();
@@ -578,7 +579,7 @@ mod duck_constructor_tests {
                 planner.plans[0].trajectories.as_ptr() as usize,
             )
         };
-        let mut oracle = perchance::PerchanceContext::new(crate::CRITTER_RNG_SEED_B);
+        let mut oracle = perchance::PerchanceContext::new(crate::duck::DUCK_PLANNER_RNG_SEED_B);
         let expected: [(u32, u32); 3] = std::array::from_fn(|_| {
             let pitch = oracle.uniform_f32().to_bits();
             let progress = (oracle.uniform_f32() * f32::from_bits(0xbe99_999a)).to_bits();
@@ -591,10 +592,8 @@ mod duck_constructor_tests {
         assert_eq!(world.query::<&Duck>().iter(&world).count(), 3);
         assert_eq!(
             world
-                .resource::<CritterRng>()
-                .0
-                .lock()
-                .unwrap()
+                .resource_mut::<DuckTrajectoryPlanner>()
+                .rng
                 .uniform_f32()
                 .to_bits(),
             expected_next
@@ -632,14 +631,16 @@ mod duck_constructor_tests {
         assert_eq!(trace.lock().unwrap().creates, 21);
         assert_eq!(
             world
-                .resource::<CritterRng>()
-                .0
-                .lock()
-                .unwrap()
+                .resource_mut::<DuckTrajectoryPlanner>()
+                .rng
                 .uniform_f32()
                 .to_bits(),
             oracle.uniform_f32().to_bits()
         );
+        let mut animal_oracle = perchance::PerchanceContext::new(crate::CRITTER_RNG_SEED_B);
+        assert_eq!(world.resource_mut::<CritterRng>().0.uniform_f32().to_bits(),
+            animal_oracle.uniform_f32().to_bits(),
+            "duck trajectory sampling consumed the independent animal-goal RNG");
         let planner = world.resource::<DuckTrajectoryPlanner>();
         assert!(planner.plans[0].trajectories.is_empty());
         assert_eq!(planner.plans[0].trajectories.capacity(), original_capacity);

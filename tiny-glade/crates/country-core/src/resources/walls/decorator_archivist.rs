@@ -42,8 +42,15 @@ pub struct DecoratorArchivalResources<'w> {
 /// Original archive collision payload. These are owned collision objects, not
 /// addresses copied from a native allocation.
 #[cfg(feature = "native-physics")]
+#[derive(Clone)]
+pub struct ArchivedColliderTransform {
+    pub translation: glam::Vec3,
+    pub rotation: glam::Quat,
+    pub shape: std::sync::Arc<dyn rapier3d::parry::shape::Shape>,
+}
+#[cfg(feature = "native-physics")]
 pub type LiveColliderPayload = (
-    utils::iso_transform::IsoTransform,
+    ArchivedColliderTransform,
     crate::systems::collision::world::RaycastMesh,
 );
 #[cfg(feature = "native-physics")]
@@ -488,7 +495,7 @@ impl<C: Send + Sync + 'static> DecoratorArchivist<C> {
 }
 
 /// 原 B `archive_storage_decorators` 的碰撞载荷适配。原生先复制活 collider 的
-/// 28B 平移/四元数，再克隆完整 RaycastMesh；不保存句柄，也不额外克隆 shape Arc。
+/// 活 collider 的位姿、shape Arc 和完整 RaycastMesh；不保存活句柄。
 #[cfg(feature = "native-physics")]
 fn archive_live_collider_map(
     target: &mut HashMap<u32, LiveColliderPayload>,
@@ -508,10 +515,12 @@ fn archive_live_collider_map(
             "archived collider has no mesh generation"
         );
         let mesh = world.get_collider_mesh(collider.generation_low as u32, collider.generation);
-        let transform = utils::iso_transform::IsoTransform::from_translation_rotation(
-            collider.position,
-            collider.rotation,
-        );
+        let transformed = world.into_transformed_shape(instance.handle());
+        let transform = ArchivedColliderTransform {
+            translation: transformed.position,
+            rotation: transformed.rotation,
+            shape: transformed.shape,
+        };
         // 原 insert 会替换重复 id 并释放旧网格 Arc，而不是保留先到的碰撞载荷。
         target.insert(*id, (transform, mesh.clone()));
     }

@@ -93,3 +93,44 @@ B 原 `create_plaster@14075d460` 对每条事件调用生成器；已有双事�
 补正：`main_pass` 第一个 G-buffer 子pass的 depth clear 为 `Some(0.0)`；先前将后续 `depth_write_load` 的 `None` 当作整个 main_pass 不清深度是不正确的。现有 `original_gameplay_chain.rs` 新增有界候选：空 DrawLists 与从实际生产 DrawLists 筛出 `nani_plaster` 的对照，分别运行原 Nani 首轮剔除与生产 `SceneRasterHost::main_pass`，通过额外 `TRANSFER_SRC` 的原格式深度纹理读回，检查空表全零和真实抹灰表非零。此候选尚未编译或运行；即便通过，也只证明抹灰材质在该诊断场景的深度覆盖，单墙归属需结合另行首轮 target dense 观察，不能冒称完整生产帧颜色或原版画面差分。
 
 中央 round60 实跑 `/private/tmp/root-m6-building-raster-round60-20261029.log` 1/1 通过：空 draw list 深度覆盖0，真实 `nani_plaster` draw list 深度覆盖2325像素；该场景全部64个抹灰实体均为目标墙30，另一次首轮间接列表包含16个目标登记实例。诊断使用真实生产 shader/回调和额外 TRANSFER_SRC 纹理，证明此场景抹灰材质的有界深度 raster；不证明单个实例的像素归因或最终颜色对照。同次正常 Reload 销毁66个抹灰实体/owner、清GPU实例并重入Game。随后添加的楼板实例/海拔断言不在本日志源码快照中，须另编译运行。
+# 2026-10-30 分配查询审计增量
+
+原 PublicWall 的普通木条 `+0x130`、支撑木条 `+0x140` 与半木 `+0x180` 是独立 owner；原发布和清理证据及原地址见 STATUS 中 2026-10-29 的分配槽记录。当前 `gpu_output.rs` 的 `plank_allocation` 此前对 `HalfTimber` 键错误返回普通木条 owner，现按键返回半木 owner。已有隔离测试新增键查询与删除后的检查。当前没有找到生产调用此查询接口，故这是适配器合同修正，不宣称修复了可观察画面；通用追加入口无半木生产调用，实际半木使用专用入口。
+
+中央串行验证命令：`CARGO_INCREMENTAL=0 cargo test --offline -p system-wall-constructor --lib wall_support_and_half_timber_owners_survive_each_others_clear_and_retire_together -- --nocapture`。本次未运行 Cargo；完整原异常清理、历史恢复及实际画面仍未闭合。
+
+# 2026-10-30 支撑／半木父链核对
+
+本轮按 B RNE `f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03`、PDB `2d9686b8eaaf5c672c8dbc3aed85fbfeaf2a98a0dc64353191cd1a123a5d8911` 复用既有证据。shared Ghidra 只读批查 `140788160/140788a80/1407896b0`；直接原指令核查 `1407884c2` 初始化栈计数、`140788601` 圆柱调用、`140788759/80a` 取计数及 `1407888c2` 写回。反编译把该计数误显示为恒零，不能据此删除当前计数／音效。圆塔的事件先于非空砖库及 owner 查询；失败样本见 `reports/module-recovery-2026-10-23/m06-circle-contract-20261029.json`。operator 二次留盘因沙箱拒绝 `startup.lock` 失败；以上只读 MCP 与原 RNE 指令独立可重复，未更改共享数据库。
+
+下表是本轮 24 项的定位和当前消费边界，不是逐项等价声明。除明确地址外原证路径均相对于 `tiny-glade/reports/module-recovery-2026-10-23/`；几何 fixture 是有界原执行，依赖桥接见各文件。
+
+| 项 | 当前入口／消费者；原证及未决 |
+|---|---|
+| 支撑订阅 | `overhang_subscribe_to_tabloids` → detector；B `140786440`，9 碰撞槽再地形，订阅重入待联验。 |
+| 支撑检测 | `detect_overhang_support_segments` → 圆／矩事件；B `1407867d0`，`m06-detector-session-contract-20261029.json`，会话短路、零高程清槽和 dirty 选择已定位，完整多墙差分未闭合。 |
+| 支撑清理 | `clear_wall_instance_owners` → +140 木、+150 砖；B `140787d80`，先木后砖，各库或 owner 缺失 panic。 |
+| 重叠查找 | `find_overhang_support_segments` → detector 事件；`m06-support-finder-pack*.json`，交点／屋顶／包含分支完整组合待原侧差分。 |
+| 圆系统 | `construct_circle_supports` → 柱或塔、stats、音效；B `140788160`，先清碰撞，柱分支底层→空塔事件→柱，塔先事件后砖；原 count 通过栈传递。 |
+| 圆分类 | `circle_categorize` → 圆系统；B `14124af60`，邻墙查找失败路径保留，更多组合待验。 |
+| 圆底层 | `construct_circle_bottom_layer` → +150；B `14124b2c0`／单砖 `141fe1de0`，随机切分、写失败继续；完整多墙未验。 |
+| 圆柱 | `construct_circle_pillars` → 柱材质和碰撞；B `14124ba30`，`m06-circle-contract-20261029.json` 及 full probes，地形／start_y 原侧桥接。 |
+| 圆塔 | `construct_turret` → 次级半木事件或 +150；B `14124cc30`，上述合同及 push-fail 样本，事件先于库失败。 |
+| 矩柱系统 | `construct_rectangle_columns` → 底层／柱／碰撞／stats；B `140788a80`，缺墙 panic、非矩形跳过；复杂邻墙与真实宿主未闭合。 |
+| 矩托系统 | `construct_rectangle_brackets` → 小托及高度门后的大托；B `1407896b0`，小先大、各自计数音效；完整多墙失败序待验。 |
+| 柱材质 | `construct_brick_columns`／`construct_crossbrick_pillar` → +150；B `141fe3240/142418f50`，逐根随机分层、继续写失败；调用方生命周期待联验。 |
+| 半木主父链 | `construct_walls` → `half_timbering` → 半木事件 → `curved_halftimber_maintain_entities`；B 父 `140757800`、主 `141218e30`，网格提交前运行，空事件退役旧实体；完整历史场景未验。 |
+| 主区间／高度 | `half_timber_areas`、`half_timber_height_spans` 由主入口调用；`m06-half-rect-area-oracle.*`／`m06-half-span-oracle.*`，原检查点覆盖有限。 |
+| 主分割 | `half_timber_initial_splits`、`half_timber_merge_windows`、`half_timber_split_positions` → 相邻对；`m06-half-splits-oracle.*`／`m06-half-final-splits-oracle.*`，多窗口组合未穷尽。 |
+| 竖梁 | `half_timber_vertical_plank` → +180；`m06-half-main-oracle-flat-v2-20261029.json`，原顺序先逐点再配对。 |
+| 斜梁 | `half_timber_diagonal_plank`／`half_timber_pair_rng` → +180；同主入口原 fixture，跨窗和退化数值仍待更多原执行。 |
+| 窗包围盒 | `get_window_aabb` → `overlapping_windows`；B `1412218a0`，真实装饰库映射及子类型边界仍需扩样。 |
+| 窗重叠 | `overlapping_windows`／`check_for_overlap_with_all_windows` → 主分割／窗下图案；B `141221da0/141221f70`，跨缝与多窗组合待验。 |
+| 窗下图案 | `add_underwindow_pattern` → 同一 +180 writer；原主入口 gable subtype3 fixture，圆墙曲率组合待验。 |
+| 矩边界 | `half_timber_rectangle_boundary_plank`、角点及细梁 → +180；`m06-half-main-rect-{gable,multi,low-multi}-native.json`，退化端帽待原差分。 |
+| 圆边界 | `half_timber_circle_boundary`／fine points → 曲面实例及 +180；`m06-half-main-circle-{native,seamhole-native,nonflat-native}.json`，更多重叠孔待验。 |
+| 屋顶轮廓 | `roof_outline` → +180 后续追加；既有 roof-outline 记录及 `m06-half-main-rect-gable-native.json`，先主写释放锁再重锁；非矩形截面 panic。 |
+| 实体维护 | `curved_halftimber_maintain_entities` → Nani 实体；B `1407706d0`，删除两表后依次半木／塔事件重建；实际 Reload／在途 GPU 待验。 |
+| 木地板边条 | `wooden_floor_borders` → primary 实体，随半木事件先于曲面实例创建；原目标孔／曲线仍需端帽和退化差分。 |
+
+本批未确认新的可安全修复的生产语义差异；不能把未匹配名称、旧报告 TODO 或反编译遗漏写入当缺口。候选完整原父体与当前真实 producer／失败顺序仍未逐指令闭合，继续保持 M6 未完成；本轮未运行 Cargo。

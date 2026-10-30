@@ -2486,12 +2486,38 @@ pub fn upsert_collider<K: std::hash::Hash + Eq>(
     position: glam::Vec3,
     rotation: glam::Quat,
 ) -> ColliderUpsert {
-    use slotmap::Key;
-    let slot = source.subworld() as usize;
     let external =
         utils::iso_transform::IsoTransform::from_translation_rotation(position, rotation);
     // B tuple builder impl21: rdx=mesh.local, r8=external => external*local.
     let final_pose = mesh.local_transform().nested_in(&external);
+    upsert_collider_at_final_pose(world, map, key, source, mesh, final_pose, None)
+}
+
+/// 归档记录的位姿已是活 collider 的最终位姿，恢复时不能再次叠加网格局部变换。
+#[cfg(feature = "native-physics")]
+pub fn upsert_archived_collider<K: std::hash::Hash + Eq>(
+    world: &mut RaycastWorld,
+    map: &mut std::collections::HashMap<K, ColliderMeshInstance>,
+    key: K,
+    mesh: &RaycastMesh,
+    pose: &crate::resources::walls::decorator_archivist::ArchivedColliderTransform,
+) -> ColliderUpsert {
+    let final_pose = utils::iso_transform::IsoTransform::from_translation_rotation(pose.translation, pose.rotation);
+    upsert_collider_at_final_pose(world, map, key, mesh.source, mesh.data.clone(), final_pose, Some(pose.shape.clone()))
+}
+
+#[cfg(feature = "native-physics")]
+fn upsert_collider_at_final_pose<K: std::hash::Hash + Eq>(
+    world: &mut RaycastWorld,
+    map: &mut std::collections::HashMap<K, ColliderMeshInstance>,
+    key: K,
+    source: RaycastGeoSource,
+    mesh: Arc<RaycastMeshData>,
+    final_pose: utils::iso_transform::IsoTransform,
+    archived_shape: Option<Arc<dyn Shape>>,
+) -> ColliderUpsert {
+    use slotmap::Key;
+    let slot = source.subworld() as usize;
     let existing = map.get(&key).copied();
     if let Some(existing) = existing {
         let pose_matches = world
@@ -2508,7 +2534,11 @@ pub fn upsert_collider<K: std::hash::Hash + Eq>(
                 pos == final_pose.translation && rot == final_pose.rotation
             })
             .unwrap_or(false);
-        if pose_matches {
+        let shape_matches = archived_shape.as_ref().is_none_or(|shape| {
+            world.get_rapier_collider(existing.slot, existing.collider)
+                .is_some_and(|collider| Arc::ptr_eq(&collider.shared_shape().0, shape))
+        });
+        if pose_matches && shape_matches {
             let registered = world.get_collider_mesh(existing.registry_index, existing.generation);
             if registered.data.hash == mesh.hash && registered.source.same_native_source(source) {
                 return ColliderUpsert::Kept {
@@ -2519,13 +2549,13 @@ pub fn upsert_collider<K: std::hash::Hash + Eq>(
         dispose_collider_mesh_instance(world, &existing);
     }
     // 原转换共享同一个内部形状，不能通过 clone_dyn 重新分配几何。
-    let shape = Arc::clone(
+    let shape = archived_shape.unwrap_or_else(|| Arc::clone(
         &mesh
             .shape
             .as_ref()
             .expect("upsert_collider: mesh has no shape")
             .0,
-    );
+    ));
     let transformed = OffsetColliderTransform {
         position: final_pose.translation,
         rotation: final_pose.rotation,

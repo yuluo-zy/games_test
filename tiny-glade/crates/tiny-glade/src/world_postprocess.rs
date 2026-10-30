@@ -99,6 +99,8 @@ pub fn build_world_postprocess(
     lighting: &WorldLightingOutputs,
     controls: PostProcessControls,
 ) -> rhapsody::Result<WorldPostOutputs> {
+    #[cfg(feature = "surface-compare-test")]
+    crate::screenshot::shared_texture_capture::record_raw_stage(frame, world, "surface-color", lighting.geometry.color)?;
     let video = world
         .get_resource::<GameConfig>()
         .ok_or_else(|| missing("GameConfig"))?
@@ -146,6 +148,10 @@ pub fn build_world_postprocess(
     let mut compute = SceneComputeHost::new(frame, world);
     compute.compute_shadow_mask_mean()?;
     compute.apply_volumetrics(&color, &depth)?;
+    #[cfg(feature = "surface-compare-test")]
+    crate::screenshot::shared_texture_capture::record_raw_stage(frame, world, "volumetric-color", color)?;
+    #[cfg(feature = "surface-compare-test")]
+    let mut compute = SceneComputeHost::new(frame, world);
     let prepared = compute.dof_prepare(&depth)?;
     let dof_enabled = if photomode {
         video.photomode_dof_enable
@@ -172,6 +178,8 @@ pub fn build_world_postprocess(
     } else {
         taa_input.desc.extent_2d()
     };
+    #[cfg(feature = "surface-compare-test")]
+    crate::screenshot::shared_texture_capture::record_raw_stage(frame, world, "taa-input", taa_input)?;
     let output = frame.with_compute(|compute| {
         Ok(compute.create_raw_texture(
             names::TAA_OUTPUT,
@@ -209,8 +217,14 @@ pub fn build_world_postprocess(
             history_global: controls.disable_temporal_history,
         })?
     };
+    #[cfg(feature = "surface-compare-test")]
+    crate::screenshot::shared_texture_capture::record_raw_stage(frame, world, "taa-output", taa)?;
     SceneRasterHost::new(frame, world, lists)?.post_taa_transparency_pass(&attachment(taa))?;
+    #[cfg(feature = "surface-compare-test")]
+    crate::screenshot::shared_texture_capture::record_raw_stage(frame, world, "taa-transparency", taa)?;
     let taa = render_shader_refactoring(frame, world, taa)?;
+    #[cfg(feature = "surface-compare-test")]
+    crate::screenshot::shared_texture_capture::record_raw_stage(frame, world, "world-output", taa)?;
     Ok(WorldPostOutputs {
         depth,
         coc: prepared.coc,

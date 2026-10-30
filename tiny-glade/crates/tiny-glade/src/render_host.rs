@@ -144,6 +144,7 @@ impl CowBudget {
 
 pub struct BufferHost {
     device: Arc<Device>,
+    extra_usage: vk::BufferUsageFlags,
     slots: Arc<Mutex<Vec<Slot>>>,
     uploads: Arc<Mutex<Option<BufferUploads>>>,
     read_boundary: Option<Arc<crate::render_upload_boundary::UploadBoundary>>,
@@ -895,6 +896,7 @@ impl BufferHost {
     pub fn new(device: Arc<Device>) -> Self {
         Self {
             device,
+            extra_usage: vk::BufferUsageFlags::empty(),
             slots: Arc::new(Mutex::new(Vec::new())),
             uploads: Arc::new(Mutex::new(None)),
             read_boundary: Some(Default::default()),
@@ -905,6 +907,13 @@ impl BufferHost {
             #[cfg(test)]
             fail_upload_chunk: Default::default(),
         }
+    }
+
+    /// Additional capabilities for buffers created by this host, including
+    /// direct startup producers. Normal hosts retain their exact descriptors.
+    pub fn with_extra_usage(mut self, usage: vk::BufferUsageFlags) -> Self {
+        self.extra_usage = usage;
+        self
     }
 
     /// Call after sealing begin_frame_read, before publishing the render packet.
@@ -929,6 +938,7 @@ impl BufferHost {
         }
         Ok(Arc::new(Self {
             device: self.device.clone(), slots: self.slots.clone(), uploads: self.uploads.clone(),
+            extra_usage: self.extra_usage,
             read_boundary: Some(self.boundary().clone()), publication: self.publication.clone(),
             cow_budget: self.cow_budget.clone(), upload_coverage: self.upload_coverage.clone(), frame: Some(snapshot),
             #[cfg(test)]
@@ -1283,6 +1293,7 @@ impl BufferHost {
     fn detached(&self) -> Self {
         Self {
             device: self.device.clone(), slots: self.slots.clone(), uploads: self.uploads.clone(),
+            extra_usage: self.extra_usage,
             read_boundary: Some(self.boundary().clone()), publication: self.publication.clone(),
             cow_budget: self.cow_budget.clone(), upload_coverage: self.upload_coverage.clone(), frame: None,
             #[cfg(test)]
@@ -1481,9 +1492,11 @@ impl CoreGraphicsDevice for BufferHost {
         name: &str,
         data: Option<&[u8]>,
     ) -> Result<Buffer, BackendError> {
+        let mut native_desc = Self::convert(desc)?;
+        native_desc.usage |= self.extra_usage;
         let managed = self
             .device
-            .create_buffer(&Self::convert(desc)?, name, data)?;
+            .create_buffer(&native_desc, name, data)?;
         // 宿主可移植性策略：原 None 不承诺字节值，原异步加载却会在首次
         // GPU 写入前读取回读头。只在新建且没有初始数据的读回缓冲上定义零值；
         // 原构造仍传 None，已有映射、导入和真实 GPU 结果不会经过这里重置。

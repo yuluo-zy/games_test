@@ -347,7 +347,7 @@ impl<'f, 's, 'w> SceneComputeHost<'f, 's, 'w> {
             .get_resource::<ShaderRefactoringState>()
             .ok_or_else(|| missing("ShaderRefactoringState"))?
             .disc;
-        with_env(self.frame, self.world, |env| {
+        let result = with_env(self.frame, self.world, |env| {
             let out = eval_gi_screen_radiance::eval_gi_screen_radiance(
                 env,
                 &half.depth,
@@ -357,11 +357,36 @@ impl<'f, 's, 'w> SceneComputeHost<'f, 's, 'w> {
                 reprojection,
                 state,
             );
-            env.record(out.eval);
-            env.record(out.reproject);
-            env.record(out.filter);
-            Ok(out.output)
-        })
+            #[cfg(not(feature = "surface-compare-test"))]
+            {
+                env.record(out.eval);
+                env.record(out.reproject);
+                env.record(out.filter);
+                Ok(out.output)
+            }
+            #[cfg(feature = "surface-compare-test")]
+            Ok(out)
+        })?;
+        #[cfg(not(feature = "surface-compare-test"))]
+        { Ok(result) }
+        #[cfg(feature = "surface-compare-test")]
+        {
+            use country_core::systems::render_loop::compute_passes::pass_kit::PassFrame;
+            use crate::screenshot::shared_texture_capture::record_raw_stage;
+            if crate::screenshot::shared_texture_capture::raw_stages_armed(self.world) {
+                eprintln!("GI_RAW frame={} history_valid={} allow_non_determinism={} refactoring_state={state}",
+                    self.world.resource::<country_core::render::frame_constants::FrameConstants>().frame_counter,
+                    result.history_valid, state == 0);
+            }
+            self.frame.with_compute(|frame| { frame.record(result.eval); Ok(()) })?;
+            record_raw_stage(self.frame, self.world, "gi-eval", result.unfiltered)?;
+            self.frame.with_compute(|frame| { frame.record(result.reproject); Ok(()) })?;
+            record_raw_stage(self.frame, self.world, "gi-reproject", result.unfiltered)?;
+            record_raw_stage(self.frame, self.world, "gi-reproject-stats", result.temporal_stats)?;
+            self.frame.with_compute(|frame| { frame.record(result.filter); Ok(()) })?;
+            record_raw_stage(self.frame, self.world, "gi-filter-stats", result.temporal_stats)?;
+            Ok(result.output)
+        }
     }
 
     pub fn bin_lights(&mut self) -> rhapsody::Result<LightBinning> {

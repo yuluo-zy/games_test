@@ -77,9 +77,28 @@ impl CoreRenderBridge {
         compiled_shader_root: impl AsRef<Path>,
         shaders: Arc<AssetShaderLibrary>,
     ) -> rhapsody::Result<Self> {
+        Self::new_with_extra_usage(
+            device,
+            compiled_shader_root,
+            shaders,
+            ash::vk::BufferUsageFlags::empty(),
+            ash::vk::ImageUsageFlags::empty(),
+        )
+    }
+
+    /// Diagnostic construction using the same host tables and graph backend.
+    /// Extra capabilities permit exact readback of persistent render outputs;
+    /// normal construction above retains the production descriptors.
+    pub fn new_with_extra_usage(
+        device: Arc<rhapsody::device::Device>,
+        compiled_shader_root: impl AsRef<Path>,
+        shaders: Arc<AssetShaderLibrary>,
+        extra_buffer_usage: ash::vk::BufferUsageFlags,
+        extra_texture_usage: ash::vk::ImageUsageFlags,
+    ) -> rhapsody::Result<Self> {
         let tables = HostTables {
-            buffers: Arc::new(BufferHost::new(device.clone())),
-            textures: Arc::new(TextureHost::new(device.clone())),
+            buffers: Arc::new(BufferHost::new(device.clone()).with_extra_usage(extra_buffer_usage)),
+            textures: Arc::new(TextureHost::new(device.clone()).with_extra_usage(extra_texture_usage)),
             shaders: Arc::new(ShaderHost::new(
                 device.clone(),
                 compiled_shader_root.as_ref(),

@@ -30,7 +30,7 @@ use crate::sample::uniform_sample_sphere;
 pub fn update_firefly_goals(
     time: Res<GameTime>,
     control: Res<CritterControlState>,
-    rng: Res<CritterRng>,
+    mut rng: ResMut<CritterRng>,
     mut query: Query<(&Transform, &mut Firefly, &Velocity, &mut CritterGoal)>,
 ) {
     // control 门（O）：`*res + 4 != 1 → return`（不消费 RNG）。
@@ -38,7 +38,7 @@ pub fn update_firefly_goals(
         return;
     }
     let dt = time.delta;
-    let mut rng_ctx = rng.0.lock().unwrap();
+    let rng_ctx = &mut rng.0;
     for (transform, mut firefly, velocity, mut goal) in &mut query {
         let pos = transform.translation;
         // CritterGoal 桥接（country-core {position,goal_tag}，DIVERGE 见 shared.rs 头）。
@@ -53,7 +53,7 @@ pub fn update_firefly_goals(
             pos,
             velocity.0,
             dt,
-            &mut rng_ctx,
+            rng_ctx,
         );
         match goal_opt {
             Some(p) => {

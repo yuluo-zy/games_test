@@ -10,8 +10,8 @@ from graph import Graph
 
 def graph_signature():
     g=Graph();s=g.current()
-    nodes=g.query('MATCH (n:Entity {snapshot:$s}) RETURN count(n) AS count',{'s':s})[0]['count']
-    edges=g.query('MATCH (a:Entity {snapshot:$s})-[r:LINK]->() RETURN count(r) AS count',{'s':s})[0]['count']
+    nodes=g.query('MATCH (n:Entity {snapshot:$s}) RETURN count(n) AS count',{'s':s},timeout=60)[0]['count']
+    edges=g.query('MATCH (a:Entity {snapshot:$s})-[r:LINK]->() RETURN count(r) AS count',{'s':s},timeout=60)[0]['count']
     sample=g.query('''MATCH (a:Entity {snapshot:$s,key:'function:B:8cdc60'})-[r:LINK]->(b)
                 WHERE r.kind IN ['READS','HAS_CONTRACT'] RETURN b.key AS target,r.kind AS kind ORDER BY target,kind''',{'s':s})
     return {'snapshot':s,'nodes':nodes,'edges':edges,'sample':sample}

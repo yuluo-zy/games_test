@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import zipfile
+import sqlite3
 
 import artifacts
 import graph
@@ -15,6 +16,32 @@ from search_index import chunks,CHUNK
 from validation import verification_ok
 
 class CodeMapTests(unittest.TestCase):
+    def test_graph_filter_preserves_business_icf_alias_and_shared_ranges(self):
+        from graph_filter import Projection,association_exclusion
+        con=sqlite3.connect(':memory:');con.row_factory=sqlite3.Row
+        con.executescript('''CREATE TABLE functions(version,rva);
+            CREATE TABLE symbols(version,entry,record,name);
+            CREATE TABLE spans(version,entry,start,end,origin);
+            CREATE TABLE refs(version,entry,site,target);
+            CREATE TABLE extra_nodes(key,payload);''')
+        con.executemany('INSERT INTO functions VALUES(?,?)',[('B',16),('B',32),('A',48),('C',64)])
+        con.executemany('INSERT INTO symbols VALUES(?,?,?,?)',[
+            ('B',16,'default','Arch::default'),('B',16,'unknown','FUN_140000010'),
+            ('B',32,'clone','Wall::clone'),('B',32,'business','World::raycast'),
+            ('A',48,'serde','Visitor::visit_map'),('C',64,'generic','Store::insert')])
+        con.executemany('INSERT INTO spans VALUES(?,?,?,?,?)',[
+            ('B',16,16,20,'pdb'),('B',32,16,20,'shared'),('B',32,32,40,'pdb')])
+        con.executemany('INSERT INTO refs VALUES(?,?,?,?)',[('B',32,34,16),('B',32,36,32)])
+        p=Projection(con)
+        self.assertEqual(p.removed_entries,{('B',16),('A',48),('C',64)})
+        self.assertEqual(p.retained_mixed_entries,{('B',32)})
+        self.assertNotIn('assembly:B:10:14',p.hidden)
+        self.assertIn('callsite:B:22',p.hidden)
+        self.assertNotIn('callsite:B:24',p.hidden)
+        self.assertIsNone(association_exclusion('business::generate<Visitor::default>'))
+        self.assertIsNotNone(association_exclusion('Visitor::deserialize<Business>'))
+        con.close()
+
     def test_transport_connections_are_isolated_between_threads(self):
         import threading
         from concurrent.futures import ThreadPoolExecutor
@@ -69,6 +96,7 @@ class CodeMapTests(unittest.TestCase):
                 for _ in range(3):transport.request(config,b'{}',12)
                 self.assertEqual(factory.call_count,1)
                 self.assertEqual(connection.request.call_count,3)
+                self.assertEqual(connection.request.call_args.kwargs['headers']['max-execution-time'],'10000')
                 connection.request.side_effect=ConnectionResetError('ambiguous commit')
                 with self.assertRaises(ConnectionResetError):transport.request(config,b'write',12)
                 self.assertEqual(connection.request.call_count,4)

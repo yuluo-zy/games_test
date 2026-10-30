@@ -18,6 +18,8 @@ pub(super) fn install(app: &mut App) {
     // res::walls::public_walls
     app.add_event::<res::walls::public_walls::OnWallChanged>();
     app.add_event::<res::walls::public_walls::OnWallDeleted>();
+    // 合并提示通道须先登记维护，兼容World初始化本身不注册事件轮换。
+    app.add_event::<sys::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>();
     // 原墙构造与半木重建通道必须先注册维护，再进入World资源兼容入口。
     app.add_event::<res::walls::plaster::RecalculatePlasterCmd>();
     app.add_event::<res::walls::plaster::RecalculateHalfTimberMeshCmd>();
@@ -182,10 +184,12 @@ mod tests {
         app.world_mut().send_event(RecalculatePlasterCmd(wall));
         app.world_mut().send_event(RecalculateHalfTimberMeshCmd { wall, instances: vec![] });
         app.world_mut().send_event(RecalculateWoodenTurretCmd { wall, instances: vec![] });
+        app.world_mut().send_event(sys::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall { wall, flag: 0 });
         for _ in 0..3 { app.update(); }
         assert!(app.world().resource::<Events<RecalculatePlasterCmd>>().is_empty());
         assert!(app.world().resource::<Events<RecalculateHalfTimberMeshCmd>>().is_empty());
         assert!(app.world().resource::<Events<RecalculateWoodenTurretCmd>>().is_empty());
+        assert!(app.world().resource::<Events<sys::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>>().is_empty());
     }
 
     #[derive(Resource, Default)]

@@ -25,9 +25,11 @@ fn image_shape(desc: &TextureDesc) -> Result<()> {
     if !matches!(
         desc.format,
         vk::Format::B10G11R11_UFLOAT_PACK32 | vk::Format::D32_SFLOAT_S8_UINT
+            | vk::Format::R16G16B16A16_SFLOAT | vk::Format::R8G8B8A8_UNORM
+            | vk::Format::R32G32_UINT | vk::Format::R16G16_SFLOAT
     ) {
         return Err(invalid(
-            "surface diagnostic requires original HDR or D32S8 format; no conversion fallback",
+            "diagnostic requires original HDR, GI radiance/stats or D32S8 format; no conversion fallback",
         ));
     }
     Ok(())
@@ -213,6 +215,9 @@ pub fn raw_byte_count(
 ) -> Result<u64> {
     let bytes = match (format, aspect) {
         (vk::Format::B10G11R11_UFLOAT_PACK32, vk::ImageAspectFlags::COLOR) => 4,
+        (vk::Format::R16G16B16A16_SFLOAT | vk::Format::R32G32_UINT, vk::ImageAspectFlags::COLOR) => 8,
+        (vk::Format::R8G8B8A8_UNORM, vk::ImageAspectFlags::COLOR) => 4,
+        (vk::Format::R16G16_SFLOAT, vk::ImageAspectFlags::COLOR) => 4,
         (vk::Format::D32_SFLOAT_S8_UINT, vk::ImageAspectFlags::DEPTH) => 4,
         _ => {
             return Err(invalid(

@@ -202,6 +202,8 @@ pub fn build_world_lighting(
         direct_lights,
         shadows,
     };
+    #[cfg(feature = "surface-compare-test")]
+    crate::screenshot::shared_texture_capture::record_raw_stage(frame, world, "gi-filtered", out.gi_radiance)?;
     // W43 caller stack at 1404eca08..67. The old core ABI adapter's names
     // `depth` and `gbuffer` are misleading: they carry scene color and RT GI.
     // Keep that compatibility detail only here; public stage outputs are typed.
@@ -232,6 +234,8 @@ pub fn build_world_lighting(
         _marker: core::marker::PhantomData,
     };
     SceneRasterHost::new(frame, world, lists)?.deferred_raster(&inputs)?;
+    #[cfg(feature = "surface-compare-test")]
+    crate::screenshot::shared_texture_capture::record_raw_stage(frame, world, "deferred-color", out.geometry.color)?;
     Ok(out)
 }
 

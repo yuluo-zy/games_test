@@ -248,7 +248,11 @@ mod decorator_unload_tests {
         }
         {
             let mut archivist = world.resource_mut::<LiveDecoratorArchivist>();
-            archivist.collision_a.insert(id.0, (utils::iso_transform::IsoTransform::default(), country_core::systems::collision::world::RaycastMesh::new(mesh, RaycastGeoSource::decorator(id, DecoratorStorageAddr::Wall(wall)))));
+            let transform = country_core::resources::walls::decorator_archivist::ArchivedColliderTransform {
+                translation: glam::Vec3::ZERO, rotation: glam::Quat::IDENTITY,
+                shape: mesh.shape.as_ref().unwrap().0.clone(),
+            };
+            archivist.collision_a.insert(id.0, (transform, country_core::systems::collision::world::RaycastMesh::new(mesh, RaycastGeoSource::decorator(id, DecoratorStorageAddr::Wall(wall)))));
             archivist.culling.allow_any = true;
             archivist.culling.allowed_ids.insert(id.0);
         }

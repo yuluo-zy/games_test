@@ -254,9 +254,11 @@ impl ConstructorGpuOutput {
         &self,
         key: ConstructorKey,
     ) -> Option<&SparseInstanceBufferAllocation<WoodenPlankSsbo>> {
-        if key.part == ConstructorPart::ElevationSupports {
-            self.support_planks.get(&key.wall)
-        } else { self.planks.get(&key.wall) }
+        match key.part {
+            ConstructorPart::ElevationSupports => self.support_planks.get(&key.wall),
+            ConstructorPart::HalfTimber => self.half_timber_planks.get(&key.wall),
+            _ => self.planks.get(&key.wall),
+        }
     }
     pub fn remove_wall(&mut self, wall: u64) {
         // 原逐墙析构只释放该墙；批量删除不能为每堵墙扫描全部分配。
@@ -764,6 +766,8 @@ mod tests {
         let wall_planks = planks.allocation_to_draw_multi_instanced(owners.plank_allocation(common).unwrap());
         let support_planks = planks.allocation_to_draw_multi_instanced(owners.plank_allocation(support).unwrap());
         let half = planks.allocation_to_draw_multi_instanced(owners.half_timber_allocation(wall).unwrap());
+        let half_key = ConstructorKey { wall, part: ConstructorPart::HalfTimber };
+        assert_eq!(planks.allocation_to_draw_multi_instanced(owners.plank_allocation(half_key).unwrap()), half);
         assert_eq!(wall_bricks.iter().map(|r| r.1).sum::<u32>(), 1);
         assert_eq!(support_bricks.iter().map(|r| r.1).sum::<u32>(), 1);
         assert_ne!(wall_bricks, support_bricks);
@@ -786,6 +790,7 @@ mod tests {
         assert!(owners.plank_allocation(common).is_none());
         assert!(owners.plank_allocation(support).is_none());
         assert!(owners.half_timber_allocation(wall).is_none());
+        assert!(owners.plank_allocation(half_key).is_none());
         bricks.take_out_waste();
         planks.take_out_waste();
         assert!(bricks.to_draw_multi_instanced().is_empty());

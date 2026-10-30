@@ -162,6 +162,14 @@ pub fn build_world(
     geometry::calculate_dof_autofocus(frame, world, &depth)?;
     geometry::mouse_depth_compute(frame, world, &depth)?;
     SceneRasterHost::new(frame, world, lists)?.late_forward_and_deferred_pass(&targets, &attachment(color))?;
+    #[cfg(feature = "surface-compare-test")]
+    crate::screenshot::shared_texture_capture::record_raw_stage(frame, world, "geometry-color", color)?;
+    #[cfg(feature = "surface-compare-test")]
+    {
+        for (role, source) in [("gbuffer", gbuffer), ("depth", depth), ("velocity", velocity)] {
+            crate::screenshot::shared_texture_capture::record_raw_stage(frame, world, role, source)?;
+        }
+    }
 
     let video = &world.get_resource::<GameConfig>().ok_or_else(|| missing("GameConfig"))?.video;
     let history_mode = if video.upscaling_mode == UpscalingMode::Tgsr {

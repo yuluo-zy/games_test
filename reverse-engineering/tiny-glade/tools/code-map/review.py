@@ -78,6 +78,7 @@ def byte_coverage():
 def export_maps():
     """Aggregate the same normalized call evidence without an alias Cartesian join."""
     from graph import Graph
+    from graph_filter import association_exclusion, REVISION
     import xml.etree.ElementTree as ET
     graph=Graph();snapshot=graph.current();con=db(True)
     binding=load(RUNTIME/'published-catalog-binding.json')
@@ -87,7 +88,8 @@ def export_maps():
     attribution=collections.defaultdict(set)
     tracked=load(PROJECT/'tracking/module-coverage.json')['modules']
     prefixes={v:[r['path'].removesuffix('/src') for r in tracked if r.get('source_counts',{}).get(v,0)] for v in 'ABC'}
-    for row in con.execute('SELECT version,entry,sources FROM symbols'):
+    for row in con.execute('SELECT version,entry,sources,name FROM symbols'):
+        if association_exclusion(row['name']):continue
         for path in json.loads(row['sources']):
             attribution[(row['version'],row['entry'])].add(f'module:{row["version"]}:{module_for(path)}')
             candidates=[prefix for prefix in prefixes[row['version']] if path.startswith(prefix+'/')]
@@ -111,6 +113,7 @@ def export_maps():
     con.close()
     edges=[{'source':a,'target':b,'source_attributed_unique_calls':n} for (a,b),n in sorted(counter.items())]
     doc={'snapshot':snapshot,'modules':nodes,'dependencies':edges,'semantic_complete':False,
+         'filter_policy':REVISION,
          'projection':'Normalized catalog used by this published graph; source-attribution many-to-many preserved',
          'warning':'Source attribution is not exclusive business ownership; no automatic split acceptance'}
     atomic(RUNTIME/'module-map.json',doc)

@@ -14,15 +14,16 @@ def main():
     sub=parser.add_subparsers(dest='command',required=True)
     for command in ['inventory','capacity','enrich','associated','archive-existing','dispatch-boundaries','import','coverage','export-map','module-reviews','byte-coverage','receipt-audit','freeze-evidence','optimize-search']:sub.add_parser(command)
     p=sub.add_parser('extract');p.add_argument('--limit',type=int)
-    p=sub.add_parser('runtime');p.add_argument('action',choices=['configure','start','stop','status'])
+    p=sub.add_parser('runtime');p.add_argument('action',choices=['configure','start','stop','status','console'])
     p=sub.add_parser('query');p.add_argument('tool');p.add_argument('--args',default='{}');p.add_argument('--output')
     p=sub.add_parser('verify');p.add_argument('--full',action='store_true')
     p=sub.add_parser('benchmark');p.add_argument('--repetitions',type=int,default=30)
     p=sub.add_parser('cfg');p.add_argument('--key',required=True)
+    p=sub.add_parser('prune-mechanical');p.add_argument('--apply',action='store_true')
     sub.add_parser('serve')
     args=parser.parse_args()
     lock=None
-    if args.command in ('inventory','enrich','associated','archive-existing','dispatch-boundaries','extract','import'):
+    if args.command in ('inventory','enrich','associated','archive-existing','dispatch-boundaries','extract','import','prune-mechanical'):
         RUNTIME.mkdir(parents=True,exist_ok=True)
         lock=(RUNTIME/'catalog-writer.lock').open('a')
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -65,6 +66,9 @@ def main():
     elif args.command=='optimize-search':
         from search_index import build
         result=build()
+    elif args.command=='prune-mechanical':
+        from prune import prune
+        result=prune(args.apply)
     elif args.command=='export-map':
         from review import export_maps
         result=export_maps()

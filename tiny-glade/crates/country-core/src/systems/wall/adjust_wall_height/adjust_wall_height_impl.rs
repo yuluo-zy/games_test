@@ -16,7 +16,7 @@
 //! | 8 | `Res<GameTime>`（`delta` 作速率除数） | 同 |
 //!
 //! 逐事件行为（`mode` 为事件 `+0x10`）：
-//! 1. `mode == 0` → 跳过；`mode != 1` → `todo!()`（原版 `core::panicking::panic("not yet implemented")`，
+//! 1. `mode == 0` → 跳过；`mode != 1` → 原版 `core::panicking::panic("not yet implemented")`，
 //!    0x142adf330，长度 0x13）。
 //! 2. 事件墙在 `InnerWalls` 里缺失 → `Option::unwrap` 失败 panic（原版首个 hash 探测末尾
 //!    `unwrap_failed(0x142adf2e8)`）。
@@ -116,7 +116,8 @@ pub fn adjust_wall_height_impl(
             continue;
         }
         if request.mode != 1 {
-            todo!();
+            // B 140ac27b0：先检查事件模式，再查墙；该失败是原版明确分支。
+            panic!("not yet implemented");
         }
         let wall = WallId(request.wall.0);
         let Some(state) = inner.get(wall) else {
@@ -216,9 +217,9 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "not yet implemented")]
-    fn unsupported_mode_is_the_original_todo_panic() {
-        let (mut world, id) = world_with_wall(2.0);
-        send(&mut world, request(id, 2, 5.0, 0));
+    fn unsupported_mode_panics_before_looking_up_the_wall() {
+        let (mut world, _) = world_with_wall(2.0);
+        send(&mut world, request(WallId(9999), 2, 5.0, 0));
         world.run_system_once(adjust_wall_height_impl).unwrap();
     }
 

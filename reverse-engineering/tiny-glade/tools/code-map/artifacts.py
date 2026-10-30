@@ -16,28 +16,26 @@ import subprocess
 import time
 import zipfile
 
-WORKSPACE = Path(__file__).resolve().parents[4]
-PROJECT = WORKSPACE / 'reverse-engineering/tiny-glade'
+from settings import (WORKSPACE, PROJECT, RUNTIME, COLLECTOR, LLVM,
+                      llvm_library, resolve_evidence)
+
 SKELETON = PROJECT / 'skeleton'
-RUNTIME = WORKSPACE / 'tools/code-map-runtime'
-COLLECTOR = Path('/Users/yuluo/.codex/skills/native-evidence-pack/scripts/collect.py')
-LLVM = Path('/opt/homebrew/opt/llvm')
 SCHEMA = 1
 
 def canonical(x):
     return json.dumps(x, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode()
 
 def digest(p):
-    with Path(p).open('rb') as f:
+    with resolve_evidence(p).open('rb') as f:
         return hashlib.file_digest(f, 'sha256').hexdigest()
 
 def load(p):
-    p = Path(p)
+    p = resolve_evidence(p)
     with (gzip.open(p, 'rt') if p.suffix == '.gz' else p.open()) as f:
         return json.load(f)
 
 def lines(p):
-    with gzip.open(p, 'rt') as f:
+    with gzip.open(resolve_evidence(p), 'rt') as f:
         for line in f:
             yield json.loads(line)
 
@@ -65,6 +63,9 @@ def pack_module():
 
 def baseline(v, verify=True):
     b = load(PROJECT / 'tracking/baselines.json')['baselines'][v]
+    b['root'] = str(resolve_evidence(b['root'])) if 'root' in b else str(WORKSPACE)
+    for k in ('binary', 'pdb'):
+        b[k]['path'] = str(resolve_evidence(b[k]['path']))
     if verify:
         pack = pack_module()
         for k in ('binary', 'pdb'):
@@ -211,7 +212,7 @@ def inventory():
 
 class Decoder:
     def __init__(self):
-        self.library = (LLVM / 'lib/libLLVM.dylib').resolve()
+        self.library = llvm_library()
         self.lib = C.CDLL(str(self.library))
         for name in ('LLVMInitializeX86TargetInfo','LLVMInitializeX86Target','LLVMInitializeX86TargetMC',
                      'LLVMInitializeX86Disassembler','LLVMInitializeX86AsmPrinter'):

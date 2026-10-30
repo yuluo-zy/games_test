@@ -1326,6 +1326,9 @@ pub fn ui_place_decorator(
             &baseline, &[], &storage, derived.as_view(), &transforms, source,
             !modifiers.disable_snapping(), flat_only, &mut stream, &world)
     } else { DecoratorInteractionIntent::UnsupportedTerrain { position: hit.position } };
+    if std::env::var_os("TG_M6_DECORATOR_TRACE").is_some() {
+        eprintln!("M6_PLACE id={id:?} phase={phase} finished={finished} intent={intent:?} backup_state={} progress={}", backup.state, place_state.progress);
+    }
     let accepted = match intent {
         DecoratorInteractionIntent::Accepted(accepted) => accepted,
         DecoratorInteractionIntent::UnsupportedTerrain { .. } => {

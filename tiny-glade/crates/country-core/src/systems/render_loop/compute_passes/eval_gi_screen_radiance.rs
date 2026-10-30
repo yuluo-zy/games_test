@@ -51,6 +51,12 @@ pub const SHADER_REFACTORING_STATE_TYPE_ID: TypeId128 = TypeId128 {
 
 pub struct GiScreenRadiance {
     pub output: RgTexture,
+    #[cfg(feature = "surface-compare-test")]
+    pub unfiltered: RgTexture,
+    #[cfg(feature = "surface-compare-test")]
+    pub temporal_stats: RgTexture,
+    #[cfg(feature = "surface-compare-test")]
+    pub history_valid: bool,
     pub eval: RecordedComputePass,
     pub reproject: RecordedComputePass,
     pub filter: RecordedComputePass,
@@ -146,10 +152,21 @@ pub fn eval_gi_screen_radiance(
             &WriteTextureUnchecked(stats_pair.current),
             0x37,
         )
+        // Original blur_screen_radiance SPIR-V reads this storage image's
+        // count to select its 1/3-pixel filter stride; it does not overwrite
+        // the stats. Retain Reproject GI's contents without changing native
+        // access 0x37, descriptor type or binding order.
+        .preserve_storage_texture_contents(TEMPORAL_STATS_OUT_TEX)
         .dispatch_2d(half.width, half.height);
 
     GiScreenRadiance {
         output: rad_pair.current,
+        #[cfg(feature = "surface-compare-test")]
+        unfiltered: radiance,
+        #[cfg(feature = "surface-compare-test")]
+        temporal_stats: stats_pair.current,
+        #[cfg(feature = "surface-compare-test")]
+        history_valid: rad_pair.fresh,
         eval,
         reproject,
         filter,
@@ -287,7 +304,7 @@ mod tests {
     /// 原版 reproject SPV 读取并部分重写 output_tex（EVAL 的结果），必须声明保留内容，
     /// 否则 EVAL 被图剔除，Filter GI 读到未初始化（别名）内存。
     #[test]
-    fn reproject_preserves_the_eval_output_it_updates_in_place() {
+    fn reproject_and_filter_keep_the_contents_the_original_shaders_read() {
         use crate::render::pass_builder::pass_resource_access::PassBinding;
         for valid in [true, false] {
             let (e, out) = run(0, valid);
@@ -297,9 +314,16 @@ mod tests {
                 out.reproject.bindings[out.reproject.preserving_texture_bindings[0] as usize],
                 PassBinding::ImageView { resource, write: true, .. } if resource == radiance
             ));
-            // EVAL 写同一资源（丢弃式 0x32）；FILTER 不就地更新辐射度。
+            // EVAL fully writes radiance. FILTER reads the just-reprojected
+            // stats through native write binding 0x37, retaining that owner.
             assert!(out.eval.preserving_texture_bindings.is_empty());
-            assert!(out.filter.preserving_texture_bindings.is_empty());
+            let stats = accesses(&out.filter).last().unwrap().0;
+            assert_eq!(out.filter.preserving_texture_bindings.len(), 1);
+            assert!(matches!(
+                out.filter.bindings[out.filter.preserving_texture_bindings[0] as usize],
+                PassBinding::ImageView { resource, write: true, .. } if resource == stats
+            ));
+            assert_ne!(stats, out.output.resource);
         }
     }
 

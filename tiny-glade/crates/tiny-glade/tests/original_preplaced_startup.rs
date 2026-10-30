@@ -113,6 +113,7 @@ fn world() -> World {
     atlas.add(kind, name.clone(), &mesh);
     world.insert_resource(atlas);
     world.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
+    world.insert_resource(bevy_state::state::State::new(country_core::app_loading_state::AppLoadingState::Game));
     world.init_resource::<AudioTriggerLibrary>();
     world.init_resource::<RtWorld>();
     world.init_resource::<PrefabsToDelete>();
@@ -273,6 +274,41 @@ fn absence_of_a_legacy_request_never_creates_a_starting_edit_or_blocks_current_s
     assert!(world.resource::<Events<DeleteTreeCmd>>().is_empty());
 }
 
+#[test]
+fn delayed_preplaced_conversion_does_not_cross_game_reload() {
+    check_delayed_preplaced_conversion_epoch(false);
+}
+
+#[test]
+fn delayed_preplaced_conversion_does_not_cross_session() {
+    check_delayed_preplaced_conversion_epoch(true);
+}
+
+fn check_delayed_preplaced_conversion_epoch(change_session: bool) {
+    let mut world = world();
+    // 已有回读来自请求前；保持真实等待直到新的渲染回执到达。
+    world.resource_mut::<country_core::render::gpu_readback::GpuReadbacks>().note_submitted(1);
+    world.send_event(SpawnPreplacedTrees);
+    let mut schedule = Schedule::default();
+    schedule.add_systems((spawn_prefab_commands, convert_preplaced_trees::<()>).chain());
+    for _ in 0..4 { schedule.run(&mut world); }
+    assert!(world.resource::<History<()>>().ledger().entries.is_empty());
+    if change_session {
+        world.insert_resource(ActiveSession::new(SessionId::new(), SessionMeta::default()));
+    } else {
+        world.insert_resource(bevy_state::state::State::new(country_core::app_loading_state::AppLoadingState::Reload));
+        world.insert_resource(bevy_state::state::State::new(country_core::app_loading_state::AppLoadingState::Game));
+    }
+    world.resource_mut::<country_core::render::gpu_readback::GpuReadbacks>()
+        .publish_slice(&[TerrainRockMaskSsbo(0); 0x2000], 2);
+    for _ in 0..3 { schedule.run(&mut world); }
+    assert!(world.resource::<History<()>>().ledger().entries.is_empty());
+    // 新会话的真实请求仍会完成转换，不因上个请求失效而被吞掉。
+    world.send_event(SpawnPreplacedTrees);
+    for _ in 0..3 { schedule.run(&mut world); }
+    assert_eq!(world.resource::<History<()>>().ledger().entries.len(), 1);
+}
+
 /// Explicit asset-dependent acceptance. Run this one test with the process cwd
 /// set to the original distribution directory. It never changes global cwd or
 /// writes the original assets. The per-name one-part prefab is a test fixture;
@@ -348,6 +384,7 @@ fn shipped_themes_execute_actual_asset_producer_and_nonempty_delayed_converter()
         world.insert_resource(library);
         world.insert_resource(atlas);
         world.insert_resource(session);
+        world.insert_resource(bevy_state::state::State::new(country_core::app_loading_state::AppLoadingState::Game));
         world.init_resource::<AudioTriggerLibrary>();
         world.init_resource::<RtWorld>();
         world.init_resource::<PrefabsToDelete>();

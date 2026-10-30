@@ -102,7 +102,7 @@ pub fn update_butterfly_states(
     time: Res<GameTime>,
     camera: Res<MainCamera>,
     cursor: Res<CursorTerrainRaycast>,
-    rng: Res<CritterRng>,
+    mut rng: ResMut<CritterRng>,
     water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     buffers: Res<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,
     mut query: Query<(
@@ -122,7 +122,7 @@ pub fn update_butterfly_states(
         .get::<terrain_rock_mask::TerrainRockMaskSsbo>()
         .expect("update_butterfly_states requires canonical mapped TerrainRockMaskSsbo");
     let rock_mask = terrain_rock_mask::TerrainRockMaskSsbo::published(readbacks.as_deref());
-    let mut rng_ctx = rng.0.lock().unwrap();
+    let rng_ctx = &mut rng.0;
     // O 0x141d851cb：`from_iter<Vec2, Map<QueryIter<(Transform, Sheep)>>>` 收集避羊位。
     let sheep_positions: Vec<Vec2> = sheep_query
         .iter()
@@ -160,7 +160,7 @@ pub fn update_butterfly_states(
             dt,
             near,
             sheep_near,
-            &mut rng_ctx,
+            rng_ctx,
             goal_active,
             pos,
             &water,
@@ -357,11 +357,11 @@ fn butterfly_state_dispatch(
 /// 值与组件身份未恢复），本系统未建模。
 pub fn update_butterfly_goals(
     time: Res<GameTime>,
-    rng: Res<CritterRng>,
+    mut rng: ResMut<CritterRng>,
     mut query: Query<(&Transform, &Velocity, &mut Butterfly, &mut CritterGoal)>,
 ) {
     let dt = time.delta;
-    let mut rng_ctx = rng.0.lock().unwrap();
+    let rng_ctx = &mut rng.0;
     for (transform, velocity, mut butterfly, mut goal) in &mut query {
         let pos = transform.translation;
         // CritterGoal 桥接（country-core {position,goal_tag}，DIVERGE 见 shared.rs 头）。
@@ -377,7 +377,7 @@ pub fn update_butterfly_goals(
             pos,
             velocity.0,
             dt,
-            &mut rng_ctx,
+            rng_ctx,
         );
         match goal_opt {
             Some(p) => {

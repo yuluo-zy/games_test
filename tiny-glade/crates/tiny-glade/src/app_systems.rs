@@ -25,7 +25,7 @@ impl WallSystems for bevy_app::App {
         use bevy_ecs::schedule::IntoScheduleConfigs;
         use country_core::{
             resources::{
-                history::MaybePendingSnapshotId, walls::decorator_archivist::LiveColliderPayload,
+                history::MaybePendingSnapshotId,
             },
             systems::{GameSystemSet, wall},
         };
@@ -39,9 +39,7 @@ impl WallSystems for bevy_app::App {
         // 2. 0x140493177
         self.add_systems(
             Update,
-            system_decorator::restore_archived_decorators::restore_archived_decorators::<
-                LiveColliderPayload,
-            >
+            system_decorator::restore_archived_decorators::restore_archived_decorators
                 .in_set(GameSystemSet(42)),
         );
         // 3. 0x1404932c7：外层 chain_ignore_deferred(chain1, chain2)，set 19。
@@ -233,6 +231,7 @@ impl WallSystems for bevy_app::App {
         self.insert_resource(EraserSizeMultiplier(1.0));
 
         self.add_event::<FinishWall>();
+        self.add_event::<country_core::systems::wall::snapping::telegraph_walls_are_merged::PlayLineAcrossWall>();
         self.add_event::<RecordMouseInputIntoWall>();
         self.add_event::<RoofIsInvalid>();
         self.add_event::<RecalculateWallHoles>();

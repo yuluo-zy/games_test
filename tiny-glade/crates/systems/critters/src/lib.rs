@@ -353,6 +353,29 @@ mod plugin_registration_tests {
         assert!(world.contains_resource::<FishSpawnLocations>());
         world.schedule_scope(Update.intern(), |world, schedule| {
             schedule.initialize(world).expect("critters Update graph must build");
+            // B's FunctionSystem symbols declare ResMut<CritterRng> for
+            // these consumers. A mutex hidden behind Res permits concurrent
+            // execution and makes RNG ownership invisible to the scheduler.
+            let rng = world.components().resource_id::<duck::CritterRng>().unwrap();
+            let expected = ["update_butterfly_states", "update_butterfly_goals",
+                "update_firefly_goals", "update_sheep_goals", "update_duck_goals"];
+            for name in expected {
+                let (_, system) = schedule.systems().unwrap()
+                    .find(|(_, system)| system.name().ends_with(&format!("::{name}")))
+                    .unwrap_or_else(|| panic!("missing RNG consumer {name}"));
+                assert!(system.component_access().has_resource_write(rng),
+                    "{name} hides the original CritterRng write from the scheduler");
+            }
+            let planner = world.components().resource_id::<duck::DuckTrajectoryPlanner>().unwrap();
+            for name in ["spawn_ducks", "despawn_ducks", "plan_duck_trajectories"] {
+                let (_, system) = schedule.systems().unwrap()
+                    .find(|(_, system)| system.name().ends_with(&format!("::{name}")))
+                    .unwrap_or_else(|| panic!("missing planner consumer {name}"));
+                let access = system.component_access();
+                assert!(access.has_resource_write(planner), "{name} lost the planner RNG owner");
+                assert!(!access.has_resource_read(rng) && !access.has_resource_write(rng),
+                    "{name} must not consume the independent animal-goal RNG");
+            }
         });
         world.schedule_scope(OnExit(AppLoadingState::Game).intern(), |world, schedule| {
             schedule.initialize(world).expect("critters OnExit graph must build");

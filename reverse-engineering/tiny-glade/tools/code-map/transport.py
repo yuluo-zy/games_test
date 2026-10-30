@@ -44,7 +44,8 @@ def request(config,payload,timeout):
     if connection.sock is not None:connection.sock.settimeout(timeout)
     try:
         connection.request('POST',prefix+'/db/neo4j/tx/commit',body=payload,
-            headers={'Authorization':'Basic '+auth,'Content-Type':'application/json'})
+            headers={'Authorization':'Basic '+auth,'Content-Type':'application/json',
+                     'max-execution-time':str(int(max(1,timeout-2)*1000))})
         response=connection.getresponse()
         raw=response.read()
         if response.will_close:close_connection()

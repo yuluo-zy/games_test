@@ -13,7 +13,7 @@ import time
 import zipfile
 
 from artifacts import (RUNTIME, PROJECT, WORKSPACE, LLVM, atomic, baseline, canonical,
-                       db, digest, load, pack_module, read_blob, coverage)
+                       db, digest, load, pack_module, read_blob, coverage, resolve_evidence)
 from graph import Graph, query_tool
 
 CHAIN = Path(__file__).with_name('chain.json')
@@ -22,7 +22,7 @@ REPORTS = WORKSPACE/'tiny-glade/reports/module-recovery-2026-10-23'
 def evidence_status():
     errors=[];stale=[]
     for row in load(CHAIN)['evidence']:
-        p=Path(row['path'])
+        p=resolve_evidence(row['path'])
         if not p.exists() or digest(p)!=row['sha256']:
             (stale if row['role'].startswith('current_implementation') else errors).append(str(p))
     return {'original_evidence_errors':errors,'stale_implementation_bindings':stale,
@@ -135,7 +135,7 @@ def audit_receipts():
     for name in ['m01-global-ray-validation.json','m01-rapier-producer-final-validation.json']:
         path=REPORTS/name;doc=load(path);files=[]
         for record in doc['files']:
-            candidate=Path(record['path'].replace('\\','/'))
+            candidate=resolve_evidence(record['path'].replace('\\','/')) if Path(record['path']).is_absolute() else Path(record['path'].replace('\\','/'))
             candidate=(candidate if candidate.is_absolute() else root/candidate).resolve()
             status='missing'
             if candidate.is_relative_to(WORKSPACE) and candidate.is_file():
@@ -154,7 +154,7 @@ def audit_receipts():
 def freeze_evidence():
     folder=RUNTIME/'proof-cas';folder.mkdir(exist_ok=True);copied=0
     for record in load(CHAIN)['evidence']:
-        raw=Path(record['path']).read_bytes()
+        raw=resolve_evidence(record['path']).read_bytes()
         if hashlib.sha256(raw).hexdigest()!=record['sha256']:
             raise ValueError('Evidence changed before freeze: '+record['path'])
         p=folder/record['sha256']
