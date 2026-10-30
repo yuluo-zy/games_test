@@ -191,6 +191,14 @@ mod full_wall_id_tests {
             apply_wall_color(cmd, &mut colors, &walls, &mut sounds, &mut create, &mut delete);
         }
     }
+    fn test_set_gate_color_id(
+        mut cmds: EventReader<SetGateColorIdCmd>, mut colors: ResMut<GateColorIds>,
+        walls: Res<PublicWalls>, mut sounds: EventWriter<PlayWallUiSound>,
+    ) {
+        for cmd in cmds.read() {
+            crate::set_gate_color_id::apply_gate_color(cmd, &mut colors, &walls, &mut sounds);
+        }
+    }
     /// Same CPU-table segment as `init_color_ids_buffer` without the GPU device parameter.
     fn test_init_tables(
         mut commands: Commands,
@@ -260,7 +268,7 @@ mod full_wall_id_tests {
         world.resource_mut::<GateColorIds>().0[7] = 91;
         world.send_event(SetGateColorIdCmd::new(WallId(0x1_0000_0007), 4, 0));
         let mut schedule = Schedule::default();
-        schedule.add_systems(crate::set_gate_color_id::set_gate_color_id);
+        schedule.add_systems(test_set_gate_color_id);
         schedule.run(&mut world);
         assert_eq!(world.resource::<GateColorIds>().0[7], 91);
         assert!(world.resource::<Events<PlayWallUiSound>>().is_empty());
@@ -272,7 +280,7 @@ mod full_wall_id_tests {
         world.resource_mut::<GateColorIds>().0[7] = 91;
         world.send_event(SetGateColorIdCmd::new(id, 4, 0));
         let mut schedule = Schedule::default();
-        schedule.add_systems(crate::set_gate_color_id::set_gate_color_id);
+        schedule.add_systems(test_set_gate_color_id);
         let result =
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule.run(&mut world)));
         assert!(result.is_err());
@@ -289,7 +297,7 @@ mod full_wall_id_tests {
         schedule.add_systems(
             (
                 test_set_wall_color_id,
-                crate::set_gate_color_id::set_gate_color_id,
+                test_set_gate_color_id,
                 crate::set_halftimber_color_id::set_halftimber_color_id,
             )
                 .chain(),

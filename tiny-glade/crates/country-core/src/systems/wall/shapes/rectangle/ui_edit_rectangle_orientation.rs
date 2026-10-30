@@ -618,6 +618,7 @@ mod picker_chain_tests {
             )
             .unwrap();
         public.get_mut(wall).unwrap().prepare_paths(&paths).unwrap();
+        public.get_mut(wall).unwrap().update_gable_heights(None).unwrap();
         let mut world = World::new();
         world.init_resource::<Events<crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>>();
         world.insert_resource(public);
@@ -918,6 +919,14 @@ mod picker_chain_tests {
                 &WallPublicationDirty::default(),
                 &WallSpatialHash::default(),
             );
+            let ids: Vec<_> = public.wall_ids().collect();
+            for id in ids {
+                public
+                    .get_mut(id)
+                    .unwrap()
+                    .update_gable_heights(None)
+                    .unwrap();
+            }
         });
         world
             .resource_mut::<Events<super::super::super::EditRectangleCmd>>()

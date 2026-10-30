@@ -140,11 +140,14 @@ pub fn garden_audio_init_system<S: Studio + Send + Sync + 'static>(
 /// flags for `[GardenDraw, GardenDrawWater, GardenErase, GardenEraseWater]`.
 /// An event count is folded to "play" only when non-zero and the gate passes.
 pub fn garden_loop_flags(sample: f32, draw_count: usize, erase_count: usize) -> [bool; 4] {
+    // The original performs two independent ordered comparisons. NaN selects
+    // neither pair, rather than falling through to the dry pair.
     let water = sample >= GARDEN_WATER_GATE;
+    let dry = sample < GARDEN_WATER_GATE;
     [
-        draw_count != 0 && !water,
+        draw_count != 0 && dry,
         draw_count != 0 && water,
-        erase_count != 0 && !water,
+        erase_count != 0 && dry,
         erase_count != 0 && water,
     ]
 }
@@ -153,7 +156,8 @@ pub fn garden_loop_flags(sample: f32, draw_count: usize, erase_count: usize) -> 
 /// native `inverse_lerp` 0x140c904a0 (no clamp); brush radius `[0.32, 1.2]` →
 /// FMOD `PathSize` `[0, 2]`.
 pub fn garden_path_size(radius: f32) -> f32 {
-    PATH_SIZE_SCALE * (radius - PATH_SIZE_MIN) / (PATH_SIZE_MAX - PATH_SIZE_MIN)
+    let normalized = (radius - PATH_SIZE_MIN) / (PATH_SIZE_MAX - PATH_SIZE_MIN);
+    normalized + normalized
 }
 
 /// O: `FUN_14166d9f0` — the garden (volume-aware) draw-loop template.
@@ -179,10 +183,13 @@ pub fn update_draw_audio_volume<E: EventInstance>(
         let _ = current.set_parameter(EDITING_SPEED_PARAMETER, volume);
         // O: PathSize = 2 * inverse_lerp(0.32, 1.2, radius) — native 0x140c904a0
         // (no clamp); radius [0.32, 1.2] → PathSize [0, 2].
+        // 0x140a596b0 unwraps an FMOD start failure.
+        loop_player.start_if_not_playing().unwrap();
+        let current = &mut loop_player.entries[loop_player.cursor];
         let _ = current.set_parameter(PATH_SIZE_PARAMETER, garden_path_size(radius));
-        let _ = loop_player.start_if_not_playing();
     } else {
-        let _ = loop_player.stop_now();
+        // The stop branch at 0x140a59503/0x140a59592 also unwraps failure.
+        loop_player.stop_now().unwrap();
     }
 }
 
@@ -244,7 +251,9 @@ pub fn garden_audio_system<S: Studio + Send + Sync + 'static>(
         erase_last.map_or(Vec3::ZERO, |e| e.position),
         erase_last.map_or(0.0, |e| e.radius),
     );
-    for (index, loop_player) in state.loops.iter_mut().enumerate() {
+    // Native call order: draw water, draw dry, erase water, erase dry.
+    for index in [1, 0, 3, 2] {
+        let loop_player = &mut state.loops[index];
         let (position, radius) = if index < 2 {
             (draw_pos, draw_radius)
         } else {
@@ -326,5 +335,14 @@ mod tests {
         assert_eq!(flags, [false, false, false, false]);
         let flags = garden_loop_flags(0.005, 0, 0);
         assert_eq!(flags, [false, false, false, false]);
+    }
+
+    #[test]
+    fn unordered_water_sample_selects_neither_loop_pair() {
+        assert_eq!(garden_loop_flags(f32::NAN, 1, 1), [false; 4]);
+        assert_eq!(
+            garden_loop_flags(GARDEN_WATER_GATE, 1, 1),
+            [false, true, false, true]
+        );
     }
 }

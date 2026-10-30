@@ -71,15 +71,15 @@ pub fn show_debug_controls(
 /// come from the caller. Producer messages are flushed before rendering the log.
 pub fn configure_gui_consumers(world: &mut World, schedule: &mut Schedule) {
     world.init_resource::<DebugGui>();
+    schedule.add_systems(publish_pending_egui_context);
+    // B 1405b6ee0: the two log systems form a chained group; 1401705d0
+    // attaches the zero-sized IgnoreDeferred configuration to its Chain.
     schedule.add_systems(
-        (
-            publish_pending_egui_context,
-            flush_error_log_to_screen,
-            show_debug_controls,
-            show_screen_log,
-        )
-            .chain(),
+        (flush_error_log_to_screen, show_screen_log)
+            .chain_ignore_deferred()
+            .after(publish_pending_egui_context),
     );
+    schedule.add_systems(show_debug_controls.after(publish_pending_egui_context));
 }
 
 #[cfg(test)]

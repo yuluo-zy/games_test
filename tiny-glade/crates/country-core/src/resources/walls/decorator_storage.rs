@@ -619,7 +619,8 @@ impl DecoratorStorage {
         target.tracked_clone_from(source, &mut self.decorator_to_storage, addr);
     }
 
-    /// 0x140a1dba0（I）：删除存储（清 per_wall/内联桶 + d2s 索引）。
+    /// 0x140a1dba0：移除桶并登记其原 removed 集合；随后逐活记录先登记
+    /// ID 再删除 d2s，索引缺失时立即 panic，不处理剩余活记录。
     pub fn remove_storage(&mut self, addr: DecoratorStorageAddr) -> Option<Decorators> {
         assert!(!self.immutable, "assertion failed: !self.immutable");
         let removed = match addr {
@@ -628,8 +629,12 @@ impl DecoratorStorage {
             DecoratorStorageAddr::Stair => self.stairs.take(),
         };
         if let Some(decos) = &removed {
+            let pending = self.removed.entry(addr).or_default();
+            pending.extend(decos.removed_ids.iter().copied());
             for id in decos.decorators.keys() {
-                self.decorator_to_storage.remove(DecoratorId(*id));
+                pending.insert(*id);
+                self.decorator_to_storage.remove(DecoratorId(*id))
+                    .expect("assertion failed: self.map.remove(&id).is_some()");
             }
         }
         removed
@@ -1490,6 +1495,41 @@ mod tests {
             );
         }))
         .is_err());
+    }
+
+    #[test]
+    fn remove_storage_propagates_removed_and_live_ids_and_recreation_consumes_them() {
+        let mut storage = DecoratorStorage::default();
+        let addr = DecoratorStorageAddr::Wall(WallId(41));
+        storage.apply_decorator_place(addr, DecoratorId(7), &info(7));
+        storage.get_mut(addr).unwrap().removed_ids.insert(8);
+        storage.remove_storage(addr).unwrap();
+        assert_eq!(storage.lookup_storage(DecoratorId(7)), None);
+        assert_eq!(storage.removed[&addr], HashSet::from([7, 8]));
+        assert_eq!(storage.get_or_insert_default(addr).removed_ids, HashSet::from([7, 8]));
+        assert!(!storage.removed.contains_key(&addr));
+    }
+
+    #[test]
+    fn remove_storage_index_failure_preserves_only_visited_live_prefix() {
+        let mut storage = DecoratorStorage::default();
+        let addr = DecoratorStorageAddr::Wall(WallId(42));
+        for id in [7, 8, 9] {
+            storage.apply_decorator_place(addr, DecoratorId(id), &info(id));
+        }
+        storage.get_mut(addr).unwrap().removed_ids.insert(100);
+        // Select the actual first iteration key, independent of HashMap seed.
+        let first = *storage.get(addr).unwrap().decorators.keys().next().unwrap();
+        storage.decorator_to_storage.remove(DecoratorId(first)).unwrap();
+        let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            storage.remove_storage(addr);
+        }));
+        assert!(failed.is_err());
+        assert!(storage.get(addr).is_none());
+        assert_eq!(storage.removed[&addr], HashSet::from([100, first]));
+        for id in [7, 8, 9].into_iter().filter(|id| *id != first) {
+            assert_eq!(storage.lookup_storage(DecoratorId(id)), Some(addr));
+        }
     }
 
     #[test]

@@ -1,6 +1,6 @@
 //! `deferred_decorator_history.rs` — 延迟装饰历史（生命周期/历史链核心）。
 //!
-//! 本文件含两类机器码证据的**两个不同结构**（2026-10-16 fresh RE-MCP）：
+//! 延迟历史与音频事件是不同的 owner。
 //!
 //! ① `DeferredDecoratorEditHistory`（PDB 名；历史链权威，O）——记录提交队列：
 //!    `decorator_record_history` 0x140817850 排空面 = `{cap-first Vec<0x20B 记录>
@@ -14,14 +14,8 @@
 //!    HashSet。**core 56B `DecoratorHistoryEdit` 为存档格式模型，运行时载荷 =
 //!    本 32B 记录（偏差登记）**。
 //!
-//! ② UI 延迟操作队列（D2 batch 证据，O）——独立于历史链的结构：`{Vec<0x28B>
-//!    @+0x20 {cap@+0x20, ptr@+0x28, len@+0x30}, 计数器@+0x40}`；0x28B 记录 =
-//!    `{u64 seq@0, u8 kind@8, payload@9..0x24}`，kind 0x12=烟囱高度（ui_change_
-//!    chimney_height 0x1407ae2e0）、0x21=移动（ui_move_decorator 0x1407a4850）、
-//!    取消族 0x14125e560（8B 步长 id 推入）。**overlay 冲突登记**：D2 曾把该
-//!    队列命名为 `DeferredDecoratorEditHistory`（与 ① 同名异构）；机器码
-//!    （0x140817850 排空面 + 0x141276e30 push 面）证明 ① 是历史链权威布局，
-//!    ② 归 UI 批次消费。D2 的 0x28B 记录类型保留为 [`DeferredDecoratorOp`]。
+//! 烟囱 1407ae73c..790 的 0x28B 是 Bevy 音频事件记录，已由
+//! PlayDecoratorSoundCmd 的 EventWriter 和 decorator_audio 消费。
 //!
 //! core 对接：`History::add(EditType::DecoratorV5(Arc<DecoratorHistoryEdit>))`。
 //! core 缺口登记：`History::add_decorator_diff` 0x140a854a0（4 参
@@ -97,80 +91,6 @@ impl DeferredDecoratorEditHistory {
     }
 }
 
-/// ② UI 延迟操作记录（0x28B；D2 batch 证据，O；独立于历史链）。
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct DeferredDecoratorOp {
-    /// @+0：序列号（队列计数器旧值；O）。
-    pub seq: u64,
-    /// @+8：操作类型字节（0x12=烟囱高度、0x21=移动；O）。
-    pub kind: u8,
-    /// @+9..0x24：载荷（按 kind 分派；I）。
-    pub payload: [u8; 27],
-}
-
-impl DeferredDecoratorOp {
-    /// 烟囱高度操作（O：kind=0x12，ratio/pos 载荷；D2 证据）。
-    pub fn chimney_height(seq: u64, ratio: f32, pos: (u32, u32), extra: f32) -> Self {
-        let mut op = DeferredDecoratorOp {
-            seq,
-            kind: 0x12,
-            payload: [0; 27],
-        };
-        op.payload[3..7].copy_from_slice(&ratio.to_bits().to_le_bytes());
-        op.payload[15..23].copy_from_slice(&u64::from(pos.0).to_le_bytes());
-        op.payload[19..23].copy_from_slice(&u64::from(pos.1).to_le_bytes());
-        op.payload[23..27].copy_from_slice(&extra.to_bits().to_le_bytes());
-        op
-    }
-
-    /// 移动操作（O：kind=0x21，位置/朝向载荷 I；D2 证据）。
-    pub fn move_op(seq: u64, payload16: [u8; 16], extra: u32) -> Self {
-        let mut op = DeferredDecoratorOp {
-            seq,
-            kind: 0x21,
-            payload: [0; 27],
-        };
-        op.payload[0..16].copy_from_slice(&payload16);
-        op.payload[19..23].copy_from_slice(&extra.to_le_bytes());
-        op
-    }
-}
-
-/// ② UI 延迟操作队列（D2 batch 布局 O；独立于历史链）。
-#[derive(Resource, Clone, Debug, Default)]
-pub struct DeferredDecoratorOpQueue {
-    /// 0x28B 操作队列（原 +0x20 区域）。
-    pub ops: Vec<DeferredDecoratorOp>,
-    /// +0x40：序列计数器。
-    pub seq: u64,
-}
-
-impl DeferredDecoratorOpQueue {
-    /// 0x28B 步长 push（O：写 seq/kind/payload + len/counter 自增）。
-    pub fn push(&mut self, mut op: DeferredDecoratorOp) {
-        op.seq = self.seq;
-        self.ops.push(op);
-        self.seq = self.seq.wrapping_add(1);
-    }
-
-    /// 8B 步长 push（O：0x14125e560 族——取消/移除 id 列表；语义 I）。
-    pub fn push_u64(&mut self, value: u64) {
-        let mut op = DeferredDecoratorOp {
-            seq: self.seq,
-            kind: 0,
-            payload: [0; 27],
-        };
-        op.payload[0..8].copy_from_slice(&value.to_le_bytes());
-        self.ops.push(op);
-        self.seq = self.seq.wrapping_add(1);
-    }
-
-    /// 排空（宿主消费接线；I）。
-    pub fn drain_ops(&mut self) -> Vec<DeferredDecoratorOp> {
-        std::mem::take(&mut self.ops)
-    }
-}
-
 /// Preserve all four native qwords copied by decorator_record_history140817850.
 pub(crate) fn record_to_history_edit(record: &DeferredDecoratorRecord) -> DecoratorV5Edit {
     DecoratorV5Edit { kind: record.kind, fields: [record.f1, record.f2, record.f3] }
@@ -190,15 +110,19 @@ pub fn decorator_record_history<S: Send + Sync + 'static>(
     let pending = deferred.pending;
     deferred.pending = false;
     if pending {
-        let records = std::mem::take(&mut deferred.records);
-        for record in &records {
+        // Native zeroes Vec length before iterating, retaining its allocation.
+        for record in deferred.records.drain(..) {
             if record.kind == DeferredDecoratorRecord::KIND_TERMINATE {
                 // O 读取面：kind==6 提前终止排空。
                 break;
             }
-            let edit = record_to_history_edit(record);
+            let edit = record_to_history_edit(&record);
             if let Err(error) = history.add(EditType::DecoratorV5(Arc::new(edit))) {
-                // 原生 FUN_140a84ec0 失败路径未显式记录（历史合同适配，同地形族）。
+                // 140a84ef0..ef7 detects an absent pending recording and
+                // 140a8525b..2a0 enters panic_fmt; do not silently lose edits.
+                if error == country_core::resources::history::transactions::HistoryTransactionError::RecordingNotStarted {
+                    panic!("original History::add requires an active recording");
+                }
                 log::warn!(target: LOG_TARGET, "decorator history add failed: {error:?}");
             }
         }
@@ -209,3 +133,35 @@ pub fn decorator_record_history<S: Send + Sync + 'static>(
 }
 
 const LOG_TARGET: &str = "system_decorator::deferred_decorator_history";
+
+#[cfg(test)]
+mod missing_recording_tests {
+    use super::*;
+    use bevy_ecs::system::RunSystemOnce;
+    use country_core::resources::history::MaybePendingSnapshotId;
+
+    #[test]
+    fn deferred_record_without_recording_panics() {
+        let mut world = World::new();
+        world.insert_resource(History::<MaybePendingSnapshotId>::empty_glade());
+        let mut deferred = DeferredDecoratorEditHistory::default();
+        deferred.add(DeferredDecoratorRecord { kind: DeferredDecoratorRecord::KIND_PLACE, ..Default::default() });
+        deferred.pending = true;
+        let locator = DecoratorLocator::new(
+            country_core::resources::walls::decorator_storage::DecoratorStorageAddr::Terrain, 42);
+        deferred.add_potentially_surviving_affected_decorator(locator);
+        let capacity = deferred.records.capacity();
+        let pointer = deferred.records.as_ptr();
+        world.insert_resource(deferred);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            world.run_system_once(decorator_record_history::<MaybePendingSnapshotId>).unwrap();
+        }));
+        assert!(result.is_err());
+        let deferred = world.resource::<DeferredDecoratorEditHistory>();
+        assert!(!deferred.pending);
+        assert!(deferred.records.is_empty());
+        assert_eq!(deferred.records.capacity(), capacity);
+        assert_eq!(deferred.records.as_ptr(), pointer);
+        assert!(deferred.potentially_surviving_affected_decorators.contains_key(&locator));
+    }
+}

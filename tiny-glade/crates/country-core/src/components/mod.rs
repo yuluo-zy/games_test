@@ -20,7 +20,7 @@ pub use trees::{
 };
 pub use ui::{
     Ui2dExtent, Ui2dImage, Ui2dWsExtent, UiDrawOrder, UiInactive, UiInteractionState,
-    UiMouseInteractable,
+    UiMouseInteractable, UiNav, UiNavLink,
 };
 
 /// B KeepOnLevelUnload, original component registration @0x140852670:

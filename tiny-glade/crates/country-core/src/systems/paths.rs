@@ -190,7 +190,7 @@ pub mod path_brush_preview_size {
 ///    `discriminant ∈ {0,2,3}`；state 从 1/2 进入 2 且 `draw` 时发 `PathPinnedClutterCircle`
 ///    （circle 半径 = 全半径，height = pos.y + 1.5 / 无命中时 1.5）。
 /// 7. 分派（selector 0..4）：先按固定顺序对**其它三种变体**各调一次 `draw_raster`
-///    （命令 `draw=false`、回调全空），再对目标变体调 `draw_raster`：
+///    （命令 `draw=false`），再对目标变体调 `draw_raster`：
 ///    - selector 0 Path：C1, C2, C3 → Path(slot 0)；回调写 PathDraw/EraseEvent +
 ///      RecordPathEditToHistoryCmd；
 ///    - 1 C1：Path, C2, C3 → C1(slot 1)；RecordCobblestone1…；
@@ -198,9 +198,10 @@ pub mod path_brush_preview_size {
 ///    - 3 C3：C1, C2, Path → C3(slot 3)；RecordCobblestone3…；
 ///    - 4 Eraser：C1, C2, C3 → Path(slot 0)（draw=false，走 on_erase）。
 ///
-/// 登记（U）：`RasterStrokeCmd.strength`（原生两条命令栈槽 +0x8c/+0x9c 从未写入；
-/// 读取方 `start_new` 把它当 param_b）。`erase_other_path_variants` 的 3 组闭包
-/// （`closure_env_0..8`）载荷未逐字节恢复；本实现按“无事件回调”执行其擦除调用。
+/// 登记（U）：`RasterStrokeCmd.strength` 的目标槽 +0x8c 尚未闭合；绘制模式中
+/// 跨变体槽 +0x9c 被边界圆构造写入 X 坐标，擦除模式的来源尚未闭合。
+/// 读取方 `start_new` 把它当 param_b。跨变体的闭包类型与捕获仍须原 PDB 核对；
+/// 其 commit 的共享 debug/tool-used 通知由 `draw_raster` 发送，不能据此推断闭包写了历史事件。
 pub mod draw_path {
     use super::{DrawState, PathPinnedClutterCircle, BRUSH_RECT_SCALE, ERASER_BRUSH_SCALE};
     use crate::{
@@ -270,7 +271,8 @@ pub mod draw_path {
 
     /// 预览圆高度偏移（O：0x1429258d0 = 1.5）。
     const PIN_HEIGHT_OFFSET: f32 = 1.5;
-    /// 命令 strength 槽（原生未写，见模块文档登记）。
+    /// 未恢复：B begin 命令的第二字不能统一假定为零。
+    /// 0x140ae4f3c 写入跨变体槽的边界圆 X；目标槽及擦除模式仍需取证。
     const PATH_STRENGTH: f32 = 0.0;
 
     #[allow(clippy::too_many_arguments)]
@@ -376,7 +378,9 @@ pub mod draw_path {
         // 7：分派。命令 draw=false 用于“擦除其它变体”与 Eraser 目标。
         let erase_command = RasterStrokeCmd {
             discriminant: command,
-            strength: PATH_STRENGTH,
+            // B 0x140ae4f3c writes the border-circle X into the shared
+            // cross-variant command's second word in all drawing modes.
+            strength: if draw { center.x } else { PATH_STRENGTH },
             radius,
             draw: false,
         };
@@ -388,7 +392,7 @@ pub mod draw_path {
         };
         let point = position;
 
-        /// 空回调擦除调用（原生 `erase_other_path_variants` 的擦除侧；闭包载荷登记 U）。
+        /// 跨变体擦除：共享通知由 draw_raster 负责；闭包身份仍待核实。
         macro_rules! erase_call {
             ($staging:ty, $raster:expr, $slot:expr) => {{
                 let mut borrowed = RasterDrawResources {
@@ -422,7 +426,9 @@ pub mod draw_path {
                     debug_history: &mut resources.debug_history,
                 };
                 draw_raster::<$staging, C>(
-                    draw_command,
+                    // B Eraser passes the same rsp+0x98 command as the
+                    // cross-variant calls (0x140ae5458..0x140ae54e7).
+                    if draw { draw_command } else { erase_command },
                     point,
                     $slot,
                     &mut borrowed,
@@ -739,6 +745,10 @@ mod world_raster_tests {
         );
         assert!(world.resource::<Events<PathDrawEvent>>().is_empty());
         assert_eq!(world.resource::<ActiveRasterStrokesStorage>()[0].resampled().len(), 1);
+        // B passes the border-circle X to all three cross-variant begins.
+        for slot in 1..4 {
+            assert_eq!(world.resource::<ActiveRasterStrokesStorage>()[slot].param_b(), -2.0);
+        }
 
         set_phase(&mut world, widget, 4);
         world
@@ -760,19 +770,23 @@ mod world_raster_tests {
 
         set_phase(&mut world, widget, 5);
         schedule.run(&mut world); // Commit（discriminant 3）：发记录命令。
+        // B 0x140ab2340/6de0/8090 commit each writes both shared queues;
+        // the target specialization writes them as well. These notifications
+        // are independent of the target's history callback.
+        assert_eq!(world.resource::<Events<crate::systems::history::history_process::DebugHistoryMsg>>().len(), 4);
+        assert_eq!(world.resource::<Events<crate::resources::onboarding::NotifyHintSystemToolWasJustUsed>>().len(), 4);
         schedule.run(&mut world); // 记录系统消费命令（下一 run 保证已入队）。
         let pending = world.resource::<History>().pending().unwrap();
         assert_eq!(pending.edits.len(), 1);
         let EditType::Path(stroke) = &pending.edits[0] else {
             panic!("wrong edit owner")
         };
-        // begin 命令 discriminant = 0 → flags 0；strength 槽原生未写（登记 U）= 0.0；
+        // begin 命令 discriminant = 0 → flags 0；strength 来源仍未闭合；
         // 半径 = BrushSizes.path；draw 字节 = 1。
         assert_eq!(
             (stroke.flags, stroke.draw, stroke.radius),
             (0, true, 0.8)
         );
-        assert_eq!(stroke.strength, 0.0);
         assert!(stroke.points.len() >= 2);
         assert!(world
             .resource::<PathRaster>()
@@ -798,8 +812,29 @@ mod world_raster_tests {
         let storage = world.resource::<ActiveRasterStrokesStorage>();
         for slot in 0..4 {
             assert_eq!(storage[slot].resampled().len(), 1, "slot {slot}");
+            if slot != 2 {
+                assert_eq!(storage[slot].param_b(), -2.0, "slot {slot}");
+            }
         }
         assert_eq!(storage[2].mode(), 1);
+    }
+
+    #[test]
+    fn cobblestone_one_and_three_cross_variant_begins_keep_border_x() {
+        let widget = WidgetId::clearing_canvas("cobblestone");
+        for target in [1, 3] {
+            let mut world = base_world(AppMode::Cobblestone(target), widget);
+            let mut schedule = Schedule::default();
+            PathsPlugin::build(&mut world, &mut schedule);
+            schedule.add_systems(draw_path::draw_path::<()>);
+            schedule.run(&mut world);
+            let storage = world.resource::<ActiveRasterStrokesStorage>();
+            for slot in 0..4 {
+                if slot != target as usize {
+                    assert_eq!(storage[slot as u8].param_b(), -2.0, "target {target}, slot {slot}");
+                }
+            }
+        }
     }
 
     #[test]

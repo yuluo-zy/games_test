@@ -1,6 +1,4 @@
-//! Mixed owner commands in a single front bucket (B replay_roof 0x141a37ad0).
-//! This does not split each edit into an outer bucket. Auxiliary decorator and
-//! stair owners must be recovered before accepting their nonempty buckets.
+//! Mixed owner commands and the original replay_edit bucket partition.
 use super::EditType;
 use crate::resources::history::building_transactions::BuildingHistoryError;
 use crate::resources::history::building_transactions::RoofReplayCommand;
@@ -329,6 +327,26 @@ impl ReplayBucket {
             timing.elapsed += delta;
         }
     }
+
+    /// B 140af6391..6711: greedily append while the candidate is compatible
+    /// with every command in the current bucket. The first command plus eight
+    /// iterations (140af63f8..6438) gives a maximum of nine.
+    pub fn partition(self) -> Vec<Self> {
+        let mut result = Vec::new();
+        let mut commands = Vec::new();
+        for command in self.commands {
+            if !commands.is_empty() && (commands.len() == 9 || !commands.iter().all(|old: &ReplayCommand| old.can_merge_with(&command))) {
+                let timing = vec![CommandTiming::default(); commands.len()];
+                result.push(Self { entry_index: self.entry_index, undo: self.undo, commands: std::mem::take(&mut commands), timing });
+            }
+            commands.push(command);
+        }
+        if !commands.is_empty() || result.is_empty() {
+            let timing = vec![CommandTiming::default(); commands.len()];
+            result.push(Self { entry_index: self.entry_index, undo: self.undo, commands, timing });
+        }
+        result
+    }
 }
 
 #[derive(Resource, Clone, Debug)]
@@ -421,6 +439,61 @@ mod tests {
             from: StrokeId(1),
             to: StrokeId(2),
         })
+    }
+
+    #[test]
+    fn compatible_color_commands_obey_native_nine_command_bucket_limit() {
+        for (count, expected) in [(9, vec![9]), (10, vec![9, 1]), (18, vec![9, 9])] {
+            let entry = HistoryEntry::from_edits((0..count).map(|_| EditType::Color(color_edit())).collect());
+            for undo in [false, true] {
+                let buckets = ReplayBucket::expand(0, &entry, undo, false).unwrap().partition();
+                assert_eq!(buckets.iter().map(|b| b.commands.len()).collect::<Vec<_>>(), expected);
+            }
+        }
+    }
+
+    #[test]
+    fn original_raster_generator_tags_and_pair_compatibility() {
+        use crate::systems::history::replay_raster::{RasterDomain, RasterReplayCmd};
+        let stroke = Arc::new(crate::resources::raster_stroke::RasterStroke {
+            flags: 0, strength: 1., radius: 1., draw: true,
+            points: vec![glam::Vec3::ZERO, glam::Vec3::X].into(),
+        });
+        let domains = [RasterDomain::Path, RasterDomain::Cobblestone1, RasterDomain::Cobblestone2,
+            RasterDomain::Cobblestone3, RasterDomain::Water, RasterDomain::Garden];
+        let commands: Vec<_> = domains.into_iter().map(|domain| ReplayCommand::Raster(
+            RasterReplayCmd::new(domain, stroke.clone(), false, true, true))).collect();
+        assert_eq!(commands.iter().map(ReplayCommand::native_tag).collect::<Vec<_>>(), [0, 0, 0, 0, 1, 2]);
+        for (i, a) in commands.iter().enumerate() {
+            for (j, b) in commands.iter().enumerate() {
+                assert_eq!(a.can_merge_with(b), i < 4 && j < 4 && i != j, "raster {i} -> {j}");
+            }
+        }
+    }
+
+    #[test]
+    fn closed_wall_creation_and_enclosure_are_ordered_in_separate_buckets() {
+        use crate::resources::history::wall_edit::{record_new_wall, WallCompoundHistoryEdit, WallHistoryEdit};
+        use crate::resources::walls::{inner_wall_state::WallState, publication_fields::WallId};
+        use crate::resources::roofs::geometry::surface::Curve2;
+        use crate::systems::wall::valid_enclosure::IsEnclosed;
+        let wall = WallId(7);
+        let state = WallState::new(Curve2::try_new(vec![[0., 0.], [4., 0.]], false).unwrap(), 3., 0, 0, false);
+        let creation = record_new_wall(wall, state.snapshot(), 0).unwrap();
+        let closure = WallCompoundHistoryEdit { groups: vec![vec![WallHistoryEdit::EnclosureChange {
+            wall, previous: IsEnclosed::No, next: IsEnclosed::Yes,
+        }]] };
+        let entry = HistoryEntry::from_edits(vec![EditType::Wall(Arc::new(creation)), EditType::Wall(Arc::new(closure))]);
+        let saved = serde_json::to_vec(&super::super::serialized::SavedMultiEdit(entry)).unwrap();
+        let loaded: super::super::serialized::SavedMultiEdit = serde_json::from_slice(&saved).unwrap();
+        for undo in [false, true] {
+            let buckets = ReplayBucket::expand(0, &loaded.0, undo, false).unwrap().partition();
+            assert_eq!(buckets.len(), 2);
+            let ReplayCommand::Wall(first) = &buckets[0].commands[0] else { panic!("wall expected") };
+            let ReplayCommand::Wall(second) = &buckets[1].commands[0] else { panic!("wall expected") };
+            assert_eq!(first.len(), if undo { 1 } else { 2 });
+            assert_eq!(second.len(), if undo { 2 } else { 1 });
+        }
     }
 
     #[test]
@@ -562,7 +635,11 @@ impl ReplayCommand {
     /// 原生 `ReplayCmd` 判别 tag（fresh：命令记录 `+0x00`；生成器逐 tag 写入）。
     pub const fn native_tag(&self) -> u8 {
         match self {
-            Self::Raster(_) => 0, // 0/1/2 三个光栅域共用 tag 面（+1 槽为域判别）
+            Self::Raster(command) => match command.domain {
+                crate::systems::history::replay_raster::RasterDomain::Water => 1,
+                crate::systems::history::replay_raster::RasterDomain::Garden => 2,
+                _ => 0,
+            },
             Self::Terrain(_) => 3,
             Self::Wall(_) => 4,
             Self::Roof(_) => 5,
@@ -578,41 +655,54 @@ impl ReplayCommand {
     /// 相邻命令能否并入同一 ReplayBucket。
     ///
     /// fresh 规则（prev tag → next tag）：
-    /// - 0：next 0 要求 `next[1]==prev[1] && (next[1]==0 || next[2]==prev[2])`；
-    ///   否则 next ∉ {4,8} 即可；
-    /// - 4：next 0；5：next 4（wall 内组检查在 0x140af6525，登记）；
+    /// - 0：不同光栅域，或 next 为 4/8；
+    /// - 4：next 0，或 next 5 且本墙命令仅有一项 AdjustHeight；
+    /// - 5：next 4 且该墙命令仅有一项 AdjustHeight；
     /// - 6：next 6；7：next ∈ {7,10}；8：next & 7 == 0；10：next 7；
     /// - 其余 → 不可并。
     pub fn can_merge_with(&self, next: &Self) -> bool {
         let (prev_tag, next_tag) = (self.native_tag(), next.native_tag());
-        match prev_tag {
-            0 => {
-                if next_tag == 0 {
-                    // 光栅子判别：原生比较命令 byte[1]/byte[2]（域/undo 面）。
-                    match (self, next) {
-                        (Self::Raster(a), Self::Raster(b)) => {
-                            a.domain == b.domain && a.undo == b.undo
-                        }
-                        _ => false,
-                    }
-                } else {
-                    next_tag != 4 && next_tag != 8
-                }
-            }
-            4 => next_tag == 0,
-            5 => next_tag == 4,
-            6 => next_tag == 6,
-            7 => next_tag == 7 || next_tag == 10,
-            8 => next_tag & 7 == 0,
-            10 => next_tag == 7,
-            _ => false,
-        }
+        let distinct_rasters = matches!((self, next), (Self::Raster(a), Self::Raster(b)) if a.domain != b.domain);
+        native_compatible(prev_tag, next_tag, distinct_rasters, self.is_single_wall_height(), next.is_single_wall_height())
+    }
+
+    fn is_single_wall_height(&self) -> bool {
+        matches!(self, Self::Wall(groups) if groups.len() == 1
+            && groups[0].len() == 1
+            && matches!(&groups[0][0].edit, super::wall_edit::WallHistoryEdit::AdjustHeight { .. }))
+    }
+}
+
+fn native_compatible(previous: u8, next: u8, distinct_rasters: bool, previous_height: bool, next_height: bool) -> bool {
+    match previous {
+        0 => (next == 0 && distinct_rasters) || next == 4 || next == 8,
+        4 => next == 0 || (next == 5 && previous_height),
+        5 => next == 4 && next_height,
+        6 => next == 6,
+        7 => next == 7 || next == 10,
+        8 => next == 0 || next == 8,
+        10 => next == 7,
+        _ => false,
     }
 }
 
 #[cfg(test)]
 mod pop_counter_tests {
     use super::*;
+    #[test]
+    fn native_partition_pair_table() {
+        // B jump table 142ae5430 / 140af647a..65c2, ordered rows 0..10.
+        let allowed: [&[u8]; 11] = [&[4, 8], &[], &[], &[], &[0], &[], &[6], &[7, 10], &[0, 8], &[], &[7]];
+        for previous in 0..=10 {
+            for next in 0..=10 {
+                assert_eq!(native_compatible(previous, next, false, false, false), allowed[previous as usize].contains(&next), "{previous} -> {next}");
+            }
+        }
+        assert!(native_compatible(0, 0, true, false, false));
+        assert!(native_compatible(4, 5, false, true, false));
+        assert!(native_compatible(5, 4, false, false, true));
+        assert!(!native_compatible(4, 4, false, true, true));
+    }
     #[test]
     fn counter_tracks_pop_attempts_and_is_preserved_by_clone() {
         let mut replay = ReplayBuffer::new(1.0);

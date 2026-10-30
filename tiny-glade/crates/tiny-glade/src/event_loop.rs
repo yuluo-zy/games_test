@@ -412,6 +412,9 @@ impl crate::game_loop::GameLoop {
                 }
                 match event {
                     WindowEvent::Resized(size) => {
+                        if size.width == 0 || size.height == 0 {
+                            self.pause_display_confirmation();
+                        }
                         self.queue_os_event(OsWindowEvent::Resized([size.width, size.height]))?
                     }
                     WindowEvent::Moved(_) => self.queue_os_event(OsWindowEvent::MonitorChanged)?,
@@ -539,6 +542,7 @@ impl crate::game_loop::GameLoop {
             }
             Event::Suspended => {
                 self.driver.late_camera.invalidate();
+                self.pause_display_confirmation();
                 // Platform notification, not a reconstructed B gameplay event.
                 self.suspended = true;
                 self.render.suspend()?;
@@ -779,7 +783,7 @@ fn remember_windowed_size(
 pub(crate) fn apply_display_config(
     window: &winit::window::Window,
     display: &country_core::render::render_config::DisplayConfig,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Option<winit::window::Fullscreen>> {
     use crate::setup::FromWinit;
     use country_core::render::render_config::{FullscreenConfig, MonitorMatch};
     use winit::window::Fullscreen;
@@ -792,25 +796,27 @@ pub(crate) fn apply_display_config(
                 .is_some_and(|desired| &MonitorMatch::from_winit(handle) == desired)
         })
         .or_else(|| window.current_monitor());
-    if !display.fullscreen {
-        window.set_fullscreen(None);
+    let target = if !display.fullscreen {
+        None
     } else if display.allow_exclusive_fullscreen {
-        if let Some(monitor) = monitor {
+        {
+            let monitor = monitor.ok_or_else(|| anyhow::anyhow!("cannot apply exclusive fullscreen: no monitor available"))?;
             // 原ClosestMatch保留完整VideoMode；Best复用当前桌面模式选择入口。
             let mut mode = match display.fullscreen_config {
                 FullscreenConfig::Best=>None,
                 FullscreenConfig::ClosestMatch(mode)=>Some(mode),
             };
             if let Some(mode) = crate::setup::find_best_fullscreen_video_mode(&monitor, &mut mode) {
-                window.set_fullscreen(Some(Fullscreen::Exclusive(mode)));
+                Some(Fullscreen::Exclusive(mode))
             } else {
-                window.set_fullscreen(Some(Fullscreen::Borderless(Some(monitor))));
+                Some(Fullscreen::Borderless(Some(monitor)))
             }
         }
     } else {
-        window.set_fullscreen(Some(Fullscreen::Borderless(monitor)));
-    }
-    Ok(())
+        Some(Fullscreen::Borderless(monitor))
+    };
+    window.set_fullscreen(target.clone());
+    Ok(target)
 }
 
 // Exhaustive dependency-variant forwarding. The game-facing physical key map

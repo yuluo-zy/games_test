@@ -290,7 +290,7 @@ fn adjust_freehand_pillar_coord(
     coord: country_core::systems::wall::construction::segmentation::ThresholdedCurveCoord,
 ) -> country_core::systems::wall::construction::segmentation::ThresholdedCurveCoord {
     use utils::curve::{CurveCoordSemanticThresholded3D, CurveInternalCoord,
-        curve_slice::{CurveSlice, LoopCurvePoints}};
+        curve_slice::{CurvePoints, CurveSlice, LoopCurvePoints}};
     use country_core::systems::wall::construction::segmentation::ThresholdedCurveCoord;
     // 140bece40 读取 LoopIdx 的原始有符号值；这里不取模。
     let first = range.start == 0 && flag & 2 != 0;
@@ -301,10 +301,35 @@ fn adjust_freehand_pillar_coord(
     let start = CurveInternalCoord::new_for_point_count(key, 0.0, length);
     let loop_range = utils::loop_range::LoopRange { start_idx: range.start, end_idx: range.end, period: range.modulus };
     let view = LoopCurvePoints { points, range: loop_range };
-    let mut slice = CurveSlice::<[f32; 3], _, CurveCoordSemanticThresholded3D, glam::Vec2, _>::from_coord_range_with_remap(
-        view, start, start, |_, p: &[f32; 3]| glam::Vec2::new(p[0], p[2]));
-    if first { slice.extend_right(0.1875); } else { slice.extend_left(0.1875); }
-    let result = if first { slice.end() } else { slice.start() };
+    let result = if first {
+        let mut slice = CurveSlice::<[f32; 3], _, CurveCoordSemanticThresholded3D, glam::Vec2, _>::from_coord_range_with_remap(
+            view, start, start, |_, p: &[f32; 3]| glam::Vec2::new(p[0], p[2]));
+        slice.extend_right(0.1875);
+        slice.end()
+    } else {
+        // B141206c50 uses f32 throughout and deliberately evaluates
+        // ((t - 1) + 1) before multiplying the first segment length.
+        assert!(start.segment < length.saturating_sub(1), "segment outside point set");
+        let mut result = start;
+        let mut residual = 0.0f32;
+        let mut initial = true;
+        for upper in (1..=start.segment + 1).rev() {
+            let a = view.point(upper - 1);
+            let b = view.point(upper);
+            let dx = b[0] - a[0];
+            let dz = b[2] - a[2];
+            let length = (dz * dz + dx * dx).sqrt();
+            residual = if initial { ((start.t - 1.0) + 1.0) * length - 0.1875 }
+                else { residual + length };
+            initial = false;
+            result = CurveInternalCoord { segment: upper - 1, t: 0.0 };
+            if residual >= 0.0 {
+                result.t = residual / length;
+                break;
+            }
+        }
+        result
+    };
     ThresholdedCurveCoord { point_index: result.segment as u32, fraction: result.t }
 }
 
@@ -429,7 +454,8 @@ pub fn place_pillars(
         let wall = walls.get_mut(id).expect("柱放置事件必须引用已发布墙");
         let projection = wall.building_projection();
         let freehand = projection.shape().tag() == 2;
-        let wood = projection.observed_296() == 1;
+        let material_tag = projection.observed_296();
+        let wood = material_tag == 1;
         let curve_length = projection.published_source_curve_length();
         let points = wall.prepared_path.as_ref().map(|path| path.positions.as_slice());
         let segments = masks.masks.get(&wall_id).expect("柱放置需要处理后的墙分段");
@@ -456,7 +482,9 @@ pub fn place_pillars(
                 }
             }
         }
-        if wood { wall.material_stats.set_lintel_pillars_count(count); }
+        // 14075432d selects wood only for byte == 1; 14075492a selects
+        // lintel statistics for every nonzero byte.
+        if material_tag != 0 { wall.material_stats.set_lintel_pillars_count(count); }
         else { wall.material_stats.set_arch_pillars_count(count); }
         wall.material_stats.set_pillar_placements(positions);
     }
@@ -610,10 +638,14 @@ mod tests {
         world.init_resource::<crate::construct_arches::WallConstructorOutput>();
         let library = AssetSsboLibrary::new();
         library.register::<WoodenPlankSsbo>(SparseInstanceBuffer::<WoodenPlankSsbo>::new_storage_buffer(&CpuDevice, None));
+        library.register::<BrickTransformSsbo>(SparseInstanceBuffer::<BrickTransformSsbo>::new_storage_buffer(&CpuDevice, None));
         world.insert_resource(library);
         let id = world.resource_mut::<InnerWalls>().new_wall_w_params(
             Curve2::try_new(vec![[-6.,0.],[-1.,0.],[3.,2.],[7.,2.]], false).unwrap(), 1.2, 0, 1, false);
+        let unusual_id = world.resource_mut::<InnerWalls>().new_wall_w_params(
+            Curve2::try_new(vec![[-6.,10.],[-1.,10.],[3.,12.],[7.,12.]], false).unwrap(), 1.2, 0, 2, false);
         let mut publication = Schedule::default(); publication.add_systems(publish_public_wall_state); publication.run(&mut world);
+        let mut owners = Schedule::default(); owners.add_systems(crate::gpu_output::replace_published_plank_owners); owners.run(&mut world);
         let masks = {
             let walls = world.resource::<PublicWalls>();
             let wall = walls.get(id).unwrap();
@@ -622,12 +654,32 @@ mod tests {
                 path_values: &path.segment_values, shape: wall.shape(), observed_special_flag: wall.authority.source_flag_65() }).unwrap()
         };
         world.resource_mut::<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>().masks.insert(id.0, masks);
+        let unusual_masks = {
+            let walls = world.resource::<PublicWalls>();
+            let wall = walls.get(unusual_id).unwrap();
+            let path = wall.prepared_path.as_ref().unwrap();
+            wall_path_segmentation(WallSegmentationInput { prepared_positions: &path.positions,
+                path_values: &path.segment_values, shape: wall.shape(), observed_special_flag: wall.authority.source_flag_65() }).unwrap()
+        };
+        world.resource_mut::<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>().masks.insert(unusual_id.0, unusual_masks);
         let mut source = Schedule::default();
         source.add_systems((crate::gpu_output::clear_constructor_planks, crate::construct_lintels::construct_lintels).chain());
         source.run(&mut world);
+        // The real publisher owns the shared brick allocation; arches clear it
+        // before place_pillars appends, including for material byte 2.
+        world.resource_scope(|world, mut output: Mut<crate::construct_arches::WallConstructorOutput>| {
+            let mut library = world.resource_mut::<AssetSsboLibrary>();
+            let storage = library.get_mut::<BrickTransformSsbo>().unwrap();
+            output.gpu.clear_bricks(storage, unusual_id.0);
+        });
         let mask = &world.resource::<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>().masks[&id.0];
         let expected: usize = mask.iter().map(|m| m.pillar_proposals.len()).sum();
         assert!(expected > 0, "真实过梁必须生成非空柱提案");
+        let unusual_expected: usize = world.resource::<crate::construct_lintels::WallPathSegmentationMasksMinusStairs>()
+            .masks[&unusual_id.0].iter().map(|m| m.pillar_proposals.len()).sum();
+        assert!(unusual_expected > 0, "非零材质字节必须有真实柱提案");
+        let brick_before: u32 = world.resource_mut::<AssetSsboLibrary>().get_mut::<BrickTransformSsbo>().unwrap()
+            .to_draw_multi_instanced().iter().map(|(_, n)| *n).sum();
         let before: u32 = world.resource_mut::<AssetSsboLibrary>().get_mut::<WoodenPlankSsbo>().unwrap()
             .to_draw_multi_instanced().iter().map(|(_, n)| *n).sum();
         let mut place = Schedule::default(); place.add_systems(place_pillars); place.run(&mut world);
@@ -635,6 +687,12 @@ mod tests {
         let stats = &wall.get(id).unwrap().material_stats;
         assert_eq!(stats.pillar_placements.len(), expected);
         assert_eq!(stats.counts[2] as usize, expected);
+        let unusual_stats = &wall.get(unusual_id).unwrap().material_stats;
+        assert_eq!(unusual_stats.counts[2] as usize, unusual_expected);
+        assert_eq!(unusual_stats.counts[4], 0);
+        let brick_after: u32 = world.resource_mut::<AssetSsboLibrary>().get_mut::<BrickTransformSsbo>().unwrap()
+            .to_draw_multi_instanced().iter().map(|(_, n)| *n).sum();
+        assert!(brick_after > brick_before, "字节2必须输出石柱砖");
         let after: u32 = world.resource_mut::<AssetSsboLibrary>().get_mut::<WoodenPlankSsbo>().unwrap()
             .to_draw_multi_instanced().iter().map(|(_, n)| *n).sum();
         assert_eq!(after - before, expected as u32);
@@ -714,6 +772,17 @@ mod tests {
                 ThresholdedCurveCoord { point_index: segment, fraction });
             assert_eq!(sample_pillar_position(&points, range, coord)[0].to_bits(), expected.to_bits());
         }
+    }
+
+    #[test]
+    fn freehand_end_uses_native_f32_residual_for_infinite_segment() {
+        use country_core::systems::wall::construction::segmentation::{ThresholdedCurveCoord, WallLoopRange};
+        let points = [[0., 0., 0.], [f32::INFINITY, 0., 0.]];
+        let range = WallLoopRange { start: 0, end: 2, modulus: 2 };
+        let result = adjust_freehand_pillar_coord(&points, range, 1, 4,
+            ThresholdedCurveCoord { point_index: 0, fraction: 1.0 });
+        // B141206dcf..e7b computes (infinity - 0.1875) / infinity.
+        assert!(result.fraction.is_nan());
     }
 
     fn proposal(score: f32, marker: u8) -> PillarPlacementProposal {

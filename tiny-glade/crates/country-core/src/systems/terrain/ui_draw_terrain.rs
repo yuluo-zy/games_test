@@ -44,11 +44,12 @@ pub const DRAW_CANVAS_NAME: &str = "terrain_draw";
 /// B state-2 caller 0x140aa025b reads .rdata@0x1429258d8 = 0x3e99999a.
 pub const MORPH_SPACING: f32 = 0.3;
 
-/// DrawState（O：Local；crate 以 Resource 承载以便宿主/测试注入与观测，I；`+0x20..0x40` 8 B 元素 Vec；结尾状态字节回写 `*in_stack_00000068`；
-/// `*in_stack_00000070` = drag 距离浮点槽）。
+/// Draw state: original has separate Local state byte and drag-distance float;
+/// this host groups them in a Resource for lifecycle and observation.
 #[derive(Resource, Clone, Debug, Default)]
 pub struct TerrainDrawState {
-    /// 8 B 元素记录（qword + byte；语义 U，按机器码偏移）。
+    /// Legacy compatibility field, not an original draw-state Vec. The old
+    /// +0x20/+0x28 attribution reads WaterRaster's selected buffer instead.
     pub records: Vec<u64>,
     /// 结尾状态机状态字节 `uVar11`（disasm 0x140aa0099 `MOV byte [RCX],AL`）。
     pub state: u8,
@@ -181,10 +182,17 @@ pub fn ui_draw_terrain(
                         draw_state.drag_distance,
                     ),
                 });
+            } else {
+                // B 140aa035a..366 calls log_warning_to_screen, not a silent return.
+                crate::systems::backend::flush_screen_log::log_warning_to_screen(
+                    "Reached max number of terrain strokes",
+                );
             }
         }
-        2 if inside => {
-            if let Ok(stroke) = editing.get_last_mut_stroke() {
+        2 => {
+            // B aa0244 queries the last stroke before the inside test; a
+            // zero counter therefore still panics on an out-of-border frame.
+            if let Ok(stroke) = editing.get_last_mut_stroke() && inside {
                 // B 0x140aa0235..0x140aa02c2: the cursor keeps all XYZ
                 // coordinates; border failure skips mutation and notification.
                 stroke.insert_or_morph_last_point(position.to_array(), MORPH_SPACING);
@@ -1030,6 +1038,11 @@ mod cursor_plane_lifecycle_tests {
         schedule.run(&mut world); // no assets: the rejected creation must skip the read.
         assert_eq!(world.resource::<TerrainEditingData>().cursor_height_override, Some(7.25));
         assert!(world.resource::<TerrainEditingData>().strokes.is_empty());
+        world.init_resource::<crate::resources::gui::DebugGui>();
+        use bevy_ecs::system::RunSystemOnce;
+        world.run_system_once(crate::systems::backend::flush_screen_log::flush_error_log_to_screen).unwrap();
+        assert!(world.resource::<crate::resources::gui::DebugGui>().screen_log.entries.iter().flatten()
+            .any(|entry| entry.message == "Reached max number of terrain strokes" && entry.color == egui::Color32::YELLOW));
     }
 
     #[test]
@@ -1049,6 +1062,21 @@ mod cursor_plane_lifecycle_tests {
         assert_eq!(world.resource::<TerrainEditingData>().cursor_height_override, None);
         assert!(world.resource::<Events<NotifyHintSystemTerrain>>().is_empty());
         assert!(world.resource::<Events<NotifyHintSystemToolWasJustUsed>>().is_empty());
+    }
+
+    #[test]
+    fn held_outside_still_checks_the_last_stroke_counter() {
+        let mut world = world(2.0, 4);
+        world.resource_mut::<TerrainDrawState>().state = 1;
+        world.resource_mut::<CursorTerrainRaycast>().pos.x = 200.0;
+        let mut schedule = Schedule::default();
+        schedule.add_systems(ui_draw_terrain);
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            schedule.run(&mut world);
+        })).is_err());
+        assert_eq!(world.resource::<Events<DisplayOutOfBorder>>().len(), 1);
+        assert_eq!(world.resource::<Events<FeedbackInputOutOfBorder>>().len(), 1);
+        assert!(world.resource::<Events<EvTerrainStrokeChanged>>().is_empty());
     }
 
     #[test]

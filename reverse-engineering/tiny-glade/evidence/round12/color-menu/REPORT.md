@@ -112,3 +112,125 @@ The complete primary candidate preserves wall demo locks, shape<2 versus freehan
 GCC correctness issue escalated and assigned to save_migration_full by central: original windows is Option<ColorId>, plus original full JSON exposes stairs object, numeric flag color, plural fences and named enums. Original full serializer and field visitor were directly executed; all GCC evidence is available to that owner. The earlier narrow windows patch is superseded by that owner's full schema candidate.
 
 Open integration: real source lookups and failure policy; secondary rings for halftimber/window light/stair magic/ladder; native navigation graph publication; full eleven widget handlers and thirteen+9 main target side effects; actual input->History->SSBO/GPU validation. These remain unclosed; passing pure producer fixtures is not reported as T16 completion.
+
+## 2026-10-30 current production integration (not accepted)
+
+The current Rust producer now constructs real wall/roof/gate/halftimber and
+decorator owners, with halftimber and window-light secondary rings. The main
+13-target interaction loop and canonical UiNav publication are candidates;
+real input/history/save/reload acceptance is still pending. Gate/decorator
+pickers remain separately assigned, not inferred from menu construction.
+
+Central independently checked original f507 RNE bytes for the rim icon:
+1422937xx calls ClutterVersion::is_initial at140833230; bytes
+`8039000f94c0c3` implement byte==0. Original rodata14303b8b8 contains the31-byte
+`color_icon/freehand_ty_constant`, and14303b8d7 the30-byte
+`color_icon/freehand_ty_terrain`. Rim preview/rollback must update the displayed
+texture using those exact, intentionally freehand-named assets. The current
+candidate now performs this update. This was static byte inspection; the
+original executable was not run, and this is not a full main-loop equivalence
+or runtime acceptance claim.
+
+## Gate and decorator picker follow-up
+
+Static f507 bytes at 1422b0e72 pass additional mask 0x3108 to
+legacy_raycast_w_params (1408cc770), whose base mask is 0xf3. Tag 13/14
+calls lookup_decorator_info at 1422b0f1d and returns on a missing value at
+1422b0f25; lookup_storage at 1422b0f3d returns niche 3, rejected at
+1422b1240. Tag 4 passes the hit's storage address and decorator id to
+140a1c5f0 at 1422b104f; missing info returns at 1422b1057.
+
+The stair menu producer separately reads PlayermadeStairsAssemblyRequests:
+1422b0f58 constructs the normalized edge key using 140959e70; 1422b0f88
+accesses the map at owner +0x198, and 1422b12a2..12b2 tests whether the last
+four-byte record has kind 3. Tag 4 repeats this lookup for graph neighbors
+and ORs the results. This is distinct from the show consumer's visual-state
+lookup. These findings are static evidence, not runtime acceptance.
+
+## Main preview, defaults and history audit
+
+Corrected 13+9 control flow clears retained color for selected flag and smoke,
+then applies a color selected during the same traversal; selected wall style
+clears only if no color was selected (142294f00..4f60). Peel clears on hover
+or commit, while flat-style hover does not clear it. The wall-style branch
+does not suppress the color command's custom flag; brightness suppresses it
+only while a brightness value is selected. Flag/smoke do suppress it while
+selected. These conditions are corrected in the production candidate.
+
+Brightness default is written by its icon handler before the action-19
+try_start_input_recording call (1422941f2 versus 1422947f0); failure clears
+commit flags but does not revert that already-written default. Other color,
+style, freehand, rim, railing and magic defaults are written after the try
+and their native commit/change gates. Window-light and ladder defaults require
+both commit and a changed value; railing and magic defaults likewise require a
+changed committed value. Building, roof, gate, fence, halftimber and ordinary
+decorator defaults use commit; window sentinel/subtype selection is preserved.
+
+Style, peel and freehand commands carry native history flags and their wall
+consumer records the edits; the menu must not add a second copy. Rim similarly
+delegates history to the roof consumer. Current runtime has a separate confirmed
+ordering gap: rim command consumption is in GameSystemSet(40), while deferred
+roof history recording is set 0x22 and finish is set 35. A rim record produced
+after finish cannot join that same transaction; its registration point remains
+unlocated and requires coordinated correction, not a second menu-side record.
+
+The original owner is now identified: PDB signature and decompilation of
+system_color::set_roof_customization at 142299dd0 include both flat-style and
+rim event readers, RecalculateWallHoles writer, and History. Its rim loop
+compares roof+0x3d, emits holes only on change, assigns the new byte, and calls
+History::add directly when command byte+0x12 equals 1, preserving the command's
+from and to bytes. The original color tuple registers this owner in set 0x1f
+after color_menu and before history finish in set 0x23. Production now consumes
+both commands in that owner; duplicate set-40 roof adapters were removed.
+The real pointer-to-rim, transaction, undo and redo fixture is present but has
+not been run by this worker.
+
+## Decorator placement registration follow-up
+
+The f507 plugin body at 140342c10 (PDB range 10365 bytes, SHA256
+aa0da87bbbca08860afd0e49979efed71176e157dfcd54b26360bc239a5e6729)
+constructs dispatch via 1402d4810 and placement via 140553030 at
+140344e32/e3e, aggregates 19 entries via 1400d52f0, and assigns set 0x19.
+Constructor 140553030 names move, focus-stairs, place, rotate, chimney-height,
+stair-height, inactive and external-command leaves. Direct constructors in
+1400d52f0 name derive, clear-blueprints, the 15-generator group, instantiate
+colliders, collision flush, validate, cull, maintain-stair-graph,
+cull-stair-attached, and backup. The generator group's original name literals
+include cottage/gothic windows and doors, dormers, lanterns, chimneys, flags,
+arrow slits, trap doors, clutter and playermade stairs. The deferred decorator
+history reader is assigned set 0x22 by 140258060. These are static findings;
+the new App registration and input fixture are not yet compiled or run.
+
+The slot1 input placement was subsequently corrected by following the config
+copy: 140344e32/e3e produce the two configs copied to 14026c790's input;
+its PDB generic and config order are convert-autoclutter, dispatch group,
+placement group, continue-stairs. 140105360 independently proves slot0
+ends with a cache invocation; parent slot2 and slot3 tail each have their own
+cache invocations. The candidate registration needs to preserve all three.
+The dispatch group also contains debug_spawn_all_clutter ahead of dispatch;
+its current host implementation uses a separate debug counter and event owner,
+which requires adjudication before mounting it as recovered production logic.
+
+For wall-hole frame advancement, the actual clear_out_wall_holes leaf
+1407f98c0 has wrappers 1402943b0 / 140431b10 in vtable 1429ab780;
+1402957c0 constructs that system. Plugin bytes at 140344e0f..e12 pass
+GameSystemSet 0x0a to that constructor. This is independent of the set25
+visual-entity clear and must be registered once in set10.
+
+The set10 wall-hole leaf and slot1's convert → dispatch → placement → continue
+order are now applied in the App candidate. The three cache instances and the
+single set25 unleash are retained. The original debug-spawn leaf is not mounted:
+the current Rust implementation introduces an unconfirmed counter and local
+event owner. The current focus-stairs and stairs-visualization leaves likewise
+remain unmounted because they fabricate widget geometry or signifier positions;
+their real owners and behavior must be restored before claiming the full tuple.
+PrevWallHoles is supplied by startup_construction_runtime, and dormer hole SSBOs
+are created by init_populate_ssbo_library. No runtime success is inferred.
+
+### Deferred decorator history panic prefix (original f507)
+
+Original 140817880/885 reads and clears pending; 14081789a/89e loads the record Vec pointer and length, and 1408178a2 zeroes its length without replacing pointer or capacity. On unwind, 140817a1c calls 140d24ac0 for the drain fields; its tail_len is zero and it does not free the original Vec allocation. Records are Copy and have no element destructor. The potentially surviving decorator set is cleared only after the History::add loop returns; it remains populated when the missing-recording panic interrupts that loop. History::add 140a84ef0..ef7 detects the absent pending group and 140a8525b..2a0 enters panic. The production regression checks the cleared flag and length, preserved Vec pointer/capacity, and preserved set. This is static original-byte evidence; the regression still needs central execution.
+
+### Wall shape creation without an active history recording (original f507)
+
+Rectangle 140a9448f and circle 14097f134 call the new-wall history owner 140a83300, which calls History::add at 140a83915. Subsequent rectangle History::add calls are 140a94535 and 140a94637; circle calls are 14097f1d2 and 14097f2d7. History::add 140a84ee9..ef7 detects the absent pending group and 140a8525b..2a0 invokes the panic path. The wall authority and roof request precede this first history call; later toolbar and sheep requests do not. The corresponding production fix and fixture remain subject to central build and execution.

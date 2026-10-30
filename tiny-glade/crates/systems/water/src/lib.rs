@@ -34,6 +34,70 @@ use crate::draw_water::draw_water;
 use crate::record_water_history::{record_water_history, RecordWaterEditToHistoryCmd};
 use crate::water_audio_grid::update_water_audio_grid;
 
+/// B replay callback @0x140a01560 copies the complete water draw event, then
+/// sends RecalculateHeightMapCmd and increments ScheduledTerrainReadback.
+/// The replay owner calls it only for feedback-enabled animation or instant
+/// redo; instant undo reconstructs prior strokes without this callback.
+pub fn route_water_replay_feedback(
+    mut feedback: EventReader<country_core::systems::history::replay_raster::RasterReplayFeedback>,
+    mut draws: EventWriter<country_core::resources::water::WaterDrawEvent>,
+    mut recalc: EventWriter<country_core::systems::render_loop::compute_passes::rasterize_terrain_stroke::RecalculateHeightMapCmd>,
+    readback: Res<country_core::systems::terrain::delayed_terrain_changed_msg::ScheduledTerrainReadback>,
+) {
+    use country_core::systems::history::replay_raster::RasterDomain;
+    for sample in feedback.read().filter(|sample| sample.domain == RasterDomain::Water) {
+        draws.write(country_core::resources::water::WaterDrawEvent {
+            position: sample.position,
+            radius: sample.radius,
+            replay: sample.replay,
+        });
+        recalc.write(country_core::systems::render_loop::compute_passes::rasterize_terrain_stroke::RecalculateHeightMapCmd);
+        readback.on_terrain_modified();
+    }
+}
+
+#[cfg(test)]
+mod replay_feedback_tests {
+    use super::*;
+    use country_core::resources::water::WaterDrawEvent;
+    use country_core::systems::history::replay_raster::{RasterDomain, RasterReplayFeedback};
+    use country_core::systems::render_loop::compute_passes::rasterize_terrain_stroke::RecalculateHeightMapCmd;
+    use country_core::systems::terrain::delayed_terrain_changed_msg::ScheduledTerrainReadback;
+    use glam::Vec3;
+    use std::sync::atomic::Ordering;
+
+    #[test]
+    fn replay_water_feedback_keeps_event_flag_and_schedules_each_readback() {
+        assert_eq!(std::mem::size_of::<WaterDrawEvent>(), 20);
+        let mut world = World::new();
+        world.init_resource::<Events<RasterReplayFeedback>>();
+        world.init_resource::<Events<WaterDrawEvent>>();
+        world.init_resource::<Events<RecalculateHeightMapCmd>>();
+        world.init_resource::<ScheduledTerrainReadback>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(route_water_replay_feedback);
+        for domain in [RasterDomain::Water, RasterDomain::Garden, RasterDomain::Water] {
+            world.send_event(RasterReplayFeedback {
+                domain,
+                position: Vec3::new(1.0, 2.0, 3.0),
+                radius: 2.5,
+                replay: true,
+            });
+        }
+        schedule.run(&mut world);
+        let events = world.resource::<Events<WaterDrawEvent>>();
+        let mut cursor = events.get_cursor();
+        let draw_events: Vec<_> = cursor.read(events).collect();
+        assert_eq!(draw_events.len(), 2);
+        assert!(draw_events.iter().all(|event| event.replay));
+        let events = world.resource::<Events<RecalculateHeightMapCmd>>();
+        assert_eq!(events.get_cursor().read(events).count(), 2);
+        assert_eq!(world.resource::<ScheduledTerrainReadback>().pending.load(Ordering::SeqCst), 2);
+        schedule.run(&mut world);
+        assert_eq!(world.resource::<ScheduledTerrainReadback>().pending.load(Ordering::SeqCst), 2);
+    }
+}
+
 /// 进程全局门禁地址（O：`cmp byte ptr [0x14362c098], 0`；非 0 → 早退）。
 /// 写入者 = `tiny_glade::main`（0x1403dcf78，值 0，round3 O）。
 pub const WATER_GATE_FLAG_ADDR: u64 = 0x1_4362_c098;

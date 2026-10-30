@@ -146,10 +146,10 @@ fn lerp_border_shape(lo: BorderShape, hi: BorderShape, t: f32) -> BorderShape {
     }
 }
 
-/// 非演示提示事件（O：`resources::glade_border::NotInDemoHint`；color_menu
-/// 0x142291230 的 EventWriter 面——演示模式禁用功能提示）。
+/// B1422945bd emits the actual screen cursor (8B) after the EventId;
+/// the locked-color hint must retain that location rather than becoming unit.
 #[derive(Event, Clone, Copy, Debug, Default)]
-pub struct NotInDemoHint;
+pub struct NotInDemoHint(pub glam::Vec2);
 
 /// B toolbar 14234a410 从最后一个事件读取完整 ShapeParameters，再取其外轮廓。
 /// 不是单位通知；同帧多个超高请求只显示最后一个受限形状。
@@ -220,8 +220,9 @@ mod tests {
         let far = ShapeParameters::from_shape(Shape::Circle(Circle2d::new(Vec2::new(100.0, 0.0), 1.0)));
         assert_eq!(border.search_lerped_shape_that_fits_into_glade(far, far), far);
         // The original loop stops at 19/20 even when the target fits.
+        let inside_lo = BorderShape::Circle(Circle2d::new(Vec2::ZERO, 10.0));
         let inside_hi = BorderShape::Circle(Circle2d::new(Vec2::ZERO, 12.0));
-        match border.search_lerped_border_shape_that_fits_into_glade(lo, inside_hi) {
+        match border.search_lerped_border_shape_that_fits_into_glade(inside_lo, inside_hi) {
             BorderShape::Circle(c) => assert!((c.radius - 11.9).abs() < 1e-4),
             _ => panic!("expected circle"),
         }

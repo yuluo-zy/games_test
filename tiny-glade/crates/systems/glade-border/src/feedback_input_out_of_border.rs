@@ -56,3 +56,35 @@ pub fn feedback_input_out_of_border(
         cache.had_feedback_last_run = false;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sound_fires_on_each_new_run_of_out_of_border_feedback() {
+        let mut world = World::new();
+        world.init_resource::<Events<FeedbackInputOutOfBorder>>();
+        world.init_resource::<Events<PlayUiSound>>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(feedback_input_out_of_border);
+        let mut sounds = world.resource::<Events<PlayUiSound>>().get_cursor();
+
+        world.send_event(FeedbackInputOutOfBorder);
+        schedule.run(&mut world);
+        let first: Vec<_> = sounds.read(world.resource::<Events<PlayUiSound>>()).collect();
+        assert_eq!(first.len(), 1);
+        assert_eq!(first[0].kind, 4);
+
+        world.send_event(FeedbackInputOutOfBorder);
+        schedule.run(&mut world);
+        assert_eq!(sounds.read(world.resource::<Events<PlayUiSound>>()).count(), 0);
+
+        schedule.run(&mut world);
+        world.send_event(FeedbackInputOutOfBorder);
+        schedule.run(&mut world);
+        let next: Vec<_> = sounds.read(world.resource::<Events<PlayUiSound>>()).collect();
+        assert_eq!(next.len(), 1);
+        assert_eq!(next[0].kind, 4);
+    }
+}

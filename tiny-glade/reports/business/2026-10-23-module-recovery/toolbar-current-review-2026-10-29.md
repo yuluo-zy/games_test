@@ -1,5 +1,7 @@
 # M0 工具栏当前复核（2026-10-29）
 
+2026-10-30 set39 静态增量：B RNE SHA `f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03`。`run_game_thread` 的 `1405a036a/376/382/395` 构造三项类型擦除配置：`14016bcd0` 设置菜单经 `1400d2ee0` 附 `resource_exists<ActiveSession>`；`1405b6ee0` 先构造 `flush_error_log_to_screen`、再构造 `do_gui_error_log`，生成二项配置后 `1401705d0` 调 `140d2fa20` 初始化 Chain，再插入零大小配置的 TypeId 和 vtable；对照锁定 Bevy 的 `Chain::set_chained_with_config` 与 `chain_ignore_deferred`，它是二者间顺序且忽略 deferred 的配置。`1402e8280` 的 `write_settings_file` 经 `1400d3350` 附 `on_event<WriteSettingsFileCmd>`。`140611040` 将八项外层 tuple 放入 set39；本次未发现将外层 tuple 链化的构造，不能将 tuple 次序当跨配置顺序。原始只读字节、PE exception 边界/hash 和专属 worker 反编译保留在 `tmp-merge/m0_ranges.py`、`tmp-merge/m0-prepare-result.json`，worker `m0-tod-order-20261030`；只改专属worker函数边界，不改共享数据库。生产 GUI 的日志二项已按该关系接线，设置菜单补资源存在条件。当前文件写入仍由 host 在 App 更新后消费事件，其与原 set39 写入的相对时序尚需实际链验证；本增量未执行 Cargo，也不声称整模块完成。
+
 | 函数/链 | 当前实现和原证 | 已验证范围 | 剩余缺口 |
 |---|---|---|---|
 | 工具栏输入、焦点与菜单 | `ToolbarPlugin` 的 set6/7/8，Welcome set36；B 原注册与布局证据见现有台账 | `toolbar_module_chain` 8 项和 `toolbar_focus_chain` 命令通过，前者有历史跨进程保存与 Reload；CPU 支架自己组装系统 | 生产整图的真实输入与窗口未验；Welcome 原节点测试待本轮执行 |

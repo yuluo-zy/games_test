@@ -415,6 +415,44 @@ mod tests {
     use super::*;
 
     #[test]
+    fn color_and_rim_history_round_trip_keeps_targets_and_replay_order() {
+        use super::super::replay_cmd_buffer::{ReplayBucket, ReplayCommand};
+        let wire = serde_json::json!({"edits": [
+            {"Color": {"Wall": {"wall_id": 7, "from": 3, "to": 11}}},
+            {"Roof": {"ChangeFlatRoofRimStyle": {"wall_index": 7, "before": "Rim", "after": "NoRim"}}},
+            {"Color": {"Decorator": {"decorator_id": 41, "from": 12, "to": 19}}}
+        ]});
+        let entry: SavedMultiEdit = serde_json::from_value(wire.clone()).unwrap();
+        let saved = serde_json::to_string(&entry).unwrap();
+        let loaded: SavedMultiEdit = serde_json::from_str(&saved).unwrap();
+        assert_eq!(serde_json::to_value(&loaded).unwrap(), wire);
+        for undo in [false, true] {
+            let bucket = ReplayBucket::expand(0, &loaded.0, undo, true).unwrap();
+            let tags: Vec<_> = bucket.commands.iter().map(|command| match command {
+                ReplayCommand::Color(color) => {
+                    assert_eq!(color.undo, undo);
+                    match &*color.edit {
+                        super::super::color_edit::ColorEdit::Wall { wall_id, from, to } => {
+                            assert_eq!((wall_id.0, from.0, to.0), (7, 3, 11)); 0
+                        }
+                        super::super::color_edit::ColorEdit::Decorator { decorator_id, from, to } => {
+                            assert_eq!((decorator_id.0, from.0, to.0), (41, 12, 19)); 2
+                        }
+                        _ => panic!("unexpected color edit"),
+                    }
+                }
+                ReplayCommand::Roof(roof) => {
+                    assert_eq!(&roof.payload()[..3], &[4, 0, 1]);
+                    assert_eq!(u64::from_le_bytes(roof.payload()[8..16].try_into().unwrap()), 7);
+                    1
+                }
+                _ => panic!("unexpected replay command"),
+            }).collect();
+            assert_eq!(tags, if undo { vec![2, 1, 0] } else { vec![0, 1, 2] });
+        }
+    }
+
+    #[test]
     fn original_mixed_multi_edit_aux_survives_save_reload_and_replay_expansion() {
         let fixture: serde_json::Value = serde_json::from_str(include_str!(
             "../../../tests/fixtures/original-mixed-history-b.json"
@@ -446,6 +484,11 @@ mod tests {
                     bucket.is_ok(),
                     "original entry replay expansion: {bucket:?}"
                 );
+                let bucket = bucket.unwrap();
+                let command_count = bucket.commands.len();
+                let partitions = bucket.partition();
+                assert_eq!(partitions.iter().map(|part| part.commands.len()).sum::<usize>(), command_count);
+                assert!(partitions.iter().all(|part| part.commands.len() <= 9));
             }
         }
         assert!(decorators >= 3 && stairs >= 3);

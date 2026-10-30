@@ -8,6 +8,26 @@ use country_core::{resources as res, systems as sys};
 
 pub(super) fn install(app: &mut App) {
     system_color::register_color_events(app.world_mut());
+    // B GardenPlugin::build @140b6d290 places draw in set 0x10 and
+    // record_garden_history in set 0x22. Both use the game's actual collider
+    // and snapshot owners, shared with the other edit tools.
+    app.add_event::<sys::garden::GardenDrawEvent>();
+    app.add_event::<sys::garden::GardenEraseEvent>();
+    app.add_event::<sys::garden::record_garden_history::RecordGardenEditToHistoryCmd>();
+    app.add_systems(
+        Update,
+        sys::garden::draw_garden::draw_garden::<
+            res::walls::decorator_archivist::LiveColliderPayload,
+        >
+        .in_set(GameSystemSet(0x10)),
+    );
+    app.add_systems(
+        Update,
+        sys::garden::record_garden_history::record_garden_history::<
+            res::history::MaybePendingSnapshotId,
+        >
+        .in_set(GameSystemSet(0x22)),
+    );
     // Tree-tool events/TreeStorage/systems come from TreePlugin140650520 and the roof
     // events/resources/systems from RoofSystems (run_game::add_original_plugins).
     app.init_resource::<res::color_id::WallColorIds>();
@@ -100,8 +120,6 @@ pub(super) fn install(app: &mut App) {
         route_wall_replay_colors.after(sys::history::replay_wall::replay_wall),
         sys::history::replay_wall::apply_wall_replay_audio
             .after(sys::history::replay_wall::replay_wall),
-        system_roof::edit_roof::set_flat_roof_style
-            .after(system_color::replay_color::replay_color::<res::history::MaybePendingSnapshotId>),
     ).in_set(GameSystemSet(40)));
     // OPEN (not closed): the original registration point of the prefab command
     // runtime (spawn/update/despawn_prefab_commands) is unlocated; it stays here. The
@@ -133,13 +151,11 @@ fn install_domain_lifecycles(app: &mut App) {
     app.init_resource::<sys::ui::signifiers::signifier_create::UiSignifierStream>();
     // Preserve already existing nonempty command adapters. Their individual native
     // caller stages remain separately adjudicated; they are not native20 items.
-    // OPEN (not closed): switch_roof_direction, set_flat_roof_rim_style and
-    // update_wall_gable_heights (and set_flat_roof_style above) are not members of the
-    // original add_roof_systems@14062fcb0; their original registration points are
-    // unlocated. switch_roof_ridge_direction IS original (RoofSystems set 0x12).
+    // OPEN: switch_roof_direction and update_wall_gable_heights have unlocated
+    // registration points. Flat style and rim are consumed in the original
+    // color set_roof_customization system, not separate roof adapters.
     app.add_systems(Update, (
         system_roof::edit_roof::switch_roof_direction,
-        system_roof::edit_roof::set_flat_roof_rim_style,
         system_roof::update_roof_spatial::update_wall_gable_heights,
     ).chain().after(system_roof::replay_roof::replay_roof).in_set(GameSystemSet(40)));
     app.add_systems(
@@ -193,6 +209,22 @@ fn install_domain_lifecycles(app: &mut App) {
                     && world.contains_resource::<res::world_raster_defs::Cobblestone3Raster>()
                     && world.contains_resource::<res::world_raster_defs::GardenRaster>()
             }),
+    );
+    app.add_systems(
+        Update,
+        sys::garden::route_garden_replay_feedback
+            .after(sys::history::replay_raster::replay_rasters::<
+                res::history::MaybePendingSnapshotId,
+            >)
+            .in_set(GameSystemSet(40)),
+    );
+    app.add_systems(
+        Update,
+        system_water::route_water_replay_feedback
+            .after(sys::history::replay_raster::replay_rasters::<
+                res::history::MaybePendingSnapshotId,
+            >)
+            .in_set(GameSystemSet(40)),
     );
 }
 
@@ -260,7 +292,7 @@ mod tests {
         app.add_event::<country_core::resources::window::AudioCursorMoved>();
         app.add_event::<country_core::resources::onboarding::NotifyHintSystemSnapping>();
         app.init_resource::<country_core::resources::editing_highlight::EditingHighlight>();
-        app.add_systems(bevy_app::Startup, country_core::resources::glade_border::setup_glade_border);
+        app.add_systems(bevy_app::PreStartup, country_core::resources::glade_border::setup_glade_border);
         app.insert_resource(country_core::resources::session::ActiveSession::new(
             country_core::resources::session::SessionId::new(),
             country_core::resources::session::SessionMeta::default()));
@@ -283,6 +315,26 @@ mod tests {
             ..Default::default()
         });
         app
+    }
+
+    #[test]
+    fn garden_event_channels_are_maintained_by_the_production_app() {
+        let mut app = app();
+        app.world_mut().send_event(sys::garden::GardenDrawEvent {
+            position: glam::Vec3::new(2.0, 0.0, 3.0),
+            radius: 1.0,
+            observed_flag: false,
+        });
+        app.world_mut().send_event(sys::garden::GardenEraseEvent {
+            position: glam::Vec3::new(2.0, 0.0, 3.0),
+            radius: 1.0,
+            observed_flag: false,
+        });
+        for _ in 0..3 {
+            app.update();
+        }
+        assert!(app.world().resource::<Events<sys::garden::GardenDrawEvent>>().is_empty());
+        assert!(app.world().resource::<Events<sys::garden::GardenEraseEvent>>().is_empty());
     }
 
     #[test]

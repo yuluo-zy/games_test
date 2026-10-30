@@ -317,6 +317,13 @@ fn half_timber_circle_fine_points(
         assert!(!normal_u.is_nan(), "原半木圆墙法线坐标为 NaN");
         let normal_u = normal_u.max(0.0).min(1.0);
         let normal = circle.get_normal_at_u(normal_u);
+        #[cfg(test)]
+        if std::env::var_os("M6_FLOAT_DIAGNOSTICS").is_some() {
+            let rotation = circle.rotation % std::f32::consts::TAU;
+            let rotation = if rotation < 0.0 { std::f32::consts::TAU + rotation } else { rotation };
+            let angle = rotation + (1.0 - normal_u) * std::f32::consts::TAU;
+            eprintln!("M6_HALF_SAMPLE left={:08x} right={:08x} i={} count={} t={:08x} u={:08x} normal_u={:08x} angle={:08x} cos={:08x} sin={:08x} point={:08x},{:08x},{:08x}", left.to_bits(), right.to_bits(), i, count, t.to_bits(), u.to_bits(), normal_u.to_bits(), angle.to_bits(), normal.x.to_bits(), normal.y.to_bits(), point.x.to_bits(), point.y.to_bits(), point.z.to_bits());
+        }
         result.push((u, point, normal));
     }
     result
@@ -484,6 +491,14 @@ fn half_timber_write_fine_points(
         let transform = glam::Affine3A::from_scale_rotation_translation(
             Vec3::new(f32::from_bits(0x3df5_c290), f32::from_bits(0x3f5c_28f6), f32::from_bits(0x3df5_c290)),
             utils::xz_rotation_bad(normal), translation);
+        #[cfg(test)]
+        if std::env::var_os("M6_FLOAT_DIAGNOSTICS").is_some() {
+            let (u, _, _) = points[index];
+            let bits = transform.to_cols_array().map(f32::to_bits);
+            let unit = normal.try_normalize().unwrap_or(glam::Vec2::X);
+            let rotation = utils::xz_rotation_bad(normal).to_array().map(f32::to_bits);
+            eprintln!("M6_HALF_WRITE index={} u={:08x} p={:08x},{:08x},{:08x} normal={:08x},{:08x} unit={:08x},{:08x} rotation={:08x?} lateral={:08x} transform={:08x?}", index, u.to_bits(), p.x.to_bits(), p.y.to_bits(), p.z.to_bits(), normal.x.to_bits(), normal.y.to_bits(), unit.x.to_bits(), unit.y.to_bits(), rotation, lateral.to_bits(), bits);
+        }
         let record = WoodenPlankSsbo { transform: transform.into(), gate_seed: 0,
             piece_seed: wall_id.0.wrapping_add(piece_index as u64) as i32,
             wall_id: wall_id.0 as u32, flags: 0 };

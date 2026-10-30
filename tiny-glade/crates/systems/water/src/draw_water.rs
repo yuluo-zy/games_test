@@ -128,6 +128,171 @@ mod pin_writer_tests {
         } if circle.center == Vec2::new(1.0,-2.0) && circle.radius == 2.0));
         assert_eq!(world.resource::<ScheduledTerrainReadback>().pending.load(std::sync::atomic::Ordering::SeqCst), 2);
     }
+
+    /// Exercise the real raster/staging and the native collision payload type;
+    /// the test device supplies mapped storage only, not terrain or collisions.
+    #[test]
+    fn live_water_boundaries_and_instant_history_replay_produce_real_feedback() {
+        use country_core::resources::history::{EditType, History, MaybePendingSnapshotId, ReplayBucket, ReplayBuffer, ReplayCommand};
+        use country_core::resources::walls::decorator_archivist::LiveColliderPayload;
+        use country_core::resources::world_raster_defs::{PathRaster, Cobblestone1Raster, Cobblestone2Raster, Cobblestone3Raster, GardenRaster};
+        use country_core::systems::history::replay_raster::{replay_rasters, RasterDomain, RasterReplayCmd, RasterReplayFeedback};
+        use std::sync::atomic::Ordering;
+
+        let mut world = World::new();
+        crate::register_water_events(&mut world);
+        world.insert_resource(AppMode::Water);
+        let widget = WidgetId::clearing_canvas("watereraser_water_");
+        world.insert_resource(UiState::new(UiInteraction { native_tag: 2, native_phase: 3, widget }));
+        world.insert_resource(BrushSizes { water: 2.0, path: 1.0, garden: 1.0 });
+        world.insert_resource(EraserSizeMultiplier(1.0));
+        world.insert_resource(GladeBorder(BorderShape::Circle(Circle2d::new(Vec2::ZERO, 10.0))));
+        let mut cursor = CursorTerrainRaycast::new();
+        cursor.update(Some(Vec3::new(-2.0, 0.0, 0.0)));
+        world.insert_resource(cursor);
+        world.insert_resource(CameraCursorRay { origin: Vec3::new(-2.0, 10.0, 0.0), dir: Vec3::NEG_Y });
+        world.init_resource::<ActiveRasterStrokesStorage>();
+        world.init_resource::<DecoratorArchivist<LiveColliderPayload>>();
+        world.init_resource::<ScheduledTerrainReadback>();
+        world.init_resource::<UiSignifierStream>();
+        let mut history = History::<MaybePendingSnapshotId>::empty_glade();
+        history.start_input_recording(AppMode::Water.native_tag()).unwrap();
+        world.insert_resource(history);
+        let library = AssetSsboLibrary::new();
+        library.add_new::<WaterRasterStagingSsbo>(&country_core::render::test_device::TestDevice(0));
+        world.insert_resource(library);
+        let mut live = Schedule::default();
+        live.add_systems(draw_water::<LiveColliderPayload>);
+        let phase = |world: &mut World, value| world.resource_mut::<UiState>().replace_interaction(
+            UiInteraction { native_tag: 2, native_phase: value, widget });
+        let counts = |world: &World| (
+            world.resource::<Events<RecalculateHeightMapCmd>>().len(),
+            world.resource::<ScheduledTerrainReadback>().pending.load(Ordering::SeqCst),
+            world.resource::<Events<WaterDrawEvent>>().len(),
+        );
+
+        world.resource_mut::<CursorTerrainRaycast>().update(Some(Vec3::new(11.0, 0.0, 0.0)));
+        live.run(&mut world); // starting outside does not begin a stroke
+        assert_eq!(counts(&world), (0, 0, 0));
+        assert_eq!(world.resource::<Events<DisplayOutOfBorder>>().len(), 1);
+        assert_eq!(world.resource::<Events<FeedbackInputOutOfBorder>>().len(), 1);
+        world.resource_mut::<CursorTerrainRaycast>().update(Some(Vec3::new(-2.0, 0.0, 0.0)));
+        live.run(&mut world); // begin
+        assert_eq!(counts(&world), (1, 1, 0));
+        phase(&mut world, 4);
+        live.run(&mut world); // stationary drag: readback precedes distance rejection
+        assert_eq!(counts(&world), (2, 2, 0));
+        world.resource_mut::<CursorTerrainRaycast>().update(Some(Vec3::new(2.0, 0.0, 0.0)));
+        live.run(&mut world);
+        assert_eq!(counts(&world), (3, 3, 1));
+        {
+            let events = world.resource::<Events<WaterDrawEvent>>();
+            let mut cursor = events.get_cursor();
+            let event = cursor.read(events).next().unwrap();
+            assert_eq!(event.position, Vec3::new(2.0, 0.0, 0.0));
+            assert_eq!(event.radius, 2.0);
+            assert!(!event.replay);
+        }
+        assert_eq!(std::mem::size_of::<WaterDrawEvent>(), 20);
+        assert!(world.resource::<WaterRaster>().published());
+        world.resource_mut::<CursorTerrainRaycast>().update(Some(Vec3::new(11.0, 0.0, 0.0)));
+        live.run(&mut world); // outside drag does not issue recalc or paint
+        assert_eq!(counts(&world), (3, 3, 1));
+        assert_eq!(world.resource::<Events<DisplayOutOfBorder>>().len(), 2);
+        assert_eq!(world.resource::<Events<FeedbackInputOutOfBorder>>().len(), 2);
+        phase(&mut world, 5);
+        live.run(&mut world); // end outside still commits the preceding stroke
+        assert_eq!(counts(&world), (4, 4, 1));
+        assert_eq!(world.resource::<Events<RecordWaterEditToHistoryCmd>>().len(), 1);
+        let painted = world.resource::<WaterRaster>().composite().to_vec();
+        assert!(painted.iter().any(|&pixel| pixel != 0));
+        // The live end event must be consumed by the production recorder once.
+        let mut record = Schedule::default();
+        record.add_systems(crate::record_water_history::record_water_history::<MaybePendingSnapshotId>);
+        record.run(&mut world);
+        record.run(&mut world);
+        {
+            let mut history = world.resource_mut::<History<MaybePendingSnapshotId>>();
+            assert_eq!(history.pending().unwrap().edits.len(), 1);
+            assert!(history.finish_input_recording().unwrap().is_some());
+        }
+        let stroke = {
+            let history = world.resource::<History<MaybePendingSnapshotId>>();
+            assert_eq!(history.ledger().entries.len(), 1);
+            let edits = &history.ledger().entries[0].edits;
+            assert_eq!(edits.len(), 1);
+            match &edits[0] {
+                EditType::Water(stroke) => stroke.clone(),
+                other => panic!("expected water history edit, got {other:?}"),
+            }
+        };
+        *world.resource_mut::<AppMode>() = AppMode::Replay;
+        live.run(&mut world);
+        assert_eq!(counts(&world), (4, 4, 1));
+
+        // Use the production replay system and its six actual raster resources.
+        // Replay uses the same History and stroke identity produced above.
+        world.insert_resource(PathRaster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(Cobblestone1Raster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(Cobblestone2Raster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(Cobblestone3Raster::new(DirtyTilePublisher::unique()));
+        world.insert_resource(GardenRaster::new(DirtyTilePublisher::unique()));
+        world.init_resource::<GameTime>();
+        world.init_resource::<Events<RasterReplayFeedback>>();
+        world.insert_resource(ReplayBuffer::new(1.0));
+        let mut replay = Schedule::default();
+        replay.add_systems((replay_rasters::<MaybePendingSnapshotId>, crate::route_water_replay_feedback).chain());
+        for undo in [true, false] {
+            world.resource_mut::<ReplayBuffer>().push(ReplayBucket {
+                entry_index: 0, undo,
+                commands: vec![ReplayCommand::Raster(RasterReplayCmd::new(RasterDomain::Water, stroke.clone(), undo, true, true))],
+                timing: vec![],
+            });
+            replay.run(&mut world);
+            if undo {
+                assert!(world.resource::<WaterRaster>().composite().iter().all(|&pixel| pixel == 0));
+                assert_eq!(counts(&world), (4, 4, 1));
+            } else {
+                assert_eq!(world.resource::<WaterRaster>().composite(), painted);
+                assert_eq!(counts(&world), (5, 5, 2));
+                let events = world.resource::<Events<WaterDrawEvent>>();
+                let mut cursor = events.get_cursor();
+                let event = cursor.read(events).last().unwrap();
+                assert!(event.replay);
+                assert_eq!(event.position, stroke.points[0]);
+                assert_eq!(event.radius, stroke.radius);
+            }
+            world.resource_mut::<ReplayBuffer>().pop_front_bucket();
+        }
+        replay.run(&mut world);
+        assert_eq!(counts(&world), (5, 5, 2));
+
+        // The real eraser projects CameraCursorRay onto y=0; it uses the same
+        // raster and feedback producers, but writes WaterEraseEvent.
+        *world.resource_mut::<AppMode>() = AppMode::Eraser(EraserLayer::Water);
+        let eraser_widget = WidgetId::clearing_canvas("eraser");
+        world.resource_mut::<CursorTerrainRaycast>().update(Some(Vec3::new(-2.0, 0.0, 0.0)));
+        world.resource_mut::<CameraCursorRay>().origin = Vec3::new(-2.0, 10.0, 0.0);
+        world.resource_mut::<UiState>().replace_interaction(UiInteraction { native_tag: 2, native_phase: 3, widget: eraser_widget });
+        live.run(&mut world);
+        world.resource_mut::<CameraCursorRay>().origin = Vec3::new(2.0, 10.0, 0.0);
+        world.resource_mut::<CursorTerrainRaycast>().update(Some(Vec3::new(2.0, 0.0, 0.0)));
+        world.resource_mut::<UiState>().replace_interaction(UiInteraction { native_tag: 2, native_phase: 4, widget: eraser_widget });
+        live.run(&mut world);
+        {
+            let events = world.resource::<Events<WaterEraseEvent>>();
+            let mut cursor = events.get_cursor();
+            let event = cursor.read(events).next().unwrap();
+            assert_eq!(event.position, Vec3::new(2.0, 0.0, 0.0));
+            assert!(!event.replay);
+            assert_eq!(event.radius, (1.0_f32 - 0.3) / (2.0 - 0.3) * 4.0 + (1.0 - (1.0 - 0.3) / (2.0 - 0.3)));
+        }
+        world.resource_mut::<UiState>().replace_interaction(UiInteraction { native_tag: 2, native_phase: 5, widget: eraser_widget });
+        live.run(&mut world);
+        assert_eq!(counts(&world), (8, 8, 2));
+        assert_eq!(world.resource::<Events<RecordWaterEditToHistoryCmd>>().len(), 2);
+        assert_ne!(world.resource::<WaterRaster>().composite(), painted);
+    }
 }
 
 /// SystemParam 束（同 core `GardenRasterResources` 模式；原版为 `RasterDrawResources`
@@ -293,9 +458,14 @@ pub fn draw_water<C: Send + Sync + 'static>(
     };
     draw_raster::<WaterRasterStagingSsbo, C>(
         RasterStrokeCmd {
-            // O：discriminant 0/2/3（begin/extend/commit）；原版该结构无 strength 字段
-            //   （case1 只写 discriminant/radius/draw，strength@-0x2c 未初始化）——
-            //   core 当前 RasterStrokeCmd 带 strength，按 begin 记录常数 1.0（差登记）。
+            // OPEN: B 0x141ba94ed writes tag 0, radius and draw, leaving +4
+            // untouched. On the water branch that stack word has no local
+            // assignment; on the eraser branch 0x141ba9400 overwrites it with
+            // part of a prior formatting result. 0x1422610d6 reads the word and
+            // 0x140868e28 stores it. Rasterization selects Max/Erase for tag 0
+            // without using the word (0x142262221), but history copies it
+            // (0x1409579d9/0x140957aeb). Its observable contract is still open;
+            // 1.0 is an unverified existing adapter, not an original constant.
             discriminant: command,
             strength: 1.0,
             radius: brush_size,
@@ -306,16 +476,18 @@ pub fn draw_water<C: Send + Sync + 'static>(
         &mut borrowed,
         &mut water,
         &mut resources.library,
-        |point, radius, _observed_flag| {
+        |point, radius, replay| {
             draws.write(WaterDrawEvent {
                 position: point,
                 radius,
+                replay,
             });
         },
-        |point, radius, _observed_flag| {
+        |point, radius, replay| {
             erases.write(WaterEraseEvent {
                 position: point,
                 radius,
+                replay,
             });
         },
         || {

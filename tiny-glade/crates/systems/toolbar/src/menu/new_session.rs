@@ -711,10 +711,12 @@ mod tests {
             "menu/new_session_separator",
             "menu/new_session_daily_info",
             "menu/new_session_daily_info_xmas",
+            "menu/new_session_daily_downloading",
+            "menu/new_session_daily_missing",
         ]);
         let mut app = bevy_app::App::new();
         app.insert_resource(mei)
-            .insert_resource(theme)
+            .insert_resource(CurrentDaily::default())
             .insert_resource(EscMenuState::NewSession)
             .insert_resource(NextEscMenuState::default())
             .insert_resource(NextState::<AppLoadingState>::default())
@@ -726,6 +728,31 @@ mod tests {
             .add_event::<SaveGameProfileCmd>()
             .add_event::<ShowDailyWelcomeCmd>()
             .add_systems(bevy_app::Update, ui::<AbsentMusicEvent>);
+        // Drive each unavailable state through the real menu producer and
+        // attempt its actual Daily button; no request or profile mutation may
+        // be emitted before a complete theme is ready.
+        for state in [DailyThemeState::Downloading, DailyThemeState::NoCurrentTheme,
+            DailyThemeState::DownloadError("fixture download failure".into())] {
+            app.world_mut().resource_mut::<CurrentDaily>().0 = state;
+            app.update();
+            let key = lang_lib::lookup("New.Glade.Daily");
+            let mei = app.world_mut().resource_mut::<MeiContext>().into_inner();
+            let button = mei.nodes.values_mut().find(|node| {
+                let any: &dyn std::any::Any = node.content.as_ref();
+                any.downcast_ref::<MenuButtonContent>()
+                    .is_some_and(|button| button.pending_text.as_deref() == Some(key.as_ref()))
+            }).expect("原每日主题按钮");
+            button.state_bits |= 0x10;
+            mei.recycle_frame_nodes();
+            app.update();
+            assert!(!app.world().contains_resource::<NextSession>());
+            assert_eq!(app.world().resource::<GameProfile>().new_glade_count, 0);
+            assert!(!matches!(*app.world().resource::<NextState<AppLoadingState>>(), NextState::Pending(AppLoadingState::Reload)));
+            assert!(app.world().resource::<Events<ShowDailyWelcomeCmd>>().is_empty());
+            assert!(app.world().resource::<Events<SaveGameProfileCmd>>().is_empty());
+            app.world_mut().resource_mut::<MeiContext>().recycle_frame_nodes();
+        }
+        app.insert_resource(theme);
         app.update();
         let key = lang_lib::lookup("New.Glade.Weekly");
         let mei = app.world_mut().resource_mut::<MeiContext>().into_inner();

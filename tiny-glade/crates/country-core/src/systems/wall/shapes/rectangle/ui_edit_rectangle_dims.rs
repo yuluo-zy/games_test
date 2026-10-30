@@ -842,6 +842,7 @@ mod native_widget_tests {
             &WallSpatialHash::default(),
         );
         public.get_mut(id).unwrap().prepare_paths(&paths).unwrap();
+        public.get_mut(id).unwrap().update_gable_heights(None).unwrap();
         let mut world = World::new();
         world.init_resource::<Events<crate::systems::ui_clutter::decoclutter_show_pins::ShowPinnedDecoClutter>>();
         world.insert_resource(inner);

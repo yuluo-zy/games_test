@@ -60,6 +60,7 @@ fn main() -> Result<()> {
             Some("loading_close") => WindowValidationMode::LoadingClose,
             Some("suspended_close") => WindowValidationMode::SuspendedClose,
             Some("window_cycle") => WindowValidationMode::WindowCycle,
+            Some("windowed_cycle") => WindowValidationMode::WindowedCycle,
             Some("late_camera") => WindowValidationMode::LateCamera,
             _ => anyhow::bail!("未知窗口生命周期验收模式：{value:?}"),
         };
@@ -193,10 +194,12 @@ enum WindowValidationMode {
     LoadingClose,
     SuspendedClose,
     WindowCycle,
+    WindowedCycle,
     LateCamera,
 }
 
 impl WindowValidationMode {
+    fn is_window_cycle(self) -> bool { matches!(self, Self::WindowCycle | Self::WindowedCycle) }
     fn is_loading_close(self) -> bool {
         matches!(self, Self::LoadingClose | Self::SuspendedClose)
     }
@@ -281,8 +284,16 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
     std::env::set_current_dir(&installed)?;
     utils::local_time::init_local_time();
     tiny_glade::load_language_library::load_language_library(None, None);
-    let cli = CliArgs::parse_from(["original-gameplay-wsi"]);
+    let cli = if mode == WindowValidationMode::WindowedCycle {
+        CliArgs::parse_from(["original-gameplay-wsi", "--windowed"])
+    } else { CliArgs::parse_from(["original-gameplay-wsi"]) };
     let mut config = get_app_config(&cli)?;
+    let launch_display = if mode == WindowValidationMode::WindowedCycle {
+        let policy = tiny_glade::app_config::LaunchDisplayOverride::resolve(
+            &cli, &config.video.display, true, false, None)?.context("windowed policy missing")?;
+        policy.apply(&mut config.video.display);
+        Some(policy)
+    } else { None };
     if fullscreen_capture_path.is_some() {
         anyhow::ensure!(mode == WindowValidationMode::Gameplay && performance.is_none(),
             "fullscreen capture requires the gameplay fixture without performance stimuli");
@@ -296,7 +307,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
         config.video.fps_limit = 0.0;
         config.video.vsync_enable = false;
     }
-    if matches!(mode, WindowValidationMode::WindowCycle | WindowValidationMode::LateCamera) {
+    if mode.is_window_cycle() || mode == WindowValidationMode::LateCamera {
         // 本模式的真实窗口从同一 windowed 配置启动，之后才验收全屏往返。
         config.video.display.fullscreen = false;
         config.video.display.allow_exclusive_fullscreen = false;
@@ -323,6 +334,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
     } else { 0 };
     let replayed = Arc::new(std::sync::atomic::AtomicU64::new(0));
     let mut app = run_game_thread(config, &cli, WindowSize::new(benchmark_extent[0], benchmark_extent[1]))?;
+    if let Some(policy) = launch_display { app.insert_resource(policy); }
     if replay_expected != 0 {
         use bevy_ecs::schedule::IntoScheduleConfigs;
         let observed = replayed.clone();
@@ -346,9 +358,15 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
     let event_loop = EventLoop::new()?;
     let window = Arc::new(WindowBuilder::new()
         .with_title("Tiny Glade — original gameplay WSI validation")
-        .with_visible(fullscreen_capture_path.is_some() || performance.is_some() || matches!(mode, WindowValidationMode::WindowCycle | WindowValidationMode::LateCamera))
+        .with_visible(fullscreen_capture_path.is_some() || performance.is_some() || mode.is_window_cycle() || mode == WindowValidationMode::LateCamera)
         .with_inner_size(winit::dpi::PhysicalSize::new(benchmark_extent[0], benchmark_extent[1]))
         .build(&event_loop)?);
+    if mode == WindowValidationMode::WindowedCycle {
+        anyhow::ensure!(window.fullscreen().is_none(), "windowed validation started fullscreen");
+        let size = window.inner_size();
+        anyhow::ensure!([size.width, size.height] == [480, 270],
+            "windowed validation did not start at the requested small size: {size:?}");
+    }
     let mut game = GameLoop::new(app, window.clone(), GameLoopOptions {
         compiled_shader_root: installed.join("compiled-shaders"),
         frame_limit: None,
@@ -374,6 +392,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
     let mut previous_frame = None;
     let mut close_requested = false;
     let mut cycle = WindowCycleValidation::default();
+    cycle.windowed_only = mode == WindowValidationMode::WindowedCycle;
     let mut late_camera = LateCameraValidation::default();
     let mut stress = WindowStress::from_environment()?;
     anyhow::ensure!(stress.kind.is_none() || mode == WindowValidationMode::WindowCycle,
@@ -389,7 +408,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                     game.gameplay_preparation_pending());
             }
             let mut native_world_frame = None;
-            if mode == WindowValidationMode::WindowCycle {
+            if mode.is_window_cycle() {
                 cycle.observe_os_event(&event, window.id());
             }
             game.main_loop(event, target)?;
@@ -424,7 +443,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                                         frame.native_present_successes > cycle.previous_native_successes
                                     } else { frame.native_present_successes > 0 }
                                 });
-                            if (mode == WindowValidationMode::WindowCycle || fullscreen_capture_path.is_some()) && !cycle_native_ready {
+                            if (mode.is_window_cycle() || fullscreen_capture_path.is_some()) && !cycle_native_ready {
                                 // 原生acquire允许暂时无图像/旧generation背压；保World/draw门，
                                 // 此帧不推进生命周期、receipt或native成功计数。
                             } else {
@@ -479,7 +498,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                 if let Some(performance) = &mut performance {
                     performance.after_frame(game.app_mut().world_mut(), world_frames, observation.as_ref(), started.elapsed())?;
                 }
-                if mode == WindowValidationMode::WindowCycle && let Some(frame) = native_world_frame {
+                if mode.is_window_cycle() && let Some(frame) = native_world_frame {
                     cycle.after_frame(&mut game, &window, target, world_frames, &frame)?;
                     if cycle.complete() {
                         stress.after_frame(&mut game, &window, world_frames, &frame, cycle.os_resize_events)?;
@@ -526,13 +545,13 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                 }
                 if !mode.is_loading_close() && world_frames >= required_world_frames
                     && world_started.is_some_and(|start| start.elapsed() >= minimum_world_duration)
-                    && (mode != WindowValidationMode::WindowCycle || cycle.complete())
+                    && (!mode.is_window_cycle() || cycle.complete())
                     && (mode != WindowValidationMode::LateCamera || late_camera.complete())
                     && stress.pending.is_none()
                     && (fullscreen_capture_path.is_none() || fullscreen_capture_result.lock().unwrap().is_some())
                     && replayed.load(std::sync::atomic::Ordering::Relaxed) >= replay_expected && !close_requested {
                     // 发送关闭窗口事件，由现有 OS→游戏→保存→GPU 关闭链处理。
-                    if mode == WindowValidationMode::WindowCycle {
+                    if mode.is_window_cycle() {
                         cycle.queue_capture(&mut game, 6)?;
                     }
                     #[cfg(feature = "cpu-probe")]
@@ -560,7 +579,7 @@ fn validate_gameplay_present(mode: WindowValidationMode) -> Result<()> {
                         "关闭后保存线程 owner 或 sender 仍然存在");
                     anyhow::ensure!(loading_frames > 0 && world_frames >= required_world_frames && close_requested,
                         "窗口提前退出：loading={loading_frames}, world={world_frames}");
-                    let world_native = if mode == WindowValidationMode::WindowCycle {
+                    let world_native = if mode.is_window_cycle() {
                         anyhow::ensure!(cycle.complete(), "窗口往返分支没有全部完成");
                         cycle.verify_captures()?;
                         stress.verify()?;
@@ -738,6 +757,9 @@ impl LateCameraValidation {
 /// suspend/zero/focus 为明确注入的跨平台语义事件，不伪称 macOS 发出了零尺寸通知。
 #[derive(Default)]
 struct WindowCycleValidation {
+    windowed_only: bool,
+    requested_vsync: Option<bool>,
+    control_generation: u64,
     phase: u8,
     os_resize_events: u64,
     phase_resize_events: u64,
@@ -795,6 +817,7 @@ impl WindowCycleValidation {
         let captures = self.captures.lock().unwrap();
         let pixels = self.pixels.lock().unwrap();
         for tag in 0..=6 {
+            if self.windowed_only && matches!(tag, 4 | 5) { continue; }
             let outcomes = captures.iter().filter(|(id, _)| *id == tag).collect::<Vec<_>>();
             anyhow::ensure!(outcomes.len() == 1, "截图 {tag} 回调次数错误：{captures:?}");
             if tag == 6 {
@@ -833,6 +856,11 @@ impl WindowCycleValidation {
     ) -> Result<()> {
         use country_core::render::{frame_constants::FrameConstants, render_config::{FrameRenderConfig, UpscalingPreset}};
         use tiny_glade::game_loop::PENDING_VIDEO_SETTING_FLAGS;
+        if self.windowed_only {
+            anyhow::ensure!(window.fullscreen().is_none(), "windowed-only validation entered fullscreen");
+            anyhow::ensure!(game.app().world().get_resource::<tiny_glade::app_config::LaunchDisplayOverride>()
+                .is_some_and(|policy| policy.force_windowed), "windowed launch policy missing after handoff");
+        }
         let generation = frame.present_generation.context("生命周期没有原生 generation")?;
         let native = frame.native_present_successes;
         anyhow::ensure!(if self.previous_generation == Some(generation) {
@@ -852,6 +880,7 @@ impl WindowCycleValidation {
         }
         match self.phase {
             0 if world_frames >= 3 && window.fullscreen().is_some() => {
+                anyhow::ensure!(!self.windowed_only, "windowed-only validation started fullscreen");
                 if !self.initial_windowed_requested {
                     self.initial_windowed_requested = true;
                     window.set_fullscreen(None);
@@ -859,7 +888,7 @@ impl WindowCycleValidation {
             }
             0 if world_frames >= 3 => {
                 #[cfg(target_os = "macos")]
-                exercise_fullscreen_failure_callback(window)?;
+                if !self.windowed_only { exercise_fullscreen_failure_callback(window)?; }
                 use country_core::asset_libraries::{mesh_library::AssetMeshLibrary, ssbo_library::AssetSsboLibrary,
                     vao_library::AssetVAOLibrary, texture_library::AssetTextureLibrary,
                     placement_data_library::AssetPlacementDataLibrary};
@@ -920,9 +949,21 @@ impl WindowCycleValidation {
                 game.main_loop(Event::WindowEvent { window_id: window.id(),
                     event: WindowEvent::Resized(winit::dpi::PhysicalSize::new(0, 0)) }, target)?;
                 let next_vsync = !game.app().world().resource::<GameConfig>().video.vsync_enable;
+                if self.windowed_only {
+                    let before = game.app().world().resource::<GameConfig>().video.clone();
+                    game.app_mut().world_mut().resource_mut::<tiny_glade::gui::settings::LastAppliedVideoSettings>()
+                        .populate_empty_from(&before);
+                    self.requested_vsync = Some(next_vsync);
+                }
                 game.app_mut().world_mut().resource_mut::<GameConfig>().video.vsync_enable = next_vsync;
                 *PENDING_VIDEO_SETTING_FLAGS.lock().unwrap() |= 2;
                 game.main_loop(Event::WindowEvent { window_id: window.id(), event: WindowEvent::RedrawRequested }, target)?;
+                if self.windowed_only {
+                    self.control_generation = game.window_control_progress().0;
+                    anyhow::ensure!(game.app().world().resource::<tiny_glade::gui::settings::LastAppliedVideoSettings>()
+                        .0.as_ref().context("missing applied snapshot")?.vsync_enable != next_vsync,
+                        "未等待 worker 确认就更新了 LastApplied");
+                }
                 anyhow::ensure!(game.frame_progress() == before
                     && game.app().world().resource::<FrameConstants>().frame_counter == counter,
                     "零尺寸期间执行了 App update 或渲染");
@@ -939,6 +980,19 @@ impl WindowCycleValidation {
                 eprintln!("WINDOW_CYCLE suspend/resume and zero/settings branches completed; generation={generation}");
             }
             3 if Some(generation) != self.phase_generation => {
+                if self.windowed_only {
+                    let wanted = self.requested_vsync.context("missing requested vsync")?;
+                    let (_, applied) = game.window_control_progress();
+                    let snapshot = game.app().world().resource::<tiny_glade::gui::settings::LastAppliedVideoSettings>();
+                    if applied < self.control_generation || snapshot.0.as_ref().is_none_or(|video| video.vsync_enable != wanted) {
+                        return Ok(());
+                    }
+                    anyhow::ensure!(window.fullscreen().is_none(), "windowed-only mode entered fullscreen");
+                    self.queue_capture(game, 3)?;
+                    self.phase = 6;
+                    eprintln!("WINDOWED_CYCLE vsync confirmed generation={} actual_os_resizes={}", self.control_generation, self.os_resize_events);
+                    return Ok(());
+                }
                 self.queue_capture(game, 3)?;
                 let world = game.app_mut().world_mut();
                 world.resource_mut::<GameConfig>().video.display.fullscreen = true;

@@ -309,7 +309,7 @@ fn demo_flag(app: &App) -> bool {
 ///   (member of the Startup tuple 0x14099b8b0 registered by `add_game_startup_systems` @14094117f).
 /// * OnEnter(Game) (members of the tuples 0x140839b80 / 0x141736760 that `add_game_startup_systems` chains into
 ///   `add_systems<OnEnter<AppLoadingState>>` @14094115d): `load_snow_particles` 0x140ae7d90, `startup_water` 0x1408f1a20,
-///   `startup_ivy` 0x140a21a30. They read `ActiveSession`, hence run after `load_game_session`.
+///   `startup_garden_brush` 0x14092af20, `startup_ivy` 0x140a21a30. They read `ActiveSession`, hence run after `load_game_session`.
 pub fn install_world_visual_startups(
     app: &mut App,
     backend: Arc<crate::render_host::ShaderHost>,
@@ -377,14 +377,25 @@ pub fn install_world_visual_startups(
     }
     let water_root = installed.clone();
     let water_backend = backend.clone();
+    let garden_root = installed.clone();
+    let garden_backend = backend.clone();
     app.add_systems(enter_game.clone(),
-        (move |session: Res<ActiveSession>, meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
-               shaders: Res<ApplicationShaderLibrary>, mut commands: Commands| {
-            country_core::startup::startup_water::startup_water(
-                &water_root, demo, session.meta.glade, water_backend.as_ref(),
-                &meshes, &watch, &shaders.0, &mut commands,
-            ).expect("original startup_water");
-        }).after(after_session));
+        (
+            move |session: Res<ActiveSession>, meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
+                  shaders: Res<ApplicationShaderLibrary>, mut commands: Commands| {
+                country_core::startup::startup_water::startup_water(
+                    &water_root, demo, session.meta.glade, water_backend.as_ref(),
+                    &meshes, &watch, &shaders.0, &mut commands,
+                ).expect("original startup_water");
+            },
+            move |meshes: Res<AssetMeshLibrary>, watch: Res<MeshWatch>,
+                  shaders: Res<ApplicationShaderLibrary>, mut commands: Commands| {
+                country_core::startup::startup_garden_brush::startup_garden_brush(
+                    &garden_root, &meshes, &watch, &shaders.0,
+                    garden_backend.as_ref(), &mut commands,
+                ).expect("original startup_garden_brush");
+            },
+        ).chain_ignore_deferred().after(after_session));
     // The ivy draw callbacks (instanced_ivy_branch/leaf/flower) read IvyStorage & co. Original
     // `IvySystems::build` -> `insert_ivy_resources` 0x1409440c0 publishes them; init_resource is idempotent, so a
     // later full IvySystems mount keeps whatever it installs first.

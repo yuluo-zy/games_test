@@ -32,13 +32,8 @@ pub fn prepare_wall_brick_assembly_owners(
             let mut owner = owners.get_mut(entity)
                 .expect("WallEntities contains a stale wall brick owner");
             assert_eq!(owner.id, wall.0, "WallEntities points to a different wall id");
-            // Read-only validation leaves a complete unchanged owner tick alone.
-            if !owner.validate_assembly_ownership(storage)
-                .expect("wall brick owner belongs to another storage")
-            {
-                owner.initialize_assembly_allocations(storage)
-                    .expect("legacy wall brick owner belongs to another storage");
-            }
+            owner.replace_published_assembly_allocations(storage)
+                .expect("wall brick owner belongs to another storage");
         } else {
             let entity = commands.spawn(
                 InstancedWall::new_awaiting_production(wall.0, storage)
@@ -118,7 +113,7 @@ impl Default for WallBrickUploadStatus {
 }
 
 impl WallBrickUploadStatus {
-    fn report_device_error(&mut self, error: impl std::fmt::Display) {
+    pub(crate) fn report_device_error(&mut self, error: impl std::fmt::Display) {
         let message = error.to_string();
         if self.last_error.as_ref() != Some(&message) {
             log::error!("墙砖设备发布失败，保留脏数据等待重试：{message}");

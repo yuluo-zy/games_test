@@ -463,10 +463,12 @@ pub fn mei_post_update(
     // O L1544-1591：`Vec<&mut Node>` + sort_unstable_by + 逐节点 draw。
     // fresh 比较器（内联于 insertion_sort_shift_left
     // `0x140fe4040`）：`[node+0xac]` 的 f32 位按 `v ^ ((v>>31)>>1)` 变换后
-    // 无符号比较 —— 即 `f32::total_cmp` 升序（NaN 也有全序）。**判等**。
+    // 有符号比较 —— 即 `f32::total_cmp` 升序（NaN 也有全序）。
+    // Keep the original unstable-sort policy for overlapping equal-z content;
+    // the standard-library implementation's equal-key permutation may vary.
     // ------------------------------------------------------------------
     let mut draw_ids: Vec<GlobalId> = mei.nodes.keys().copied().collect();
-    draw_ids.sort_by(|a, b| {
+    draw_ids.sort_unstable_by(|a, b| {
         let za = mei.nodes.get(a).map(|n| n.z).unwrap_or(0.0);
         let zb = mei.nodes.get(b).map(|n| n.z).unwrap_or(0.0);
         za.total_cmp(&zb)

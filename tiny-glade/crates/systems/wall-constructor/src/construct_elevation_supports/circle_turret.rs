@@ -90,6 +90,21 @@ fn turret_geometry(id: WallId, circle: Circle2d, elevation: f32, half: bool, tar
             let b = curve.get_pos_at_u(u1);
             let d = b - a;
             let inv = 1.0 / (d.y * d.y + d.x * d.x).sqrt();
+            #[cfg(test)]
+            if std::env::var_os("M6_FLOAT_DIAGNOSTICS").is_some()
+                && ((layer == 0 && index == 14) || (layer == 1 && index == 29)) {
+                let c0 = curve.get_coord_at_u(u0);
+                let c1 = curve.get_coord_at_u(u1);
+                eprintln!("M6_TURRET layer={} index={} center={:08x},{:08x} radius={:08x} rotation={:08x} perimeter={:08x} count={} u={:08x},{:08x} coord={}, {:08x}; {}, {:08x} a={:08x},{:08x} b={:08x},{:08x} d={:08x},{:08x} inv={:08x}", layer, index, center.x.to_bits(), center.y.to_bits(), radius.to_bits(), circle.rotation.to_bits(), perimeter.to_bits(), curve.points.len(), u0.to_bits(), u1.to_bits(), c0.segment, c0.t.to_bits(), c1.segment, c1.t.to_bits(), a.x.to_bits(), a.y.to_bits(), b.x.to_bits(), b.y.to_bits(), d.x.to_bits(), d.y.to_bits(), inv.to_bits());
+                for j in [c0.segment, c0.segment + 1, c1.segment, c1.segment + 1] {
+                    let sample_u = j as f32 / (curve.points.len() - 1) as f32;
+                    let rotation = ring.rotation % std::f32::consts::TAU;
+                    let rotation = if rotation < 0.0 { std::f32::consts::TAU + rotation } else { rotation };
+                    let angle = rotation + (1.0 - sample_u) * std::f32::consts::TAU;
+                    let p = curve.points[j];
+                    eprintln!("M6_TURRET_SAMPLE j={} u={:08x} angle={:08x} cos={:08x} sin={:08x} point={:08x},{:08x} knot={:08x}", j, sample_u.to_bits(), angle.to_bits(), angle.cos().to_bits(), angle.sin().to_bits(), p.x.to_bits(), p.y.to_bits(), curve.points_u[j].to_bits());
+                }
+            }
             let x = inv * d.x; let z = inv * d.y;
             let width = (u1 - u0) * perimeter + 0.1;
             let h = upper - height;

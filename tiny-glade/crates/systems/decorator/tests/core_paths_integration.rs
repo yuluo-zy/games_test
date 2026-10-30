@@ -57,7 +57,314 @@ fn insert_wall_decorator(storage: &mut DecoratorStorage, wall: WallId, id: Decor
     storage.decorator_to_storage.insert(id, addr);
 }
 
+#[test]
+fn bulldozer_real_picker_removal_history_undo_redo_restores_full_info() {
+    use country_core::resources::history::{EditType, History, MaybePendingSnapshotId, ReplayBuffer};
+    use country_core::resources::mouse_terrain_raycast::CameraCursorRay;
+    use country_core::resources::time::GameTime;
+    use country_core::resources::walls::cached_decorator_transforms::{CachedDecoratorTransform, CachedDecoratorTransforms};
+    use country_core::resources::walls::decorator::{DecoratorIdGen, DeferredDecoratorOpEvents};
+    use country_core::resources::walls::decorator_archivist::LiveDecoratorArchivist;
+    use country_core::resources::walls::decorator_outline::DecoratorOutline;
+    use country_core::resources::walls::decorator_subtype::{DecoratorLibKey, DecoratorSubtype};
+    use country_core::systems::collision::world::{upsert_collider, ColliderMeshInstance, RaycastGeoSource, RaycastMeshData, RaycastWorld};
+    use country_core::systems::history::{HistoryReplayFailed, PendingHistoryCommands, ReplayBucketFinished,
+        process_history_cursor_commands, replay_pop_bucket_system};
+    use country_core::systems::history::recording::{FinishInputRecordingCmd, history_finish_recording_system, history_start_recording};
+    use country_core::systems::mode_manager::{AppMode, EraserLayer};
+    use country_core::systems::ui::resources::ui_state::{UiInteraction, UiState, WidgetId};
+    use country_core::systems::wall::eraser::ui_bulldozer::wall_eraser_bulldoze;
+    use std::{collections::HashMap, sync::Arc};
+
+    let mut world = World::new();
+    country_core::systems::wall::registration::register_wall_cpu_resources(&mut world);
+    world.insert_resource(country_core::resources::mouse_terrain_raycast::CursorPositionSS(glam::Vec2::ZERO));
+    world.init_resource::<DeferredDecoratorEditHistory>();
+    world.init_resource::<DeferredDecoratorOpEvents>();
+    world.init_resource::<StairsState>();
+    world.init_resource::<DecoratorIdGen>();
+    world.init_resource::<Events<FinishInputRecordingCmd>>();
+    world.init_resource::<Events<country_core::systems::ui_clutter::ui_autoclutter::InstaCreateDeco>>();
+    world.init_resource::<Events<country_core::systems::ui_clutter::ui_autoclutter::InstaCreateStairPoint>>();
+    world.init_resource::<Events<country_core::systems::backend::input::input_record_replay::InputReplayCommand>>();
+    world.init_resource::<Events<ReplayBucketFinished>>();
+    world.init_resource::<Events<HistoryReplayFailed>>();
+    world.init_resource::<Events<country_core::systems::history::history_process::NewReplayCommandEvent>>();
+    world.init_resource::<PendingHistoryCommands>();
+    world.insert_resource(GameTime::default());
+    world.insert_resource(ReplayBuffer::new(1.0));
+    let id = DecoratorId(17);
+    let addr = DecoratorStorageAddr::Terrain;
+    let info = DecoratorInfo { dst_wall: 0x1234, dst_secondary: 0x2345, dst_payload: 0x3456,
+        u18: 0x4567, u20: 0x5678, u24: 0x6789, u28: 0x789a, decorator_id: 0x89ab,
+        u30: 0x12345678_87654321, u38: 0x12345678, u3c: 0x87654321, u40: 0x34,
+        rank: 1, u45: 5, ty: 1, state: 0 };
+    world.resource_mut::<DecoratorStorage>().apply_decorator_place(addr, id, &info);
+    world.resource_mut::<DerivedDecoratorSubtypes>().insert(id.0, DecoratorSubtype(2));
+    world.resource_mut::<DecoratorMeshLibrary>().outline.insert(DecoratorLibKey::new(2, info.rank), DecoratorOutline::None);
+    world.resource_mut::<CachedDecoratorTransforms>().insert(id.0, CachedDecoratorTransform {
+        rotation: Quat::IDENTITY, translation: Vec3::new(0.0, 0.0, 4.0), scale: Vec3::ONE,
+    });
+    let mut instances: HashMap<u32, ColliderMeshInstance> = HashMap::new();
+    {
+        let mut physics = world.resource_mut::<RaycastWorld>();
+        upsert_collider(&mut physics, &mut instances, 1, RaycastGeoSource::decorator_interaction(id, addr, 0),
+            Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)), Vec3::Z * 4.0, Quat::IDENTITY);
+        physics.flush_colliders();
+    }
+    world.insert_resource(AppMode::Eraser(EraserLayer::Bulldoze));
+    world.insert_resource(CameraCursorRay { origin: Vec3::ZERO, dir: Vec3::Z });
+    let id_widget = WidgetId::from_name("bulldoze_decorator_DecoratorId(17)");
+    let mut ui = UiState::new(UiInteraction { native_tag: 0, native_phase: 0, widget: id_widget });
+    ui.set_intersection_point(Vec3::Z * 3.5);
+    world.insert_resource(ui);
+    world.insert_resource(History::<MaybePendingSnapshotId>::empty_glade());
+    // The previous frame registers the real widget before the picker selects it.
+    let mut discover = Schedule::default();
+    discover.add_systems(wall_eraser_bulldoze::<MaybePendingSnapshotId>);
+    discover.run(&mut world);
+    world.resource_mut::<UiState>().replace_interaction(UiInteraction {
+        native_tag: 2, native_phase: 3, widget: id_widget,
+    });
+    let mut edit = Schedule::default();
+    edit.add_systems((history_start_recording::<MaybePendingSnapshotId>, wall_eraser_bulldoze::<MaybePendingSnapshotId>,
+        system_decorator::handle_external_decorator_cmds::handle_external_decorator_cmds::<
+            country_core::resources::walls::decorator_archivist::LiveColliderPayload>,
+        history_finish_recording_system::<MaybePendingSnapshotId>).chain());
+    edit.run(&mut world);
+    assert!(world.resource::<History<MaybePendingSnapshotId>>().is_recording());
+    assert!(world.resource::<DecoratorStorage>().lookup_decorator_info(id).is_some());
+    world.resource_mut::<DecoratorStorage>().mark_mutable();
+    world.resource_mut::<UiState>().replace_interaction(UiInteraction {
+        native_tag: 2, native_phase: 1, widget: id_widget,
+    });
+    edit.run(&mut world);
+    assert!(world.resource::<DecoratorStorage>().lookup_decorator_info(id).is_none());
+    let entry = world.resource::<History<MaybePendingSnapshotId>>().ledger().entries[0].clone();
+    assert!(matches!(entry.edits.as_slice(), [EditType::DecoratorV5(edit)] if edit.kind == 5));
+    let diff = entry.auxiliary.decorator_diff.as_ref().unwrap();
+    assert_eq!(diff[&addr].before.states[&id].to_info(), info);
+    assert!(!diff[&addr].after.states.contains_key(&id));
+
+    let mut replay = Schedule::default();
+    replay.add_systems((process_history_cursor_commands::<MaybePendingSnapshotId>,
+        system_decorator::replay_decorator::replay_decorator, replay_pop_bucket_system).chain());
+    for undo in [true, false] {
+        world.resource_mut::<DecoratorStorage>().mark_mutable();
+        world.resource_mut::<PendingHistoryCommands>().0.push_back(
+            country_core::systems::mode_manager::HistoryCommand {
+                bytes: [0, u8::from(!undo), 1, 0],
+            });
+        replay.run(&mut world);
+        assert!(world.resource::<ReplayBuffer>().is_empty());
+        assert_eq!(world.resource::<History<MaybePendingSnapshotId>>().ledger().cursor, if undo { -1 } else { 0 });
+        let storage = world.resource::<DecoratorStorage>();
+        if undo {
+            assert_eq!(storage.lookup_storage(id), Some(addr));
+            assert_eq!(*storage.lookup_decorator_info(id).unwrap(), info);
+        } else {
+            assert!(storage.lookup_decorator_info(id).is_none());
+            assert_eq!(storage.lookup_storage(id), None);
+        }
+    }
+    let _ = world.resource::<LiveDecoratorArchivist>();
+}
+
 // ---------------------------------------------------------------- 生命周期顺序
+
+#[test]
+fn bulldozer_stair_edge_picker_history_undo_redo_restores_nodes() {
+    use country_core::resources::history::{History, MaybePendingSnapshotId, ReplayBuffer};
+    use country_core::resources::mouse_terrain_raycast::CameraCursorRay;
+    use country_core::resources::time::GameTime;
+    use country_core::resources::walls::cached_decorator_transforms::{CachedDecoratorTransform, CachedDecoratorTransforms};
+    use country_core::resources::walls::decorator::{DecoratorIdGen, DeferredDecoratorOpEvents};
+    use country_core::systems::collision::world::{upsert_collider, ColliderMeshInstance, RaycastGeoSource, RaycastMeshData, RaycastWorld};
+    use country_core::systems::history::{HistoryReplayFailed, PendingHistoryCommands, ReplayBucketFinished, process_history_cursor_commands, replay_pop_bucket_system};
+    use country_core::systems::history::recording::{FinishInputRecordingCmd, history_finish_recording_system, history_start_recording};
+    use country_core::systems::mode_manager::{AppMode, EraserLayer};
+    use country_core::systems::ui::resources::ui_state::{UiInteraction, UiState, WidgetId};
+    use country_core::systems::wall::eraser::ui_bulldozer::wall_eraser_bulldoze;
+    use std::{collections::HashMap, sync::Arc};
+    let mut world = World::new();
+    country_core::systems::wall::registration::register_wall_cpu_resources(&mut world);
+    world.insert_resource(country_core::resources::mouse_terrain_raycast::CursorPositionSS(glam::Vec2::ZERO));
+    world.init_resource::<DeferredDecoratorEditHistory>();
+    world.init_resource::<DeferredDecoratorOpEvents>();
+    world.init_resource::<DecoratorIdGen>();
+    world.init_resource::<Events<FinishInputRecordingCmd>>();
+    world.init_resource::<Events<country_core::systems::ui_clutter::ui_autoclutter::InstaCreateDeco>>();
+    world.init_resource::<Events<country_core::systems::ui_clutter::ui_autoclutter::InstaCreateStairPoint>>();
+    world.init_resource::<Events<country_core::systems::backend::input::input_record_replay::InputReplayCommand>>();
+    world.init_resource::<Events<ReplayBucketFinished>>();
+    world.init_resource::<Events<HistoryReplayFailed>>();
+    world.init_resource::<Events<country_core::systems::history::history_process::NewReplayCommandEvent>>();
+    world.init_resource::<PendingHistoryCommands>();
+    world.insert_resource(GameTime::default());
+    world.insert_resource(ReplayBuffer::new(1.0));
+    let addr = DecoratorStorageAddr::Terrain;
+    let infos = [decorator_info(2, 1, 0, 0), decorator_info(3, 2, 1, 0)];
+    for (id, info) in [(2, infos[0]), (3, infos[1])] {
+        world.resource_mut::<DecoratorStorage>().apply_decorator_place(addr, DecoratorId(id), &info);
+        world.resource_mut::<CachedDecoratorTransforms>().insert(id, CachedDecoratorTransform {
+            rotation: Quat::IDENTITY, translation: Vec3::new(id as f32, 0.0, 4.0), scale: Vec3::ONE,
+        });
+    }
+    world.resource_mut::<StairsState>().add_edge(2, 3);
+    world.resource_mut::<StairsState>().make_backup();
+    let mut receipt = [0u8; 24]; receipt[0] = 13;
+    receipt[4..8].copy_from_slice(&2u32.to_le_bytes());
+    receipt[8..12].copy_from_slice(&3u32.to_le_bytes());
+    let mut instances: HashMap<u32, ColliderMeshInstance> = HashMap::new();
+    {
+        let mut physics = world.resource_mut::<RaycastWorld>();
+        upsert_collider(&mut physics, &mut instances, 1,
+            country_core::systems::collision::query_policy::RaycastGeoSourceProjection(receipt),
+            Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)), Vec3::Z * 4.0, Quat::IDENTITY);
+        physics.flush_colliders();
+    }
+    world.insert_resource(AppMode::Eraser(EraserLayer::Bulldoze));
+    world.insert_resource(CameraCursorRay { origin: Vec3::ZERO, dir: Vec3::Z });
+    let widget = WidgetId::from_name("bulldoze_stair_segment_StairGraphEdge(DecoratorId(2), DecoratorId(3))");
+    world.insert_resource(UiState::new(UiInteraction { native_tag: 0, native_phase: 0, widget }));
+    world.insert_resource(History::<MaybePendingSnapshotId>::empty_glade());
+    let mut discover = Schedule::default(); discover.add_systems(wall_eraser_bulldoze::<MaybePendingSnapshotId>); discover.run(&mut world);
+    let mut edit = Schedule::default();
+    edit.add_systems((history_start_recording::<MaybePendingSnapshotId>, wall_eraser_bulldoze::<MaybePendingSnapshotId>,
+        system_decorator::handle_external_decorator_cmds::handle_external_decorator_cmds::<country_core::resources::walls::decorator_archivist::LiveColliderPayload>,
+        history_finish_recording_system::<MaybePendingSnapshotId>).chain());
+    world.resource_mut::<UiState>().replace_interaction(UiInteraction { native_tag: 2, native_phase: 3, widget });
+    edit.run(&mut world);
+    world.resource_mut::<DecoratorStorage>().mark_mutable();
+    world.resource_mut::<UiState>().replace_interaction(UiInteraction { native_tag: 2, native_phase: 1, widget });
+    edit.run(&mut world);
+    assert!(!world.resource::<StairsState>().graph().contains_node(2));
+    assert!(!world.resource::<StairsState>().graph().contains_node(3));
+    for id in [2, 3] { assert!(world.resource::<DecoratorStorage>().lookup_decorator_info(DecoratorId(id)).is_none()); }
+    let mut replay = Schedule::default();
+    replay.add_systems((process_history_cursor_commands::<MaybePendingSnapshotId>,
+        system_decorator::replay_decorator::replay_decorator, replay_pop_bucket_system).chain());
+    for undo in [true, false] {
+        world.resource_mut::<DecoratorStorage>().mark_mutable();
+        world.resource_mut::<PendingHistoryCommands>().0.push_back(country_core::systems::mode_manager::HistoryCommand { bytes: [0, u8::from(!undo), 1, 0] });
+        replay.run(&mut world);
+        assert!(world.resource::<ReplayBuffer>().is_empty());
+        assert_eq!(world.resource::<StairsState>().graph().contains_edge(2, 3), undo);
+        for (id, info) in [(2, infos[0]), (3, infos[1])] {
+            assert_eq!(world.resource::<DecoratorStorage>().lookup_decorator_info(DecoratorId(id)).copied(), undo.then_some(info));
+        }
+    }
+}
+
+#[test]
+fn bulldozer_stair_midpoint_picker_reanchors_and_undo_redo_restores_full_info() {
+    use country_core::resources::history::{History, MaybePendingSnapshotId, ReplayBuffer};
+    use country_core::resources::mouse_terrain_raycast::CameraCursorRay;
+    use country_core::resources::time::GameTime;
+    use country_core::resources::walls::cached_decorator_transforms::{CachedDecoratorTransform, CachedDecoratorTransforms};
+    use country_core::resources::walls::decorator::{DecoratorIdGen, DeferredDecoratorOpEvents};
+    use country_core::systems::collision::world::{upsert_collider, ColliderMeshInstance, RaycastGeoSource, RaycastMeshData, RaycastWorld};
+    use country_core::systems::history::{HistoryReplayFailed, PendingHistoryCommands, ReplayBucketFinished, process_history_cursor_commands, replay_pop_bucket_system};
+    use country_core::systems::history::recording::{FinishInputRecordingCmd, history_finish_recording_system, history_start_recording};
+    use country_core::systems::mode_manager::{AppMode, EraserLayer};
+    use country_core::systems::ui::resources::ui_state::{UiInteraction, UiState, WidgetId};
+    use country_core::systems::wall::eraser::ui_bulldozer::wall_eraser_bulldoze;
+    use std::{collections::HashMap, sync::Arc};
+    let mut world = World::new();
+    country_core::systems::wall::registration::register_wall_cpu_resources(&mut world);
+    world.insert_resource(country_core::resources::mouse_terrain_raycast::CursorPositionSS(glam::Vec2::ZERO));
+    world.init_resource::<DeferredDecoratorEditHistory>();
+    world.init_resource::<DeferredDecoratorOpEvents>();
+    world.init_resource::<DecoratorIdGen>();
+    world.init_resource::<Events<FinishInputRecordingCmd>>();
+    world.init_resource::<Events<country_core::systems::ui_clutter::ui_autoclutter::InstaCreateDeco>>();
+    world.init_resource::<Events<country_core::systems::ui_clutter::ui_autoclutter::InstaCreateStairPoint>>();
+    world.init_resource::<Events<country_core::systems::backend::input::input_record_replay::InputReplayCommand>>();
+    world.init_resource::<Events<ReplayBucketFinished>>();
+    world.init_resource::<Events<HistoryReplayFailed>>();
+    world.init_resource::<Events<country_core::systems::history::history_process::NewReplayCommandEvent>>();
+    world.init_resource::<PendingHistoryCommands>();
+    world.insert_resource(GameTime::default());
+    world.insert_resource(ReplayBuffer::new(1.0));
+    let addr = DecoratorStorageAddr::Terrain;
+    let infos = [decorator_info(2, 1, 0, 0), decorator_info(3, 2, 1, 0)];
+    for (id, info) in [(2, infos[0]), (3, infos[1])] {
+        world.resource_mut::<DecoratorStorage>().apply_decorator_place(addr, DecoratorId(id), &info);
+        world.resource_mut::<CachedDecoratorTransforms>().insert(id, CachedDecoratorTransform {
+            rotation: Quat::IDENTITY, translation: Vec3::new(id as f32, 0.0, 4.0), scale: Vec3::ONE,
+        });
+    }
+    use country_core::resources::stairs::{stairs_assembly_params::{PlayermadeStairsAssemblyRequests, SampledStairsPoints, StairSamplesMetadata, StairGraphEdgeIdentity}, stairs_state::StairSegment};
+    use country_core::resources::walls::decorator::{DecoratorDst, StairDecoratorDst, DecoratorRotationXZ};
+    let mut attached = decorator_info(10, 7, 1, 0);
+    attached.set_destination(DecoratorDst::Stair(StairDecoratorDst { first_id: 1, second_id: 2,
+        coordinate: glam::Vec2::new(0.4, 0.5), yaw: DecoratorRotationXZ(0.25) }));
+    world.resource_mut::<DecoratorStorage>().apply_decorator_place(DecoratorStorageAddr::Stair, DecoratorId(10), &attached);
+    world.resource_mut::<CachedDecoratorTransforms>().insert(10, CachedDecoratorTransform {
+        rotation: Quat::IDENTITY, translation: Vec3::new(1.0, 0.0, 4.0), scale: Vec3::ONE });
+    for (a, b, length) in [(1, 2, 2.0), (2, 3, 6.0)] {
+        world.resource_mut::<PlayermadeStairsAssemblyRequests>().previous.sampled_points.insert(
+            StairGraphEdgeIdentity::from(StairSegment::new(DecoratorId(a), DecoratorId(b))),
+            SampledStairsPoints { points: vec![Vec3::ZERO, Vec3::X * length], tangents: vec![], widths: vec![], auxiliary_words: vec![],
+                metadata: StairSamplesMetadata { info_28: 0, extra_08: 0, extra_0c: 0, removed_support: false, extra_10: 0 } });
+    }
+    world.resource_mut::<StairsState>().add_edge(1, 2);
+    world.resource_mut::<StairsState>().add_edge(2, 3);
+    world.resource_mut::<StairsState>().make_backup();
+    let mut receipt = [0u8; 24]; receipt[0] = 5;
+    receipt[4..8].copy_from_slice(&2u32.to_le_bytes());
+    receipt[8..12].copy_from_slice(&3u32.to_le_bytes());
+    let mut instances: HashMap<u32, ColliderMeshInstance> = HashMap::new();
+    {
+        let mut physics = world.resource_mut::<RaycastWorld>();
+        upsert_collider(&mut physics, &mut instances, 1,
+            country_core::systems::collision::query_policy::RaycastGeoSourceProjection(receipt),
+            Arc::new(RaycastMeshData::new_cuboid_at(Vec3::ONE, Vec3::ZERO)), Vec3::Z * 4.0, Quat::IDENTITY);
+        physics.flush_colliders();
+    }
+    world.insert_resource(AppMode::Eraser(EraserLayer::Bulldoze));
+    world.insert_resource(CameraCursorRay { origin: Vec3::ZERO, dir: Vec3::Z });
+    let widget = WidgetId::from_name("bulldoze_stair_segment_StairGraphEdge(DecoratorId(2), DecoratorId(2))");
+    world.insert_resource(UiState::new(UiInteraction { native_tag: 0, native_phase: 0, widget }));
+    world.insert_resource(History::<MaybePendingSnapshotId>::empty_glade());
+    let mut discover = Schedule::default(); discover.add_systems(wall_eraser_bulldoze::<MaybePendingSnapshotId>); discover.run(&mut world);
+    let mut edit = Schedule::default();
+    edit.add_systems((history_start_recording::<MaybePendingSnapshotId>, wall_eraser_bulldoze::<MaybePendingSnapshotId>,
+        system_decorator::handle_external_decorator_cmds::handle_external_decorator_cmds::<country_core::resources::walls::decorator_archivist::LiveColliderPayload>,
+        history_finish_recording_system::<MaybePendingSnapshotId>).chain());
+    world.resource_mut::<UiState>().replace_interaction(UiInteraction { native_tag: 2, native_phase: 3, widget });
+    edit.run(&mut world);
+    world.resource_mut::<DecoratorStorage>().mark_mutable();
+    world.resource_mut::<UiState>().replace_interaction(UiInteraction { native_tag: 2, native_phase: 1, widget });
+    edit.run(&mut world);
+    assert!(!world.resource::<StairsState>().graph().contains_node(2));
+    assert!(world.resource::<StairsState>().graph().contains_edge(1, 3));
+    let mut changed = attached;
+    changed.set_destination(DecoratorDst::Stair(StairDecoratorDst { first_id: 1, second_id: 3,
+        coordinate: glam::Vec2::new(0.4, 0.125), yaw: DecoratorRotationXZ(0.25) }));
+    assert_eq!(*world.resource::<DecoratorStorage>().lookup_decorator_info(DecoratorId(10)).unwrap(), changed);
+    assert!(world.resource::<DecoratorStorage>().lookup_decorator_info(DecoratorId(2)).is_none());
+    let entry = world.resource::<History<MaybePendingSnapshotId>>().ledger().entries[0].clone();
+    let diff = entry.auxiliary.decorator_diff.as_ref().unwrap();
+    assert_eq!(diff[&DecoratorStorageAddr::Terrain].before.states[&DecoratorId(2)].to_info(), infos[0]);
+    assert!(!diff[&DecoratorStorageAddr::Terrain].after.states.contains_key(&DecoratorId(2)));
+    assert_eq!(diff[&DecoratorStorageAddr::Stair].before.states[&DecoratorId(10)].to_info(), attached);
+    assert_eq!(diff[&DecoratorStorageAddr::Stair].after.states[&DecoratorId(10)].to_info(), changed);
+    let mut replay = Schedule::default();
+    replay.add_systems((process_history_cursor_commands::<MaybePendingSnapshotId>,
+        system_decorator::replay_decorator::replay_decorator, replay_pop_bucket_system).chain());
+    for undo in [true, false] {
+        world.resource_mut::<DecoratorStorage>().mark_mutable();
+        world.resource_mut::<PendingHistoryCommands>().0.push_back(country_core::systems::mode_manager::HistoryCommand { bytes: [0, u8::from(!undo), 1, 0] });
+        replay.run(&mut world);
+        assert!(world.resource::<ReplayBuffer>().is_empty());
+        assert_eq!(world.resource::<StairsState>().graph().contains_edge(2, 3), undo);
+        assert_eq!(world.resource::<StairsState>().graph().contains_edge(1, 3), !undo);
+        assert_eq!(*world.resource::<DecoratorStorage>().lookup_decorator_info(DecoratorId(10)).unwrap(), if undo { attached } else { changed });
+        assert_eq!(world.resource::<DecoratorStorage>().lookup_decorator_info(DecoratorId(2)).copied(), undo.then_some(infos[0]));
+        assert_eq!(world.resource::<DecoratorStorage>().lookup_decorator_info(DecoratorId(3)).copied(), Some(infos[1]));
+    }
+}
 
 #[test]
 fn update_schedule_registers_audio_after_transform_cache_in_chain() {

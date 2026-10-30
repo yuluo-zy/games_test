@@ -1,5 +1,113 @@
 # 业务流恢复台账
 
+### 2026-10-30 M6 用户要求停止推进并保存提交
+
+按用户最新指令停止业务推进及新增验证，保存当前源码和文档检查点。**M6仍未完成，约75%工程估计不变**，以下候选不能冒称已通过。
+
+- 已有结果：`m6-core-contract-regressions-v3.log` 9/9通过；`m6-published-owner-contract-v3.log` 8/8通过。后者对应随后补充烟囱／门阶 lane 重发布替换及释放次序之前的源码，不覆盖最后的生命周期增量。
+- `m6-wall-color-isolated-v2.log` 父进程合法输入→真实菜单→颜色→Undo/Redo→实际GPU表→完整typed ledger落盘通过；child在75.15秒失败于runtime完整typed history不等于父期望，父项总计265.17秒。真实存档及期望保留于 `tmp-merge/m6-acceptance-retained-v2/wall-color/run-GHu1LF/`。已补首差字段／完整失败ledger留存，恢复工作应先用该目录meta重跑child，避免重复已通过父链；新增诊断尚未构建实测。
+- `m6-decorator-color-isolated-v2.log` 91.87秒失败于真实placement的 `d2s insert: already exists; 0`；不得删除断言或跳过ID。已补正式ID生成器、索引及完整Info的逐帧只读诊断，尚未实测定位首次冲突。
+- `m6-rim-isolated-v2.log` 104.32秒失败于GPU设备丢失；System/Display事件同时记录Intel驱动停止响应后恢复，不能据此确定应用侧根因。带现有Vulkan验证层的 `m6-rim-validation-v2.log` 尚无最终结果，不计通过。测试已增加可选 `TG_M6_VK_VALIDATION=1` 及rim阶段诊断，生产渲染算法未改。
+- 原证新增：`+120`是独立拱砖，主体墙砖另有allocation；`+160/+170`为烟囱／门阶砖，对应当前实体的两个assembly lanes。现候选在成功重发布替换这些lanes并保留base，五个sidecar按已证顺序退役、局部构造完成后提交；缺库异常的完整原EH回收序列仍未逐项闭合。最后lane与释放次序增量待回归。
+- 烟囱高度候选已移除误归属的0x28B操作队列，改用真实PlayDecoratorSoundCmd；恢复真实dispatcher目标、PrevDecoratorBlueprints（原PDB泛型已确认）、跨帧投影／修改／历史及两张碰撞表的实际归档，恢复真实signifier工厂。`m6-decorator-contract-v3.log` 未产生最终结果，新增跨帧／碰撞归档回归不计通过。
+- 删除链验收已从末项历史比较加强为完整typed ledger、cursor、history_start与磁盘／同App Reload／child比较；新增取消预览场景通过配置中的真实取消按键路径，检查完整权威状态、GPU及菜单实体回收。两者均待构建／实测，不作为当前整链通过证据。
+
+恢复顺序：先构建冻结候选并跑烟囱／owner定向回归；用已留存存档定位child历史首差；实测ID诊断闭合装饰创建；再独立进程跑rim、完整删除／清理／Reload及取消场景。六项旧跨平台浮点fixture差异继续保留，不改期望或放宽断言；原算法和业务逻辑不得简化。
+
+### 2026-10-30 M6 菜单／删除／保存恢复集中验证（继续进行）
+
+本轮按用户要求使用三个显式 `gpt-6.1-terra` 专岗，中央串行 App/GPU 独立验证，不扩展其它业务模块。`m6-core-contract-regressions-v3.log` **9/9通过**（显式 native-physics），包括删除索引失败前缀、prepared path失败顺序、圆／矩形创建缺录制失败前缀及共享地形输入生命周期。`m6-app-isolated-build-v2.log` App 快照构建通过。
+
+`m6-wall-color-isolated-v2.log` 已从合法屏幕位置 `(180,162)` 走真实 picker／菜单，父进程颜色提交、完整历史 Undo/Redo、真实绘制物理 owner 的整 GPU 颜色表读回及 runtime→磁盘完整 typed ledger 比较通过，正在子进程恢复；尚不计整项通过。各场景分别启动进程，避免 ACCOUNT／paths 静态状态污染。
+
+独立审查补齐删除验收的完整 typed ledger、cursor 与 history_start 对照候选（此前只比较末项）；已合入，待构建。烟囱高度释放发现八字节复制到四字节切片的确定 panic，原 `1407ae76e/775/77a` 的写入宽度已中央独立复核并修候选；进一步确认原 caller 的三维位置／比例／dispatcher 归属及后继消费仍有业务缺口，正在按原证恢复，不把仅修 panic 算完整交互恢复。原 `+120` allocation 映射仍待证，不造第二份原 owner。本轮 M6 仍未整体完成，保持约75%工程估计。
+
+### 2026-10-30 M0 渲染计算定向修复
+
+按用户授权修复已确认的渲染计算问题：MEI最小尺寸恢复gap先入累加器；子布局恢复两轴padding求和、原expand剩余空间扣减顺序；绘制恢复`sort_unstable_by`及`total_cmp`。未改摄影焦点或多slider已核一致的分支，辅助业务继续跳过。当前实际`layout.rs`独立源码测试7/7通过（新增3项原证数值回归，0忽略），`git diff --check`通过；toolbar整包Cargo测试等待共享构建锁，已停止等待，未计通过；未做GPU像素验收。原版等值元素排列不宣称与现代std逐项一致。证据、源码指纹及限制见[m0-render-algorithm-review-2026-10-30.md](m0-render-algorithm-review-2026-10-30.md)。
+
+### 2026-10-30 M1 → M6 持续收口（未完成）
+
+本轮继续集中M6（最多三个Terra），中央独立串行App/GPU验证。墙色完整App首轮`tmp-merge/m6-real-wall-color-v1.log`实际失败：`visualize_ui_stairs`缺`StairsVisualization`。复核发现该叶自身使用虚构坐标／旧signifier载荷，不能靠初始化自造owner掩盖；已撤下这一未恢复M8叶及同类focus叶，明确不计恢复。set25修正slot1的自动转换→派发→放置→continue顺序、保留三次独立cache，set10接真实wall-hole双缓冲推进；新快照由中央复验`m6-real-wall-color-v2.log`，尚未通过。
+
+本轮新增实际通过：`m6-remove-storage-v2.log` 1项（墙桶removed/live ID传播和重建）；`m6-height-outline-preview-v2.log` 1项（非均匀已发布高度的红色删除预览）；`m6-mixed-color-history-v2.log` 1项（墙色／rim／装饰颜色混合history序列化与回放顺序）。它们不代表生产App删除/重建已通过。现有App测试已扩展rim、窗口颜色的保存worker→新进程Reload→完整字段／全history／UndoRedo，以及墙拾取→装饰清理→UndoRedo→同App Reload→新进程恢复；候选待中央编译实测，不计通过。测试模式切换改走canonical RequestAppModeChange，GPU回放等待每帧运行真实上传与渲染；大期望JSON通过临时文件传递，避免Windows环境块容量限制。
+
+墙色v2已实际失败（96.11秒）：启动不再panic，但90帧内未得到可交互不同色图标。发现新进程profile会显示真实Welcome，世界碰撞命中不等于UI点击可达；新夹具先经配置中的真实键盘确认关闭Welcome，再从真实publisher/recording/deferred/replay的安静状态采基线。v3测试辅助代码两处编译错误已修，最新冻结候选复验为`tmp-merge/m6-real-wall-color-v4.log`（尚未通过）。进一步新增G-buffer实际物理颜色buffer owner关联及整表GPU读回，在点击／UndoRedo／新进程恢复后检查，不以CPU色表代替上传结果。保存前观察完整ledger连续稳定且录制／延迟记录排空，不以SavingGameComplete单独认定快照完整。
+
+v4完整运行已结束（181.59秒）：父进程真实wall picker→menu→颜色提交→UndoRedo→实际G-buffer同物理owner整颜色表读回→save worker通过；child已完成Reload且颜色值与真实GPU表通过，随后完整history/cursor比较失败。尚不能认定存档丢失：父期望经过JSON Value/f64文本中转，现增加保存前settled typed ledger→实际磁盘typed edit_chain→child typed ledger三方严格比较，保留原JSON首差诊断及独立cursor/history_start。三种颜色场景可用TG_M6_DUMP_DIR留存真实save/完整期望/meta，不修改生产存档路径。最新比较候选待编译实测。
+
+后续独立复核纠正v4输入边界：当时直接取图标中心，允许屏幕外鼠标点，因此它只保留颜色／历史／物理GPU子链证据，不能证明480×270合法指针交互通过。`m6-wall-color-isolated-v1.log` 95.78秒实际失败于viewport内未选到图标；原主环半径／尺寸公式经f507字节确认一致，尚无窗口fit／自动缩放原证，不擅改算法。测试应从全部真实图标的AABB与viewport交集中取合法点击点（中心在屏幕外不等于整个控件不可见），并选择给原菜单留空间的真实墙射线；当前已修候选待运行。四场景同进程`m6-app-acceptance-v1.log` 0/4、205.71秒；发现静态ACCOUNT／paths共享以及最近存档选择的跨测试污染路径，不能把后续每个失败直接归因生产，也不声称已证明污染造成每次失败。后续各场景独立进程验证。
+
+上述App轮还实际发现支撑detector对非零高程自由墙`get_wall_shape` panic：原140787408..40c在零高程清理之后对tag>1直接跳过，中央已独立原字节复核并恢复该门。原publisher对支撑木／砖及半木allocation也逐次新建，当前sidecar已按成功发布重建，消费者不再惰性造owner；+120主墙／拱门侧挂映射仍单独待证，未制造第二份原owner。矩形／圆创建缺录制时吞掉History::add失败也已按原panic修复，保留墙／屋顶请求已发生而后续toolbar／sheep尚未发生的前缀。新增候选尚待定向测试。
+
+`m6-production-contract-regressions-v1.log` 在country-core lib-test LLVM阶段out-of-memory，未执行测试，不算算法失败或通过。后改为单crate、CARGO_BUILD_JOBS=1 的`m6-core-contract-regressions-v2.log`；最新App隔离快照构建为`m6-app-isolated-build-v2.log`。共享boot等待也补真实上传消费，避免dormer SSBO在90个App-only warm-up tick内耗尽队列；不加容量、不屏蔽原上传。
+
+本轮原指令确认并合入的生产修正（待`m6-production-contract-regressions-v1.log`验证）：①原publisher为每次成功发布创建新的通用木板+130分配，成功重发布先退役旧owner；现由当前sidecar在同一成功发布边界适配，清理不再无条件造空owner。独立核实原指针字符串为WoodenPlankSsbo，纠正旧Uber误归属；其余slots生命周期仍独立审查，不机械套用。②普通prepared path少于两点原caller panic，现保留policy及高度映射先行，再在数组构造前恢复该失败语义；None/缺缓存等重构状态不一概panic。③装饰延迟历史缺录制原History::add panic，现不再warning后吞掉；原pending先清、records长度先归零而allocation保留、集合尚未清的异常前缀经中央原字节及EH helper复核，使用当前Vec::drain保持安全所有权。
+
+按用户追加要求另启一个Sol专岗：先闭合旧M02/当前M1地形画面一致性，再逐项对照B函数列表；只有确证算法简化或业务缺失才列修改项。v5 canonical mode基线`m1-canonical-mode-save-restore-v5.log`实际370.75秒失败于child App-only Reload等待的Dormer Holes上传队列耗尽，尚未抵达图像比较；已在M2等待helper统一加入真实host上传消费，未加容量／屏蔽系统／放宽图像断言，修后待复验。M6三个Terra仍集中生产调度、删除和持久化，不扩展新业务模块。
+
+浮点独立静态增量：按原`xz_rotation_bad`及矩阵指令，同法线得到half record11当前`...595`；按原采样角／插值／normalize算序并调用Windows UCRT，turret stone14与offset74首差也逐位复现当前Rust。两圆塔结论仍依赖日志给出的层参数、采样索引、t及split，原上游采样knot／随机分割未完整独立核完；六项旧Darwin桥夹具失败继续保留，未改数学／期望／断言，不计完整原入口同输入差分。详见既有arch/lintel报告的2026-10-30静态计算章节。
+
+用户要求继续至 M6 完成；三个 Terra owner 分别补齐调色菜单真实交互、菜单构造及共享导航、推土机完整分支，中央串行构建和独立验证。保持小窗口、不跳过 Logo、不伪造 ready，不回退 rhapsody／utils 已重构架构。后续 M7／M8 仅处理实际阻断 M6 的共享依赖。
+
+向用户说明 M6 约75%（70–80%的调用链工程估计，不是原版函数覆盖率）。楼梯边／中点删除与附着装饰重定位已有下述有界Rapier／History通过；当前最大缺口是新生产调度下真实UI→权威／实体／碰撞／GPU→完整UndoRedo→保存／新进程恢复→卸载重入的联合闭合，不能继续把这些已补子分支列为完全未实现。新调色真实App入口仍有实测阻断，算法上保留六项旧跨平台浮点fixture失败及其原证边界。
+
+- **M1 物理墙砖 owner 检查通过**：`tmp-merge/m1-physical-owner-edit-v2.log`，1 项，44.57 秒。绘制 receipt 的 Shadows 三项、G-buffer、G-buffer OC/2 都引用同一真实物理 buffer；目标 96B 有效记录与 CPU 一致且编辑前后改变。本检查不证明目标墙间接绘制命令或像素归因。
+- **M1 跨进程最终图像仍失败**：`tmp-merge/m1-aligned-clock-save-restore-v2.log`，313.28 秒；历史、地形、双高度及保存的三个日照 f32 严格一致，最终图像 129585 像素不同、RGB MAE 3.175967。诊断捕获的相机、日照、配置、FrameConstants、时钟时间／delta 相同，GameClock.frame_count 仍差三帧；尚未证明这是唯一原因。现让真实零时长 tick 自然对齐模拟／渲染计数差，并补保存端地形 lighting 捕获，待复验；不直接覆写计数器、不扩存档 schema、不放宽断言。
+- **M6 当前候选**：墙色 picker、13 类主菜单交互、墙／屋顶／门／半木与装饰菜单构造、窗口灯次级环，以及推土机墙命中与动画已补实现，统一编译／实际链路仍待验证。其它删除动作、共享 UiNav、楼梯与梯子次级环及完整输入→历史→磁盘→重入尚未全部闭合，不能计作整模块完成。
+
+后续验证／审计增量：稳定快照整合构建v4通过（`tmp-merge/m1-m6-checkpoint-build-v4.log`）；颜色库20项通过（`tmp-merge/m6-color-lib-v1.log`），包含真实门网格picker、窗口灯／楼梯／梯子环和取消等有界夹具，不是完整App／GPU验收。门与装饰picker已补原mask、storage和magic查询规则，门色setter恢复先SSBO、按墙存在性处理事件、最后整表上传；rim改由原颜色set31消费者直接记录History，移除晚于录制结束的set40重复适配。装饰删除完整Info回放夹具首轮构建被新增楼梯重定位helper的generic archivist类型错误阻断（`tmp-merge/m6-decorator-bulldozer-v1.log`），待修复，不计通过。柱放置独立审计发现几何材质`==1`与统计`!=0`的原条件不能合并，以及自由墙末端f32计算不能代成f64；均已修候选，待回归。
+
+M1严格图像v3再次失败（`tmp-merge/m1-aligned-clock-save-restore-v3.log`，父测试581.76秒）：这次所有已捕获帧状态／GameClock逐项相同，最终129586像素不同、RGB MAE3.176021；地形lighting仅348/262144像素不同、MAE0.019573。独立审查识别`ShadowMaskMeanSsbo`为尚未观察的全屏tonemap输入：原shader使用`1-exp(-5*delta)`平滑，零时长输入会冻结各进程此前不同的运行均值。当前增加真实同owner四字节读回，并改为先自然对齐完整render frame，再给相同非零时间输入让真实GPU历史收敛；未改生产算法／存档schema／图像断言，仍待复验。
+
+v5整合构建通过（`tmp-merge/m1-m6-checkpoint-build-v5.log`）；M1正时间v4仍失败（`tmp-merge/m1-positive-time-save-restore-v4.log`，574.32秒），最终差异降为30738像素／RGB MAE0.257894，terrain-lighting1340像素／MAE0.046975。实际同owner shadow mean为0.715192616与0.715234458；除新补捕获的AppMode外所有记录帧状态一致，父为Terrain、子为Editing(None)。当前改为工具栏canonical RequestAppModeChange→真实mode_manager统一未保存的工具状态，再复验，不直接写AppMode或松断言。先前拟用动作26已在下游review时撤销：它会清空整个世界，不能用于结束工具；该错误前置未运行。诊断只给ShadowMaskMeanSsbo额外TRANSFER_SRC，不修改其它描述符或生产shader。新增装饰删除Rapier→picker→完整Info／地址Undo/Redo已通过1项（`tmp-merge/m6-decorator-bulldozer-v2.log`）；新中点／边删除、恢复的set25装饰放置与视觉链及set34历史仍待实际验证。
+
+本轮后续实际结果：最新擦除core显式native-physics **37/37通过**（`tmp-merge/m6-core-eraser-v1.log`）；装饰删除／楼梯边／楼梯中点真实Rapier→picker→历史及完整状态Undo/Redo **3/3通过**（`tmp-merge/m6-bulldozer-integration-v5.log`）；柱父链含材料字节2的真实proposal／brick allocation／统计回归1项通过（`tmp-merge/m6-pillar-parent-v2.log`）；楼板保存→新进程恢复→恢复后撤销重做父子全部通过（`tmp-merge/m6-floor-save-restart-v2.log`）。这些结果不包含随后仍在修正的整个DecoratorPlugin注册树，也不替代正式App图像／磁盘联合验收。
+
+墙构造全库首轮185过／7失败（`tmp-merge/m6-wall-constructor-v1.log`），柱setup缺真实brick allocation已修并单独重过；剩6项仍失败。两项overlap及gable输入已核到旧Darwin libSystem数学桥与Windows UCRT的1ULP差；两个turret和同输入half圆墙首差仍需逐步定位，不能一概归因CRT或放宽assert。已采细节（`tmp-merge/m6-turret-float-diagnostics-v1.log`、`tmp-merge/m6-half-float-diagnostics-v1.log`），只在测试环境变量下输出中间位值，未改生产算法／冻结期望。原PE数学API-set在当前Windows解析到ucrtbase；旧跨平台桥接记录不等于Windows原侧动态验收。
+
+新增流程经验：新App接线先完整重建原parent配置树的chain／普通tuple／chain_ignore_deferred／flush位置，不能把已恢复叶函数平铺后视作完成；原同函数多次注册是不同位置的system实例，不能凭函数名全局去重。独立审计已否定初版set25简化接线（缺清瞬态实体、原slot3及slot14子链／尾部flush等），当前由原owner按现有slots原证纠正。新增跨crate事件必须先App::add_event再World init，保持真实帧维护；新增mandatory输入不得改Optional隐藏缺owner。
+
+本轮流程经验：①同一物理 owner 要在绘制 receipt 退役前关联，General 的读写访问也包含读取；②只推进 App 时须按真实宿主消费有界上传队列，不能放宽队列上限掩盖饥饿；③跨进程画面比较必须区分存档字段与未保存运行态，靠真实输入推进到等价观察条件；④原 format literal pieces 决定 widget 身份，不能凭可读性添加分隔符；⑤已结束的 agent 必须通过 followup_task 继续派工，普通消息不会重新启动；⑥新叶函数通过不能替代完整调用链，中央保留独立生产验收。
+
+### 2026-10-30 M0 独立逐函数审计
+
+用户要求新增一个Terra agent独立审计M0所有函数，核实原版算法／数据／分支是否完整，明确区分语义等价适配、近似、空实现、缺接线和原证不足。Daily仍排除。此前M0“本轮范围收口”仅指列明的功能链验证通过，不表示所有函数已原版等价；逐函数分母、原证与结论待独立清单复核。审计只读生产实现，与中央继续推进M1并行，不以无TODO或测试通过代替等价结论。
+
+中央复核发现旧扫描在文件中途的`cfg(test)`模块处截断，漏掉其后的生产实现；已补41项，当前清单579个候选、51个文件，仍不是原侧去重／跨crate闭合后的覆盖率。新增独立Terra审计已逐项处理清单内全部剩余源码记录：10条是无函数体声明、2条Daily专用函数明确排除；其余记录已有具体源码行为与待证边界。中央核验全部记录的源码SHA，未发现过期指纹。547条仍为原证不足，不能把源码实读完成算成原版判等；原侧721条metadata候选／闭包／跨crate映射仍未闭合。记录见[m0-independent-function-candidates-2026-10-30.json](m0-independent-function-candidates-2026-10-30.json)。已直接核出的差异／接线问题：
+
+- `mei_pre_update`先按GlobalId排序再执行节点，而原始f507 RNE `140684a79..140684b53`直接按HashMap control字节逐桶调用vtable+58，后续交互循环也直接逐桶扫描。顺序算法存在确定差异；声音、事件及交互结果的影响仍待核，不能判语义等价。
+- 原始`1404dc465`调用`on_key_event@140685fc0`、`1404dc32c`调用`on_clipboard_paste@1406860d0`；当前全crates静态搜索只见这两个MEI方法的定义，实际宿主键盘入口只向core／Bevy发布。原MEI生产入口尚缺接线；具体控件影响须沿原消费者继续核实，不能据此声称所有键盘交互都失效。
+- `DisplayConfirmationDeadline`连续五秒未确认即返回错误属于当前宿主策略，尚未取得原版相同期限／错误退出的依据。`MeiInputEvent::tag`的双偏移非零优先判别也待原生产者和消费者进一步核对。
+
+合法原vtable空默认体与未恢复空实现分开统计；目前尚不能给出“全M0无空实现／无近似”的结论。中央直接原指令复核了`load::ThumbnailScrollContent::input`完整控制流，以及Welcome透明度两段算术及`.3/1/3`常量；这些有界证据不外推为整个菜单或M0判等。
+
+### 2026-10-30 用户范围更新：暂排除 Daily
+
+用户明确 Daily 每日主题／活动暂不推进。暂停其实现、联网和验收，已有代码保留；Daily 未通过项不再作为本轮 M0 收口阻断，也不计作已完成。普通菜单、新建、设置、保存／恢复及 Reload 继续按原合同验证，后续顺序仍为 M0 → M1 → M6 → M7 → M8。
+
+**M0本轮范围已收口，当前推进M1。** 普通Summer实际菜单picker→Reload→Game→生产保存→再次进入的完整历史／游标／元数据／墙权威比较通过（`tmp-merge/m0-ordinary-new-v2.log`）；其间修复实际缺失的装饰ID→subtype每帧生产系统，未预填或删除starter装饰。设置真实输入处理器→宿主生产帧尾消费者→重复消费不重写→新进程get_app_config读取通过（`tmp-merge/m0-settings-frame-tail.log`）。新增暂停确认期限及最后注册／非空编辑回归分别6项、2项通过（`tmp-merge/m0-final-confirmation-tests.log`、`tmp-merge/m0-registration-host-final.log`）。冻结后的窗口链再次通过（`tmp-merge/m0-windowed-cycle-final.log`），构造完成立即断言480×270且非全屏。Daily、M16独立调试GUI及全游戏Release性能不在本次M0功能收口结论中；未声称所有原版输入域／平台逐位等价。M1首先修复已暴露的地形跨进程夹具缺GpuReadbacks，并通过真实生产GPU链核对其owner与输入，不能用空资源绕过实际读回。
+
+M1进展：真实Vulkan初始索引／岩石SSBO→ReadbackPublisher发布→鼠标边沿／picker→绘制／编辑→Undo／Redo→保存worker→新进程恢复的夹具通过（`tmp-merge/m1-terrain-disk.log`），不冒称完整场景shader生成读回已验。Reload两项首轮因缺GpuReadbacks owner失败（`tmp-merge/m1-reload-owner.log`），已补实际owner并要求绘制前真实反馈齐备，待重跑。剩余重点为同epoch双高度图→CPU／碰撞／订阅→墙重发布、地形相关lighting与最终图像、完整场景保存／恢复及晚到票据/旧会话隔离。对用户说明约75%（70–80%的调用链工程估计，非函数覆盖率），尚未验收，不进入M6。
+
+M1最新补充（取代上段待重跑项）：Reload同／异存档owner隔离2项已过（`tmp-merge/m1-reload-owner-v2.log`），地形／高度边界99项已过（`tmp-merge/m1-core-boundary-tests.log`）；真实App/GPU编辑、同epoch双高度图、CPU副本、碰撞／订阅／墙事件、lighting及最终图像变化已过（`tmp-merge/m1-gpu-edit-v2.log`）。仍缺目标墙brick物理GPU记录与实际绘制同owner的同步证明；不能用默认`WallBrickUploadStatus.gpu_ready=true`证明上传成功。全场景跨进程保存恢复的严格图像比较尚未通过：首轮有真实日照漂移，固定日夜循环并匹配自然128帧采样相位后，仍发现旧会话播放进度影响三个已保存日照f32的观察；已增加真实状态机归零前置与逐位诊断，当前复验日志为`tmp-merge/m1-static-save-restore-v2.log`。不扩存档schema、不回填运行帧数、不松图像／高度／历史断言。约75%的工程估计保持不变；未作Release性能验收。
+
+上述v2复验已结束：构建通过；新进程的历史、地形、双高度与三个日照f32严格比较通过，最终画面仍失败（234.11秒，`113021/129600`像素不同）。中央比较`tmp-merge/m1-static-image-diagnostics-v2/m2-saved-state.json`和`m2-reloaded-matched-state.json`：相机、视频／formation／曝光、日照及FrameConstants的采样帧数和jitter一致；记录中仅`game_time_frac`与GameClock还差两个1/60秒更新。RGBA实测RGB平均绝对差由首轮8.282降为1.630，最大75；这不能单独证明剩余差异仅由时钟造成，其他未记录GPU资源／累积历史仍需核。尚未放宽图像断言或计作验收通过，进度仍约75%。
+
+M0本轮结果：设置／主题确认与loading交接6项通过，设置常规11项及显式原资源控件3项通过；真实FMOD bank owner补齐后，真实App Welcome抢占／点击／Held Reload／再点击测试通过（`tmp-merge/m0-toolbar-app-v2.log`）。`windowed_cycle`实际小窗口经过Logo、真实交接、OS尺寸480×270→514×354、零尺寸暂停／恢复、vsync worker确认、设置落盘、GPU截图、12个native成功游戏帧和退出保存／GPU清理，通过（`tmp-merge/m0-windowed-cycle.log`），未启用呈现诊断绕过，也未进入全屏。该debug功能测试不证明帧率达标；建筑brick上传超时保留脏标记重试的日志需在M6/渲染链进一步核查。普通新建与设置保存同帧合同仍在本轮补验，尚不声明M0全部验收。
+
+### 2026-10-30 合并后共享链修复（当前执行顺序）
+
+用户确认先集中修复共享输入、形状状态、事件和历史链，最多三个 Terra agent 并行，中央协调并独立验证；之后严格按 **M0 → M1 → M6 → M7 → M8** 逐模块收口。完整原版算法、业务分支和生命周期均须保留，不以局部测试或编译替代整链验收。
+
+全游戏性能标准延续用户要求：完整逻辑和质量下60 FPS为最低、120 FPS为合格；本轮功能测试不构成帧率达标证据。启动或窗口验证必须小窗口，禁止全屏。用户重写的rhapsody和底层工具继续沿用，不回退旧架构。
+
+合并基线为 `8166bbe3c`；合并后的测试目标类型检查通过，实际交互测试尚待本轮执行。原有 `history.rs` 未提交改动保留。当前共享批次重点为圆／矩形与自由墙输入、统一事件及消费者、撤销重做与真实保存恢复。旧同日/跨平台通过记录仍只绑定各自源码和环境。
+
+本轮实际复验：共享输入／圆矩编辑／自由墙／历史分桶组显式 `native-physics` **67/67 通过**（`tmp-merge/shared-core-history-v2.log`）。真实宿主非空自由墙编辑、装饰跟随和缓存跨帧／删除，以及多reader事件维护 **2/2通过**（`tmp-merge/shared-host-tests-v4.log`）。闭墙重做原失败为 `/3/kind expected=3 actual=2`；根因是缺少原有序命令兼容分桶，创建动画完成覆盖后续闭合。恢复完整标签规则、光栅子类、每桶九条上限及末桶aux后，真实App／Vulkan绘墙→闭合→Undo／Redo→保存→新进程加载父子各1项通过（`tmp-merge/shared-closed-wall-v3.log`）。原始RNE SHA为 `f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03`；配对表与容量静态原指令核对不冒称原侧动态全域差分。圆形跨进程回归仍在本轮复验，尚不宣布共享批次或M0整模块验收。
+
+后续圆形跨进程复验通过（`tmp-merge/shared-circle-disk-v3.log`）：墙／圆形各自写入、恢复、恢复后回放的新进程组全部成功。期望值按真实 `SavedMultiEdit`／`WallState`／装饰schema读取，保留全部字段及实际f32精度，修复通用JSON f64展示引起的错误比较；生产序列化未改。至此本轮指定共享链批次的有界验证完成，开始 **M0** 收口；这不等于M0或所有游戏历史域整模块验收，也未执行真实OS输入或本轮帧率验收。三个Terra任务分别负责M0注册顺序、设备设置应用、Daily与保存/Reload公共链，中央继续串行构建和独立验证。
+
 ### 2026-10-29 提交推送检查点（按用户要求先保存全部当前进展）
 
 本轮先提交当前代码与分析状态，暂停继续实现。**M6 尚未完成；后续顺序仍为 M6 收口→M7 屋顶→M8 楼梯／平台／扶手。** 性能与长稳不列入本轮验收，真实 OS 输入暂缓。
@@ -346,7 +454,7 @@ M01结构变形已有候选与有限数值／World验证；装配主函数仍在
 | --- | --- | --- | --- |
 | 1 | 公共交互／toolbar | 启动、相机、MEI；详见上方七流 | 当前恢复中 |
 | 2 | 地形编辑 | toolbar验收；真实readback／hover／focus→高度、采样碰撞、历史、渲染 | 未进入 |
-| 3 | 路径→花园→水 | 地形与共享栅格；分别闭合绘制、记录、回放、上传并分别验收 | 未进入 |
+| 3 | 路径→花园→水 | 地形与共享栅格；分别闭合绘制、记录、回放、上传并分别验收 | 用户指定独立推进中，未整链验收 |
 | 4 | 墙体／规则建筑 | 交互、地形栅格；采样、吸附、合并拆分、高度、构造支撑、楼板、门栅栏及半木、删除 | 未进入 |
 | 5 | 屋顶 | 墙权威与建筑几何；类型、构造、碰撞、瓦片、历史、删除 | 未进入 |
 | 6 | 楼梯／平台／扶手 | 墙、屋顶、地形；完整cache、主网格、支撑扶手、碰撞、视觉宿主 | 未进入 |
@@ -358,6 +466,148 @@ M01结构变形已有候选与有限数值／World验证；装配主函数仍在
 | 12 | 整游戏联合验收 | 前11阶段各自验收；混合编辑、历史、保存退出、新进程、窗口连续帧及资源 | 未进入 |
 
 关键依赖：墙→屋顶→楼梯→decorator→clutter／ivy。后序模块不提前展开整套实现；只解决阻断当前流的接口。
+
+## 2026-10-30 M03／M04／M05 独立推进清单（源码盘点，未整链验收）
+
+本节最初是路径／铺石、花园、水与谷地边界的静态交接；2026-10-30 用户指定独立推进 M03／M04／M05，实际改动与验证见下方推进记录。它们仍未整链验收；M02 已按用户要求排除，M01／M06 由其他 agent 执行。M03／M04／M05 沿用历史编号，不把当前 M0／M1 再整体顺延。
+
+### 基线、口径与工作量
+
+- 盘点基于本机 HEAD `8166bbe3c` 所在的当前工作区，直接读取源码及正式宿主注册、共享栅格／历史／保存／清理、GPU 消费和相关测试入口；没有拉取远程或冻结整个工作区。后续动手前须复核目标文件的新改动。
+- 本次为静态源码与接线盘点，没有重跑 Cargo、游戏、GPU 或性能测试，也没有重新完成逐函数原码等价审计。已有函数、测试和 pass 不自动计作模块通过；下表不是函数覆盖率或完成百分比。
+- “工作包”是一个独立可交付、可验证的业务子链。估算包含取证、实现、正式接线和独立验证；共享工作只计算一次。以 M0／M1 输入、地形、碰撞及读回合同稳定为前提，不包含后续整游戏联合验收，也不是多个 agent 并行后的自然工期。新发现的原算法或依赖差异需要重新估算。
+
+| 范围 | 剩余工作包 | 规划估算（人日） | 当前主要问题 |
+| --- | ---: | ---: | --- |
+| 三模块共享基础 | 3 | 3–5 | 栅格原证、历史失败语义、上传／清理及性能验证 |
+| M03 路径／铺石 | 6 | 4–7 | 跨变体副作用不完整，正式编辑与声音接线未闭合 |
+| M04 花园 | 6 | 4–7 | CPU／GPU 两端已有，编辑、绘制资产和声音装配未闭合 |
+| M05 水与谷地边界 | 6 | 5–8 | 正式链较深，动态编辑／回放／岸线与生命周期仍需验证 |
+| 合计 | 21 | 16–27 | 工程估算，不是验收结论或工期承诺 |
+
+建议独立任务内部顺序：**共享取证及失败语义 → M03 路径／铺石 → M04 花园 → M05 水与边界**。共享上传、生命周期及性能检查随各模块执行，不能拖到 M17 再补。接口变化先核对中央正在修改的输入／历史／保存／渲染边界，保留现有 rhapsody 和工具重构，不另建平行状态或覆盖并行成果。
+
+### 共享基础：3 个工作包
+
+- [ ] **R-S1 原算法与依赖身份**：核对 `WorldRaster` 栅格化、`ActiveRasterStroke` 平滑／重采样、混合规则、脏瓦片和边界。当前 `country-core/Cargo.toml`／`Cargo.lock` 使用 crates.io `zeno=0.2.2`，原锁为 PounceLight fork `b8e8646d88f4556333867db62c2ab638e7b5375f`；同版本号不足以证明覆盖度算法等价。先比较实际使用路径及原输出，不直接回退依赖或重写用户基础库。
+- [ ] **R-S2 历史失败语义**：路径、花园、水的 recorder 均有 `let _ = record_raster_history(...)`；共享 helper 直接返回 `history.add(...)`，当前 `HistoryTransactions` 在未开始录制时返回 `RecordingNotStarted`。原 recorder 注释记载的是原 `History::add` 失败 panic，故当前忽略 `Result` 不能视为等价。恢复真实录制起止、提交及失败行为，并验证被取消、越界、模式切换与多栅格复合编辑；不能手造 History 掩盖输入链缺口。
+- [ ] **R-S3 上传、清理及性能**：沿同一 CPU raster → mapped staging → W1 上传 → 下游 mask／实例／绘制 owner 验证，不以逻辑句柄或 pass 存在代替实际消费。复用现有 `clear_canvas` 清空六栅格、纹理和水声活动位的实现，验证会话切换、删除、旧上传／读回及实例退役；测量实际交互热点。功能验证与 Release 性能分开记录，完整逻辑和质量下 60 FPS 最低、120 FPS 合格，窗口始终小窗口。
+
+入口：[共享绘制与历史](../../../crates/country-core/src/systems/world_raster.rs)、[栅格算法](../../../crates/country-core/src/resources/world_raster.rs)、[命名栅格及暂存](../../../crates/country-core/src/resources/world_raster_defs.rs)、[历史事务](../../../crates/country-core/src/resources/history/transactions.rs)、[清空画布](../../../crates/country-core/src/systems/clear_canvas.rs)、[正式历史接线](../../../crates/tiny-glade/src/history_runtime.rs)。
+
+### M03 路径／铺石：6 个工作包
+
+**已有基础**：四栅格与共享／secondary dirty publisher 已在主宿主创建；`DrawState`、绘制与四槽 recorder、路径预览尺寸、共享回放已有实现和局部测试；世界图已有路径遮罩与鹅卵石 compute。不能把已有存档的路径显示等同于路径编辑工具完成。
+
+- [ ] **M03-1 跨变体完整算法**：恢复 `erase_other_path_variants` 的九个原闭包载荷及实际事件／历史／UI 副作用。当前 `paths.rs::erase_call!` 的三个回调为空，不是已证明原版空分支；核对四目标的调用顺序、覆盖与擦除、取消及跨边界行为。
+- [ ] **M03-2 绘制参数及提示原证**：核实 `PATH_STRENGTH=0.0` 的来源、`RasterStrokeCmd` 有效字段及真实 `UiSignifierStream` 副作用。旧证据明确把 strength 与部分闭包列为未决，不因局部测试通过就固化默认值。
+- [ ] **M03-3 正式编辑装配**：把完整 draw／record／路径专属预览按原调度接入正式 App，补齐命令与事件维护。当前主宿主只明确注册路径业务 `PathDrawEvent`，未找到 `draw_path`／`record_path_history`／路径专属 preview 的正式安装；局部 `PathsPlugin::build(World, Schedule)` 不能代替主 App。不得调用旧 helper 将共享 publisher 重置为四个 unique。
+- [ ] **M03-4 声音真实输入**：统一或按原合同适配 `resources::path_stroke` 与 `systems::audio::path_audio` 的不同事件类型；当前音频还定义独立 `PathEditEvent`，`PathAudioState.raster_gate` 初值为 0，静态搜索未找到实际赋值生产者。恢复真实栅格采样门控、五个 loop 的完整判据、位置／速度／尺寸参数及停止策略，不猜造第三事件身份。
+- [ ] **M03-5 回放与附属状态**：共享 `replay_rasters` 已安装并更新六栅格，但当前 `RasterReplayFeedback` 未找到路径业务反馈路由。恢复原路径／铺石反馈、树和装饰归档联动，核对一次覆盖其他变体的完整撤销／重做，不能只比较目标栅格。
+- [ ] **M03-6 正式整链验收**：真实路径和三种铺石输入，各自绘制／擦除 → 四栅格权威 → staging／遮罩／鹅卵石与最终画面 → Undo／Redo → save worker → 新进程恢复；另验同 App Reload、删除、卸载重入和取消未提交笔画。验证历史 cursor、完整编辑载荷及附属实体，没有残留。
+
+入口：[路径实现及测试](../../../crates/country-core/src/systems/paths.rs)、[路径音频](../../../crates/country-core/src/systems/audio/path_audio.rs)、[正式资源初始化](../../../crates/tiny-glade/src/run_game.rs)、[路径 GPU 遮罩](../../../crates/country-core/src/systems/render_loop/compute_passes/compute_path_masks.rs)、[鹅卵石](../../../crates/country-core/src/systems/render_loop/compute_passes/path_pebbles.rs)。原证交接见 [brush-runtime-full/REPORT.md](../../../../reverse-engineering/tiny-glade/evidence/round12/brush-runtime-full/REPORT.md) 的 `draw_path remains explicitly unclosed`；其中图钉替身的旧判断须按当前统一事件重导出纠正，不能机械复用历史缺口。
+
+### M04 花园：6 个工作包
+
+**已有基础**：`draw_garden`、slot5 recorder、局部装配与花园回放反馈转换函数已有；局部测试覆盖拖动、越界后恢复及提交。正式宿主已有 `GardenRaster`、暂存和世界图中的花园模糊、植被生成消费者；CPU／GPU 两端存在不代表中间接线完成。
+
+- [ ] **M04-1 正式绘制／记录装配**：将现有真实 draw／record 和事件维护安装到主 App，核对原 set、录制边界和 `LiveColliderPayload` 等权威载荷。旧 CPU `register_update_systems` 的 `add_garden_cpu_systems::<(), ...>` 不是正式宿主已安装的证明，也不能将 `()` 碰撞载荷照搬进去。
+- [ ] **M04-2 回放反馈装配**：将现有 `route_garden_replay_feedback` 挂入真实消费链；保留原回放走 draw-event channel 的合同，不能按笔画擦除标志擅自路由到 erase-event。验证反馈与 History Pop／录制的相对顺序。
+- [ ] **M04-3 石头／小花绘制启动**：`startup_garden_brush` ECS 入口只加载网格，`run_garden_brush` 已有按 mesh → shader → drawable 创建两项并关闭花朵投影的 helper，但未找到正式宿主调用。补真实资产、shader、实体、对应 indirect slot14／16 和卸载重建；不能只检查 compute SSBO 非空。
+- [ ] **M04-4 花园音频装配**：算法已在 `garden_audio.rs`，旧 CPU 总装配有注册，当前主宿主未找到实际安装。接真实初始化／更新和同一事件，核对水栅格采样、四 loop、速度／尺寸／回放音量及停止释放。
+- [ ] **M04-5 四类 GPU 结果验证**：验证灌木、花、marching-squares 石头、小花的实际生成／更新／擦除；检查建筑植被前缀保留、排除 mask、共享 Flower buffer、indirect counter 与真实 draw 消费。只读描述符或 pass 单测不算画面同步通过。
+- [ ] **M04-6 正式整链验收**：真实花园输入、越界／模式切换／取消 → 权威栅格与生成物 → Undo／Redo → 保存／新进程恢复；覆盖建筑／路径／水交叠、同 App Reload、清空、删除、卸载重入及实体／GPU owner 退役。
+
+入口：[花园系统及回放路由](../../../crates/country-core/src/systems/garden/mod.rs)、[绘制](../../../crates/country-core/src/systems/garden/draw_garden.rs)、[局部测试](../../../crates/country-core/src/systems/garden/tests.rs)、[绘制资产启动](../../../crates/country-core/src/startup/startup_garden_brush.rs)、[花园音频](../../../crates/country-core/src/systems/audio/garden_audio.rs)、[GPU 生成](../../../crates/country-core/src/systems/render_loop/compute_passes/compute_garden.rs)、[正式植被宿主](../../../crates/tiny-glade/src/world_vegetation.rs)。
+
+### M05 水与谷地边界：6 个工作包
+
+**已有基础／不重复恢复**：`WaterPlugin`／`GladeBorderPlugin` 已在正式 App 安装；画水、擦水、record、边界反馈、真实水声网格与碰撞查询已有。水工具图钉已重导出统一 `ShowPinnedDecoClutter`，旧报告“特化替身事件”已过时。W1／W2／W13、水面和季节启动、共享保存及清理主体已有，不再作为待从零实现项。
+
+- [ ] **M05-1 画水参数和分支原证**：核实 `draw_water` 中 `strength=1.0` 的适配及原有效字段；完整对照画水／擦水、XZ 平面交点、边界、状态切换、signifier、重算与读回通知顺序及失败路径。固定 B 构建常量不能仅因以常量表达就判缺逻辑。
+- [ ] **M05-2 回放反馈与地形更新**：共享回放虽已更新 `WaterRaster`，当前未找到 Water domain 的反馈转换消费者。核对并恢复原回放声音、地形重算与读回通知，确保 CPU 高度、碰撞和画面收到实际更新，不能只证明 mask 改变。
+- [ ] **M05-3 动态水与岸线 GPU**：实际绘制／擦除后核对水面、岸线、睡莲、花与芦苇及其地形／路径／建筑排除条件；检查 mask 通道保留、动画历史、计数器和实际绘制 owner。覆盖原主题／季节分支，不跳过冬季或以已有湖面代替新输入。
+- [ ] **M05-4 声音与空间生命周期**：复用 canonical `WaterAudioGrid` 10×10／64 位滚动窗、抖动和遮挡实现，验证相机前后遮挡、阈值、开始／停止、删水、Reload 后活动位／音频实例；当前局部碰撞／滚动测试及有界原音量算术证据不能代替整条实际音频链。
+- [ ] **M05-5 边界装配和交互**：核实 `setup_glade_border` 原注册时机（当前 Startup 适配仍记 OPEN），以及 `ShowDemoBorderOverlay` 的原注册归属。实际验证圆／矩边界、地形贴合线、perimeter signifier、摄影模式门、越界上升沿音效与退役；不擅自实现未取证的林地业务。“林地边界”为旧范围名称，本节直接核实的是现有 `glade-border` 谷地边界系统。
+- [ ] **M05-6 正式整链验收**：实际画水／擦水 → 地形／碰撞／植被／声音／最终画面 → Undo／Redo → 保存／新进程恢复；验证同 App Reload、删除、卸载和再次进入。`gpu_surface_collect.rs` 保持水栅格不变的湖面／冰面测试主要覆盖静态渲染，不能计为这条动态编辑链通过。
+
+入口：[水插件](../../../crates/systems/water/src/lib.rs)、[画水](../../../crates/systems/water/src/draw_water.rs)、[水声采样格](../../../crates/systems/water/src/water_audio_grid.rs)、[边界插件](../../../crates/systems/glade-border/src/lib.rs)、[边界显示](../../../crates/systems/glade-border/src/display_glade_border.rs)、[水 GPU](../../../crates/country-core/src/systems/render_loop/compute_passes/compute_water.rs)、[水声权威](../../../crates/country-core/src/systems/audio/water_ambience_audio.rs)、[静态水面测试](../../../crates/tiny-glade/tests/gpu_surface_collect.rs)。`compute_water::water_level_at_xz` 仍返回 0，但静态未见生产调用；正式 Nani 花朵消费者已直接采样真实 water／path grids，不把这个闲置 helper 自动认定为当前花朵链阻断。
+
+### 2026-10-30 M03／M04／M05 推进记录（仍未整链验收）
+
+- **当前工作进度估算**：M03 路径／铺石约 **25%**，M04 花园约 **80%**，M05 水与边界约 **65%**。按六工作包的原证、生产实现、正式接线和验证剩余量判断；这是规划估算，不是函数覆盖率或验收通过率。三个模块均未完成六包整链验收，未满足的勾选项保持未勾选；后续发现新原算法须重新估算。
+- 本轮用户指定 M03／M04／M05；M02 撤销，M01／M06 由别的 agent 推进。本记录仅归档这三个模块及直接共享依赖，不改变其余模块的状态。
+- **共享历史失败语义**：B `record_raster_history` @`0x140957990` 的 `History::add` 在未录制时 panic；正式 `country-core/src/systems/world_raster.rs` 保留当前 `Result` API，但对 `HistoryTransactions::add` 的错误立即 `expect`，不再让三个 recorder 的 `let _ = ...` 吞掉已提交笔画。`cargo test -p country-core --features native-physics --lib committed_raster_stroke_without_recording_panics` 真实运行 1 项通过，日志 `D:/game/tmp-merge/m345-raster-history-test-rerun.log`。首次误用 `record_raster_history` 过滤词得到 0 项，日志 `m345-raster-history-test.log` 不计通过。录制起止和多栅格混合编辑尚未整链验收，R-S2 保持未勾选。
+- **M03 原证与阻塞**：B `draw_path` @`0x140ae4d00` 可见目标实例前依次调用三个跨变体实例，且 `0x140ab2340` 读取命令第二字；当前 `paths.rs` 的 `PATH_STRENGTH=0.0`、九个空跨变体回调和 UI signifier 副作用尚无足够原证。原证索引 `reverse-engineering/tiny-glade/evidence/country-core-deep/collision-eco/decomp/decomp-0x140ae4d00.txt`。未据不完整反编译臆造字段或把路径编辑注册进正式 App；M03-1～6 保持未勾选。
+- **M03 原始指令复核**：B `tiny-glade.exe` SHA-256 `cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323`。绘制模式 @`0x140ae4f1e`／`0x140ae4f34` 将光标 X 经圆构造函数写至 `rsp+0x9c`；跨变体命令由 `rsp+0x98` 传入，@`0x140ab291f` 读取第二字并经 @`0x140868e28` 写入活动笔画。目标命令另从 `rsp+0x88` 起始；其第二字及擦除分支尚未闭合。已移除局部测试中无原证的 `strength==0.0` 断言，生产零值仍为待修假设，不能宣称 M03 等价。
+- **M03 tag0 消费界**：B `0x14092df50` 对传入 `rsp+0x98` 缓冲仅在 `0x14092e02a–0x14092e0aa` 读取复制；目标 `rsp+0x8c` 未见直接或已查调用的间接定义。B `0x140a16e71–0x140a16e73` 对 tag0 跳过 strength 加法，走 Max／Erase；`0x1404896f0`、`0x1416e8340` 序列化器也仅在 tag1 输出第二字。它仍被历史对象复制，其他内存消费者和九个跨变体回调尚未闭合；不能把这段局部无影响升级为 M03 完成。
+- **M03 第一个跨变体实例**：cobblestone1 目标的首个 Path 实例 @`0x140ab35f0` 在 @`0x140ae571c` 仅接收命令、位置、共享资源和 Path raster；begin 经 `0x140868d00` 建笔画，extend @`0x140ab4680` 光栅化并向 staging 写入，commit @`0x140ab3758–0x140ab37e2` 向共享两队列通知后提交。已查指令没有独立事件／历史闭包载荷，staging 失败走 @`0x140ab4741`；尚未闭合其源码回调合同及其他跨变体调用，因此不把现有空回调判作已证原版空操作。
+- **M03 跨变体批量指令归并**：四目标共有 12 个跨变体调用点，复用 C1 `0x140ab2340`、Path `0x140ab35f0`、C2 `0x140ab6de0`、C3 `0x140ab8090` 四个实例；PDB 九个 `closure_env` 类型不等于九个独立函数。所有调用点仅传四个寄存器参数，没有额外捕获对象；四实例 begin／extend／有效 commit 的结构相同，commit 各向共享两队列写入。摘要未发现独立历史／UI／实体副作用，但 staging 正常、失败及异常分支和队列消费者尚未逐一闭合，不能据摘要认定空回调已证原版行为。
+- **M03 C1 实例失败出口与队列身份**：`0x140ab2340` 有效 commit 在 @`0x140ab24ca`、`0x140ab2511` 各写 8 字节事件序号；staging 成功 @`0x140ab357d–0x140ab359a` 尾调用 `0x140a172d0` 仅处理脏状态／复制，查找、映射和类型失败出口未见额外事件回调。B `RasterDrawResources::get_param` @`0x141507ce0` 指向资源参数第五、六项；两项 `ResMut<T>::init_state` @`0x1413920e0`／`0x1413bfc50` 的具体事件 TypeId 尚待与已命名注册实例比对，不能反向凭当前 Rust 命名确定原队列顺序。
+- **M03 两队列 TypeId 进度**：第五项 TypeId `13de1aa1fb005cb2/131764ae8f0362d1` 与 B onboarding 注册 @`0x140651303–0x14065131a` 一致；第六项 `b79dd5de9b4b8f59/5252afecb833d03f` 与 history 注册 @`0x140943f4d–0x140943f64` 一致，commit 先写第六再写第五。PDB 公共符号仍为泛型 `register_event`／`ResMut<T>::init_state`；具名 `hint_deselect_tool` 与 `history_process` 的 System vtable 初始化调用点尚未和这两组 TypeId 绑定，不能只凭插件归属宣称事件具体类型。M03 空回调仍 OPEN。
+- **M03 TypeId 取证停点**：候选 vtable 初始化指针 `0x140305430`／`0x1404e35c0`／`0x140534300`／`0x14054bca0` 已定位，但 onboarding `0x140650d50→0x140eaf480` 与 history `0x1409438a0→0x141737fb0` 注册链未提供具名消费者到具体表的可靠边，可能存在去虚拟化。此线按证据边界停止；不得把模块归属推断当作类型证明。M03 原正式编辑、声音与整链仍未闭合，路径系统继续不进正式 App。
+- **M04 编辑、回放、音频接线**：正式 `history_runtime.rs` 已在原 GardenPlugin @`0x140b6d290` 的 set `0x10`／`0x22` 注册花园事件、`draw_garden<LiveColliderPayload>`、`record_garden_history<MaybePendingSnapshotId>`，共享栅格回放后路由花园反馈；正式 `audio_host.rs` Startup／set38 注册花园音频。最新 `cargo test -p country-core --features native-physics --lib garden_` 实际 16 项通过，日志 `D:/game/tmp-merge/m345-garden-tests-final.log`；它仅验证局部 CPU 与声音算术，不代表实际 FMOD、GPU 或 App 重入通过。
+- **M04 音频原证复核**：B 音频宿主注册 @`0x1409411a0`，花园更新模板 @`0x140a89480`／`0x14166d9f0`。`garden_audio.rs` 已按有序浮点比较处理 NaN 水采样、按 draw-water→draw-dry→erase-water→erase-dry 调用四循环，`PathSize` 保持原 inverse lerp 后相加的运算顺序；循环开始和延迟停止失败按原模板显式失败。当前实时事件 set16→音频 set38，回放反馈 set40→下一帧音频；原回放时序和 unload/reload FMOD 实例释放尚未闭合，M04-4 保持未勾选。
+- **M04 音频生命周期证据界**：B 初始化 @`0x140a88fa0` 四次以额外实例数 3、停止延迟 50 ms 构造循环；无事件走 @`0x14166d9f0` 延迟停止。OnExit @`0x140b3f550` 的清空命令及 `clear_canvas` @`0x140a7abd0` 的已查参数都不含 `GardenAudioState`；其析构 `drop_in_place<GardenAudioState>` @`0x140891d60` 在共享数据库仅有一字节占位，不能据此判定实际释放时机。查询证据 `reverse-engineering/tiny-glade/workspace/m4-audio-lifecycle-result3.json`。当前正式 Reload 保持状态并在无事件时请求停止，真实 FMOD 双会话行为和原析构调用边仍 OPEN。
+- **M04 笔刷资产**：B `startup_garden_brush` @`0x1415f87c0` 的两个 mesh→shader→drawable 次序与第二项 `DontCastShadow`，见 `evidence/country-core-deep/chapters/startup/startup_garden_brush.rs.md`；B `OnEnter(Game)` tuple 在水之后调用它，见 `evidence/round10/contracts/g1-startup-mainloop-CONTRACT.md`。正式 `startup_garden_brush.rs` 现在读取真实安装根的石头／花朵网格、注册 `MeshWatch` 与 shader 并生成实体；`gameplay_startup.rs` 以原水→花园顺序接入真实资源和设备，加载失败立即中止。`cargo test -p country-core --features native-physics --lib startup_garden_brush::tests::` 实际 2 项通过，日志 `D:/game/tmp-merge/m345-garden-startup-tests.log`。本机原版安装 `D:/game/ljxsj_92385/Tiny Glade/assets/meshes/` 中两件网格存在；尚未在真实游戏窗口验证实体和 GPU draw，M04-3／5／6 不勾选。
+- **M04 石头／小花绘制消费者静态核对**：花园 marching squares → 64 B `GardenStoneSsbo` → indirect 槽 14 → `solid_vertex_color_garden_stone`／Env26；小花生成 → 16 B `Flower03Ssbo` →槽 16 → `garden_lowpoly_flower`／Env7。正式 `build_missing_vaos` 给实体补 VAO，`production_renderer` 构造 draw list；当前 shader 顶点读取跨度和 compute 写入跨度相符，帧图先 reset indirect 再花园 compute／draw。原回调地址 `0x1409b6150`／`0x1409b7d40`，Flower03 tag `0xf7c8c9c2eb9e16fb` 与现有 B 回调证据一致；本轮未重新独立读取 B 常量。该结论仅为源码链，尚无真实槽计数、实体入列和最终画面验证。
+- **M05 水回放载荷**：B 发行 RNE SHA-256 前缀 `f507a6ce`；live @`0x1422612d3–0x1422612e8` 将 20 字节事件末标志置零，replay @`0x140a015ad–0x140a015b7` 复制前 20 字节，callback @`0x140a01560` 请求地形重算并递增读回。正式 `WaterDrawEvent`／`WaterEraseEvent` 携带 `replay`，`system-water::route_water_replay_feedback` 保留标志并发重算和读回，`history_runtime.rs` 在共享回放后安装。`cargo test -p system-water --lib replay_water_feedback_keeps_event_flag_and_schedules_each_readback` 实际 1 项通过，日志 `D:/game/tmp-merge/m345-water-feedback-test-rerun.log`；首轮测试借用错误已修。`draw_water` 的 `strength=1.0` 仍未获原证：B @`0x141ba94ed–0x141ba94f9` 未单独赋值命令 `+4`，而 @`0x1422610d6` 会读取它；不得把当前适配值宣称等价。地形高度、碰撞、画面和边界生命周期尚未实际验收，M05-1～6 不勾选。
+- **M05 strength 消费边界**：B 绘水分支进入 @`0x141ba94ed` 前未见对命令 `+4` 栈槽赋值，擦水分支 @`0x141ba9400` 在同一栈槽写有先前格式化结果片段；@`0x142262221` 的 tag0 Max／Erase 混合不使用该字，但 @`0x1409579d9`／`0x140957aeb` 的历史记录会复制它。当前 `1.0` 仍只是适配值，不能以实时栅格效果相同推定历史载荷等价；原值及后续可观察用途保持 OPEN。
+- **M05 tag0 历史消费界**：B `0x1416e837c–0x1416e83a3` 将第二字传给 `0x140a976b0`，后者复制它；JSON 叶 `0x140a195ac–0x140a195af` 对 tag0 写单位变体，仅 tag1 序列化 `+4`。撤销／重做光栅化 @`0x1409f4910`／`0x1409f4991`／`0x1409f5f54` 均进入 `0x140a16960`，tag0 在 `0x140a16e71–0x140a16e73` 跳过 strength；即时重做反馈仅复制位置、半径、replay 标记。其余历史内存消费者仍未排除，`1.0` 不确认为原值。
+- **M05 live 重算顺序复核**：B 状态机 @`0x140ae4bd0` 的返回／begin／drag／end 对应跳表 `0x142eebcb0`；共同尾部 @`0x141ba95b5–0x141ba95ee` 每次入队一次重算事件，@`0x141ba95f5` 递增读回，@`0x141ba963b` 才执行 raster。已查的界内 begin／drag／end、界外开始与继续、非水模式分支与当前 `draw_water.rs` 一致；这是静态分支对照，尚未运行真实输入链。
+- **M05 动态水消费者静态链**：B render_world @`0x1404ec2da–0x1404ec36f` 顺序为 preset `0x13` 上传→W2 水遮罩→W13 水生植被。当前 `scene_compute.rs`／`world_graph.rs` 使用同一 `WaterRaster`，W2 四次模糊声明 sigma `10/10/30/30`、通道 `1/1/2/2`；W13 的**荷叶 `225×225`→indirect 槽 8、芦苇 `150×150`→槽 9、花→槽 15**，与 B @`0x140a13aef`／`0x140a13ede`／`0x140a13d16`／`0x140a140bd` 一致。此前将荷叶／芦苇尺寸写反，已据原 pass 绑定纠正。正式 water draw 回调消费对应槽；动态编辑后的真实实例计数／画面仍 OPEN。
+- **M05 W2 四次模糊原证复核**：B @`0x140a12870/8c2` preset `0x13`→临时纹理横向 sigma10／通道1；@`0x140a12b46/b94` 临时→preset 纵向 sigma10／通道1；@`0x140a12e11/e5f` preset→临时横向 sigma30／通道2；@`0x140a130dc/1312a` 临时→preset 纵向 sigma30／通道2。dirty 门 @`0x140a12721–0x140a12747` 与现有 `compute_water.rs` 的清标志／位图和 512×512 临时纹理一致。正式 loader 指向发行 `compiled-shaders/_gauss_blur_mask.cs.hlsl_cs_main_0.bin`，SHA-256 `3474c437ce66699d60a2aabcbea699c58a48408879e359b3b38b63b44a2d8258`；提取的 1,478 字 SPIR-V 经 `spirv-val` 通过，反编译显示按横／纵向及通道替换输出。未实测本次运行打开的文件及逐像素差分；此前“shader 编译产物仍未核”仅指 W13 等其他产物。
+- **M05 W13 编译 shader 与分支**：B `0x140a13990–0x140a13997` 的 demo 标志跳过 W13；`0x140a13a8a–0x140a13aaf` 传会话是否秋季。发行芦苇产物 `_water_spawn_reeds.cs.hlsl_cs_main_0.bin` SHA-256 `e5cf1b97c1efbc1b098c65367f91f4ead23688c0871812004954f3925b24fb9f`；荷叶产物 `_water_spawn_lilypads.cs.hlsl_cs_main_0.bin` SHA-256 `1f29a1266813e9705fc9893d76eaf28aaa64d387048ce67fa86b0ef35b47a583`，两份 SPIR-V 经 `spirv-val` 通过。芦苇使用连续路径带并减去 `smoothstep(0.2,0.25,path)`，另验噪声／水／建筑阈值；荷叶使用水、路径、花园及动画 mask，花按分数与随机值递增槽 15。主题 2／4 存在原版季节分支，冬季不整体跳过 W13；当前源码绑定的 mask preset 与 B `0x140a13ba8–0x140a13cb0`／`0x140a13f97–0x140a1405a` 一致。未捕获实际运行打开的文件，也未做季节实例计数与画面差分。
+- **M05 水音频装配去重**：正式 `install_gameplay_device_runtime` 已统一调用 `install_water_audio::<GameplayAudioStudio>`；检查发现 `audio_host::install` 还重复注册同一水循环的 Startup／set38 系统，已从后者移除重复项，由前者为原生与禁用后端各安装一次。真实 FMOD 实例与 Reload 停止时机尚待运行验收。
+- **M05 边界注册原证**：B `Ui2dPlugin::build` @`0x14068d89f–0x14068d8f6` 注册 `ShowDemoBorderOverlay`，现由正式 `toolbar_plugin.rs` 安装；`GladeBorderPlugin` 不再重复注册。B `add_game_startup_systems` @`0x140941110` 经 `0x140a97110`／`0x140a2bf40` 到边界创建器 `0x140af2200`；复核 `0x140941130`／`0x140b67707` 的泛型签名确认组属于 **PreStartup**，前一轮将它记作 Startup 是错误结论。正式宿主已将 `setup_glade_border` 移至 PreStartup，并先于图集加载；十项子组内部无已证链式顺序。圆／矩边界、界外上升沿和退役仍需实际验证，M05-5 保持未勾选。
+- **M05 界外反馈局部测试**：`CARGO_BUILD_JOBS=1 cargo test -p system-glade-border --lib sound_fires_on_each_new_run_of_out_of_border_feedback` 实际运行 1 项通过，日志 `D:/game/tmp-merge/m345-border-feedback-test.log`。它验证连续界外反馈的上升沿音效状态机；尚未通过正式 App 的 UI／音频宿主、真实边界几何和 Reload 退役验收。
+- **取证与验证流程**：每条修改先绑定 B 二进制身份和具体调用／载荷，再检查正式 producer→权威状态→consumer；字节布局、调度、失败路径分别核对，字段来源未知保持 OPEN。PDB 闭包类型不直接计作独立实现，先按实际函数地址归并调用点（本轮路径 12 次调用归并为 4 个实例），再逐实例查正常、失败与消费者，减少重复取证。测试同时记录命令、退出码、`running N tests` 与通过项，0 项不能算通过；局部测试、正式编译、真实 App／GPU／声音与保存重启分别报告，绝不相互代替。并行 agent 按互斥写范围取证，Cargo 由中央串行执行；保留重构渲染引擎，不按原版架构回退。
+- **GPU 验证现场**：`cargo test -p tiny-glade --test original_scene_compute_gpu live_water_and_garden_masks_consume_uploads_keep_channels_and_skip_clean_frames -- --exact --nocapture` 首轮实际运行 1 项，但夹具默认安装根多退一级，在加载资产前因路径不存在失败（`D:/game/tmp-merge/m345-water-garden-gpu.log`）；已修正该测试文件的两处默认根。设置 `TG_INSTALL_ROOT=D:/game/ljxsj_92385/Tiny Glade`、`RHAPSODY_REQUIRE_VULKAN=1` 的重跑在编译阶段因共享 target 中 `country-core` 元数据读取失败／rustc 栈错误退出，未运行 GPU 断言（`m345-water-garden-gpu-rerun.log`）。不得把两次结果计作 GPU 通过；后续在源码稳定后用单作业或独立 target 复核，不清理其他任务的共享构建产物。
+- **真实花园资产测试**：`startup_garden_brush.rs` 的测试读取发行网格、注册资产库和 ECS drawable。首次 `cargo test` 在测试运行前被并行任务的 `systems/wall/eraser/ui_bulldozer.rs:423` E0277 阻断，日志 `D:/game/tmp-merge/m345-garden-real-assets.log`；所属任务修复后，设置 `TG_INSTALL_ROOT=D:/game/ljxsj_92385/Tiny Glade`、`CARGO_BUILD_JOBS=1` 重跑 `cargo test -p country-core --features native-physics --lib shipped_garden_meshes_create_real_library_entries_and_drawables`，目标 1 项实际通过，日志 `D:/game/tmp-merge/m345-garden-real-assets-rerun.log`。它证实真实 mesh→库→shader 描述→drawable 的数据链，尚未验证 Vulkan shader 编译、VAO 入列或最终 draw。
+- **正式宿主编译边界**：`cargo check -p tiny-glade --tests` 曾对花园启动接线通过（`D:/game/tmp-merge/m345-host-check-latest.log`）；之后音频去重、边界 PreStartup 等源码继续变动。并行模块 E0277 修复后，设置 `CARGO_BUILD_JOBS=1` 重跑同命令，退出码 0，日志 `D:/game/tmp-merge/m345-host-check-final.log`。该结果证明截至本批源码的类型与调度可构建，不能代替 App、音频、GPU 或保存验收；若后续 agent 再改生产源码须重新绑定。
+- **夹具调度同步后的编译**：将 `history_runtime.rs` 的独立测试夹具也改为边界 PreStartup 后，`CARGO_BUILD_JOBS=1 cargo check -p tiny-glade --tests` 再次退出码 0，日志 `D:/game/tmp-merge/m345-host-check-after-fixture.log`，绑定下方最新目标源码指纹。该检查仅确认编译，不替代边界 PreStartup 在真实 App 的顺序验收。
+- **本批目标源码指纹**：2026-10-30 收口时按相对路径排序列出 `country-core` 的 `startup/mod.rs`、`startup/startup_garden_brush.rs`、`systems/audio/garden_audio.rs`、`systems/paths.rs`、`systems/world_raster.rs`，`systems/glade-border/src/lib.rs`，`systems/water/src/{draw_water,lib}.rs`，`tiny-glade/src/{audio_host,gameplay_startup,history_runtime,run_game,toolbar_plugin}.rs` 及 `tiny-glade/tests/original_scene_compute_gpu.rs`；每项取 SHA-256，以 `path + 空格 + 小写哈希` 按所列顺序逐行以 LF 连接，再取 SHA-256，得 `5ac806e31444c015c893296bc4b1062aae988896e57f8882cab914cce9114cb1`。最后将边界测试夹具由 Startup 同步至 PreStartup，故先前 `6b909316…` 指纹已过期。这是 M03–M05 目标文件批次标识，非整个并行工作区冻结指纹。
+- **有界真实 GPU 结果**：使用上一批已编出的 `original_scene_compute_gpu-8027e7db986330c2.exe`（SHA-256 `84647bb29495f8fb6235746ad410a01805bb6c2d47529919bd58ed88e0b026af`），设置上述真实安装根与严格 Vulkan 环境，直接运行 `--exact live_water_and_garden_masks_consume_uploads_keep_channels_and_skip_clean_frames --nocapture`；目标 1 项实际通过，日志 `D:/game/tmp-merge/m345-water-garden-gpu-direct.log`。该用例验证当前渲染宿主中 W1→W2／W12 水／花园遮罩的真实上传、通道值及 clean-frame 跳过；二进制编出后仍有音频／边界／路径源码变动，不能代替最终源码整体编译或真实输入到画面整链验收。
+- **最终有界 GPU 重跑**：并行源码稳定后，设置 `TG_INSTALL_ROOT=D:/game/ljxsj_92385/Tiny Glade`、`RHAPSODY_REQUIRE_VULKAN=1`、`CARGO_BUILD_JOBS=1`，执行 `cargo test -p tiny-glade --test original_scene_compute_gpu live_water_and_garden_masks_consume_uploads_keep_channels_and_skip_clean_frames -- --exact --nocapture`；最新编译退出码 0，目标 1 项实际通过，日志 `D:/game/tmp-merge/m345-water-garden-gpu-final.log`。真实 Vulkan 设备、发行 shader、W1 上传、水／花园 mask 通道和 clean-frame 跳过得到验证；测试输入是有界常值栅格，不含真实绘制、岸线实例、声音、保存或重载，M04／M05 整链仍未验收。
+
+### 2026-10-30 M03／M04／M05 续验（以实际运行结果为准）
+
+- **实际发行会话启动**：设置 `TG_INSTALL_ROOT=D:/game/ljxsj_92385/Tiny Glade`、`RHAPSODY_REQUIRE_VULKAN=1`、`CARGO_BUILD_JOBS=1`，执行 `cargo test -p tiny-glade --test original_gameplay_chain shipped_session_through_actual_app_and_production_world_graph -- --exact --nocapture`；目标 1 项运行并通过，构建约 11 分 59 秒、测试 93.54 秒，日志 `D:/game/tmp-merge/m345-full-app-boot.log`。真实 App 进入 Game 会话，生产 draw list 有 177 项，发行场景经当前渲染引擎导出 480×270 物理画面。该用例未对花园／水施加编辑输入，不能替代 M04／M05 动态整链验收；M03 编辑仍未装配。
+- **新增验证入口待运行**：`history_runtime.rs` 加入花园绘制／擦除事件三帧维护用例；`system-water/draw_water.rs` 加入界内外绘水、回放和水橡皮的真实栅格／读回请求用例；`original_scene_compute_gpu.rs` 加入花园 dirty 编辑→生产 compute→indirect 槽 14／16 与实例缓冲的 Vulkan 读回用例。三者均须实际编译、运行并确认目标用例数；读回请求、GPU 子链与实际保存／重启分开验收。
+- **M03 第二字局部原证**：B `draw_path` @`0x140ae4f3c` 将边界圆 X 写入跨变体命令 `rsp+0x9c`，Path/C1/C2/C3 begin 分别 @`0x140ab3b87`／`0x140ab291f`／`0x140ab73bf`／`0x140ab866f` 读取并经 @`0x140868e28` 保存。`paths.rs` 已仅对绘制模式的四种跨变体命令传入该 X，新增负 X 断言待运行。目标命令 `rsp+0x8c`、擦除模式和 UI signifier 的间接析构路径仍 OPEN，不注册未完成的正式路径编辑。
+- **本轮原版运行边界**：M03 代理在 B 发行目录用 LLDB 启动并成功设置 `draw_path@0x140ae4d00` 等断点，但游戏进入场景前由 `steam_api64.dll` 报 `Internal error 0x06: System error!` 并退出；`draw_path` 无命中，不能据此推断实际交互。桌面自动审批拒绝读取错误窗口，代理改用 LLDB 进程内文本取得错误，未收到更具体拒绝理由。没有绕过发行鉴权；后续只凭原指令和静态数据库收窄边界。B @`0x140ae5458–0x140ae54e7` 显示擦除目标及跨变体共用 `rsp+0x98` 命令，已修 `paths.rs` 命令选择；两份当前 strength 恰好同为零，行为等价尚未由原证证明。目标 `rsp+0x8c`、擦除 `rsp+0x9c` 的定义和旧 widget 工厂间接析构全集仍 OPEN。
+- **本轮新增可执行断言待跑**：M04 `garden/tests.rs` 将实际 Garden 拖动历史编辑序列化、恢复，并与即时 CPU 回放完整 composite 和 tile-major staging 对比；M05 `draw_water.rs` 让真实水记录器消费提交事件、只入账一次，再以同一笔画即时撤销／重做；正式宿主花园事件三帧维护和 Vulkan 花园实例缓冲读回用例也已加入。`CARGO_BUILD_JOBS=1 cargo check -p tiny-glade --tests` 于本轮退出码 0，日志 `D:/game/tmp-merge/m345-next-check.log`；该检查发生在 M03 命令选择最终修改前，且不编译上述 `country-core`／`system-water` 库测试，不能替代四个目标用例的执行。中央定向测试已排队，首次尝试被其他任务的共享 Cargo 构建锁阻塞；不得抢锁或用旧测试二进制宣称新断言通过。
+- **M04 History section 续验通过**：代理将现有真实 Garden 输入测试扩到已提交笔画、生产 `SavedMultiEdit`／`HistorySectionJson` 编解码、新 World 的加载命令／历史消费／即时 raster replay，核对完整 composite 与 tile-major staging。中央 `CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 cargo test -p country-core --features native-physics --lib garden_drag_border_resume_commit_records_the_live_raster_once -- --nocapture` 实际 1 项通过，日志 `D:/game/tmp-merge/m345-garden-history-chain-rerun.log`。首轮因新 M03 测试的 `usize`／`u8` 索引类型错误在编译期退出 101，日志 `m345-garden-history-chain.log`，已改正并重跑；首轮不得计通过。此通过覆盖 Garden UI 系统产生的合法笔画到 History section 与 CPU 恢复，不含完整文件 writer、snapshot 选择、新进程或 GPU 画面。
+- **M03 局部用例续验通过**：使用上条刚构建的 `country_core-f11fba68349b5342.exe` 直接运行 `systems::paths::world_raster_tests --nocapture`，7 项实际通过，日志 `D:/game/tmp-merge/m345-path-tests-direct.log`；可执行文件 SHA-256 `57f8120d4b365d9e8acc81b818129bcc41eb3cdb4d4dd0007241eda60efcc4c2`，目标 `paths.rs` SHA-256 `2d1537969daf5e8dfcfd7f5927d73b56a63eeeaa63e7bfc7c14d6ea41aa7d46a`。先前重新提交的 Cargo 命令又被其他 owner 的共享构建锁阻塞，中央取消该等待并改跑本轮刚构建的测试程序；不据此推断未编入的其他源码变动。目标 strength／擦除 strength／间接 UI 和正式接线保持 OPEN。
+- **M03 跨变体事件身份闭合一段**：B `history_record_terrain@0x140ac9770` 包装器第三资源 `+0x18` 在 `0x1416f3c4c` 经 `0x1413bfc50` 初始化，错误字符串 `0x142c45830` 指向 `EventWriter<...DebugHistoryMsg>`；TypeId `0x5252afecb833d03f/b79dd5de9b4b8f59` 与 C1 commit 第六资源逐字相同。资源错误字符串 `0x1415080ab`／`0x14150808d` 直接标明第六项为 `DebugHistoryMsg`、第五项为 `NotifyHintSystemToolWasJustUsed`；C1 @`0x140ab24ca` 先写第六，再 @`0x140ab2511` 写第五。当前共享 `draw_raster` 已有这两个发送动作，无新生产改动。此只闭合 C1 共享队列身份和顺序，不证明九个回调无独立副作用。
+- **M05 水编辑历史续验通过**：`CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 cargo test -p system-water --lib live_water_boundaries_and_instant_history_replay_produce_real_feedback -- --nocapture` 实际 1 项通过，日志 `D:/game/tmp-merge/m345-water-history-chain.log`。用例走 `draw_water<LiveColliderPayload>` 的界内外输入分支、真实 WaterRaster、正式记录器 `record_water_history`、即时撤销／重做及 `route_water_replay_feedback`，断言只入账一笔和读回请求计数。它直接启动测试历史事务，未走正式 UI 事务生命周期、GPU 高度读回完成、音频设备、保存新进程或画面，不勾选 M05 整链包。
+- **新增真实 App／GPU 入口待跑**：`tiny-glade/tests/original_garden_input.rs` 以发行会话启动正式 App，按生产工具栏实体定位 Garden 按钮，经过输入事件、真实 UI 拾取及地形射线绘笔并查权威栅格和 History；尚未编译／运行，不能冒称实际通过。`original_scene_compute_gpu.rs` 的 W13 水植被测试用真实水笔画、W1/W2 和发行 shader 读回槽 8／9／15；中央加了至少一个主题中三类实例各有非零计数的断言，防止条件内容断言空过，尚未执行。两个 GPU 子链均不代替生产画面／存档验收。
+- **严格 Vulkan 实例读回已通过**：使用 `TG_INSTALL_ROOT=D:/game/ljxsj_92385/Tiny Glade`、`RHAPSODY_REQUIRE_VULKAN=1`，`cargo test -p tiny-glade --test original_scene_compute_gpu garden_dirty_stroke_reaches_original_indirect_commands_and_instance_buffers -- --nocapture` 构建并运行目标 1 项通过，日志 `D:/game/tmp-merge/m345-garden-instance-gpu.log`；同一新编译可执行文件直接运行 `water_dirty_stroke_reaches_original_vegetation_buffers --exact --nocapture` 目标 1 项通过，日志 `D:/game/tmp-merge/m345-water-vegetation-gpu.log`。测试二进制 SHA-256 `49aeae0a9ad238eaaec46da52d8ee039af66e4566bc3510c9bc9681bb181398c`，测试源 SHA-256 `abf661c2d6f4b8540f2f09fc10468d0a245d4f476e9842809180e175b24b064e`。M04 dirty 花园用生产 W1/W12/W16 的间接槽14／16及实例缓冲核对；M05 空水槽8／9／15均为零，指定水笔画的夏季实例数分别 4435／142／2828，秋季 5351／142／3061，花季和冬季 4435／142／2828，冬季荷叶位置分支通过。后者三类非零断言实际执行；这些是当前发行 shader 对明确夹具的结果，尚未与原版 GPU 金样逐像素差分，也未覆盖实际屏幕画面、建筑／路径排除、保存或重载。
+- **M03 staging 虚调用取证**：B 正常构造路径的 Path/C1/C2/C3 staging 库键依次为 `0x9fa335d19383656b`／`0xc6df81f12eb726e7`／`0xb004e39a49a347c5`／`0x802ff23dee42ab47`；对应 vtable `0x142c2d498`／`0x142c2c9e0`／`0x142c2d1c0`／`0x142c2c7b0`，`+0x18` 目标 `0x14160f7d0`／`0x14160f6d0`／`0x14160f700`／`0x14160f740` 均仅返回对象及类型相关寄存器，无内存写入。四个实例 staging 查找失败和类型不符分支已定位；成功后的 `copy_to_staging@0x140a172d0` 本身写权威数据，不能算空回调效果。尚未穷尽剩余内联/helper 和库替换路径，九个空回调仍 OPEN。
+- **M03 tag0 第二字新增消费者边**：B `0x14092e091–0x14092e094` 读取擦除命令前 8 字节（包括未知 `rsp+0x9c`）复制到 widget 参数，`0x14092e136–0x14092e192` 再插入 UI 状态；需追其声音/widget 消费者。begin 在 `0x140868e28` 存活动笔画 `+0x6c`；`record_path_history@0x140b1c270` 四变体皆读，Path @`0x140b1c417–0x140b1c44b` 复制到历史对象 `+0x14`。已查即时重放的 tag0 raster 分支和两个序列化实例不使用该字，但尚未穷尽历史、GPU 和 UI 间接消费者，不能将零适配认作原版 padding。目标 `rsp+0x8c`、擦除 `rsp+0x9c` 来源仍未确定，M03 正式接线继续阻断。
+- **M03 widget 声音传播续查**：B `0x140b2e39c/0x140b2e3ab` 从上述 widget 参数首槽读取 24 字节，`0x140b2e3f3–0x140b2e400` 连同事件序号写队列；声音系统 `0x1409d6b90` 的事件首字跳表 `0x142ac2ce8` 的 tag0 入口 `0x1409d6fd8` 在已查路径不读第二字，但该 UI 队列与声音系统第八参数的原版 TypeId/包装器身份尚未绑定。历史 tag1 项经 `History::add@0x140a85195–0x140a851d6` 以 24 字节追加，`generate_path_replay_cmds@0x1416286d0` 后续读取尚未穷尽。复制不是可观察效果证明，也不是无影响证明，继续保留未知。
+- **M05 冬季音频原分支修复待验**：`country-core/src/systems/audio/water_audio.rs` 已按 B @`0x1408738f5–0x14087390c`、`0x140873a23/ba6/bb7/bcc` 将冬季绘制／擦除路由到 IceDraw／IceErase 并停 WaterDraw／WaterErase；非冬季反向处理。发行字符串 @`0x142a98188`／`0x142a981b8` 校正冰循环构造顺序，新增五季分派／事件名断言，尚未运行。真实 FMOD 设备的播放与延迟停止、Reload 生命周期仍未验收。
+- **M04 真实 App 输入首轮失败**：`cargo test -p tiny-glade --test original_garden_input shipped_app_garden_pointer_stroke_records_authoritative_raster_and_history -- --nocapture` 已实际编译、运行 1 项，在 83.49 秒后于 `Garden button has no laid-out hit bounds` 失败，日志 `D:/game/tmp-merge/m345-garden-app-input.log`。失败发生在真实工具栏点击之前，不能当作 Garden 编辑的生产行为失败或通过；代理正核正式布局／可见条件并修测试入口，后续须重跑。
+- **M03 声音同一性及历史传播**：B PDB 具名包装器 `0x1405dc7b0` 将 `ui_update@0x140b2de60` 第八参数标为 `EventWriter<PlayUiSound>`，`0x1405e13c0` 将 `signifier_audio_system@0x1409d6b90` 第八参数标为同类型 reader；tag0 音频分支 `0x1409d6fd8` 已查路径不读第二字。四变体历史回放生成从 Arc `+0x14` 读取并复制该字（Path/C1/C2/C3 @`0x14144316e`／`0x141442d51`／`0x141442f3f`／`0x141442b63`）；共同栅格混合 tag bit0=0 分支未把它传给混合函数，两个直接序列化实例的 tag0 只输出变体名。比较、格式化、其他历史／GPU 消费与保存加载后行为尚未穷尽，不证明零值全局等价。
+- **M05 冬季音频定向测试通过**：`CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 cargo test -p country-core --features native-physics --lib systems::audio::water_audio::tests -- --nocapture` 实际 2 项通过，日志 `D:/game/tmp-merge/m345-water-audio-routing.log`；覆盖五季路由与 IceDraw／IceErase 发行事件名。该用例不启动 FMOD，不能证明实机播放和延迟停止。首轮提交的过窄过滤词已在取得锁前取消，不计测试结果。
+- **M03 加载后回放边仍开放**：B `StrokeBlendMode::deserialize@0x140a197c0` 的 tag0 成功分支只写判别值；`RasterEdit::deserialize@0x1416e8510` 复制两字，`0x140b5db25` 经 Box 加载并于 `0x140b5db7a–0x140b5db85` 复制入 Arc `+0x14`。历史加载四变体 tag1–4 经 `0x140b3b238/1ba/1de/14f` 接 `generate_path_replay_cmds@0x1416286d0`，后者继续复制第二字。四变体直接保存的 tag0 序列化不输出它，已查共同 raster tag0 混合不使用它；比较、格式化、去重、其他间接消费者和完整 GPU 传播尚未穷尽。不能把未赋值载荷直接换成已证零常量。
+- **M03 tag0 raster 函数局部闭合**：B `WorldRaster::rasterize_stroke@0x140a16960` 全函数控制流核对：`0x140a16cec` 虽把第二字载入 `xmm6`，tag bit0=0 在 `0x140a16e71–0x140a16e73` 跳过 `0x140a16e82–0x140a16ebc` 唯一的 strength clamp／混合载荷路径；`0x140a16ee6–0x140a16f18` 的两种 raster 调用未传该字，结束和异常清理也不写它。于该函数其他输入相同的条件下，此字不影响直接光栅参数与写入。该结果不等于全程序可观察等价，也未确定命令原始第二字；历史对象其他消费者仍 OPEN。
+- **M04 真实 App 输入复验通过**：修正测试以正式 Vermeer reveal、Welcome 确认键和工具栏激活区等待真实 Garden 按钮可见后，`CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 cargo test -p tiny-glade --test original_garden_input shipped_app_garden_pointer_stroke_records_authoritative_raster_and_history -- --nocapture` 在严格 Vulkan、发行资产下运行目标 1 项通过，耗时 70.27 秒，日志 `D:/game/tmp-merge/m345-garden-app-input-rerun.log`。新编译二进制 SHA-256 `56c91a0e2bba1c4197f688792e99d7db5b8b629c79ffd9b3f523c457f33ca26a`，当时测试源 SHA-256 `3a60f8c5b9565c04944b0ded86e980b5a716debef8fdd7b265656bdfaf44507f`。测试真实点击 Garden 类别、经正式 UI 拾取和地形射线施笔、GardenRaster 变化并提交一笔 History；不含实际 undo/redo、保存新进程、最终花园画面或 Reload。前述首轮按钮无布局失败保留，不计通过；第二版已添加对可见、选中和模式的断言。
+- **M04 真实撤销／重做／存档续验通过**：上述 `original_garden_input` 用例扩到正式配置键绑定 21／22 的输入翻译、mode manager、Garden raster replay 与生产 `SaveGameCmd` 异步写盘；同一命令在发行资产、严格 Vulkan 下重新编译并运行目标 1 项通过，106.94 秒，日志 `D:/game/tmp-merge/m345-garden-app-undo-save.log`。撤销与重做逐像素比较完整 GardenRaster，回放反馈已触达事件流；存档完成后从磁盘 `history.json` 用生产 `HistorySectionJson` 解码并对比同一真实笔画与游标。此为同一进程保存读回，仍未新进程原加载器恢复、真实花园最终画面、Reload 与 GPU owner 生命周期。
+- **M05 真实 App 水输入入口待验**：新增 `tiny-glade/tests/original_water_input.rs`，按已通过的发行会话、Welcome、工具栏及物理鼠标流程选择 Water，检查 WaterRaster、History、live 绘水事件、地形重算和读回请求；可拾取界外点存在时才测界外事件，否则明确输出 OPEN。该测试尚未编译／运行；严格 Vulkan 的中央命令已提交，结果以后续日志为准。
+- **M05 真实 App 首轮构建受共享宿主阻断**：`cargo test -p tiny-glade --test original_water_input shipped_app_water_pointer_stroke_records_authoritative_raster_and_history -- --nocapture` 退出 101，尚未运行测试；`tiny-glade/src/app_systems.rs:97` 在并行墙系统改动中使 `chain2` tuple 的 `chain_ignore_deferred` 无法解析（E0599），日志 `D:/game/tmp-merge/m345-water-app-input.log`。此为 M1/M6 归属共享构建阻断，不归因水业务；待归属修复后重跑，不在本任务中覆盖墙逻辑。
+- **M05 真实 App 水输入首跑到边界失败**：中央为解除上述 E0599，把同一外层墙链中的相邻 `delete_constructor_output`、`replace_published_plank_owners` 机械组成内层 chain，维持先后；未改墙算法。`original_water_input` 随后实际编译、运行 1 项，49.21 秒后在界外按下反馈断言失败，日志 `D:/game/tmp-merge/m345-water-app-input-rerun.log`。此前真实 WaterRaster 与一笔 History 已变化，观测 live draw 1、recalc 7、读回请求由 0 到 7、界内边界反馈 0；这些前半段观测不能算目标用例通过。B @`0x141ba9432` 的界外显示与 @`0x141ba946b–0x141ba9480` 的输入反馈有 `dragged()!=2` 门，新版测试逐帧记录所选界外点的 phase、widget 和事件，保持断言并待重跑。
+- **M04 新进程原加载验收通过**：`original_garden_input` 扩到父进程正式保存后启动同一测试程序子进程，独立临时账户复制实际会话文件，以生产 `MetaCommand::load_session` 加载，经正常 Reload→Game 和渲染后核对完整 GardenRaster、History 游标／编辑序列及发行 shader 的 GPU Garden mask 红绿通道逐像素读回。`CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 cargo test -p tiny-glade --test original_garden_input shipped_app_garden_pointer_stroke_records_authoritative_raster_and_history -- --nocapture` 在严格 Vulkan 和发行资产下父目标 1 项通过（137.20 秒）、子目标 1 项通过（45.78 秒），日志 `D:/game/tmp-merge/m345-garden-app-new-process.log`。这是新进程实际 loader 与 GPU mask 的验收；最终屏幕中石头／小花 drawable 像素、同进程多次 Reload、音频设备与 GPU owner 基线仍未包括。
+- **M05 界外按下失败诊断**：更新后的 `original_water_input` 在严格 Vulkan、发行会话下实际编译并运行，水笔画前半段再次出现 draw 1／recalc 7／读回请求 7，但在界外点 `(5,5)` 的按下反馈断言失败，退出 101，日志 `D:/game/tmp-merge/m345-water-app-undo-save.log`。逐帧诊断显示按下前后 UiInteraction 为 `native_tag=0,native_phase=1,WidgetId(4020977400939556587)`，水画布 `dragged()==2`；界外显示事件 4、反馈 0、绘水 0。B `0x141ba946b–0x141ba9480` 仅在水画布拖拽非 2 时发输入反馈，此候选点被其他 UI 持有，不满足原条件。测试原筛选仅查悬停，现需按下后再次核实际 widget/phase；无合格点时须报告界外交互 OPEN，不能视为已验收。新增水 undo/redo/Save 断言位于失败点之后，仍未执行。
+- **M05 第三轮 App 运行环境失败**：候选筛选修正后，`original_water_input` 编译并运行 1 项，仍在长时间界外屏幕扫描中于 `system_decorator::dormer_holes::upload_dormer_holes_to_gpu` 的 `Result::unwrap()` 遇 `Err(Device)`，tg-compute worker panic，退出 101，日志 `D:/game/tmp-merge/m345-water-app-final-rerun.log`。水编辑前段仍记录 draw 1／recalc 7／读回请求 7；未到水 undo/redo/保存，不能继承后段通过。当前尚未判明是大量 App tick 未渲染/回收所致、GPU 资源约束还是生产宿主问题；正查具体 owner 和缩短真实候选搜索，不以跳过边界断言掩盖错误。此前 M1/M6 并行源码还使该轮首次编译受 `system-critters` 私有 `mode_manager::types` 导入 E0603 阻断，中央仅将两处导入改为公开重导出 `mode_manager::{AppMode, WallShape}` 后再测；首次失败日志 `m345-water-app-undo-save-rerun.log`。
+- **M03 用户指定的定向自动化**：一名 Terra 专项 agent 已按用户要求负责批量导出 B `draw_path` 与四种机器实例、制作调用／字段／事件表，追未知第二字和九个回调的全部实际消费者；能独立原侧运行的纯算法才制作带原二进制 SHA 的输入输出金样并与 Rust 逐位差分。每段原证闭合后才提交正式实现和可审查 App 接线；动态 B 游戏遇 Steam 启动错误，不绕过发行鉴权。中央只做独立审查、正式验证与 M4/M5 协调；自动化工具建立或连接成功不计业务进度。
+
+### 独立交付与验收记录要求
+
+每完成一包，在本节对应项记录“原证位置／身份、实际修改位置、正式 producer → 权威状态／算法 → consumer、验证命令与日志、通过范围和未决”，达到该包条件后再勾选；源码、局部测试、原侧差分和模块验收分开写。原版完整算法／分支／失败策略优先，不允许用默认值、空回调、假 ready、假碰撞或削弱断言换取通过。
+
+每模块交付必须包含：真实输入触发原业务；权威状态、实体、碰撞和画面同步（不适用项须原证说明）；完整撤销／重做与保存／恢复；删除、卸载和重入无残留；相应原证核对与实际链验证。M17 只验共同运行，不替这三个模块补遗漏。Daily、T13 反馈、Credits／许可证和真实 Steam SDK 等既定排除项不在本清单中。
 
 ## 按模块实施计划（2026-10-24）
 
@@ -802,3 +1052,12 @@ B 归属为 `crates/systems/toolbar/src/photomode/photomode_buttons.rs`；本轮
 - Vermeer原OnExit deactivate与摄影临时screen清理已接线，最新正向残留回归未执行。目标硬件Release性能、完整卸载资源稳定性均未验收。
 
 本次是当前用户渲染工作区之上的业务恢复checkpoint；同工作区另行进行的渲染／基础库改动保留在工作区，不一并提交为toolbar成果。源码指纹是停止时工作区身份，不能把它当成旧测试日志对应源码或独立干净HEAD的通过证明。
+
+## 2026-10-30 M03／M04／M05 提交前冻结状态
+
+用户要求现在停止继续实现并提交、推送共享工作区当前可提交修改；M03／M04／M05 专项已停止写入。此处为源码与证据 checkpoint，不表示三个模块完成。共享工作区另有 M01、M06、颜色、工具栏和其他 agent 修改；它们随同一次仓库提交保存，但本节不替其宣称测试通过。
+
+- **M03 定向自动化**：B EXE SHA-256 cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323。evidence/round12/brush-runtime-full/m3-pe-audit.py 生成五个显式窗口的 3,895 条原始指令、127 条调用或间接跳转记录、29 个直接目标的 PE 范围索引，以及四个实例的 commit 地址表；原始内存操作数尚非别名完整的字段读写表，也未完成全部直接调用反编译和间接消费者。B DrawState::update@0x140ae4bd0 原叶函数机器码与 paths.rs 源 SHA-256 2d1537969daf5e8dfcfd7f5927d73b56a63eeeaa63e7bfc7c14d6ea41aa7d46a 编出的 Rust 方法在 state／mode／raw 全部 256³=16,777,216 组输入逐字节一致；两端输出 SHA-256 均为 9890eee08cf39240539029df8f8f21afc2bc9bb7ba4ef1530cb09ea14e3bff50，见 m3-drawstate-native-diff.json。这只闭合状态转换叶函数，命令第二字来源、九个回调和完整实际消费者仍 OPEN；路径正式 App 编辑未接入。
+- **M04 新增生产 draw list 断言**：original_garden_input.rs 现检查石头／小花进入 G-buffer、石头进入阴影列表且小花不进入；本次新增断言尚未 Cargo 实跑。先前真实笔画→撤销／重做→生产保存→独立新进程正式加载→GardenRaster、History 与 GPU mask 通道逐像素一致的通过记录仍以 D:/game/tmp-merge/m345-garden-app-new-process.log 及当时源码为界。实际实例非零、最终画面像素、同进程 Reload 生命周期和真实音频设备仍 OPEN。
+- **M05 新夹具本轮运行边界**：original_water_input.rs 源 SHA-256 98804849579644bbf2054103f45e58b0f3e607dc243b9370c0eef945534f468f，设置发行资产与严格 Vulkan 的 cargo test -p tiny-glade --test original_water_input shipped_app_water_pointer_stroke_records_authoritative_raster_and_history -- --nocapture 已编译并进入 running 1 test，日志 D:/game/tmp-merge/m345-water-app-next.log 记录真实水笔画 draw=1、地形重算=7、读回请求 0→7。执行会话随后结束，日志没有最终 test result，不能记通过或把后续界外、撤销／重做、保存判作已验。夹具目前的完整笔画保存比较还会将原版 Max 序列化省略的 strength 与内存 1.0 比较，需按原版有效字段修正；生产 draw_water 的 strength=1.0 来源仍 OPEN，不以此测试值声称原版等价。新进程加载、动态 GPU 水与植被、边界生命周期、真实 FMOD 仍 OPEN。
+- **验证流程**：原证导出脚本绑定 EXE SHA、函数地址和指令字节；差分夹具绑定当前 Rust 源指纹并记录输入域、输出哈希与首失配。每个正式 App 结论单独绑定测试源码、二进制、发行资产、命令和完整日志；仅以出现 running 的目标用例及最终 test result 作为通过依据。共享 Cargo 锁由中央串行使用；其他 agent 修改导致指纹变化时只重验受影响链，不继承旧日志。

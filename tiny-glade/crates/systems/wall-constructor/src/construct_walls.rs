@@ -42,22 +42,12 @@ pub fn construct_walls(
         } else { global.finalized_holes().expect("原半木墙洞口尚未最终化") };
         let mut curved = Vec::new();
         if let Some(roof) = roof.filter(|_| wall.authority.style() >= 2) {
-            // 原分配在PublicWallState+180；当前重构以同一墙独立持久owner承载。
-            // 先遵守生成器的demo／形状门，避免为本来不读缓冲的路径增加失败。
-            if !demo.0 && wall.try_get_wall_shape().is_some() {
-                let storage = library.get::<WoodenPlankSsbo>().expect("原半木木板缓冲区缺失");
-                output.gpu.init_half_timber_planks(storage, id.0);
-            }
             crate::utils::half_timber::half_timbering(crate::utils::half_timber::HalfTimberInput {
                 wall, wall_id: id, decorators: &decorators, derived: derived.as_view(),
                 terrain: &terrain, segment_heights: &wall.segment_heights,
                 path_heights: &arrays.second_heights, roof, holes: finalized, demo_mode: demo.0,
             }, &mut library, &output.gpu, &mut curved);
             if roof.is_gable() {
-                if wall.is_rectangle().is_some() {
-                    let storage = library.get::<WoodenPlankSsbo>().expect("原屋顶轮廓木板缓冲区缺失");
-                    output.gpu.init_half_timber_planks(storage, id.0);
-                }
                 crate::utils::half_timber::roof_outline(wall, id, roof, &mut library, &output.gpu);
             }
         }

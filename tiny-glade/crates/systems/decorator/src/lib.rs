@@ -178,7 +178,9 @@ pub fn add_decorator_systems<S: Send + Sync + 'static, C: Send + Sync + 'static>
             handle_external_decorator_cmds::handle_external_decorator_cmds::<C>,
         )
             .chain()
-            .after(window_lights::window_lights),
+            .after(window_lights::window_lights)
+            .after(country_core::systems::wall::eraser::ui_bulldozer::wall_eraser_bulldoze::<S>)
+            .before(country_core::systems::history::recording::history_finish_recording_system::<S>),
     );
 
     // 回放（0x14080c8d0）消费 `LiveDecoratorArchivist` 的 cull 集；在历史链后。
@@ -227,6 +229,8 @@ pub fn add_decorator_events_and_resources(world: &mut World) {
     world.init_resource::<bevy_ecs::event::Events<
         handle_external_decorator_cmds::ExternalDecoratorCmd,
     >>();
+    world.init_resource::<bevy_ecs::event::Events<country_core::systems::wall::eraser::ui_bulldozer::HandleStairAttachedDecoratorsOnStairPointDeletion>>();
+    world.init_resource::<country_core::resources::stairs::stairs_assembly_params::PlayermadeStairsAssemblyRequests>();
     // 音频事件通道由 country-core `add_audio_events` 注册（PlayDecoratorSoundCmd
     // 属于 core）；装饰域直接写该事件。
 }

@@ -435,6 +435,27 @@ pub fn write_settings_file_system(
     }
 }
 
+/// Consume settings requests at the host frame tail, after the gameplay App
+/// update and any window/video requests have emitted their events.
+pub fn consume_settings_at_frame_tail(
+    world: &bevy_ecs::world::World,
+    cursor: &mut bevy_ecs::event::EventCursor<WriteSettingsFileCmd>,
+) -> bool {
+    if cursor.read(world.resource::<bevy_ecs::event::Events<WriteSettingsFileCmd>>()).last().is_none() {
+        return false;
+    }
+    let config = world.resource::<GameConfig>();
+    let persisted = world.get_resource::<LaunchDisplayOverride>()
+        .map(|policy| policy.persistence_config(config));
+    let config = persisted.as_ref().unwrap_or(config);
+    if let Some(repro) = world.get_resource::<PanicReproStateResource>() {
+        write_settings_file(config, &repro.0);
+    } else {
+        write_game_config_to_disk(config);
+    }
+    true
+}
+
 /// `VulkanLayerAllowlistDefaults`（`.rdata 0x1429b59ae`：字段 `version`,`add`）。
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct VulkanLayerAllowlistDefaults {

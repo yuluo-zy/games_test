@@ -32,7 +32,7 @@ use crate::systems::wall::{
         AnimateWallBulldozeCmd, WallBulldozeAudio, WallEraserStroke,
         animate_wall_bulldoze::{AnimateWallBulldozeBuffer, animate_wall_bulldoze},
         archivist::WallEraserArchivist,
-        ui_bulldozer::{BulldozerRayPick, enqueue_bulldoze_command, wall_eraser_bulldoze},
+        ui_bulldozer::{enqueue_bulldoze_command, wall_eraser_bulldoze},
         wall_eraser::wall_eraser,
     },
     shapes::{
@@ -116,9 +116,23 @@ pub fn register_wall_cpu_resources(world: &mut World) {
     world.init_resource::<Events<DisableSnapping>>();
     world.init_resource::<AnimateWallBulldozeBuffer>();
     world.init_resource::<WallEraserArchivist>();
-    world.init_resource::<BulldozerRayPick>();
     world.init_resource::<Events<AnimateWallBulldozeCmd>>();
     world.init_resource::<Events<WallBulldozeAudio>>();
+    world.init_resource::<Events<crate::systems::audio::PlayStairsAudioCmd>>();
+    world.init_resource::<crate::resources::tree_storage::TreeStorage>();
+    world.init_resource::<crate::DevOverrideIsDemoMode>();
+    world.init_resource::<crate::resources::stairs::stairs_removed_supports::StairsRemovedSupports>();
+    world.init_resource::<crate::resources::walls::cached_decorator_transforms::CachedDecoratorTransforms>();
+    world.init_resource::<crate::resources::walls::decorator_subtype::DerivedDecoratorSubtypes>();
+    world.init_resource::<crate::resources::walls::decorator_subtype::DecoratorMeshLibrary>();
+    world.init_resource::<Events<crate::resources::walls::decorator::ExternalDecoratorCmd>>();
+    world.init_resource::<Events<crate::systems::wall::eraser::ui_bulldozer::HandleStairAttachedDecoratorsOnStairPointDeletion>>();
+    world.init_resource::<Events<crate::systems::wall::structure_outline::OutlineStairsCmd>>();
+    world.init_resource::<Events<crate::systems::wall::wall_highlight::HighlightWallCmd>>();
+    world.init_resource::<Events<crate::resources::roofs::commands::HighlightRoofCmd>>();
+    world.init_resource::<crate::resources::stairs::stairs_state::StairsState>();
+    world.init_resource::<crate::resources::stairs::stairs_assembly_params::PlayermadeStairsAssemblyRequests>();
+    world.init_resource::<Events<crate::resources::history::tree_edit::DeleteTreeCmd>>();
     world.init_resource::<Events<WallEraserStroke>>();
     // snapping_audio emits the audio-domain PlayWallUiSound event.
     world.init_resource::<Events<crate::systems::audio::PlayWallUiSound>>();
@@ -260,10 +274,10 @@ pub fn add_wall_cpu_systems(schedule: &mut Schedule) {
     schedule.add_systems(
         (
             animate_wall_bulldoze,
-            wall_eraser_bulldoze,
+            wall_eraser_bulldoze::<crate::resources::history::MaybePendingSnapshotId>,
             // 归属核对（fresh）：缓冲入队是 native 跳表目标 handler，须在
             // ray-pick 生产者（wall_eraser_bulldoze）之后消费 AnimateWallBulldozeCmd。
-            enqueue_bulldoze_command.after(wall_eraser_bulldoze),
+            enqueue_bulldoze_command.after(wall_eraser_bulldoze::<crate::resources::history::MaybePendingSnapshotId>),
             snapping_audio,
             snapping_signifiers,
         )

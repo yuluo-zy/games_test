@@ -312,7 +312,14 @@ impl LayoutStyle {
         children: impl IntoIterator<Item = Vec2>,
     ) -> Vec2 {
         let children: Vec<_> = children.into_iter().collect();
-        let mut result = Vec2::ZERO;
+        // B140fe0e6e/1067: initialize the main-axis accumulator with gaps
+        // before adding children; regrouping the f32 sum changes layout bits.
+        let gaps = self.gap.minimum() * (children.len().saturating_sub(1) as f32);
+        let mut result = if self.swizzle == 0 {
+            Vec2::new(gaps, 0.)
+        } else {
+            Vec2::new(0., gaps)
+        };
         for child in &children {
             if self.swizzle == 0 {
                 result.x += child.x;
@@ -321,12 +328,6 @@ impl LayoutStyle {
                 result.x = result.x.max(child.x);
                 result.y += child.y;
             }
-        }
-        let gaps = self.gap.minimum() * (children.len().saturating_sub(1) as f32);
-        if self.swizzle == 0 {
-            result.x += gaps;
-        } else {
-            result.y += gaps;
         }
         result += Vec2::new(
             self.padding[0].minimum() + self.padding[2].minimum(),
@@ -367,11 +368,12 @@ pub fn place_childen_impl<S: Swizzle>(
     let end_pad = style.padding[me].resolve(main);
     let cross_start = style.padding[cs].resolve(cross);
     let cross_end = style.padding[ce].resolve(cross);
-    let without_pads = main - start_pad - end_pad;
+    let main_padding = end_pad + start_pad;
+    let without_pads = main - main_padding;
     let mut gap = style.gap.resolve(without_pads);
     let gap_count = children.len().saturating_sub(1) as f32;
     let available = without_pads - gap_count * gap;
-    let cross_available = cross - cross_start - cross_end;
+    let cross_available = cross - (cross_end + cross_start);
     let base_main = |child: &ChildLayoutInput<'_>| {
         let (dimension, intrinsic, minimum) = if S::VERTICAL {
             (child.style.min, child.padding[1], child.prev_y)
@@ -386,7 +388,8 @@ pub fn place_childen_impl<S: Swizzle>(
     };
     let sum: f32 = children.iter().map(base_main).sum();
     let sum_expand: f32 = children.iter().map(|c| c.style.expand).sum();
-    let remaining = main - start_pad - end_pad - gap_count * gap - sum;
+    // B140fe14a6..14af: subtract (gaps + children), then summed padding.
+    let remaining = (main - (gap_count * gap + sum)) - main_padding;
     let alignment_free = (1. - sum_expand).clamp(0., 1.) * remaining;
     let mut cursor = start_pad;
     match style.justify.0 {
@@ -450,6 +453,117 @@ pub fn place_childen_impl<S: Swizzle>(
 #[cfg(test)]
 mod native_layout_tests {
     use super::*;
+    #[test]
+    fn minimum_main_axis_matches_original_gap_first_f32_accumulation() {
+        // Original RNE140fe0e3d..0e72 + 140fe1060..106e; see
+        // reports/business/2026-10-23-module-recovery/m0-render-algorithm-review-2026-10-30.md.
+        for swizzle in [0, 1] {
+            let style = LayoutStyle {
+                gap: LengthPercentage::absolute(10.),
+                swizzle,
+                ..Default::default()
+            };
+            let size = style.compute_min_size_with_children(
+                [LengthPercentage::default(); 2],
+                [Vec2::splat(0.1); 3],
+            );
+            assert_eq!(
+                if swizzle == 0 { size.x } else { size.y }.to_bits(),
+                0x41a26667
+            );
+        }
+    }
+
+    #[test]
+    fn placement_percentage_sizes_use_original_summed_padding() {
+        // Native140fe137a..13fe: main100, padding .1/.2, three children,
+        // gap10 gives available bits429f6666 (sequential subtraction differs).
+        let percent = LengthPercentage {
+            is_percent: true,
+            value: 1.,
+        };
+        let child_style = LayoutStyle::default();
+        for swizzle in [0, 1] {
+            let mut style = LayoutStyle {
+                gap: LengthPercentage::absolute(10.),
+                justify: Justify(0),
+                align: 1,
+                swizzle,
+                ..Default::default()
+            };
+            style.padding = [0.1, 0.1, 0.2, 0.2].map(LengthPercentage::absolute);
+            let intrinsic = [percent; 2];
+            let children: Vec<_> = (0..3)
+                .map(|_| ChildLayoutInput {
+                    style: &child_style,
+                    padding: &intrinsic,
+                    prev_x: 0.,
+                    prev_y: 0.,
+                })
+                .collect();
+            let parent = ParentLayout {
+                main: 100.,
+                cross: 100.,
+                offset: Vec2::ZERO,
+            };
+            let layouts = place_childen(&style, &parent, &children);
+            let size = layouts[0].size;
+            assert_eq!(
+                if swizzle == 0 { size.x } else { size.y }.to_bits(),
+                0x429f6666
+            );
+            assert_eq!(
+                if swizzle == 0 { size.y } else { size.x }.to_bits(),
+                0x42c76666
+            );
+        }
+    }
+
+    #[test]
+    fn expansion_preserves_original_gap_sum_then_padding_subtractions() {
+        // B140fe14a6..14af and 140fe1627..1631: the rounding-sensitive
+        // remainder feeds proportional expansion on either layout axis.
+        for swizzle in [0, 1] {
+            let mut style = LayoutStyle {
+                gap: LengthPercentage::absolute(10.),
+                justify: Justify(0),
+                align: 1,
+                swizzle,
+                ..Default::default()
+            };
+            let (start, end) = if swizzle == 0 { (0, 2) } else { (1, 3) };
+            style.padding[start] = LengthPercentage::absolute(0.1);
+            style.padding[end] = LengthPercentage::absolute(0.2);
+            let child_style = LayoutStyle {
+                expand: 1.,
+                ..Default::default()
+            };
+            let intrinsic = [LengthPercentage::default(); 2];
+            let children: Vec<_> = (0..3)
+                .map(|_| ChildLayoutInput {
+                    style: &child_style,
+                    padding: &intrinsic,
+                    prev_x: 0.1,
+                    prev_y: 0.1,
+                })
+                .collect();
+            let layouts = place_childen(
+                &style,
+                &ParentLayout {
+                    main: 100.,
+                    cross: 100.,
+                    offset: Vec2::ZERO,
+                },
+                &children,
+            );
+            let size = layouts[0].size;
+            assert_eq!(
+                if swizzle == 0 { size.x } else { size.y }.to_bits(),
+                0x41d48888
+            );
+        }
+    }
+
     #[test]
     fn expand_uses_remaining_space_and_axes_transpose() {
         let mut parent = LayoutStyle {

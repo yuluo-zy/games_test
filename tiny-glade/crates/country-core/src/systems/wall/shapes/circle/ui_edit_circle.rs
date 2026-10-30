@@ -58,8 +58,8 @@ pub fn show_full_circle_signifier(
 ) {
     use crate::systems::ui::signifiers::signifier_factory::SignifierMesh;
     use crate::systems::ui::signifiers::{SignifierEntityBuilder, SignifierFactory};
-    let factory = SignifierFactory::from_closure(
-        &format!("circle{wall:?}_edit_{circle:?}{height}_{width}"),
+    let mut factory = SignifierFactory::from_closure(
+        &format!("circle{wall:?}_edit_{circle:?}_{height}{width}"),
         std::sync::Arc::new(move |meshes, shaders, commands| {
             let entity =
                 SignifierEntityBuilder::new(SignifierMesh::Generated(Box::new(move || {
@@ -73,6 +73,7 @@ pub fn show_full_circle_signifier(
             vec![entity]
         }),
     );
+    factory.marker = 0x142c824f8;
     stream.write_factory(&factory);
 }
 
@@ -186,9 +187,13 @@ pub fn ui_edit_circle<S: Send + Sync + 'static>(
                 return false;
             };
             let height = state.max_y() - state.geometry.metrics.constrained_extra * 0.5;
+            let preview = ::utils::geometry::Circle2d {
+                radius: circle.radius + 0.5,
+                ..circle
+            };
             let geometry = if selected.is_some() {
                 WidgetGeometry::SphereCloud {
-                    centers: circle.as_curve3(0.5, height).points,
+                    centers: preview.as_points3(0.5, height).collect(),
                     radius: 0.5,
                 }
             } else {
@@ -230,7 +235,7 @@ pub fn ui_edit_circle<S: Send + Sync + 'static>(
                 let normal = relative * inverse;
                 let y = if selected.is_some() { height } else { point.y };
                 if selected.is_none() {
-                    highlight.write(HighlightWallCmd { wall, ty: 0 });
+                    highlight.write(HighlightWallCmd { wall, ty: 2 });
                 }
                 active = Some((
                     wall,
@@ -243,7 +248,7 @@ pub fn ui_edit_circle<S: Send + Sync + 'static>(
                 ));
                 return true;
             } else if selected.is_some() {
-                show_full_circle_signifier(&mut stream, wall, circle, height, 3.0);
+                show_full_circle_signifier(&mut stream, wall, preview, height, 3.0);
             }
             false
         };
@@ -1193,6 +1198,10 @@ use crate::systems::wall::wall_highlight::HighlightWallCmd;
         world.insert_resource(inner);
         world.insert_resource(public);
         world.init_resource::<WallEntities>();
+        let entity = world
+            .spawn(crate::resources::walls::wall_trigger_volume::WallTriggerVolume::default())
+            .id();
+        world.resource_mut::<WallEntities>().0.insert(wall, entity);
         world.init_resource::<RaycastWorld>();
         world.insert_resource(GladeBorder(
             crate::resources::glade_border::BorderShape::Circle(::utils::geometry::Circle2d::new(
@@ -1238,9 +1247,9 @@ use crate::systems::wall::wall_highlight::HighlightWallCmd;
             }
             schedule.run(&mut world);
             let name = if step == 0 {
-                format!("edit_circle_wall_{wall}")
+                format!("edit_circle_wall_{}", wall.0)
             } else {
-                format!("edit_circle_wall_focused_{wall}")
+                format!("edit_circle_wall_focused_{}", wall.0)
             };
             let widget = world
                 .resource::<UiState>()
@@ -1375,7 +1384,7 @@ use crate::systems::wall::wall_highlight::HighlightWallCmd;
                 .chain_ignore_deferred(),
         );
         schedule.run(&mut world);
-        let selected = WidgetId::from_name(&format!("edit_circle_wall_{wall}"));
+        let selected = WidgetId::from_name(&format!("edit_circle_wall_{}", wall.0));
         let widget = world.resource::<UiState>().widget(selected).unwrap();
         assert!(
             matches!(&widget.geometry, Some(WidgetGeometry::TriangleMesh(tris)) if !tris.is_empty())
@@ -1547,13 +1556,24 @@ use crate::systems::wall::wall_highlight::HighlightWallCmd;
             .get(DecoratorStorageAddr::Wall(wall))
             .unwrap()
             .decorators()[&11];
+        // B 14165ec3b..ed82 skips roof destinations (tag 2), so this
+        // entry must not be marked by the perimeter reprojection.
         assert!(
-            world
+            !world
                 .resource::<DecoratorStorage>()
                 .get(DecoratorStorageAddr::Wall(wall))
                 .unwrap()
                 .modified_ids
                 .contains(&13)
+        );
+        assert_eq!(
+            world
+                .resource::<DecoratorStorage>()
+                .get(DecoratorStorageAddr::Wall(wall))
+                .unwrap()
+                .decorators()[&13]
+                .dst_tag(),
+            2
         );
         let pos = Vec2::new(
             f32::from_bits((info.dst_payload >> 32) as u32),

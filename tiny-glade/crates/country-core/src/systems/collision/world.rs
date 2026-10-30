@@ -1632,6 +1632,12 @@ impl RaycastWorld {
         self.roof_colliders.get(&entity)
     }
 
+    /// Inspect the real wall collider owner for an existing wall entity.
+    #[cfg(feature = "native-physics")]
+    pub fn wall_collider_instance(&self, entity: bevy_ecs::entity::Entity) -> Option<&ColliderMeshInstance> {
+        self.wall_colliders.get(&entity)
+    }
+
     /// 原get_rapier_collider的只读借用投影；调用者负责保留missing的原失败先后。
     #[cfg(feature = "native-physics")]
     pub fn get_rapier_collider_ref(&self, slot: u8, handle: rapier3d::geometry::ColliderHandle)

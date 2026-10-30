@@ -117,7 +117,7 @@ pub fn move_gizmo_and_trigger_vol<'ui>(
         let start = position;
         let end = Vec3::new(position.x, ground_y, position.z);
         stream.write_factory(&SignifierFactory::from_closure(
-            &format!("move_shape_line{wall}{position}{end}{position}"),
+            &format!("move_shape_line{wall:?}{position:?}{end}{position}"),
             Arc::new(move |meshes, shaders, commands| {
                 let entity = SignifierEntityBuilder::from_points(vec![end, start])
                     .animation_duration(0.0)
@@ -147,7 +147,7 @@ pub fn move_gizmo_and_trigger_vol<'ui>(
     for (pass, mesh) in [(0, "move_shape"), (1, "move_shape_outline")] {
         let rotation = orientation;
         stream.write_factory(&SignifierFactory::from_closure(
-            &format!("move_shape{wall}{position}{mesh}{display_scale}{rotation}"),
+            &format!("move_shape{wall:?}{position:?}{mesh}{display_scale}{rotation:?}"),
             Arc::new(move |meshes, shaders, commands| {
                 vec![
                     SignifierEntityBuilder::from_mesh_name(mesh)
@@ -1079,6 +1079,9 @@ mod tests {
                 .init_resource::<Events<crate::systems::wall::adjust_wall_height::AdjustWallHeightCmd>>(
                 );
             world.init_resource::<crate::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer>();
+            // Timed Morph replay advances using the real GameTime delta. The
+            // default clock is stopped, so supply a frame delta as the host does.
+            world.resource_mut::<GameTime>().delta = 0.05;
             let mut replay = Schedule::default();
             replay.add_systems(
                 (
@@ -1092,6 +1095,8 @@ mod tests {
             for _ in 0..400 {
                 replay.run(&mut world);
             }
+            assert!(world.resource::<crate::resources::history::ReplayBuffer>().is_empty());
+            assert!(world.resource::<Events<crate::systems::history::HistoryReplayFailed>>().is_empty());
             let restored = world
                 .resource::<InnerWalls>()
                 .get(wall)
@@ -1106,6 +1111,8 @@ mod tests {
             for _ in 0..400 {
                 replay.run(&mut world);
             }
+            assert!(world.resource::<crate::resources::history::ReplayBuffer>().is_empty());
+            assert!(world.resource::<Events<crate::systems::history::HistoryReplayFailed>>().is_empty());
             let redone = world
                 .resource::<InnerWalls>()
                 .get(wall)
@@ -1152,6 +1159,9 @@ mod tests {
             assert!(
                 matches!(&support.groups[0][0],WallHistoryEdit::ChangeSupports(change) if change.wall_index==wall.0 && change.before && !change.after)
             );
+            let support_sounds: Vec<_> = world.resource_mut::<Events<PlayWallUiSound>>().drain().collect();
+            assert_eq!(support_sounds.len(), 1);
+            assert_eq!(support_sounds[0].kind, 0x11);
             #[cfg(feature = "native-physics")]
             if matches!(shape, Shape::Circle(_)) {
                 let starting_shape = with_center(shape, Vec2::new(4.0, 0.0));
@@ -1193,7 +1203,14 @@ mod tests {
                 roof_bytes[0x4c..0x50].copy_from_slice(&5.0f32.to_le_bytes());
                 roof_bytes[0x0c..0x10].copy_from_slice(&6.5f32.to_le_bytes());
                 let other_roof = world.spawn(Roof::from_observed(roof_bytes)).id();
-                let selected_roof = world.spawn(Roof::from_observed([0; 88])).id();
+                // The downward snap ray starts at the selected roof's height
+                // minus 0.5. A flat zero-height roof starts below the target
+                // collider and cannot hit it; make the source roof pitched.
+                let mut selected_roof_bytes = [0; 88];
+                selected_roof_bytes[0x14..0x18].copy_from_slice(&2.0f32.to_le_bytes());
+                selected_roof_bytes[0x30..0x34].copy_from_slice(&1.0f32.to_le_bytes());
+                let selected_roof = world.spawn(Roof::from_observed(selected_roof_bytes)).id();
+                assert!(world.get::<Roof>(selected_roof).unwrap().height() - 0.5 > 6.0);
                 world
                     .resource_mut::<PublicWalls>()
                     .associate_roof(wall, selected_roof);
@@ -1229,7 +1246,10 @@ mod tests {
                         utils::geometry::Circle2d::new(glam::Vec2::ZERO, 65.0),
                     ));
                 world.insert_resource(UiState::at_startup());
-                let inverse = glam::Mat4::from_translation(glam::Vec3::new(4.0, 1.0, 10.0));
+                // The picker builds its own camera ray, independently of
+                // CameraCursorRay. Aim that ray through the ground-level
+                // gizmo (half-height 0.25), not one metre above it.
+                let inverse = glam::Mat4::from_translation(glam::Vec3::new(4.0, 0.0, 10.0));
                 let mut camera =
                     crate::systems::camera_rig::main_camera::MainCamera::new(1280.0 / 720.0);
                 camera.write_matrix(0, &glam::Mat4::IDENTITY);
@@ -1246,6 +1266,8 @@ mod tests {
                 world.resource_mut::<ActionSetStates>().digital[0].phase =
                     crate::input::action_set::DigitalActionPhase::JustPressed;
                 schedule.run(&mut world);
+                assert_eq!(world.resource::<UiState>().interaction().widget, widget);
+                assert_eq!(world.resource::<UiState>().click_byte(), 3);
                 world.resource_mut::<ActionSetStates>().digital[0].phase =
                     crate::input::action_set::DigitalActionPhase::Held;
                 world.resource_mut::<CameraCursorRay>().origin = glam::Vec3::new(6.0, 10.0, 0.0);
@@ -1330,7 +1352,8 @@ mod tests {
                 };
                 let expected = a * (1.0 - t) + b * t;
                 *world.get_mut::<Roof>(other_roof).unwrap() = roof;
-                let factories_before = world.resource::<UiSignifierStream>().committed_len();
+                // Isolate this frame so each producer's output can be checked.
+                world.resource_mut::<UiSignifierStream>().take_entries();
                 schedule.run(&mut world);
                 let segment = world
                     .resource::<InnerWalls>()
@@ -1349,11 +1372,27 @@ mod tests {
                         .count(),
                     1
                 );
+                let entries = world.resource_mut::<UiSignifierStream>().take_entries();
+                let names: Vec<_> = entries
+                    .iter()
+                    .map(|entry| {
+                        let crate::systems::ui::signifiers::signifier_create::UiSignifierEntry::Factory(factory) = entry else {
+                            panic!("move and ridge signifiers must be factories");
+                        };
+                        factory.name().unwrap()
+                    })
+                    .collect();
+                // B 14097d4c7 emits the vertical ground line only for a
+                // positive elevation; this fixture's selected wall is grounded.
                 assert_eq!(
-                    world.resource::<UiSignifierStream>().committed_len() - factories_before,
-                    5,
-                    "three gizmo factories and both ridge lines"
+                    world.resource::<PublicWalls>().get(wall).unwrap().authority.elevation(),
+                    0.0
                 );
+                assert_eq!(names.len(), 4);
+                assert_eq!(names.iter().filter(|name| name.contains("move_shape_outline")).count(), 1);
+                assert_eq!(names.iter().filter(|name| name.starts_with("move_shape") && !name.contains("move_shape_outline") && !name.starts_with("move_shape_line")).count(), 1);
+                assert_eq!(names.iter().filter(|name| name.starts_with("move_shape_line")).count(), 0);
+                assert_eq!(names.iter().filter(|name| name.starts_with('[')).count(), 2, "ridge segment and vertical snap lines");
                 world.get_mut::<Roof>(selected_roof).unwrap().observed_mut()[0x30..0x34]
                     .copy_from_slice(&f32::NAN.to_le_bytes());
                 schedule.run(&mut world);
@@ -1405,7 +1444,9 @@ mod tests {
                         utils::geometry::Circle2d::new(glam::Vec2::ZERO, 6.0),
                     ));
                 world.insert_resource(UiState::at_startup());
-                let inverse = glam::Mat4::from_translation(glam::Vec3::new(0.0, 1.0, 10.0));
+                // The grounded gizmo's trigger is only 0.5 high; point the
+                // real picker through its center, as in the roof-snap fixture.
+                let inverse = glam::Mat4::from_translation(glam::Vec3::new(0.0, 0.0, 10.0));
                 let mut camera =
                     crate::systems::camera_rig::main_camera::MainCamera::new(1280.0 / 720.0);
                 camera.write_matrix(0, &glam::Mat4::IDENTITY);
@@ -1423,6 +1464,8 @@ mod tests {
                 world.resource_mut::<ActionSetStates>().digital[0].phase =
                     crate::input::action_set::DigitalActionPhase::JustPressed;
                 schedule.run(&mut world);
+                assert_eq!(world.resource::<UiState>().interaction().widget, widget);
+                assert_eq!(world.resource::<UiState>().click_byte(), 3);
                 world.resource_mut::<ActionSetStates>().digital[0].phase =
                     crate::input::action_set::DigitalActionPhase::Held;
                 world.resource_mut::<CameraCursorRay>().origin = glam::Vec3::new(20.0, 10.0, 0.0);
@@ -1499,6 +1542,10 @@ mod tests {
         assert_eq!(widget.dragged(), 2);
         let factories = stream.take_entries();
         assert_eq!(factories.len(), 3);
+        let UiSignifierEntry::Factory(vertical) = &factories[0] else {
+            panic!("elevated ground line must be a factory")
+        };
+        assert!(vertical.name().unwrap().starts_with("move_shape_line"));
         let mut meshes = AssetMeshLibrary::new();
         for name in ["move_shape", "move_shape_outline"] {
             meshes.add(MeshAsset::new(Mesh::new(name), Some(name.to_owned())));

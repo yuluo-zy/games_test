@@ -102,3 +102,73 @@ impl crate::render::extract::JournaledComponent for UiInactive {}
 impl crate::render::extract::JournaledComponent for UiInteractionState {}
 
 
+
+/// 单条导航链接记录（O：`UiNav` 每 16B 槽；fresh `link_up_nav` 0x141e4d880
+/// 写面：`{tag: u64@+0, value: u64@+8}`）。
+///
+/// 观测 tag 值：`0`（未连接）与 `3`（已连接，邻居 id 在 value）。tag 3 的枚举
+/// 语义（3 变体枚举的 niche None / 具体变体名）**U**；本实现保留原字节值。
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct UiNavLink {
+    /// +0 判别/标签（观测 0 / 3）。
+    pub tag: u64,
+    /// +8 邻居 GlobalId（tag==3 时有效）。
+    pub value: u64,
+}
+
+const _UI_NAV_LINK_SIZE: () = assert!(std::mem::size_of::<UiNavLink>() == 0x10);
+
+/// UiNav 组件（O：**`country_core::components::UiNav`**——PDB 路径见
+/// `render_taffy_ui_to_widgets` Query 面与 `link_up_nav` insert 命令泛型；
+/// 由 country-core 统一拥有）。
+///
+/// **B 布局（0x40 = 64B，fresh `register_component<UiNav>` 0x141e36510
+/// `ComponentDescriptor` size 立即数 0x40）**：四槽 `UiNavLink`（各 16B）。
+///
+/// 写面（`ToolbarLayout::link_up_nav` 0x141e4d880，O）：
+/// - 纵向（`in_DL==0`）：slot0/slot1 tag=0；slot2={3,next}、slot3={3,prev}；
+/// - 横向（`in_DL!=0`）：slot0={3,prev}、slot1={3,next}；slot2/slot3 tag=0。
+///
+/// 槽语义为 left/right/down/up，已由 ui_nav_update 14233f537..58e 确认。
+/// toolbar_setup 142346fb4..fc2 将 is_horizontal 的 AL 直接传为 DL；旧恢复
+/// 误将 DL==0 标作横向，导致真实左右键绕过环链接。调用与写面联合裁决纠正。
+///
+/// **I 级残差**：`link_up_nav` 对“未连接”槽只显式写 tag qword = 0（横向 slot0/1、
+/// 纵向 slot2/3），其 value qword 在原栈记录中未显式写（栈初值 U）。本实现取 0
+/// （`Default`），为可复现的结构化选择，登记为 I。
+#[derive(bevy_ecs::component::Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[repr(C)]
+pub struct UiNav {
+    /// 四条链接（布局 O；语义名 U）。
+    pub links: [UiNavLink; 4],
+}
+
+const _UI_NAV_SIZE: () = assert!(std::mem::size_of::<UiNav>() == 0x40);
+
+impl UiNav {
+    /// `link_up_nav(in_DL==0)` 的纵向槽写面：down=next / up=prev。
+    pub fn vertical(prev: u64, next: u64) -> Self {
+        Self {
+            links: [
+                UiNavLink::default(),
+                UiNavLink::default(),
+                UiNavLink { tag: 3, value: next },
+                UiNavLink { tag: 3, value: prev },
+            ],
+        }
+    }
+
+    /// `link_up_nav(in_DL!=0)` 的横向槽写面：left=prev / right=next。
+    pub fn horizontal(prev: u64, next: u64) -> Self {
+        Self {
+            links: [
+                UiNavLink { tag: 3, value: prev },
+                UiNavLink { tag: 3, value: next },
+                UiNavLink::default(),
+                UiNavLink::default(),
+            ],
+        }
+    }
+}
+

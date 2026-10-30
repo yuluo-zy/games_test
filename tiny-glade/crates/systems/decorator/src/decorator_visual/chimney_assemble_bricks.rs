@@ -479,6 +479,50 @@ mod actual_host_tests {
     }
 
     #[test]
+    fn published_wall_change_rebuilds_both_existing_assembly_lanes() {
+        use country_core::geometry::runtime::prepare_wall_brick_assembly_owners;
+        use country_core::resources::{roofs::{commands::RecalculateRoofCmd, geometry::surface::Curve2},
+            walls::{decorator_storage::DecoratorStorage, public_walls::{OnWallChanged, OnWallDeleted, WallPublicationDirty, WallSpatialHash}}};
+        use country_core::systems::wall::adjust_wall_height::AdjustWallHeightCmd;
+        use crate::{move_decorators_following_anchors::move_decorators_following_anchors,
+            decorator_visual::door_stairs_assemble_bricks::{door_stairs_assemble_bricks, DoorStairsAssemblyParams}};
+        let (mut world, wall, entity) = actual_world();
+        world.init_resource::<DecoratorStorage>();
+        world.init_resource::<WallAttachedDecoTracker<DoorStairsAssemblyParams>>();
+        world.init_resource::<Events<OnWallChanged>>(); world.init_resource::<Events<OnWallDeleted>>();
+        world.init_resource::<Events<RecalculateRoofCmd>>(); world.init_resource::<Events<AdjustWallHeightCmd>>();
+        world.resource_mut::<WallAttachedDecoTracker<ChimneyAssemblyParams>>()
+            .add(DecoratorStorageAddr::Wall(wall), DecoratorId(7), &params(1));
+        let stair = DoorStairsAssemblyParams { words: [0.0f32,0.,1.,0.,0.4,0.,0.4,4.5].map(f32::to_bits) };
+        world.resource_mut::<WallAttachedDecoTracker<DoorStairsAssemblyParams>>()
+            .add(DecoratorStorageAddr::Wall(wall), DecoratorId(8), &stair);
+        let mut chimney = Schedule::default(); chimney.add_systems(chimney_assemble_bricks);
+        let mut door = Schedule::default(); door.add_systems(door_stairs_assemble_bricks);
+        chimney.run(&mut world); door.run(&mut world);
+        let counts = |world: &World| {
+            let owner = world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap();
+            let library = world.resource::<AssetSsboLibrary>(); let storage = library.get::<BrickTransformSsbo>().unwrap();
+            (storage.allocation_to_draw_multi_instanced(owner.chimney_allocation().unwrap()).iter().map(|r| r.1).sum::<u32>(),
+             storage.allocation_to_draw_multi_instanced(owner.door_stairs_allocation().unwrap()).iter().map(|r| r.1).sum::<u32>())
+        };
+        let before = counts(&world); assert!(before.0 > 0 && before.1 > 0);
+        let mut inner = InnerWalls::new();
+        inner.new_wall_with_id(wall, WallState::new(Curve2::try_new(vec![[0.,0.],[5.,0.]], false).unwrap(), 2., 0, 0, false));
+        world.resource_mut::<PublicWalls>().consume_with_paths(&mut inner,
+            &TerrainHeightGrid512 { encoded: vec![0;512*512].into(), minimum_y:0., maximum_y:4., sampling_fix:true },
+            None, &WallPublicationDirty::default(), &WallSpatialHash::default());
+        assert!(world.resource::<PublicWalls>().last_delta.changed.contains(&wall));
+        let mut prepare = Schedule::default(); prepare.add_systems(prepare_wall_brick_assembly_owners); prepare.run(&mut world);
+        assert_eq!(counts(&world), (0, 0));
+        world.send_event(OnWallChanged(wall));
+        let mut follow = Schedule::default(); follow.add_systems(move_decorators_following_anchors); follow.run(&mut world);
+        chimney.run(&mut world); door.run(&mut world);
+        assert_eq!(counts(&world), before);
+        world.resource_mut::<AssetSsboLibrary>().get_mut::<BrickTransformSsbo>().unwrap().take_out_waste();
+        assert_eq!(counts(&world), before);
+    }
+
+    #[test]
     fn current_audio_transitions_use_real_diff_kind_and_current_position() {
         assert_eq!(current_sound_kind(&DecoDiff::Added(Box::new(params(0)))), Some(0x13));
         assert_eq!(current_sound_kind(&DecoDiff::Current(Box::new(params(0)))), None);

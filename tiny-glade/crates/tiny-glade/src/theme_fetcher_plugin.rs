@@ -229,7 +229,9 @@ mod tests {
         .spawn()
         .unwrap();
         let mut world = bevy_ecs::world::World::new();
-        world.insert_resource(CurrentDaily::default());
+        // A distinct initial value ensures the worker's Idle notification is
+        // actually received; the default is already NoCurrentTheme.
+        world.insert_resource(CurrentDaily(DailyThemeState::DownloadError("fixture sentinel".into())));
         world.insert_resource(ActiveEventReceiver(Some(Mutex::new(subscription))));
         let deadline = std::time::Instant::now() + Duration::from_secs(2);
         loop {

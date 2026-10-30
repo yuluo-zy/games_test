@@ -74,6 +74,11 @@ pub fn animate_wall_bulldoze(
             return false;
         }
         let wall = WallId(cmd.wall.0);
+        // The original looks up authority before advancing phase (140ac28c0..2930).
+        let Some(state) = inner.get(wall).cloned() else {
+            cmd.finished = true;
+            return false;
+        };
         let phase = cmd.phase + dt / BULLDOZE_DURATION;
         cmd.phase = if phase < 0.0 {
             0.0
@@ -90,17 +95,16 @@ pub fn animate_wall_bulldoze(
             return false;
         }
         let eased = ease(cmd.phase);
-        let low = cmd.low * eased;
+        let low = (0.0 * (1.0 - eased)) + cmd.low * eased;
         let high = (1.0 - eased) + cmd.high * eased;
-        let Some(state) = inner.get(wall).cloned() else {
-            cmd.finished = true;
-            return false;
-        };
-        let snapshot = state.snapshot().clone();
-        let Ok(sliced) = slice_source_curve(&snapshot.source.curve, low, high) else {
-            cmd.finished = true;
-            return false;
-        };
+        // CurveU construction checks both bounds before slicing (140ac29fd..a3b).
+        assert!((0.0..=1.0).contains(&low), "invalid bulldoze CurveU low: {low}");
+        assert!((0.0..=1.0).contains(&high), "invalid bulldoze CurveU high: {high}");
+        // The native slice helper receives the command's retained Source,
+        // not the progressively shortened authority from the previous frame.
+        let snapshot = cmd.original.clone();
+        let sliced = slice_source_curve(&snapshot.source.curve, low, high)
+            .expect("invalid bulldoze curve slice");
         let mut next = snapshot.clone();
         next.source.curve = sliced;
         next.source.shape = freehand_shape();
@@ -119,4 +123,54 @@ pub fn animate_wall_bulldoze(
         });
         true
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::resources::roofs::geometry::surface::Curve2;
+    use crate::resources::walls::WallState;
+
+    fn setup(low: f32, high: f32) -> (World, Schedule, WallId) {
+        let mut world = World::new();
+        let curve = Curve2::try_new(vec![[0.0, 0.0], [4.0, 0.0]], false).unwrap();
+        let mut inner = InnerWalls::new();
+        let id = inner.new_wall(WallState::new(curve, 2.0, 0, 0, false));
+        let original = inner.get(id).unwrap().snapshot().clone();
+        world.insert_resource(inner);
+        world.insert_resource(AnimateWallBulldozeBuffer(vec![WallBulldozeCommand {
+            original, wall: crate::resources::walls::publication_fields::WallId(id.0),
+            low, high, anchor: [0.0; 3], phase: 0.0, finished: false,
+        }]));
+        let mut time = GameTime::default();
+        time.delta = 0.05;
+        world.insert_resource(time);
+        world.init_resource::<Events<WallBulldozeAudio>>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(animate_wall_bulldoze);
+        (world, schedule, id)
+    }
+
+    #[test]
+    fn successive_frames_slice_the_retained_original_curve() {
+        let (mut world, mut schedule, id) = setup(0.0, 0.0);
+        schedule.run(&mut world);
+        schedule.run(&mut world);
+        let length = world.resource::<InnerWalls>().get(id).unwrap().snapshot().source.curve.length;
+        assert!((length - 2.0).abs() < 0.00001, "length={length}");
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid bulldoze CurveU low")]
+    fn invalid_low_panics_instead_of_dropping_the_command() {
+        let (mut world, mut schedule, _) = setup(-1.0, 0.0);
+        schedule.run(&mut world);
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid bulldoze CurveU high")]
+    fn invalid_high_panics_instead_of_dropping_the_command() {
+        let (mut world, mut schedule, _) = setup(0.0, 3.0);
+        schedule.run(&mut world);
+    }
 }

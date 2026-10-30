@@ -71,6 +71,16 @@ impl DecoratorType {
 )]
 pub struct DecoratorId(pub u32);
 
+/// Wall/roof UI removal request consumed by the decorator operation system.
+#[derive(bevy_ecs::event::Event, Clone, Debug)]
+pub struct ExternalDecoratorCmd {
+    pub wall: u64,
+    pub decorator_id: u32,
+    pub dst: crate::resources::walls::decorator_storage::DecoratorStorageAddr,
+    pub payload: [u8; 12],
+    pub stream: u8,
+}
+
 impl DecoratorId {
     /// 0x14067dd80：恒等返回（也复用为 DeferredDecoratorOpEvents::events）。
     #[inline]

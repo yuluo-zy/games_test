@@ -129,6 +129,10 @@ fn prepare_wall_bricks(
         },
     };
     let arches = policy.constructor_arch_heights(heights);
+    // 1411f9945..995d rejects fewer than two points; 1407586ea..6f8
+    // unwraps the error at 140759f20..f56. Missing caches remain diagnostic.
+    assert!(prepared.positions.len() >= 2,
+        "original construct_walls: prepared path has fewer than two points");
     let arrays = prepared_construction_arrays(&prepared.positions, &arches, &wall.segment_heights)
         .map_err(WallBrickBuildError::Source)?;
     Ok(Some(WallBrickPreparedGeometry { arrays, kind: policy.kind, top, policy }))
@@ -427,6 +431,46 @@ mod plaster_request_tests {
             Some(WallBrickBuildError::MissingPreparedPath)));
         let events = world.resource::<Events<RecalculatePlasterCmd>>();
         assert_eq!(events.len(), 2);
+    }
+
+    #[test]
+    fn short_prepared_path_panics_after_prior_wall_and_plaster_request() {
+        use crate::resources::{roofs::geometry::surface::Curve2,
+            walls::{InnerWalls, WallState, publication_source::TerrainHeightGrid512,
+                public_walls::{WallPublicationDirty, WallSpatialHash}}};
+        fn observe(params: WallBrickConstruction, mut trace: ResMut<BeforeCommitTrace>) {
+            params.run_with(Some(&mut |id, _, _, _, _, _| {
+                trace.0.push(id);
+                None
+            }));
+        }
+        let mut inner = InnerWalls::default();
+        let curve = Curve2::try_new(vec![[0., 0.], [1., 0.]], false).unwrap();
+        let first = inner.new_wall(WallState::new(curve.clone(), 2., 0, 1, false));
+        let short = inner.new_wall(WallState::new(curve, 2., 0, 0, false));
+        assert!(first.0 < short.0);
+        let mut public = PublicWalls::default();
+        public.consume_with_paths(&mut inner, &TerrainHeightGrid512 {
+            encoded: vec![0; 512 * 512].into(), minimum_y: 0., maximum_y: 0., sampling_fix: true,
+        }, None, &WallPublicationDirty::default(), &WallSpatialHash::default());
+        let paths = crate::systems::wall::wall_state::path_preparation::PathRasters512::from_encoded(
+            std::array::from_fn(|_| std::sync::Arc::<[u8]>::from(vec![0; 512 * 512])), true).unwrap();
+        public.get_mut(first).unwrap().prepare_paths(&paths).unwrap();
+        public.get_mut(short).unwrap().prepare_paths(&paths).unwrap();
+        // Retain the real prepared owner and cache, changing only the corrupt path.
+        public.get_mut(short).unwrap().prepared_path.as_mut().unwrap().positions.truncate(1);
+        let mut world = world();
+        world.insert_resource(public);
+        world.init_resource::<BeforeCommitTrace>();
+        world.send_event(OnWallChanged(first));
+        world.send_event(OnWallChanged(short));
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            world.run_system_once(observe).unwrap();
+        }));
+        assert!(result.is_err());
+        assert_eq!(world.resource::<BeforeCommitTrace>().0, [first]);
+        assert_eq!(world.resource::<Events<RecalculatePlasterCmd>>().len(), 2);
+        assert!(!world.resource::<WallBrickBuildState>().failures.contains_key(&short));
     }
 
     #[test]

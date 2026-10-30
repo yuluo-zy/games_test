@@ -6,9 +6,10 @@
 //! CPU 水位状态本体 = `world_raster_defs::WaterRaster`（`WorldRaster<512>` u8 栅格），
 //! 由 `system_water::impl$0::build`（0x1406501d0）`insert_resource<WaterRaster>()` 注册（O）。
 //!
-//! 事件载荷（O，`systems/audio/water_audio.rs` 消费面 + `draw_water` 0x141ba9130 的
-//! `EventWriter` 面）：`{position: Vec3, radius: f32}`，与花园绘制事件的形状一致
-//! （core 音频域已按此实现 `WaterDrawEvent/WaterEraseEvent` 的读取；本模块把事件
+//! 事件载荷（O，`draw_raster<Water>` 0x142260ae0 的实时写入面 + 回放闭包
+//! 0x140a01560 的 20 字节复制面）：`{position: Vec3, radius: f32,
+//! replay: bool}`。实时写入把末字节设 0；回放调用点把同一字节设 1。
+//! core 音频域只读取 position/radius；本模块把事件
 //! 落位到 PDB 的原始模块，替代音频域临时本地副本）。
 //! 本模块承载 GPU 侧波纹源（typed gap）+ 水面编辑事件。
 
@@ -75,13 +76,13 @@ impl crate::asset_libraries::ssbo_library::SsboType for RippleSourceSsbo {
 
 /// 水面绘制事件（O：`WaterPlugin::build` 0x1406501d0 `register_event<WaterDrawEvent>`）。
 /// 生产者：`system_water::draw_water::draw_water`（0x141ba9130，`draw_raster` 的
-/// on_draw 回调，闭包 `closure$1` 行 161）。载荷 `{position, radius}`（O：core
-/// `systems/audio/water_audio.rs` 消费面，与花园绘制事件形状一致；无
-/// `observed_flag`——audio 域证据未列该字段）。
+/// on_draw 回调，闭包 `closure$1` 行 161）。事件载荷为 20 字节；
+/// `replay` 在实时绘制时为 false，在回放反馈时为 true。
 #[derive(Event, Clone, Copy, Debug)]
 pub struct WaterDrawEvent {
     pub position: Vec3,
     pub radius: f32,
+    pub replay: bool,
 }
 
 /// 水面擦除事件（O：同 build 注册；生产者 `draw_water` 的 on_erase 回调，
@@ -90,4 +91,5 @@ pub struct WaterDrawEvent {
 pub struct WaterEraseEvent {
     pub position: Vec3,
     pub radius: f32,
+    pub replay: bool,
 }

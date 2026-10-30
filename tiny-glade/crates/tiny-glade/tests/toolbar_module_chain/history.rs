@@ -155,7 +155,8 @@ impl HistoryHarness {
         }
         if let Some(expected) = &self.expected_circle {
             let state = if exists { &expected["after"] } else { &expected["before"] };
-            assert_eq!(wall_authority(world.resource::<InnerWalls>().get_unwrapped(WallId(2))), state["wall"]);
+            let actual = wall_authority(world.resource::<InnerWalls>().get_unwrapped(WallId(2)));
+            assert_json_equal(&state["wall"], &actual, "circle wall authority");
             use country_core::resources::walls::{decorator::DecoratorId, decorator_storage::{DecoratorStorage, DecoratorStorageAddr}};
             let info = world.resource::<DecoratorStorage>().get(DecoratorStorageAddr::Wall(WallId(2))).unwrap().get(DecoratorId(101)).unwrap();
             assert_eq!(serde_json::to_value(country_core::resources::history::decorator_edit::DecoratorHistoryState::from(info)).unwrap(), state["decorator"]);
@@ -255,7 +256,7 @@ impl HistoryHarness {
         let mut start = Schedule::default();
         start.add_systems(history_runtime::recording::history_start_recording::<MaybePendingSnapshotId>);
         resize.run(world);
-        let widget = WidgetId::from_name(&format!("edit_circle_wall_{wall}"));
+        let widget = WidgetId::from_name(&format!("edit_circle_wall_{}", wall.0));
         assert!(matches!(&world.resource::<UiState>().widget(widget).unwrap().geometry, Some(WidgetGeometry::TriangleMesh(tris)) if !tris.is_empty()));
         picker.run(world);
         assert_eq!(world.resource::<UiState>().active_widget(), widget);
@@ -293,9 +294,10 @@ impl HistoryHarness {
         assert_ne!(direct_after_wall["shape"], before_wall["shape"]);
         let after_shape = ShapeParameters::from_snapshot(after_authority.get_enclosure_params().unwrap());
         let ui_curve = country_core::systems::wall::shapes::to_authority_curve(&after_shape.as_circle().as_curve2(0.5));
-        assert_eq!(after_authority.source().curve.points, ui_curve.points);
-        assert_eq!(after_authority.source().curve.points_u, ui_curve.points_u);
-        assert_eq!(after_authority.source().curve.length.to_bits(), ui_curve.length.to_bits());
+        let actual_curve = &after_authority.source().curve;
+        assert_eq!(actual_curve.points, ui_curve.points);
+        assert_eq!(actual_curve.points_u, ui_curve.points_u);
+        assert_eq!(actual_curve.length, ui_curve.length);
         // Original Morph replay140ac01ff..21a explicitly samples at0.2
         // (1429cd068). Its payload records shapes, not the transient UI Vec.
         // Verify the complete replay authority, preserving every other field.
@@ -366,6 +368,62 @@ fn wall_authority(wall: &WallState) -> serde_json::Value {
         "height": wall.height(),
         "elevation": wall.elevation(),
     })
+}
+
+// Parse expected edits through the same typed save schema as the production
+// loader. JSON Value parses decimal numbers as f64, while the save fields are
+// f32; reserialization preserves exact f32 values and every schema field.
+fn normalize_expected_history(history: &mut serde_json::Value) {
+    let edits = history["edits"].as_array_mut().unwrap();
+    for edit in edits {
+        let typed: SavedMultiEdit = serde_json::from_value(edit.clone()).unwrap();
+        *edit = serde_json::to_value(typed).unwrap();
+    }
+}
+
+fn normalize_expected_wall(wall: &mut serde_json::Value) {
+    // The fixture carries both the portable WallState and fields outside its
+    // schema. Normalize only fields whose actual Rust type is f32.
+    let saved: WallState = serde_json::from_value(wall["saved"].clone()).unwrap();
+    wall["saved"] = serde_json::to_value(saved).unwrap();
+    let points: Vec<[f32; 2]> = serde_json::from_value(wall["points"].clone()).unwrap();
+    wall["points"] = serde_json::to_value(points).unwrap();
+    let points_u: Vec<f32> = serde_json::from_value(wall["points_u"].clone()).unwrap();
+    wall["points_u"] = serde_json::to_value(points_u).unwrap();
+    for key in ["length", "terrain_floor", "extra", "observed_path_scalar", "height", "elevation"] {
+        let value: f32 = serde_json::from_value(wall[key].clone()).unwrap();
+        wall[key] = serde_json::to_value(value).unwrap();
+    }
+}
+
+fn assert_json_equal(expected: &serde_json::Value, actual: &serde_json::Value, label: &str) {
+    fn first(a: &serde_json::Value, b: &serde_json::Value, path: &str) -> Option<String> {
+        match (a, b) {
+            (serde_json::Value::Object(a), serde_json::Value::Object(b)) => {
+                for key in a.keys().chain(b.keys()) {
+                    let next = format!("{path}/{key}");
+                    match (a.get(key), b.get(key)) {
+                        (Some(x), Some(y)) => if let Some(diff) = first(x, y, &next) { return Some(diff); },
+                        (x, y) => return Some(format!("{next}: expected={x:?} actual={y:?}")),
+                    }
+                }
+                None
+            }
+            (serde_json::Value::Array(a), serde_json::Value::Array(b)) => {
+                for i in 0..a.len().max(b.len()) {
+                    let next = format!("{path}/{i}");
+                    match (a.get(i), b.get(i)) {
+                        (Some(x), Some(y)) => if let Some(diff) = first(x, y, &next) { return Some(diff); },
+                        (x, y) => return Some(format!("{next}: expected={x:?} actual={y:?}")),
+                    }
+                }
+                None
+            }
+            _ if a != b => Some(format!("{path}: expected={a} actual={b}")),
+            _ => None,
+        }
+    }
+    if let Some(diff) = first(expected, actual, "") { panic!("{label}: {diff}"); }
 }
 
 fn install_save_owner(world: &mut World, session: SessionId) {
@@ -439,9 +497,21 @@ fn history_process_entry() {
         assert!(phase == "restore" || phase == "restore-applied");
         let expected: serde_json::Value = serde_json::from_slice(&std::fs::read(session_file).unwrap()).unwrap();
         let session: SessionId = serde_json::from_value(expected["session"].clone()).unwrap();
-        h.expected_history = Some(expected["history"].clone());
-        h.expected_wall = Some(expected["wall"].clone());
+        let mut expected_history = expected["history"].clone();
+        normalize_expected_history(&mut expected_history);
+        h.expected_history = Some(expected_history);
+        let mut expected_wall = expected["wall"].clone();
+        normalize_expected_wall(&mut expected_wall);
+        h.expected_wall = Some(expected_wall);
         h.expected_circle = expected.get("circle").filter(|value| !value.is_null()).cloned();
+        if let Some(circle) = &mut h.expected_circle {
+            for phase in ["before", "after"] {
+                normalize_expected_wall(&mut circle[phase]["wall"]);
+                let decorator: country_core::resources::history::decorator_edit::DecoratorHistoryState =
+                    serde_json::from_value(circle[phase]["decorator"].clone()).unwrap();
+                circle[phase]["decorator"] = serde_json::to_value(decorator).unwrap();
+            }
+        }
         install_save_owner(&mut h.input.world, session);
         h.input.world.init_resource::<TimeOfDay>();
         h.input.world.init_resource::<GladeSettings>();
@@ -521,7 +591,6 @@ fn history_press_before_reload_does_not_undo_the_reentered_session() {
 // M1：实际绘制生产者和历史记录器；磁盘与加载复用生产 worker 和加载状态机。
 fn terrain_history_harness() -> HistoryHarness {
     use country_core::{asset_libraries::ssbo_library::AssetSsboLibrary,
-        render::test_device::TestDevice,
         resources::{glade_border::{BorderShape, GladeBorder}, terrain_editing::TerrainEditingData,
             terrain_rock_mask::TerrainRockMaskSsbo, world_raster_defs::WaterRaster},
         systems::{render_loop::compute_passes::{mouse_read_terrain_stroke_index::MouseTerrainRaycastSsbo,
@@ -533,10 +602,38 @@ fn terrain_history_harness() -> HistoryHarness {
     h.input.world.insert_resource(GladeBorder(BorderShape::Circle(utils::geometry::Circle2d::new(Vec2::ZERO, 100.0))));
     h.input.world.insert_resource(ScheduledTerrainReadback::default());
     let library = AssetSsboLibrary::new();
-    let device = TestDevice(1);
-    library.add_new::<MouseTerrainRaycastSsbo>(&device);
-    library.add_new::<TerrainRockMaskSsbo>(&device);
+    let device = rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig::headless())
+        .expect("terrain history requires a real Vulkan device");
+    let buffers = tiny_glade::render_host::BufferHost::new(device.clone());
+    library.add_new::<MouseTerrainRaycastSsbo>(&buffers);
+    library.add_new::<TerrainRockMaskSsbo>(&buffers);
+    let mouse_buffer = library.get::<MouseTerrainRaycastSsbo>().unwrap().buffer;
     h.input.world.insert_resource(library);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
+    while !buffers.poll_pending_uploads().unwrap() {
+        assert!(std::time::Instant::now() < deadline, "terrain SSBO initialization timed out");
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    let mut transfer = rhapsody::transfer::TransferManager::new(device.clone(), Default::default()).unwrap();
+    let ticket = transfer.read_buffer(&buffers.managed_buffer(&mouse_buffer).unwrap().shared(), 0, 4).unwrap();
+    let points = rhapsody::sync::SyncSet::from_point(ticket.completion());
+    let mut publisher = tiny_glade::gpu_readback::ReadbackPublisher::new(device);
+    let mut feedback = tiny_glade::render_thread::FrameFeedback::default();
+    publisher.finish_frame(&mut h.input.world, &buffers, Some(points), &mut feedback);
+    assert!(feedback.error.is_none());
+    for step in feedback.apply { step(&mut h.input.world); }
+    assert_eq!(publisher.stats().issued, 2);
+    while publisher.stats().published < 2 {
+        let mut feedback = tiny_glade::render_thread::FrameFeedback::default();
+        publisher.finish_frame(&mut h.input.world, &buffers, None, &mut feedback);
+        assert!(feedback.error.is_none());
+        for step in feedback.apply { step(&mut h.input.world); }
+        assert!(std::time::Instant::now() < deadline, "terrain GPU readback timed out");
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    let readbacks = h.input.world.resource::<country_core::render::gpu_readback::GpuReadbacks>();
+    assert_eq!(readbacks.get::<MouseTerrainRaycastSsbo>().unwrap().data[0].terrain_stroke_index, -1);
+    assert_eq!(readbacks.get::<TerrainRockMaskSsbo>().unwrap().data.len(), 0x2000);
     h.history = Schedule::default();
     h.history.add_systems((
         history_runtime::history_process_system::<MaybePendingSnapshotId>,
@@ -575,18 +672,50 @@ fn terrain_history_process_entry() {
         let session = SessionId::new();
         install_save_owner(&mut h.input.world, session);
         h.input.world.insert_resource(AppMode::Terrain);
-        h.input.world.resource_mut::<CursorTerrainRaycast>().tag = 1;
-        h.input.world.resource_mut::<CursorTerrainRaycast>().pos = glam::Vec3::new(3.0, 2.0, 4.0);
+        let mut heights = country_core::resources::terrain_height::TerrainHeightsData::<country_core::resources::terrain_height::TerrainHeightSsbo>::new();
+        heights.set_height_range(2.0, 2.0);
+        h.input.world.insert_resource(heights);
+        h.input.world.init_resource::<country_core::resources::mouse_terrain_raycast::CameraCursorRay>();
+        h.input.world.init_resource::<Events<country_core::resources::window::AudioCursorMoved>>();
+        let mut raycast = Schedule::default();
+        raycast.add_systems((country_core::resources::mouse_terrain_raycast::camera_mouse_ray,
+            country_core::resources::mouse_terrain_raycast::mouse_terrain_raycast).chain());
+        let aim = |world: &mut World, x: f32| {
+            let view = glam::Mat4::look_at_rh(glam::Vec3::new(x, 10.0, 4.0),
+                glam::Vec3::new(x, 0.0, 4.0), glam::Vec3::Z);
+            let mut camera = MainCamera::new(960.0 / 540.0);
+            camera.write_matrix(0, &glam::Mat4::IDENTITY);
+            camera.write_matrix(0x40, &glam::Mat4::IDENTITY);
+            camera.write_matrix(0x80, &view);
+            camera.write_matrix(0xc0, &view.inverse());
+            world.insert_resource(camera);
+        };
+        aim(&mut h.input.world, 3.0);
+        h.input.world.resource_mut::<CursorPositionSS>().0 = Vec2::new(480.0, 270.0);
+        raycast.run(&mut h.input.world);
+        assert!((h.input.world.resource::<CursorTerrainRaycast>().position()
+            - glam::Vec3::new(3.0, 2.0, 4.0)).length() < 0.0001);
         h.input.world.resource_mut::<History>().start_input_recording(AppMode::Terrain.native_tag() as u32).unwrap();
         let mut draw = Schedule::default();
         draw.add_systems((ui_draw_terrain::ui_draw_terrain,
             deferred_terrain_history::history_record_terrain::<MaybePendingSnapshotId>).chain());
         let widget = WidgetId::clearing_canvas(ui_draw_terrain::DRAW_CANVAS_NAME);
-        for phase in [3, 4, 5] {
-            if phase == 4 { h.input.world.resource_mut::<CursorTerrainRaycast>().pos.x = 4.0; }
-            h.input.world.resource_mut::<UiState>().replace_interaction(UiInteraction { native_tag: 2, native_phase: phase, widget });
-            draw.run(&mut h.input.world);
-        }
+        draw.run(&mut h.input.world); // register the real terrain canvas
+        h.input.frame(false, Vec2::new(480.0, 270.0));
+        raycast.run(&mut h.input.world);
+        draw.run(&mut h.input.world);
+        h.input.frame(true, Vec2::new(480.0, 270.0));
+        assert_eq!(h.input.world.resource::<UiState>().interaction().widget, widget);
+        assert_eq!(h.input.world.resource::<UiState>().widget_context(widget).dragged(), 3);
+        raycast.run(&mut h.input.world);
+        draw.run(&mut h.input.world);
+        aim(&mut h.input.world, 4.0);
+        h.input.frame(true, Vec2::new(480.0, 270.0));
+        raycast.run(&mut h.input.world);
+        draw.run(&mut h.input.world);
+        h.input.frame(false, Vec2::new(480.0, 270.0));
+        raycast.run(&mut h.input.world);
+        draw.run(&mut h.input.world);
         h.input.world.resource_mut::<History>().finish_input_recording().unwrap().unwrap();
         // 第二次事务由真实编辑控件和命令消费者产生。
         h.input.world.resource_mut::<History>().start_input_recording(AppMode::Terrain.native_tag() as u32).unwrap();
@@ -632,7 +761,9 @@ fn terrain_history_process_entry() {
         for _ in 0..3 { load_game::try_load_game_system(&mut h.input.world).unwrap(); h.history.run(&mut h.input.world); }
         assert_eq!(h.input.world.resource::<LoadGameManager>().state, LoadGameState::Loaded);
         for _ in 0..24 { h.history.run(&mut h.input.world); }
-        assert_eq!(h.saved_history_contract(), expected["history"]);
+        let mut expected_history = expected["history"].clone();
+        normalize_expected_history(&mut expected_history);
+        assert_eq!(h.saved_history_contract(), expected_history);
         let terrain = h.input.world.resource::<TerrainEditingData>();
         let stroke = &terrain.strokes[&tg_terrain::schema::StrokeId(0)];
         assert_eq!(serde_json::json!(terrain.next_index), expected["next_index"]);

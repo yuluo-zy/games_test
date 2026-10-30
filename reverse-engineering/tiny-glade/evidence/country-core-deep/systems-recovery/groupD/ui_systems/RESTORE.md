@@ -119,3 +119,9 @@
 - 旋转/楼梯高度/烟囱高度各 dst 处理器（0x1407a8766/0x1407a87a6/0x1407a8814/
   0x1407a91bb、0x1407ad91a/0x1407ad998/0x1407adba7）为函数尾部内联段（Ghidra
   NotFound，<40B 未建函数）→ 跳表目标逐个 capstone 解算，处理器以 I 登记。
+
+### 2026-10-30 烟囱高度 UI 静态复核
+
+原发行 RNE SHA-256 `f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03`，仅使用 LLVM 有界反汇编和 PE 原始只读数据；未执行原指令。`1407ae2e0`：dispatcher 的变体提供 widget 和 id，蓝图 `+128` 指向 chimney 参数；`1407ae7b6..7ed` 取参数 `+8` 的 XZ 与 `+24` 的 Y 做 Local origin，`1407ae89e..8a8` 写投影 Y 减参数 `+14` 为 grab。Held/Finished `1407ae5ef..61b` 按 `(projection.y - origin.y) - grab` 算增量，再依次按各分量计算原点加竖直方向乘增量；`1407ae63f..654` 的 `Some(f32)` 写 change op `+50/+54`，即 extra_low。`1407ae6fc..725` 保持 `abs(params[+14] - (delta + params[+24])) / GameTime.delta` 次序。`1407ae765..790` 依次写事件计数、音频 kind `0x12`、比例和位置；该 0x28B 记录是音频 Bevy 事件，而非独立延迟操作队列。`1407ae538..5e0` 用主相机块传 `project_onto_ray@140ac84a0`；本地 helper 的 +0/+80 投影矩阵合同已另有原字节恢复。投影区间 `142a832c0` 的原始位型是 `bfc00000,41300000`（-1.5,11）。
+
+`1407ae910` 的格式片段表 `142a833b0` 为 `chimney_height_`、`_arrow_`，表 `142a83410` 为 `height_gizmo_`、空串；格式化参数依次是零扩展的 id 和 `Vec3` Debug（formatter `140d4ba00` 读 `142b456e8` 的 `Vec3`）。首个位置 XZ 取参数 +8、Y 为 `+14 + 0.3`，旋转输入是 `(-word[7], word[6])`；第二个位置 Y 为 `+14 - 0.5`。原工厂闭包 `1407aecc0` 使用 `brush_arrow_flat_single_up`、动画时长 0.2、旋转、scale 1.5；`1407aeea0` 使用 `temp_sphere`、scale 0.5、动画时长 0.1。候选在现有 ECS 测试中覆盖 Started→Finished、存储/历史/事件/音频与两条真实工厂名；尚未运行构建或原侧完整函数差分，跨进程/GPU 交互验收未完成。

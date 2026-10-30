@@ -7,7 +7,7 @@
 //! `GateColorIds[idx]=色`、写 change tick；`event+0x14==1`（custom）→ 折线 AABB
 //! → center + max_y + xvy → 推 0x20B 记录 tag=**7**。**无脏色石膏分类**（与
 //! set_wall_color_id 不同，O）。
-//! 分歧点：SSBO 上传段未恢复（core `GateColorIdSsbo` typed-gap，无 SsboType）。
+//! 有事件时先取得 SSBO，处理所有事件后上传完整 CPU 表。
 
 use bevy_ecs::prelude::*;
 use glam::Vec2;
@@ -19,16 +19,35 @@ use country_core::systems::audio::PlayWallUiSound;
 use utils::geometry::aabb::Aabb2;
 use utils::swizzlers::SwizzlerXVY;
 
-/// `set_gate_color_id` @0x142299840（1311B，重建；SSBO 上传段未恢复）。
+/// `set_gate_color_id` @0x142299840（1311B）。
 #[allow(clippy::too_many_arguments)]
 pub fn set_gate_color_id(
-    _library: Res<AssetSsboLibrary>,
+    library: Res<AssetSsboLibrary>,
+    device: Res<country_core::render::device::GraphicsDeviceResource>,
     mut cmds: EventReader<SetGateColorIdCmd>,
     mut sounds: EventWriter<PlayWallUiSound>,
     mut colors: ResMut<GateColorIds>,
     walls: Res<PublicWalls>,
 ) {
+    if cmds.is_empty() { return; }
+    let buffer = library.get::<country_core::resources::color_id::GateColorIdSsbo>()
+        .expect("原门颜色 SSBO 缺失");
     for cmd in cmds.read() {
+        apply_gate_color(cmd, &mut colors, &walls, &mut sounds);
+    }
+    if !colors.0.is_empty() {
+        use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
+        let data: &[u8] = bytemuck::cast_slice(&colors.0);
+        assert!(data.len() <= buffer.byte_size(), "原门颜色整表超过缓冲容量");
+        GraphicsDevice::update_buffer_bytes(device.device(), &buffer.buffer, data, &[0..data.len()], 0)
+            .expect("原门颜色整表上传失败");
+    }
+}
+
+pub(crate) fn apply_gate_color(
+    cmd: &SetGateColorIdCmd, colors: &mut GateColorIds, walls: &PublicWalls,
+    sounds: &mut EventWriter<PlayWallUiSound>,
+) {
         let wall_id = cmd.wall_id();
         // O：墙命中才写色（反编译 do-while 以 wall!=0 退出后才处理该事件）。
         if let Some(wall) = walls.get(wall_id) {
@@ -54,5 +73,4 @@ pub fn set_gate_color_id(
                 });
             }
         }
-    }
 }

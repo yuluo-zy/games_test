@@ -261,13 +261,18 @@ pub fn create_rectangle(
     }
 }
 
-/// 当前History接口返回显式错误，沿用真实错误事件而非静默吞掉编辑。
+/// 缺录制保留原失败顺序；其它重构错误继续通过既有事件报告。
 fn record_creation_history(
     history: &mut History,
     edit: EditType,
     failures: &mut EventWriter<HistoryRecordingFailed>,
 ) {
     if let Err(error) = history.add(edit.clone()) {
+        // Original History::add 140a84ef0..ef7 / 140a8525b..2a0 panics
+        // when the pending recording is absent; retain other typed diagnostics.
+        if error == crate::resources::history::transactions::HistoryTransactionError::RecordingNotStarted {
+            panic!("original History::add requires an active recording");
+        }
         failures.write(HistoryRecordingFailed { edit, error });
     }
 }
@@ -440,7 +445,10 @@ mod tests {
             interact(&mut world, canvas, 3);
             schedule.run(&mut world);
             interact(&mut world, canvas, 1);
-            schedule.run(&mut world);
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                schedule.run(&mut world);
+            }));
+            assert_eq!(result.is_err(), roof_case == 6);
             let created = WallId(previous.0 + 1);
             let authority = world.resource::<InnerWalls>().get_unwrapped(created);
             assert_eq!(
@@ -464,6 +472,7 @@ mod tests {
                 .drain()
                 .collect::<Vec<_>>();
             assert_eq!(requests.len(), 1);
+            assert_eq!(requests[0].0.wall_id().0, created.0);
             let request = requests[0].0.record();
             let inherited = !matches!(roof_case, 2 | 3);
             let fallback_height = if rectangle {
@@ -496,40 +505,18 @@ mod tests {
             );
             if roof_case == 6 {
                 assert!(world.resource::<History>().pending().is_none());
-                let failures = world
-                    .resource_mut::<Events<HistoryRecordingFailed>>()
-                    .drain()
-                    .collect::<Vec<_>>();
-                assert_eq!(
-                    failures
-                        .iter()
-                        .map(|failure| failure.edit.native_tag())
-                        .collect::<Vec<_>>(),
-                    vec![7, 8]
-                );
-            } else {
-                assert_eq!(
-                    world
-                        .resource::<History>()
-                        .pending()
-                        .unwrap()
-                        .edits
-                        .iter()
-                        .map(EditType::native_tag)
-                        .collect::<Vec<_>>(),
-                    vec![7, 8]
-                );
-                world
-                    .resource_mut::<History>()
-                    .finish_input_recording()
-                    .unwrap();
-                assert_eq!(world.resource::<History>().ledger().entries.len(), 1);
-                assert!(
-                    world
-                        .resource::<Events<HistoryRecordingFailed>>()
-                        .is_empty()
-                );
+                assert!(world.resource::<History>().ledger().entries.is_empty());
+                assert!(world.resource::<Events<HistoryRecordingFailed>>().is_empty());
+                assert!(world.resource::<Events<RequestToolbarCategoryChange>>().is_empty());
+                assert!(world.resource::<Events<CmdCheckForSheepInsideBuilding>>().is_empty());
+                // The wall and its roof request above were published before History::add.
+                continue;
             }
+            assert_eq!(world.resource::<History>().pending().unwrap().edits.iter()
+                .map(EditType::native_tag).collect::<Vec<_>>(), vec![7, 8]);
+            world.resource_mut::<History>().finish_input_recording().unwrap();
+            assert_eq!(world.resource::<History>().ledger().entries.len(), 1);
+            assert!(world.resource::<Events<HistoryRecordingFailed>>().is_empty());
             world.resource_scope(|world, mut public: Mut<PublicWalls>| {
                 public.consume_with_paths(&mut world.resource_mut::<InnerWalls>(), &terrain, None, &crate::resources::walls::public_walls::WallPublicationDirty::default(), &crate::resources::walls::public_walls::WallSpatialHash::default());
                 assert!(public.get(created).is_some());

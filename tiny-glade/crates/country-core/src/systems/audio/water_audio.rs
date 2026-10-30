@@ -3,7 +3,7 @@
 //! O-level facts (chapter water_audio.rs.md, decomp-0x140873140 /
 //! 0x140873630, rne-read): init creates 4 loops (gated on the non-demo build)
 //! — `event:/SFX/Water/WaterDraw`, `event:/SFX/Water/WaterErase`,
-//! `event:/SFX/Water/IceErase`, `event:/SFX/Water/IceDraw`. The system
+//! `event:/SFX/Water/IceDraw`, `event:/SFX/Water/IceErase`. The system
 //! signature (procs.tsv) is
 //! `(Res<AppMode>, ResMut<WaterAudioState>, EventReader<WaterDrawEvent>,
 //!  EventReader<WaterEraseEvent>, Res<CursorTerrainRaycast>, Res<ActiveSession>)`.
@@ -28,8 +28,8 @@ use glam::Vec3;
 pub const WATER_LOOP_EVENTS: [&str; 4] = [
     "event:/SFX/Water/WaterDraw",
     "event:/SFX/Water/WaterErase",
-    "event:/SFX/Water/IceErase",
     "event:/SFX/Water/IceDraw",
+    "event:/SFX/Water/IceErase",
 ];
 
 // Water draw/erase events live in `resources::water` (native module; wired by
@@ -69,10 +69,8 @@ pub fn water_audio_init_system<S: Studio + Send + Sync + 'static>(
     commands.insert_resource(state);
 }
 
-/// `water_audio_system` (0x140873630): drive the draw / erase loop pair by the
-/// draw/erase events (via the shared garden draw template), then unconditionally
-/// stop the two ice loops (the decomp shows the two AppMode branches both end
-/// with two `AudioLoop::stop()` calls). The volume is the garden editing-speed
+/// `water_audio_system` (0x140873630): winter routes the two readers to the
+/// ice pair and stops the water pair; other seasons do the reverse. The volume is the garden editing-speed
 /// source (Replay → 1.0, else `CursorTerrainRaycast.speed / 60.0`).
 #[allow(clippy::too_many_arguments)]
 pub fn water_audio_system<S: Studio + Send + Sync + 'static>(
@@ -81,7 +79,7 @@ pub fn water_audio_system<S: Studio + Send + Sync + 'static>(
     mut draws: EventReader<WaterDrawEvent>,
     mut erases: EventReader<WaterEraseEvent>,
     raycast: Res<CursorTerrainRaycast>,
-    _session: Res<ActiveSession>,
+    session: Res<ActiveSession>,
 ) {
     let volume = if mode.native_tag() == 0xd {
         crate::systems::audio::garden_audio::REPLAY_VOLUME
@@ -95,11 +93,17 @@ pub fn water_audio_system<S: Studio + Send + Sync + 'static>(
     let (erase_pos, erase_radius) =
         erase_last.map_or((Vec3::ZERO, 0.0), |e| (e.position, e.radius));
 
-    update_draw_audio_volume(&mut state.loops[0], draw_last.is_some(), draw_pos, draw_radius, volume);
-    update_draw_audio_volume(&mut state.loops[1], erase_last.is_some(), erase_pos, erase_radius, volume);
-    // O (decomp-0x140873630): unconditionally stop the two ice loops.
-    let _ = state.loops[2].stop_now();
-    let _ = state.loops[3].stop_now();
+    let (draw_loop, erase_loop, stop_first, stop_second) = water_loop_routing(session.is_winter());
+    update_draw_audio_volume(&mut state.loops[draw_loop], draw_last.is_some(), draw_pos, draw_radius, volume);
+    update_draw_audio_volume(&mut state.loops[erase_loop], erase_last.is_some(), erase_pos, erase_radius, volume);
+    let _ = state.loops[stop_first].stop_now();
+    let _ = state.loops[stop_second].stop_now();
+}
+
+/// 1408738f5..c4d: reader 3 feeds offsets 0/0x70 and reader 4 feeds
+/// 0x38/0xa8; the inactive pair is stopped after both template calls.
+fn water_loop_routing(winter: bool) -> (usize, usize, usize, usize) {
+    if winter { (2, 3, 0, 1) } else { (0, 1, 2, 3) }
 }
 
 #[cfg(test)]
@@ -110,7 +114,18 @@ mod tests {
     fn water_loop_names_are_original() {
         assert_eq!(WATER_LOOP_EVENTS[0], "event:/SFX/Water/WaterDraw");
         assert_eq!(WATER_LOOP_EVENTS[1], "event:/SFX/Water/WaterErase");
-        assert_eq!(WATER_LOOP_EVENTS[2], "event:/SFX/Water/IceErase");
-        assert_eq!(WATER_LOOP_EVENTS[3], "event:/SFX/Water/IceDraw");
+        assert_eq!(WATER_LOOP_EVENTS[2], "event:/SFX/Water/IceDraw");
+        assert_eq!(WATER_LOOP_EVENTS[3], "event:/SFX/Water/IceErase");
+    }
+
+    #[test]
+    fn seasonal_event_routing_matches_native_loop_offsets() {
+        use crate::resources::session::GladeType;
+        for glade in GladeType::ALL {
+            let route = water_loop_routing(glade.is_winter());
+            assert_eq!(route, if glade == GladeType::Winter { (2, 3, 0, 1) } else { (0, 1, 2, 3) });
+        }
+        assert_eq!(WATER_LOOP_EVENTS[water_loop_routing(true).0], "event:/SFX/Water/IceDraw");
+        assert_eq!(WATER_LOOP_EVENTS[water_loop_routing(true).1], "event:/SFX/Water/IceErase");
     }
 }

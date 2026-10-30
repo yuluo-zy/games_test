@@ -221,10 +221,12 @@ mod pillar_producer_tests {
         world.init_resource::<WallConstructorOutput>();
         let library = AssetSsboLibrary::new();
         library.register::<BrickTransformSsbo>(SparseInstanceBuffer::<BrickTransformSsbo>::new_storage_buffer(&CpuDevice, None));
+        library.register::<country_core::resources::roofs::roof_buffers::WoodenPlankSsbo>(SparseInstanceBuffer::new_storage_buffer(&CpuDevice, None));
         world.insert_resource(library);
         let id = world.resource_mut::<InnerWalls>().new_wall_w_params(
             Curve2::try_new(vec![[-6.,0.],[-1.,0.],[3.,2.],[7.,2.]], false).unwrap(), 1.2, 0, 0, false);
         let mut publication = Schedule::default(); publication.add_systems(publish_public_wall_state); publication.run(&mut world);
+        let mut owners = Schedule::default(); owners.add_systems(crate::gpu_output::replace_published_plank_owners); owners.run(&mut world);
         let masks = {
             let walls = world.resource::<PublicWalls>(); let wall = walls.get(id).unwrap();
             assert_eq!(wall.building_projection().observed_296(), 0);

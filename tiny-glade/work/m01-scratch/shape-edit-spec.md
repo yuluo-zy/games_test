@@ -1424,3 +1424,20 @@ WipRectangle[+0] = 0; return
 原 B PE SHA256 `f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03`，独立复读原机器码。instant Morph 分支 `140ac0612` 按方向选 payload+0x20/+0x3c，`140ac0b55` 调用 `1411ff2b0` Shape::as_curve2；wrapper 的 `1411ff2ce MOVSS xmm2,[rip+0x17cdd92]`（下一 IP=1411ff2d6）读取 `1429cd068`，bits=`3e4ccccd`，随后 `1411ff2d9 CALL140c97cf0` Circle2d::as_curve2。`140ac0b6d` 写 shape，`140ac0bc0` 写 curve。timed Morph 同样在 `140ac01ff` 读同常量，`140ac0207` 调 Circle2d::as_curve2，`140ac021a` 写 curve。现有调用者原记录：`reverse-engineering/tiny-glade/evidence/building-integrate/B-wall-owners-next/140abfc80-140ac0700-native.asm.txt`；jump table 见 `evidence/building-history-owners/WallReplayEditCmd-jumptables.json`（index5）。
 
 因此原 history canonical 圆曲线 step=0.2；UI resize step=0.5 的临时 authority Vec 不在 Morph payload 中，Undo/Redo 不保证恢复这个未记录 Vec。测试必须分别完整验证 create/replay 的0.2曲线和直接 UI after 的0.5曲线，不能修改生产默认值或仅比较 circle 参数来回避差异。本项是静态机器码调用/常量验证，未宣称执行整个 ECS 回放。
+
+### 原证补充：闭墙与 EnclosureChange 的非活动载荷（2026-10-30）
+
+原 B 文件取自 `D:/ljxsj_92385.zip` 的 `Tiny Glade/tiny-glade.rne`，SHA-256 为 `f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03`。本次只提取并读取原文件，未执行；`cf048e27...` 是补丁 EXE，不能作为此项原始身份。
+
+Windows LLVM 指令入口（提取文件为 `D:/game/tmp-merge/original-tiny-glade.rne`）：
+
+```powershell
+& 'C:/Program Files/LLVM/bin/llvm-objdump.exe' -d --start-address=0x140a8135f --stop-address=0x140a81608 D:/game/tmp-merge/original-tiny-glade.rne
+& 'C:/Program Files/LLVM/bin/llvm-objdump.exe' -d --start-address=0x140ac0253 --stop-address=0x140ac02a2 D:/game/tmp-merge/original-tiny-glade.rne
+& 'C:/Program Files/LLVM/bin/llvm-objdump.exe' -d --start-address=0x140ac0a37 --stop-address=0x140ac0c03 D:/game/tmp-merge/original-tiny-glade.rne
+& 'C:/Program Files/LLVM/bin/llvm-objdump.exe' -d --start-address=0x140aa97c5 --stop-address=0x140aa97e7 D:/game/tmp-merge/original-tiny-glade.rne
+```
+
+`finish_wall` 的 `140a81460..14c8` 按当前形状标签分支：标签 2/3 分别表示非封闭/封闭；只有预制形状分支从原墙读取后 24 字节。闭合的 `140a815d4..1603` 构造标签 3，连同栈中 24 字节交给 `140aa9610`。历史回放 `140ac0253..029d`、`140ac0a37..0bfe` 按 Undo/Redo 选择历史形状，只有预制形状分支读取其 24 字节载荷；非预制分支构造标签 2/3 后同样传递栈中其余字节。`140aa97d4..97e1` 物理复制 28 字节到墙状态。
+
+这证明非预制变体的有效业务状态是标签；后 24 字节在所核分支未按该变体初始化，不能据此保证回放前后保留原字节，也不能声称原版固定清零。预制变体载荷仍有业务意义，须完整验证。本结论限于上述静态指令和分支，不代表已执行原 ECS、证明全域行为或定位当前闭墙测试失败字段；待实际诊断后再判断测试比较。

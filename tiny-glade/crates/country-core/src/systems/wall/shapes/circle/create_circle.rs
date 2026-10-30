@@ -218,6 +218,11 @@ fn record_creation_history(
     failures: &mut EventWriter<HistoryRecordingFailed>,
 ) {
     if let Err(error) = history.add(edit.clone()) {
+        // Original History::add 140a84ef0..ef7 / 140a8525b..2a0 panics
+        // when the pending recording is absent; retain other typed diagnostics.
+        if error == crate::resources::history::transactions::HistoryTransactionError::RecordingNotStarted {
+            panic!("original History::add requires an active recording");
+        }
         failures.write(HistoryRecordingFailed { edit, error });
     }
 }

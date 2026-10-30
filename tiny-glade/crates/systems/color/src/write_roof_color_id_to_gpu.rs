@@ -38,31 +38,18 @@ pub fn write_roof_color_id_to_gpu(
     }
 }
 
-/// 尚未迁回原setter的门／半木上传适配；墙表已由真实setter原地整表上传。
-/// 不再重复消费墙颜色事件，也不将其延迟到set40之后。
+/// 半木颜色的上传适配；门与墙表由各自 setter 原地整表上传。
 pub fn write_gate_and_halftimber_color_ids_to_gpu(
     device: Res<GraphicsDeviceResource>,
     library: Res<AssetSsboLibrary>,
-    mut gates: EventReader<country_core::resources::color_id::SetGateColorIdCmd>,
     mut half: EventReader<country_core::resources::color_id::SetHalftimberColorIdCmd>,
 ) {
     use country_core::resources::color_id::{
-        GateColorIdSsbo, HalftimberColorIdSsbo,
+        HalftimberColorIdSsbo,
     };
-    let gate = library
-        .get::<GateColorIdSsbo>()
-        .expect("GateColorIdSsbo missing");
     let timber = library
         .get::<HalftimberColorIdSsbo>()
         .expect("HalftimberColorIdSsbo missing");
-    for cmd in gates.read() {
-        gate.gpu_write_with_offset(
-            device.device(),
-            &[GateColorIdSsbo(cmd.color)],
-            cmd.wall_id().0 as usize * 4,
-        )
-        .expect("gate color GPU write failed");
-    }
     for cmd in half.read() {
         timber
             .gpu_write_with_offset(

@@ -1,44 +1,82 @@
-//! ui_color_decorator.rs — 窗/旗装饰物颜色 UI（B 0x1422b0e00，2168B；
-//! restorer-state-color 2026-10-17 fresh 反编译）。
-//!
-//! **未实现**（分歧点）：真实控制流 = 模式 12 守卫 → `RaycastWorld::
-//! legacy_raycast_w_params()` 拾取 → 命中类型 `local_200`：
-//! - 0xd/0xe：`DecoratorStorage::lookup_decorator_info` + `stairs_assembly_params::
-//!   from` + hash 集（`hash_one<WidgetId>`）判定楼梯标志 `bVar21/bVar19`。
-//! - 4：`decorator_info` → 子类型（+0x46-0x38）；`StairsState::graph()` →
-//!   `IndexMap::get` 遍历连接节点 `StairSegment::new`。
-//! 构建控件 `"color_decorator_"+index`；`is_active`：楼梯 '?' → `OutlineStairsCmd`，
-//!   否则 outline 显示；点击 → `write<HideColorMenuCmd>` + 按子类型
-//!   '8'/'9'/':'→3、';'→10、'<'→9、'='→6、'?'→`bVar21+0xb` → `write<ShowColorMenuCmd>`
-//!   `(cVar9, cVar20, index)`。core legacy_raycast/StairsState graph/outline 面未对齐。
-
+//! B1422b0e00 decorator/stair color widget; all identities come from the real raycast owner.
 use bevy_ecs::prelude::*;
-
-use country_core::resources::mouse_terrain_raycast::{CameraCursorRay, CursorPositionSS};
-use country_core::resources::stairs::stairs_state::StairsState;
-use country_core::resources::walls::decorator_storage::DecoratorStorage;
-use country_core::systems::mode_manager::AppMode;
-use country_core::systems::ui::resources::ui_state::UiState;
-use country_core::systems::wall::structure_outline::OutlineStairsCmd;
-
+use country_core::{resources::{mouse_terrain_raycast::{CameraCursorRay, CursorPositionSS},
+    stairs::{stairs_assembly_params::{PlayermadeStairsAssemblyRequests, StairGraphEdgeIdentity}, stairs_state::{StairSegment, StairsState}},
+    walls::{WallId, cached_decorator_transforms::CachedDecoratorTransforms,
+        decorator::{DecoratorId, DecoratorRank}, decorator_storage::{DecoratorStorage, DecoratorStorageAddr},
+        decorator_subtype::{DecoratorLibKey, DerivedDecoratorInfoResources}, public_walls::PublicWalls}},
+    systems::{collision::world::RaycastWorld, mode_manager::AppMode,
+        ui::{resources::{ui_state::UiState, widget_params::{UiSounds, WidgetGeometry, WidgetParams}},
+            signifiers::UiSignifierStream}, wall::structure_outline::OutlineStairsCmd}};
 use crate::{HideColorMenuCmd, ShowColorMenuCmd};
 
-/// `ui_color_windows_and_flags` @0x1422b0e00（2168B，未实现）。
+fn has_magic(requests: &PlayermadeStairsAssemblyRequests, a: u32, b: u32) -> bool {
+    let key = StairGraphEdgeIdentity::from(StairSegment::new(DecoratorId(a), DecoratorId(b)));
+    requests.previous.sub_segments.get(&key).and_then(|list| list.last()).is_some_and(|last| last.kind == 3)
+}
+
 #[allow(clippy::too_many_arguments)]
-pub fn ui_color_windows_and_flags(
-    mode: Res<AppMode>,
-    _ui: Res<UiState>,
-    _storage: Res<DecoratorStorage>,
-    _shows: EventWriter<ShowColorMenuCmd>,
-    _hides: EventWriter<HideColorMenuCmd>,
-    _cursor: Res<CursorPositionSS>,
-    _outlines: EventWriter<OutlineStairsCmd>,
-    _stairs: Res<StairsState>,
-    _camera_ray: Res<CameraCursorRay>,
-) {
-    // O：模式 12 守卫。
-    if mode.native_tag() == 0xc {
-        // O：legacy_raycast 拾取 → 命中类型分派（0xd/0xe/4）→ ShowColorMenuCmd
-        // 类别码 {3,6,9,10,11/12}；widget/stair-outline 面 GAP，未恢复。
+pub fn ui_color_windows_and_flags(mode: Res<AppMode>, ui: Res<UiState>, storage: Res<DecoratorStorage>,
+    mut shows: EventWriter<ShowColorMenuCmd>, mut hides: EventWriter<HideColorMenuCmd>,
+    cursor: Res<CursorPositionSS>, transforms: Res<CachedDecoratorTransforms>,
+    derived: DerivedDecoratorInfoResources, mut signifiers: ResMut<UiSignifierStream>,
+    walls: Res<PublicWalls>, world: Res<RaycastWorld>, ray: Res<CameraCursorRay>,
+    mut outlines: EventWriter<OutlineStairsCmd>, requests: Res<PlayermadeStairsAssemblyRequests>,
+    stairs: Res<StairsState>) {
+    if mode.native_tag() != 12 { return; }
+    let hit = world.legacy_raycast_w_params(ray.origin, ray.dir, 0x3108);
+    if !hit.is_hit() { return; }
+    let tag = hit.handle[0] as u8;
+    let id = DecoratorId((hit.handle[0] >> 32) as u32);
+    let (info, addr, enabled, magic, other) = match tag {
+        13 | 14 => {
+            let Some(info) = storage.lookup_decorator_info(id) else { return; };
+            let Some(addr) = storage.lookup_storage(id) else { return; };
+            let other = hit.handle[1] as u32;
+            (info, addr, true, has_magic(&requests, id.0, other), other)
+        }
+        4 => {
+            let addr = match hit.handle[1] {
+                0 => DecoratorStorageAddr::Wall(WallId(hit.handle[2])),
+                1 => DecoratorStorageAddr::Terrain,
+                2 => DecoratorStorageAddr::Stair,
+                3 => return,
+                _ => panic!("invalid native decorator storage address"),
+            };
+            let Some(info) = storage.get(addr).and_then(|decorators| decorators.get(id)) else { return; };
+            let magic = stairs.graph().neighbors(id.0).any(|other| has_magic(&requests, id.0, other));
+            (info, addr, info.ty.wrapping_sub(0x38) < 6, magic, hit.handle[2] as u32)
+        }
+        _ => return,
+    };
+    let subtype = derived.as_view().subtype(id).0;
+    let distance = (ray.origin - hit.position).length();
+    let mut sounds = UiSounds::empty();
+    sounds.slots[0][..4].copy_from_slice(&1u32.to_le_bytes());
+    sounds.slots[3][..4].copy_from_slice(&(u32::from(enabled) * 4 + 4).to_le_bytes());
+    let mut params = WidgetParams::default().geometry(WidgetGeometry::TerrainCanvas { distance, layer: 0 })
+        .sounds(sounds).with_signifiers(vec![crate::ui_color_wall_and_roof::cursor_factory_named("my_signifier", cursor.0, enabled)]);
+    params.flags.0 |= 2;
+    let widget = ui.add(&format!("color_decorator_{}", id.0), params);
+    if !enabled { return; }
+    if widget.is_active() {
+        if info.ty == b'?' {
+            outlines.write(OutlineStairsCmd::connected_color_hover(StairSegment::new(id, DecoratorId(other))));
+        } else {
+            let transform = transforms.transform(id.0);
+            let offset = info.dst_tag() < 2 && walls.get(addr.as_wall()).is_some_and(|wall| wall.shape().tag() < 2);
+            derived.as_view().mesh_library().get_outline(DecoratorLibKey::new(subtype, info.rank))
+                .display(&glam::Affine3A::from_scale_rotation_translation(transform.scale, transform.rotation, transform.translation),
+                    &mut signifiers, id, DecoratorRank(info.rank), offset, true);
+        }
+    }
+    if widget.clicked() {
+        hides.write(HideColorMenuCmd { cancel: false });
+        let (kind, subtype) = match info.ty {
+            b'8' => (3, 0), b'9' | b':' => (3, 1), b';' => (10, info.ty),
+            b'<' => (9, info.ty), b'=' => (6, info.ty), b'?' => (11 + u8::from(magic), info.ty),
+            _ => panic!("invalid original color decorator type"),
+        };
+        shows.write(ShowColorMenuCmd { kind, subtype, decorator_id: id.0, payload: 0, position: cursor.0 });
     }
 }

@@ -128,6 +128,20 @@ pub fn build_world(
     let _vao_scope = frame.raster_resources().begin_vao_scope(world, lists)?;
     SceneRasterHost::new(frame, world, lists)?.shadow_pass()?;
     geometry::calc_terrain_lighting_texture(frame, world)?;
+    // Diagnostic capture uses the existing screenshot owner and shader; it
+    // reads the real lighting output after its original compute/mip passes.
+    if crate::screenshot::shared_texture_capture::active_capture_purpose(world)
+        == crate::screenshot::ScreenshotPurpose::TerrainLightingDiagnostic.as_byte()
+    {
+        let imported = world.get_resource::<country_core::asset_libraries::texture_library::AssetTextureLibrary>()
+            .ok_or_else(|| missing("AssetTextureLibrary"))?
+            .get_rg_texture(country_core::resources::texture_presets::TexturePreset(8));
+        let source = country_core::render::pass_builder::pass_resource_access::RgTexture {
+            resource: imported.resource as u32, desc: imported.desc,
+        };
+        crate::screenshot::shared_texture_capture::opportunity(frame, world,
+            crate::screenshot::ScreenshotPurpose::TerrainLightingDiagnostic.as_byte(), source, 1)?;
+    }
 
     let (gbuffer, velocity) = frame.with_compute(|compute| Ok((
         compute.create_raw_texture(names::GBUFFER, &TextureDesc::new_2d(world_dims, formats::GBUFFER)),

@@ -265,6 +265,9 @@ fn terrain_readback_waits_for_a_publication_from_the_issuing_frame() {
     world.insert_resource(library);
     world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
     world.insert_resource(TerrainHeightsData::<VisualTerrainHeightSsbo>::new());
+    let mut floor_dirty = world.resource_mut::<TerrainHeightsData<TerrainHeightSsbo>>().subscribe();
+    let mut visual_dirty = world.resource_mut::<TerrainHeightsData<VisualTerrainHeightSsbo>>().subscribe();
+    let old_floor = world.resource::<TerrainHeightsData<TerrainHeightSsbo>>().sample_at_world_xz(0.0, 0.0);
     world.insert_resource(ScheduledTerrainReadback::default());
     world.insert_resource(Events::<OnTerrainChange>::default());
     // Frame 5 issued the copy; only frame-4 data has been published so far.
@@ -280,17 +283,32 @@ fn terrain_readback_waits_for_a_publication_from_the_issuing_frame() {
     for _ in 0..5 { schedule.run(&mut world); }
     assert!(world.resource::<Events<OnTerrainChange>>().is_empty());
     assert_eq!(world.resource::<TerrainHeightsData<TerrainHeightSsbo>>().heights()[0], 0);
+    assert!(floor_dirty.take().is_none() && visual_dirty.take().is_none());
     // Only one half reaches frame 5: both must be from the issuing frame.
     world.resource_mut::<GpuReadbacks>().publish_slice(&vec![TerrainHeightSsbo(0x0006_0005); 0x20000], 5);
     schedule.run(&mut world);
     assert!(world.resource::<Events<OnTerrainChange>>().is_empty());
+    assert!(floor_dirty.take().is_none() && visual_dirty.take().is_none());
     world.resource_mut::<GpuReadbacks>().publish_slice(&vec![VisualTerrainHeightSsbo(0x0008_0007); 0x20000], 6);
     schedule.run(&mut world);
     assert_eq!(&world.resource::<TerrainHeightsData<TerrainHeightSsbo>>().heights()[..2], &[5, 6]);
     assert_eq!(&world.resource::<TerrainHeightsData<VisualTerrainHeightSsbo>>().heights()[..2], &[7, 8]);
     assert_eq!(world.resource::<Events<OnTerrainChange>>().len(), 1);
+    assert_eq!(floor_dirty.take().unwrap().tile_indices().count(), 4096);
+    assert_eq!(visual_dirty.take().unwrap().tile_indices().count(), 4096);
+    let floor = world.resource::<TerrainHeightsData<TerrainHeightSsbo>>();
+    let new_floor = floor.sample_at_world_xz(0.0, 0.0);
+    assert!(new_floor > old_floor);
+    #[cfg(feature = "native-physics")]
+    {
+        let collision = crate::systems::collision::world::RaycastWorld::new();
+        let midpoint = (old_floor + new_floor) * 0.5;
+        assert!(collision.intersects_any_w_terrain(&floor, Vec3::Y * 10.0, -Vec3::Y,
+            10.0 - midpoint, 0x20));
+    }
     schedule.run(&mut world);
     assert_eq!(world.resource::<Events<OnTerrainChange>>().len(), 1);
+    assert!(floor_dirty.take().is_none() && visual_dirty.take().is_none());
 }
 #[test]
 fn terrain_resource_registration_initializes_edit_capture_owner() {

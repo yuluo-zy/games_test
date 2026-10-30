@@ -114,6 +114,18 @@ pub struct MagicSupports {
 }
 
 impl MagicSupports {
+    /// Native show_color_options reads this byte at MagicSupports +0x40.
+    /// It is reset by clear; the original assembly producer that sets it is
+    /// still an M8 recovery item.
+    pub fn has_magic(&self) -> bool {
+        self.flag != 0
+    }
+
+    /// Set the native activity byte supplied by the visual producer.
+    /// The original producer that computes this value remains unrecovered.
+    pub fn set_activity_byte(&mut self, value: u8) {
+        self.flag = value;
+    }
     /// 原两路分配的只读owner；writer继续由各自真实SparseInstanceBuffer借出。
     pub fn allocations(&self) -> (Option<&MeshAtlasAllocation>, Option<&MeshAtlasAllocation>) {
         (self.first.as_ref(), self.second.as_ref())
@@ -434,6 +446,7 @@ mod tests {
         supports.floating_bricks = vec![floating_brick(); 5];
         supports.count32 = 6;
         supports.flag = 7;
+        assert!(supports.has_magic());
         // 第一/第二槽已存在：各自先写一个元素，clear 后应回到空闲栈。
         supports.first = Some(MeshAtlasAllocation::new(&first));
         supports.second = Some(MeshAtlasAllocation::new(&second));
@@ -451,6 +464,7 @@ mod tests {
         assert!(supports.floating_bricks.capacity() >= 5, "原clear保留Vec容量");
         assert_eq!(supports.count32, 0);
         assert_eq!(supports.flag, 0);
+        assert!(!supports.has_magic());
         assert!(first.byte_map[..64].iter().all(|&x| x == 0));
         assert!(second.byte_map[..64].iter().all(|&x| x == 0));
         assert_eq!(first.free_chunks.read().len(), 64);

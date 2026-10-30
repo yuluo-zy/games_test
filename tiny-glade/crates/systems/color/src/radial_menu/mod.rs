@@ -71,7 +71,7 @@ pub struct ColorSelectionSnapshot {
     pub railing: u8,
     pub wall_style: u8,
     pub flag_connection: u8,
-    pub reserved_1f: u8,
+    pub freehand_ty: u8,
     pub flat_roof_rim_style: u8,
     pub chimney_smoke: u8,
     pub reserved_22: [u8; 2],
@@ -82,6 +82,7 @@ pub struct ColorSelectionSnapshot {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ColorMenuTarget {
     pub kind: u8,
+    pub subtype: u8,
     pub payload: u32,
     pub id: u64,
 }
@@ -97,6 +98,8 @@ pub struct ColorRadialMenu {
     pub angle_range: Option<utils::angle_range::AngleRange>,
     pub selected_index: Option<usize>,
     pub interaction_start_index: Option<usize>,
+    /// Native cross-frame color preview (owner +0x28).
+    pub preview_color: Option<u32>,
     pub navigation_indices: Vec<usize>,
     pub navigation_state: u32,
     pub icon_size: f32,
@@ -254,6 +257,7 @@ impl ColorRadialMenu {
                 angle_range: Some(angle_range),
                 selected_index,
                 interaction_start_index: None,
+                preview_color: None,
                 navigation_indices: Vec::new(),
                 navigation_state: 0,
                 icon_size,
@@ -328,6 +332,7 @@ mod native_create_tests {
                 icons,
                 target: ColorMenuTarget {
                     kind: 0,
+                    subtype: 0,
                     payload: 0,
                     id: 0x100000008,
                 },

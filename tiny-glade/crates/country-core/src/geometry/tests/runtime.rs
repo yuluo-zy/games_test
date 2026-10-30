@@ -18,6 +18,65 @@ use std::{
     },
 };
 
+#[test]
+fn publication_replaces_only_assembly_lanes_and_delete_retires_them() {
+    use crate::resources::{roofs::geometry::surface::Curve2,
+        walls::{InnerWalls, WallState, public_walls::{OnWallDeleted, PublicWalls, WallEntities, WallPlasters, WallPublicationDirty, WallSpatialHash},
+            publication_source::TerrainHeightGrid512}};
+    use crate::systems::wall::delete_wall::delete_wall;
+    let terrain = TerrainHeightGrid512 { encoded: vec![0;512*512].into(), minimum_y: 0., maximum_y: 0., sampling_fix: false };
+    let curve = Curve2::try_new(vec![[0., 0.], [4., 0.]], false).unwrap();
+    let mut inner = InnerWalls::default();
+    let wall = inner.new_wall(WallState::new(curve.clone(), 2., 0, 0, false));
+    let mut public = PublicWalls::default();
+    public.consume_with_paths(&mut inner, &terrain, None, &WallPublicationDirty::default(), &WallSpatialHash::default());
+    let library = AssetSsboLibrary::new();
+    library.register::<BrickTransformSsbo>(SparseInstanceBuffer::new_storage_buffer(&TestDevice(1), None));
+    let mut world = World::new(); world.insert_resource(public); world.insert_resource(library);
+    world.init_resource::<WallEntities>(); world.init_resource::<WallPlasters>(); world.init_resource::<Events<OnWallDeleted>>();
+    let mut schedule = Schedule::default(); schedule.add_systems(prepare_wall_brick_assembly_owners);
+    schedule.run(&mut world);
+    let entity = world.resource::<WallEntities>().wall_entity(wall).unwrap();
+    let base_address = world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap().allocation().unwrap().handle.0.as_deref().unwrap() as *const _ as usize;
+    world.resource_scope(|world, mut library: Mut<AssetSsboLibrary>| {
+        let storage = library.get_mut::<BrickTransformSsbo>().unwrap();
+        let mut owner = world.get_mut::<InstancedWall<BrickTransformSsbo>>(entity).unwrap();
+        owner.update(vec![BrickTransformSsbo { seed: 17, ..Default::default() }]);
+        owner.upload_to_storage_buffer(storage).unwrap();
+        owner.update(vec![BrickTransformSsbo { seed: 18, ..Default::default() }]);
+        storage.writer(owner.chimney_allocation().unwrap()).push(&BrickTransformSsbo::default()).unwrap();
+        storage.writer(owner.door_stairs_allocation().unwrap()).push(&BrickTransformSsbo::default()).unwrap();
+    });
+    let ranges = |world: &World| {
+        let owner = world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap();
+        let library = world.resource::<AssetSsboLibrary>(); let storage = library.get::<BrickTransformSsbo>().unwrap();
+        (storage.allocation_to_draw_multi_instanced(owner.chimney_allocation().unwrap()),
+         storage.allocation_to_draw_multi_instanced(owner.door_stairs_allocation().unwrap()))
+    };
+    let before = ranges(&world); assert!(!before.0.is_empty() && !before.1.is_empty());
+    world.resource_mut::<PublicWalls>().consume_with_paths(&mut inner, &terrain, None, &WallPublicationDirty::default(), &WallSpatialHash::default());
+    schedule.run(&mut world); assert_eq!(ranges(&world), before);
+    let mut invalid = curve.clone(); invalid.length = 0.; inner.update_wall_state_curve(wall, invalid);
+    world.resource_mut::<PublicWalls>().consume_with_paths(&mut inner, &terrain, None, &WallPublicationDirty::default(), &WallSpatialHash::default());
+    schedule.run(&mut world); assert_eq!(ranges(&world), before);
+    inner.update_wall_state_curve(wall, curve);
+    world.resource_mut::<PublicWalls>().consume_with_paths(&mut inner, &terrain, None, &WallPublicationDirty::default(), &WallSpatialHash::default());
+    schedule.run(&mut world);
+    assert!(ranges(&world).0.is_empty() && ranges(&world).1.is_empty());
+    let owner = world.get::<InstancedWall<BrickTransformSsbo>>(entity).unwrap();
+    assert_eq!(owner.allocation().unwrap().handle.0.as_deref().unwrap() as *const _ as usize, base_address);
+    assert_eq!(owner.pending_instances()[0].seed, 18); assert!(owner.is_upload_pending());
+    world.resource_mut::<AssetSsboLibrary>().get_mut::<BrickTransformSsbo>().unwrap().take_out_waste();
+    assert_eq!(world.resource::<AssetSsboLibrary>().get::<BrickTransformSsbo>().unwrap().to_draw_multi_instanced().iter().map(|r| r.1).sum::<u32>(), 1);
+    inner.remove(wall);
+    world.resource_mut::<PublicWalls>().consume_with_paths(&mut inner, &terrain, None, &WallPublicationDirty::default(), &WallSpatialHash::default());
+    world.send_event(OnWallDeleted(wall));
+    let mut delete = Schedule::default(); delete.add_systems(delete_wall); delete.run(&mut world);
+    assert!(!world.entities().contains(entity));
+    let mut library = world.resource_mut::<AssetSsboLibrary>(); let storage = library.get_mut::<BrickTransformSsbo>().unwrap();
+    storage.take_out_waste(); assert!(storage.to_draw_multi_instanced().is_empty());
+}
+
 #[derive(Default)]
 struct RecordingDevice {
     fail_create: AtomicBool,

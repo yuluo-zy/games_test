@@ -119,7 +119,7 @@ pub fn gpu_flush_plank_buffers(
 /// 本仓库的差异（设计更新，业务语义不变）：墙记录 +0x130 的 per-wall 木板分配不在 `PublicWallState`
 /// 里，而由 `gpu_output::ConstructorGpuOutput` 拥有（lintel/fence 追加方共享同一 per-wall 分配）；故取参
 /// 面多一个 `ResMut<WallConstructorOutput>`，库为 `ResMut`（`writer` 需要 `&mut` 存储）。
-/// 分配不存在时 `clear_planks` 会创建空分配（原版此处 `unwrap` panic，仅在首次变更前无分配时可区分）。
+/// 原发布成功时建立或替换该 owner；清理时缺失 allocation 会 panic。
 pub fn gpu_clear_wall_gate_pieces(
     mut library: bevy_ecs::prelude::ResMut<country_core::asset_libraries::ssbo_library::AssetSsboLibrary>,
     mut changed: bevy_ecs::prelude::EventReader<country_core::resources::walls::public_walls::OnWallChanged>,

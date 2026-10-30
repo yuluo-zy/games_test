@@ -27,6 +27,7 @@ mod tests;
 use crate::resources::history::History;
 use crate::resources::history::HistoryReplayError;
 use crate::resources::history::ReplayBucket;
+use crate::resources::history::replay_cmd_buffer::ReplayBucketAux;
 use crate::resources::history::ReplayBuffer;
 use crate::resources::history::transactions::HistoryCursorStep;
 use crate::systems::mode_manager::HistoryCommand;
@@ -292,9 +293,17 @@ fn advance_history_cursor<S: Send + Sync + 'static>(
     match history.cursor_step_expanding(step, instant, |index, entry, undo, instant| {
         let aux = entry.auxiliary.for_replay(undo);
         ReplayBucket::expand_with_aux(index, entry, undo, instant, aux.clone())
-            .map(|bucket| (bucket, aux))
+            .map(|bucket| (bucket.partition(), aux))
     }) {
-        Ok(Some((bucket, aux))) => replay.push_with_aux(bucket, aux),
+        Ok(Some((buckets, aux))) => {
+            let count = buckets.len();
+            for (index, bucket) in buckets.into_iter().enumerate() {
+                // Original 140af6a31 attaches the entry diff to the final
+                // partition; earlier partitions must not restore it early.
+                let bucket_aux = if index + 1 == count { aux.clone() } else { ReplayBucketAux::default() };
+                replay.push_with_aux(bucket, bucket_aux);
+            }
+        }
         Ok(None) => {}
         Err(error) => {
             failures.write(HistoryReplayFailed {

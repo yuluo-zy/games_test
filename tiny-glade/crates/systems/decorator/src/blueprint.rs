@@ -1755,6 +1755,33 @@ mod tests {
     }
 
     #[test]
+    fn removed_wall_bucket_clears_blueprint_colliders_and_persistent_entity() {
+        use bevy_ecs::system::RunSystemOnce;
+        use country_core::resources::walls::decorator::{DecoratorId, DecoratorInfo};
+        use country_core::resources::walls::decorator_storage::{DecoratorStorage, DecoratorStorageAddr};
+        let mut fixture = FullVisualFixture::new(85);
+        let addr = DecoratorStorageAddr::Wall(WallId(501));
+        let mut storage = DecoratorStorage::default();
+        storage.apply_decorator_place(addr, DecoratorId(85), &DecoratorInfo::default());
+        fixture.ecs.insert_resource(storage);
+        fixture.run();
+        let entity = fixture.ecs.resource::<DecoratorVisualState>()
+            .persistent_entities_of(85).unwrap()[0];
+        assert_eq!(fixture.ecs.resource::<DecoratorPhysicsColliders>().first.len(), 1);
+        assert_eq!(fixture.ecs.resource::<DecoratorPhysicsColliders>().second.len(), 1);
+        fixture.snapshot();
+        fixture.ecs.resource_mut::<DecoratorStorage>().remove_storage(addr);
+        fixture.ecs.run_system_once(clear_blueprints).unwrap();
+        fixture.reset_surrounding_frame_outputs();
+        fixture.run();
+        assert!(fixture.ecs.resource::<DecoratorBlueprints>().get(85).is_none());
+        let colliders = fixture.ecs.resource::<DecoratorPhysicsColliders>();
+        assert!(colliders.first.is_empty() && colliders.second.is_empty());
+        assert!(!fixture.ecs.entities().contains(entity));
+        assert!(fixture.ecs.resource::<DecoratorVisualState>().persistent_entities_of(85).is_none());
+    }
+
+    #[test]
     fn fullvisual_missing_canonical_outline_fails_after_build_seal_and_colliders() {
         let mut fixture = FullVisualFixture::new(83);
         // A legacy tuple is deliberately present: it is not the original option.

@@ -27,14 +27,15 @@ use bevy_ecs::prelude::*;
 
 // ---------------------------------------------------------------- 事件族
 
-/// 显示颜色菜单命令（O：`show_color_menu::ShowColorMenuCmd`；ui_color_* 发射、
-/// show_color_options 0x14229a7f0 消费）。字段名 U（show_color_options 反编译失败）；
-/// autoclose_color_menu 0x142298d30 读 kind 字段：`kind == 0xc` 直接关闭。
+/// Typed target and screen-space position emitted by the real color pickers
+/// and consumed by show_color_options (B 0x14229a7f0).
 #[repr(C)]
 #[derive(Event, Clone, Copy, Debug, Default)]
 pub struct ShowColorMenuCmd {
-    /// kind（O：autoclose 读 `*event == 0xc`）。
+    /// Original target discriminant (wall 0 through ladder 12).
     pub kind: u8,
+    /// Native target subtype at byte +1.
+    pub subtype: u8,
     /// DecoratorId uses the native +4 payload, independently of wall ids.
     pub decorator_id: u32,
     /// Native +8 WallId payload.
@@ -193,6 +194,12 @@ pub fn register_color_events(world: &mut World) {
     world.init_resource::<Events<SetFlatRoofRimStyleCmd>>();
     world.init_resource::<Events<PlayUiSound>>();
     world.init_resource::<Events<NotInDemoHint>>();
+    // Canonical cross-domain channels used by the radial menu. The native App
+    // registers their maintenance in the history/lighting owners; the World-only
+    // entry point must expose the same identities for its real consumers.
+    world.init_resource::<Events<country_core::resources::history::FinishInputRecordingCmd>>();
+    world.init_resource::<Events<country_core::resources::events::LightLanternCmd>>();
+    world.init_resource::<Events<country_core::resources::events::LightWindowCmd>>();
 }
 
 /// 注册 CPU 系统（O：add_color 0x140651870 的 add_systems 面）。
@@ -212,7 +219,6 @@ pub fn add_color_cpu_systems<S: Send + Sync + 'static>(schedule: &mut Schedule) 
         set_window_light::set_window_light,
         set_flag_connection_n_chimney_smoke::set_flag_connection_and_chimney_smoke,
         ui_color_wall_and_roof::ui_color_wall_and_roof,
-        ui_color_wall_and_roof::color_cursor_icon,
     ));
     schedule.add_systems((
         ui_color_gates::ui_color_gates,
@@ -246,7 +252,7 @@ pub fn build<S: Send + Sync + 'static>(world: &mut World, schedule: &mut Schedul
 ///
 /// 与重建 crate 旧 `add_color_cpu_systems` 的差异：原版有 `set_wall_style`、没有 `color_cursor_icon`。
 /// 未闭合：原版 `set_*_color_id` 内含 SSBO 上传段，重建版未恢复，宿主用独立的
-/// 墙setter已恢复原地整表上传；门／半木尚由`write_gate_and_halftimber_color_ids_to_gpu`适配。
+/// 墙和门 setter 原地整表上传；半木由后置适配器上传。
 pub trait ColorSystems {
     fn add_color(&mut self) -> &mut Self;
 }

@@ -1,205 +1,480 @@
-//! show_color_menu.rs — 颜色菜单显隐（B 0x1422adcf0 hide_color_menu /
-//! 0x14229a7f0 show_color_options；restorer-wave2-color 2026-10-17，reviewer
-//! wave2 复核后修正 case 0/1 图标载荷）。
-//!
-//! - `show_color_options`（0x14229a7f0，真实函数体 ~0x38KB）：**重建（结构面 +
-//!   case 0/1 图标载荷面）+ 未实现（其余 case/事件写面）**。反编译基 = reviewer
-//!   `revieww2color` 专属写 worker fresh clone 全量（`wave2/reviews/color/evidence/
-//!   decomp/show_color_options_14229a7f0_full.c`，与 shared read_memory 证据 sha256
-//!   逐字节一致）。结构面判等（reviewer 复核通过）：
-//!   * 遍历 `ShowColorMenuCmd` 事件（EventInstance stride 0x20；kind 字节
-//!     `(byte)*puVar19`、payload `*(*pauVar43 + 8)`）；
-//!   * 两段跳表分派（0x14303ca70 相对偏移，base=表地址；kind 0 → 0x14229b725、
-//!     1 → 0x14229bde9（roof 色）…40 项已核对）；
-//!   * demo 门 `_DEV_OVERRIDE_IS_DEMO_MODE`（0x143634d90，read_memory=0 当前非 demo）；
-//!   * `MainCamera::eye_position()` → `ColorRadialMenu::create` + 菜单实体生成 +
-//!     事件写者族。
-//! - **case 0（0x14229b725）图标载荷（修正后，按 fresh 反编译行 452-1093）**：
-//!   非 demo 主路径：`PublicWalls::get()` 空则 return → **主 13 个 kind-3 色
-//!   swatch**（bricks_beige/yellow/light/grey/dark ×5 + plaster_colors ×8，
-//!   v1c=0,1,3,0xb,2,4,0xc,5,10,8,9,6,7；行 598-677；B-ecstate fresh 反汇编补：
-//!   8 个 plaster 条目副值 `+0x24 = [0,7,1,6,4,5,2,3]`，bricks 5 项为 0）→ plaster 条件门
-//!   `(iVar9-4U<7)||(iVar9==0xc)`（行 689）追加 4 图标（separator +
-//!   plaster_peel_low/medium/high，kind 0xc，v1c=0/0x3f000000/0x3f800000；
-//!   行 747-788）→ `*(puStack_250+600)<2` 门（行 793）追加 halftimber/skirt 族
-//!   （separator + halftimber(kind 4,b19 2) + skirt(kind 4,b19 1) +
-//!   no_skirt(kind 4,b19 0)；行 842-880）→ `Roof::is_flat()` 门（行 884-940）
-//!   追加 separator + `new_flat_roof_rim_ty`；非平顶 else 分支（行 941-1088）
-//!   5 图标块（separator + skirt/no_skirt + separator + kind-7 30 字符图标，
-//!   `ClutterVersion::is_initial` 门）——登记 GAP。
-//!   demo 分支（行 1094+）——登记 GAP（demo 门现为 0，非活动路径）。
-//! - **case 1（0x14229bde9）roof 色**：11 个 kind-3 roof swatch
-//!   （roof_ochre/red/purple/blue/light_blue/turquoise/green_light/green/
-//!   dark_wood/dark/grey，v1c=8,0,10,2,9,3,6,4,1,5,7；行 1600-1665）。
-//! - **未实现面**：case 2..0x26 逐 case 精确表（装饰器分类
-//!   `DecoratorStorage::lookup_decorator_info`+`DecoratorExtraInfo::try_as_*`、
-//!   `StairsState::get_all_connected_nodes` 等）、尾部 6+ 个
-//!   `Events<(&str, SettingsMenuState)>` / `Events<(DecoratorId,
-//!   Vec<PreferredNodeAlignment>)>` 事件写面、`MainCamera::eye_position` SIMD 偏移、
-//!   平顶 else 块、demo 分支——登记 GAP。
-//! - `hide_color_menu`（0x1422adcf0，5058B）：完整取消/关闭/退场生命周期。
+//! Original color-menu producer and hide lifecycle. The two show dispatch tables each have 13 entries.
+//! Original byte identities and corrected tables: evidence/round12/color-menu/REPORT.md.
 
 use bevy_ecs::prelude::*;
 
 use country_core::resources::color_icon::{CustomizationIcon, CustomizationIconMarkedForDeletion};
 
-use crate::radial_menu::{ColorRadialMenu, IconInfo, new_flat_roof_rim_ty, new_separator};
+use crate::radial_menu::{ColorRadialMenu, IconInfo};
 use crate::{HideColorMenuCmd, ShowColorMenuCmd};
 
-/// `IconInfo` 色 swatch 图标构造（O：反编译写面 String@0 + kind@+0x18 +
-/// v1c@+0x1c；b19@+0x19 / u1a@+0x1a / v20@+0x20 / v24@+0x24 默认 0）。
-fn icon_color(name: &str, kind: u8, v1c: u32) -> IconInfo {
+// Candidate only: the complete primary option-construction algorithm of
+// B14229a7f0. The ECS lookup, 13-way snapshot, secondary rings and final nav
+// publication remain separate producer stages; this file does not claim them.
+// Native fixture evidence: show-{primary,special,wall-flat}-original-execution.json.
+// Padding and unused enum payload bytes in the original are deliberately not
+// interpreted as values. Every meaningful name/kind/variant/value/layer is kept.
+
+
+#[derive(Clone, Copy, Debug)]
+pub struct WallOptionsSource {
+    pub shape_tag: u32,
+    pub color: u32,
+    pub freehand_is_initial: bool,
+    pub flat_roof_rim_is_initial: Option<bool>,
+}
+#[derive(Clone, Copy, Debug)]
+pub struct FlatOptionsSource {
+    pub wall_color: u32,
+    pub halftimber_color: u32,
+    pub appearance: Option<(u8, u8, u32, u32)>,
+}
+#[derive(Clone, Copy, Debug)]
+pub struct FlagOptionsSource {
+    pub attachment_tag: u8,
+    pub connected: bool,
+}
+#[derive(Clone, Copy, Debug)]
+pub enum PrimaryOptionsSource {
+    Wall {
+        demo: bool,
+        wall: Option<WallOptionsSource>,
+    },
+    Roof {
+        demo: bool,
+    },
+    FlatRoof(FlatOptionsSource),
+    Window {
+        demo: bool,
+        target_variant: u8,
+        derived_kind: u8,
+    },
+    Wood {
+        demo: bool,
+    }, // original target5,8,12 invoke the same helper
+    Flag {
+        decorator: Option<FlagOptionsSource>,
+    },
+    Lantern,
+    Chimney {
+        derived_kind: u8,
+        smoke: Option<bool>,
+    },
+    Stairs,
+}
+
+fn icon(name: &str, kind: u8, variant: u8, value: u32, extra: u32, layer: u32) -> IconInfo {
     IconInfo {
-        name: name.to_string(),
+        name: name.into(),
         kind,
-        v1c,
-        ..IconInfo::default()
+        b19: variant,
+        u1a: 0,
+        v1c: value,
+        v20: extra,
+        v24: layer,
     }
 }
-
-/// `IconInfo` 带 b19 载荷的构造（O：halftimber/skirt 族 kind 4 + b19 选择位）。
-fn icon_b19(name: &str, kind: u8, b19: u8, v1c: u32) -> IconInfo {
-    IconInfo {
-        name: name.to_string(),
-        kind,
-        b19,
-        v1c,
-        ..IconInfo::default()
-    }
+fn separator() -> IconInfo {
+    icon("white", 5, 0, 0, 0, 0)
+}
+fn swatch(name: &str, value: u32) -> IconInfo {
+    icon(name, 3, 0, value, 0, 0)
+}
+fn palette(data: &[(&str, u8, u8, u32, u32, u32)]) -> Vec<IconInfo> {
+    data.iter()
+        .map(|&(name, kind, variant, value, extra, layer)| {
+            icon(name, kind, variant, value, extra, layer)
+        })
+        .collect()
 }
 
-/// case 0 主 13 个 kind-3 色 swatch（O：行 598-677，全 kind 3；5 bricks +
-/// 8 plaster_colors）。
-fn push_case0_main_swatches(options: &mut Vec<IconInfo>) {
-    // O（B-ecstate fresh 反汇编 0x14229d03e/07d/…/204）：
-    // 前 6 项 `+0x24 = 0`；后 7 项 plaster_colors 显式写
-    // `+0x24 = 7,1,6,4,5,2,3`（对应 v1c = 0xc,5,10,8,9,6,7）。
-    // 即 8 个 plaster 条目的 v24 序列 = [0,7,1,6,4,5,2,3]（首个 v1c=4 为 0）。
-    for (name, v1c, v24) in [
-        ("color_icon/bricks_beige", 0u32, 0u32),
-        ("color_icon/bricks_yellow", 1, 0),
-        ("color_icon/bricks_light", 3, 0),
-        ("color_icon/bricks_grey", 0xb, 0),
-        ("color_icon/bricks_dark", 2, 0),
-        ("color_icon/plaster_colors", 4, 0),
-        ("color_icon/plaster_colors", 0xc, 7),
-        ("color_icon/plaster_colors", 5, 1),
-        ("color_icon/plaster_colors", 10, 6),
-        ("color_icon/plaster_colors", 8, 4),
-        ("color_icon/plaster_colors", 9, 5),
-        ("color_icon/plaster_colors", 6, 2),
-        ("color_icon/plaster_colors", 7, 3),
-    ] {
-        options.push(IconInfo {
-            name: name.to_string(),
-            kind: 3,
-            v1c,
-            v24,
-            ..IconInfo::default()
-        });
-    }
-}
-
-/// case 0 plaster 条件块（O：行 689 `(iVar9-4U<7)||(iVar9==0xc)` 门 → 行 747-788
-/// 4 图标：separator + plaster_peel_low/medium/high，kind 0xc，
-/// v1c=0 / 0x3f000000(0.5f) / 0x3f800000(1.0f)）。
-fn push_case0_plaster_peel(options: &mut Vec<IconInfo>) {
-    options.push(new_separator());
-    options.push(icon_color("color_icon/plaster_peel_low", 0xc, 0));
-    options.push(icon_color(
-        "color_icon/plaster_peel_medium",
-        0xc,
-        0x3f000000,
-    ));
-    options.push(icon_color("color_icon/plaster_peel_high", 0xc, 0x3f800000));
-}
-
-/// case 0 halftimber/skirt 条件块（O：行 793 `*(puStack_250+600)<2` 门 → 行 842-880
-/// 4 图标：separator + halftimber(kind 4,b19 2) + skirt(kind 4,b19 1) +
-/// no_skirt(kind 4,b19 0)）。
-fn push_case0_halftimber_skirt(options: &mut Vec<IconInfo>) {
-    options.push(new_separator());
-    options.push(icon_b19("color_icon/halftimber", 4, 2, 0));
-    options.push(icon_b19("color_icon/skirt", 4, 1, 0));
-    options.push(icon_b19("color_icon/no_skirt", 4, 0, 0));
-}
-
-/// case 0（0x14229b725）plaster/wall 颜色选项（O：行 452-1093 非 demo 主路径）。
-///
-/// 门参数：`is_plaster_wall` = `(iVar9-4U<7)||(iVar9==0xc)`（行 688-689，iVar9 源
-/// `local_180 = *in_RDX`（Res<WallColorIds> 面）+ `get_instruction()` 索引——GAP，
-/// 以参数承载）；`halftimber_count` = `*(puStack_250+600)`（行 793，<2 门）；
-/// `has_flat_roof` = `Roof::is_flat()`（行 897）。平顶 else 块（行 941-1088）与
-/// demo 分支（行 1094+）登记 GAP，不构造。
-fn build_plaster_wall_roof_options(
-    is_plaster_wall: bool,
-    halftimber_count: u32,
-    has_flat_roof: bool,
-) -> Vec<IconInfo> {
-    let mut options: Vec<IconInfo> = Vec::new();
-    // O：主 13 个 kind-3 色 swatch（首图标 = bricks_beige，非分隔符）。
-    push_case0_main_swatches(&mut options);
-    // O：plaster 门 → separator + plaster_peel_low/medium/high。
-    if is_plaster_wall {
-        push_case0_plaster_peel(&mut options);
-    }
-    // O：halftimber/skirt 门（count<2）→ separator + halftimber/skirt/no_skirt。
-    if halftimber_count < 2 {
-        push_case0_halftimber_skirt(&mut options);
-        if has_flat_roof {
-            // O：`Roof::is_flat()` 门（行 884-940）→ separator + flat_roof_rim_ty。
-            options.push(new_separator());
-            options.push(new_flat_roof_rim_ty());
-        } else {
-            // —— GAP：非平顶 else 块（行 941-1088）5 图标（separator + skirt(4,1)
-            // + no_skirt(4,0) + separator + kind-7 30 字符，ClutterVersion 门），登记。
+/// None is the original whole-system early return when a non-demo wall target
+/// is absent. It must not be replaced with an empty/spawned menu or another wall.
+pub fn primary_options(source: PrimaryOptionsSource) -> Option<Vec<IconInfo>> {
+    Some(match source {
+        PrimaryOptionsSource::Wall { demo: true, .. } => palette(WALL_DEMO),
+        PrimaryOptionsSource::Wall { demo: false, wall } => {
+            let wall = wall?;
+            let mut icons = palette(WALL_COLORS);
+            if wall.color.wrapping_sub(4) < 7 || wall.color == 12 {
+                icons.extend([
+                    separator(),
+                    icon("color_icon/plaster_peel_low", 12, 0, 0, 0, 0),
+                    icon("color_icon/plaster_peel_medium", 12, 0, 0x3f000000, 0, 0),
+                    icon("color_icon/plaster_peel_high", 12, 0, 0x3f800000, 0, 0),
+                ]);
+            }
+            if wall.shape_tag < 2 {
+                icons.extend([
+                    separator(),
+                    icon("color_icon/halftimber", 4, 2, 0, 0, 0),
+                    icon("color_icon/skirt", 4, 1, 0, 0, 0),
+                    icon("color_icon/no_skirt", 4, 0, 0, 0, 0),
+                ]);
+                if let Some(initial) = wall.flat_roof_rim_is_initial {
+                    icons.push(separator());
+                    icons.push(icon(
+                        if initial {
+                            "color_icon/freehand_ty_terrain"
+                        } else {
+                            "color_icon/freehand_ty_constant"
+                        },
+                        8,
+                        0,
+                        0,
+                        0,
+                        0,
+                    ));
+                }
+            } else {
+                icons.extend([
+                    separator(),
+                    icon("color_icon/skirt", 4, 1, 0, 0, 0),
+                    icon("color_icon/no_skirt", 4, 0, 0, 0, 0),
+                    separator(),
+                    icon(
+                        if wall.freehand_is_initial {
+                            "color_icon/freehand_ty_terrain"
+                        } else {
+                            "color_icon/freehand_ty_constant"
+                        },
+                        7,
+                        0,
+                        0,
+                        0,
+                        0,
+                    ),
+                ]);
+            }
+            icons
         }
-    }
-    options
-}
-
-/// case 1（0x14229bde9）roof 色选项（O：行 1600-1665，11 个 kind-3 roof swatch；
-/// 0x14303c2a1/0x14303c36f/0x14303c356 read_memory 确证串）。
-fn build_roof_color_options(options: &mut Vec<IconInfo>) {
-    for (name, v) in [
-        ("color_icon/roof_ochre", 8u32),
-        ("color_icon/roof_red", 0),
-        ("color_icon/roof_purple", 10),
-        ("color_icon/roof_blue", 2),
-        ("color_icon/roof_light_blue", 9),
-        ("color_icon/roof_turquoise", 3),
-        ("color_icon/roof_green_light", 6),
-        ("color_icon/roof_green", 4),
-        ("color_icon/roof_dark_wood", 1),
-        ("color_icon/roof_dark", 5),
-        ("color_icon/roof_grey", 7),
-    ] {
-        options.push(icon_color(name, 3, v));
-    }
-}
-
-/// 选项 kind → 径向图标列表（O：show_color_options 0x14229a7f0 的 `switch(*puVar19)`
-/// case 0..0x26。case 0/1 载荷已重建；case 2..0x26 逐 case 精确表登记 GAP）。
-fn options_for_kind(
-    kind: u32,
-    is_plaster_wall: bool,
-    halftimber_count: u32,
-    has_flat_roof: bool,
-) -> Vec<IconInfo> {
-    match kind {
-        0 => build_plaster_wall_roof_options(is_plaster_wall, halftimber_count, has_flat_roof),
-        // O：case 1（0x14229bde9）= roof 色 11 swatch（fresh radare 0x14229d754 复核）。
-        1 => {
-            let mut options: Vec<IconInfo> = Vec::new();
-            build_roof_color_options(&mut options);
-            options
+        PrimaryOptionsSource::Roof { demo } => palette(if demo { ROOF_DEMO } else { ROOF_COLORS }),
+        PrimaryOptionsSource::Wood { demo } => palette(if demo { WOOD_DEMO } else { WOOD_COLORS }),
+        PrimaryOptionsSource::Window {
+            demo,
+            target_variant,
+            derived_kind,
+        } => {
+            let mut icons = palette(if demo { WOOD_DEMO } else { WOOD_COLORS });
+            if target_variant != 0 && derived_kind.wrapping_sub(9) > 1 {
+                icons.insert(0, swatch("color_icon/windows/no_color", 999));
+            }
+            icons
         }
-        // —— case 2..0x26：逐 case 精确串/值表未实现（GAP，B-ecstate §8.4-2）。
-        // 不构造近似表（此前 `_ =>` 回落 roof 色系错误近似，已移除）；结构已证：
-        // 每个 case 为 1..40 个 `IconInfo`（kind 3 颜色 / 0xc 材质 / 5 分隔 / 8 类型），
-        // 值来自 `DecoratorStorage`/`DecoratorExtraInfo`/`StairsState` 数据面。
-        _ => Vec::new(),
-    }
+        PrimaryOptionsSource::Flag { decorator } => {
+            let mut icons = palette(FLAGS);
+            if let Some(flag) = decorator.filter(|flag| !matches!(flag.attachment_tag, 2 | 4)) {
+                icons.push(separator());
+                icons.push(icon(
+                    if flag.connected {
+                        "color_icon/flag_connection"
+                    } else {
+                        "color_icon/flag_no_connection"
+                    },
+                    6,
+                    0,
+                    0,
+                    0,
+                    0,
+                ));
+            }
+            icons
+        }
+        PrimaryOptionsSource::Lantern => palette(LANTERN),
+        PrimaryOptionsSource::Stairs => palette(STAIRS),
+        PrimaryOptionsSource::Chimney {
+            derived_kind,
+            smoke,
+        } => {
+            let mut icons = if derived_kind == 20 {
+                Vec::new()
+            } else {
+                let mut colors = palette(&STAIRS[..5]);
+                colors.push(separator());
+                colors
+            };
+            icons.push(icon(
+                if smoke.unwrap_or(true) {
+                    "color_icon/chimney_smoke_active"
+                } else {
+                    "color_icon/chimney_smoke_inactive"
+                },
+                10,
+                0,
+                0,
+                0,
+                0,
+            ));
+            icons
+        }
+        PrimaryOptionsSource::FlatRoof(source) => {
+            let (variant, stone_color, wood_color, floor) = match source.appearance {
+                Some((2, 0, color, floor)) => (0, color, source.halftimber_color, floor),
+                Some((2, variant, color, floor)) => (variant, source.wall_color, color, floor),
+                _ => (0, source.wall_color, source.halftimber_color, 0),
+            };
+            let mut icons = if variant != 0 {
+                palette(WOOD_COLORS)
+            } else {
+                palette(&WALL_COLORS[..5])
+            };
+            for option in &mut icons {
+                option.kind = 2;
+                option.b19 = u8::from(variant != 0);
+                option.v20 = floor;
+            }
+            icons.push(separator());
+            for (name, choice) in [
+                ("stone_floor/icon", 0),
+                ("stone_floor_2/icon", 1),
+                ("stone_floor_3/icon", 2),
+            ] {
+                icons.push(icon(name, 2, 0, stone_color, choice, 0));
+            }
+            for (name, choice) in [
+                ("wooden_floor/icon", 0),
+                ("wooden_floor_3/icon", 2),
+                ("wooden_floor_2/icon", 1),
+            ] {
+                icons.push(icon(name, 2, 1, wood_color, choice, 0));
+            }
+            icons
+        }
+    })
+}
+
+const ROOF_COLORS: &[(&str, u8, u8, u32, u32, u32)] = &[
+    ("color_icon/roof_ochre", 3, 0, 8, 0, 0),
+    ("color_icon/roof_red", 3, 0, 0, 0, 0),
+    ("color_icon/roof_purple", 3, 0, 10, 0, 0),
+    ("color_icon/roof_blue", 3, 0, 2, 0, 0),
+    ("color_icon/roof_light_blue", 3, 0, 9, 0, 0),
+    ("color_icon/roof_turquoise", 3, 0, 3, 0, 0),
+    ("color_icon/roof_green_light", 3, 0, 6, 0, 0),
+    ("color_icon/roof_green", 3, 0, 4, 0, 0),
+    ("color_icon/roof_dark_wood", 3, 0, 1, 0, 0),
+    ("color_icon/roof_dark", 3, 0, 5, 0, 0),
+    ("color_icon/roof_grey", 3, 0, 7, 0, 0),
+];
+
+const ROOF_DEMO: &[(&str, u8, u8, u32, u32, u32)] = &[
+    ("color_icon/roof_red", 3, 0, 0, 0, 0),
+    ("color_icon/roof_green", 3, 0, 4, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+];
+
+const WOOD_COLORS: &[(&str, u8, u8, u32, u32, u32)] = &[
+    ("color_icon/windows/white", 3, 0, 4, 0, 0),
+    ("color_icon/windows/wood", 3, 0, 0, 0, 0),
+    ("color_icon/windows/dark_wood", 3, 0, 1, 0, 0),
+    ("color_icon/roof_dark", 3, 0, 7, 0, 0),
+    ("color_icon/roof_red", 3, 0, 3, 0, 0),
+    ("color_icon/pink", 3, 0, 9, 0, 0),
+    ("color_icon/windows/purple", 3, 0, 8, 0, 0),
+    ("color_icon/roof_blue", 3, 0, 2, 0, 0),
+    ("color_icon/roof_green_light", 3, 0, 6, 0, 0),
+    ("color_icon/roof_green", 3, 0, 5, 0, 0),
+];
+
+const WOOD_DEMO: &[(&str, u8, u8, u32, u32, u32)] = &[
+    ("color_icon/windows/wood", 3, 0, 0, 0, 0),
+    ("color_icon/roof_red", 3, 0, 3, 0, 0),
+    ("color_icon/roof_green", 3, 0, 5, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+];
+
+const LANTERN: &[(&str, u8, u8, u32, u32, u32)] = &[
+    ("color_icon/flag_yellow", 3, 0, 0, 0, 0),
+    ("color_icon/windows/red", 3, 0, 4, 0, 0),
+    ("color_icon/windows/purple", 3, 0, 3, 0, 0),
+    ("color_icon/windows/blue", 3, 0, 1, 0, 0),
+    ("color_icon/roof_green_light", 3, 0, 2, 0, 0),
+    ("white", 5, 0, 0, 0, 0),
+    ("color_icon/light_1", 9, 0, 0, 0, 0),
+    ("color_icon/light_2", 9, 1, 0, 0, 0),
+    ("color_icon/light_3", 9, 2, 0, 0, 0),
+];
+
+const STAIRS: &[(&str, u8, u8, u32, u32, u32)] = &[
+    ("color_icon/bricks_beige", 3, 0, 100000, 0, 0),
+    ("color_icon/bricks_yellow", 3, 0, 100001, 0, 0),
+    ("color_icon/bricks_light", 3, 0, 100003, 0, 0),
+    ("color_icon/bricks_grey", 3, 0, 100011, 0, 0),
+    ("color_icon/bricks_dark", 3, 0, 100002, 0, 0),
+    ("white", 5, 0, 0, 0, 0),
+    ("color_icon/railing_1", 13, 0, 0, 0, 0),
+    ("color_icon/railing_2", 13, 1, 0, 0, 0),
+    ("color_icon/railing_3", 13, 2, 0, 0, 0),
+    ("color_icon/railing_4", 13, 3, 0, 0, 0),
+];
+
+const WALL_COLORS: &[(&str, u8, u8, u32, u32, u32)] = &[
+    ("color_icon/bricks_beige", 3, 0, 0, 0, 0),
+    ("color_icon/bricks_yellow", 3, 0, 1, 0, 0),
+    ("color_icon/bricks_light", 3, 0, 3, 0, 0),
+    ("color_icon/bricks_grey", 3, 0, 11, 0, 0),
+    ("color_icon/bricks_dark", 3, 0, 2, 0, 0),
+    ("plaster_colors", 3, 0, 4, 0, 0),
+    ("plaster_colors", 3, 0, 12, 0, 7),
+    ("plaster_colors", 3, 0, 5, 0, 1),
+    ("plaster_colors", 3, 0, 10, 0, 6),
+    ("plaster_colors", 3, 0, 8, 0, 4),
+    ("plaster_colors", 3, 0, 9, 0, 5),
+    ("plaster_colors", 3, 0, 6, 0, 2),
+    ("plaster_colors", 3, 0, 7, 0, 3),
+];
+
+const WALL_DEMO: &[(&str, u8, u8, u32, u32, u32)] = &[
+    ("color_icon/bricks_grey", 3, 0, 3, 0, 0),
+    ("plaster_colors", 3, 0, 5, 0, 1),
+    ("plaster_colors", 3, 0, 8, 0, 4),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("white", 5, 0, 0, 0, 0),
+    ("color_icon/locked", 3, 0, 777, 0, 0),
+    ("color_icon/skirt", 4, 1, 0, 0, 0),
+    ("color_icon/no_skirt", 4, 0, 0, 0, 0),
+];
+
+const FLAGS: &[(&str, u8, u8, u32, u32, u32)] = &[
+    ("color_icon/flags/red", 3, 0, 1, 0, 0),
+    ("color_icon/flags/pink", 3, 0, 7, 0, 0),
+    ("color_icon/flags/yellow", 3, 0, 3, 0, 0),
+    ("color_icon/flags/green", 3, 0, 2, 0, 0),
+    ("color_icon/flags/dark_sea", 3, 0, 9, 0, 0),
+    ("color_icon/flags/blue", 3, 0, 0, 0, 0),
+    ("color_icon/flags/light_purple", 3, 0, 6, 0, 0),
+    ("color_icon/flags/purple", 3, 0, 4, 0, 0),
+    ("color_icon/flags/dark_bourbon", 3, 0, 8, 0, 0),
+    ("color_icon/flags/dark", 3, 0, 5, 0, 0),
+];
+
+// Candidate for the complete 13-way initial selection policy in B14229a7f0.
+// Real upstream resource lookups must supply these values. Required wall,
+// roof and decorator lookups retain their original failure behavior there;
+// optional fields below correspond only to proven native optional branches.
+use crate::radial_menu::ColorSelectionSnapshot;
+
+#[derive(Clone, Copy, Debug)]
+pub enum InitialSelectionSource {
+    Wall {
+        color: u32,
+        wall_style: u8,
+        plaster_peel: f32,
+        freehand_ty: u8,
+        flat_rim_style: Option<u8>,
+    },
+    Roof { color: u32 },
+    FlatRoof { color: u32, appearance: [u8; 12] },
+    Decorator { color: u32 },
+    Gate { color: u32 },
+    Flag { color: u32, connected: Option<bool> },
+    Halftimber { color: u32 },
+    Lantern { color: u32, brightness: Option<f32> },
+    Chimney { color: u32, smoke: Option<bool> },
+    Stairs { color: u32, extra: Option<(u8, u32)> },
+    Ladder { color: u32 },
+}
+
+pub fn initial_selection(source: InitialSelectionSource) -> ColorSelectionSnapshot {
+    let mut initial = ColorSelectionSnapshot {
+        brightness: 1.0, // XMM14 = original f32 constant142925904
+        ..Default::default()
+    };
+    initial.color = match source {
+        InitialSelectionSource::Wall {
+            color,
+            wall_style,
+            plaster_peel,
+            freehand_ty,
+            flat_rim_style,
+        } => {
+            initial.wall_style = wall_style;
+            initial.plaster_peel = plaster_peel;
+            initial.freehand_ty = freehand_ty;
+            initial.flat_roof_rim_style = flat_rim_style.unwrap_or(0);
+            color
+        }
+        InitialSelectionSource::Roof { color }
+        | InitialSelectionSource::Decorator { color }
+        | InitialSelectionSource::Gate { color }
+        | InitialSelectionSource::Halftimber { color }
+        | InitialSelectionSource::Ladder { color } => color,
+        InitialSelectionSource::FlatRoof { color, appearance } => {
+            initial.flat_roof_style = appearance;
+            color
+        }
+        InitialSelectionSource::Flag { color, connected } => {
+            initial.flag_connection = u8::from(connected.unwrap_or(true));
+            color
+        }
+        InitialSelectionSource::Lantern { color, brightness } => {
+            initial.brightness = brightness.unwrap_or(1.0);
+            color
+        }
+        InitialSelectionSource::Chimney { color, smoke } => {
+            initial.chimney_smoke = u8::from(smoke.unwrap_or(true));
+            color
+        }
+        InitialSelectionSource::Stairs { color, extra } => {
+            if let Some((railing, magic)) = extra {
+                initial.railing = railing;
+                initial.magic_color = magic;
+            }
+            color
+        }
+    };
+    initial
+}
+
+/// Resolve the wall palette and cancellation snapshot from the same wall ID.
+/// A missing wall is the native primary-options early return. Color indexing
+/// and the associated roof lookup retain the production owners' checks.
+fn wall_menu_inputs(
+    id: country_core::resources::walls::WallId,
+    walls: &country_core::resources::walls::public_walls::PublicWalls,
+    roofs: &Query<&country_core::resources::roofs::roof_shape::Roof>,
+    colors: &country_core::resources::color_id::WallColorIds,
+    demo: bool,
+) -> Option<(Vec<IconInfo>, ColorSelectionSnapshot)> {
+    let wall = walls.get(id)?;
+    let color = colors.0[id.0 as usize];
+    let roof = walls.roof_component(id, |entity| roofs.get(entity).ok());
+    let rim = roof.map(|roof| roof.observed()[0x3d]);
+    let source = WallOptionsSource {
+        shape_tag: wall.shape().tag(),
+        color,
+        freehand_is_initial: wall.authority.freehand_ty() == 0,
+        flat_roof_rim_is_initial: roof.filter(|roof| roof.is_flat()).map(|roof| roof.observed()[0x3d] == 0),
+    };
+    let options = primary_options(PrimaryOptionsSource::Wall { demo, wall: Some(source) })?;
+    let initial = initial_selection(InitialSelectionSource::Wall {
+        color,
+        wall_style: wall.authority.style(),
+        plaster_peel: wall.authority.plaster_peel_amount(),
+        freehand_ty: wall.authority.freehand_ty(),
+        flat_rim_style: rim,
+    });
+    Some((options, initial))
 }
 
 /// All native cancellation writers, kept in one SystemParam to preserve the
@@ -422,60 +697,185 @@ pub fn hide_color_menu(
     }
 }
 
-/// `show_color_options` @0x14229a7f0（真实 ~0x38KB；结构面 + case 0/1 载荷面
-/// 已重建，case 2..0x26/事件写面 GAP）。
+/// Show a menu from the authority associated with the command target.
 #[allow(clippy::too_many_arguments)]
 pub fn show_color_options<S: Send + Sync + 'static>(
     mut cmds: EventReader<ShowColorMenuCmd>,
     wall_colors: Res<country_core::resources::color_id::WallColorIds>,
-    _gate_colors: Res<country_core::resources::color_id::GateColorIds>,
-    _half_colors: Res<country_core::resources::color_id::HalftimberColorIds>,
+    gate_colors: Res<country_core::resources::color_id::GateColorIds>,
+    half_colors: Res<country_core::resources::color_id::HalftimberColorIds>,
     roofs: Query<&country_core::resources::roofs::roof_shape::Roof>,
-    _decorators: Res<country_core::resources::walls::decorator_storage::DecoratorStorage>,
-    _walls: Res<country_core::resources::walls::public_walls::PublicWalls>,
-    _config: Res<country_core::game_config::GameConfig>,
+    decorators: Res<country_core::resources::walls::decorator_storage::DecoratorStorage>,
+    walls: Res<country_core::resources::walls::public_walls::PublicWalls>,
+    config: Res<country_core::game_config::GameConfig>,
+    demo: Res<country_core::DevOverrideIsDemoMode>,
+    subtypes: Res<country_core::resources::walls::decorator_subtype::DerivedDecoratorSubtypes>,
+    stair_visuals: Res<country_core::resources::stairs::visual::StairsVisualState>,
+    stairs: Res<country_core::resources::stairs::stairs_state::StairsState>,
     camera: Res<country_core::systems::camera_rig::main_camera::MainCamera>,
-    mut _nav: ResMut<country_core::systems::ui::resources::widget_params::UiNavState>,
-    _cursor: Res<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,
-    _customization: Res<
-        country_core::resources::glade_color_customization::GladeColorCustomization,
-    >,
+    mut nav: ResMut<country_core::systems::ui::resources::widget_params::UiNavState>,
     mut commands: Commands,
 ) {
-    // O：demo 门 = `_DEV_OVERRIDE_IS_DEMO_MODE`（0x143634d90 静态字节，非资源；
-    // read_memory 现为 0）。GAP：core 未暴露该全局，以 `false` 近似（登记）。
-    let demo_mode = false;
-    // O：roof is_flat 门（行 884-940；GAP：逐实体精确遍历为高层抽象，以任一平顶为门）。
-    let has_flat_roof = roofs.iter().any(|r| r.is_flat());
+    use country_core::resources::walls::{WallId, decorator::DecoratorId};
+    use crate::radial_menu::{ColorMenuTarget, RadialMenuCreate};
     for cmd in cmds.read() {
-        // O：plaster 门 iVar9 源 = Res<WallColorIds> + get_instruction() 索引
-        // （GAP：索引源未定，以遍历任一 ∈{4..10,12} 近似登记）。
-        let is_plaster_wall = wall_colors
-            .0
-            .iter()
-            .any(|id| (4..=10).contains(id) || *id == 0xc);
-        // O：halftimber 门 `*(puStack_250+600)<2`（GAP：puStack_250 源为 core
-        // HalftimberColorIds/墙目录面，以 0 近似登记——近似不入行为判等）。
-        let halftimber_count = 0u32;
-        // O：构建该 kind 的图标选项列表。
-        let options = options_for_kind(
-            u32::from(cmd.kind),
-            is_plaster_wall,
-            halftimber_count,
-            has_flat_roof,
-        );
-        // O：`ColorRadialMenu::create`——center 源自 `MainCamera::eye_position()`
-        // + 偏移（GAP：SIMD 逐分量偏移未对齐 core 类型，以 eye_position().truncate()
-        // 近似登记），icons = 上述列表。
-        let center = camera.eye_position().truncate();
-        let radius = 1.0;
-        let menu = ColorRadialMenu::create(center, radius, options);
-        // O：菜单实体生成（create 后写 Events 面 + 菜单实体登记）。
-        commands.spawn((menu, CustomizationIcon::default()));
+        let id = WallId(cmd.payload);
+        let did = DecoratorId(cmd.decorator_id);
+        let info = decorators.lookup_decorator_info(did);
+        let roof = || walls.roof_component(id, |entity| roofs.get(entity).ok())
+            .expect("color menu target requires a roof");
+        let index = id.0 as usize;
+        let (options, initial) = match cmd.kind {
+            0 => match wall_menu_inputs(id, &walls, &roofs, &wall_colors, demo.0) {
+                Some(value) => value,
+                None if !demo.0 => return,
+                None => panic!("color menu target requires a wall"),
+            },
+            1 => {
+                let roof = roof();
+                let color = u32::from_le_bytes(roof.observed()[0x50..0x54].try_into().unwrap());
+                (primary_options(PrimaryOptionsSource::Roof { demo: demo.0 }).unwrap(),
+                 initial_selection(InitialSelectionSource::Roof { color }))
+            }
+            2 => {
+                let roof = roof();
+                let raw: [u8; 12] = roof.observed()[0x40..0x4c].try_into().unwrap();
+                let color = u32::from_le_bytes(roof.observed()[0x50..0x54].try_into().unwrap());
+                let appearance = Some((raw[0], raw[1], u32::from_le_bytes(raw[4..8].try_into().unwrap()), u32::from_le_bytes(raw[8..12].try_into().unwrap())));
+                let source = FlatOptionsSource { wall_color: wall_colors.0[index], halftimber_color: half_colors.0[index], appearance };
+                (primary_options(PrimaryOptionsSource::FlatRoof(source)).unwrap(),
+                 initial_selection(InitialSelectionSource::FlatRoof { color, appearance: raw }))
+            }
+            5 | 8 => {
+                let color = if cmd.kind == 5 { gate_colors.0[index] } else { half_colors.0[index] };
+                (primary_options(PrimaryOptionsSource::Wood { demo: demo.0 }).unwrap(),
+                 initial_selection(if cmd.kind == 5 { InitialSelectionSource::Gate { color } } else { InitialSelectionSource::Halftimber { color } }))
+            }
+            3 | 6 | 9 | 10 | 11 | 12 => {
+                let value = info.expect("color menu target requires a decorator");
+                let color = value.u28;
+                let derived = if matches!(cmd.kind, 3 | 10) { subtypes.get(cmd.decorator_id).0 } else { 0 };
+                let flag = (value.extra_disc() == 5).then(|| value.extra().as_flag().0 != 0);
+                let smoke = (value.extra_disc() == 4).then(|| value.extra().as_chimney().smoke != 0);
+                let brightness = (value.extra_disc() == 7).then(|| value.extra().as_lantern().0);
+                let stair = (value.extra_disc() <= 1).then(|| value.extra().as_stair());
+                let stair_values = stair.map(|v| (v.0[16], u32::from_le_bytes(v.0[12..16].try_into().unwrap())));
+                let (source, snapshot) = match cmd.kind {
+                    3 => (PrimaryOptionsSource::Window { demo: demo.0, target_variant: cmd.subtype, derived_kind: derived }, InitialSelectionSource::Decorator { color }),
+                    6 => (PrimaryOptionsSource::Flag { decorator: Some(FlagOptionsSource { attachment_tag: value.dst_tag(), connected: flag.expect("flag extra required") }) }, InitialSelectionSource::Flag { color, connected: flag }),
+                    9 => (PrimaryOptionsSource::Lantern, InitialSelectionSource::Lantern { color, brightness }),
+                    10 => (PrimaryOptionsSource::Chimney { derived_kind: derived, smoke }, InitialSelectionSource::Chimney { color, smoke }),
+                    11 => (PrimaryOptionsSource::Stairs, InitialSelectionSource::Stairs { color, extra: stair_values }),
+                    12 => (PrimaryOptionsSource::Wood { demo: demo.0 }, InitialSelectionSource::Ladder { color: u32::from_le_bytes(stair.expect("stair extra required").0[8..12].try_into().unwrap()) }),
+                    _ => unreachable!(),
+                };
+                (primary_options(source).unwrap(), initial_selection(snapshot))
+            }
+            4 | 7 => panic!("secondary color target cannot be shown directly"),
+            _ => panic!("invalid color target {}", cmd.kind),
+        };
+        let icon_size = 48.0 * config.ui.icon_size_mult;
+        let spacing = 12.0 * config.ui.icon_size_mult * if cmd.kind == 0 { 0.5 } else { 1.0 };
+        let radius = ((options.len() as f32 * (icon_size + spacing)) / f32::from_bits(0x4071463b)).max(60.0);
+        let target = ColorMenuTarget { kind: cmd.kind, subtype: cmd.subtype, payload: cmd.decorator_id, id: cmd.payload };
+        let (_, menu) = ColorRadialMenu::spawn(RadialMenuCreate {
+            center: cmd.position, radius, start_angle: 0.0, icon_size, spacing,
+            appearance_divisor: if cmd.kind == 0 { 1.5 } else { 1.0 },
+            icons: options, target, initial, world_anchor: camera.eye_position(),
+        }, &mut commands);
+        let mut rings = vec![menu];
+        if cmd.kind == 0 && walls.get(id).is_some_and(|wall| wall.authority.style() >= 2) {
+            let secondary = primary_options(PrimaryOptionsSource::Wood { demo: demo.0 }).unwrap();
+            let initial = initial_selection(InitialSelectionSource::Halftimber { color: half_colors.0[index] });
+            let angle = if walls.roof_component(id, |entity| roofs.get(entity).ok()).is_some_and(|roof| roof.is_flat()) {
+                f32::from_bits(0x3e7ae145)
+            } else {
+                f32::from_bits(0x3ec51eb7)
+            };
+            let (_, secondary_menu) = ColorRadialMenu::spawn(RadialMenuCreate {
+                center: cmd.position, radius: radius + icon_size * 1.1, start_angle: angle,
+                icon_size: icon_size * 0.8, spacing, appearance_divisor: 1.5,
+                icons: secondary, target: ColorMenuTarget { kind: 7, ..target },
+                initial, world_anchor: camera.eye_position(),
+            }, &mut commands);
+            rings.push(secondary_menu);
+        }
+        if cmd.kind == 3 {
+            let subtype = subtypes.get(cmd.decorator_id).0;
+            if !(subtype < 11 && (0x630u32 & (1u32 << subtype)) != 0) {
+                let window = info.expect("window light menu requires its decorator").window_extra();
+                let icons = LANTERN[..5].iter().map(|&(name, kind, variant, value, extra, layer)|
+                    icon(name, kind, variant, value, extra, layer)).collect();
+                let (_, secondary_menu) = ColorRadialMenu::spawn(RadialMenuCreate {
+                    center: cmd.position, radius: radius + icon_size * 1.1,
+                    start_angle: f32::from_bits(0x3ec51eb7), icon_size: icon_size * 0.8,
+                    spacing, appearance_divisor: 1.0, icons,
+                    target: ColorMenuTarget { kind: 4, ..target },
+                    initial: initial_selection(InitialSelectionSource::Decorator { color: window.0 }),
+                    world_anchor: camera.eye_position(),
+                }, &mut commands);
+                rings.push(secondary_menu);
+            }
+        }
+        if matches!(cmd.kind, 11 | 12) {
+            if let Some(extra) = info.and_then(|value| {
+                (value.extra_disc() <= 1).then(|| value.extra().as_stair())
+            }) {
+                let connected = stairs.get_all_connected_nodes(cmd.decorator_id);
+                let has_magic = stair_visuals.edges().iter().any(|(edge, visual)| {
+                    let (a, b) = edge.nodes();
+                    visual.magic_supports.has_magic() && (connected.contains(&a) || connected.contains(&b))
+                });
+                let ladder_color = u32::from_le_bytes(extra.0[8..12].try_into().unwrap());
+                let magic_color = u32::from_le_bytes(extra.0[12..16].try_into().unwrap());
+                let railing = extra.0[16];
+                let magic_icons = || [
+                    "color_icon/plaster_peel_low", "color_icon/windows/blue",
+                    "color_icon/windows/purple", "color_icon/roof_ochre",
+                    "color_icon/roof_green_light", "color_icon/roof_dark",
+                ].into_iter().enumerate().map(|(value, name)| icon(name, 14, 0, value as u32, 0, 0)).collect::<Vec<_>>();
+                if cmd.kind == 12 && has_magic {
+                    let snapshot = initial_selection(InitialSelectionSource::Stairs {
+                        color: info.unwrap().u28, extra: Some((railing, magic_color)),
+                    });
+                    let (_, secondary_menu) = ColorRadialMenu::spawn(RadialMenuCreate {
+                        center: cmd.position, radius: radius + icon_size * 1.1,
+                        start_angle: f32::from_bits(0x3ec51eb7), icon_size: icon_size * 0.8,
+                        spacing, appearance_divisor: 1.0, icons: magic_icons(),
+                        target: ColorMenuTarget { kind: 11, ..target }, initial: snapshot,
+                        world_anchor: camera.eye_position(),
+                    }, &mut commands);
+                    rings.push(secondary_menu);
+                } else if cmd.kind == 11 && (railing == 3 || has_magic) {
+                    let mut icons = if has_magic { magic_icons() } else { Vec::new() };
+                    if railing == 3 {
+                        if has_magic { icons.push(separator()); }
+                        icons.extend(primary_options(PrimaryOptionsSource::Wood { demo: demo.0 }).unwrap());
+                    }
+                    let mut snapshot = initial_selection(InitialSelectionSource::Ladder { color: ladder_color });
+                    snapshot.magic_color = magic_color;
+                    let (_, secondary_menu) = ColorRadialMenu::spawn(RadialMenuCreate {
+                        center: cmd.position, radius: radius + icon_size * 1.1,
+                        start_angle: f32::from_bits(0x3ec51eb7), icon_size: icon_size * 0.8,
+                        spacing, appearance_divisor: 1.0, icons,
+                        target: ColorMenuTarget { kind: 12, ..target }, initial: snapshot,
+                        world_anchor: camera.eye_position(),
+                    }, &mut commands);
+                    rings.push(secondary_menu);
+                }
+            }
+        }
+        for index in 0..rings.len() {
+            let next = rings[(index + 1) % rings.len()].to_bits();
+            let previous = rings[(index + rings.len() - 1) % rings.len()].to_bits();
+            let mut links = country_core::components::UiNav::vertical(previous, next);
+            links.links[0].tag = 2;
+            links.links[1].tag = 2;
+            commands.entity(rings[index]).insert(links);
+        }
+        nav.focus = country_core::systems::ui::resources::widget_params::UiFocus { tag: 1, _pad: 0, payload: menu.to_bits() };
     }
-    let _ = demo_mode;
 }
-
 #[cfg(test)]
 mod native_hide_tests {
     use super::*;
@@ -487,6 +887,131 @@ mod native_hide_tests {
         crate::register_color_events(&mut world);
         world.init_resource::<country_core::input::action_set::ActionSetStates>();
         world
+    }
+    #[test]
+    fn show_uses_target_color_and_real_screen_position() {
+        use country_core::resources::{color_id::*, walls::{WallId, public_walls::PublicWalls, decorator_storage::DecoratorStorage, decorator_subtype::DerivedDecoratorSubtypes}};
+        use country_core::systems::{camera_rig::main_camera::MainCamera, ui::resources::widget_params::UiNavState};
+        let mut world = setup();
+        world.init_resource::<PublicWalls>();
+        world.init_resource::<DecoratorStorage>();
+        world.init_resource::<DerivedDecoratorSubtypes>();
+        world.init_resource::<country_core::DevOverrideIsDemoMode>();
+        world.init_resource::<country_core::resources::stairs::visual::StairsVisualState>();
+        world.init_resource::<country_core::resources::stairs::stairs_state::StairsState>();
+        world.init_resource::<country_core::game_config::GameConfig>();
+        world.init_resource::<MainCamera>();
+        world.init_resource::<UiNavState>();
+        world.resource_mut::<GateColorIds>().0[3] = 4;
+        world.resource_mut::<HalftimberColorIds>().0[3] = 5;
+        let roof = world.spawn(country_core::resources::roofs::roof_shape::Roof::new(
+            3u64.to_le_bytes(), [0; 28], [0; 28], [0; 4], 6u32.to_le_bytes(), 0, [0; 12])).id();
+        world.resource_mut::<PublicWalls>().associate_roof(WallId(3), roof);
+        for kind in [1, 5, 8] {
+            world.send_event(ShowColorMenuCmd { kind, subtype: 0, decorator_id: 0, payload: 3, position: glam::Vec2::new(321., 123.) });
+        }
+        let mut schedule = Schedule::default();
+        schedule.add_systems(show_color_options::<()>);
+        schedule.run(&mut world);
+        let mut query = world.query::<&ColorRadialMenu>();
+        let menus: Vec<_> = query.iter(&world).collect();
+        assert_eq!(menus.len(), 3);
+        for (kind, color) in [(1, 6), (5, 4), (8, 5)] {
+            let menu = menus.iter().find(|menu| menu.target.kind == kind).unwrap();
+            assert_eq!(menu.initial.color, color);
+            assert_eq!(menu.center, glam::Vec2::new(321., 123.));
+            assert!(!menu.icon_entities.is_empty());
+            assert!(menu.radius >= 60.0);
+        }
+    }
+    #[test]
+    fn window_light_ring_uses_the_live_window_extra() {
+        use country_core::resources::walls::{decorator::{DecoratorId, DecoratorInfo, DecoratorExtraInfo, WindowExtra}, decorator_storage::{DecoratorStorage, DecoratorStorageAddr}, decorator_subtype::{DecoratorSubtype, DerivedDecoratorSubtypes}, public_walls::PublicWalls};
+        use country_core::systems::{camera_rig::main_camera::MainCamera, ui::resources::widget_params::UiNavState};
+        let mut world = setup();
+        world.init_resource::<PublicWalls>();
+        world.init_resource::<DecoratorStorage>();
+        world.init_resource::<DerivedDecoratorSubtypes>();
+        world.init_resource::<country_core::DevOverrideIsDemoMode>();
+        world.init_resource::<country_core::resources::stairs::visual::StairsVisualState>();
+        world.init_resource::<country_core::resources::stairs::stairs_state::StairsState>();
+        world.init_resource::<country_core::game_config::GameConfig>();
+        world.init_resource::<MainCamera>();
+        world.init_resource::<UiNavState>();
+        let mut info = DecoratorInfo { u28: 8, ..Default::default() };
+        info.set_extra(DecoratorExtraInfo::Window(WindowExtra(3)));
+        world.resource_mut::<DecoratorStorage>().apply_decorator_place(DecoratorStorageAddr::Terrain, DecoratorId(41), &info);
+        world.resource_mut::<DerivedDecoratorSubtypes>().insert(41, DecoratorSubtype(0));
+        world.send_event(ShowColorMenuCmd { kind: 3, subtype: 0, decorator_id: 41, payload: 0, position: glam::Vec2::new(20., 30.) });
+        let mut schedule = Schedule::default();
+        schedule.add_systems(show_color_options::<()>);
+        schedule.run(&mut world);
+        let mut query = world.query::<&ColorRadialMenu>();
+        let menus: Vec<_> = query.iter(&world).collect();
+        assert_eq!(menus.len(), 2);
+        let light = menus.iter().find(|menu| menu.target.kind == 4).unwrap();
+        assert_eq!(light.initial.color, 3);
+        assert_eq!(light.icons.len(), 5);
+        assert_eq!(light.target.payload, 41);
+        drop(menus);
+        let mut nav_query = world.query::<(&ColorRadialMenu, &country_core::components::UiNav)>();
+        let navs: Vec<_> = nav_query.iter(&world).collect();
+        assert_eq!(navs.len(), 2);
+        assert!(navs.iter().all(|(_, nav)| nav.links.map(|link| link.tag) == [2, 2, 3, 3]));
+        drop(navs);
+        world.resource_mut::<DerivedDecoratorSubtypes>().insert(41, DecoratorSubtype(4));
+        world.send_event(ShowColorMenuCmd { kind: 3, subtype: 0, decorator_id: 41, payload: 0, position: glam::Vec2::ZERO });
+        schedule.run(&mut world);
+        let mut query = world.query::<&ColorRadialMenu>();
+        assert_eq!(query.iter(&world).filter(|menu| menu.target.kind == 4).count(), 1,
+            "excluded window subtype must not spawn another light ring");
+    }
+    #[test]
+    fn stair_ring_uses_connected_visual_activity_and_railing() {
+        use country_core::resources::{stairs::{stairs_state::{StairGraphEdge, StairsState}, visual::StairsVisualState}, walls::{decorator::{DecoratorId, DecoratorInfo, DecoratorExtraInfo, StairExtra}, decorator_storage::{DecoratorStorage, DecoratorStorageAddr}, decorator_subtype::DerivedDecoratorSubtypes, public_walls::PublicWalls}};
+        use country_core::systems::{camera_rig::main_camera::MainCamera, ui::resources::widget_params::UiNavState};
+        let mut world = setup();
+        world.init_resource::<PublicWalls>();
+        world.init_resource::<DecoratorStorage>();
+        world.init_resource::<DerivedDecoratorSubtypes>();
+        world.init_resource::<country_core::DevOverrideIsDemoMode>();
+        world.init_resource::<country_core::game_config::GameConfig>();
+        world.init_resource::<MainCamera>();
+        world.init_resource::<UiNavState>();
+        world.init_resource::<StairsVisualState>();
+        world.init_resource::<StairsState>();
+        let mut extra = [0u8; 20];
+        extra[8..12].copy_from_slice(&4u32.to_le_bytes());
+        extra[12..16].copy_from_slice(&2u32.to_le_bytes());
+        extra[16] = 3;
+        let mut info = DecoratorInfo { u28: 100003, ..Default::default() };
+        info.set_extra(DecoratorExtraInfo::Stair(StairExtra(extra)));
+        world.resource_mut::<DecoratorStorage>().apply_decorator_place(DecoratorStorageAddr::Stair, DecoratorId(41), &info);
+        world.resource_mut::<StairsState>().add_edge(41, 42);
+        let edge = StairGraphEdge::new(41, 42);
+        world.resource_mut::<StairsVisualState>().reset_edge(edge);
+        let mut schedule = Schedule::default();
+        schedule.add_systems(show_color_options::<()>);
+        let cmd = ShowColorMenuCmd { kind: 11, subtype: 0, decorator_id: 41, payload: 0, position: glam::Vec2::ZERO };
+        world.send_event(cmd);
+        schedule.run(&mut world);
+        let mut query = world.query::<&ColorRadialMenu>();
+        let first = query.iter(&world).find(|menu| menu.target.kind == 12).unwrap();
+        assert_eq!(first.icons.len(), 10);
+        assert_eq!(first.initial.color, 4);
+        world.resource_mut::<StairsVisualState>().get_mut(&edge).unwrap().magic_supports.set_activity_byte(7);
+        world.send_event(cmd);
+        schedule.run(&mut world);
+        let mut query = world.query::<&ColorRadialMenu>();
+        let combined = query.iter(&world).find(|menu| menu.target.kind == 12 && menu.icons.len() == 17).unwrap();
+        assert_eq!(combined.initial.magic_color, 2);
+        assert_eq!(combined.icons[6].kind, 5);
+        world.send_event(ShowColorMenuCmd { kind: 12, ..cmd });
+        schedule.run(&mut world);
+        let mut query = world.query::<&ColorRadialMenu>();
+        let magic = query.iter(&world).find(|menu| menu.target.kind == 11 && menu.icons.len() == 6).unwrap();
+        assert_eq!(magic.initial.color, 100003);
+        assert_eq!(magic.initial.magic_color, 2);
     }
     #[test]
     fn cancellation_restores_every_native_target_then_keeps_exit_animation() {
@@ -501,6 +1026,7 @@ mod native_hide_tests {
             world.spawn(ColorRadialMenu {
                 target: ColorMenuTarget {
                     kind,
+                    subtype: 0,
                     payload: 67,
                     id: 0x100000009,
                 },

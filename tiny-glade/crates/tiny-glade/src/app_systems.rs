@@ -47,7 +47,7 @@ impl WallSystems for bevy_app::App {
         // 3. 0x1404932c7：外层 chain_ignore_deferred(chain1, chain2)，set 19。
         let chain1 = (
             wall::wall_splitter::wall_splitter::<MaybePendingSnapshotId>,
-            wall::eraser::ui_bulldozer::wall_eraser_bulldoze
+            wall::eraser::ui_bulldozer::wall_eraser_bulldoze::<MaybePendingSnapshotId>
                 .run_if(wall::eraser::ui_bulldozer::wall_eraser_bulldoze_condition),
             wall::eraser::wall_eraser::wall_eraser::<MaybePendingSnapshotId>,
             wall::eraser::animate_wall_bulldoze::animate_wall_bulldoze,
@@ -82,7 +82,9 @@ impl WallSystems for bevy_app::App {
             wall::delete_wall::delete_wall,
             // 宿主适配（原版没有）。
             country_core::geometry::runtime::prepare_wall_brick_assembly_owners,
-            wc::gpu_output::delete_constructor_output,
+            // Deleted and republished IDs must retire old owners before installing new.
+            (wc::gpu_output::delete_constructor_output,
+                wc::gpu_output::replace_published_plank_owners).chain_ignore_deferred(),
             wall::wall_state::wall_spatial_hash::spatial_hash_update,
             wall::wall_state::spatial_hash_debug::spatial_hash_debug,
             wall::calc_wall_bend::calc_wall_bend,
@@ -252,6 +254,7 @@ impl WallSystems for bevy_app::App {
         self.add_event::<system_wall_constructor::construct_elevation_supports::RecalculateRectangleSupports>();
         self.add_event::<system_wall_constructor::construct_elevation_supports::RecalculateCircleSupports>();
         self.add_event::<HighlightWallCmd>();
+        self.add_event::<country_core::resources::roofs::commands::HighlightRoofCmd>();
         self.add_event::<OutlineWallCmd>();
         self.add_event::<OutlineStairsCmd>();
         // add_wall_events 0x1404936b0 的其余事件（上面“未闭合”清单里现已定位的）。

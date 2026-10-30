@@ -73,9 +73,8 @@ pub fn add_ivy_cpu_systems(schedule: &mut Schedule) {
 
 /// B `systems/ivy/mod.rs::impl$0::add_ivy_systems` (0x140944070): registers the
 /// grower/spawner/pruner/leaf-spawner/animation system family. The original
-/// registers 22 systems (0x140944070: `FUN_141664d80(.., 0x16)`); the CPU
-/// schedule below reproduces the grower/spawner/pruner → leaf_spawner →
-/// animation chain. The GPU upload passes
+/// places the spawner after GameSystemSet(22), followed by the CPU chain.
+/// The GPU upload passes
 /// (`ivy_send_to_gpu_leaf`/`ivy_send_to_gpu_segments`, whose bodies live in
 /// the modules of the same names) and `systems/audio/ivy_audio::ivy_audio_init_system`
 /// are render/audio-domain wiring that this crate's render world must attach
@@ -83,15 +82,15 @@ pub fn add_ivy_cpu_systems(schedule: &mut Schedule) {
 pub fn add_ivy_systems(schedule: &mut Schedule) {
     schedule.add_systems(
         (
+            ivy_spawner.after_ignore_deferred(crate::systems::GameSystemSet(22)),
             ivy_grower,
-            ivy_spawner,
+            ivy_leaf_spawner,
             ivy_pruner,
             ivy_pruner_cmd,
-            ivy_leaf_spawner,
             ivy_branch_thickness_animation,
             ivy_leaf_animation,
         )
-            .chain(),
+            .chain_ignore_deferred(),
     );
 }
 

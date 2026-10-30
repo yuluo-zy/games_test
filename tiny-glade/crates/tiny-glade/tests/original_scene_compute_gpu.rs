@@ -44,7 +44,7 @@ impl Fixture {
         let installed = std::env::var_os("TG_INSTALL_ROOT")
             .map(PathBuf::from)
             .unwrap_or_else(|| {
-                PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../ljxsj_92385/Tiny Glade")
+                PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../ljxsj_92385/Tiny Glade")
             });
         let device = match rhapsody::device::Device::new_headless(
             &rhapsody::device::DeviceConfig::headless(),
@@ -878,7 +878,7 @@ fn original_multires_dof_reads_uploaded_tile_offsets_and_dispatches_its_real_par
     let installed = std::env::var_os("TG_INSTALL_ROOT")
         .map(PathBuf::from)
         .unwrap_or_else(|| {
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../../ljxsj_92385/Tiny Glade")
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../ljxsj_92385/Tiny Glade")
         });
     let path = installed.join("compiled-assets/textures/blue_noise.texture");
     let file = AlignedFile::read(&path).unwrap();
@@ -2780,4 +2780,282 @@ fn wall_color_writer_real_device_missing_ssbo_precedes_mutation() {
     assert_eq!(world.resource::<WallColorIds>().0[7], 0);
     assert!(world.resource::<Events<CreatePlasterCmd>>().is_empty());
     assert!(world.resource::<Events<DeletePlasterCmd>>().is_empty());
+}
+
+/// W1 -> W12 -> W16 on actual preset textures and native typed buffers. The
+/// only fixture-specific allocation change admits Vulkan copy-source usage on
+/// the three observed buffers; their owners and shader writes remain real.
+#[test]
+fn garden_dirty_stroke_reaches_original_indirect_commands_and_instance_buffers() {
+    use country_core::{
+        render::{pass_builder::compute_pass_builder::RgBuffer, ssbo::rhapsody_boundary::{
+            BackendError, Buffer, BufferDesc, GraphicsDevice,
+        }},
+        resources::glade_settings::GladeSettings,
+        systems::render_loop::{
+            compute_passes::{compute_garden::{BushSsbo, FlowerSsbo, Flower03Ssbo, GardenStoneSsbo},
+                reset_indirect_args::reset_indirect_args},
+            indirect_params::{AtomicCounterBuffer, DispatchIndirectBuffer, DrawIndexedIndirectBuffer,
+                DrawIndirectBuffer},
+        },
+        utils::dirty_tiles::DirtyTiles,
+    };
+    use std::ops::Range;
+
+    struct Observable<'a>(&'a dyn GraphicsDevice);
+    impl GraphicsDevice for Observable<'_> {
+        fn create_buffer(&self, desc: &BufferDesc, name: &str, data: Option<&[u8]>) -> Result<Buffer, BackendError> {
+            let mut observed = *desc;
+            observed.usage |= vk::BufferUsageFlags::TRANSFER_SRC.as_raw();
+            self.0.create_buffer(&observed, name, data)
+        }
+        fn release_buffer(&self, buffer: &Buffer) { self.0.release_buffer(buffer); }
+        fn update_buffer_bytes(&self, buffer: &Buffer, data: &[u8], ranges: &[Range<usize>], offset: usize) -> Result<(), BackendError> {
+            self.0.update_buffer_bytes(buffer, data, ranges, offset)
+        }
+    }
+
+    let Some(mut fixture) = Fixture::new() else { return };
+    let buffers = fixture.bridge.hosts().buffers.clone();
+    let ssbos = fixture.world.resource::<AssetSsboLibrary>();
+    let observed = Observable(buffers.as_ref());
+    ssbos.add_new::<DrawIndexedIndirectBuffer>(&observed);
+    ssbos.add_new::<GardenStoneSsbo>(&observed);
+    ssbos.add_new::<Flower03Ssbo>(&observed);
+    ssbos.add_new::<DispatchIndirectBuffer>(buffers.as_ref());
+    ssbos.add_new::<DrawIndirectBuffer>(buffers.as_ref());
+    ssbos.add_new::<AtomicCounterBuffer>(buffers.as_ref());
+    ssbos.add_new::<BushSsbo>(buffers.as_ref());
+    ssbos.add_new::<FlowerSsbo>(buffers.as_ref());
+    ssbos.add_new::<GardenRasterStagingSsbo>(buffers.as_ref());
+    fixture.world.insert_resource(GladeSettings { vegetation_around_buildings: false, ..Default::default() });
+    fixture.world.insert_resource(GardenRaster::new(DirtyTilePublisher::unique()));
+
+    // Flat terrain and empty exclusion/building masks are explicit, real
+    // preset contents, rather than uninitialized graph inputs.
+    for slot in [5, 9, 10, 14, 16, 19, 20, 21, 22] {
+        fixture.world.resource::<AssetTextureLibrary>()
+            .try_clear_preset_texture(fixture.bridge.hosts().textures.as_ref(), TexturePreset(slot))
+            .unwrap();
+    }
+    let points = [glam::Vec3::new(-12.0, 0.0, 0.0), glam::Vec3::new(12.0, 0.0, 0.0)];
+    for painted in [false, true] {
+        fixture.world.resource_scope(|world, mut raster: bevy_ecs::change_detection::Mut<GardenRaster>| {
+            if painted {
+                let mut dirty = DirtyTiles::default();
+                dirty.rasterize_world_space_stroke(&points, 8.0);
+                raster.extend_dirty(&dirty);
+                raster.rasterize_stroke(0, &points, 8.0, true, 0, 0.0);
+                assert!(raster.composite().iter().any(|&pixel| pixel != 0));
+                assert!(!raster.dirty().is_empty());
+            } else {
+                raster.write_composite(None);
+            }
+            let mut library = world.resource_mut::<AssetSsboLibrary>();
+            let staging = library.get_mut::<GardenRasterStagingSsbo>().unwrap();
+            staging.with_cpu_write_regions(|mapped, ranges| {
+                raster.copy_to_staging_with_ranges(0, bytemuck::cast_slice_mut(mapped), ranges);
+            }).unwrap();
+        });
+        fixture.world.increment_change_tick();
+        let (outputs, built) = fixture.bridge.build_frame(|frame| {
+            tiny_glade::frame_setup::with_frame_resources(frame, &mut fixture.world, |frame, world| {
+                frame.with_compute(|compute| reset_indirect_args(compute, world.resource::<AssetSsboLibrary>()))?;
+                assert!(scene_compute::upload_raster_staging_to_texture(frame, world, 0x14)?.is_some());
+                assert!(scene_compute::garden_rasterize_from_cpu(frame, world)?.is_some());
+                tiny_glade::world_vegetation::garden_spawn_vegetation(frame, world)?;
+                let library = world.resource::<AssetSsboLibrary>();
+                let mut graph = frame.resource_graph();
+                let commands = library.get_rg_buffer::<DrawIndexedIndirectBuffer>(&mut graph);
+                let mut outputs = vec![read_dof_buffer_range(frame, &fixture.device,
+                    RgBuffer { resource: commands.resource as u32 }, 0, 24 * 20)?];
+                if painted {
+                    let stones = library.get_rg_buffer::<GardenStoneSsbo>(&mut graph);
+                    let flowers = library.get_rg_buffer::<Flower03Ssbo>(&mut graph);
+                    outputs.push(read_dof_buffer_range(frame, &fixture.device,
+                        RgBuffer { resource: stones.resource as u32 }, 0, 64)?);
+                    outputs.push(read_dof_buffer_range(frame, &fixture.device,
+                        RgBuffer { resource: flowers.resource as u32 }, 0, 16)?);
+                }
+                Ok(outputs)
+            })
+        }).unwrap();
+        fixture.bridge.shader_backend().prepare_test_pipelines(Duration::from_secs(60)).unwrap();
+        let receipt = fixture.bridge.execute_test_graph(built).unwrap();
+        for name in ["Reset indirect args", "Upload cpu raster", "Blur garden mask", "Garden Marching Squares", "Spawn small flowers"] {
+            assert!(receipt.snapshot.pass_order.iter().any(|pass| pass == name), "missing production pass {name}");
+        }
+        fixture.bridge.wait_submits_done(10_000_000_000).unwrap();
+        let commands = dof_read_words(&outputs[0], 24 * 5);
+        for (slot, index_count, capacity) in [(14usize, 66u32, 32400u32), (16, 15, 160000)] {
+            let command = &commands[slot * 5..slot * 5 + 5];
+            assert_eq!(command[0], index_count);
+            assert_eq!(&command[2..], &[0, 0, 0]);
+            if painted {
+                assert!(command[1] > 0 && command[1] <= capacity, "painted slot {slot}: {command:?}");
+            } else {
+                assert_eq!(command[1], 0, "empty garden slot {slot}");
+            }
+        }
+        if painted {
+            let stone = dof_read_words(&outputs[1], 16);
+            let flower = dof_read_words(&outputs[2], 4);
+            assert!(stone.iter().all(|&word| f32::from_bits(word).is_finite()));
+            let position: Vec<_> = flower.into_iter().map(f32::from_bits).collect();
+            assert!(position.iter().all(|value| value.is_finite()));
+            assert!((0.6..=1.0).contains(&position[3]), "flower scale: {position:?}");
+        }
+    }
+}
+
+/// B W1 -> W2 -> W13, with actual raster/staging owners and packaged shaders.
+/// The finite instance checks are conditional on the shader's indirect count;
+/// they do not impose unmeasured native counts or atomic append order.
+#[test]
+fn water_dirty_stroke_reaches_original_vegetation_buffers() {
+    use country_core::{
+        game_config::GameConfig,
+        render::{pass_builder::compute_pass_builder::RgBuffer, ssbo::rhapsody_boundary::{
+            BackendError, Buffer, BufferDesc, GraphicsDevice,
+        }},
+        resources::session::{ActiveSession, GladeType, SessionId, SessionMeta},
+        systems::render_loop::{
+            compute_passes::{compute_water::{LilypadSsbo, LilypadFlowerSsbo, ReedSsbo},
+                reset_indirect_args::reset_indirect_args},
+            indirect_params::{AtomicCounterBuffer, DispatchIndirectBuffer, DrawIndexedIndirectBuffer,
+                DrawIndirectBuffer},
+        },
+        utils::dirty_tiles::DirtyTiles,
+    };
+    use std::ops::Range;
+
+    struct Observable<'a>(&'a dyn GraphicsDevice);
+    impl GraphicsDevice for Observable<'_> {
+        fn create_buffer(&self, desc: &BufferDesc, name: &str, data: Option<&[u8]>) -> Result<Buffer, BackendError> {
+            let mut desc = *desc;
+            desc.usage |= vk::BufferUsageFlags::TRANSFER_SRC.as_raw();
+            self.0.create_buffer(&desc, name, data)
+        }
+        fn release_buffer(&self, buffer: &Buffer) { self.0.release_buffer(buffer); }
+        fn update_buffer_bytes(&self, buffer: &Buffer, data: &[u8], ranges: &[Range<usize>], offset: usize) -> Result<(), BackendError> {
+            self.0.update_buffer_bytes(buffer, data, ranges, offset)
+        }
+    }
+
+    let Some(mut fixture) = Fixture::new() else { return };
+    let buffers = fixture.bridge.hosts().buffers.clone();
+    let library = fixture.world.resource::<AssetSsboLibrary>();
+    let observed = Observable(buffers.as_ref());
+    library.add_new::<DrawIndexedIndirectBuffer>(&observed);
+    library.add_new::<LilypadSsbo>(&observed);
+    library.add_new::<LilypadFlowerSsbo>(&observed);
+    library.add_new::<ReedSsbo>(&observed);
+    library.add_new::<DispatchIndirectBuffer>(buffers.as_ref());
+    library.add_new::<DrawIndirectBuffer>(buffers.as_ref());
+    library.add_new::<AtomicCounterBuffer>(buffers.as_ref());
+    library.add_new::<WaterRasterStagingSsbo>(buffers.as_ref());
+    library.add_new::<GardenRasterStagingSsbo>(buffers.as_ref());
+    fixture.world.insert_resource(GameConfig::default());
+    fixture.world.insert_resource(ActiveSession::new(SessionId(uuid::Uuid::nil()), SessionMeta::default()));
+    fixture.world.insert_resource(WaterRaster::new(DirtyTilePublisher::unique()));
+    fixture.world.insert_resource(GardenRaster::new(DirtyTilePublisher::unique()));
+    // Flat terrain, empty exclusions and initialized animation are explicit
+    // fixture inputs; the masks themselves are produced by W1/W2/W12.
+    for slot in [5, 9, 10, 19, 20, 22, 23] {
+        fixture.world.resource::<AssetTextureLibrary>()
+            .try_clear_preset_texture(fixture.bridge.hosts().textures.as_ref(), TexturePreset(slot))
+            .unwrap();
+    }
+    let points = [glam::Vec3::new(-18.0, 0.0, 0.0), glam::Vec3::new(18.0, 0.0, 0.0)];
+    let mut observed_instances = [false; 3];
+    for (frame_index, theme) in [GladeType::Summer, GladeType::Summer, GladeType::Autumn, GladeType::Flowery, GladeType::Winter].into_iter().enumerate() {
+        let dirty_frame = frame_index < 2;
+        let painted = frame_index != 0;
+        fixture.world.resource_mut::<ActiveSession>().meta.glade = theme;
+        // prepare_frame_constants maps session tags to shader theme IDs.
+        fixture.world.resource_mut::<FrameConstants>().glade_theme_id = [0, 3, 1, 2, 4][theme.native_tag() as usize];
+        if dirty_frame {
+            macro_rules! stage_stroke {
+                ($raster:ty, $staging:ty) => {
+                    fixture.world.resource_scope(|world, mut raster: bevy_ecs::change_detection::Mut<$raster>| {
+                        if painted {
+                            let mut dirty = DirtyTiles::default();
+                            dirty.rasterize_world_space_stroke(&points, 18.0);
+                            raster.extend_dirty(&dirty);
+                            raster.rasterize_stroke(0, &points, 18.0, true, 0, 0.0);
+                            assert!(raster.composite().iter().any(|&pixel| pixel != 0));
+                            assert!(!raster.dirty().is_empty());
+                        } else {
+                            raster.write_composite(None);
+                        }
+                        let mut library = world.resource_mut::<AssetSsboLibrary>();
+                        library.get_mut::<$staging>().unwrap().with_cpu_write_regions(|mapped, ranges| {
+                            raster.copy_to_staging_with_ranges(0, bytemuck::cast_slice_mut(mapped), ranges);
+                        }).unwrap();
+                        assert!(raster.published());
+                    });
+                };
+            }
+            stage_stroke!(WaterRaster, WaterRasterStagingSsbo);
+            stage_stroke!(GardenRaster, GardenRasterStagingSsbo);
+        }
+        fixture.world.increment_change_tick();
+        let (outputs, built) = fixture.bridge.build_frame(|frame| {
+            tiny_glade::frame_setup::with_frame_resources(frame, &mut fixture.world, |frame, world| {
+                frame.with_compute(|compute| reset_indirect_args(compute, world.resource::<AssetSsboLibrary>()))?;
+                assert_eq!(scene_compute::upload_raster_staging_to_texture(frame, world, 0x13)?.is_some(), dirty_frame);
+                assert_eq!(scene_compute::water_rasterize_from_cpu(frame, world)?.is_some(), dirty_frame);
+                assert_eq!(scene_compute::upload_raster_staging_to_texture(frame, world, 0x14)?.is_some(), dirty_frame);
+                assert_eq!(scene_compute::garden_rasterize_from_cpu(frame, world)?.is_some(), dirty_frame);
+                tiny_glade::world_vegetation::water_spawn_vegetation(frame, world)?;
+                let library = world.resource::<AssetSsboLibrary>();
+                let mut graph = frame.resource_graph();
+                let commands = library.get_rg_buffer::<DrawIndexedIndirectBuffer>(&mut graph);
+                let pads = library.get_rg_buffer::<LilypadSsbo>(&mut graph);
+                let reeds = library.get_rg_buffer::<ReedSsbo>(&mut graph);
+                let flowers = library.get_rg_buffer::<LilypadFlowerSsbo>(&mut graph);
+                let mut outputs = Vec::new();
+                for (resource, size) in [(commands.resource, 24 * 20), (pads.resource, 48), (reeds.resource, 48), (flowers.resource, 48)] {
+                    outputs.push(read_dof_buffer_range(frame, &fixture.device, RgBuffer { resource: resource as u32 }, 0, size)?);
+                }
+                Ok(outputs)
+            })
+        }).unwrap();
+        fixture.bridge.shader_backend().prepare_test_pipelines(Duration::from_secs(60)).unwrap();
+        let receipt = fixture.bridge.execute_test_graph(built).unwrap();
+        let order = &receipt.snapshot.pass_order;
+        for name in ["Reset indirect args", "Spawn lilypads", "Spawn reeds"] {
+            assert!(order.iter().any(|pass| pass == name), "missing production pass {name}");
+        }
+        assert_eq!(order.iter().filter(|pass| pass.as_str() == "Blur water mask").count(), if dirty_frame { 4 } else { 0 });
+        if dirty_frame {
+            let upload = order.iter().position(|pass| pass == "Upload cpu raster").unwrap();
+            let blur = order.iter().position(|pass| pass == "Blur water mask").unwrap();
+            let spawn = order.iter().position(|pass| pass == "Spawn lilypads").unwrap();
+            assert!(upload < blur && blur < spawn);
+        }
+        fixture.bridge.wait_submits_done(10_000_000_000).unwrap();
+        assert!(!fixture.world.resource::<WaterRaster>().reupload_pending());
+        assert!(fixture.world.resource::<WaterRaster>().dirty().is_empty());
+        let commands = dof_read_words(&outputs[0], 24 * 5);
+        for (kind, (slot, index_count, capacity, output)) in [(8usize, 48u32, 50625u32, 1usize), (9, 174, 22500, 2), (15, 180, 50625, 3)].into_iter().enumerate() {
+            let command = &commands[slot * 5..slot * 5 + 5];
+            assert_eq!(command[0], index_count);
+            assert_eq!(&command[2..], &[0, 0, 0]);
+            assert!(command[1] <= capacity, "slot {slot}: {command:?}");
+            if !painted { assert_eq!(command[1], 0, "empty water slot {slot}"); }
+            if painted { observed_instances[kind] |= command[1] != 0; }
+            if command[1] != 0 {
+                let instance = dof_read_words(&outputs[output], 12);
+                assert!(instance.iter().all(|&word| f32::from_bits(word).is_finite()), "slot {slot} first transform: {instance:?}");
+                if theme == GladeType::Winter && slot == 8 {
+                    // Original shader's winter branch sets pad translation y=-0.1.
+                    assert!((f32::from_bits(instance[10]) + 0.1).abs() < 1.0e-5);
+                }
+            }
+            eprintln!("water GPU theme={theme:?} painted={painted} slot={slot} instances={}", command[1]);
+        }
+    }
+    assert!(observed_instances.iter().all(|&seen| seen),
+        "painted water never produced all three W13 instance types: {observed_instances:?}");
 }

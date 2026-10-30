@@ -357,16 +357,13 @@ pub fn add_game_startup_systems<B, S>(
     B: crate::systems::audio::music::music_player::MusicBackend + bevy_ecs::resource::Resource,
     S: crate::resources::audio_resources::Studio + Send + Sync + 'static,
 {
-    use bevy_ecs::schedule::{IntoScheduleConfigs, common_conditions::run_once};
     run_game::register_core_startup::<B, S>(
         world,
         startup_schedule,
         session_schedule,
         update_schedule,
     );
-    // startup_ivy needs the host's installation root, ShaderBackend and MeshWatch; the device host
-    // (tiny-glade/src/gameplay_startup.rs) calls it directly.
-    startup_schedule.add_systems(startup_garden_brush::startup_garden_brush.run_if(run_once));
+    // Ivy and garden brush require the device host's root, shader backend and MeshWatch.
 }
 
 /// Complete theme-specific clearing producers.

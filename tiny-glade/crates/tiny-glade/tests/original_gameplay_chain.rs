@@ -456,6 +456,32 @@ fn m2_inject_terrain_input(
     );
 }
 
+#[derive(bevy_ecs::prelude::Resource)]
+struct M1DrawnBrickBuffer(std::sync::Arc<rhapsody::resource::Buffer>);
+
+#[derive(bevy_ecs::prelude::Resource, Default)]
+struct M6DrawnWallColorBuffer(Option<std::sync::Arc<rhapsody::resource::Buffer>>);
+
+fn m6_assert_wall_color_gpu(
+    world: &bevy_ecs::world::World,
+    bridge: &CoreRenderBridge,
+    device: &std::sync::Arc<rhapsody::device::Device>,
+) -> Result<()> {
+    use country_core::{asset_libraries::ssbo_library::AssetSsboLibrary,
+        resources::color_id::{WallColorIdSsbo, WallColorIds}};
+    let storage = world.resource::<AssetSsboLibrary>().get::<WallColorIdSsbo>()
+        .context("wall color SSBO absent")?;
+    let current = bridge.hosts().buffers.managed_buffer(&storage.buffer)
+        .context("physical wall color SSBO absent")?.shared();
+    let drawn = world.resource::<M6DrawnWallColorBuffer>().0.as_ref()
+        .context("no production raster wall color observation")?;
+    anyhow::ensure!(std::sync::Arc::ptr_eq(&current, drawn), "wall color producer/draw owners differ");
+    let expected: &[u8] = bytemuck::cast_slice(&world.resource::<WallColorIds>().0);
+    let actual = m6_read_diagnostic_native_range(device, drawn, 0, expected.len())?;
+    anyhow::ensure!(actual == expected, "drawn wall color SSBO differs from complete authoritative table");
+    Ok(())
+}
+
 fn run_m2_production_frame(
     driver: &mut tiny_glade::game_loop::GameFrameDriver,
     context: &egui::Context,
@@ -465,12 +491,30 @@ fn run_m2_production_frame(
         std::sync::Arc<parking_lot::Mutex<Vec<(String, u32, u32, Vec<u8>)>>>,
     )>,
 ) -> Result<Vec<String>> {
+    let observe_bricks = capture.as_ref().is_some_and(|(label, _)|
+        *label == "m2-stable" || *label == "m2-edited");
+    let mean_label = capture.as_ref().filter(|(label, _)|
+        std::env::var_os("TG_M2_DUMP_DIR").is_some()
+            && matches!(*label, "m2-saved" | "m2-reloaded-matched"
+                | "m2-parent-canonical-inputs" | "m2-child-canonical-inputs"))
+        .map(|(label, _)| (*label).to_owned());
     context.begin_frame(egui::RawInput::default());
     driver.app_mut().update();
     let _ = context.end_frame();
     let world = driver.app_mut().world_mut();
     if let Some((label, sink)) = capture {
         let label = label.to_owned();
+        let lighting_label = format!("{label}-terrain-lighting");
+        let lighting_sink = sink.clone();
+        tiny_glade::screenshot::gather_screenshot_requests(world,
+            [tiny_glade::screenshot::ScreenshotRequest {
+                purpose: tiny_glade::screenshot::ScreenshotPurpose::TerrainLightingDiagnostic,
+                dimensions: None,
+                sink: tiny_glade::screenshot::ScreenshotSink::Rgba(std::sync::Arc::new(
+                    move |w, h, rgba| lighting_sink.lock().push((lighting_label.clone(), w, h, rgba)),
+                )),
+                completion: None,
+            }])?;
         tiny_glade::screenshot::gather_screenshot_requests(
             world,
             [tiny_glade::screenshot::ScreenshotRequest {
@@ -487,6 +531,101 @@ fn run_m2_production_frame(
         .context("prepare M2 production world frame")?;
     bridge.prepare_test_execution()?;
     let frame = ready.execute(bridge, world)?;
+    // The lighting shader must read the same actual graph resources whose
+    // contents are copied into the two terrain-height readback buffers.
+    let graph = &frame.receipt.snapshot;
+    if world.contains_resource::<M6DrawnWallColorBuffer>() {
+        use country_core::{asset_libraries::ssbo_library::AssetSsboLibrary,
+            resources::color_id::WallColorIdSsbo};
+        let storage = world.resource::<AssetSsboLibrary>().get::<WallColorIdSsbo>()
+            .context("wall color producer absent during raster observation")?;
+        let owner = bridge.hosts().buffers.managed_buffer(&storage.buffer)
+            .context("wall color physical producer absent")?.shared();
+        let logical = bridge.with_session(|session| graph.physical_mapping.iter().filter_map(|mapping| {
+            match mapping.token.and_then(|token| session.backend.resource_clone(token)) {
+                Some(rhapsody::rg::GpuResource::Buffer(actual)) if std::sync::Arc::ptr_eq(&actual, &owner)
+                    => Some(mapping.logical),
+                _ => None,
+            }
+        }).collect::<std::collections::HashSet<_>>());
+        anyhow::ensure!(graph.pass_order.iter().enumerate().any(|(i, name)|
+            name.starts_with("G-buffer") && graph.accesses[graph.pass_ranges[i].clone()].iter()
+                .any(|access| logical.contains(&access.resource_index)
+                    && (access.access_code == 0x37 || !rhapsody::native::is_write(access.access_code)))),
+            "production G-buffer does not read the actual wall color producer");
+        world.resource_mut::<M6DrawnWallColorBuffer>().0 = Some(owner);
+    }
+    let input_owners = if mean_label.is_some() {
+        m2_render_input_owners(world, bridge, graph)?
+    } else { Vec::new() };
+    let mean_owner = if mean_label.is_some() {
+        use country_core::{asset_libraries::ssbo_library::AssetSsboLibrary,
+            systems::render_loop::compute_passes::apply_screen_shadows::ShadowMaskMeanSsbo};
+        let library = world.resource::<AssetSsboLibrary>();
+        let handle = library.get_buffer::<ShadowMaskMeanSsbo>().context("shadow mean owner missing")?;
+        let owner = bridge.hosts().buffers.managed_buffer(handle)
+            .context("shadow mean physical buffer missing")?.shared();
+        let logical = bridge.with_session(|session| graph.physical_mapping.iter().filter_map(|mapping| {
+            match mapping.token.and_then(|token| session.backend.resource_clone(token)) {
+                Some(rhapsody::rg::GpuResource::Buffer(actual)) if std::sync::Arc::ptr_eq(&actual, &owner)
+                    => Some(mapping.logical),
+                _ => None,
+            }
+        }).collect::<std::collections::HashSet<_>>());
+        for expected_pass in ["Shadow mask mean", "Final blit"] {
+            anyhow::ensure!(graph.pass_order.iter().enumerate().any(|(i, name)|
+                name == expected_pass && graph.accesses[graph.pass_ranges[i].clone()].iter()
+                    .any(|access| logical.contains(&access.resource_index))),
+                "shadow mean actual owner absent from {expected_pass}");
+        }
+        Some(owner)
+    } else { None };
+    if observe_bricks {
+        use country_core::{asset_libraries::ssbo_library::AssetSsboLibrary,
+            geometry::instanced_wall::BrickTransformSsbo};
+        let storage = world.resource::<AssetSsboLibrary>().get::<BrickTransformSsbo>()
+            .context("brick storage absent in observed frame")?;
+        let producer = bridge.hosts().buffers.managed_buffer(&storage.buffer.buffer)
+            .context("brick producer physical owner absent")?.shared();
+        let matches = bridge.with_session(|session| graph.physical_mapping.iter().filter_map(|mapping| {
+            let token = mapping.token?;
+            match session.backend.resources.get(&token)? {
+                rhapsody::rg::GpuResource::Buffer(owner) if std::sync::Arc::ptr_eq(owner, &producer) => Some(mapping.logical),
+                _ => None,
+            }
+        }).collect::<std::collections::HashSet<_>>());
+        let owner_accesses: Vec<_> = graph.pass_order.iter().enumerate().flat_map(|(index, name)| {
+            graph.accesses[graph.pass_ranges[index].clone()].iter()
+                .filter(|access| matches.contains(&access.resource_index))
+                .map(move |access| (name.clone(), access.resource_index, access.access_code))
+        }).collect();
+        let raster_reads: Vec<_> = graph.pass_order.iter().enumerate().filter_map(|(index, name)| {
+            let raster = name == "Shadows" || name.starts_with("G-buffer") || name.starts_with("Forward")
+                || name == "Velocity" || name == "Velocity OC/2" || name.starts_with("Late ");
+            (raster && graph.accesses[graph.pass_ranges[index].clone()].iter()
+                .any(|access| matches.contains(&access.resource_index)
+                    // General (0x37) is conservative MEMORY_READ|MEMORY_WRITE;
+                    // external draw SSBOs intentionally use it.
+                    && (access.access_code == 0x37 || !rhapsody::native::is_write(access.access_code)))).then_some(name.clone())
+        }).collect();
+        anyhow::ensure!(!raster_reads.is_empty(),
+            "brick physical owner is absent from actual raster pass accesses (matching logical resources: {matches:?}; accesses: {owner_accesses:?})");
+        eprintln!("M1 brick production raster owner reads: {raster_reads:?}");
+        world.insert_resource(M1DrawnBrickBuffer(producer));
+    }
+    if let (Some(read), Some(light)) = (
+        graph.pass_order.iter().position(|name| name == "Read terrain height"),
+        graph.pass_order.iter().position(|name| name == "Calculate Terrain Lighting Texture"),
+    ) {
+        let read_inputs = &graph.accesses[graph.pass_ranges[read].clone()];
+        let light_inputs = &graph.accesses[graph.pass_ranges[light].clone()];
+        let shared: std::collections::HashSet<_> = read_inputs.iter()
+            .filter(|item| item.access_code == 0x19 && light_inputs.iter()
+                .any(|other| other.access_code == 0x19 && other.resource_index == item.resource_index))
+            .map(|item| item.resource_index).collect();
+        anyhow::ensure!(shared.len() >= 2,
+            "terrain lighting does not read both height resources used by the production readback: {shared:?}");
+    }
     let passes = frame
         .receipt
         .snapshot
@@ -499,9 +638,98 @@ fn run_m2_production_frame(
         .resource_mut::<country_core::render::RenderTemporalState>()
         .frame_render_returned();
     bridge.with_session(|session| session.wait_frame(frame.receipt.frame, 120_000_000_000))?;
+    if let (Some(label), Some(owner)) = (mean_label, mean_owner) {
+        let device = bridge.hosts().buffers.graphics_device().clone();
+        let bytes = m6_read_diagnostic_native_range(&device, &owner, 0, 4)?;
+        let bits = u32::from_le_bytes(bytes.as_slice().try_into()?);
+        let dir = PathBuf::from(std::env::var_os("TG_M2_DUMP_DIR").expect("mean diagnostic directory"));
+        std::fs::create_dir_all(&dir)?;
+        std::fs::write(dir.join(format!("{label}-shadow-mean.json")),
+            serde_json::to_vec_pretty(&serde_json::json!({"bits":bits,"value":f32::from_bits(bits)}))?)?;
+        m2_dump_render_input_bytes(bridge, &dir, &label, input_owners)?;
+    }
     drop(frame);
     bridge.collect_completed_frames()?;
     Ok(passes)
+}
+
+/// Only existing library registrations are selected. Full allocation bytes are
+/// diagnostic evidence, not proof that inactive capacity affects a pixel.
+/// Large allocations are recorded as metadata, never truncated as though the
+/// prefix were the complete input; targeted brick ranges have a separate probe.
+struct M2RenderInputOwner {
+    name: String,
+    owner: std::sync::Arc<rhapsody::resource::Buffer>,
+    count: Option<usize>,
+    accesses: Vec<(String, u32, u8)>,
+}
+
+fn m2_render_input_owners(
+    world: &bevy_ecs::world::World,
+    bridge: &mut CoreRenderBridge,
+    graph: &rhapsody::rg::Snapshot,
+) -> Result<Vec<M2RenderInputOwner>> {
+    use country_core::asset_libraries::ssbo_library::AssetSsboLibrary;
+    let library = world.resource::<AssetSsboLibrary>();
+    let mut result = Vec::new();
+    for lease in library.snapshot_graph_leases() {
+        let name = lease.canonical_type_name.rsplit("::").next().context("M2 registered input type")?;
+        if !matches!(name, "ColorLibrarySsbo" | "LeafParticleSsbo" | "ParticleEmitterSsbo"
+            | "SheepAnimationSsbo" | "BrickTransformSsbo") { continue; }
+        let owner = bridge.hosts().buffers.managed_buffer(lease.buffer())
+            .with_context(|| format!("M2 registered {name} physical owner missing"))?.shared();
+        let logical = bridge.with_session(|session| graph.physical_mapping.iter().filter_map(|mapping| {
+            match mapping.token.and_then(|token| session.backend.resource_clone(token)) {
+                Some(rhapsody::rg::GpuResource::Buffer(actual)) if std::sync::Arc::ptr_eq(&actual, &owner)
+                    => Some(mapping.logical),
+                _ => None,
+            }
+        }).collect::<std::collections::HashSet<_>>());
+        let accesses = graph.pass_order.iter().enumerate().flat_map(|(index, pass)| {
+            graph.accesses[graph.pass_ranges[index].clone()].iter()
+                .filter(|access| logical.contains(&access.resource_index))
+                .map(move |access| (pass.clone(), access.resource_index, access.access_code))
+        }).collect::<Vec<_>>();
+        if accesses.is_empty() { continue; }
+        // The retained Arc is resolved before wait_frame/retirement, matching
+        // the SSBO consumed by this exact submitted production frame.
+        result.push(M2RenderInputOwner { name: name.to_owned(), owner,
+            count: lease.instance_count(), accesses });
+    }
+    result.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(result)
+}
+
+fn m2_dump_render_input_bytes(
+    bridge: &mut CoreRenderBridge,
+    dir: &std::path::Path,
+    label: &str,
+    inputs: Vec<M2RenderInputOwner>,
+) -> Result<()> {
+    let device = bridge.hosts().buffers.graphics_device().clone();
+    let mut manifest = Vec::new();
+    let mut total = 0usize;
+    for input in inputs {
+        let size = usize::try_from(input.owner.size)?;
+        let within_bound = total.checked_add(size).is_some_and(|sum| sum <= 32 * 1024 * 1024);
+        let file = format!("{label}-input-{}.bin", input.name);
+        let capable = input.owner.usage.contains(ash::vk::BufferUsageFlags::TRANSFER_SRC);
+        let readable = capable && within_bound;
+        if readable {
+            total += size;
+            let bytes = m6_read_diagnostic_native_range(&device, &input.owner, 0, size)?;
+            std::fs::write(dir.join(&file), bytes)?;
+        }
+        manifest.push(serde_json::json!({"type":input.name,"allocation_bytes":size,
+            "instance_count":input.count,"actual_receipt_owner_confirmed":true,
+            "accesses":input.accesses,"file":readable.then_some(file),
+            "capture_status":if !within_bound { "allocation exceeds bounded capture; no bytes captured" }
+                else if readable { "complete allocation raw bytes" }
+                else { "TRANSFER_SRC capability absent; bytes not captured" }}));
+    }
+    std::fs::write(dir.join(format!("{label}-render-inputs.json")),
+        serde_json::to_vec_pretty(&manifest)?)?;
+    Ok(())
 }
 
 fn copy_test_tree(from: &std::path::Path, to: &std::path::Path) -> Result<()> {
@@ -539,6 +767,63 @@ fn m2_camera_parameters(
             .resource::<country_core::systems::camera_rig::main_camera::MainCamera>()
             .store_parameters(),
     )?)
+}
+
+/// Optional diagnostics are taken at the game-world frame that requests the
+/// capture. FrameConstants are retained in full Debug form, including views;
+/// exposure is also exposed separately for easy parent/child comparison.
+fn m2_dump_frame_state(world: &bevy_ecs::world::World, label: &str) -> Result<()> {
+    let Some(dir) = std::env::var_os("TG_M2_DUMP_DIR") else { return Ok(()); };
+    let dir = PathBuf::from(dir);
+    std::fs::create_dir_all(&dir)?;
+    let frame = world.resource::<country_core::render::frame_constants::FrameConstants>();
+    let render = world.resource::<country_core::render::render_config::FrameRenderConfig>();
+    let camera = world.resource::<country_core::systems::camera_rig::main_camera::MainCamera>();
+    let tod = world.resource::<country_core::resources::time_of_day::TimeOfDay>();
+    let config = world.resource::<country_core::game_config::GameConfig>();
+    let formation = world.resource::<country_core::resources::image_formation::ImageFormationConfigs>();
+    // These are observations of live render inputs, not persisted fields or
+    // replacement state. Entity ids are deliberately excluded across processes.
+    let mut sheep = world.iter_entities().filter_map(|entity| {
+        use country_core::{resources::critters::{sheep::{Sheep, SheepWalkRecord}, CritterGoal},
+            utils::components::transform::Transform};
+        let value = entity.get::<Sheep>()?;
+        Some(serde_json::json!({
+            "sheep": value,
+            "transform": format!("{:?}", entity.get::<Transform>()),
+            "walk": format!("{:?}", entity.get::<SheepWalkRecord>()),
+            "goal": format!("{:?}", entity.get::<CritterGoal>()),
+        }))
+    }).collect::<Vec<_>>();
+    sheep.sort_by_cached_key(serde_json::Value::to_string);
+    let data = serde_json::json!({
+        "camera_parameters": m2_camera_parameters(world)?,
+        "camera_matrices": ([0, 0x40, 0x80, 0xc0].map(|offset| camera.read_matrix(offset).to_cols_array())),
+        "frame_constants": format!("{frame:#?}"),
+        "exposure_ev_mult": frame.ev_mult,
+        "time_of_day": format!("{tod:#?}"),
+        "game_clock_runtime": format!("{:#?}", world.resource::<country_core::resources::game_clock::GameClock>()),
+        "app_mode": format!("{:?}", world.resource::<country_core::systems::mode_manager::AppMode>()),
+        "terrain_cursor": format!("{:?}", world.resource::<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>()),
+        "frame_render_config": format!("{render:#?}"),
+        "video_settings": &config.video,
+        "image_formation": formation,
+        "color_library_cpu_bytes": bytemuck::bytes_of(world.resource::<country_core::asset_libraries::color_library::ColorLibrarySsbo>()),
+        "leaf_particle_count": world.resource::<country_core::resources::glade_settings::GladeSettings>().leaf_particle_count,
+        "loaded_particle_emitter_count": world.get_resource::<country_core::systems::render_loop::compute_passes::leaf_particles::LoadedParticleEmitterCount>().map(|count|count.0),
+        "sheep_runtime": sheep,
+    });
+    std::fs::write(dir.join(format!("{label}-state.json")), serde_json::to_vec_pretty(&data)?)?;
+    Ok(())
+}
+
+fn m2_dump_image(label: &str, width: u32, height: u32, rgba: &[u8]) -> Result<()> {
+    let Some(dir) = std::env::var_os("TG_M2_DUMP_DIR") else { return Ok(()); };
+    let dir = PathBuf::from(dir);
+    std::fs::create_dir_all(&dir)?;
+    std::fs::write(dir.join(format!("{label}.rgba")), rgba)?;
+    std::fs::write(dir.join(format!("{label}.json")), serde_json::to_vec_pretty(&serde_json::json!({"width":width,"height":height}))?)?;
+    Ok(())
 }
 
 fn m2_first_json_difference(
@@ -692,11 +977,12 @@ fn boot_shipped_session_with_nani_readback(diagnostic_nani: bool) -> Result<Boot
         rhapsody::device::Device::new_headless(&rhapsody::device::DeviceConfig {
             // Same budget as the production window path (the original allocator has no cap).
             memory_budget_bytes: tiny_glade::production_renderer::UNBOUNDED_DEVICE_BUDGET_BYTES,
+            validation: std::env::var_os("TG_M6_VK_VALIDATION").is_some_and(|value| value == "1"),
             ..rhapsody::device::DeviceConfig::headless()
         })
         .context("strict gameplay physical device")?;
     let shaders = app.world().resource::<ApplicationShaderLibrary>().0.clone();
-    let bridge = CoreRenderBridge::new(device.clone(), installed.clone(), shaders.clone())?;
+    let mut bridge = CoreRenderBridge::new(device.clone(), installed.clone(), shaders.clone())?;
     let mut final_post = None;
     country_core::startup::load_shaders::load_shaders(
         &shaders,
@@ -731,9 +1017,11 @@ fn boot_shipped_session_with_nani_readback(diagnostic_nani: bool) -> Result<Boot
     });
     bridge.install_asset_libraries(app.world_mut())?;
     // 独立诊断用例仅追加读回capability；仍使用同一BufferHost和真实GPU owner。
-    let diagnostic = diagnostic_nani.then(|| std::sync::Arc::new(
-        M6NaniDiagnosticDevice(bridge.hosts().buffers.clone())));
-    if let Some(device) = diagnostic.as_ref() {
+    let mean_diagnostic = std::env::var_os("TG_M2_DUMP_DIR").is_some();
+    let diagnostic = (diagnostic_nani || mean_diagnostic).then(|| std::sync::Arc::new(
+        M6NaniDiagnosticDevice(bridge.hosts().buffers.clone(),
+            (!diagnostic_nani).then_some("ShadowMaskMeanSsbo"))));
+    if let Some(device) = diagnostic.as_ref().filter(|_| diagnostic_nani) {
         app.insert_resource(country_core::render::nani::gpu_world::GpuWorld::new(device.as_ref()));
     }
     tiny_glade::gameplay_startup::install_gameplay_device_runtime(
@@ -761,6 +1049,7 @@ fn boot_shipped_session_with_nani_readback(diagnostic_nani: bool) -> Result<Boot
         context.begin_frame(egui::RawInput::default());
         driver.app_mut().update();
         let _ = context.end_frame();
+        bridge.prepare_test_execution()?;
         let world = driver.app().world();
         if frame % 60 == 0 {
             eprintln!(
@@ -787,6 +1076,7 @@ fn boot_shipped_session_with_nani_readback(diagnostic_nani: bool) -> Result<Boot
         context.begin_frame(egui::RawInput::default());
         driver.app_mut().update();
         let _ = context.end_frame();
+        bridge.prepare_test_execution()?;
     }
     Ok(BootedSession { driver, context, bridge, shaders, device, _boot: boot_guard })
 }
@@ -810,6 +1100,46 @@ fn shipped_session_production_graph(edit_plaster: bool, diagnostic_nani: bool) -
     shipped_session_production_graph_with_building(edit_plaster, diagnostic_nani, false)
 }
 
+/// Read only the target wall's currently owned physical brick ranges after
+/// production frame completion; compare every valid 96-byte record to the
+/// canonical producer's source, not to an unrelated drawable or empty owner.
+fn m1_wall_gpu_bricks(
+    world: &bevy_ecs::world::World,
+    bridge: &CoreRenderBridge,
+    device: &std::sync::Arc<rhapsody::device::Device>,
+    wall: country_core::resources::walls::WallId,
+) -> Result<Vec<u8>> {
+    use country_core::{geometry::instanced_wall::{BrickTransformSsbo, InstancedWall},
+        resources::walls::public_walls::WallEntities,
+        asset_libraries::ssbo_library::AssetSsboLibrary};
+    let entity = world.resource::<WallEntities>().wall_entity(wall).context("wall entity missing")?;
+    let instance = world.get::<InstancedWall<BrickTransformSsbo>>(entity).context("wall brick owner missing")?;
+    anyhow::ensure!(!instance.is_upload_pending(), "wall brick producer still has pending records");
+    let allocation = instance.allocation().context("wall brick allocation missing")?;
+    let storage = world.resource::<AssetSsboLibrary>().get::<BrickTransformSsbo>()
+        .context("brick SSBO missing")?;
+    anyhow::ensure!(storage.dirty_bitset.iter().all(|word| word.load(std::sync::atomic::Ordering::Acquire) == 0),
+        "brick SSBO retains unsubmitted dirty chunks");
+    let ranges = storage.allocation_to_draw_multi_instanced(allocation);
+    anyhow::ensure!(!ranges.is_empty(), "target wall has no drawable brick records");
+    let drawn = &world.get_resource::<M1DrawnBrickBuffer>()
+        .context("no production raster brick owner observation")?.0;
+    let current = bridge.hosts().buffers.managed_buffer(&storage.buffer.buffer)
+        .context("brick producer physical owner absent")?.shared();
+    anyhow::ensure!(std::sync::Arc::ptr_eq(drawn, &current),
+        "brick owner changed after the observed production raster frame");
+    let mut result = Vec::new();
+    for (first, count) in ranges {
+        let first = first as usize;
+        let count = count as usize;
+        let expected: &[u8] = bytemuck::cast_slice(&storage.data[first..first + count]);
+        let actual = m6_read_diagnostic_native_range(device, drawn, first * 96, count * 96)?;
+        anyhow::ensure!(actual == expected, "wall GPU brick records differ from producer data at instance {first}");
+        result.extend_from_slice(&actual);
+    }
+    Ok(result)
+}
+
 #[test]
 fn m02_actual_app_terrain_edit_changes_floor_rocky_heights_lighting_and_image() -> Result<()> {
     use bevy_ecs::schedule::IntoScheduleConfigs;
@@ -823,9 +1153,9 @@ fn m02_actual_app_terrain_edit_changes_floor_rocky_heights_lighting_and_image() 
         context,
         mut bridge,
         shaders: _shaders,
-        device: _device,
+        device,
         _boot,
-    } = boot_shipped_session()?;
+    } = boot_shipped_session_with_nani_readback(true)?;
     let world = driver.app_mut().world_mut();
     anyhow::ensure!(
         tiny_glade::screenshot::shared_texture_capture::installed(world),
@@ -836,6 +1166,21 @@ fn m02_actual_app_terrain_edit_changes_floor_rocky_heights_lighting_and_image() 
     bridge.accept_gameplay_warmup(
         world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>(),
     )?;
+    // Use the real wall authority constructor; publication and collision are
+    // produced by the normal set 19/28 systems in later frames.
+    let wall = {
+        use country_core::resources::walls::{InnerWalls, WallState};
+        let curve = country_core::resources::roofs::geometry::surface::Curve2::try_new(
+            vec![[-4.0, 0.0], [4.0, 0.0]], false).expect("valid fixture curve");
+        let mut walls = world.resource_mut::<InnerWalls>();
+        let wall = walls.new_wall_from_curve(WallState::new(curve, 4.0, 0, 0, false));
+        walls.mark_as_non_enclosed(wall);
+        wall
+    };
+    // Independent observers of the same production height publishers. They
+    // do not drain the wall system's own subscriber.
+    let mut floor_dirty = world.resource_mut::<country_core::resources::terrain_height::TerrainHeightsData<TerrainHeightSsbo>>().subscribe();
+    let mut visual_dirty = world.resource_mut::<country_core::resources::terrain_height::TerrainHeightsData<VisualTerrainHeightSsbo>>().subscribe();
     world.insert_resource(M2TerrainSyntheticInput::default());
     world.resource_mut::<country_core::systems::terrain::ui_draw_terrain::TerrainDrawState>().state =
         0;
@@ -853,12 +1198,7 @@ fn m02_actual_app_terrain_edit_changes_floor_rocky_heights_lighting_and_image() 
     let captured = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<
         (String, u32, u32, Vec<u8>),
     >::new()));
-    let _ = run_m2_production_frame(
-        &mut driver,
-        &context,
-        &mut bridge,
-        Some(("m2-baseline", captured.clone())),
-    )?;
+    let _ = run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
 
     let mut baseline = None;
     for _ in 0..10 {
@@ -881,6 +1221,27 @@ fn m02_actual_app_terrain_edit_changes_floor_rocky_heights_lighting_and_image() 
     }
     let (baseline_height, baseline_visual, baseline_frame) =
         baseline.context("M2 baseline W5 height readbacks did not arrive")?;
+    let _ = run_m2_production_frame(&mut driver, &context, &mut bridge,
+        Some(("m2-baseline", captured.clone())))?;
+    let _ = run_m2_production_frame(&mut driver, &context, &mut bridge,
+        Some(("m2-stable", captured.clone())))?;
+    let baseline_wall = driver.app().world().resource::<country_core::resources::walls::public_walls::PublicWalls>()
+        .get(wall).context("fixture wall was not published by the real wall system")?.height_outline().to_vec();
+    let wall_entity = driver.app().world().resource::<country_core::resources::walls::public_walls::WallEntities>()
+        .wall_entity(wall).context("fixture wall entity was not built")?;
+    let baseline_collider = driver.app().world().resource::<country_core::systems::collision::world::RaycastWorld>()
+        .wall_collider_instance(wall_entity).context("fixture wall collider was not built")?.handle();
+    bridge.wait_submits_done(120_000_000_000)?;
+    let baseline_bricks = m1_wall_gpu_bricks(driver.app().world(), &bridge, &device, wall)?;
+    let mut collider_changes = driver.app_mut().world_mut()
+        .resource_mut::<country_core::systems::collision::world::RaycastWorld>()
+        .mesh_intersect_collider_diff_publisher().subscribe();
+    let mut wall_events = bevy_ecs::event::EventCursor::<country_core::resources::walls::public_walls::OnWallChanged>::default();
+    wall_events.read(driver.app().world().resource::<bevy_ecs::event::Events<country_core::resources::walls::public_walls::OnWallChanged>>()).for_each(drop);
+    let mut wall_republished = false;
+    let _ = floor_dirty.take();
+    let _ = visual_dirty.take();
+    let baseline_cpu = driver.app().world().resource::<country_core::resources::terrain_height::TerrainHeightsData<TerrainHeightSsbo>>().heights().to_vec();
 
     let next_index_before = driver
         .app()
@@ -908,6 +1269,7 @@ fn m02_actual_app_terrain_edit_changes_floor_rocky_heights_lighting_and_image() 
             &mut bridge,
             None,
         )?);
+        wall_republished |= wall_events.read(driver.app().world().resource::<bevy_ecs::event::Events<country_core::resources::walls::public_walls::OnWallChanged>>()).any(|event| event.0 == wall);
     }
     *driver
         .app_mut()
@@ -943,19 +1305,25 @@ fn m02_actual_app_terrain_edit_changes_floor_rocky_heights_lighting_and_image() 
     }
 
     let mut edited = None;
-    for frame_index in 0..24 {
-        let capture = (frame_index == 0).then_some(("m2-edited", captured.clone()));
+    for _frame_index in 0..24 {
         production_passes.push(run_m2_production_frame(
             &mut driver,
             &context,
             &mut bridge,
-            capture,
+            None,
         )?);
+        wall_republished |= wall_events.read(driver.app().world().resource::<bevy_ecs::event::Events<country_core::resources::walls::public_walls::OnWallChanged>>()).any(|event| event.0 == wall);
         let world = driver.app().world();
         if let Some(readbacks) = world.get_resource::<GpuReadbacks>()
             && let Some(height) = readbacks.get::<TerrainHeightSsbo>()
             && let Some(visual) = readbacks.get::<VisualTerrainHeightSsbo>()
             && height.frame.min(visual.frame) > baseline_frame
+            && height.epoch.is_some() && height.epoch == visual.epoch
+            && height.epoch == Some(country_core::render::gpu_readback::TerrainReadbackEpoch::capture(world))
+            && bytemuck::cast_slice::<_, u16>(height.data) != baseline_height.as_slice()
+            && bytemuck::cast_slice::<_, u16>(visual.data) != baseline_visual.as_slice()
+            && world.resource::<country_core::resources::terrain_height::TerrainHeightsData<TerrainHeightSsbo>>().heights() == bytemuck::cast_slice::<_, u16>(height.data)
+            && world.resource::<country_core::resources::terrain_height::TerrainHeightsData<VisualTerrainHeightSsbo>>().heights() == bytemuck::cast_slice::<_, u16>(visual.data)
         {
             edited = Some((
                 bytemuck::cast_slice::<_, u16>(height.data).to_vec(),
@@ -986,6 +1354,57 @@ fn m02_actual_app_terrain_edit_changes_floor_rocky_heights_lighting_and_image() 
         visual_changes > 0,
         "actual terrain stroke did not change the 512x512 visual/rocky height authority"
     );
+    anyhow::ensure!(baseline_cpu != edited_height, "completed floor readback never reached CPU authority");
+    let floor_tiles = floor_dirty.take().context("floor publisher did not notify its subscriber")?;
+    let visual_tiles = visual_dirty.take().context("visual publisher did not notify its subscriber")?;
+    anyhow::ensure!(floor_tiles.tile_indices().next().is_some() && visual_tiles.tile_indices().next().is_some(),
+        "terrain height change published empty dirty tiles");
+    {
+        use country_core::resources::terrain_height::TerrainHeightsData;
+        let world = driver.app().world();
+        let floor = world.resource::<TerrainHeightsData<TerrainHeightSsbo>>();
+        let mut before = TerrainHeightsData::<TerrainHeightSsbo>::new();
+        before.copy_from_gpu(&baseline_cpu);
+        let mut best = None::<(f32, f32, f32, f32)>;
+        for z in -6..=6 { for x in -6..=6 {
+            let (x, z) = (x as f32, z as f32);
+            let old = before.sample_at_world_xz(x, z);
+            let new = floor.sample_at_world_xz(x, z);
+            if best.is_none_or(|(_, _, a, b)| (new - old).abs() > (b - a).abs()) {
+                best = Some((x, z, old, new));
+            }
+        }}
+        let (x, z, old, new) = best.context("terrain collision sampling grid empty")?;
+        anyhow::ensure!((new - old).abs() > 0.02, "edited terrain did not change collision sampling in stroke area");
+        let collision = world.resource::<country_core::systems::collision::world::RaycastWorld>();
+        let origin = glam::Vec3::new(x, 30.0, z);
+        let max_toi = 30.0 - (old + new) * 0.5;
+        let old_hit = collision.intersects_any_w_terrain(&before, origin, -glam::Vec3::Y, max_toi, 0x20);
+        let new_hit = collision.intersects_any_w_terrain(&floor, origin, -glam::Vec3::Y, max_toi, 0x20);
+        anyhow::ensure!(old_hit != new_hit, "terrain-aware collision did not observe changed floor height");
+    }
+    // Capture only after the same-session GPU results reached both real CPU
+    // owners. This also gives the wall publisher another production frame.
+    production_passes.push(run_m2_production_frame(&mut driver, &context, &mut bridge,
+        Some(("m2-edited", captured.clone())))?);
+    wall_republished |= wall_events.read(driver.app().world().resource::<bevy_ecs::event::Events<country_core::resources::walls::public_walls::OnWallChanged>>()).any(|event| event.0 == wall);
+    let public = driver.app().world().resource::<country_core::resources::walls::public_walls::PublicWalls>();
+    let updated_wall = public.get(wall).context("terrain-edited wall was not republished")?;
+    anyhow::ensure!(wall_republished && updated_wall.height_outline() != baseline_wall.as_slice(),
+        "terrain change did not republish the affected wall and its height outline");
+    let updated_entity = driver.app().world().resource::<country_core::resources::walls::public_walls::WallEntities>()
+        .wall_entity(wall).context("terrain-edited wall lost its real render entity")?;
+    let updated_collider = driver.app().world().resource::<country_core::systems::collision::world::RaycastWorld>()
+        .wall_collider_instance(updated_entity).context("terrain-edited wall lost its real collider")?.handle();
+    let collider_diff = collider_changes.take().context("terrain-edited wall did not publish collider changes")?;
+    anyhow::ensure!(collider_diff.added.contains(&updated_collider) || collider_diff.removed.contains(&baseline_collider),
+        "collider changes did not include the affected wall");
+    bridge.wait_submits_done(120_000_000_000)?;
+    let edited_bricks = m1_wall_gpu_bricks(driver.app().world(), &bridge, &device, wall)?;
+    anyhow::ensure!(edited_bricks != baseline_bricks, "terrain edit did not update target wall GPU brick records");
+    let wall_terrain = &driver.app().world().resource::<country_core::systems::wall::wall_state::publish_public_wall_state::WallPublicationTerrain>().0;
+    anyhow::ensure!(wall_terrain.encoded.as_ref() == edited_height.as_slice(),
+        "wall publication terrain view did not synchronize the completed floor readback");
     let required_passes = [
         "Rasterize Terrain Stroke",
         "Displace Rocky Terrain",
@@ -1012,6 +1431,22 @@ fn m02_actual_app_terrain_edit_changes_floor_rocky_heights_lighting_and_image() 
     }
     bridge.wait_submits_done(10_000_000_000)?;
     let images = captured.lock();
+    let lighting = |label: &str| images.iter().find(|(name, _, _, _)| name == label)
+        .with_context(|| format!("terrain lighting capture {label} did not arrive"));
+    let initial_light = lighting("m2-baseline-terrain-lighting")?;
+    let stable_light = lighting("m2-stable-terrain-lighting")?;
+    let edited_light = lighting("m2-edited-terrain-lighting")?;
+    anyhow::ensure!((initial_light.1, initial_light.2, initial_light.3.len()) ==
+        (stable_light.1, stable_light.2, stable_light.3.len()) &&
+        (stable_light.1, stable_light.2, stable_light.3.len()) ==
+        (edited_light.1, edited_light.2, edited_light.3.len()), "lighting capture extent changed");
+    let delta = |a: &[u8], b: &[u8]| -> u64 {
+        a.iter().zip(b).map(|(&a, &b)| u64::from(a.abs_diff(b))).sum()
+    };
+    let idle_delta = delta(&initial_light.3, &stable_light.3);
+    let edit_delta = delta(&stable_light.3, &edited_light.3);
+    anyhow::ensure!(edit_delta > idle_delta.saturating_mul(2),
+        "terrain lighting output did not change beyond unedited-frame variation: idle={idle_delta}, edited={edit_delta}");
     let baseline_image = images
         .iter()
         .find(|(label, _, _, _)| label == "m2-baseline")
@@ -1054,6 +1489,119 @@ fn m02_actual_app_terrain_edit_changes_floor_rocky_heights_lighting_and_image() 
     Ok(())
 }
 
+// GameClock is not persisted. Give both processes the same deterministic time
+// input and let the real time_update system advance it to the observation
+// instant. Zero-duration ticks align counters first; both renderers then start
+// at the same absolute frame and receive identical positive time steps. In
+// particular, shadow-mask-mean uses delta time to converge and cannot settle
+// while the observation input is zero.
+/// Simulation-only waits still drive the real host upload admission boundary.
+/// No render counter, feedback payload or readiness state is manufactured.
+fn m2_tick_production_app(
+    driver: &mut tiny_glade::game_loop::GameFrameDriver,
+    context: &egui::Context,
+    bridge: &CoreRenderBridge,
+) -> Result<()> {
+    context.begin_frame(egui::RawInput::default());
+    driver.app_mut().update();
+    let _ = context.end_frame();
+    bridge.prepare_test_execution()?;
+    Ok(())
+}
+
+fn m2_wait_replay_completion(
+    driver: &mut tiny_glade::game_loop::GameFrameDriver,
+    context: &egui::Context,
+    bridge: &CoreRenderBridge,
+    expected_cursor: i32,
+    stage: &str,
+) -> Result<()> {
+    use country_core::{resources::history::{History, ReplayBuffer},
+        systems::{history::PendingHistoryCommands, mode_manager::AppMode}};
+    let complete = |world: &bevy_ecs::world::World| {
+        world.resource::<History>().ledger().cursor == expected_cursor
+            && world.resource::<ReplayBuffer>().is_empty()
+            && world.resource::<PendingHistoryCommands>().0.is_empty()
+            && world.resource::<AppMode>().native_tag() != 13
+    };
+    let mut reached = false;
+    for _ in 0..600 {
+        m2_tick_production_app(driver, context, bridge)?;
+        if complete(driver.app().world()) { reached = true; break; }
+    }
+    anyhow::ensure!(reached, "{stage}历史游标/队列/回放模式未完成");
+    for _ in 0..2 {
+        m2_tick_production_app(driver, context, bridge)?;
+        anyhow::ensure!(complete(driver.app().world()), "{stage}完成后回放再次启动");
+    }
+    Ok(())
+}
+
+fn m2_settle_observation_clock(
+    driver: &mut tiny_glade::game_loop::GameFrameDriver,
+    context: &egui::Context,
+    bridge: &mut CoreRenderBridge,
+) -> Result<u64> {
+    use country_core::systems::mode_manager::{AppMode, EditSubject, RequestAppModeChange};
+    // Tool selection is unsaved runtime UI state. Use the canonical toolbar
+    // mode request and its real consumer to select ordinary editing in both
+    // processes. Action 26 is world clearing, so it is not an exit-tool input.
+    driver.app_mut().world_mut().send_event(RequestAppModeChange(AppMode::Editing(EditSubject::None)));
+    run_m2_production_frame(driver, context, bridge, None)?;
+    run_m2_production_frame(driver, context, bridge, None)?;
+    anyhow::ensure!(*driver.app().world().resource::<AppMode>() == AppMode::Editing(EditSubject::None),
+        "M2 toolbar mode request did not finish the runtime editing mode");
+    const TARGET_SECONDS: f64 = 20.0;
+    for _ in 0..3600 {
+        let total = driver.app().world().resource::<country_core::resources::game_clock::GameClock>().total_secs;
+        if total >= TARGET_SECONDS {
+            driver.app_mut().insert_resource(bevy_time::TimeUpdateStrategy::ManualDuration(std::time::Duration::ZERO));
+            // Some real producers also use GameClock.frame_count as an RNG
+            // input. Zero-duration simulation ticks align its offset from the
+            // render counter, without assigning either counter or save field.
+            for _ in 0..4096 {
+                let world = driver.app().world();
+                let clock = world.resource::<country_core::resources::game_clock::GameClock>();
+                let rendered = world.resource::<country_core::render::frame_constants::FrameConstants>().frame_counter;
+                let offset = clock.frame_count.wrapping_sub(rendered);
+                anyhow::ensure!(offset <= 2048, "M2 observation frame offset already exceeds target: {offset}");
+                if offset == 2048 {
+                    let observation_clock = clock.total_secs.to_bits();
+                    // Align the absolute renderer counter through real frames,
+                    // so subsequent positive-time rendering advances both
+                    // clocks and all temporal GPU producers identically.
+                    for _ in 0..=128 {
+                        let rendered = driver.app().world()
+                            .resource::<country_core::render::frame_constants::FrameConstants>().frame_counter;
+                        anyhow::ensure!(rendered <= 128,
+                            "M2 pre-observation renderer already exceeds common frame: {rendered}");
+                        if rendered == 128 {
+                            driver.app_mut().insert_resource(bevy_time::TimeUpdateStrategy::ManualDuration(
+                                std::time::Duration::from_secs_f64(1.0 / 60.0)));
+                            return Ok(observation_clock);
+                        }
+                        let capture = (rendered == 127 && std::env::var_os("TG_M2_RAW_INPUTS").is_some())
+                            .then(|| {
+                                let label = if std::env::var_os("TG_M2_SAVE_CHILD").is_some() {
+                                    "m2-child-canonical-inputs"
+                                } else { "m2-parent-canonical-inputs" };
+                                (label, std::sync::Arc::new(parking_lot::Mutex::new(Vec::new())))
+                            });
+                        run_m2_production_frame(driver, context, bridge, capture)?;
+                    }
+                    anyhow::bail!("M2 common renderer observation frame was not reached");
+                }
+                m2_tick_production_app(driver, context, bridge)?;
+            }
+            anyhow::bail!("M2 observation frame offset did not converge");
+        }
+        // The normal host admits uploads between simulation ticks. Advancing
+        // only the App starves the bounded queue and is not a valid host loop.
+        m2_tick_production_app(driver, context, bridge)?;
+    }
+    anyhow::bail!("M2 observation clock did not advance to {TARGET_SECONDS}s")
+}
+
 #[test]
 fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> {
     if std::env::var_os("TG_M2_SAVE_CHILD").is_some() {
@@ -1080,7 +1628,10 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
         shaders: _shaders,
         device: _device,
         _boot,
-    } = boot_shipped_session()?;
+    } = boot_shipped_session_with_nani_readback(std::env::var_os("TG_M2_RAW_INPUTS").is_some())?;
+    // Playback progress and frame counter are runtime state, not save fields.
+    // Rewind via the real configuration before comparing rendered frames.
+    driver.app_mut().world_mut().resource_mut::<country_core::game_config::GameConfig>().dev.day_night_cycle = false;
     let world = driver.app_mut().world_mut();
     anyhow::ensure!(
         tiny_glade::screenshot::shared_texture_capture::installed(world),
@@ -1200,7 +1751,7 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
         .world_mut()
         .resource_mut::<M2HistorySyntheticInput>()
         .undo = Phase::Idle;
-    m6_wait_replay_completion(&mut driver, &context, committed_cursor - 1, "地形撤销")?;
+    m2_wait_replay_completion(&mut driver, &context, &bridge, committed_cursor - 1, "地形撤销")?;
     anyhow::ensure!(
         driver
             .app()
@@ -1223,7 +1774,7 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
         .world_mut()
         .resource_mut::<M2HistorySyntheticInput>()
         .redo = Phase::Idle;
-    m6_wait_replay_completion(&mut driver, &context, committed_cursor, "地形重做")?;
+    m2_wait_replay_completion(&mut driver, &context, &bridge, committed_cursor, "地形重做")?;
     anyhow::ensure!(
         driver
             .app()
@@ -1244,23 +1795,39 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
             == committed_cursor
     );
 
+    for _ in 0..600 {
+        if driver.app().world().resource::<country_core::resources::time_of_day::TimeOfDay>().progress == 0.0 { break; }
+        m2_tick_production_app(&mut driver, &context, &bridge)?;
+    }
+    anyhow::ensure!(driver.app().world().resource::<country_core::resources::time_of_day::TimeOfDay>().progress == 0.0,
+        "M2 observation: time-of-day playback did not settle");
+    let observation_clock = m2_settle_observation_clock(&mut driver, &context, &mut bridge)?;
     let captured = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<
         (String, u32, u32, Vec<u8>),
     >::new()));
     let mut final_heights = None;
-    for frame_index in 0..24 {
-        let capture =
-            (frame_index == 0).then_some(("m2-saved", captured.clone()));
+    let mut saved_phase = None;
+    for frame_index in 0..384 {
+        let previous_counter = driver.app().world().resource::<country_core::render::frame_constants::FrameConstants>().frame_counter;
+        let request = frame_index >= 128 && previous_counter.wrapping_add(1) % 128 == 0;
+        let capture = request.then_some(("m2-saved", captured.clone()));
         let _ = run_m2_production_frame(&mut driver, &context, &mut bridge, capture)?;
+        if request {
+            let counter = driver.app().world().resource::<country_core::render::frame_constants::FrameConstants>().frame_counter;
+            anyhow::ensure!(counter % 128 == 0, "M2 parent capture missed requested render phase: {counter}");
+            saved_phase = Some(counter % 128);
+            m2_dump_frame_state(driver.app().world(), "m2-saved")?;
+        }
         if let Some((floor, visual, frame, epoch)) =
             m2_latest_heights(driver.app().world())
             && frame > edited_frame
             && epoch == edited_epoch
         {
             final_heights = Some((floor, visual, frame, epoch));
-            break;
         }
+        if saved_phase.is_some() && final_heights.is_some() { break; }
     }
+    let saved_phase = saved_phase.context("M2 parent did not reach matching observation phase")?;
     let (saved_floor, saved_visual, _saved_frame, _saved_epoch) =
         final_heights.context("M2 redo 后 W5 heights 未发布")?;
     anyhow::ensure!(
@@ -1283,6 +1850,8 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
             recovery.join("terrain.json"),
             serde_json::to_vec_pretty(&terrain)?,
         )?;
+        let tod = world.resource::<country_core::resources::time_of_day::TimeOfDay>();
+        std::fs::write(recovery.join("tod.json"), serde_json::to_vec(tod)?)?;
 
         let history = world.resource::<History>();
         let entries = history
@@ -1328,19 +1897,11 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
             .context("M2 persistence image did not arrive")?
             .clone()
     };
-    if std::env::var_os("TG_M2_DUMP_IMAGES").is_some() {
-        std::fs::write(
-            "/private/tmp/m2-saved-camera.json",
-            serde_json::to_vec_pretty(&m2_camera_parameters(driver.app().world())?)?,
-        )?;
-        std::fs::write("/private/tmp/m2-saved.rgba", &saved_image.3)?;
-        std::fs::write(
-            "/private/tmp/m2-saved.json",
-            serde_json::to_vec_pretty(&serde_json::json!({
-                "width": saved_image.1,
-                "height": saved_image.2,
-            }))?,
-        )?;
+    m2_dump_image("m2-saved", saved_image.1, saved_image.2, &saved_image.3)?;
+    if let Some((label, width, height, rgba)) = captured.lock().iter()
+        .find(|(label, _, _, _)| label == "m2-saved-terrain-lighting")
+    {
+        m2_dump_image(label, *width, *height, rgba)?;
     }
     std::fs::write(recovery.join("image.rgba"), &saved_image.3)?;
     std::fs::write(
@@ -1350,6 +1911,8 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
             "width": saved_image.1,
             "height": saved_image.2,
             "stroke_id": stroke_id,
+            "render_phase_mod_128": saved_phase,
+            "observation_clock_bits": observation_clock,
         }))?,
     )?;
 
@@ -1357,9 +1920,7 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
     driver.app_mut().world_mut().send_event(SaveGameCmd);
     let mut saved = false;
     for _ in 0..600 {
-        context.begin_frame(egui::RawInput::default());
-        driver.app_mut().update();
-        let _ = context.end_frame();
+        m2_tick_production_app(&mut driver, &context, &bridge)?;
         if driver
             .app_mut()
             .world_mut()
@@ -1394,6 +1955,11 @@ fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> 
     {
         let saved: serde_json::Value =
             serde_json::from_slice(&std::fs::read(folder.join("history.json"))?)?;
+        let expected_tod: country_core::resources::time_of_day::TimeOfDay = serde_json::from_slice(&std::fs::read(recovery.join("tod.json"))?)?;
+        let disk_tod: country_core::resources::time_of_day::TimeOfDay = serde_json::from_value(saved["Time of day"].clone())?;
+        anyhow::ensure!([disk_tod.time_of_day.to_bits(), disk_tod.sun_xz_rotation.to_bits(), disk_tod.latitude_degrees.to_bits()]
+            == [expected_tod.time_of_day.to_bits(), expected_tod.sun_xz_rotation.to_bits(), expected_tod.latitude_degrees.to_bits()],
+            "M2 saved TimeOfDay three-f32 contract differs from observed state");
         eprintln!(
             "M2_SAVE_DISK version={:?} history.chain_index={:?} history.history_start={:?} history.snapshots={:?} expected_cursor={committed_cursor}",
             saved.get("Version"),
@@ -1442,8 +2008,15 @@ fn m02_actual_terrain_save_child() -> Result<()> {
         PathBuf::from(std::env::var_os("TG_M2_SAVE_FOLDER").context("缺少 M2 存档目录")?);
     let recovery =
         PathBuf::from(std::env::var_os("TG_M2_SAVE_RECOVERY").context("缺少 M2 恢复基准")?);
-    let expected_terrain: serde_json::Value =
+    let mut expected_terrain: serde_json::Value =
         serde_json::from_slice(&std::fs::read(recovery.join("terrain.json"))?)?;
+    // Parse through the actual stroke schema before comparing the child. A
+    // JSON Value uses f64 for decimals, but every stroke coordinate and
+    // parameter is f32; this preserves all fields without decimal-rounding
+    // differences introduced by the fixture's intermediate JSON parse.
+    let strokes: std::collections::HashMap<tg_terrain::schema::StrokeId, tg_terrain::stroke::TerrainStroke> =
+        serde_json::from_value(expected_terrain["strokes"].clone())?;
+    expected_terrain["strokes"] = serde_json::to_value(strokes)?;
     let expected_runtime_history: serde_json::Value =
         serde_json::from_slice(&std::fs::read(recovery.join("history.json"))?)?;
     let expected_authority: serde_json::Value =
@@ -1487,7 +2060,8 @@ fn m02_actual_terrain_save_child() -> Result<()> {
         shaders: _shaders,
         device: _device,
         _boot,
-    } = boot_shipped_session()?;
+    } = boot_shipped_session_with_nani_readback(std::env::var_os("TG_M2_RAW_INPUTS").is_some())?;
+    driver.app_mut().world_mut().resource_mut::<country_core::game_config::GameConfig>().dev.day_night_cycle = false;
     {
         let world = driver.app_mut().world_mut();
         anyhow::ensure!(
@@ -1524,6 +2098,16 @@ fn m02_actual_terrain_save_child() -> Result<()> {
         stable_boot_frames >= 8,
         "M2 child boot session did not settle before Reload"
     );
+    // The production loader preserves the old runtime playback progress while
+    // replacing only the three saved fields. Let that progress reach zero
+    // before loading, so the newly loaded hour is not immediately advanced.
+    for _ in 0..600 {
+        if driver.app().world().resource::<country_core::resources::time_of_day::TimeOfDay>().progress == 0.0 { break; }
+        m2_tick_production_app(&mut driver, &context, &bridge)?;
+    }
+    let boot_tod = driver.app().world().resource::<country_core::resources::time_of_day::TimeOfDay>();
+    anyhow::ensure!(boot_tod.progress == 0.0, "M2 child old-session TOD playback did not settle: {boot_tod:?}");
+    eprintln!("M2_CHILD_PRELOAD_TOD {boot_tod:?}");
     copy_test_tree(&source, &session.save_folder_path())?;
     driver
         .app_mut()
@@ -1537,9 +2121,7 @@ fn m02_actual_terrain_save_child() -> Result<()> {
     let mut loaded = false;
     let mut previous_load_trace = None;
     for _ in 0..1200 {
-        context.begin_frame(egui::RawInput::default());
-        driver.app_mut().update();
-        let _ = context.end_frame();
+        m2_tick_production_app(&mut driver, &context, &bridge)?;
         let world = driver.app().world();
         let loading = world
             .resource::<bevy_state::prelude::State<AppLoadingState>>()
@@ -1565,6 +2147,9 @@ fn m02_actual_terrain_save_child() -> Result<()> {
         );
         if previous_load_trace.as_ref() != Some(&trace) {
             eprintln!("M2_CHILD_LOAD_TRACE {trace:?}");
+            let tod = world.resource::<country_core::resources::time_of_day::TimeOfDay>();
+            eprintln!("M2_CHILD_LOAD_TOD bits=[{:08x},{:08x},{:08x}] state={:?} progress={:?}",
+                tod.time_of_day.to_bits(), tod.sun_xz_rotation.to_bits(), tod.latitude_degrees.to_bits(), tod.state, tod.progress);
             previous_load_trace = Some(trace);
         }
         if saw_reload
@@ -1581,14 +2166,28 @@ fn m02_actual_terrain_save_child() -> Result<()> {
         }
     }
     anyhow::ensure!(loaded, "M2 child did not complete production Reload");
+    let expected_tod: country_core::resources::time_of_day::TimeOfDay = serde_json::from_slice(&std::fs::read(recovery.join("tod.json"))?)?;
+    let actual_tod = driver.app().world().resource::<country_core::resources::time_of_day::TimeOfDay>();
+    let expected_tod_bits = [expected_tod.time_of_day.to_bits(), expected_tod.sun_xz_rotation.to_bits(), expected_tod.latitude_degrees.to_bits()];
+    let actual_tod_bits = [actual_tod.time_of_day.to_bits(), actual_tod.sun_xz_rotation.to_bits(), actual_tod.latitude_degrees.to_bits()];
+    anyhow::ensure!(actual_tod_bits == expected_tod_bits,
+        "M2 loaded TimeOfDay [hour, rotation, latitude] bits differ: expected={expected_tod_bits:08x?}, actual={actual_tod_bits:08x?}; actual={actual_tod:?}");
+    anyhow::ensure!(actual_tod.progress == 0.0, "M2 child playback must be settled before observation");
+    let observation_clock = m2_settle_observation_clock(&mut driver, &context, &mut bridge)?;
+    anyhow::ensure!(Some(observation_clock) == expected_authority["observation_clock_bits"].as_u64(),
+        "M2 child observation clock differs from parent");
+    let expected_phase = expected_authority["render_phase_mod_128"].as_u64().context("M2 capture phase")? as u32;
 
     let captured = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<
         (String, u32, u32, Vec<u8>),
     >::new()));
     let mut heights = None;
     let mut previous_history_trace = None;
-    for frame_index in 0..256 {
-        let capture_label = match frame_index {
+    let mut matched_capture = false;
+    for frame_index in 0..384 {
+        let previous_counter = driver.app().world().resource::<country_core::render::frame_constants::FrameConstants>().frame_counter;
+        let request = frame_index >= 128 && previous_counter.wrapping_add(1) % 128 == expected_phase;
+        let capture_label = if request { Some("m2-reloaded-matched") } else { match frame_index {
             8 => Some("m2-reloaded-8"),
             16 => Some("m2-reloaded-16"),
             32 => Some("m2-reloaded-32"),
@@ -1597,11 +2196,16 @@ fn m02_actual_terrain_save_child() -> Result<()> {
             96 => Some("m2-reloaded-96"),
             128 => Some("m2-reloaded-128"),
             192 => Some("m2-reloaded-192"),
-            255 => Some("m2-reloaded-255"),
             _ => None,
-        };
+        }};
         let capture = capture_label.map(|label| (label, captured.clone()));
         let _ = run_m2_production_frame(&mut driver, &context, &mut bridge, capture)?;
+        if let Some(label) = capture_label { m2_dump_frame_state(driver.app().world(), label)?; }
+        if request {
+            let counter = driver.app().world().resource::<country_core::render::frame_constants::FrameConstants>().frame_counter;
+            anyhow::ensure!(counter % 128 == expected_phase, "M2 child capture missed requested render phase: {counter}");
+            matched_capture = true;
+        }
         let history = driver.app().world().resource::<History>();
         let draw = driver
             .app()
@@ -1667,19 +2271,14 @@ fn m02_actual_terrain_save_child() -> Result<()> {
             && frame > 0
         {
             heights = Some((floor, visual, frame, epoch));
-            if frame_index >= 255 {
+            if matched_capture {
                 break;
             }
         }
     }
+    anyhow::ensure!(matched_capture, "M2 child did not reach the saved observation phase");
     let (floor, visual, frame, epoch) =
         heights.context("M2 child W5 heights did not arrive")?;
-    if std::env::var_os("TG_M2_DUMP_IMAGES").is_some() {
-        std::fs::write(
-            "/private/tmp/m2-reloaded-camera.json",
-            serde_json::to_vec_pretty(&m2_camera_parameters(driver.app().world())?)?,
-        )?;
-    }
     anyhow::ensure!(
         bytemuck::cast_slice::<u16, u8>(&floor) == expected_floor
             && bytemuck::cast_slice::<u16, u8>(&visual) == expected_visual,
@@ -1702,10 +2301,9 @@ fn m02_actual_terrain_save_child() -> Result<()> {
             "strokes": editing.strokes,
         })
     };
-    anyhow::ensure!(
-        actual_terrain == expected_terrain,
-        "M2 child terrain strokes/counter differ from saved authority"
-    );
+    if let Some((path, expected, actual)) = m6_first_json_difference(&expected_terrain, &actual_terrain) {
+        anyhow::bail!("M2 child terrain strokes/counter differ at {path}: expected={expected}, actual={actual}");
+    }
     let (actual_cursor, actual_undo_anchor, actual_observed_count, actual_entries, actual_snapshots) = {
         let history = driver.app().world().resource::<History>();
         let ledger = history.ledger();
@@ -1770,22 +2368,13 @@ fn m02_actual_terrain_save_child() -> Result<()> {
     bridge.wait_submits_done(10_000_000_000)?;
     let image = {
         let images = captured.lock();
-        if std::env::var_os("TG_M2_DUMP_IMAGES").is_some() {
-            for (label, width, height, rgba) in images.iter() {
-                std::fs::write(format!("/private/tmp/{label}.rgba"), rgba)?;
-                std::fs::write(
-                    format!("/private/tmp/{label}.json"),
-                    serde_json::to_vec_pretty(&serde_json::json!({
-                        "width": width,
-                        "height": height,
-                    }))?,
-                )?;
-            }
+        for (label, width, height, rgba) in images.iter() {
+            m2_dump_image(label, *width, *height, rgba)?;
         }
         images
             .iter()
             .rev()
-            .find(|(label, _, _, _)| label == "m2-reloaded-255")
+            .find(|(label, _, _, _)| label == "m2-reloaded-matched")
             .cloned()
             .context("M2 child production image did not arrive")?
     };
@@ -1806,10 +2395,13 @@ fn m02_actual_terrain_save_child() -> Result<()> {
         .zip(expected_image.chunks_exact(4))
         .filter(|(actual, expected)| actual != expected)
         .count();
-    anyhow::ensure!(
-        changed == 0,
-        "M2 child visible image differs from saved production frame: {changed} pixels"
-    );
+    if changed != 0 {
+        let first = image.3.chunks_exact(4).zip(expected_image.chunks_exact(4))
+            .enumerate().find(|(_, (actual, expected))| actual != expected).unwrap();
+        let pixel = first.0;
+        anyhow::bail!("M2 child visible image differs from saved production frame: {changed} pixels; first=({}, {}) expected={:?} actual={:?}",
+            pixel % image.1 as usize, pixel / image.1 as usize, first.1.1, first.1.0);
+    }
     eprintln!(
         "M02 save/reload exact: frame={frame}, floor={} bytes, visual={} bytes, image={}x{}, changed_pixels=0",
         expected_floor.len(),
@@ -2939,16 +3531,167 @@ fn menu_save_request_reaches_disk_through_the_production_save_system() -> Result
     Ok(())
 }
 
+#[test]
+#[ignore = "Daily excluded by user; candidate retained without acceptance"]
+fn daily_menu_picker_reloads_real_session_and_applies_original_history() -> Result<()> {
+    new_session_menu_chain(true)
+}
+
+#[test]
+fn ordinary_new_session_picker_save_and_reenter() -> Result<()> {
+    new_session_menu_chain(false)
+}
+
+/// Synthetic input passes through the real MEI picker and new-session menu.
+fn new_session_menu_chain(daily: bool) -> Result<()> {
+    use country_core::{
+        app_loading_state::AppLoadingState,
+        game_profile::GameProfile,
+        resources::{daily::{CurrentDaily, DailyThemeInfo, DailyThemeState}, gui::EscMenuState,
+            history::{History, ReplayBuffer}, session::{SessionMeta, GladeType}, window::WindowSize},
+        systems::{backend::input::{button_input::MouseButtonInput, translate_input_to_cursor_moved::InputCursorMoved},
+            history::PendingHistoryCommands, mode_manager::AppMode,
+            ui::resources::ui_state::{UiState, WidgetId}},
+    };
+    use toolbar::{MeiContext, mei::{core::{GlobalId, calculate_hash}, widgets::MenuButtonContent}};
+    use bevy_state::state::State;
+    let installed = PathBuf::from(std::env::var_os("TG_INSTALL_ROOT").context("TG_INSTALL_ROOT required")?);
+    let BootedSession { mut driver, context, bridge: _bridge, shaders: _shaders, device: _device, _boot } = boot_shipped_session()?;
+    let old_session = driver.app().world().resource::<ActiveSession>().id;
+    let meta = if daily { SessionMeta::default() } else { SessionMeta { glade: GladeType::Summer, ..Default::default() } };
+    let info = daily.then(|| DailyThemeInfo { languages: vec!["Injected Daily".into()],
+        history_path: installed.join("assets/starting-builds/full/intro/history.json"),
+        meta: meta.clone(), credits: None, start_time: std::time::UNIX_EPOCH,
+        end_time: std::time::UNIX_EPOCH + std::time::Duration::from_secs(86_400) });
+    *driver.app_mut().world_mut().resource_mut::<EscMenuState>() = EscMenuState::NewSession;
+    let frame = |driver: &mut tiny_glade::game_loop::GameFrameDriver, held: bool, position: glam::Vec2| {
+        let world = driver.app_mut().world_mut();
+        if let Some(info) = &info { world.resource_mut::<CurrentDaily>().0 = DailyThemeState::Ready(info.clone()); }
+        let mut mouse = world.resource_mut::<MouseButtonInput>();
+        mouse.clear();
+        if held { mouse.press(0); } else { mouse.release(0); }
+        world.send_event(InputCursorMoved::Absolute(position));
+        context.begin_frame(egui::RawInput::default());
+        driver.app_mut().update();
+        let _ = context.end_frame();
+    };
+    for _ in 0..12 { frame(&mut driver, false, glam::Vec2::ZERO); }
+    let key = lang_lib::lookup(if daily { "New.Glade.Daily" } else { "New.Glade.Summer" });
+    let (id, position) = {
+        let world = driver.app().world();
+        let scale = world.resource::<WindowSize>().height as f32 / 1000.;
+        // Production layout consumes pending_text during prepare; identify the
+        // button by the same parent/name/type hash used by menu_button.
+        let mei = world.resource::<MeiContext>();
+        let label: &str = key.as_ref();
+        let local = calculate_hash(&(calculate_hash(&(label, ())), 0x615bfcfe4597ab8fu64));
+        let (id, node) = mei.nodes.keys().find_map(|parent| {
+            let id = GlobalId(calculate_hash(&(parent.0, local)));
+            mei.nodes.get_key_value(&id).filter(|(_, node)| {
+                let content: &dyn std::any::Any = node.content.as_ref();
+                content.is::<MenuButtonContent>()
+            })
+        }).with_context(|| format!("new-session button absent: menu={:?}, current nodes={}, previous nodes={}",
+            world.resource::<EscMenuState>(), mei.nodes.len(), mei.previous_nodes.len()))?;
+        anyhow::ensure!(node.size.min_element() > 0., "new-session button lacks laid-out hit bounds");
+        (*id, (node.pos + node.size * 0.5) * scale)
+    };
+    for _ in 0..4 { frame(&mut driver, false, position); }
+    anyhow::ensure!(driver.app().world().resource::<UiState>().active_widget() == WidgetId::from_name(&id.0.to_string()), "new-session button was not picked");
+    let before_count = driver.app().world().resource::<GameProfile>().new_glade_count;
+    frame(&mut driver, true, position);
+    frame(&mut driver, false, position);
+    let mut saw_reload = false;
+    let mut loaded = false;
+    for _ in 0..1200 {
+        frame(&mut driver, false, position);
+        let world = driver.app().world();
+        let state = *world.resource::<State<AppLoadingState>>().get();
+        saw_reload |= state == AppLoadingState::Reload;
+        if saw_reload && state == AppLoadingState::Game && world.resource::<ActiveSession>().id != old_session
+            && world.resource::<LoadGameManager>().options.is_none()
+            && world.resource::<ReplayBuffer>().is_empty()
+            && world.resource::<PendingHistoryCommands>().0.is_empty()
+            && !matches!(*world.resource::<AppMode>(), AppMode::LoadGame | AppMode::Replay) {
+            loaded = true; break;
+        }
+    }
+    anyhow::ensure!(saw_reload && loaded, "new-session menu did not complete Reload and history replay");
+    let world = driver.app().world();
+    assert_eq!(world.resource::<ActiveSession>().meta, meta);
+    assert_eq!(world.resource::<GameProfile>().new_glade_count, before_count + 1);
+    if daily {
+        let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(&info.as_ref().unwrap().history_path)?)?;
+        let expected_entries = saved["History"]["edit_chain"].as_array().context("fixture history chain")?.len();
+        let expected_cursor = saved["History"]["chain_index"].as_i64().context("fixture history cursor")?;
+        assert_eq!(world.resource::<History>().ledger().entries.len(), expected_entries);
+        assert_eq!(i64::from(world.resource::<History>().ledger().cursor), expected_cursor);
+    } else {
+        anyhow::ensure!(!world.resource::<History>().ledger().entries.is_empty(), "ordinary starting history is empty");
+        let session = world.resource::<ActiveSession>().id;
+        let entries = world.resource::<History>().ledger().entries.iter().cloned()
+            .map(country_core::resources::history::serialized::SavedMultiEdit)
+            .map(|entry| serde_json::to_string(&entry)).collect::<std::result::Result<Vec<_>, _>>()?;
+        let cursor = world.resource::<History>().ledger().cursor;
+        let walls = m6_authority_map(world);
+        use country_core::systems::save::save_game::{SaveGameCmd, SavingGameComplete};
+        driver.app_mut().world_mut().send_event(SaveGameCmd);
+        let mut saved = false;
+        for _ in 0..600 {
+            frame(&mut driver, false, position);
+            if driver.app_mut().world_mut().resource_mut::<bevy_ecs::event::Events<SavingGameComplete>>()
+                .drain().any(|event| event.path == session.save_folder_path()) { saved = true; break; }
+        }
+        anyhow::ensure!(saved && session.save_folder_path().join("history.json").is_file(), "new session save did not complete");
+        use country_core::meta_commander::{MetaCommand, MetaCommander};
+        driver.app_mut().world_mut().resource_mut::<MetaCommander>().extend_script([MetaCommand::load_session(session, false)]);
+        let mut reloading = false;
+        let mut reentered = false;
+        for _ in 0..1200 {
+            frame(&mut driver, false, position);
+            let world = driver.app().world();
+            let state = *world.resource::<State<AppLoadingState>>().get();
+            reloading |= state == AppLoadingState::Reload;
+            if reloading && state == AppLoadingState::Game && world.resource::<ActiveSession>().id == session
+                && world.resource::<LoadGameManager>().options.is_none()
+                && world.resource::<ReplayBuffer>().is_empty()
+                && world.resource::<PendingHistoryCommands>().0.is_empty()
+                && !matches!(*world.resource::<AppMode>(), AppMode::LoadGame | AppMode::Replay) {
+                reentered = true; break;
+            }
+        }
+        anyhow::ensure!(reloading && reentered, "saved session did not complete reentry");
+        let world = driver.app().world();
+        assert_eq!(world.resource::<ActiveSession>().meta, meta);
+        assert_eq!(world.resource::<History>().ledger().cursor, cursor);
+        let restored = world.resource::<History>().ledger().entries.iter().cloned()
+            .map(country_core::resources::history::serialized::SavedMultiEdit)
+            .map(|entry| serde_json::to_string(&entry)).collect::<std::result::Result<Vec<_>, _>>()?;
+        assert_eq!(restored, entries, "complete committed history must survive save and reentry");
+        if let Some((path, expected, actual)) = m6_first_json_difference(&walls, &m6_authority_map(world)) {
+            anyhow::bail!("reentered wall authority differs at {path}: expected={expected} actual={actual}");
+        }
+    }
+    Ok(())
+}
+
 /// 仅诊断运行使用：保留实际 BufferHost 的所有能力，并额外允许传输读取。
 /// 描述符与原生产运行不同，不能把它当成原生产路径的原样证据。
 #[derive(Clone)]
-struct M6NaniDiagnosticDevice(pub std::sync::Arc<tiny_glade::render_host::BufferHost>);
+struct M6NaniDiagnosticDevice(
+    pub std::sync::Arc<tiny_glade::render_host::BufferHost>,
+    /// None preserves the existing Nani diagnostic. M1 reads only this named
+    /// SSBO and leaves every other descriptor unchanged.
+    pub Option<&'static str>,
+);
 impl country_core::render::ssbo::rhapsody_boundary::GraphicsDevice for M6NaniDiagnosticDevice {
     fn create_buffer(&self, desc: &country_core::render::ssbo::rhapsody_boundary::BufferDesc, name: &str, data: Option<&[u8]>)
         -> std::result::Result<country_core::render::ssbo::rhapsody_boundary::Buffer, country_core::render::ssbo::rhapsody_boundary::BackendError> {
         use country_core::render::ssbo::rhapsody_boundary::GraphicsDevice;
         let mut desc = *desc;
-        desc.usage |= ash::vk::BufferUsageFlags::TRANSFER_SRC.as_raw();
+        if self.1.is_none_or(|target| name == target) {
+            desc.usage |= ash::vk::BufferUsageFlags::TRANSFER_SRC.as_raw();
+        }
         self.0.create_buffer(&desc, name, data)
     }
     fn release_buffer(&self, buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer) {
@@ -2993,17 +3736,22 @@ fn m6_read_diagnostic_range(device: &std::sync::Arc<rhapsody::device::Device>,
     host: &tiny_glade::render_host::BufferHost,
     buffer: &country_core::render::ssbo::rhapsody_boundary::Buffer,
     offset: usize, size: usize) -> Result<Vec<u8>> {
+    let source = host.managed_buffer(buffer).context("诊断源buffer句柄已失效")?;
+    m6_read_diagnostic_native_range(device, &source.shared(), offset, size)
+}
+
+fn m6_read_diagnostic_native_range(device: &std::sync::Arc<rhapsody::device::Device>,
+    source: &std::sync::Arc<rhapsody::resource::Buffer>, offset: usize, size: usize) -> Result<Vec<u8>> {
     use ash::vk;
     use rhapsody::{command::buffer_access, native::AccessScope,
         resource::{Buffer as NativeBuffer, BufferDesc as NativeBufferDesc}, transfer::with_setup_command};
-    let source = host.managed_buffer(buffer).context("诊断源buffer句柄已失效")?;
     anyhow::ensure!(source.usage.contains(vk::BufferUsageFlags::TRANSFER_SRC), "此owner不是可读的诊断描述符");
     anyhow::ensure!(size > 0 && offset.checked_add(size).is_some_and(|end| end as u64 <= source.size), "诊断读取超出真实buffer");
     let output = std::sync::Arc::new(NativeBuffer::new(device.clone(),
         &NativeBufferDesc::new_gpu_to_cpu(size as u64, vk::BufferUsageFlags::TRANSFER_DST))?);
     let queue = device.queue(rhapsody::device::QueueClass::Graphics).context("缺少graphics队列")?;
     with_setup_command(device, &[], |command| unsafe {
-        buffer_access(command, &source.shared(), queue, offset as u64, size as u64,
+        buffer_access(command, source, queue, offset as u64, size as u64,
             AccessScope { stages:vk::PipelineStageFlags::TRANSFER, access:vk::AccessFlags::TRANSFER_READ, write:false })?;
         buffer_access(command, &output, queue, 0, size as u64,
             AccessScope { stages:vk::PipelineStageFlags::TRANSFER, access:vk::AccessFlags::TRANSFER_WRITE, write:true })?;
@@ -3674,19 +4422,35 @@ fn m06_real_ui_draw_closed_wall_undo_redo_and_save() -> Result<()> {
         "真实绘墙未触发自吸附闭合");
     anyhow::ensure!(world.resource::<History>().ledger().entries.len() > before, "闭合未提交历史");
     let cursor = world.resource::<History>().ledger().cursor;
+    let entry = &world.resource::<History>().ledger().entries[cursor as usize];
+    for (index, edit) in entry.edits.iter().enumerate() {
+        if let country_core::resources::history::EditType::Wall(compound) = edit {
+            let groups: Vec<Vec<_>> = compound.groups.iter().map(|group| group.iter()
+                .map(|operation| (operation.wall_id(), operation.operation_tag())).collect()).collect();
+            eprintln!("M6_CLOSED_HISTORY edit={index} groups={groups:?}");
+        } else {
+            eprintln!("M6_CLOSED_HISTORY edit={index} owner=non-wall");
+        }
+    }
     let closed = m6_authority_map(world);
     driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().undo = Phase::JustPressed;
     step(&mut driver);
     driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().undo = Phase::Idle;
     m6_wait_replay_completion(&mut driver, &context, cursor - 1, "闭合撤销")?;
     for _ in 0..10 { step(&mut driver); }
-    anyhow::ensure!(m6_authority_map(driver.app().world()) == original, "闭合撤销后权威墙不一致");
+    let undone = m6_authority_map(driver.app().world());
+    if let Some((path, expected, actual)) = m6_first_json_difference(&original, &undone) {
+        anyhow::bail!("闭合撤销后权威墙不一致: {path}: expected={expected} actual={actual}");
+    }
     driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().redo = Phase::JustPressed;
     step(&mut driver);
     driver.app_mut().world_mut().resource_mut::<M6SyntheticEraserInput>().redo = Phase::Idle;
     m6_wait_replay_completion(&mut driver, &context, cursor, "闭合重做")?;
     for _ in 0..30 { step(&mut driver); }
-    anyhow::ensure!(m6_authority_map(driver.app().world()) == closed, "闭合重做后权威墙不一致");
+    let redone = m6_authority_map(driver.app().world());
+    if let Some((path, expected, actual)) = m6_first_json_difference(&closed, &redone) {
+        anyhow::bail!("闭合重做后权威墙不一致: {path}: expected={expected} actual={actual}");
+    }
     use country_core::systems::save::save_game::{SaveGameCmd, SavingGameComplete};
     let session = driver.app().world().resource::<ActiveSession>().id;
     let folder = session.save_folder_path();
@@ -3754,5 +4518,1582 @@ fn m6_closed_child_recovery() -> Result<()> {
     if let Some((path, expected, actual)) = m6_first_json_difference(&expected, &actual) {
         anyhow::bail!("闭合历史差异 {path}: expected={expected}, actual={actual}");
     }
+    Ok(())
+}
+
+/// Only pointer position and digital phases are injected; the production UI
+/// picker, collider raycast, menu producer, writers and history remain live.
+#[derive(bevy_ecs::prelude::Resource)]
+struct M6ColorInput {
+    cursor: glam::Vec2,
+    click: country_core::input::action_set::DigitalActionPhase,
+    undo: country_core::input::action_set::DigitalActionPhase,
+    redo: country_core::input::action_set::DigitalActionPhase,
+}
+
+/// Select tools through the same request consumed by the toolbar mode manager.
+/// Directly replacing AppMode would bypass its cancellation/history ownership.
+fn m6_request_mode(
+    driver: &mut tiny_glade::game_loop::GameFrameDriver,
+    context: &egui::Context,
+    bridge: &mut CoreRenderBridge,
+    mode: country_core::systems::mode_manager::AppMode,
+) -> Result<()> {
+    use country_core::systems::mode_manager::{AppMode, RequestAppModeChange};
+    m6_dismiss_welcome(driver, context, bridge)?;
+    driver.app_mut().world_mut().send_event(RequestAppModeChange(mode));
+    for _ in 0..3 {
+        run_m2_production_frame(driver, context, bridge, None)?;
+        if *driver.app().world().resource::<AppMode>() == mode { return Ok(()); }
+    }
+    anyhow::bail!("production mode request did not select {mode:?}: {:?}",
+        driver.app().world().resource::<AppMode>())
+}
+
+/// Fresh process profiles show the real Welcome modal over the world. Confirm
+/// it through its configured keyboard binding before attempting world clicks.
+fn m6_dismiss_welcome(
+    driver: &mut tiny_glade::game_loop::GameFrameDriver,
+    context: &egui::Context,
+    bridge: &mut CoreRenderBridge,
+) -> Result<()> {
+    use country_core::{game_profile::{GameProfile, desktop_keycode_index},
+        systems::backend::input::button_input::KeyButtonInput,
+        resources::onboarding::WelcomeScreenState};
+    if driver.app().world().resource::<WelcomeScreenState>().is_closed() { return Ok(()); }
+    let binding = driver.app().world().resource::<GameProfile>().key_bindings.bindings[29]
+        .context("Welcome confirm binding missing")?;
+    let code = desktop_keycode_index(binding).context("Welcome confirm has no desktop key")?;
+    for _ in 0..3 {
+        for _ in 0..24 { run_m2_production_frame(driver, context, bridge, None)?; }
+        driver.app_mut().world_mut().resource_mut::<KeyButtonInput>().press(code);
+        run_m2_production_frame(driver, context, bridge, None)?;
+        {
+            let mut keys = driver.app_mut().world_mut().resource_mut::<KeyButtonInput>();
+            keys.release_all();
+            keys.clear();
+        }
+        run_m2_production_frame(driver, context, bridge, None)?;
+        if driver.app().world().resource::<WelcomeScreenState>().is_closed() {
+            anyhow::ensure!(driver.app().world().resource::<GameProfile>().welcome_was_dismissed(),
+                "Welcome closed without its canonical profile confirmation");
+            for _ in 0..3 { run_m2_production_frame(driver, context, bridge, None)?; }
+            return Ok(());
+        }
+    }
+    anyhow::bail!("Welcome modal did not close through its real confirm input")
+}
+
+/// Keep the real renderer and bounded upload consumer alive during replay.
+/// App-only ticks are useful for CPU fixtures, but cannot establish GPU cleanup.
+fn m6_wait_rendered_replay_completion(
+    driver: &mut tiny_glade::game_loop::GameFrameDriver,
+    context: &egui::Context,
+    bridge: &mut CoreRenderBridge,
+    expected_cursor: i32,
+    stage: &str,
+) -> Result<()> {
+    use country_core::{resources::history::{History, ReplayBuffer},
+        systems::{history::PendingHistoryCommands, mode_manager::AppMode}};
+    let complete = |world: &bevy_ecs::world::World| {
+        world.resource::<History>().ledger().cursor == expected_cursor
+            && world.resource::<ReplayBuffer>().is_empty()
+            && world.resource::<PendingHistoryCommands>().0.is_empty()
+            && world.resource::<AppMode>().native_tag() != 13
+            && m6_history_is_quiet(world)
+    };
+    for _ in 0..600 {
+        run_m2_production_frame(driver, context, bridge, None)?;
+        if !complete(driver.app().world()) { continue; }
+        for _ in 0..2 {
+            run_m2_production_frame(driver, context, bridge, None)?;
+            anyhow::ensure!(complete(driver.app().world()), "{stage} replay restarted after completion");
+        }
+        return Ok(());
+    }
+    anyhow::bail!("{stage} did not finish through production renderer/replay")
+}
+
+fn m6_history_is_quiet(world: &bevy_ecs::world::World) -> bool {
+    let history = world.resource::<country_core::resources::history::History>();
+    let deferred = world.resource::<system_decorator::deferred_decorator_history::DeferredDecoratorEditHistory>();
+    !history.is_recording() && !deferred.pending && deferred.records.is_empty()
+        && deferred.potentially_surviving_affected_decorators.is_empty()
+        && world.resource::<country_core::resources::history::ReplayBuffer>().is_empty()
+        && world.resource::<country_core::systems::history::PendingHistoryCommands>().0.is_empty()
+        && world.resource::<LoadGameManager>().options.is_none()
+}
+
+/// SavingGameComplete acknowledges disk flushing even when snapshot capture is
+/// deferred. Observe a finished transaction and unchanged full ledger first.
+fn m6_settle_history(
+    driver: &mut tiny_glade::game_loop::GameFrameDriver,
+    context: &egui::Context,
+    bridge: &mut CoreRenderBridge,
+) -> Result<()> {
+    use country_core::resources::history::{History, serialized::SavedMultiEdit};
+    let mut previous = None;
+    let mut stable = 0;
+    for _ in 0..120 {
+        run_m2_production_frame(driver, context, bridge, None)?;
+        let world = driver.app().world();
+        let history = world.resource::<History>();
+        let mut entries = serde_json::to_value(history.ledger().entries.iter().cloned()
+            .map(SavedMultiEdit).collect::<Vec<_>>())?;
+        for entry in entries.as_array_mut().context("ledger is not an array")? {
+            canonicalize_decorator_diff_map(entry);
+        }
+        let current = (history.ledger().cursor, entries);
+        if m6_history_is_quiet(world) && previous.as_ref() == Some(&current) { stable += 1; }
+        else { stable = 0; }
+        previous = Some(current);
+        if stable >= 3 { return Ok(()); }
+    }
+    anyhow::bail!("production transaction/deferred history did not settle before save")
+}
+
+/// Optional retained test artifacts; the real session and its save path are untouched.
+fn m6_retain_color_diagnostic(scenario: &str, folder: &std::path::Path,
+    expected: &std::path::Path, child_env: serde_json::Value) -> Result<()> {
+    let Some(root) = std::env::var_os("TG_M6_DUMP_DIR") else { return Ok(()); };
+    let root = PathBuf::from(root).join(scenario);
+    std::fs::create_dir_all(&root)?;
+    let pending = tempfile::Builder::new().prefix("run-").tempdir_in(&root)?;
+    copy_test_tree(folder, &pending.path().join("save"))?;
+    std::fs::copy(expected, pending.path().join("expected.json"))?;
+    std::fs::write(pending.path().join("meta.json"), serde_json::to_vec_pretty(&child_env)?)?;
+    let retained = pending.keep();
+    eprintln!("M6 diagnostic retained: {}", retained.display());
+    Ok(())
+}
+
+fn m6_history_wire(entries: &[country_core::resources::history::serialized::SavedMultiEdit]) -> Result<Vec<String>> {
+    entries.iter().map(|entry| {
+        // Serialize the typed f32 directly: Ryu's finite f32 representation is
+        // round-trip exact, including signed zero. Parse/canonicalize only the
+        // unordered decorator map, then compare its full canonical wire text.
+        let wire = serde_json::to_vec(entry)?;
+        // Reject non-round-trippable values (including non-finite required
+        // floats serialized as null); do not cast integers or f64 to f32.
+        let _: country_core::resources::history::serialized::SavedMultiEdit = serde_json::from_slice(&wire)
+            .context("typed history contains a non-round-trippable value")?;
+        let mut value: serde_json::Value = serde_json::from_slice(&wire)?;
+        canonicalize_decorator_diff_map(&mut value);
+        Ok(serde_json::to_string(&value)?)
+    }).collect()
+}
+
+fn m6_color_authority_map(world: &bevy_ecs::world::World) -> Result<serde_json::Value> {
+    let mut result = m6_authority_map(world);
+    for row in result.as_array_mut().context("wall authority rows")? {
+        let roof = row.get_mut("roof").context("wall roof field")?;
+        if !roof.is_null() {
+            let typed: country_core::resources::roofs::roof_shape::Roof = serde_json::from_value(roof.clone())?;
+            *roof = serde_json::Value::String(serde_json::to_string(&typed)?);
+        }
+    }
+    Ok(result)
+}
+
+fn m6_check_disk_history(world: &bevy_ecs::world::World, folder: &std::path::Path, expected_wire: &[String], stage: &str) -> Result<()> {
+    use country_core::{resources::history::{History, serialized::SavedMultiEdit}, systems::save::load_game::HistorySectionJson};
+    let document: serde_json::Value = serde_json::from_slice(&std::fs::read(folder.join("history.json"))?)?;
+    let disk: HistorySectionJson = serde_json::from_value(document.get("History").context("missing disk History")?.clone())?;
+    let history = world.resource::<History>();
+    let ledger = history.ledger();
+    let runtime: Vec<_> = ledger.entries.iter().cloned().map(SavedMultiEdit).collect();
+    let runtime_wire = m6_history_wire(&runtime)?;
+    let disk_wire = m6_history_wire(&disk.edit_chain)?;
+    for (source, actual) in [("runtime", &runtime_wire), ("disk", &disk_wire)] {
+        if actual.as_slice() == expected_wire { continue; }
+        if let Some(root) = std::env::var_os("TG_M6_DUMP_DIR") {
+            let root = PathBuf::from(root).join("history-mismatches");
+            std::fs::create_dir_all(&root)?;
+            let pending = tempfile::Builder::new().prefix("run-").tempdir_in(&root)?;
+            std::fs::write(pending.path().join("expected.json"), serde_json::to_vec_pretty(expected_wire)?)?;
+            std::fs::write(pending.path().join("actual.json"), serde_json::to_vec_pretty(actual)?)?;
+            std::fs::write(pending.path().join("stage.txt"), format!("{stage} {source}"))?;
+            eprintln!("M6 history mismatch retained: {}", pending.keep().display());
+        }
+        for index in 0..actual.len().max(expected_wire.len()) {
+            match (expected_wire.get(index), actual.get(index)) {
+                (Some(expected), Some(actual)) if expected != actual => {
+                    let expected: serde_json::Value = serde_json::from_str(expected)?;
+                    let actual: serde_json::Value = serde_json::from_str(actual)?;
+                    if let Some((path, expected, actual)) = m6_first_json_difference(&expected, &actual) {
+                        anyhow::bail!("{stage} {source} typed history entry {index} differs at {path}: parent={expected}, actual={actual}");
+                    }
+                    anyhow::bail!("{stage} {source} typed history entry {index} has unequal canonical wire text");
+                }
+                (Some(_), None) | (None, Some(_)) => anyhow::bail!(
+                    "{stage} {source} typed history length differs: parent={}, actual={}, first absent entry={index}", expected_wire.len(), actual.len()),
+                _ => {}
+            }
+        }
+        anyhow::bail!("{stage} {source} differs from settled parent typed history");
+    }
+    anyhow::ensure!(ledger.cursor == disk.chain_index, "{stage} cursor differs: runtime={} disk={}", ledger.cursor, disk.chain_index);
+    anyhow::ensure!(ledger.undo_anchor == disk.history_start, "{stage} history_start differs: runtime={} disk={}", ledger.undo_anchor, disk.history_start);
+    Ok(())
+}
+
+fn m6_check_parent_history(expected: &serde_json::Value, actual: &serde_json::Value, stage: &str) -> Result<()> {
+    use country_core::resources::history::serialized::SavedMultiEdit;
+    if let Some((path, before, after)) = m6_first_json_difference(expected, actual) {
+        eprintln!("{stage} raw JSON first difference at {path}: parent={before}, child={after}; checking typed history");
+    }
+    let parent: Vec<SavedMultiEdit> = serde_json::from_value(expected.clone()).context("parent typed history")?;
+    let child: Vec<SavedMultiEdit> = serde_json::from_value(actual.clone()).context("child typed history")?;
+    let expected = m2_saved_history_values(&parent)?;
+    let actual = m2_saved_history_values(&child)?;
+    if let Some((path, before, after)) = m2_first_json_difference(&expected, &actual) {
+        anyhow::bail!("{stage} typed parent/child history differs at {path}: parent={before}, child={after}");
+    }
+    Ok(())
+}
+
+fn m6_color_pointer_input(input: bevy_ecs::prelude::Res<M6ColorInput>,
+    mut cursor: bevy_ecs::prelude::ResMut<country_core::resources::mouse_terrain_raycast::CursorPositionSS>,
+    mut actions: bevy_ecs::prelude::ResMut<country_core::input::action_set::ActionSetStates>) {
+    cursor.0 = input.cursor;
+    for (slot, phase) in [(0, input.click), (16, input.undo), (17, input.redo)] {
+        actions.digital[slot] = country_core::input::action_set::DigitalActionState { phase, timer_seconds: 0.0 };
+    }
+}
+
+fn m6_trace_color_frame(world: &mut bevy_ecs::world::World, stage: &str) {
+    use country_core::{resources::color_icon::CustomizationIcon,
+        systems::{mode_manager::AppMode, ui::resources::ui_state::UiState}};
+    let ui = world.resource::<UiState>();
+    eprintln!("M6_COLOR {stage} mode={:?} active={:?} interaction={:?} hover={} show_events={} hide_events={} welcome={:?}",
+        world.resource::<AppMode>(), ui.active_widget(), ui.interaction(), ui.hover_byte(),
+        world.resource::<bevy_ecs::event::Events<system_color::ShowColorMenuCmd>>().len(),
+        world.resource::<bevy_ecs::event::Events<system_color::HideColorMenuCmd>>().len(),
+        world.resource::<country_core::resources::onboarding::WelcomeScreenState>());
+    let mut menus = world.query::<&system_color::radial_menu::ColorRadialMenu>();
+    let snapshot: Vec<_> = menus.iter(world).map(|menu| (menu.target, menu.icon_entities.clone())).collect();
+    for (target, entities) in snapshot {
+        let icons: Vec<_> = entities.into_iter().take(5).map(|id| (id,
+            world.get::<CustomizationIcon>(id).map(|icon| icon.alpha_18),
+            world.get::<country_core::resources::color_icon::ColorIcon>(id).map(|color| color.0),
+            world.get::<country_core::components::Ui2dExtent>(id).map(|extent| (extent.pos, extent.size)))).collect();
+        eprintln!("M6_COLOR {stage} target={target:?} icons={icons:?}");
+    }
+}
+
+fn m6_trace_decorator_id(world: &bevy_ecs::world::World, stage: &str) {
+    use country_core::resources::walls::{decorator::{DecoratorId, DecoratorIdGen}, decorator_storage::DecoratorStorage};
+    let id = world.resource::<DecoratorIdGen>().peek();
+    let storage = world.resource::<DecoratorStorage>();
+    eprintln!("M6_ID {stage} next={id:?} address={:?} info={:?} zero_addr={:?} zero_info={:?}",
+        storage.lookup_storage(id), storage.lookup_decorator_info(id),
+        storage.lookup_storage(DecoratorId(0)), storage.lookup_decorator_info(DecoratorId(0)));
+}
+
+fn m6_visible_icon_point(world: &bevy_ecs::world::World,
+    extent: &country_core::components::Ui2dExtent) -> Option<glam::Vec2> {
+    let size = world.resource::<country_core::resources::window::WindowSize>().as_vec2();
+    let minimum = (extent.pos - extent.size * 0.5).max(glam::Vec2::ZERO);
+    let maximum = (extent.pos + extent.size * 0.5).min(size - glam::Vec2::ONE);
+    (maximum.x > minimum.x && maximum.y > minimum.y).then(|| (minimum + maximum) * 0.5)
+}
+
+#[test]
+fn m06_real_wall_color_picker_history_save_new_process() -> Result<()> {
+    m6_wall_color_scenario(false)
+}
+
+#[test]
+fn m06_real_wall_color_preview_cancel_restores_authority_and_gpu() -> Result<()> {
+    m6_wall_color_scenario(true)
+}
+
+fn m6_wall_color_scenario(cancel_preview: bool) -> Result<()> {
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{input::action_set::DigitalActionPhase as Phase,
+        resources::{color_icon::{ColorIcon, CustomizationIcon}, color_id::WallColorIds,
+            history::{History, MaybePendingSnapshotId}, mouse_terrain_raycast::{camera_mouse_ray, CursorPositionSS},
+            walls::WallId, window::WindowSize},
+        systems::{camera_rig::MainCamera, collision::world::RaycastWorld,
+            mode_manager::{self, AppMode}, ui::hover_intersection::hover_intersection}};
+    use system_color::radial_menu::ColorRadialMenu;
+    if std::env::var_os("TG_M6_COLOR_CHILD").is_some() { return m6_color_reload_child(); }
+    let BootedSession { mut driver, context, mut bridge, shaders, device, _boot } = boot_shipped_session_with_nani_readback(true)?;
+    driver.app_mut().init_resource::<M6DrawnWallColorBuffer>();
+    let world = driver.app_mut().world_mut();
+    tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)?;
+    bridge.accept_gameplay_warmup(world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>())?;
+    for _ in 0..8 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    // Search screen pixels using the same camera unprojection and real collider
+    // owner as camera_mouse_ray; no hit or menu command is supplied by the test.
+    m6_dismiss_welcome(&mut driver, &context, &mut bridge)?;
+    m6_settle_history(&mut driver, &context, &mut bridge)?;
+    let (wall, cursor) = {
+        let world = driver.app().world();
+        let camera = world.resource::<MainCamera>();
+        let window = world.resource::<WindowSize>();
+        let collision = world.resource::<RaycastWorld>();
+        let mut result = None;
+        for y in (12..window.height.saturating_sub(12)).step_by(6) {
+            for x in (12..window.width.saturating_sub(12)).step_by(6) {
+                let point = glam::Vec2::new(x as f32, y as f32);
+                let ray = utils::geometry::Ray::from_mouse_ss(point, window.as_vec2(), camera.read_matrix(0x40), camera.read_matrix(0xc0));
+                let hit = collision.raycast(ray.origin, ray.direction, 0xcb);
+                if hit.is_hit() && matches!(hit.handle[0] as u8, 0 | 6 | 7)
+                    && world.resource::<country_core::resources::walls::public_walls::PublicWalls>().get(WallId(hit.handle[1])).is_some() {
+                    // The original radial menu opens at the clicked pixel and
+                    // has no viewport fitting. Choose a real wall ray with
+                    // room to its right/above, keeping every click on screen.
+                    if result.as_ref().is_none_or(|(_, old): &(WallId, glam::Vec2)|
+                        point.x < old.x || (point.x == old.x && point.y > old.y)) {
+                        result = Some((WallId(hit.handle[1]), point));
+                    }
+                }
+            }
+        }
+        result.context("no visible published wall collider under a real camera ray")?
+    };
+    let before = driver.app().world().resource::<WallColorIds>().0[wall.0 as usize];
+    let before_authority = m6_color_authority_map(driver.app().world())?;
+    let history_before = driver.app().world().resource::<History>().ledger().entries.len();
+    let cursor_before = driver.app().world().resource::<History>().ledger().cursor;
+    driver.app_mut().insert_resource(M6ColorInput { cursor, click: Phase::Idle, undo: Phase::Idle, redo: Phase::Idle });
+    driver.app_mut().add_systems(bevy_app::Update, m6_color_pointer_input
+        .after(country_core::systems::backend::input::update_cursor_position::update_cursor_position)
+        .before(hover_intersection).before(camera_mouse_ray)
+        .before(mode_manager::mode_manager::<country_core::resources::history::EditType, MaybePendingSnapshotId>));
+    m6_request_mode(&mut driver, &context, &mut bridge, AppMode::Color)?;
+    eprintln!("M6_COLOR target_wall={wall:?} cursor={cursor:?}");
+    for phase in [Phase::Idle, Phase::JustPressed, Phase::JustReleased, Phase::Idle] {
+        driver.app_mut().world_mut().resource_mut::<M6ColorInput>().click = phase;
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        m6_trace_color_frame(driver.app_mut().world_mut(), &format!("picker {phase:?}"));
+    }
+    let (chosen, position) = {
+        let mut found = None;
+        for _ in 0..90 {
+            run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+            let world = driver.app_mut().world_mut();
+            let mut menus = world.query::<&ColorRadialMenu>();
+            let entities = menus.iter(world).find(|menu| menu.target.kind == 0 && menu.target.id == wall.0)
+                .map(|menu| menu.icon_entities.clone());
+            if let Some(entities) = entities {
+                found = entities.into_iter().filter_map(|id| {
+                    let color = world.get::<ColorIcon>(id)?.0;
+                    let icon = world.get::<CustomizationIcon>(id)?;
+                    let extent = world.get::<country_core::components::Ui2dExtent>(id)?;
+                    let position = m6_visible_icon_point(world, extent)?;
+                    (color != before && color != 777 && icon.alpha_18 >= 0.7 && extent.size.x > 0.0
+                        ).then_some((color, position))
+                }).next();
+                if found.is_some() { break; }
+            }
+        }
+        if found.is_none() { m6_trace_color_frame(driver.app_mut().world_mut(), "picker exhausted"); }
+        found.context("real wall menu did not produce an actionable different color icon")?
+    };
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().cursor = position;
+    if cancel_preview {
+        for _ in 0..4 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+        anyhow::ensure!(driver.app().world().resource::<WallColorIds>().0[wall.0 as usize] == chosen,
+            "real icon hover did not preview a different wall color");
+        m6_assert_wall_color_gpu(driver.app().world(), &bridge, &device)?;
+        use country_core::{game_profile::{GameProfile, desktop_keycode_index},
+            systems::backend::input::button_input::KeyButtonInput};
+        let binding = driver.app().world().resource::<GameProfile>().key_bindings.bindings[28]
+            .context("color cancel binding missing")?;
+        let code = desktop_keycode_index(binding).context("color cancel has no desktop key")?;
+        driver.app_mut().world_mut().resource_mut::<KeyButtonInput>().press(code);
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        {
+            let mut keys = driver.app_mut().world_mut().resource_mut::<KeyButtonInput>();
+            keys.release_all();
+            keys.clear();
+        }
+        for _ in 0..60 {
+            run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+            let world = driver.app_mut().world_mut();
+            if world.query::<&ColorRadialMenu>().iter(world).next().is_none()
+                && world.query::<&CustomizationIcon>().iter(world).next().is_none() { break; }
+        }
+        m6_settle_history(&mut driver, &context, &mut bridge)?;
+        let world = driver.app_mut().world_mut();
+        anyhow::ensure!(world.resource::<WallColorIds>().0[wall.0 as usize] == before,
+            "cancel did not restore original wall color");
+        anyhow::ensure!(m6_color_authority_map(world)? == before_authority,
+            "cancel did not restore complete wall/roof authority");
+        let history = world.resource::<History>();
+        anyhow::ensure!(history.ledger().entries.len() == history_before && history.ledger().cursor == cursor_before,
+            "cancelled color preview changed history");
+        anyhow::ensure!(world.query::<&ColorRadialMenu>().iter(world).next().is_none()
+            && world.query::<&CustomizationIcon>().iter(world).next().is_none(),
+            "cancel left menu/icon entities alive");
+        m6_assert_wall_color_gpu(world, &bridge, &device)?;
+        return Ok(());
+    }
+    for phase in [Phase::Idle, Phase::JustPressed, Phase::JustReleased, Phase::Idle, Phase::Idle] {
+        driver.app_mut().world_mut().resource_mut::<M6ColorInput>().click = phase;
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    }
+    for _ in 0..12 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let world = driver.app().world();
+    anyhow::ensure!(world.resource::<WallColorIds>().0[wall.0 as usize] == chosen, "real color icon click did not commit the wall color");
+    m6_assert_wall_color_gpu(world, &bridge, &device)?;
+    let history = world.resource::<History>();
+    anyhow::ensure!(history.ledger().entries.len() > history_before, "wall color click did not commit history");
+    let committed_cursor = history.ledger().cursor;
+    anyhow::ensure!(history.ledger().entries.last().is_some_and(|entry| entry.edits.iter().any(|edit| {
+        matches!(edit, country_core::resources::history::EditType::Color(color)
+            if matches!(color.as_ref(), country_core::resources::history::color_edit::ColorEdit::Wall {
+                wall_id, from, to
+            } if *wall_id == wall && from.0 == before && to.0 == chosen))
+    })), "history does not contain the clicked wall and its exact before/after colors");
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, committed_cursor - 1, "color undo")?;
+    anyhow::ensure!(driver.app().world().resource::<WallColorIds>().0[wall.0 as usize] == before, "color undo failed");
+    m6_assert_wall_color_gpu(driver.app().world(), &bridge, &device)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, committed_cursor, "color redo")?;
+    anyhow::ensure!(driver.app().world().resource::<WallColorIds>().0[wall.0 as usize] == chosen, "color redo failed");
+    m6_assert_wall_color_gpu(driver.app().world(), &bridge, &device)?;
+    m6_settle_history(&mut driver, &context, &mut bridge)?;
+    let world = driver.app().world();
+    let after_authority = m6_color_authority_map(world)?;
+    let history = world.resource::<History>();
+    let settled_entries: Vec<_> = history.ledger().entries.iter().cloned().map(country_core::resources::history::serialized::SavedMultiEdit).collect();
+    let settled_wire = m6_history_wire(&settled_entries)?;
+    let mut history_json = serde_json::to_value(history.ledger().entries.iter().cloned()
+        .map(country_core::resources::history::serialized::SavedMultiEdit).collect::<Vec<_>>())?;
+    for entry in history_json.as_array_mut().context("history entries are not an array")? { canonicalize_decorator_diff_map(entry); }
+    let expected_json = serde_json::json!({"history": history_json, "typed_history": settled_wire, "cursor": committed_cursor,
+        "before_authority": before_authority, "after_authority": after_authority, "before_color": before});
+    let session = world.resource::<ActiveSession>().id;
+    driver.app_mut().world_mut().send_event(country_core::systems::save::save_game::SaveGameCmd);
+    let mut saved = false;
+    for _ in 0..600 {
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        if driver.app_mut().world_mut().resource_mut::<bevy_ecs::event::Events<country_core::systems::save::save_game::SavingGameComplete>>()
+            .drain().any(|event| event.path == session.save_folder_path()) { saved = true; break; }
+    }
+    anyhow::ensure!(saved, "color save worker did not finish");
+    let expected_dir = tempfile::tempdir()?;
+    let expected_path = expected_dir.path().join("wall-color-history.json");
+    std::fs::write(&expected_path, serde_json::to_vec(&expected_json)?)?;
+    m6_retain_color_diagnostic("wall-color", &session.save_folder_path(), &expected_path, serde_json::json!({
+        "test": "m06_real_wall_color_picker_history_save_new_process",
+        "child_env": {"TG_M6_COLOR_CHILD":"1", "TG_M6_COLOR_FOLDER":"save", "TG_M6_COLOR_HISTORY_FILE":"expected.json",
+            "TG_M6_COLOR_SESSION":serde_json::to_string(&session)?, "TG_M6_COLOR_WALL":wall.0.to_string(), "TG_M6_COLOR_VALUE":chosen.to_string()},
+        "cursor": committed_cursor
+    }))?;
+    m6_check_disk_history(driver.app().world(), &session.save_folder_path(), &settled_wire, "wall color parent")?;
+    drop(driver); drop(bridge); drop(shaders); drop(device);
+    let status = std::process::Command::new(std::env::current_exe()?)
+        .args(["--exact", "m06_real_wall_color_picker_history_save_new_process", "--nocapture", "--test-threads=1"])
+        .env("TG_M6_COLOR_CHILD", "1").env("TG_M6_COLOR_FOLDER", session.save_folder_path())
+        .env("TG_M6_COLOR_SESSION", serde_json::to_string(&session)?)
+        .env("TG_M6_COLOR_WALL", wall.0.to_string()).env("TG_M6_COLOR_VALUE", chosen.to_string())
+        .env("TG_M6_COLOR_HISTORY_FILE", &expected_path).status()?;
+    anyhow::ensure!(status.success(), "new process failed color recovery: {status}");
+    Ok(())
+}
+
+#[test]
+fn m06_real_rim_picker_commits_same_history_transaction_and_replays() -> Result<()> {
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{input::action_set::DigitalActionPhase as Phase,
+        resources::{color_icon::{CustomizationIcon, FlatRoofRimTypeToggle}, history::{EditType, History, MaybePendingSnapshotId},
+            mouse_terrain_raycast::camera_mouse_ray, roofs::roof_shape::Roof,
+            walls::{WallId, public_walls::PublicWalls}, window::WindowSize},
+        systems::{camera_rig::MainCamera, collision::world::RaycastWorld, mode_manager::{self, AppMode},
+            ui::hover_intersection::hover_intersection}};
+    use system_color::radial_menu::ColorRadialMenu;
+    if std::env::var_os("TG_M6_RIM_CHILD").is_some() { return m6_rim_reload_child(); }
+    let BootedSession { mut driver, context, mut bridge, shaders, device, _boot } = boot_shipped_session()?;
+    eprintln!("M6_RIM session booted");
+    let world = driver.app_mut().world_mut();
+    tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)?;
+    bridge.accept_gameplay_warmup(world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>())?;
+    for _ in 0..8 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    // Construct through the production wall and roof edit consumers; do not
+    // seed a Roof component or fabricate the later collider/widget hit.
+    m6_dismiss_welcome(&mut driver, &context, &mut bridge)?;
+    m6_settle_history(&mut driver, &context, &mut bridge)?;
+    eprintln!("M6_RIM rendered warmup and welcome complete");
+    let before_walls: std::collections::HashSet<_> = driver.app().world().resource::<InnerWalls>().wall_ids().collect();
+    driver.app_mut().world_mut().resource_mut::<History>().start_input_recording(0)
+        .map_err(|error| anyhow::anyhow!("rim setup recording failed: {error:?}"))?;
+    driver.app_mut().world_mut().send_event(country_core::systems::wall::shapes::CreateRectangleCmd {
+        center: glam::Vec2::ZERO, dimensions: glam::Vec2::new(6.0, 4.0), orientation: glam::Vec2::X,
+        previous_wall: None, height: 4.0, elevation: 1.5,
+    });
+    for _ in 0..20 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let created_wall = driver.app().world().resource::<InnerWalls>().wall_ids()
+        .find(|id| !before_walls.contains(id)).context("rectangle setup did not create a wall")?;
+    anyhow::ensure!(driver.app().world().resource::<PublicWalls>().roof_entity(created_wall).is_some(), "created wall has no roof");
+    eprintln!("M6_RIM rectangle published: {created_wall:?}");
+    use country_core::resources::roofs::{commands::EditRoofCmd, geometry::edit_rules::{RoofEditEvent, ScalarEdit, TipEdit}};
+    let keep = ScalarEdit { mode: 0, value: 0.0 };
+    driver.app_mut().world_mut().send_event(EditRoofCmd(RoofEditEvent {
+        wall_id: created_wall.0, profile: keep, height: ScalarEdit { mode: 1, value: 0.0 },
+        ridge: keep, eave: keep, tip: TipEdit { mode: 0, value: glam::Vec2::ZERO }, source_flag: 0,
+    }));
+    for _ in 0..20 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    if driver.app().world().resource::<History>().is_recording() {
+        driver.app_mut().world_mut().send_event(country_core::resources::history::FinishInputRecordingCmd);
+    }
+    for _ in 0..3 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let (wall, roof_entity, before, cursor) = {
+        let world = driver.app().world();
+        let camera = world.resource::<MainCamera>();
+        let window = world.resource::<WindowSize>();
+        let collision = world.resource::<RaycastWorld>();
+        let walls = world.resource::<PublicWalls>();
+        let mut found = None;
+        for y in (4..window.height.saturating_sub(4)).step_by(3) {
+            for x in (4..window.width.saturating_sub(4)).step_by(3) {
+                let cursor = glam::Vec2::new(x as f32, y as f32);
+                let ray = utils::geometry::Ray::from_mouse_ss(cursor, window.as_vec2(), camera.read_matrix(0x40), camera.read_matrix(0xc0));
+                let hit = collision.raycast(ray.origin, ray.direction, 0xcb);
+                if !hit.is_hit() || !matches!(hit.handle[0] as u8, 0 | 6 | 7) { continue; }
+                let wall = WallId(hit.handle[1]);
+                if wall != created_wall { continue; }
+                if !walls.get(wall).is_some_and(|state| state.shape().tag() < 2) { continue; }
+                let Some(entity) = walls.roof_entity(wall) else { continue; };
+                let Some(roof) = world.get::<Roof>(entity) else { continue; };
+                if !roof.is_flat() { continue; }
+                if found.as_ref().is_none_or(|(_, _, _, old): &(_, _, _, glam::Vec2)|
+                    cursor.x < old.x || (cursor.x == old.x && cursor.y > old.y)) {
+                    found = Some((wall, entity, roof.observed()[0x3d], cursor));
+                }
+            }
+        }
+        found.context("no visible wall with a flat roof for the rim picker")?
+    };
+    eprintln!("M6_RIM flat roof picker: {wall:?}, cursor={cursor:?}");
+    let history_before = driver.app().world().resource::<History>().ledger().entries.len();
+    driver.app_mut().insert_resource(M6ColorInput { cursor, click: Phase::Idle, undo: Phase::Idle, redo: Phase::Idle });
+    driver.app_mut().add_systems(bevy_app::Update, m6_color_pointer_input
+        .after(country_core::systems::backend::input::update_cursor_position::update_cursor_position)
+        .before(hover_intersection).before(camera_mouse_ray)
+        .before(mode_manager::mode_manager::<EditType, MaybePendingSnapshotId>));
+    m6_request_mode(&mut driver, &context, &mut bridge, AppMode::Color)?;
+    for phase in [Phase::Idle, Phase::JustPressed, Phase::JustReleased, Phase::Idle] {
+        driver.app_mut().world_mut().resource_mut::<M6ColorInput>().click = phase;
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    }
+    let mut rim_position = None;
+    for _ in 0..90 {
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        let world = driver.app_mut().world_mut();
+        let mut menus = world.query::<&ColorRadialMenu>();
+        let icons = menus.iter(world).find(|menu| menu.target.kind == 0 && menu.target.id == wall.0)
+            .map(|menu| menu.icon_entities.clone());
+        if let Some(icons) = icons {
+            rim_position = icons.into_iter().find_map(|entity| {
+                world.get::<FlatRoofRimTypeToggle>(entity)?;
+                let icon = world.get::<CustomizationIcon>(entity)?;
+                let extent = world.get::<country_core::components::Ui2dExtent>(entity)?;
+                let position = m6_visible_icon_point(world, extent)?;
+                (icon.alpha_18 >= 0.7 && extent.size.x > 0.0).then_some(position)
+            });
+        }
+        if rim_position.is_some() { break; }
+    }
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().cursor = rim_position.context("rim toggle did not appear")?;
+    for phase in [Phase::Idle, Phase::JustPressed, Phase::JustReleased, Phase::Idle, Phase::Idle] {
+        driver.app_mut().world_mut().resource_mut::<M6ColorInput>().click = phase;
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    }
+    for _ in 0..4 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let world = driver.app().world();
+    let after = world.get::<Roof>(roof_entity).context("roof disappeared")?.observed()[0x3d];
+    anyhow::ensure!(after == (before ^ 1), "rim input did not toggle roof byte");
+    let history = world.resource::<History>();
+    anyhow::ensure!(history.ledger().entries.len() == history_before + 1, "rim input did not commit one transaction");
+    let entry = history.ledger().entries.last().context("rim history entry missing")?;
+    anyhow::ensure!(entry.edits.iter().filter(|edit| matches!(edit, EditType::Roof(roof) if roof.tag() == 4 && roof.wall_id() == wall.0 && roof.payload()[1] == before && roof.payload()[2] == after)).count() == 1,
+        "same transaction does not contain exactly one target rim edit");
+    let committed_cursor = history.ledger().cursor;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, committed_cursor - 1, "rim undo")?;
+    for _ in 0..3 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    anyhow::ensure!(driver.app().world().get::<Roof>(roof_entity).context("roof missing after undo")?.observed()[0x3d] == before, "rim undo did not restore state");
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, committed_cursor, "rim redo")?;
+    for _ in 0..3 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    anyhow::ensure!(driver.app().world().get::<Roof>(roof_entity).context("roof missing after redo")?.observed()[0x3d] == after, "rim redo did not restore state");
+    m6_settle_history(&mut driver, &context, &mut bridge)?;
+    let world = driver.app().world();
+    let roof_json = serde_json::to_string(world.get::<Roof>(roof_entity).context("roof missing before save")?)?;
+    let settled_entries: Vec<_> = world.resource::<History>().ledger().entries.iter().cloned().map(country_core::resources::history::serialized::SavedMultiEdit).collect();
+    let settled_wire = m6_history_wire(&settled_entries)?;
+    let mut history_json = serde_json::to_value(world.resource::<History>().ledger().entries.iter().cloned()
+        .map(country_core::resources::history::serialized::SavedMultiEdit).collect::<Vec<_>>())?;
+    for entry in history_json.as_array_mut().context("history entries are not an array")? { canonicalize_decorator_diff_map(entry); }
+    let session = world.resource::<ActiveSession>().id;
+    let folder = session.save_folder_path();
+    driver.app_mut().world_mut().send_event(country_core::systems::save::save_game::SaveGameCmd);
+    let mut saved = false;
+    for _ in 0..600 {
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        if driver.app_mut().world_mut().resource_mut::<bevy_ecs::event::Events<country_core::systems::save::save_game::SavingGameComplete>>()
+            .drain().any(|event| event.path == folder) { saved = true; break; }
+    }
+    anyhow::ensure!(saved && folder.join("history.json").is_file(), "rim save worker did not finish");
+    let expected_dir = tempfile::tempdir()?;
+    let expected_path = expected_dir.path().join("rim-expected.json");
+    std::fs::write(&expected_path, serde_json::to_vec(&serde_json::json!({
+        "roof_wire": roof_json,
+        "history": history_json, "typed_history": settled_wire,
+    }))?)?;
+    m6_retain_color_diagnostic("roof-rim", &folder, &expected_path, serde_json::json!({
+        "test":"m06_real_rim_picker_commits_same_history_transaction_and_replays",
+        "child_env":{"TG_M6_RIM_CHILD":"1", "TG_M6_RIM_FOLDER":"save", "TG_M6_RIM_EXPECTED_FILE":"expected.json",
+            "TG_M6_RIM_SESSION":serde_json::to_string(&session)?, "TG_M6_RIM_WALL":wall.0.to_string(),
+            "TG_M6_RIM_BEFORE":before.to_string(), "TG_M6_RIM_AFTER":after.to_string(), "TG_M6_RIM_CURSOR":committed_cursor.to_string()}
+    }))?;
+    m6_check_disk_history(driver.app().world(), &folder, &settled_wire, "rim parent")?;
+    drop(driver); drop(bridge); drop(shaders); drop(device);
+    let status = std::process::Command::new(std::env::current_exe()?)
+        .args(["--exact", "m06_real_rim_picker_commits_same_history_transaction_and_replays", "--nocapture", "--test-threads=1"])
+        .env("TG_M6_RIM_CHILD", "1").env("TG_M6_RIM_FOLDER", folder)
+        .env("TG_M6_RIM_SESSION", serde_json::to_string(&session)?)
+        .env("TG_M6_RIM_WALL", wall.0.to_string()).env("TG_M6_RIM_BEFORE", before.to_string())
+        .env("TG_M6_RIM_AFTER", after.to_string()).env("TG_M6_RIM_CURSOR", committed_cursor.to_string())
+        .env("TG_M6_RIM_EXPECTED_FILE", &expected_path).status()?;
+    anyhow::ensure!(status.success(), "new process failed rim recovery: {status}");
+    Ok(())
+}
+
+fn m6_rim_reload_child() -> Result<()> {
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{input::action_set::DigitalActionPhase as Phase,
+        meta_commander::{MetaCommand, MetaCommander},
+        resources::{history::{EditType, History, MaybePendingSnapshotId, ReplayBuffer},
+            mouse_terrain_raycast::camera_mouse_ray, roofs::roof_shape::Roof, session::SessionId,
+            walls::{WallId, public_walls::PublicWalls}},
+        systems::{history::PendingHistoryCommands, mode_manager::{self, AppMode}, ui::hover_intersection::hover_intersection}};
+    let session: SessionId = serde_json::from_str(&std::env::var("TG_M6_RIM_SESSION")?)?;
+    let wall = WallId(std::env::var("TG_M6_RIM_WALL")?.parse()?);
+    let before: u8 = std::env::var("TG_M6_RIM_BEFORE")?.parse()?;
+    let after: u8 = std::env::var("TG_M6_RIM_AFTER")?.parse()?;
+    let cursor: i32 = std::env::var("TG_M6_RIM_CURSOR")?.parse()?;
+    let source = PathBuf::from(std::env::var_os("TG_M6_RIM_FOLDER").context("missing rim save")?);
+    let BootedSession { mut driver, context, mut bridge, .. } = boot_shipped_session()?;
+    {
+        let world = driver.app_mut().world_mut();
+        tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)?;
+        bridge.accept_gameplay_warmup(world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>())?;
+    }
+    copy_test_tree(&source, &session.save_folder_path())?;
+    driver.app_mut().world_mut().resource_mut::<MetaCommander>().extend_script([MetaCommand::load_session(session, false)]);
+    let mut saw_reload = false; let mut loaded = false;
+    for _ in 0..1200 {
+        context.begin_frame(egui::RawInput::default()); driver.app_mut().update(); let _ = context.end_frame();
+        bridge.prepare_test_execution()?;
+        let world = driver.app().world();
+        let state = world.resource::<bevy_state::prelude::State<country_core::app_loading_state::AppLoadingState>>().get();
+        saw_reload |= *state == country_core::app_loading_state::AppLoadingState::Reload;
+        if saw_reload && *state == country_core::app_loading_state::AppLoadingState::Game
+            && world.get_resource::<ActiveSession>().is_some_and(|s| s.id == session)
+            && world.resource::<LoadGameManager>().options.is_none() && world.resource::<ReplayBuffer>().is_empty()
+            && world.resource::<PendingHistoryCommands>().0.is_empty() && world.resource::<AppMode>().native_tag() != 13 { loaded = true; break; }
+    }
+    anyhow::ensure!(loaded, "rim session reload incomplete");
+    for _ in 0..8 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let world = driver.app().world();
+    let entity = world.resource::<PublicWalls>().roof_entity(wall).context("reloaded roof association missing")?;
+
+    let roof = world.get::<Roof>(entity).context("reloaded roof missing")?;
+    let expected: serde_json::Value = serde_json::from_slice(&std::fs::read(std::env::var_os("TG_M6_RIM_EXPECTED_FILE").context("missing rim expectation file")?)?)?;
+    let expected_wire: Vec<String> = serde_json::from_value(expected["typed_history"].clone())?;
+    m6_check_disk_history(world, &source, &expected_wire, "rim child")?;
+    let expected_roof = expected["roof_wire"].as_str().context("missing typed roof wire")?;
+    anyhow::ensure!(serde_json::to_string(roof)? == expected_roof, "reloaded full saved roof differs");
+    anyhow::ensure!(roof.observed()[0x3d] == after, "reloaded rim differs");
+    let history = world.resource::<History>();
+    let mut actual_history = serde_json::to_value(history.ledger().entries.iter().cloned()
+        .map(country_core::resources::history::serialized::SavedMultiEdit).collect::<Vec<_>>())?;
+    for entry in actual_history.as_array_mut().context("history entries are not an array")? { canonicalize_decorator_diff_map(entry); }
+    m6_check_parent_history(&expected["history"], &actual_history, "rim")?;
+    anyhow::ensure!(history.ledger().cursor == cursor, "reloaded rim cursor differs");
+    driver.app_mut().insert_resource(M6ColorInput { cursor: glam::Vec2::ZERO, click: Phase::Idle, undo: Phase::Idle, redo: Phase::Idle });
+    driver.app_mut().add_systems(bevy_app::Update, m6_color_pointer_input
+        .after(country_core::systems::backend::input::update_cursor_position::update_cursor_position)
+        .before(hover_intersection).before(camera_mouse_ray)
+        .before(mode_manager::mode_manager::<EditType, MaybePendingSnapshotId>));
+    m6_request_mode(&mut driver, &context, &mut bridge, AppMode::Color)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, cursor - 1, "reloaded rim undo")?;
+    for _ in 0..3 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    anyhow::ensure!(driver.app().world().get::<Roof>(entity).context("roof missing after reloaded undo")?.observed()[0x3d] == before, "reloaded rim undo failed");
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, cursor, "reloaded rim redo")?;
+    for _ in 0..3 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let roof = driver.app().world().get::<Roof>(entity).context("roof missing after reloaded redo")?;
+    anyhow::ensure!(roof.observed()[0x3d] == after && serde_json::to_string(roof)? == expected_roof, "reloaded rim redo failed to restore full roof");
+    Ok(())
+}
+
+#[test]
+fn m06_gate_color_setter_uploads_complete_filtered_table() -> Result<()> {
+    use country_core::{asset_libraries::ssbo_library::AssetSsboLibrary,
+        resources::{color_id::{GateColorIdSsbo, GateColorIds, SetGateColorIdCmd},
+            walls::{WallId, public_walls::PublicWalls}}};
+    let BootedSession { mut driver, context, mut bridge, device, .. } = boot_shipped_session_with_nani_readback(true)?;
+    let world = driver.app_mut().world_mut();
+    tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)?;
+    bridge.accept_gameplay_warmup(world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>())?;
+    for _ in 0..8 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let wall = driver.app().world().resource::<PublicWalls>().wall_ids().next().context("no published wall")?;
+    let missing = WallId(wall.0 | (1u64 << 32));
+    anyhow::ensure!(driver.app().world().resource::<PublicWalls>().get(missing).is_none(), "missing-wall test identity exists");
+    driver.app_mut().world_mut().send_event(SetGateColorIdCmd::new(wall, 4, 0));
+    driver.app_mut().world_mut().send_event(SetGateColorIdCmd::new(missing, 9, 0));
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    let world = driver.app().world();
+    let colors = &world.resource::<GateColorIds>().0;
+    anyhow::ensure!(colors[wall.0 as usize] == 4, "missing wall command changed the valid wall slot");
+    let storage = world.resource::<AssetSsboLibrary>().get::<GateColorIdSsbo>().context("gate SSBO missing")?;
+    let actual = m6_read_diagnostic_range(&device, bridge.hosts().buffers.as_ref(), &storage.buffer, 0, colors.len() * 4)?;
+    let expected: Vec<u8> = colors.iter().flat_map(|color| color.to_le_bytes()).collect();
+    anyhow::ensure!(actual == expected, "gate GPU table differs from filtered CPU table");
+    Ok(())
+}
+
+#[test]
+fn m06_real_decorator_collision_picker_opens_matching_menu() -> Result<()> {
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{input::action_set::DigitalActionPhase as Phase,
+        resources::{history::MaybePendingSnapshotId, mouse_terrain_raycast::camera_mouse_ray,
+            walls::{decorator::DecoratorId, decorator_storage::{DecoratorStorage, DecoratorStorageAddr}, WallId}, window::WindowSize},
+        systems::{camera_rig::MainCamera, collision::world::RaycastWorld, mode_manager::{self, AppMode},
+            ui::hover_intersection::hover_intersection}};
+    use system_color::radial_menu::ColorRadialMenu;
+    if std::env::var_os("TG_M6_DECO_COLOR_CHILD").is_some() { return m6_decorator_color_reload_child(); }
+    let BootedSession { mut driver, context, mut bridge, shaders, device, _boot } = boot_shipped_session()?;
+    let world = driver.app_mut().world_mut();
+    tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)?;
+    bridge.accept_gameplay_warmup(world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>())?;
+    for _ in 0..8 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    m6_dismiss_welcome(&mut driver, &context, &mut bridge)?;
+    m6_settle_history(&mut driver, &context, &mut bridge)?;
+    let before_walls: std::collections::HashSet<_> = driver.app().world().resource::<InnerWalls>().wall_ids().collect();
+    let center = {
+        let walls = driver.app().world().resource::<InnerWalls>();
+        let mut found = None;
+        for z in [0.0f32, -6.0, 6.0, -12.0, 12.0] {
+            for x in [0.0f32, -6.0, 6.0, -12.0, 12.0] {
+                let p = glam::Vec2::new(x, z);
+                if walls.wall_ids().all(|id| walls.get_unwrapped(id).source().curve.points.windows(2).all(|pair| {
+                    let a = glam::Vec2::from_array(pair[0]);
+                    let b = glam::Vec2::from_array(pair[1]);
+                    let ab = b - a;
+                    let t = if ab.length_squared() > 0.0 { ((p - a).dot(ab) / ab.length_squared()).clamp(0.0, 1.0) } else { 0.0 };
+                    p.distance(a + ab * t) > 7.0
+                })) { found = Some(p); break; }
+            }
+            if found.is_some() { break; }
+        }
+        found.context("no non-overlapping window fixture site")?
+    };
+    driver.app_mut().world_mut().resource_mut::<country_core::resources::history::History>().start_input_recording(0)
+        .map_err(|error| anyhow::anyhow!("decorator setup recording failed: {error:?}"))?;
+    driver.app_mut().world_mut().send_event(country_core::systems::wall::shapes::CreateRectangleCmd {
+        center, dimensions: glam::Vec2::new(6.0, 4.0), orientation: glam::Vec2::X,
+        previous_wall: None, height: 4.0, elevation: 1.5,
+    });
+    for _ in 0..20 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let created_wall = driver.app().world().resource::<InnerWalls>().wall_ids()
+        .find(|id| !before_walls.contains(id)).context("decorator setup did not create a wall")?;
+    if driver.app().world().resource::<country_core::resources::history::History>().is_recording() {
+        driver.app_mut().world_mut().send_event(country_core::resources::history::FinishInputRecordingCmd);
+    }
+    for _ in 0..3 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let placement_cursor = {
+        let world = driver.app().world(); let camera = world.resource::<MainCamera>();
+        let window = world.resource::<WindowSize>(); let collision = world.resource::<RaycastWorld>();
+        let mut found: Option<(f32, glam::Vec2)> = None;
+        for y in (8..window.height.saturating_sub(8)).step_by(3) {
+            for x in (8..window.width.saturating_sub(8)).step_by(3) {
+                let point = glam::Vec2::new(x as f32, y as f32);
+                let ray = utils::geometry::Ray::from_mouse_ss(point, window.as_vec2(), camera.read_matrix(0x40), camera.read_matrix(0xc0));
+                let hit = collision.raycast(ray.origin, ray.direction, 0x30ab | 0x100);
+                if hit.is_hit() && hit.handle[0] as u8 == 0 && hit.handle[1] == created_wall.0 {
+                    let relative = hit.position - glam::Vec3::new(center.x, 0.0, center.y);
+                    // Select the middle of a straight wall face, away from corners and roof.
+                    let along = if hit.normal.x.abs() > hit.normal.z.abs() { relative.z } else { relative.x };
+                    if along.abs() < 0.8 && relative.y > 2.0 && relative.y < 4.0 {
+                        let score = along.abs() + (relative.y - 3.0).abs();
+                        if found.as_ref().is_none_or(|(best, _)| score < *best) { found = Some((score, point)); }
+                    }
+                }
+            }
+        }
+        found.map(|(_, point)| point).context("created wall has no visible central window placement ray")?
+    };
+    driver.app_mut().insert_resource(M6ColorInput { cursor: placement_cursor, click: Phase::Idle, undo: Phase::Idle, redo: Phase::Idle });
+    driver.app_mut().add_systems(bevy_app::Update, m6_color_pointer_input
+        .after(country_core::systems::backend::input::update_cursor_position::update_cursor_position)
+        .before(hover_intersection).before(camera_mouse_ray)
+        .before(mode_manager::mode_manager::<country_core::resources::history::EditType, MaybePendingSnapshotId>));
+    m6_trace_decorator_id(driver.app().world(), "before decorator mode");
+    m6_request_mode(&mut driver, &context, &mut bridge,
+        AppMode::Decorator(country_core::systems::mode_manager::DecoratorType::CottageWindow))?;
+    let widget = country_core::systems::ui::resources::ui_state::WidgetId::from_name("place_decorator");
+    let mut active = false;
+    for attempt in 0..60 {
+        m6_trace_decorator_id(driver.app().world(), &format!("before wait {attempt}"));
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        let world = driver.app().world();
+        let ui = world.resource::<country_core::systems::ui::resources::ui_state::UiState>();
+        let dispatcher = world.resource::<system_decorator::ui_systems::ui_decorator_affordance_dispatch::DecoratorAffordanceDispatcher>();
+        if attempt % 10 == 0 {
+            let backup = world.resource::<system_decorator::backup::DecoratorBackup>();
+            eprintln!("M6_WINDOW wait={attempt} cursor={placement_cursor:?} active={:?} interaction={:?} place={:?} backup=({}, {})",
+                ui.active_widget(), ui.interaction(), dispatcher.place_decorator(), backup.created, backup.state);
+        }
+        if ui.widget_context(widget).is_active() && dispatcher.place_decorator().is_some_and(|p|
+            p.widget == widget && p.hit.handle[0] as u8 == 0 && p.hit.handle[1] == created_wall.0) {
+            active = true; break;
+        }
+    }
+    anyhow::ensure!(active, "central wall placement widget did not become active on the created wall");
+    for phase in [Phase::Idle, Phase::JustPressed, Phase::JustReleased, Phase::Idle] {
+        driver.app_mut().world_mut().resource_mut::<M6ColorInput>().click = phase;
+        m6_trace_decorator_id(driver.app().world(), &format!("before placement {phase:?}"));
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        let world = driver.app().world();
+        let ui = world.resource::<country_core::systems::ui::resources::ui_state::UiState>();
+        let dispatcher = world.resource::<system_decorator::ui_systems::ui_decorator_affordance_dispatch::DecoratorAffordanceDispatcher>();
+        let backup = world.resource::<system_decorator::backup::DecoratorBackup>();
+        let bucket = world.resource::<DecoratorStorage>().get(DecoratorStorageAddr::Wall(created_wall));
+        let entries: Vec<_> = bucket.into_iter().flat_map(|b| b.decorators.iter())
+            .map(|(&id, info)| (id, info.ty, info.state())).collect();
+        eprintln!("M6_WINDOW phase={phase:?} cursor={placement_cursor:?} active={:?} interaction={:?} place={:?} backup=({}, {}) bucket={entries:?}",
+            ui.active_widget(), ui.interaction(), dispatcher.place_decorator(), backup.created, backup.state);
+        if phase == Phase::JustPressed {
+            anyhow::ensure!(ui.widget_context(widget).is_active() && ui.widget_context(widget).dragged() == 3,
+                "window placement did not capture its real widget");
+            anyhow::ensure!(entries.iter().any(|&(_, ty, state)| ty == b'8' && state == 1),
+                "central wall placement did not produce an accepted cottage-window preview");
+        }
+    }
+    for _ in 0..20 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let created_id = {
+        let storage = driver.app().world().resource::<DecoratorStorage>();
+        let bucket = storage.get(DecoratorStorageAddr::Wall(created_wall)).context("window placement created no wall decorator bucket")?;
+        let (&id, _) = bucket.decorators.iter().find(|(_, info)| info.ty == b'8' && info.state() == 0)
+            .context("real placement did not commit a cottage window")?;
+        DecoratorId(id)
+    };
+    let (id, kind, subtype, cursor) = {
+        let world = driver.app().world();
+        let camera = world.resource::<MainCamera>();
+        let window = world.resource::<WindowSize>();
+        let collision = world.resource::<RaycastWorld>();
+        let storage = world.resource::<DecoratorStorage>();
+        let mut found = None;
+        'pixels: for y in (4..window.height.saturating_sub(4)).step_by(2) {
+            for x in (4..window.width.saturating_sub(4)).step_by(2) {
+                let cursor = glam::Vec2::new(x as f32, y as f32);
+                let ray = utils::geometry::Ray::from_mouse_ss(cursor, window.as_vec2(), camera.read_matrix(0x40), camera.read_matrix(0xc0));
+                let hit = collision.legacy_raycast_w_params(ray.origin, ray.direction, 0x3108);
+                if !hit.is_hit() { continue; }
+                let id = DecoratorId((hit.handle[0] >> 32) as u32);
+                if id != created_id { continue; }
+                let info = match hit.handle[0] as u8 {
+                    13 | 14 => storage.lookup_decorator_info(id),
+                    4 => { let addr = match hit.handle[1] {
+                        0 => DecoratorStorageAddr::Wall(WallId(hit.handle[2])),
+                        1 => DecoratorStorageAddr::Terrain, 2 => DecoratorStorageAddr::Stair, _ => continue,
+                    }; storage.get(addr).and_then(|bucket| bucket.get(id)) },
+                    _ => continue,
+                };
+                let Some(info) = info else { continue; };
+                let (kind, subtype) = match info.ty {
+                    b'8' => (3, 0), b'9' | b':' => (3, 1), b';' => (10, info.ty),
+                    b'<' => (9, info.ty), b'=' => (6, info.ty), _ => continue,
+                };
+                found = Some((id, kind, subtype, cursor)); break 'pixels;
+            }
+        }
+        found.context("no visible eligible decorator collider in shipped session")?
+    };
+    let before = *driver.app().world().resource::<DecoratorStorage>().lookup_decorator_info(id).context("window info missing before color")?;
+    let history_before = driver.app().world().resource::<country_core::resources::history::History>().ledger().entries.len();
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().cursor = cursor;
+    m6_request_mode(&mut driver, &context, &mut bridge, AppMode::Color)?;
+    for phase in [Phase::Idle, Phase::JustPressed, Phase::JustReleased, Phase::Idle] {
+        driver.app_mut().world_mut().resource_mut::<M6ColorInput>().click = phase;
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    }
+    for _ in 0..12 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let (chosen, icon_position) = {
+        use country_core::resources::color_icon::{ColorIcon, CustomizationIcon};
+        let mut found = None;
+        for _ in 0..90 {
+            run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+            let world = driver.app_mut().world_mut();
+            let mut menus = world.query::<&ColorRadialMenu>();
+            let icons = menus.iter(world).find(|menu| menu.target.kind == kind && menu.target.subtype == subtype && menu.target.payload == id.0)
+                .map(|menu| menu.icon_entities.clone());
+            if let Some(icons) = icons {
+                found = icons.into_iter().find_map(|entity| {
+                    let color = world.get::<ColorIcon>(entity)?.0;
+                    let icon = world.get::<CustomizationIcon>(entity)?;
+                    let extent = world.get::<country_core::components::Ui2dExtent>(entity)?;
+                    let position = m6_visible_icon_point(world, extent)?;
+                    (color != before.u28 && color != 777 && icon.alpha_18 >= 0.7 && extent.size.x > 0.0
+                        ).then_some((color, position))
+                });
+            }
+            if found.is_some() { break; }
+        }
+        found.context("real window menu did not produce a different actionable color")?
+    };
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().cursor = icon_position;
+    for phase in [Phase::Idle, Phase::JustPressed, Phase::JustReleased, Phase::Idle, Phase::Idle] {
+        driver.app_mut().world_mut().resource_mut::<M6ColorInput>().click = phase;
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    }
+    for _ in 0..12 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    use country_core::resources::history::{History, EditType, color_edit::ColorEdit, decorator_edit::DecoratorHistoryState, serialized::SavedMultiEdit};
+    let world = driver.app().world();
+    let after = *world.resource::<DecoratorStorage>().lookup_decorator_info(id).context("window info missing after color")?;
+    anyhow::ensure!(after.u28 == chosen, "window color click did not commit chosen color");
+    let history = world.resource::<History>();
+    anyhow::ensure!(history.ledger().entries.len() == history_before + 1, "window color did not commit one history entry");
+    anyhow::ensure!(history.ledger().entries.last().is_some_and(|entry| entry.edits.iter().any(|edit| matches!(edit,
+        EditType::Color(color) if matches!(color.as_ref(), ColorEdit::Decorator { decorator_id, from, to }
+            if *decorator_id == id && from.0 == before.u28 && to.0 == chosen)))), "window color history payload differs");
+    let committed = history.ledger().cursor;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, committed - 1, "window color undo")?;
+    anyhow::ensure!(driver.app().world().resource::<DecoratorStorage>().lookup_decorator_info(id) == Some(&before), "window color undo did not restore complete info");
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, committed, "window color redo")?;
+    anyhow::ensure!(driver.app().world().resource::<DecoratorStorage>().lookup_decorator_info(id) == Some(&after), "window color redo did not restore complete info");
+    m6_settle_history(&mut driver, &context, &mut bridge)?;
+    let world = driver.app().world();
+    let settled_entries: Vec<_> = world.resource::<History>().ledger().entries.iter().cloned().map(country_core::resources::history::serialized::SavedMultiEdit).collect();
+    let settled_wire = m6_history_wire(&settled_entries)?;
+    let mut history_json = serde_json::to_value(world.resource::<History>().ledger().entries.iter().cloned().map(SavedMultiEdit).collect::<Vec<_>>())?;
+    for entry in history_json.as_array_mut().context("history entries are not an array")? { canonicalize_decorator_diff_map(entry); }
+    let session = world.resource::<ActiveSession>().id;
+    let folder = session.save_folder_path();
+    let before_state = DecoratorHistoryState::from_info(&before);
+    let after_state = DecoratorHistoryState::from_info(&after);
+    anyhow::ensure!(before_state.to_info() == before && after_state.to_info() == after,
+        "window history state does not preserve complete fixture info");
+    let before_json = serde_json::to_string(&before_state)?;
+    let after_json = serde_json::to_string(&after_state)?;
+    driver.app_mut().world_mut().send_event(country_core::systems::save::save_game::SaveGameCmd);
+    let mut saved = false;
+    for _ in 0..600 {
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        if driver.app_mut().world_mut().resource_mut::<bevy_ecs::event::Events<country_core::systems::save::save_game::SavingGameComplete>>()
+            .drain().any(|event| event.path == folder) { saved = true; break; }
+    }
+    anyhow::ensure!(saved && folder.join("history.json").is_file(), "window color save worker did not finish");
+    let expected_dir = tempfile::tempdir()?;
+    let expected_path = expected_dir.path().join("window-color-expected.json");
+    std::fs::write(&expected_path, serde_json::to_vec(&serde_json::json!({
+        "before": serde_json::from_str::<serde_json::Value>(&before_json)?,
+        "after": serde_json::from_str::<serde_json::Value>(&after_json)?,
+        "history": history_json, "typed_history": settled_wire,
+    }))?)?;
+    m6_retain_color_diagnostic("decorator-color", &folder, &expected_path, serde_json::json!({
+        "test":"m06_real_decorator_collision_picker_opens_matching_menu",
+        "child_env":{"TG_M6_DECO_COLOR_CHILD":"1", "TG_M6_DECO_COLOR_FOLDER":"save", "TG_M6_DECO_COLOR_EXPECTED_FILE":"expected.json",
+            "TG_M6_DECO_COLOR_SESSION":serde_json::to_string(&session)?, "TG_M6_DECO_COLOR_ID":id.0.to_string(),
+            "TG_M6_DECO_COLOR_CURSOR":committed.to_string()}
+    }))?;
+    m6_check_disk_history(driver.app().world(), &folder, &settled_wire, "window color parent")?;
+    drop(driver); drop(bridge); drop(shaders); drop(device);
+    let status = std::process::Command::new(std::env::current_exe()?)
+        .args(["--exact", "m06_real_decorator_collision_picker_opens_matching_menu", "--nocapture", "--test-threads=1"])
+        .env("TG_M6_DECO_COLOR_CHILD", "1").env("TG_M6_DECO_COLOR_FOLDER", folder)
+        .env("TG_M6_DECO_COLOR_SESSION", serde_json::to_string(&session)?)
+        .env("TG_M6_DECO_COLOR_ID", id.0.to_string()).env("TG_M6_DECO_COLOR_CURSOR", committed.to_string())
+        .env("TG_M6_DECO_COLOR_EXPECTED_FILE", &expected_path).status()?;
+    anyhow::ensure!(status.success(), "new process failed window color recovery: {status}");
+    Ok(())
+}
+
+fn m6_decorator_color_reload_child() -> Result<()> {
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{input::action_set::DigitalActionPhase as Phase,
+        meta_commander::{MetaCommand, MetaCommander},
+        resources::{history::{EditType, History, MaybePendingSnapshotId, ReplayBuffer, decorator_edit::DecoratorHistoryState, serialized::SavedMultiEdit},
+            mouse_terrain_raycast::camera_mouse_ray, session::SessionId,
+            walls::{decorator::DecoratorId, decorator_storage::DecoratorStorage}},
+        systems::{history::PendingHistoryCommands, mode_manager::{self, AppMode}, ui::hover_intersection::hover_intersection}};
+    let session: SessionId = serde_json::from_str(&std::env::var("TG_M6_DECO_COLOR_SESSION")?)?;
+    let id = DecoratorId(std::env::var("TG_M6_DECO_COLOR_ID")?.parse()?);
+    let cursor: i32 = std::env::var("TG_M6_DECO_COLOR_CURSOR")?.parse()?;
+    let expected: serde_json::Value = serde_json::from_slice(&std::fs::read(std::env::var_os("TG_M6_DECO_COLOR_EXPECTED_FILE").context("missing window color expectation file")?)?)?;
+    let before: DecoratorHistoryState = serde_json::from_value(expected["before"].clone())?;
+    let after: DecoratorHistoryState = serde_json::from_value(expected["after"].clone())?;
+    let source = PathBuf::from(std::env::var_os("TG_M6_DECO_COLOR_FOLDER").context("missing window color save")?);
+    let BootedSession { mut driver, context, mut bridge, .. } = boot_shipped_session()?;
+    {
+        let world = driver.app_mut().world_mut();
+        tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)?;
+        bridge.accept_gameplay_warmup(world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>())?;
+    }
+    copy_test_tree(&source, &session.save_folder_path())?;
+    driver.app_mut().world_mut().resource_mut::<MetaCommander>().extend_script([MetaCommand::load_session(session, false)]);
+    let mut saw_reload = false; let mut loaded = false;
+    for _ in 0..1200 {
+        context.begin_frame(egui::RawInput::default()); driver.app_mut().update(); let _ = context.end_frame();
+        bridge.prepare_test_execution()?;
+        let world = driver.app().world();
+        let state = world.resource::<bevy_state::prelude::State<country_core::app_loading_state::AppLoadingState>>().get();
+        saw_reload |= *state == country_core::app_loading_state::AppLoadingState::Reload;
+        if saw_reload && *state == country_core::app_loading_state::AppLoadingState::Game
+            && world.get_resource::<ActiveSession>().is_some_and(|s| s.id == session)
+            && world.resource::<LoadGameManager>().options.is_none() && world.resource::<ReplayBuffer>().is_empty()
+            && world.resource::<PendingHistoryCommands>().0.is_empty() && world.resource::<AppMode>().native_tag() != 13 { loaded = true; break; }
+    }
+    anyhow::ensure!(loaded, "window color session reload incomplete");
+    for _ in 0..8 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let world = driver.app().world();
+    anyhow::ensure!(world.resource::<DecoratorStorage>().lookup_decorator_info(id) == Some(&after.to_info()), "reloaded window complete info differs");
+
+    let history = world.resource::<History>();
+    let mut actual = serde_json::to_value(history.ledger().entries.iter().cloned().map(SavedMultiEdit).collect::<Vec<_>>())?;
+    for entry in actual.as_array_mut().context("history entries are not an array")? { canonicalize_decorator_diff_map(entry); }
+    let expected_wire: Vec<String> = serde_json::from_value(expected["typed_history"].clone())?;
+    m6_check_disk_history(world, &source, &expected_wire, "window color child")?;
+    m6_check_parent_history(&expected["history"], &actual, "window color")?;
+    anyhow::ensure!(history.ledger().cursor == cursor, "reloaded window color cursor differs");
+    driver.app_mut().insert_resource(M6ColorInput { cursor: glam::Vec2::ZERO, click: Phase::Idle, undo: Phase::Idle, redo: Phase::Idle });
+    driver.app_mut().add_systems(bevy_app::Update, m6_color_pointer_input
+        .after(country_core::systems::backend::input::update_cursor_position::update_cursor_position)
+        .before(hover_intersection).before(camera_mouse_ray)
+        .before(mode_manager::mode_manager::<EditType, MaybePendingSnapshotId>));
+    m6_request_mode(&mut driver, &context, &mut bridge, AppMode::Color)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, cursor - 1, "reloaded window color undo")?;
+    anyhow::ensure!(driver.app().world().resource::<DecoratorStorage>().lookup_decorator_info(id) == Some(&before.to_info()), "reloaded window undo did not restore complete info");
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, cursor, "reloaded window color redo")?;
+    anyhow::ensure!(driver.app().world().resource::<DecoratorStorage>().lookup_decorator_info(id) == Some(&after.to_info()), "reloaded window redo did not restore complete info");
+    Ok(())
+}
+
+fn m6_color_reload_child() -> Result<()> {
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{input::action_set::DigitalActionPhase as Phase,
+        meta_commander::{MetaCommand, MetaCommander}, resources::{color_id::WallColorIds,
+        history::{EditType, History, MaybePendingSnapshotId, ReplayBuffer, serialized::SavedMultiEdit},
+        mouse_terrain_raycast::camera_mouse_ray, session::SessionId},
+        systems::{history::PendingHistoryCommands, mode_manager::{self, AppMode}, ui::hover_intersection::hover_intersection}};
+    let session: SessionId = serde_json::from_str(&std::env::var("TG_M6_COLOR_SESSION")?)?;
+    let wall: usize = std::env::var("TG_M6_COLOR_WALL")?.parse()?;
+    let expected: u32 = std::env::var("TG_M6_COLOR_VALUE")?.parse()?;
+    let source = PathBuf::from(std::env::var_os("TG_M6_COLOR_FOLDER").context("missing parent save")?);
+    let BootedSession { mut driver, context, mut bridge, shaders: _shaders, device, _boot } = boot_shipped_session_with_nani_readback(true)?;
+    driver.app_mut().init_resource::<M6DrawnWallColorBuffer>();
+    {
+        let world = driver.app_mut().world_mut();
+        tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)?;
+        bridge.accept_gameplay_warmup(world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>())?;
+    }
+    copy_test_tree(&source, &session.save_folder_path())?;
+    driver.app_mut().world_mut().resource_mut::<MetaCommander>().extend_script([MetaCommand::load_session(session, false)]);
+    let mut saw_reload = false;
+    let mut loaded = false;
+    for _ in 0..1200 {
+        context.begin_frame(egui::RawInput::default());
+        driver.app_mut().update();
+        let _ = context.end_frame();
+        bridge.prepare_test_execution()?;
+        let world = driver.app().world();
+        let state = world.resource::<bevy_state::prelude::State<country_core::app_loading_state::AppLoadingState>>().get();
+        saw_reload |= *state == country_core::app_loading_state::AppLoadingState::Reload;
+        if saw_reload && *state == country_core::app_loading_state::AppLoadingState::Game
+            && world.get_resource::<ActiveSession>().is_some_and(|s| s.id == session)
+            && world.resource::<LoadGameManager>().options.is_none()
+            && world.resource::<ReplayBuffer>().is_empty() && world.resource::<PendingHistoryCommands>().0.is_empty()
+            && world.resource::<AppMode>().native_tag() != 13 { loaded = true; break; }
+    }
+    anyhow::ensure!(loaded, "new process did not complete color save Reload");
+    for _ in 0..3 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    m6_settle_history(&mut driver, &context, &mut bridge)?;
+    m6_assert_wall_color_gpu(driver.app().world(), &bridge, &device)?;
+    let world = driver.app().world();
+    anyhow::ensure!(world.resource::<WallColorIds>().0[wall] == expected, "reloaded wall color differs");
+
+    let expected_json: serde_json::Value = serde_json::from_slice(&std::fs::read(
+        std::env::var_os("TG_M6_COLOR_HISTORY_FILE").context("missing wall color history file")?)?)?;
+    let history = world.resource::<History>();
+    let mut actual = serde_json::to_value(history.ledger().entries.iter().cloned().map(SavedMultiEdit).collect::<Vec<_>>())?;
+    for entry in actual.as_array_mut().context("history entries are not an array")? { canonicalize_decorator_diff_map(entry); }
+    let cursor = i32::try_from(expected_json["cursor"].as_i64().context("missing saved color cursor")?)?;
+    let expected_wire: Vec<String> = serde_json::from_value(expected_json["typed_history"].clone())?;
+    m6_check_disk_history(world, &source, &expected_wire, "wall color child")?;
+    m6_check_parent_history(&expected_json["history"], &actual, "wall color")?;
+    if let Some((path, expected, actual)) = m6_first_json_difference(&expected_json["history"], &actual) {
+        eprintln!("reloaded raw color history differs at {path}: expected={expected}, actual={actual}; entries {} vs {}; cursor {} vs {cursor}",
+            expected_json["history"].as_array().map_or(0, Vec::len), history.ledger().entries.len(), history.ledger().cursor);
+    }
+    anyhow::ensure!(history.ledger().cursor == cursor,
+        "reloaded color history cursor differs: actual={}, expected={cursor}", history.ledger().cursor);
+    anyhow::ensure!(m6_color_authority_map(world)? == expected_json["after_authority"], "reloaded wall authority differs");
+    let before: u32 = serde_json::from_value(expected_json["before_color"].clone())?;
+    driver.app_mut().insert_resource(M6ColorInput { cursor: glam::Vec2::ZERO, click: Phase::Idle, undo: Phase::Idle, redo: Phase::Idle });
+    driver.app_mut().add_systems(bevy_app::Update, m6_color_pointer_input
+        .after(country_core::systems::backend::input::update_cursor_position::update_cursor_position)
+        .before(hover_intersection).before(camera_mouse_ray)
+        .before(mode_manager::mode_manager::<EditType, MaybePendingSnapshotId>));
+    m6_request_mode(&mut driver, &context, &mut bridge, AppMode::Color)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, cursor - 1, "reloaded wall color undo")?;
+    anyhow::ensure!(driver.app().world().resource::<WallColorIds>().0[wall] == before
+        && m6_color_authority_map(driver.app().world())? == expected_json["before_authority"], "reloaded wall color undo failed to restore authority");
+    m6_assert_wall_color_gpu(driver.app().world(), &bridge, &device)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, cursor, "reloaded wall color redo")?;
+    anyhow::ensure!(driver.app().world().resource::<WallColorIds>().0[wall] == expected
+        && m6_color_authority_map(driver.app().world())? == expected_json["after_authority"], "reloaded wall color redo failed to restore authority");
+    m6_assert_wall_color_gpu(driver.app().world(), &bridge, &device)?;
+    Ok(())
+}
+
+/// Find the center of a straight face using the actual wall collider, away
+/// from corners and the roof. The rectangle itself is a command fixture.
+fn m06_delete_central_window_cursor(world: &bevy_ecs::world::World,
+    wall: country_core::resources::walls::WallId, center: glam::Vec2) -> Result<glam::Vec2> {
+    use country_core::{resources::window::WindowSize, systems::{camera_rig::MainCamera, collision::world::RaycastWorld}};
+    let camera = world.resource::<MainCamera>();
+    let window = world.resource::<WindowSize>();
+    let collision = world.resource::<RaycastWorld>();
+    let mut found: Option<(f32, glam::Vec2)> = None;
+    for y in (8..window.height.saturating_sub(8)).step_by(3) {
+        for x in (8..window.width.saturating_sub(8)).step_by(3) {
+            let point = glam::Vec2::new(x as f32, y as f32);
+            let ray = utils::geometry::Ray::from_mouse_ss(point, window.as_vec2(), camera.read_matrix(0x40), camera.read_matrix(0xc0));
+            let hit = collision.raycast(ray.origin, ray.direction, 0x30ab | 0x100);
+            if hit.is_hit() && hit.handle[0] as u8 == 0 && hit.handle[1] == wall.0 {
+                let relative = hit.position - glam::Vec3::new(center.x, 0.0, center.y);
+                let along = if hit.normal.x.abs() > hit.normal.z.abs() { relative.z } else { relative.x };
+                if along.abs() < 0.8 && relative.y > 2.0 && relative.y < 4.0 {
+                    let score = along.abs() + (relative.y - 3.0).abs();
+                    if found.as_ref().is_none_or(|(best, _)| score < *best) { found = Some((score, point)); }
+                }
+            }
+        }
+    }
+    found.map(|(_, point)| point).context("delete fixture has no visible central window placement ray")
+}
+
+// Real wall picker, decorator lifecycle, history and saved-session reload.
+#[test]
+fn m06_wall_bulldozer_decorator_lifecycle_save_reload() -> Result<()> {
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{input::action_set::DigitalActionPhase as Phase,
+        resources::{history::{History, MaybePendingSnapshotId}, mouse_terrain_raycast::camera_mouse_ray,
+            walls::{WallId, decorator::DecoratorId, decorator_storage::{DecoratorStorage, DecoratorStorageAddr}}, window::WindowSize},
+        systems::{camera_rig::MainCamera, collision::world::RaycastWorld,
+            mode_manager::{self, AppMode, EraserLayer}, ui::hover_intersection::hover_intersection}};
+    if std::env::var_os("TG_M6_DELETE_CHILD").is_some() { return m06_delete_reload_child(); }
+    let BootedSession { mut driver, context, mut bridge, shaders, device, _boot } = boot_shipped_session()?;
+    tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, driver.app_mut().world_mut())?;
+    bridge.accept_gameplay_warmup(driver.app().world().resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>())?;
+    for _ in 0..8 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    m6_dismiss_welcome(&mut driver, &context, &mut bridge)?;
+    m6_settle_history(&mut driver, &context, &mut bridge)?;
+    let old: std::collections::HashSet<_> = driver.app().world().resource::<InnerWalls>().wall_ids().collect();
+    // Rectangle creation is an explicit production-command fixture, not a drawn-input claim.
+    // Keep its entire bounding circle away from every existing wall segment.
+    let center = {
+        let walls = driver.app().world().resource::<InnerWalls>();
+        let mut found = None;
+        for z in [0.0f32, -6.0, 6.0, -12.0, 12.0] {
+            for x in [0.0f32, -6.0, 6.0, -12.0, 12.0] {
+                let p = glam::Vec2::new(x, z);
+                let clear = walls.wall_ids().all(|id| {
+                    let points = &walls.get_unwrapped(id).source().curve.points;
+                    points.windows(2).all(|pair| {
+                        let a = glam::Vec2::from_array(pair[0]); let b = glam::Vec2::from_array(pair[1]);
+                        let ab = b - a;
+                        let t = if ab.length_squared() > 0.0 { ((p - a).dot(ab) / ab.length_squared()).clamp(0.0, 1.0) } else { 0.0 };
+                        p.distance(a + ab * t) > 7.0
+                    })
+                });
+                if clear { found = Some(p); break; }
+            }
+            if found.is_some() { break; }
+        }
+        found.context("no non-overlapping rectangle fixture site")?
+    };
+    driver.app_mut().world_mut().resource_mut::<History>().start_input_recording(0)
+        .map_err(|e| anyhow::anyhow!("setup recording: {e:?}"))?;
+    driver.app_mut().world_mut().send_event(country_core::systems::wall::shapes::CreateRectangleCmd {
+        center, dimensions: glam::Vec2::new(6., 4.), orientation: glam::Vec2::X,
+        previous_wall: None, height: 4., elevation: 1.5,
+    });
+    for _ in 0..20 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let wall = driver.app().world().resource::<InnerWalls>().wall_ids().find(|id| !old.contains(id)).context("rectangle missing")?;
+    if driver.app().world().resource::<History>().is_recording() {
+        driver.app_mut().world_mut().send_event(country_core::resources::history::FinishInputRecordingCmd);
+    }
+    for _ in 0..3 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let find_wall = |world: &bevy_ecs::world::World, mask: u32| -> Option<glam::Vec2> {
+        let camera = world.resource::<MainCamera>(); let window = world.resource::<WindowSize>();
+        let physics = world.resource::<RaycastWorld>();
+        for y in (8..window.height.saturating_sub(8)).step_by(3) {
+            for x in (8..window.width.saturating_sub(8)).step_by(3) {
+                let point = glam::Vec2::new(x as f32, y as f32);
+                let ray = utils::geometry::Ray::from_mouse_ss(point, window.as_vec2(), camera.read_matrix(0x40), camera.read_matrix(0xc0));
+                let hit = physics.raycast(ray.origin, ray.direction, mask);
+                if hit.is_hit() && hit.handle[0] as u8 == 0 && hit.handle[1] == wall.0 { return Some(point); }
+            }
+        }
+        None
+    };
+    let cursor = m06_delete_central_window_cursor(driver.app().world(), wall, center)?;
+    m6_request_mode(&mut driver, &context, &mut bridge, AppMode::Decorator(country_core::systems::mode_manager::DecoratorType::CottageWindow))?;
+    driver.app_mut().insert_resource(M6ColorInput { cursor, click: Phase::Idle, undo: Phase::Idle, redo: Phase::Idle });
+    driver.app_mut().add_systems(bevy_app::Update, m6_color_pointer_input
+        .after(country_core::systems::backend::input::update_cursor_position::update_cursor_position)
+        .before(hover_intersection).before(camera_mouse_ray)
+        .before(mode_manager::mode_manager::<country_core::resources::history::EditType, MaybePendingSnapshotId>));
+    let mut placement_active = false;
+    let placement_widget = country_core::systems::ui::resources::ui_state::WidgetId::from_name("place_decorator");
+    for _ in 0..60 {
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        let world = driver.app().world();
+        let ui = world.resource::<country_core::systems::ui::resources::ui_state::UiState>();
+        let dispatcher = world.resource::<system_decorator::ui_systems::ui_decorator_affordance_dispatch::DecoratorAffordanceDispatcher>();
+        if ui.widget_context(placement_widget).is_active() && dispatcher.place_decorator().is_some_and(|p|
+            p.widget == placement_widget && p.hit.handle[0] as u8 == 0 && p.hit.handle[1] == wall.0) {
+            placement_active = true; break;
+        }
+    }
+    anyhow::ensure!(placement_active, "window placement widget did not become active");
+    for phase in [Phase::Idle, Phase::JustPressed, Phase::JustReleased, Phase::Idle] {
+        driver.app_mut().world_mut().resource_mut::<M6ColorInput>().click = phase;
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        if phase == Phase::JustPressed {
+            let world = driver.app().world();
+            let ui = world.resource::<country_core::systems::ui::resources::ui_state::UiState>();
+            anyhow::ensure!(ui.widget_context(placement_widget).is_active() && ui.widget_context(placement_widget).dragged() == 3,
+                "window placement did not capture the real widget");
+            let bucket = world.resource::<DecoratorStorage>().get(DecoratorStorageAddr::Wall(wall));
+            anyhow::ensure!(bucket.is_some_and(|bucket| bucket.decorators.values().any(|info| info.ty == b'8' && info.state() == 1)),
+                "central wall placement did not produce an accepted cottage-window preview");
+        }
+    }
+    for _ in 0..20 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let addr = DecoratorStorageAddr::Wall(wall);
+    let (id, info) = {
+        let bucket = driver.app().world().resource::<DecoratorStorage>().get(addr).context("window bucket missing")?;
+        let (&id, &info) = bucket.decorators.iter().find(|(_, info)| info.ty == b'8' && info.state() == 0).context("window missing")?;
+        (DecoratorId(id), info)
+    };
+    m06_assert_deleted_decorator(driver.app().world(), id, false)?;
+    let original_colliders = m06_decorator_collider_instances(driver.app().world(), id)?;
+    let original_walls = m6_authority_map(driver.app().world());
+    let original_wall_entity = driver.app().world().resource::<country_core::resources::walls::public_walls::WallEntities>()
+        .wall_entity(wall).context("original wall entity missing")?;
+    let cursor = find_wall(driver.app().world(), 0x77fb).context("no real bulldozer wall ray")?;
+    m6_request_mode(&mut driver, &context, &mut bridge, AppMode::Eraser(EraserLayer::Bulldoze))?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().cursor = cursor;
+    let widget = country_core::systems::ui::resources::ui_state::WidgetId::from_name(&format!("bulldoze_wall_{wall}"));
+    let mut wall_active = false;
+    for _ in 0..60 {
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        let ui = driver.app().world().resource::<country_core::systems::ui::resources::ui_state::UiState>();
+        if ui.widget(widget).is_some() && ui.widget_context(widget).is_active() { wall_active = true; break; }
+    }
+    anyhow::ensure!(wall_active, "target wall bulldozer widget did not become active");
+    let before_cursor = driver.app().world().resource::<History>().ledger().cursor;
+    for phase in [Phase::Idle, Phase::JustPressed, Phase::JustReleased, Phase::Idle] {
+        driver.app_mut().world_mut().resource_mut::<M6ColorInput>().click = phase;
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    }
+    m06_wait_wall_deleted(&mut driver, &context, &mut bridge, wall)?;
+    m06_assert_deleted_decorator(driver.app().world(), id, true)?;
+    m06_assert_colliders_retired(driver.app().world(), &original_colliders)?;
+    anyhow::ensure!(!driver.app().world().resource::<InnerWalls>().contains(wall), "deleted wall remains in authority");
+    m6_assert_removed_owners(driver.app().world(), wall)?;
+    m06_assert_common_constructor_owners_retired(driver.app().world(), wall)?;
+    anyhow::ensure!(!driver.app().world().entities().contains(original_wall_entity), "original wall entity survives deletion");
+    let committed = driver.app().world().resource::<History>().ledger().cursor;
+    anyhow::ensure!(committed > before_cursor && driver.app().world().resource::<History>().ledger().entries[committed as usize]
+        .edits.iter().any(|edit| matches!(edit, country_core::resources::history::EditType::Wall(compound)
+            if compound.groups.iter().flatten().any(|op| matches!(op, country_core::resources::history::wall_edit::WallHistoryEdit::Delete { wall: id, .. } if id.0 == wall.0)))),
+        "bulldozer did not commit target wall deletion history");
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, committed - 1, "delete undo")?;
+    for _ in 0..20 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    anyhow::ensure!(driver.app().world().resource::<DecoratorStorage>().lookup_decorator_info(id) == Some(&info), "undo did not restore full decorator info");
+    m06_assert_deleted_decorator(driver.app().world(), id, false)?;
+    anyhow::ensure!(m6_authority_map(driver.app().world()) == original_walls, "undo did not restore wall authority and roof");
+    let restored_wall_entity = driver.app().world().resource::<country_core::resources::walls::public_walls::WallEntities>()
+        .wall_entity(wall).context("undo wall publication missing")?;
+    let restored_decorator_entities = driver.app().world().resource::<system_decorator::decorator_visual_state::DecoratorVisualState>()
+        .persistent_entities_of(id.0).context("undo decorator entities missing")?.to_vec();
+    let restored_colliders = m06_decorator_collider_instances(driver.app().world(), id)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, committed, "delete redo")?;
+    m06_wait_wall_deleted(&mut driver, &context, &mut bridge, wall)?;
+    m06_assert_deleted_decorator(driver.app().world(), id, true)?;
+    m06_assert_colliders_retired(driver.app().world(), &restored_colliders)?;
+    anyhow::ensure!(!driver.app().world().resource::<InnerWalls>().contains(wall), "redo wall remains in authority");
+    m6_assert_removed_owners(driver.app().world(), wall)?;
+    m06_assert_common_constructor_owners_retired(driver.app().world(), wall)?;
+    anyhow::ensure!(!driver.app().world().entities().contains(restored_wall_entity), "redo left restored wall entity");
+    m6_settle_history(&mut driver, &context, &mut bridge)?;
+    let session = driver.app().world().resource::<ActiveSession>().id;
+    let folder = session.save_folder_path();
+    let expected_walls = serde_json::to_string(&m6_authority_map(driver.app().world()))?;
+    let expected_info = serde_json::to_string(&country_core::resources::history::decorator_edit::DecoratorHistoryState::from_info(&info))?;
+    let ledger = driver.app().world().resource::<History>().ledger();
+    let settled_entries: Vec<_> = ledger.entries.iter().cloned()
+        .map(country_core::resources::history::serialized::SavedMultiEdit).collect();
+    let settled_wire = m6_history_wire(&settled_entries)?;
+    let settled_cursor = ledger.cursor;
+    let settled_history_start = ledger.undo_anchor;
+    driver.app_mut().world_mut().send_event(country_core::systems::save::save_game::SaveGameCmd);
+    let mut saved = false;
+    for _ in 0..600 {
+        run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        if driver.app_mut().world_mut().resource_mut::<bevy_ecs::event::Events<country_core::systems::save::save_game::SavingGameComplete>>().drain().any(|e| e.path == folder) { saved = true; break; }
+    }
+    anyhow::ensure!(saved, "delete save did not complete");
+    m6_check_disk_history(driver.app().world(), &folder, &settled_wire, "delete parent")?;
+    anyhow::ensure!(driver.app().world().resource::<History>().ledger().cursor == settled_cursor
+        && driver.app().world().resource::<History>().ledger().undo_anchor == settled_history_start,
+        "delete parent cursor or history_start changed during save");
+    driver.app_mut().init_resource::<M06DeleteReloadTransitions>();
+    driver.app_mut().add_systems(bevy_state::state::OnExit(country_core::app_loading_state::AppLoadingState::Game),
+        |mut counts: bevy_ecs::prelude::ResMut<M06DeleteReloadTransitions>| counts.exits += 1);
+    driver.app_mut().add_systems(bevy_state::state::OnEnter(country_core::app_loading_state::AppLoadingState::Game),
+        |mut counts: bevy_ecs::prelude::ResMut<M06DeleteReloadTransitions>| counts.enters += 1);
+    m06_reload_saved_session(&mut driver, &context, &mut bridge, session)?;
+    let transitions = driver.app().world().resource::<M06DeleteReloadTransitions>();
+    anyhow::ensure!(transitions.exits == 1 && transitions.enters == 1, "same-App reload did not execute Game OnExit/OnEnter");
+    for _ in 0..20 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    m06_assert_deleted_decorator(driver.app().world(), id, true)?;
+    m6_check_disk_history(driver.app().world(), &folder, &settled_wire, "delete same-App reload")?;
+    anyhow::ensure!(driver.app().world().resource::<History>().ledger().cursor == settled_cursor
+        && driver.app().world().resource::<History>().ledger().undo_anchor == settled_history_start,
+        "delete same-App reload cursor or history_start differs");
+    anyhow::ensure!(!driver.app().world().resource::<InnerWalls>().contains(wall), "same-App reload restored deleted wall");
+    m6_assert_removed_owners(driver.app().world(), wall)?;
+    m06_assert_common_constructor_owners_retired(driver.app().world(), wall)?;
+    anyhow::ensure!(!driver.app().world().entities().contains(restored_wall_entity)
+        && restored_decorator_entities.iter().all(|entity| !driver.app().world().entities().contains(*entity)),
+        "same-App reload retained old entity generations");
+    let exchange = tempfile::tempdir()?;
+    std::fs::write(exchange.path().join("original-walls.json"), serde_json::to_vec(&original_walls)?)?;
+    std::fs::write(exchange.path().join("history.json"), serde_json::to_vec(&(settled_wire, settled_cursor, settled_history_start))?)?;
+    std::fs::write(exchange.path().join("walls.json"), expected_walls)?;
+    std::fs::write(exchange.path().join("info.json"), expected_info)?;
+    drop(driver); drop(bridge); drop(shaders); drop(device);
+    let status = std::process::Command::new(std::env::current_exe()?)
+        .args(["--exact", "m06_wall_bulldozer_decorator_lifecycle_save_reload", "--nocapture", "--test-threads=1"])
+        .env("TG_M6_DELETE_CHILD", "1").env("TG_M6_DELETE_FOLDER", folder)
+        .env("TG_M6_DELETE_SESSION", serde_json::to_string(&session)?).env("TG_M6_DELETE_ID", id.0.to_string())
+        .env("TG_M6_DELETE_WALL", wall.0.to_string())
+        .env("TG_M6_DELETE_EXCHANGE", exchange.path()).status()?;
+    anyhow::ensure!(status.success(), "delete reload child failed: {status}");
+    Ok(())
+}
+
+#[derive(bevy_ecs::prelude::Resource, Default)]
+struct M06DeleteReloadTransitions { exits: usize, enters: usize }
+
+fn m06_wait_wall_deleted(driver: &mut tiny_glade::game_loop::GameFrameDriver, context: &egui::Context,
+    bridge: &mut CoreRenderBridge, wall: country_core::resources::walls::WallId) -> Result<()> {
+    use country_core::systems::wall::eraser::animate_wall_bulldoze::AnimateWallBulldozeBuffer;
+    for _ in 0..600 {
+        run_m2_production_frame(driver, context, bridge, None)?;
+        let world = driver.app().world();
+        if !world.resource::<InnerWalls>().contains(wall)
+            && !world.resource::<AnimateWallBulldozeBuffer>().contains(wall)
+            && m6_assert_removed_owners(world, wall).is_ok() {
+            m6_settle_history(driver, context, bridge)?;
+            anyhow::ensure!(!driver.app().world().resource::<InnerWalls>().contains(wall)
+                && !driver.app().world().resource::<AnimateWallBulldozeBuffer>().contains(wall), "wall deletion restarted");
+            return Ok(());
+        }
+    }
+    anyhow::bail!("wall deletion animation/authority/owners did not finish")
+}
+
+fn m06_decorator_collider_instances(world: &bevy_ecs::world::World, id: country_core::resources::walls::decorator::DecoratorId)
+    -> Result<[country_core::systems::collision::world::ColliderMeshInstance; 2]> {
+    let owners = world.resource::<country_core::resources::walls::decorator_collision::DecoratorPhysicsColliders>();
+    Ok([*owners.first.get(&id).context("physics collider missing")?,
+        *owners.second.get(&id).context("interaction collider missing")?])
+}
+
+fn m06_assert_colliders_retired(world: &bevy_ecs::world::World,
+    old: &[country_core::systems::collision::world::ColliderMeshInstance; 2]) -> Result<()> {
+    let physics = world.resource::<country_core::systems::collision::world::RaycastWorld>();
+    for instance in old {
+        anyhow::ensure!(physics.get_rapier_collider_ref(instance.slot, instance.collider).is_none(),
+            "old Rapier collider handle still resolves: {:?}", instance.handle());
+    }
+    Ok(())
+}
+
+/// Check the current common constructor sidecar independently of the support
+/// owner; this does not assert its unresolved native +0x120 ownership mapping.
+fn m06_assert_common_constructor_owners_retired(world: &bevy_ecs::world::World,
+    wall: country_core::resources::walls::WallId) -> Result<()> {
+    use system_wall_constructor::{construct_arches::WallConstructorOutput, gpu_output::{ConstructorKey, ConstructorPart}};
+    let gpu = &world.resource::<WallConstructorOutput>().gpu;
+    let key = ConstructorKey { wall: wall.0, part: ConstructorPart::Arches };
+    anyhow::ensure!(gpu.brick_allocation(key).is_none() && gpu.plank_allocation(key).is_none(),
+        "deleted wall retains common constructor brick/plank owners");
+    Ok(())
+}
+
+fn m06_assert_deleted_decorator(world: &bevy_ecs::world::World, id: country_core::resources::walls::decorator::DecoratorId, deleted: bool) -> Result<()> {
+    use country_core::resources::walls::{decorator_collision::DecoratorPhysicsColliders, decorator_storage::DecoratorStorage};
+    let storage = world.resource::<DecoratorStorage>();
+    let blueprints = world.resource::<system_decorator::blueprint::DecoratorBlueprints>();
+    let physics = world.resource::<DecoratorPhysicsColliders>();
+    let visual = world.resource::<system_decorator::decorator_visual_state::DecoratorVisualState>();
+    anyhow::ensure!(storage.lookup_decorator_info(id).is_none() == deleted, "decorator authority mismatch");
+    anyhow::ensure!(blueprints.get(id.0).is_none() == deleted, "decorator blueprint mismatch");
+    // generate_cottage_wall_windows supplies both mesh slots via set_positioned_colliders.
+    anyhow::ensure!(physics.first.contains_key(&id) != deleted && physics.second.contains_key(&id) != deleted, "decorator collider mismatch");
+    anyhow::ensure!(visual.persistent_entities_of(id.0).is_none() == deleted, "decorator visual mismatch");
+    if let Some(entities) = visual.persistent_entities_of(id.0) {
+        anyhow::ensure!(!entities.is_empty() && entities.iter().all(|entity| world.entities().contains(*entity)), "decorator persistent entities missing");
+    }
+    Ok(())
+}
+
+fn m06_reload_saved_session(driver: &mut tiny_glade::game_loop::GameFrameDriver, context: &egui::Context,
+    bridge: &mut CoreRenderBridge, session: country_core::resources::session::SessionId) -> Result<()> {
+    use country_core::{meta_commander::{MetaCommand, MetaCommander}, resources::history::ReplayBuffer,
+        systems::{history::PendingHistoryCommands, mode_manager::AppMode}};
+    driver.app_mut().world_mut().resource_mut::<MetaCommander>().extend_script([MetaCommand::load_session(session, false)]);
+    let mut saw_reload = false;
+    for _ in 0..1200 {
+        context.begin_frame(egui::RawInput::default()); driver.app_mut().update(); let _ = context.end_frame();
+        bridge.prepare_test_execution()?;
+        let world = driver.app().world();
+        let state = world.resource::<bevy_state::prelude::State<country_core::app_loading_state::AppLoadingState>>().get();
+        saw_reload |= *state == country_core::app_loading_state::AppLoadingState::Reload;
+        if saw_reload && *state == country_core::app_loading_state::AppLoadingState::Game
+            && world.get_resource::<ActiveSession>().is_some_and(|s| s.id == session)
+            && world.resource::<LoadGameManager>().options.is_none() && world.resource::<ReplayBuffer>().is_empty()
+            && world.resource::<PendingHistoryCommands>().0.is_empty() && world.resource::<AppMode>().native_tag() != 13 { return Ok(()); }
+    }
+    anyhow::bail!("delete session reload incomplete")
+}
+
+fn m06_delete_reload_child() -> Result<()> {
+    use country_core::{meta_commander::{MetaCommand, MetaCommander}, resources::{history::{History, ReplayBuffer}, session::SessionId,
+        walls::decorator::DecoratorId}, systems::{history::PendingHistoryCommands, mode_manager::AppMode}};
+    let session: SessionId = serde_json::from_str(&std::env::var("TG_M6_DELETE_SESSION")?)?;
+    let id = DecoratorId(std::env::var("TG_M6_DELETE_ID")?.parse()?);
+    let wall = country_core::resources::walls::WallId(std::env::var("TG_M6_DELETE_WALL")?.parse()?);
+    let source = PathBuf::from(std::env::var_os("TG_M6_DELETE_FOLDER").context("missing delete save")?);
+    let exchange = PathBuf::from(std::env::var_os("TG_M6_DELETE_EXCHANGE").context("missing delete exchange directory")?);
+    let BootedSession { mut driver, context, mut bridge, .. } = boot_shipped_session()?;
+    tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, driver.app_mut().world_mut())?;
+    bridge.accept_gameplay_warmup(driver.app().world().resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>())?;
+    copy_test_tree(&source, &session.save_folder_path())?;
+    driver.app_mut().world_mut().resource_mut::<MetaCommander>().extend_script([MetaCommand::load_session(session, false)]);
+    let mut saw_reload = false; let mut loaded = false;
+    for _ in 0..1200 {
+        context.begin_frame(egui::RawInput::default()); driver.app_mut().update(); let _ = context.end_frame();
+        bridge.prepare_test_execution()?;
+        let world = driver.app().world();
+        let state = world.resource::<bevy_state::prelude::State<country_core::app_loading_state::AppLoadingState>>().get();
+        saw_reload |= *state == country_core::app_loading_state::AppLoadingState::Reload;
+        if saw_reload && *state == country_core::app_loading_state::AppLoadingState::Game
+            && world.get_resource::<ActiveSession>().is_some_and(|s| s.id == session)
+            && world.resource::<LoadGameManager>().options.is_none() && world.resource::<ReplayBuffer>().is_empty()
+            && world.resource::<PendingHistoryCommands>().0.is_empty() && world.resource::<AppMode>().native_tag() != 13 { loaded = true; break; }
+    }
+    anyhow::ensure!(loaded, "delete session reload incomplete");
+    for _ in 0..20 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    m6_settle_history(&mut driver, &context, &mut bridge)?;
+    m06_assert_deleted_decorator(driver.app().world(), id, true)?;
+    anyhow::ensure!(!driver.app().world().resource::<InnerWalls>().contains(wall), "reloaded deleted wall remains in authority");
+    m6_assert_removed_owners(driver.app().world(), wall)?;
+    m06_assert_common_constructor_owners_retired(driver.app().world(), wall)?;
+    let (settled_wire, settled_cursor, settled_history_start): (Vec<String>, i32, i32) =
+        serde_json::from_slice(&std::fs::read(exchange.join("history.json"))?)?;
+    m6_check_disk_history(driver.app().world(), &source, &settled_wire, "delete child")?;
+    anyhow::ensure!(driver.app().world().resource::<History>().ledger().cursor == settled_cursor
+        && driver.app().world().resource::<History>().ledger().undo_anchor == settled_history_start,
+        "delete child cursor or history_start differs from parent");
+    let walls: serde_json::Value = serde_json::from_slice(&std::fs::read(exchange.join("walls.json"))?)?;
+    anyhow::ensure!(m6_authority_map(driver.app().world()) == walls, "reloaded wall authority differs");
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{input::action_set::DigitalActionPhase as Phase,
+        resources::{history::MaybePendingSnapshotId, mouse_terrain_raycast::camera_mouse_ray},
+        systems::{mode_manager, ui::hover_intersection::hover_intersection}};
+    driver.app_mut().insert_resource(M6ColorInput { cursor: glam::Vec2::ZERO, click: Phase::Idle, undo: Phase::Idle, redo: Phase::Idle });
+    driver.app_mut().add_systems(bevy_app::Update, m6_color_pointer_input
+        .after(country_core::systems::backend::input::update_cursor_position::update_cursor_position)
+        .before(hover_intersection).before(camera_mouse_ray)
+        .before(mode_manager::mode_manager::<country_core::resources::history::EditType, MaybePendingSnapshotId>));
+    let cursor = driver.app().world().resource::<History>().ledger().cursor;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().undo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, cursor - 1, "reload delete undo")?;
+    for _ in 0..20 { run_m2_production_frame(&mut driver, &context, &mut bridge, None)?; }
+    let expected: country_core::resources::history::decorator_edit::DecoratorHistoryState = serde_json::from_slice(&std::fs::read(exchange.join("info.json"))?)?;
+    let restored = driver.app().world().resource::<country_core::resources::walls::decorator_storage::DecoratorStorage>()
+        .lookup_decorator_info(id).copied().context("reloaded undo decorator missing")?;
+    anyhow::ensure!(restored == expected.to_info(), "reloaded undo full info differs");
+    m06_assert_deleted_decorator(driver.app().world(), id, false)?;
+    anyhow::ensure!(driver.app().world().resource::<InnerWalls>().contains(wall), "reloaded undo wall missing");
+    let original_walls: serde_json::Value = serde_json::from_slice(&std::fs::read(exchange.join("original-walls.json"))?)?;
+    anyhow::ensure!(m6_authority_map(driver.app().world()) == original_walls, "reloaded undo wall authority or roof differs");
+    let restored_colliders = m06_decorator_collider_instances(driver.app().world(), id)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::JustPressed;
+    run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver.app_mut().world_mut().resource_mut::<M6ColorInput>().redo = Phase::Idle;
+    m6_wait_rendered_replay_completion(&mut driver, &context, &mut bridge, cursor, "reload delete redo")?;
+    m06_wait_wall_deleted(&mut driver, &context, &mut bridge, wall)?;
+    m06_assert_deleted_decorator(driver.app().world(), id, true)?;
+    m06_assert_colliders_retired(driver.app().world(), &restored_colliders)?;
+    anyhow::ensure!(!driver.app().world().resource::<InnerWalls>().contains(wall), "reloaded redo wall remains in authority");
+    m6_assert_removed_owners(driver.app().world(), wall)?;
+    m06_assert_common_constructor_owners_retired(driver.app().world(), wall)?;
+    anyhow::ensure!(m6_authority_map(driver.app().world()) == walls, "reloaded redo wall authority differs");
     Ok(())
 }

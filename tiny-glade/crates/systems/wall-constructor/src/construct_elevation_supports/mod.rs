@@ -145,7 +145,9 @@ pub fn detect_overhang_support_segments(
             turrets.send(country_core::resources::walls::plaster::RecalculateWoodenTurretCmd { instances: Vec::new(), wall: id });
             continue;
         }
-        let Some(shape) = ShapeParameters::from_snapshot(wall.get_wall_shape()).get_shape() else { continue };
+        // B 140787408..40c skips non-premade shape tags after the zero-elevation branch.
+        let Some(snapshot) = wall.try_get_wall_shape() else { continue };
+        let Some(shape) = ShapeParameters::from_snapshot(snapshot).get_shape() else { continue };
         let selected = if changed.contains(&id) {
             true
         } else {
@@ -432,6 +434,9 @@ mod clear_wall_instance_owners_tests {
         world.insert_resource(library);
         world.insert_resource(OverhangSupportDirtySubscriptions { subscribers });
         world.init_resource::<crate::construct_arches::WallConstructorOutput>();
+        let mut publication_owners = Schedule::default();
+        publication_owners.add_systems(crate::gpu_output::replace_published_plank_owners);
+        publication_owners.run(&mut world);
         world.init_resource::<country_core::resources::shape_intersections::ShapeIntersections>();
         world.init_resource::<country_core::resources::walls::elevation_support_stats::ElevationSupportStats>();
         world.init_resource::<country_core::resources::walls::wall_stone_columns::StoneColumnCollisionStorage>();
@@ -647,6 +652,7 @@ mod clear_wall_instance_owners_tests {
         inner.update_wall_state_enclosure(target,ShapeParameters::from_shape(Shape::Rectangle(utils::geometry::Rectangle2d::new(glam::Vec2::ZERO,glam::Vec2::splat(5.0),glam::Vec2::X))).to_snapshot());
         let grid=TerrainHeightGrid512 {encoded:vec![0;512*512].into(),minimum_y:0.0,maximum_y:0.0,sampling_fix:false};
         let mut walls=PublicWalls::default();walls.consume_with_paths(&mut inner,&grid,None,&WallPublicationDirty::default(),&WallSpatialHash::default());world.insert_resource(walls);
+        let mut owner_setup=Schedule::default(); owner_setup.add_systems(crate::gpu_output::replace_published_plank_owners); owner_setup.run(&mut world);
         let mut terrain=TerrainHeightsData::<TerrainHeightSsbo>::new();terrain.set_height_range(0.0,0.0);
         world.insert_resource(terrain);world.insert_resource(RaycastWorld::new());world.init_resource::<UiSignifierStream>();world.init_resource::<Events<PlayElevationSupportSoundCmd>>();
         world.init_resource::<Events<country_core::resources::walls::public_walls::OnWallDeleted>>();
@@ -694,6 +700,8 @@ mod clear_wall_instance_owners_tests {
         inner.update_wall_state_enclosure(target,ShapeParameters::from_shape(Shape::Rectangle(rectangle)).to_snapshot());
         let grid=TerrainHeightGrid512 {encoded:vec![0;512*512].into(),minimum_y:0.0,maximum_y:0.0,sampling_fix:false};
         let mut walls=PublicWalls::default();walls.consume_with_paths(&mut inner,&grid,None,&WallPublicationDirty::default(),&WallSpatialHash::default());
+        world.insert_resource(walls.clone());
+        let mut owner_setup=Schedule::default(); owner_setup.add_systems(crate::gpu_output::replace_published_plank_owners); owner_setup.run(&mut world);
         let data:Vec<u32>=include_str!("../../../../../reports/module-recovery-2026-10-23/m06-small-resample-rectangle-fixture.json")
             .split(|c:char|!c.is_ascii_digit()).filter(|v|!v.is_empty()).map(|v|v.parse().unwrap()).collect();
         let n=data[0] as usize;
@@ -795,6 +803,39 @@ mod clear_wall_instance_owners_tests {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| schedule.run(&mut world)));
         assert!(result.is_err());
         assert_eq!(world.resource::<Events<RecalculateWoodenTurretCmd>>().len(),1);
+    }
+
+    #[test]
+    fn detector_skips_elevated_freehand_but_still_clears_zero_elevation() {
+        use country_core::resources::{roofs::geometry::surface::Curve2, walls::{InnerWalls, WallState,
+            public_walls::{PublicWalls, OnWallChanged, WallPublicationDirty, WallSpatialHash},
+            publication_source::TerrainHeightGrid512, elevation_support_stats::{ElevationSupportStats, ElevationSupports},
+            wall_stone_columns::StoneColumnCollisionStorage, plaster::RecalculateWoodenTurretCmd}};
+        let (mut world, _, _, _) = detector_fixture([4.0, 4.0]);
+        let mut inner = InnerWalls::new();
+        let curve = Curve2::try_new(vec![[0., 0.], [4., 0.]], false).unwrap();
+        let elevated = inner.new_wall(WallState::new(curve.clone(), 8., 0, 0, false));
+        let zero = inner.new_wall(WallState::new(curve, 8., 0, 0, false));
+        inner.update_elevation(elevated, 4.);
+        let terrain = TerrainHeightGrid512 { encoded: vec![0; 512*512].into(), minimum_y: 0., maximum_y: 0., sampling_fix: false };
+        let mut walls = PublicWalls::default();
+        walls.consume_with_paths(&mut inner, &terrain, None, &WallPublicationDirty::default(), &WallSpatialHash::default());
+        assert!(!walls.get(elevated).unwrap().is_premade_shape());
+        assert!(!walls.get(zero).unwrap().is_premade_shape());
+        world.insert_resource(walls);
+        world.resource_mut::<ElevationSupportStats>().walls.insert(zero, ElevationSupports { small_brackets: 3, ..Default::default() });
+        world.send_event(OnWallChanged(elevated));
+        let mut schedule = Schedule::default(); schedule.add_systems(detect_overhang_support_segments);
+        schedule.run(&mut world);
+        assert!(world.resource::<Events<RecalculateCircleSupports>>().is_empty());
+        assert!(world.resource::<Events<RecalculateRectangleSupports>>().is_empty());
+        assert_eq!(world.resource::<StoneColumnCollisionStorage>().cleared, vec![zero]);
+        assert_eq!(world.resource::<ElevationSupportStats>().walls[&zero].small_brackets, 0);
+        let events = world.resource::<Events<RecalculateWoodenTurretCmd>>();
+        let mut cursor = events.get_cursor();
+        let emitted: Vec<_> = cursor.read(events).collect();
+        assert_eq!(emitted.len(), 1); assert_eq!(emitted[0].wall, zero);
+        assert!(emitted[0].instances.is_empty());
     }
 
     #[test]

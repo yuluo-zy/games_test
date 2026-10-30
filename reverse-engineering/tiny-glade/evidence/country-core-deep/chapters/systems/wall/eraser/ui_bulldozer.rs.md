@@ -37,3 +37,15 @@
 
 ### hammer_cursor_icon 0x1409e35a0（I）
 - 锤子光标图标系统：UI 交互层，4.4KB，未逐行。
+
+## 2026-10-30 M06 bulldozer 原字节绑定与分支复核
+
+原静态 RNE SHA-256 `f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03`；PE unwind 给出 `wall_eraser_bulldoze` 半开区间 `1409de190..1409e2414`，区间字节 SHA-256 `fbba82097469d339feb74cebc5680c26c57e4bb46f0265505ff2a7d0d2e1f19a`。独立 Ghidra worker 的 patched B 身份是 `cf048e27acdc266b2efc7c094dd435bacecb3f26c2afe54de4d09cd3f7036323`，该区间校验与原字节一致；两跳表 override 后反编译成功，但后端 checkpoint 失败，不能声称数据库修改已保存。全输出是工作区 `tmp-merge/m6-bulldozer-corrected.c`，原始指令是 `tmp-merge/m6-bulldozer-original-disasm.txt`。
+
+首表 `142ac4508`：0–2、6–9 墙；4 装饰；5 楼梯点；13 楼梯段；14 支撑；3、10–12 及其余未分派值走无目标；17 为未命中。动作表 `142ac4544`：0 墙 `1409deb49`、1 装饰 `1409def6c`、2 树 `1409df103`、3 楼梯段 `1409dedc4`、4 支撑 `1409df26a`、5 无目标 `1409df72e`。demo 模式跳过树候选扫描；普通模式每棵树均与最初射线距离比较，`1409de91c..983` 不更新该距离。
+
+墙 hover `1409e08f0..a07` 使用 Public `+0x88` 预处理 Curve3 和 `+0xe0` 高度数组。既有同一 owner 的证据为 `m01-height-recovery.md` 第 17、33 行及 `m01-anchor-follow-recovery.md` 第 24、50 行；`get_wall_attachment_height@140b2a890` 也同时读取这两槽。当前 `height_outline()` 指向 `PreparedWallPath.positions`，而 `arch_segment_heights()` 指向同一出版流程的高度缓存。迭代器 `14130abb0` / `14157f730` 按 3 的步长取有效 zip 项，逐项写原点与 `SwizzlerXVY::xvy@140c9cde0` 生成的 `(x,height,z)`，再由 `DebugLine::show@140b04f70` 绘制红色 `(0.8,0,0)`、宽 3 的虚线。回归 `hover_preview_uses_prepared_curve_and_nonuniform_published_heights` 使用非均匀地形和非空路径资源，要求真实 prepare 改变点数，逐项检查点和高度来自同一 owner；该回归尚待中央运行。
+
+墙删除 `1409e197e..19bc` 先归档墙桶，`DecoratorStorage::remove_storage@140a1dba0` 再移除墙桶；屋顶历史先于墙 compound。楼梯中点 `1409e0d8f..e6f` 先移除点、连接邻居，再发 12B `HandleStairAttachedDecoratorsOnStairPointDeletion` 和节点删除事件；前者由 `handle_external_decorator_cmds@14081a380` 第三事件流消费。非中点 `1409dff4a..1409e1818` 选中边、收集原图度数 1 的端点、断边后删除节点。支撑动作写 SupportsDelete 并发 kind 0x11 音效。原 `1409e35a0..3866` 构建 60×60 `hammer_cursor`，bundle 类型字符串分别确认 `UiInactive` 和 `Ui2DFollowMouse`，无 CPU 比例乘算。
+
+当前这些生产路径和夹具的编译/运行、实际 App 调度与渲染均以中央后续验证为准；静态证据不是游戏行为验收。

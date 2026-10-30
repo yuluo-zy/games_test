@@ -29,9 +29,7 @@ pub fn record_garden_history<S: Send + Sync + 'static>(
     if events.read().last().is_none() {
         return;
     }
-    // Native ignores the (panicking) outcome of History::add and goes straight
-    // to its epilogue; the shared Rust `HistoryTransactions::add` models failure
-    // as an `Err`, so the result is dropped here to match that "call, return".
+    // The shared recorder owns the native History::add failure semantics.
     let _ = record_raster_history(&mut strokes, 5, &mut history, |stroke| {
         EditType::Garden(stroke)
     });

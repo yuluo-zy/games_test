@@ -95,6 +95,11 @@ pub(super) fn install(app: &mut App) {
     app.add_event::<res::onboarding::NotifyHintSystemToolWasJustUsed>();
     // 原墙擦除器的writer必须在World兼容初始化之前接入App事件维护。
     app.add_event::<res::onboarding::NotifyHintSystemSomethingWasErased>();
+    // These are initialized by World-only helpers later in startup; register
+    // them here first so Bevy also maintains their event buffers each frame.
+    app.add_event::<res::critters::sheep::CmdCheckForSheepInsideBuilding>();
+    app.add_event::<sys::ivy::ivy_leaf_spawner::IvySegmentDoneGrowingMsg>();
+    app.add_event::<sys::ivy::ivy_leaf_animation::IvyLeafIsGrowing>();
     app.add_event::<sys::ivy::ivy_pruner::RemoveIvyCmd>();
     // sys::history::history_process
     app.add_event::<sys::history::history_process::DebugHistoryMsg>();
@@ -142,6 +147,7 @@ pub(super) fn install(app: &mut App) {
     app.add_event::<sys::backend::input::calculate_input_delta::UiHistoryButtonPressed>();
     // system_decorator::handle_external_decorator_cmds
     app.add_event::<system_decorator::handle_external_decorator_cmds::ExternalDecoratorCmd>();
+    app.add_event::<sys::wall::eraser::ui_bulldozer::HandleStairAttachedDecoratorsOnStairPointDeletion>();
     // sys::save::save_game
     app.add_event::<sys::save::save_game::SaveGameCmd>();
     app.add_event::<sys::save::save_game::SavingGameComplete>();
@@ -161,6 +167,7 @@ pub(super) fn install(app: &mut App) {
 mod tests {
     use super::*;
     use bevy_ecs::event::Events;
+    use bevy_ecs::prelude::*;
     use res::walls::{WallId, plaster::{RecalculatePlasterCmd,
         RecalculateHalfTimberMeshCmd, RecalculateWoodenTurretCmd}};
 
@@ -179,5 +186,71 @@ mod tests {
         assert!(app.world().resource::<Events<RecalculatePlasterCmd>>().is_empty());
         assert!(app.world().resource::<Events<RecalculateHalfTimberMeshCmd>>().is_empty());
         assert!(app.world().resource::<Events<RecalculateWoodenTurretCmd>>().is_empty());
+    }
+
+    #[derive(Resource, Default)]
+    struct EditObservations {
+        first: Vec<WallId>,
+        second: Vec<WallId>,
+        marker_seen_during_second: Vec<bool>,
+    }
+
+    #[derive(Resource)]
+    struct DeferredEditMarker;
+
+    fn first_edit_reader(
+        mut events: EventReader<res::events::OnCircleRotated>,
+        mut observations: ResMut<EditObservations>,
+        mut commands: Commands,
+    ) {
+        for event in events.read() {
+            observations.first.push(event.0);
+            commands.insert_resource(DeferredEditMarker);
+        }
+    }
+
+    fn second_edit_reader(
+        mut events: EventReader<res::events::OnCircleRotated>,
+        mut observations: ResMut<EditObservations>,
+        marker: Option<Res<DeferredEditMarker>>,
+    ) {
+        for event in events.read() {
+            observations.second.push(event.0);
+            observations.marker_seen_during_second.push(marker.is_some());
+        }
+    }
+
+    #[test]
+    fn shared_edit_events_have_independent_readers_and_frame_maintenance() {
+        use std::any::TypeId;
+        assert_eq!(TypeId::of::<res::events::OnShapeMoved>(),
+            TypeId::of::<system_decorator::decorator_on_move_shape::MoveShapeEvent>());
+        assert_eq!(TypeId::of::<res::events::OnFreehandWallEdited>(),
+            TypeId::of::<system_decorator::decorator_on_freehand_wall_edited::FreehandWallEditedEvent>());
+        assert_eq!(TypeId::of::<res::events::OnCircleRotated>(),
+            TypeId::of::<system_decorator::decorator_on_freehand_wall_edited::CircleEditedEvent>());
+        assert_eq!(TypeId::of::<res::events::OnRectangleEdited>(),
+            TypeId::of::<sys::wall::shapes::rectangle::OnRectangleEdited>());
+
+        let mut app = App::new();
+        crate::run_game::register_gameplay_events(&mut app);
+        sys::wall::registration::register_wall_cpu_resources(app.world_mut());
+        app.init_resource::<EditObservations>();
+        app.add_systems(bevy_app::Update,
+            (first_edit_reader, second_edit_reader).chain_ignore_deferred());
+        app.world_mut().send_event(res::events::OnCircleRotated(WallId(17)));
+        app.update();
+        let observations = app.world().resource::<EditObservations>();
+        assert_eq!(observations.first, vec![WallId(17)]);
+        assert_eq!(observations.second, vec![WallId(17)]);
+        assert_eq!(observations.marker_seen_during_second, vec![false]);
+        assert!(app.world().contains_resource::<DeferredEditMarker>());
+
+        app.update();
+        app.update();
+        let observations = app.world().resource::<EditObservations>();
+        assert_eq!(observations.first.len(), 1);
+        assert_eq!(observations.second.len(), 1);
+        assert!(app.world().resource::<Events<res::events::OnCircleRotated>>().is_empty());
     }
 }

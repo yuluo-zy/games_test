@@ -49,6 +49,12 @@
 
 **遗留 U**：inner→public 逐字段复制映射的具体字段名（重建 0x2a0 记录在栈装配，行 2100–2280 仅骨架）；param_12 资源身份（FUN_140b04f70 参数）。
 
+**2026-10-30 类型纠正与木分配生命周期**：上文将 `0x142a9de39` 标为 Uber 错误；按 f507 PE 映射直接读取 61 字节是 `country_core::resources::roofs::roof_buffers::WoodenPlankSsbo`，与 `gpu_clear_wall_gate_pieces@140773c00` 的类型串相同。`140a8d0f5–d165` 查此资源，`140a8d18a–d200` 建空分配并持其共享 owner，`140a8d9c8–d9dd` 写新记录 `rbp+0x628/+0x630`；基址 `rbp+0x500`，即 PublicWallState `+0x128/+0x130`。`140a8dd06–dd3d` 搬入并插入新行。有效更新先取旧行，`140a8ca12–ca19` drop 旧 `+0x128`，`14087f3a5` 检查该对的 `+8` 并退役旧 `+0x130`；成功重发布建立新 owner，跳过的行保持旧 owner。`140773e20–e2b` 在消费变更时缺分配直接 panic。此结论来自静态字节，未执行原程序。
+
+**2026-10-30 通用砖 allocation 独立复核**：f507 SHA-256 `f507a6cea25c5199447b88ba746a5293e64a279f73797ca74c1ce7f4ff2b7d03` 的 `140a8ce76–cf52` 以 `0x142c2e2b8` 查库，校验 `0x142a9d7ff` 长度 `0x3a` 的 `BrickTransformSsbo` 类型串，虚调用 `+0x18` 后分配空 32B 句柄并取得共享回收 owner；`140a8d9ac–d9c1` 写栈记录 `rbp+0x618/+0x620`，相对记录基址 `rbp+0x500` 即 `+0x118/+0x120`。旧行基址 `rbp+0x840`，`140a8ca06–ca0d` 将旧 `+0x118` 对交给 `14087f390`，该 helper 对非空 `+8` 句柄加入回收队列。成功重发布重建，跳过的行不替换。
+
+`construct_arches@14075fe39–ffa3` 以 0x2a8 桶查墙，Public 值基址为控制指针减 `0x2a0`，读取控制指针减 `0x180` 即 Public `+0x120`，空句柄走失败分支并锁定后清理。`construct_walls@140759844–98cc` 在创建墙实体时另从同一砖 SSBO 新分配句柄并传入 `InstancedWall::new@140858800`；实体独立持有其分配，`delete_wall@140aac1e0` 通过 despawn 清理实体。因分配调用与各自持有者不同，不得把主体分配与公共墙通用拱／门／柱分配合并。当前 sidecar 仅适配该生命周期，不声称复现原私有 ABI。以上为原指令静态核对，未运行原版，未构成 GPU 或完整交互验收。
+
 ### 纠错
 - **0x1409ef210 不是 new**：decomp PDB 名 = `impl$4::query_with_rectangle2d::closure$0`（get_cells_from_rectangle2d 闭包，bbx/RESAMPLING 断言族）。`WallSpatialHash::new` 真身在 **0x140aa5150**（行 109）。
 - **FUN_140b04f70 应为 gizmo 绘制命令而非 WallSpatialHash 查询**：spatial_hash_debug（0x1408ec0e0）中同函数以 `{2,2,i64::MIN,4,1.0/3.0,1}` 命令结构 + 线/矩形数据调用，确定为绘制。DIGEST 对 shape_placement_params "FUN_140b04f70 ×3（I: WallSpatialHash 查询）" 及本行 2338 需按绘制命令复核。

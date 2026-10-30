@@ -119,6 +119,9 @@ pub fn build(app: &mut App) {
         .before(country_core::systems::backend::photomode::update_photomode_visibility));
     // B 原 Demo 提示属于 set36；菜单/摄影门禁仍由原函数自行判定。
     app.add_event::<country_core::resources::glade_border::MaxDemoElevationReached>();
+    // B Ui2dPlugin::build 0x14068d89f..0x14068d8f6 checks the
+    // Events<ShowDemoBorderOverlay> TypeId and registers it when absent.
+    app.add_event::<country_core::resources::glade_border::ShowDemoBorderOverlay>();
     app.add_systems(Update, (
         toolbar::demo_stuff::demo_show_full_glade_size::demo_show_full_glade_size,
         toolbar::demo_stuff::demo_show_max_elevation::demo_show_max_elevation,

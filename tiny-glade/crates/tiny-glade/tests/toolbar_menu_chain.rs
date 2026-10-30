@@ -629,6 +629,20 @@ fn production_app_welcome_and_reload_use_real_toolbar_installers() {
     };
     app.insert_resource(country_core::render::RenderTemporalState::new(matrices));
     app.add_event::<country_core::systems::save::save_game::SaveGameCmd>();
+    #[cfg(any(windows, feature = "native-audio"))]
+    {
+        // Match the production FMOD owner and complete its real metadata and
+        // sample loader before Startup constructs the signifier audio state.
+        let mut audio = country_core::resources::native_audio::create_audio_resources(&installed, false);
+        assert!(audio.core.studio.is_some(), "shipped FMOD must initialize");
+        assert!(!audio.core.banks.is_empty(), "shipped audio banks must be discovered");
+        let samples = audio.samples.take().expect("native sample completion");
+        let loader = audio.load_remaining.take().expect("native bank loader");
+        std::thread::spawn(loader).join().expect("FMOD bank loading");
+        assert_eq!(samples.recv(), Some(()));
+        app.insert_resource(audio.core);
+    }
+    #[cfg(not(any(windows, feature = "native-audio")))]
     app.insert_resource(country_core::resources::audio_resources::AudioCore::<
         country_core::resources::audio_resources::DisabledStudio> {
         studio: None, banks: Default::default(),

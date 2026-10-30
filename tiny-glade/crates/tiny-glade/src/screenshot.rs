@@ -21,6 +21,8 @@ pub enum ScreenshotPurpose {
     SceneBeforeUi = 3,
     SceneWithUi = 4,
     FinalFrame = 6,
+    /// Explicit test/diagnostic capture of the production terrain lighting map.
+    TerrainLightingDiagnostic = 8,
 }
 impl ScreenshotPurpose {
     pub fn as_byte(self) -> u8 {

@@ -466,11 +466,13 @@ pub fn run_game_thread(
     crate::app_systems::WallSystems::add_wall_events(&mut app);
     app.add_plugins(system_water::WaterPlugin);
     app.add_plugins(system_glade_border::GladeBorderPlugin);
-    // Original anonymous creator @0x140af2200; its registration schedule is OPEN (Startup here:
-    // its Commands are applied before the first Update that reads GladeBorder).
+    // B 0x140941110: PreStartup outer chain places the ten-system group
+    // containing 0x140af2200 before load_mesh_atlases. Its members are not
+    // themselves chained. The host creates preset textures before startup.
     app.add_systems(
-        bevy_app::Startup,
-        country_core::resources::glade_border::setup_glade_border,
+        bevy_app::PreStartup,
+        country_core::resources::glade_border::setup_glade_border
+            .before(crate::gameplay_startup::GameplayGpuPreStartup::Atlases),
     );
     system_color::ColorSystems::add_color(&mut app);
     app.add_event::<toolbar::ui_interaction::UiDragEvent>();
@@ -724,6 +726,9 @@ pub fn run_game_thread(
     );
     gui.add_systems(
         crate::gui::settings::do_gui_escape_menu_settings
+            .run_if(bevy_ecs::schedule::common_conditions::resource_exists::<
+                country_core::resources::session::ActiveSession,
+            >)
             .after(crate::gui::gui_escape_menu::do_gui_escape_menu)
             .before(country_core::resources::gui::advance_menu_state_system),
     );
@@ -1107,13 +1112,12 @@ fn install_history_and_wall_runtime(app: &mut App, demo: bool) {
     app.init_resource::<DecoratorIdGen>();
     app.init_resource::<DeferredDecoratorOpEvents>();
     app.add_event::<country_core::resources::walls::decorator::DecoratorOpEvent>();
-    // B DecoratorPlugin: 19-member chain is assigned to GameSystemSet25.
-    // Keep original replay40-produced notifications for the following frame.
-    app.add_systems(
-        bevy_app::Update,
-        country_core::resources::walls::decorator::unleash_decorator_op_events
-            .in_set(GameSystemSet(25)),
-    );
+    // B140344e0f..e12 registers the wall-hole frame advance in set 10.
+    app.add_systems(bevy_app::Update,
+        system_decorator::decorator_visual::maintain_visual_entities::clear_out_wall_holes
+            .in_set(GameSystemSet(10)));
+    // The original set25 chain owns unleash; it is registered in that chain
+    // below, after blueprint instantiation and copy.
     app.init_resource::<DecoratorPhysicsColliders>();
     app.init_resource::<country_core::resources::stairs::stairs_state::StairsState>();
     app.init_resource::<country_core::systems::collision::world::RaycastWorld>();
@@ -1346,7 +1350,7 @@ fn install_toolbar_shape_dependencies(app: &mut bevy_app::App) {
     ).chain_ignore_deferred().in_set(GameSystemSet(17)).run_if(is_gameplay_active));
     // Original decorator five-member group is parallel inside the set 25 chain.
     type CollisionPayload = country_core::resources::walls::decorator_archivist::LiveColliderPayload;
-    app.add_systems(bevy_app::Update, (
+    let decorator_slot0 = (
         system_decorator::cull_oob_decorators::auto_allow_decorator_culling::<CollisionPayload>,
         (
             system_decorator::decorator_on_move_shape::decorator_on_move_shape,
@@ -1356,8 +1360,98 @@ fn install_toolbar_shape_dependencies(app: &mut bevy_app::App) {
             system_decorator::decorator_on_freehand_wall_edited::decorator_on_circle_edited,
         ),
         system_decorator::move_decorators_following_anchors::move_decorators_following_anchors,
-    ).chain().in_set(GameSystemSet(25))
-        .before(system_decorator::cache_decorator_transforms::cache_decorator_transforms));
+        system_decorator::cache_decorator_transforms::cache_decorator_transforms,
+    ).chain();
+    // B 140344e32/e3e supply slot1's dispatch and placement subgroups;
+    // slot0, slot2 and slot3 each have their own cache system instance.
+    use system_decorator::ui_systems::{ui_decorator_affordance_dispatch, ui_move_decorator,
+        ui_place_decorator, ui_rotate_lantern, ui_change_chimney_height,
+        ui_change_stair_height, ui_inactive};
+    let decorator_input = (
+        ui_move_decorator::ui_move_decorator,
+        // ui_focus_stairs still publishes a fabricated zero-volume widget and
+        // legacy signifier data; its original leaf remains an explicit gap.
+        ui_place_decorator::ui_place_decorator,
+        ui_rotate_lantern::ui_rotate_decorator::<CollisionPayload>,
+        ui_change_chimney_height::ui_change_chimney_height,
+        ui_change_stair_height::ui_change_stair_height::<CollisionPayload>,
+        ui_inactive::ui_decorator_inactive,
+        system_decorator::handle_external_decorator_cmds::handle_external_decorator_cmds::<CollisionPayload>,
+    ).chain();
+    use system_decorator::{blueprint, cull_oob_decorators, decorator_visual as dv};
+    let decorator_prefix = (
+        decorator_slot0,
+        (country_core::systems::ui_clutter::ui_autoclutter::ui_convert_autoclutter_to_decoclutter::<ShapeHistory>,
+            ui_decorator_affordance_dispatch::ui_dispatch_decorator_affordance,
+            decorator_input,
+            system_decorator::ui_systems::ui_stairs_misc::continue_stairs).chain(),
+        system_decorator::cache_decorator_transforms::cache_decorator_transforms,
+        (dv::stairs::maintain_stair_graph,
+            cull_oob_decorators::cull_stair_attached_decorators,
+            dv::stairs::generate_playermade_stair_requests::<false>,
+            dv::stairs_assemble::playermade_stairs_interpolate_and_compare,
+            cull_oob_decorators::cull_stair_attached_decorators_on_invalid_stairs,
+            system_decorator::cache_decorator_transforms::cache_decorator_transforms).chain(),
+    ).chain();
+    let decorator_middle = (
+        system_decorator::derive_decorator_subtype::derive_decorator_subtypes,
+        (blueprint::clear_blueprints, dv::maintain_visual_entities::clear_out_visual_entities),
+        (
+            dv::cottage_wall_window::generate_cottage_wall_windows,
+            dv::cottage_corner_window::generate_cottage_corner_windows,
+            dv::cottage_balcony_door::generate_cottage_balcony_doors,
+            dv::cottage_dormers::cottage_dormer::generate_cottage_dormers,
+            dv::lantern::generate_lanterns,
+            dv::chimney_roof::generate_roof_chimneys,
+            dv::chimney_wall::generate_wall_chimneys,
+            dv::flag::generate_flags,
+            dv::gothic_wall_window::generate_gothic_wall_windows,
+            dv::gothic_balcony_door::generate_gothic_balcony_doors,
+            dv::gothic_dormer::generate_gothic_dormers,
+            dv::arrow_slit::generate_arrow_slits,
+            dv::trap_doors::generate_trap_doors,
+            dv::decorator_clutter::generate_decorator_clutter,
+            dv::stairs::generate_playermade_stair_decorators,
+        ),
+        blueprint::instantiate_blueprint_colliders,
+        country_core::systems::collision::world::flush_rapier_colliders,
+        blueprint::validate_blueprints,
+        cull_oob_decorators::cull_oob_decorators,
+        dv::stairs::maintain_stair_graph,
+        cull_oob_decorators::cull_stair_attached_decorators,
+        system_decorator::backup::create_or_restore_decorator_backup::<CollisionPayload>,
+    ).chain();
+    // The unresolved M8 stair assembler leaves remain absent; the recovered
+    // graph/request/interpolation leaves still occupy their original child.
+    let stair_visual = (
+        dv::stairs::maintain_stair_graph,
+        dv::stairs::generate_playermade_stair_requests::<false>,
+        dv::stairs_assemble::playermade_stairs_interpolate_and_compare,
+        country_core::systems::collision::world::flush_rapier_colliders,
+    ).chain_ignore_deferred();
+    let full_visual = (
+        blueprint::instantiate_blueprints,
+        (dv::chimney_assemble_bricks::chimney_assemble_bricks,
+         dv::door_stairs_assemble_bricks::door_stairs_assemble_bricks,
+         (dv::cottage_dormers::assemble_dormer_roof_tiles::generate_dormer_roofs,
+          dv::cottage_dormers::maintain_dormer_tiles_draw::maintain_dormer_tiles).chain(),
+         system_decorator::dormer_holes::upload_dormer_holes_to_gpu),
+        blueprint::copy_blueprints_to_prev,
+    ).chain_ignore_deferred();
+    let decorator_suffix = (
+        (stair_visual, full_visual),
+        country_core::resources::walls::decorator::unleash_decorator_op_events,
+        country_core::systems::collision::world::flush_rapier_colliders,
+        dv::lantern::maintain_lantern_lights,
+        // Slot 18's present implementation invents positions and writes the
+        // legacy signifier payload; restore its real owners before mounting it.
+    ).chain();
+    app.add_systems(bevy_app::Update, (decorator_prefix, decorator_middle, decorator_suffix)
+        .chain().in_set(GameSystemSet(25)));
+    // B 1403451xx registers this independent decorator history reader in 0x22.
+    app.add_systems(bevy_app::Update,
+        system_decorator::deferred_decorator_history::decorator_record_history::<ShapeHistory>
+            .in_set(GameSystemSet(0x22)));
     // Ivy pruning retains the local edit-to-history ordering.
     app.add_systems(
         bevy_app::Update,
@@ -1405,6 +1499,30 @@ mod shape_host_registration_tests {
             );
         }
         install_toolbar_shape_dependencies(&mut app);
+        // Install the real shared owners before the first frame: the decorator
+        // consumers also run while the shape UI's GameTime gate is closed.
+        startup_event_runtime::install(&mut app);
+        crate::app_systems::WallSystems::add_wall_events(&mut app);
+        app.add_event::<country_core::resources::roofs::commands::RecalculateRoofCmd>();
+        country_core::startup::run_game::initialize_core_resources(app.world_mut());
+        crate::decorator_plugin::build_startup_resources(&mut app);
+        app.init_resource::<country_core::systems::collision::world::RaycastWorld>();
+        app.init_resource::<country_core::resources::walls::decorator_collision::DecoratorPhysicsColliders>();
+        app.init_resource::<country_core::resources::terrain_height::TerrainHeightsData>();
+        app.init_resource::<country_core::resources::stairs::stairs_assembly_params::PlayermadeStairsAssemblyRequests>();
+        app.init_resource::<country_core::resources::stairs::stairs_state::StairsState>();
+        app.init_resource::<system_decorator::decorator_visual::deco_differential_state::WallAttachedDecoTracker<
+            system_decorator::decorator_visual::deco_differential_state::ChimneyAssemblyParams>>();
+        app.init_resource::<system_decorator::decorator_visual::deco_differential_state::WallAttachedDecoTracker<
+            system_decorator::decorator_visual::deco_differential_state::DoorStairsAssemblyParams>>();
+        let root = std::env::var_os("TG_INSTALL_ROOT").map(std::path::PathBuf::from)
+            .unwrap_or_else(|| std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../../B版本内容"));
+        let meshes = country_core::asset_libraries::mesh_library::AssetMeshLibrary::new();
+        let watch = country_core::asset_libraries::meshwatch::MeshWatch::new(false);
+        app.insert_resource(system_clutter::autoclutter::load_clutter_meshes::load_clutter_meshes_from(
+            &root, &meshes, &watch, false,
+        ));
         // No fabricated loaded assets/input are supplied. GameTime.ran is
         // false; the actual nested schedule must initialize and honor its gate.
         app.world_mut()
@@ -1426,9 +1544,6 @@ mod shape_host_registration_tests {
         // gameplay/toolbar fixtures, then execute the full host shape tree.
         // This fixture supplies explicit CPU scene/camera inputs, no graphics
         // device or fabricated successful asset/raycast backend.
-        country_core::startup::run_game::initialize_core_resources(app.world_mut());
-        startup_event_runtime::install(&mut app);
-        crate::app_systems::WallSystems::add_wall_events(&mut app);
         use country_core::{resources as res, systems as sys};
         app.init_resource::<bevy_time::Time>();
         app.insert_resource(sys::mode_manager::AppMode::Path);
@@ -1529,6 +1644,12 @@ mod shape_host_registration_tests {
             &mut decorator,
             ::utils::wall_space::WallSpaceCoord::new_unchecked(2.0, 3.0),
         );
+        // This anchor sits one unit below the four-unit wall top. The
+        // follow system recomputes coord.y from top + relative height; keep
+        // the fixture's relative value consistent with its 3.0 anchor.
+        system_decorator::decorator_on_wall_height_changed::set_wall_height_relative_y(
+            &mut decorator, -1.0,
+        );
         {
             let mut storage = app
                 .world_mut()
@@ -1575,6 +1696,8 @@ mod shape_host_registration_tests {
             sys::history::recording::history_finish_recording_system::<H>.in_set(GameSystemSet(35)),
         );
         app.update();
+        let original_transform = app.world().resource::<res::walls::cached_decorator_transforms::CachedDecoratorTransforms>()
+            .transform(9);
         let widget =
             sys::ui::resources::ui_state::WidgetId::from_name(&format!("edit_wall_{wall}_0"));
         let center = app
@@ -1660,6 +1783,10 @@ mod shape_host_registration_tests {
             system_decorator::decorator_on_wall_height_changed::get_anchor_ws(decorator),
             glam::Vec3::new(2.5, 3.0, 1.0)
         );
+        let edited_transform = app.world().resource::<res::walls::cached_decorator_transforms::CachedDecoratorTransforms>()
+            .transform(9);
+        assert_ne!(edited_transform.translation, original_transform.translation);
+        assert_eq!(edited_transform.translation, glam::Vec3::new(2.5, 3.0, 1.0));
         app.world_mut()
             .resource_mut::<country_core::input::action_set::ActionSetStates>()
             .digital[0]
@@ -1680,6 +1807,17 @@ mod shape_host_registration_tests {
                 .len(),
             1
         );
+        {
+            let mut storage = app.world_mut().resource_mut::<res::walls::decorator_storage::DecoratorStorage>();
+            storage.mark_mutable();
+            storage.apply_decorator_remove(res::walls::decorator_storage::DecoratorStorageAddr::Wall(wall),
+                res::walls::decorator::DecoratorId(9));
+        }
+        app.insert_resource(sys::mode_manager::AppMode::Path);
+        app.world_mut().resource_mut::<res::time::GameTime>().ran = false;
+        app.update();
+        assert!(app.world().resource::<res::walls::cached_decorator_transforms::CachedDecoratorTransforms>()
+            .try_transform(9).is_none());
     }
 }
 
@@ -1770,6 +1908,13 @@ pub fn make_loading_app(gameplay: &App) -> anyhow::Result<App> {
             .context("loading App: original GameConfig producer missing")?
             .clone(),
     );
+    // This host-side acknowledgement belongs to the same physical window in
+    // both Apps. Preserve the complete applied snapshot, including None while
+    // the first device application is still pending.
+    app.insert_resource(crate::gui::settings::LastAppliedVideoSettings(
+        source.get_resource::<crate::gui::settings::LastAppliedVideoSettings>()
+            .and_then(|applied| applied.0.clone()),
+    ));
     app.insert_resource(
         *source
             .get_resource::<WindowSize>()
@@ -2242,6 +2387,9 @@ fn transfer_loading_resources(from: &mut World, to: &mut World) -> anyhow::Resul
     take::<AvailableMonitors>(from, to)?;
     take::<FrameRenderConfig>(from, to)?;
     take::<AdaptiveRenderState>(from, to)?;
+    if let Some(applied) = from.remove_resource::<crate::gui::settings::LastAppliedVideoSettings>() {
+        to.insert_resource(applied);
+    }
     // main_loop1404da0b5..15a: this exact TypeId is StartupRevealStarted.
     // It precedes Vermeer.into_disable_hold, after the six real owner moves.
     to.send_event(country_core::systems::save::load_game::StartupRevealStarted);
@@ -2363,16 +2511,14 @@ mod intro_history_integration {
         }
         startup_event_runtime::install(&mut app);
         install_toolbar_shape_dependencies(&mut app);
-        app.add_systems(bevy_app::Update,
-            system_decorator::cache_decorator_transforms::cache_decorator_transforms
-                .in_set(GameSystemSet(25)));
         let names: Vec<String> = app.world_mut().schedule_scope(bevy_app::Update, |world, schedule| {
             schedule.initialize(world).expect("原形状与装饰调度必须无环");
             schedule.systems().unwrap().map(|(_, system)| system.name().to_string()).collect()
         });
         let position = |name: &str| {
             let found: Vec<_> = names.iter().enumerate()
-                .filter(|(_, candidate)| candidate.ends_with(name)).map(|(i, _)| i).collect();
+                .filter(|(_, candidate)| candidate.split('<').next().unwrap()
+                    .trim_end_matches("::").ends_with(name)).map(|(i, _)| i).collect();
             assert_eq!(found.len(), 1, "{name}必须恰好注册一次");
             found[0]
         };
@@ -2404,6 +2550,8 @@ mod intro_history_integration {
         for consumer in b_consumers { assert!(position(consumer) < position(last_c[0])); }
         assert_eq!(a.len() + first_c.len() + b_producers.len() + b_consumers.len() + last_c.len(), 25);
         let cache = position("cache_decorator_transforms::cache_decorator_transforms");
+        let subtype = position("derive_decorator_subtype::derive_decorator_subtypes");
+        assert!(cache < subtype, "subtype derivation must consume the current transform cache");
         for consumer in ["decorator_on_move_shape::decorator_on_move_shape",
             "decorator_on_rectangle_edited::decorator_on_rectangle_edited",
             "decorator_on_wall_height_changed::decorator_on_wall_height_changed",
@@ -2605,6 +2753,10 @@ mod startup_handoff_integration {
     fn ordinary_startup_waits_for_logo_then_moves_real_owners_and_starts_reveal() {
         let mut loading = App::new();
         let (config_ptr, monitors_ptr, expected_frame) = six_owners(&mut loading);
+        let mut acknowledged = loading.world().resource::<GameConfig>().video.clone();
+        acknowledged.fps_limit = 81.25;
+        let expected_acknowledged = serde_json::to_value(&acknowledged).unwrap();
+        loading.insert_resource(crate::gui::settings::LastAppliedVideoSettings(Some(acknowledged)));
         events(&mut loading);
         let mut logo = LogoAnimation::default();
         logo.progress[3] = 0.25;
@@ -2682,6 +2834,9 @@ mod startup_handoff_integration {
             config_ptr
         );
         assert_eq!(world.resource::<GameConfig>().video.fps_limit, 117.5);
+        assert_eq!(serde_json::to_value(
+            world.resource::<crate::gui::settings::LastAppliedVideoSettings>().0.as_ref().unwrap()
+        ).unwrap(), expected_acknowledged, "handoff must retain acknowledged settings independently of the requested config");
         assert_eq!(
             *world.resource::<ActiveInputModeTracker>(),
             ActiveInputModeTracker::new_default_controller(std::time::Duration::from_millis(827))

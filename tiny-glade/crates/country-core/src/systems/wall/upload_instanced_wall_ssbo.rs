@@ -26,16 +26,33 @@ pub fn gpu_flush_brick_buffers(
     device: Res<GraphicsDeviceResource>,
     mut library: ResMut<AssetSsboLibrary>,
     mut walls: Query<ComponentWrite<InstancedWall<BrickTransformSsbo>>>,
+    mut status: Option<ResMut<crate::geometry::runtime::WallBrickUploadStatus>>,
 ) {
     let storage = library.get_mut::<BrickTransformSsbo>().unwrap();
+    let mut failure = None;
+    let mut capacity_failures = 0;
     for mut wall in &mut walls {
         // 容量不足/跨存储：保留 CPU 数据与旧分配，待下一帧重试（同 geometry::runtime::sync_wall_bricks）。
         if let Err(error) = wall.upload_to_storage_buffer(storage) {
             log::error!("gpu_flush_brick_buffers: 墙砖上传失败：{error:?}");
+            capacity_failures += 1;
+            failure = Some(format!("墙砖上传失败：{error:?}"));
         }
     }
     if let Err(error) = storage.gpu_flush(device.device()) {
         log::error!("gpu_flush_brick_buffers: 设备上传失败，脏标记保留待重试：{error}");
+        failure = Some(format!("设备上传失败：{error}"));
+    }
+    if let Some(status) = status.as_deref_mut() {
+        status.capacity_failures = capacity_failures;
+        if let Some(error) = failure {
+            status.report_device_error(error);
+        } else {
+            // Accepted publication, not GPU completion. The frame handover
+            // admits deferred transfers before binding the physical snapshot.
+            status.gpu_ready = true;
+            status.last_error = None;
+        }
     }
 }
 

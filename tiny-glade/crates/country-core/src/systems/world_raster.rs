@@ -34,7 +34,13 @@ where
     M: crate::resources::history::transactions::HistoryRecordingValidation,
 {
     let stroke = strokes[slot].take_history_stroke();
-    history.add(construct_edit(stroke))
+    // B History::add panics when recording has not begun. The reconstructed
+    // transaction API returns an error, which callers used to discard and
+    // thereby silently lose a committed raster stroke.
+    history
+        .add(construct_edit(stroke))
+        .expect("Tried writing to History when recording is not active");
+    Ok(())
 }
 
 /// Logical projection, not Rust enum ABI or author field names. Discriminants
@@ -340,5 +346,25 @@ mod tests {
         assert_eq!((strokes[2].brush_size(), strokes[2].mode()), (0.0, 0));
         assert_eq!(strokes[2].in_progress().input(), input);
         assert_eq!((strokes[2].param_a(), strokes[2].param_b()), (1, 0.4));
+    }
+
+    #[test]
+    #[should_panic(expected = "Tried writing to History when recording is not active")]
+    fn committed_raster_stroke_without_recording_panics() {
+        use crate::resources::history::transactions::{HistoryTransactions, ObservedHistoryLedger};
+
+        let mut strokes = ActiveRasterStrokesStorage::default();
+        strokes[2].start_new(Vec3::ZERO, 1, 3.0, 1, 0.4);
+        strokes[2].add_point(Vec3::X);
+        strokes[2].resample_and_smooth();
+        let mut history = HistoryTransactions::<_, ()>::from_observed(ObservedHistoryLedger {
+            entries: vec![],
+            cursor: -1,
+            undo_anchor: -1,
+            resolved_snapshots: vec![],
+            observed_count_58: 0,
+            mutation_nonce: 0,
+        });
+        record_raster_history(&mut strokes, 2, &mut history, |stroke| stroke).unwrap();
     }
 }

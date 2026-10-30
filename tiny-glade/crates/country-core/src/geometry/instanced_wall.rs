@@ -208,6 +208,24 @@ impl<T: SparseSsbo> InstancedWall<T> {
         Ok(())
     }
 
+    /// PublicWall +0x160/+0x170 are replaced on each successful publication.
+    /// The current entity owns those lanes, while its base allocation and
+    /// pending base geometry remain independent of the published wall row.
+    pub fn replace_published_assembly_allocations(
+        &mut self,
+        storage: &SparseInstanceBuffer<T>,
+    ) -> Result<(), WallUploadError> {
+        if !self.validate_assembly_ownership(storage)? {
+            return self.initialize_assembly_allocations(storage);
+        }
+        drop(self.assembly_allocations.take());
+        self.assembly_allocations = Some(WallAssemblyAllocations {
+            chimney: storage.new_allocation(),
+            door_stairs: storage.new_allocation(),
+        });
+        Ok(())
+    }
+
     /// 返回是否写入了新版本。容量失败不清空 CPU 数据、不破坏旧分配；无更新直接返回。
     /// GPU 提交由共享缓冲的 gpu_flush 统一完成。
     pub fn upload_to_storage_buffer(

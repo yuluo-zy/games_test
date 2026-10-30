@@ -559,6 +559,12 @@ fn terrain_clear_owner_runs_during_real_reload_transition() {
     app.insert_resource(History::<country_core::resources::history::MaybePendingSnapshotId>::empty_glade()).insert_resource(ReplayBuffer::new(1.0));
     app.init_resource::<LiveDecoratorArchivist>().init_resource::<WallHighlight>();
     app.insert_resource(TerrainEditingData(tg_terrain::stroke::TerrainEditingData::default()));
+    // The host owns an empty readback registry before its first submitted
+    // frame. It is not a fabricated GPU result; drawing below starts only
+    // after the real publisher has filled the required buffers.
+    app.init_resource::<GpuReadbacks>();
+    assert!(app.world().resource::<GpuReadbacks>().get::<TerrainHeightSsbo>().is_none());
+    assert!(app.world().resource::<GpuReadbacks>().get::<VisualTerrainHeightSsbo>().is_none());
     // 与真实 App 一致，先注册事件维护，再初始化兼容资源。
     app.add_event::<country_core::resources::window::CursorMovedScreenSpace>()
         .add_event::<terrain::edit_terrain_stroke::EditTerrainStrokeCmd>()
@@ -590,6 +596,9 @@ fn terrain_clear_owner_runs_during_real_reload_transition() {
     app.update();
     assert_eq!(app.world().resource::<ActiveSession>().id, sessions[0]);
     for _ in 0..3 { app.update(); }
+    assert_eq!(app.world().resource::<terrain::ui_draw_terrain::TerrainDrawState>().state, 0,
+        "initial loading frames must not start a terrain draw before GPU readback");
+    assert!(app.world().resource::<GpuReadbacks>().get::<TerrainHeightSsbo>().is_none());
     assert_eq!(app.world().resource::<LoadGameManager>().state, LoadGameState::Loaded);
     // 在旧会话提交真实GPU上传和回读票据；回调留到同一World加载新会话后执行。
     let mut readback_publisher = ReadbackPublisher::new(device.clone());
@@ -646,6 +655,12 @@ fn terrain_clear_owner_runs_during_real_reload_transition() {
         assert!(std::time::Instant::now() < deadline);
         std::thread::sleep(Duration::from_millis(1));
     }
+    use country_core::{resources::terrain_rock_mask::TerrainRockMaskSsbo,
+        systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::MouseTerrainRaycastSsbo};
+    assert!(app.world().resource::<GpuReadbacks>().get::<MouseTerrainRaycastSsbo>().is_some(),
+        "drawing must consume the real published mouse-index buffer");
+    assert!(app.world().resource::<GpuReadbacks>().get::<TerrainRockMaskSsbo>().is_some(),
+        "drawing must consume the real published rock-mask buffer");
     let old_epoch = TerrainReadbackEpoch::capture(app.world());
     let old_revision = app.world().resource::<GpuReadbacks>().get::<TerrainHeightSsbo>().unwrap().revision;
     // 另取同一旧帧的真实票据，保留到Reload后；同时保留已发布的旧缓存。

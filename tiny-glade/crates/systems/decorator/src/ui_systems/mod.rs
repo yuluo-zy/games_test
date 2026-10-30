@@ -17,9 +17,8 @@
 //!   48B = {tag=1, kind=1, name_hash@0x10, id@0x18, pos@0x20, scale@0x28}，
 //!   写拷贝 40B（5×qword）；core `UiAppendSignifier` 40B 布局承载
 //!   {tag, kind, position, scale, name}，装饰域把 name 槽当 id/编码（I，登记）；
-//! - **op 队列（D3 分区命名，2026-10-16 裁决）**：UI 系统推 **0x28B**
-//!   [`DeferredDecoratorOpQueue`]（记录 `{seq@0, kind@8(0x12 烟囱/0x21 移动),
-//!   payload}`，Vec@+0x20 + 计数器@+0x40）；**0x20B 历史链** =
+//! - **音频和历史**：烟囱的 0x28B 记录是 PlayDecoratorSoundCmd 的
+//!   Bevy 事件；**0x20B 历史链** =
 //!   `DeferredDecoratorEditHistory`（kind 3=change/4=place/5=remove），由
 //!   [`crate::apply_decorator_op`]（0x141276e30，8 参面：op/kind_flag/dst/
 //!   storage/archivist/history/events）写入——二者独立，勿混名。
@@ -98,11 +97,8 @@ pub fn register_ui_resources(app: &mut bevy_app::App) {
     app.init_resource::<MoveDecorationInteractionState>();
     app.init_resource::<crate::backup::DecoratorBackup>();
     app.init_resource::<crate::deferred_decorator_history::DeferredDecoratorEditHistory>();
-    app.init_resource::<crate::deferred_decorator_history::DeferredDecoratorOpQueue>();
     app.init_resource::<crate::blueprint::DecoratorBlueprints>();
     // P0：已注册系统消费但此前从未初始化的资源（Bevy 缺资源会 panic）。
-    app.init_resource::<ui_change_chimney_height::ChimneyVisuals>();
-    app.init_resource::<ui_change_chimney_height::ChimneyPreviewState>();
     app.init_resource::<ui_move_decorator::MoveDecoratorDeltaPositions>();
     app.init_resource::<ui_stairs_viz::InsertPointState>();
     app.init_resource::<ui_place_decorator::PlaceDecoratorInteractionState>();
@@ -126,6 +122,6 @@ pub fn register_ui_systems<C: Send + Sync + 'static>(app: &mut bevy_app::App) {
         ui_place_decorator::ui_place_decorator,
         ui_rotate_lantern::ui_rotate_decorator::<C>,
         ui_change_stair_height::ui_change_stair_height::<C>,
-        ui_change_chimney_height::ui_change_chimney_height::<C>,
+        ui_change_chimney_height::ui_change_chimney_height,
     ));
 }

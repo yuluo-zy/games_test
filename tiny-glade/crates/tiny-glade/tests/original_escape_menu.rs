@@ -243,7 +243,11 @@ fn actual_pointer_settings_then_quit_deferred_resource() {
 fn settings_router_builds_pages_and_persists_changes_across_processes() {
     const NAME: &str = "settings_router_builds_pages_and_persists_changes_across_processes";
     if let Some(path) = std::env::var_os("TG_SETTINGS_RESTORE_FILE") {
-        let config: GameConfig = ron::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        let install = PathBuf::from(std::env::var_os("TG_INSTALL_ROOT").unwrap());
+        let account = PathBuf::from(std::env::var_os("TG_SETTINGS_ACCOUNT").unwrap());
+        paths::initialize_paths_with_installation(0, Some(&account), &install).unwrap();
+        assert_eq!(tiny_glade::app_config::settings_file_path(), PathBuf::from(path));
+        let config = tiny_glade::app_config::get_app_config(&Default::default()).unwrap();
         assert_eq!(config.lang_override.as_deref(), Some("de-DE"));
         assert_eq!(
             config.audio.master_volume.to_bits(),
@@ -335,14 +339,13 @@ fn settings_router_builds_pages_and_persists_changes_across_processes() {
         .add_systems(
             Update,
             country_core::resources::gui::advance_menu_state_system,
-        )
-        .add_systems(
-            bevy_app::PostUpdate,
-            app_config::write_settings_file_system.run_if(
-                bevy_ecs::schedule::common_conditions::on_event::<app_config::WriteSettingsFileCmd>,
-            ),
         );
-    let click = |app: &mut App, text: &str| {
+    let mut save_cursor = bevy_ecs::event::EventCursor::<app_config::WriteSettingsFileCmd>::default();
+    let frame = |app: &mut App, cursor: &mut bevy_ecs::event::EventCursor<app_config::WriteSettingsFileCmd>| {
+        app.update();
+        app_config::consume_settings_at_frame_tail(app.world(), cursor)
+    };
+    let click = |app: &mut App, text: &str, cursor: &mut bevy_ecs::event::EventCursor<app_config::WriteSettingsFileCmd>| {
         let id = *app
             .world()
             .resource::<MeiContext>()
@@ -357,8 +360,8 @@ fn settings_router_builds_pages_and_persists_changes_across_processes() {
             .unwrap_or_else(|| panic!("页面缺真实按钮: {text}"))
             .0;
         pointer_click(app, id);
-        app.update();
-        app.update();
+        frame(app, cursor);
+        frame(app, cursor);
     };
     app.update();
     let settings = *app
@@ -419,10 +422,16 @@ fn settings_router_builds_pages_and_persists_changes_across_processes() {
         })
         .unwrap()
         .0;
-    // 原控件下一帧消费的delta；不通过直接修改GameConfig代替设置业务。
-    toolbar::mei::core::NodeContext::new(&mut app.world_mut().resource_mut::<MeiContext>(), row)
+    // Dispatch the original right-action to the real tweaker input handler;
+    // the settings producer consumes its resulting delta on this frame.
+    use toolbar::mei::core::NodeContent;
+    let action = country_core::input::action_set::ActionSetAction::Digital {
+        slot: 21,
+        state: DigitalActionState { phase: DigitalActionPhase::JustPressed, timer_seconds: 0.0 },
+    };
+    assert!(toolbar::mei::core::NodeContext::new(&mut app.world_mut().resource_mut::<MeiContext>(), row)
         .content_mut::<TweakerContent>()
-        .delta = 1;
+        .on_input_phase(&action, [true, false]));
     app.update();
     let master_bits = app
         .world()
@@ -431,7 +440,12 @@ fn settings_router_builds_pages_and_persists_changes_across_processes() {
         .master_volume
         .to_bits();
     assert_eq!(master_bits, 1.1f32.to_bits());
+    assert!(!app_config::settings_file_path().is_file(), "frame tail has not run yet");
+    assert!(app_config::consume_settings_at_frame_tail(app.world(), &mut save_cursor));
     assert!(app_config::settings_file_path().is_file());
+    let persisted: GameConfig = ron::from_str(&std::fs::read_to_string(app_config::settings_file_path()).unwrap()).unwrap();
+    assert_eq!(persisted.audio.master_volume.to_bits(), master_bits);
+    assert!(!app_config::consume_settings_at_frame_tail(app.world(), &mut save_cursor));
     // 此CPU入口没有安装需要GPU设备的mei_post_update；撤回本测试注入的单帧delta。
     // 原prepare_layout清理合同由Tweaker控件测试验证，此处仅验页面消费与磁盘持久化。
     toolbar::mei::core::NodeContext::new(&mut app.world_mut().resource_mut::<MeiContext>(), row)
@@ -440,6 +454,7 @@ fn settings_router_builds_pages_and_persists_changes_across_processes() {
     click(
         &mut app,
         &lang_lib::lookup("Menu.Settings.Controls").to_uppercase(),
+        &mut save_cursor,
     );
     assert!(matches!(
         app.world().resource::<EscMenuState>(),
@@ -460,12 +475,12 @@ fn settings_router_builds_pages_and_persists_changes_across_processes() {
                     })
             })
     );
-    click(&mut app, "文/A");
+    click(&mut app, "文/A", &mut save_cursor);
     assert!(matches!(
         app.world().resource::<EscMenuState>(),
         EscMenuState::Settings(SettingsMenuState::Language)
     ));
-    click(&mut app, "Deutsch");
+    click(&mut app, "Deutsch", &mut save_cursor);
     assert_eq!(
         app.world()
             .resource::<GameConfig>()
@@ -473,7 +488,7 @@ fn settings_router_builds_pages_and_persists_changes_across_processes() {
             .as_deref(),
         Some("de-DE")
     );
-    click(&mut app, &lang_lib::lookup("Menu.Back"));
+    click(&mut app, &lang_lib::lookup("Menu.Back"), &mut save_cursor);
     assert!(matches!(
         app.world().resource::<EscMenuState>(),
         EscMenuState::Main
@@ -481,6 +496,7 @@ fn settings_router_builds_pages_and_persists_changes_across_processes() {
     let output = std::process::Command::new(std::env::current_exe().unwrap())
         .args(["--exact", NAME, "--nocapture"])
         .env("TG_SETTINGS_RESTORE_FILE", app_config::settings_file_path())
+        .env("TG_SETTINGS_ACCOUNT", account.path())
         .env("TG_SETTINGS_EXPECT_MASTER_BITS", master_bits.to_string())
         .output()
         .unwrap();

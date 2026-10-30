@@ -82,3 +82,49 @@ W5 强化复验 `/private/tmp/m1-w5-late-run-v2.log` 1/1，旧帧闭包晚到后
 **MouseActivityTimer取证边界。** 已流式限定检索B procedure-index的85,312条procedure记录，只匹配 `App::insert_resource<MouseActivityTimer>@14153dcb0`；同文件PDB仅构造new inline。原RNE SHA已校验，其TypeId `d540d6b4fbc978a8/cd0fedd0298f5319` 的64位字面量四处均位于该插入函数（14153dcfd/dd07/e008/e012）。types表仅一个IPI StringId，未给字段语义。没有找到业务更新者/typed消费者，**负面检索不能证明全部间接路径不存在**；保留已证0/1000/0构造及注册，不臆造算法、不删资源，该项保持待原证。侧任务沙箱拒绝Neo4j本地socket（PermissionError），未把它当数据库损坏或修改服务；本段原证来自保留PDB和共享Ghidra只读查询。
 
 本轮经验：①同World不等于同会话，同存档ID不等于同一次Game生命周期。②只过滤晚到反馈还不够，旧缓存与旧确认位都要保留来源。③不能通过清零原pending资源掩盖跨会话问题，必须同时证明新反馈仍正常消费。④同ID重载夹具要包含真实加载完成consumer，不能删loading.tmp迎合断言。⑤完整场景遇外域缺口时保留失败，不以关闭系统换取“地形已完成”。源码指纹、命令、失败和剩余范围追加在现有 `m02-terrain-wire-final-validation.json` 的 `m1_side_lifecycle_review_2026_10_29`。
+
+## 2026-10-30 新进程图像分段诊断（Sol，只读复核）
+
+复用中央真实完整 App/GPU 结果 `D:/game/tmp-merge/m1-positive-time-save-restore-v4.log` 及 `m1-positive-time-image-diagnostics-v4/`。本增量没有运行原作、原机器指令或 Cargo/GPU，没有改中央冻结的 `original_gameplay_chain.rs`，也没有将静态诊断计作新恢复或验收。
+
+父 `m2-saved-state.json` 与子 `m2-reloaded-matched-state.json` 的所有顶层字段逐值一致，唯一例外为 `app_mode: Terrain → Editing(None)`。最终图像 30,738/129,600 像素不同，RGB MAE 0.2578935185，最大通道差81。父/子实际 ShadowMaskMeanSsbo 分别为 bits1060574941 /1060575643（0.7151926159858704 /0.7152344584465027）；该值经原 `lerp(old,mean,clamp(1-exp(-5*dt)))` 更新，零dt冻结差异。现有 canonical `RequestAppModeChange(Editing(None))` 修正与自然计数对齐尚未实跑，不能称该修正通过。
+
+**W24 已有独立分歧，不能只归因于最终曝光/TAA。** 两份 `*-terrain-lighting.rgba` 在512²图上有1,340像素不同，包围盒 x62..372/y74..427；733像素最大通道差>5，最大140。该输出原绑定为两份地形高度、shadow atlas预设0x11、ColorLibrary与FrameConstants，当前地形lighting pass无时间历史与ShadowMaskMean输入。现有两份完整高度及FrameConstants已严格一致，但没有原样捕获这帧shadow atlas与实际GPU ColorLibrary；所以首个差异的精确来源仍未决。AppMode对齐可消除不同工具状态的部分输入，但未运行之前不能证明足够。
+
+下一次受中央串行窗口控制的GPU执行应一次捕获同一公共绝对帧，保留最终严格断言，并按以下边界排查：
+
+1. W23后三层shadow atlas深度原字节＋actual ColorLibrary owner/upload字节；W24 lighting原格式字节。W24存在差异时优先回追此分支，不能以增加TAA观察帧数掩盖。
+2. W34后depth/gbuffer，W42 screen-shadows与SSGI temporal输出，W43 deferred color。
+3. W51 taa_input（DoF后），W52 TAA输出及W54最终taa，最后T4 MenuBackground与实际ShadowMaskMean。第一个持续分歧结合其输入判断来源，后段差异不重复算缺失。
+
+精确诊断优先复用现有 `surface_comparison.rs::raw_capture` 的当前安全图协议：原source handle→声明0x25 texture range→GpuToCpu TRANSFER_DST buffer0x34→export0x26→实际receipt映射同Arc→等待完成→read_bytes。该函数目前仅首层/首mip，shadow atlas须显式覆盖三层，不能误称首层等于完整atlas。也不能在提交后按token直接复制临时/可别名图像，届时内容可能已被后续pass复用。通用截图shader会sRGB编码、clamp与RGBA8量化，只适合可视辅助，不能用于证明HDR/depth/G-buffer原字节一致。
+
+建议修改范围需中央解除/协调所有权后再动：测试文件仅 `run_m2_production_frame` 及M2专属捕获helper/父子循环；图声明挂点为现有 `world_graph.rs`、`world_lighting.rs`、`world_postprocess.rs` 的只读诊断分支，复用现有诊断承载。不开新renderer，不更改存档schema、counter、temporal有效性、原算法、rhapsody/utils或正常pass。当前仅提出精确改动合同，尚未实施。
+
+### canonical-mode v5与有界SSBO诊断准备
+
+中央解除M2专属段冻结后，先运行已存在的canonical-mode修正＋原mean/lighting诊断，没有为仪表推迟基线：`TG_INSTALL_ROOT=D:/game/tmp-merge/shared-chain-assets/Tiny Glade TG_M2_DUMP_DIR=D:/game/tmp-merge/m1-canonical-mode-save-restore-diagnostics-v5 CARGO_INCREMENTAL=0 cargo test --offline -p tiny-glade --test original_gameplay_chain m02_actual_terrain_history_save_new_process_reload_and_image -- --exact --test-threads=1 --nocapture`；移除FMOD_LIB_DIR。日志 `D:/game/tmp-merge/m1-canonical-mode-save-restore-v5.log`。北京时间17:45发起，共享Cargo锁等待约三分钟，9分12秒后编译完成。二进制SHA256 `04529b3879a831360ed1df9411a126809bbd9d398a24ab69bb543efaa2ae1958`。只读进程核对确认父PID13636→Cargo22856，子PID24488属于本轮；中央所见同名进程并非据此推断外部并发GPU。
+
+父端通过实际编辑、Undo/Redo、GPU双高度恢复和保存worker，并捕获到`Editing(None)`、total_secs24.266667932271957/frame_count2433、实际mean bits1060575134。v5最终失败，370.75秒（child内部50.88秒）：child `M2_HISTORY_INSERT_START cursor_before=12 entries_before=13` 后真实Dormer Holes上传540,000B报`owned upload admission capacity exhausted`，`systems/decorator/src/dormer_holes.rs:121` unwrap Device。没有到子端匹配图像，故本轮不能判断canonical-mode修正后的图像一致性，也不能把本轮失败计为canonical模式失败。
+
+新增但尚未编译/实跑的诊断完全留在同一测试文件M2专属段：`M2RenderInputOwner/m2_render_input_owners/m2_dump_render_input_bytes`从真实已注册lease选择ColorLibrary/LeafParticle/ParticleEmitter/SheepAnimation/BrickTransform；提交receipt先核实际物理Arc与pass访问，再等完成读取。总raw上限32MiB，超大allocation只保留明确未捕获的元数据，不截前缀冒称完整输入；墙砖约192MiB，已有独立有效记录范围probe继续保留。`TG_M2_RAW_INPUTS`仅在父子M2调用处选择既有诊断设备（额外TRANSFER_SRC），不修改M6 helper。额外在原有自然对齐到frame128的那一帧捕获父/子SSBO，无新增帧、无counter赋值；最终严格图像断言不变。CPU dump增加当前ColorLibrary完整bytes、真实粒子/发射器count、羊runtime（不含跨进程无意义实体ID）。rustfmt解析通过；本增量未执行Cargo/GPU，未修改任何生产渲染文件。
+
+v4原始RGBA转换为无损PNG的只读视觉核对显示父子飘叶位置不同；这是定位线索，不是完整因果证明。256个1/60正dt对初始mean的理想残留约5.4e-10，远小于v4实测4.18e-5差，提示持续输入差异，不能仅盲增曝光等待。生产W18粒子shader确实读取旧位置、frame_index与delta；父子最终时钟相同不证明积分历史相同。原leaf drawable没有DontCastShadow，故粒子也在W23阴影列表中，能影响W24，但仍需上述实际SSBO收据确认这两帧的差异。父图像还早于SaveGameCmd；保存循环继续推进App，而Sheep保存三个权威字段，需区分capture状态/落盘状态/加载后继续运行。合法动态状态不得混列地形缺失。
+
+中央请求v5后交还Cargo/GPU用于M6统一补丁；当前源码已冻结，不自动连续占窗口重跑600秒。后续扩诊断由中央重新串行安排。
+
+v5后修正M2测试宿主：新增`m2_tick_production_app`，真实App::update后调用既有`bridge.prepare_test_execution`推进pipeline/buffer/texture上传；父TOD等待/save循环、子TOD/Reload循环四处均改用该helper。M2自己的Undo/Redo等待也使用同helper，保持原游标、ReplayBuffer、PendingHistoryCommands、非Replay模式及完成后两帧稳定检查；未修改共享M6 helper。原m2_settle两处已泵的循环统一复用它。没有增大队列、清待处理上传、过滤Dormer或改变生产系统。最新文件窄范围修改保留中央同文件M6 typed增量；rustfmt解析通过，未进行第二轮Cargo/GPU。2026-10-30北京时间18:05前源码已冻结交中央统一编译；本修正仍待实际全链复验。
+
+### 原动态输入的静态边界复核（不作为像素放宽依据）
+
+本段只读取原RNE/保留原ASM及shader SPIR-V，没有运行原作或原机器指令。重新核验`tmp-merge/original-tiny-glade.rne`全文SHA仍为f507a6…2b7d03；原restore1416f24f0/773B的SHA `cf958db610d50283b07bf633d97b621e19ac1e2b6a6bfc6978086aa7e5a350fd`、move142318fa0/5774B的SHA `2931cee02c39da92f677887dd8eb816b3b2f955d7d06f82423c89693661d202a`均与既有原证manifest一致，不依赖patched导航库字节。
+
+- **羊快照只恢复三个权威字段。** 原capture1412f064f..066f读取Transform+10/18、CritterGoal16B、Sheep+30/38；原serializer1416f9eb0只写position、goal、move_state三项。原restore1416f2784..27d0实际写Transform+10/18、Goal16B、Sheep+30/38，未写Transform+0四元数、scale、Sheep动画+10/14/28/48/4c/50/54/5c。原件复用`evidence/core-recovery-20261015/critters/0x1412f03f0.asm`、`0x1416f9eb0.asm`与`evidence/round12/history/sheep-abi-independent-review/0x1416f24f0.original.asm`。这不是“羊不保存”，也不支持扩schema补动画字段。
+- **朝向更新无条件收敛保证不存在。** 原move142319df4..f20从水平位移取目标方向；方向无效/为零跳过rotation更新。有效时142319eb5读取旧Quat，142319ee3..f1d执行带符号选择的旧Quat加权、归一化和写回，权重来自1423193c8..d4的`powf(0.01,dt)`。因此静止羊的旧rotation可以原样保留；移动羊的平滑亦不能仅凭固定等待帧数宣称逐bit相同。该结论针对原控制流，不声称已证明当前失败像素全部由羊产生。
+- **步行动画包含独立相位。** 新从原RNE静态解码14231aa29..abc1：状态1/2读取并累加Sheep+5c的dt、fmod1.25，再以`floor(accum*24)+id*20+3`模30写+28帧；状态2另累加progress并最终设state3。原表14304b0f8的state0/3直接跳回主循环，未重置accum或帧索引。既有`parallel-critters/B-decompile/14231a630.asm.txt`缺这两跳表handler，因此本次直接从原RNE补看，不能把旧截短ASM当完整状态机。实际draw closure1409afcc0读取该帧索引、pet幅度、control flag和PrevTransform；`sheep.raster`原提升VS再用animation_frame选择静态动画库顶点。静态SheepAnimationSsbo相等不代表实际pose相等，下一raw须联查CPU sheep/walk/transform与draw输入。
+- **落叶是旧GPU记录递推，零dt也不等于冻结。** 实际安装`compiled-shaders/_leaf_particles.cs.hlsl_cs_main_0.bin`与已有oracle逐字节一致，容器SHA `fca92500d7ad1dbde8b011093586af65d0b2bbfd5f0fe8bf5b85b605e6b73221`；按容器字段解析出的13,134word SPIR-V SHA `cd4c94d61e010fd6d3224f492d5539914b27d81fa13b35ed19f58aa7af42cecf`。原`%184=OpAccessChain`指向当前LeafParticle槽，`%185=OpLoad`后最终`OpStore %184 %1299`，并从真实emitter槽读取重生点。原提升分支`leaf_particles.cs.hlsl:653`的ground XZ drift无dt乘数，`:731`还改drift_pos.x；v4 capture的theme_id=2，不是theme4关闭分支。故父子相同末帧clock/counter，不足以证明其此前不同数量zero/positive GPU帧产生同一粒子状态。当前图像可见落叶位置不同仍只是定位线索，待same-owner原字节确认。
+- **树木风动与上述递推不同。** `clearing/tree_canopy.raster.hlsl`、`tree_trunk.raster.hlsl`原提升VS使用当前game_time_sec/frac和实例记录直接计算正弦弯曲，没有类似LeafParticle的读旧位再写回累积器。Weather.wind_strength也是实际tree draw输入；现有v4已证FrameConstants一致，但Weather及实际实例记录还没capture，所以既不能把风动笼统记为“未存档缺失”，也不能先排除所有树木输入差异。Weather非冬季更新不修改wind_strength，仍应读真实owner确认。
+
+为下一观察补齐原draw读取项，已准备**未apply**的小补丁`D:/game/tmp-merge/m1-runtime-input-observation-addendum.patch`，只增加CPU dump的PrevTransform与Weather。普通`git apply --check`因当前CRLF上下文失败；`git apply --check --ignore-space-change`通过。源文件持续冻结，本段无新增Cargo/GPU执行。没有降低严格像素要求，没有把合法动态合同或未证因果混列业务缺失；B全部函数复核仍保留后序。
+
+落叶零dt结论另用已安装spirv-cross对同一原SPIR-V重新转译确认（stdin以`-`输入，不写renderer/shader或执行GPU）：原输出`_440 = _205.xz + (...).xz * 0.1`与后续`_441.x = _440.x - (...)*0.0056*...`均无delta因子，与现有lifted HLSL一致。首次误用该版本不支持的`--stdin`参数返回usage/exit1，改用文档指定`-`后exit0；这只是静态读码，不计游戏恢复或新测试通过。原动画跳表16B也直接由RNE解码为`14231a729,14231aa29,14231aade,14231a729`，进一步确认state0/3保持帧索引而非重置。

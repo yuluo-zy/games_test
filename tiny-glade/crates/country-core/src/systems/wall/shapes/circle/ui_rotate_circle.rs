@@ -288,7 +288,7 @@ pub fn ui_rotate_circle<S: Send + Sync + 'static>(
     let scale = if context.is_active() { 1.0 } else { 0.8 };
     let name = format!("circle_{wall:?}_rotate_{position:?}{scale}");
     for (mesh, pass) in [("corner_arrow", 0), ("corner_arrow_outline", 1)] {
-        let factory = SignifierFactory::from_closure(
+        let mut factory = SignifierFactory::from_closure(
             &name,
             std::sync::Arc::new(move |meshes, shaders, commands| {
                 vec![
@@ -302,6 +302,7 @@ pub fn ui_rotate_circle<S: Send + Sync + 'static>(
                 ]
             }),
         );
+        factory.marker = 0x142abddc0;
         stream.write_factory(&factory);
     }
 }
@@ -523,7 +524,7 @@ mod local_merge_tests {
                 .resource::<Events<crate::systems::ui::resources::widget_params::PlayUiSound>>()
                 .is_empty()
         );
-        let widget = WidgetId::from_name(&format!("rotate_circle_{wall}"));
+        let widget = WidgetId::from_name(&format!("rotate_circle_{}", wall.0));
         let params = world.resource::<UiState>().widget(widget).unwrap();
         let Some(crate::systems::ui::resources::widget_params::WidgetGeometry::TriangleMesh(mesh)) =
             &params.geometry

@@ -677,6 +677,58 @@ pub struct GameLoop {
     window_events: bevy_ecs::event::EventCursor<country_core::resources::window::OsWindowCmd>,
     settings_events: bevy_ecs::event::EventCursor<crate::app_config::WriteSettingsFileCmd>,
     pending_windowed_resolution: Option<[u32; 2]>,
+    pending_video_application: PendingVideoApplication,
+}
+
+/// The render worker acknowledges control generations only after applying
+/// them. Keep the exact requested snapshot until that acknowledgement arrives.
+#[derive(Default)]
+struct PendingVideoApplication {
+    requested: Option<(u64, country_core::render::render_config::VideoSettings)>,
+    display_target: Option<(Option<winit::window::Fullscreen>, DisplayConfirmationDeadline)>,
+}
+
+#[derive(Default)]
+struct DisplayConfirmationDeadline { active_since: Option<std::time::Instant> }
+
+impl DisplayConfirmationDeadline {
+    fn pause(&mut self) { self.active_since = None; }
+    fn expired(&mut self, confirmable: bool, now: std::time::Instant) -> bool {
+        if !confirmable { self.pause(); return false; }
+        let started = *self.active_since.get_or_insert(now);
+        now.saturating_duration_since(started) >= std::time::Duration::from_secs(5)
+    }
+}
+
+impl PendingVideoApplication {
+    fn request(&mut self, generation: u64, video: country_core::render::render_config::VideoSettings,
+        display_target: Option<Option<winit::window::Fullscreen>>) {
+        self.requested = Some((generation, video));
+        if let Some(target) = display_target {
+            self.display_target = Some((target, DisplayConfirmationDeadline::default()));
+        }
+    }
+
+    fn take_confirmed(&mut self, applied: u64, display_matches: bool) -> Option<country_core::render::render_config::VideoSettings> {
+        if display_matches && self.requested.as_ref().is_some_and(|(generation, _)| *generation <= applied) {
+            self.display_target = None;
+            self.requested.take().map(|(_, video)| video)
+        } else {
+            None
+        }
+    }
+}
+
+/// Confirm only effects requested through winit. A windowed monitor selection
+/// does not move the window in apply_display_config; fullscreen targets carry
+/// their actual chosen monitor (including the current-monitor fallback).
+fn display_target_matches(
+    actual: Option<winit::window::Fullscreen>,
+    target: &Option<winit::window::Fullscreen>,
+    actual_size: [u32; 2],
+    windowed_size: [u32; 2],
+) -> bool {
+    actual.as_ref() == target.as_ref() && (target.is_some() || actual_size == windowed_size)
 }
 
 /// The pending CPU words belong to one admitted cursor owner. Unwritten words
@@ -932,6 +984,7 @@ impl GameLoop {
             window_events: Default::default(),
             settings_events: Default::default(),
             pending_windowed_resolution: None,
+            pending_video_application: Default::default(),
         })
     }
 
@@ -940,6 +993,17 @@ impl GameLoop {
     }
     pub fn app_mut(&mut self) -> &mut App {
         self.driver.app_mut()
+    }
+
+    /// Requested and acknowledged render-thread window control generations.
+    pub fn window_control_progress(&self) -> (u64, u64) {
+        self.render.control_progress()
+    }
+
+    pub(crate) fn pause_display_confirmation(&mut self) {
+        if let Some((_, deadline)) = &mut self.pending_video_application.display_target {
+            deadline.pause();
+        }
     }
 
     pub fn frame_progress(&self) -> FrameProgress {
@@ -1363,6 +1427,27 @@ impl GameLoop {
     }
 
     fn apply_pending_video_settings(&mut self) -> anyhow::Result<()> {
+        // Failure never acknowledges the generation. Surface it before a
+        // confirmed snapshot can be published to the settings UI.
+        self.render.take_control_error()?;
+        let applied_generation = self.render.control_progress().1;
+        let confirmable = !self.suspended && !frame_waits_for_window_extent(self.driver.app.world());
+        let display_matches = if let Some((target, deadline)) = &mut self.pending_video_application.display_target {
+            let expected = self.pending_video_application.requested.as_ref().unwrap().1.display.windowed_resolution;
+            let size = self.window.inner_size();
+            let matches = confirmable && display_target_matches(self.window.fullscreen(), target,
+                [size.width, size.height], expected);
+            if deadline.expired(confirmable, std::time::Instant::now()) && !matches {
+                anyhow::bail!("window did not confirm the requested display mode and monitor within five seconds");
+            }
+            matches
+        } else { true };
+        if self.driver.app.world().contains_resource::<crate::gui::settings::LastAppliedVideoSettings>() {
+            if let Some(video) = self.pending_video_application.take_confirmed(applied_generation, display_matches) {
+                self.driver.app.world_mut()
+                    .resource_mut::<crate::gui::settings::LastAppliedVideoSettings>().0 = Some(video);
+            }
+        }
         let flags = std::mem::take(&mut *PENDING_VIDEO_SETTING_FLAGS.lock().unwrap());
         if flags != 0 {
             // A launch-only windowed request remains authoritative when an
@@ -1382,21 +1467,23 @@ impl GameLoop {
             if flags & 2 != 0 {
                 self.render.set_vsync(config.vsync_enable)?;
             }
-            if flags & 5 != 0 {
-                crate::event_loop::apply_display_config(&self.window, &config.display)?;
+            let display_target = if flags & 5 != 0 {
+                let target = crate::event_loop::apply_display_config(&self.window, &config.display)?;
                 self.pending_windowed_resolution = (!config.display.fullscreen)
                     .then_some(config.display.windowed_resolution);
-            }
+                Some(target)
+            } else { None };
             self.driver
                 .app
                 .world_mut()
                 .send_event(crate::app_config::WriteSettingsFileCmd);
-            // 原main_loop4dec71..ded27在窗口/vsync应用成功后替换完整快照。
-            // 不能在点击Apply或操作失败前更新，否则菜单会隐藏尚未应用的设置。
-            let applied = self.driver.app.world()
+            // Render controls are asynchronous in this host. Capture the
+            // requested settings now, but publish only after the worker has
+            // acknowledged the generation containing the vsync request.
+            let requested = self.driver.app.world()
                 .resource::<country_core::game_config::GameConfig>().video.clone();
-            self.driver.app.world_mut()
-                .resource_mut::<crate::gui::settings::LastAppliedVideoSettings>().0 = Some(applied);
+            let generation = self.render.control_progress().0;
+            self.pending_video_application.request(generation, requested, display_target);
         }
         // AppKit fullscreen transitions are asynchronous. Resizing the content
         // while leaving fullscreen can interrupt the native transition; restore
@@ -1406,37 +1493,10 @@ impl GameLoop {
         {
             let _ = self.window.request_inner_size(winit::dpi::PhysicalSize::new(width, height));
         }
-        let write = self
-            .settings_events
-            .read(
-                self.driver
-                    .app
-                    .world()
-                    .resource::<bevy_ecs::event::Events<crate::app_config::WriteSettingsFileCmd>>(),
-            )
-            .last()
-            .is_some();
-        if write {
-            let config = self
-                .driver
-                .app
-                .world()
-                .resource::<country_core::game_config::GameConfig>();
-            let persisted = self.driver.app.world()
-                .get_resource::<crate::app_config::LaunchDisplayOverride>()
-                .map(|policy| policy.persistence_config(config));
-            let config = persisted.as_ref().unwrap_or(config);
-            if let Some(repro) = self
-                .driver
-                .app
-                .world()
-                .get_resource::<crate::app_config::PanicReproStateResource>()
-            {
-                crate::app_config::write_settings_file(config, &repro.0);
-            } else {
-                crate::app_config::write_game_config_to_disk(config);
-            }
-        }
+        crate::app_config::consume_settings_at_frame_tail(
+            self.driver.app.world(),
+            &mut self.settings_events,
+        );
         Ok(())
     }
 
@@ -1647,6 +1707,82 @@ fn gather_video_setting_events(
 mod frame_tests {
     use super::*;
     use country_core::{game_config::GameConfig, resources::gui::EscMenuState};
+
+    #[test]
+    fn display_confirmation_deadline_pauses_on_zero_extent_and_suspend() {
+        let start = std::time::Instant::now();
+        let mut deadline = DisplayConfirmationDeadline::default();
+        assert!(!deadline.expired(true, start));
+        assert!(!deadline.expired(true, start + std::time::Duration::from_secs(4)));
+        assert!(!deadline.expired(false, start + std::time::Duration::from_secs(4)));
+        assert!(!deadline.expired(false, start + std::time::Duration::from_secs(40)));
+        assert!(!deadline.expired(true, start + std::time::Duration::from_secs(40)));
+        assert!(!deadline.expired(true, start + std::time::Duration::from_secs(44)));
+        deadline.pause(); // Event::Suspended, even if no frames run during suspension.
+        assert!(!deadline.expired(true, start + std::time::Duration::from_secs(100)));
+        assert!(deadline.expired(true, start + std::time::Duration::from_secs(105)));
+    }
+
+    #[test]
+    fn windowed_display_confirmation_checks_requested_window_effects() {
+        let mut video = country_core::render::render_config::VideoSettings::default();
+        video.display.fullscreen = false;
+        video.display.monitor = Some(country_core::render::render_config::MonitorMatch {
+            name: Some("selected monitor".into()),
+            physical_position: [1920, 0],
+            physical_size: [1920, 1080],
+        });
+        video.display.windowed_resolution = [480, 270];
+        let mut pending = PendingVideoApplication::default();
+        pending.request(0, video, Some(None));
+        assert!(!display_target_matches(None, &None, [481, 270], [480, 270]));
+        assert!(pending.take_confirmed(0, false).is_none());
+        assert!(display_target_matches(None, &None, [480, 270], [480, 270]));
+        let confirmed = pending.take_confirmed(0, true).unwrap();
+        assert_eq!(confirmed.display.monitor.unwrap().name.as_deref(), Some("selected monitor"));
+    }
+
+    #[test]
+    fn video_snapshot_waits_for_worker_and_retains_latest_request_on_failure() {
+        let mailbox = crate::render_control::WindowControlMailbox::default();
+        let mut pending = PendingVideoApplication::default();
+        let mut first = country_core::render::render_config::VideoSettings::default();
+        first.vsync_enable = !first.vsync_enable;
+        first.fps_limit = 77.0;
+        mailbox.update(|control| control.vsync = Some(first.vsync_enable));
+        let first_generation = mailbox.progress().0;
+        pending.request(first_generation, first.clone(), Some(None));
+        assert!(pending.take_confirmed(mailbox.progress().1, false).is_none());
+        let (taken, _) = mailbox.take().unwrap();
+        mailbox.complete(taken);
+        assert!(pending.take_confirmed(mailbox.progress().1, false).is_none());
+        let confirmed = pending.take_confirmed(mailbox.progress().1, true).unwrap();
+        assert_eq!(confirmed.vsync_enable, first.vsync_enable);
+        assert_eq!(confirmed.fps_limit, 77.0);
+
+        let mut second = first.clone();
+        second.vsync_enable = !first.vsync_enable;
+        mailbox.update(|control| control.vsync = Some(second.vsync_enable));
+        let second_generation = mailbox.progress().0;
+        pending.request(second_generation, second.clone(), None);
+        let (taken, _) = mailbox.take().unwrap();
+        let mut latest = second.clone();
+        latest.vsync_enable = first.vsync_enable;
+        latest.fps_limit = 91.0;
+        mailbox.update(|control| control.vsync = Some(latest.vsync_enable));
+        let latest_generation = mailbox.progress().0;
+        pending.request(latest_generation, latest.clone(), None);
+        mailbox.complete(taken);
+        assert!(pending.take_confirmed(mailbox.progress().1, true).is_none());
+        let (_, _) = mailbox.take().unwrap();
+        mailbox.fail(anyhow::anyhow!("vsync application failed"));
+        assert!(mailbox.take_error().is_some());
+        assert!(pending.take_confirmed(mailbox.progress().1, true).is_none());
+        // A failed operation cannot advance the applied generation.
+        assert_eq!(mailbox.progress().1, second_generation);
+        assert_eq!(pending.requested.as_ref().unwrap().0, latest_generation);
+        assert_eq!(pending.requested.as_ref().unwrap().1.fps_limit, 91.0);
+    }
 
     #[test]
     fn rejected_nani_payload_retries_before_handover_without_new_writes_or_double_roll() {
