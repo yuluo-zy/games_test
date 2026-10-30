@@ -123,6 +123,10 @@ pub fn initialize_core_resources(world: &mut World) {
     register_history_events(world);
     add_audio_events(world);
     register_terrain_events(world);
+    // The published-copy mailbox is part of the gameplay World from startup.
+    // The render thread is its real producer; until the first submitted frame
+    // it contains no values and consumers must observe a miss.
+    world.init_resource::<crate::render::gpu_readback::GpuReadbacks>();
     register_wall_cpu_resources(world);
     register_ivy_storage(world);
     register_garden_events(world);

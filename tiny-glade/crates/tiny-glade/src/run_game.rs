@@ -478,6 +478,9 @@ pub fn run_game_thread(
     // original constructors create empty owning libraries; their later loads
     // allocate through the renderer's real device, never a synthetic handle.
     app.insert_resource(country_core::render::frame_constants::FrameConstants::default());
+    // The readback mailbox is an owning consumer resource, not an input
+    // adapter. The renderer's submitted-frame publisher is its only writer.
+    app.init_resource::<country_core::render::gpu_readback::GpuReadbacks>();
     // 0x1409403c3: TerrainEditingData. Its constructor stores an empty map with fresh
     // RandomState keys, `rasterized = false` at +0x40, and a qword 1 at +0x38 that the
     // recovered struct does not name (OPEN); `Default` reproduces everything else.

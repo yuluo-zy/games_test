@@ -69,11 +69,11 @@ pub fn add_autoclutter_around_gates(
             let key = hash_gate_key(name, gate.seed, gate.wall.get_inner());
             let region = AutoClutterRegion {
                 // B 1422cca：tag3、墙 ID、门 seed 是区域来源，而非区域哈希。
-                source: Some(country_core::components::drawable::AutoClutterSource::Id {
+                source: country_core::components::drawable::AutoClutterSource::Id {
                     tag: country_core::components::drawable::AutoClutterSourceIdTag::Native3,
                     native_u64_08: gate.wall.0,
                     native_u32_10: gate.seed,
-                }),
+                },
                 kind: 3,
                 key: ClutterRegionId(key),
                 center: pos,
@@ -128,10 +128,10 @@ mod canonical_gate_tests {
             let center = region.rectangle2d().center;
             assert_eq!(center, if name == GATE_RIGHT { Vec2::new(2.0, 2.0) } else { Vec2::new(4.0, 4.0) });
             assert!(matches!(&region.source,
-                Some(country_core::components::drawable::AutoClutterSource::Id {
+                country_core::components::drawable::AutoClutterSource::Id {
                     tag: country_core::components::drawable::AutoClutterSourceIdTag::Native3,
                     native_u64_08: 5, native_u32_10: 17,
-                })));
+                }));
         }
         assert!(world.get::<GateHost>(gate).is_some());
         world.despawn(gate);

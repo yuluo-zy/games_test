@@ -252,6 +252,7 @@ fn advance_history_cursor<S: Send + Sync + 'static>(
     failures: &mut EventWriter<HistoryReplayFailed>,
     started: &mut EventWriter<history_process::NewReplayCommandEvent>,
 ) {
+    let trace = std::env::var_os("TG_M2_TRACE_HISTORY").is_some();
     // B @140af5f81..f9a: a live replay bucket OR a live wall bulldoze
     // animation blocks taking the next queued history command.
     if !replay.is_empty() || !bulldoze.0.is_empty() {
@@ -260,6 +261,14 @@ fn advance_history_cursor<S: Send + Sync + 'static>(
     let Some(command) = pending.0.pop_front() else {
         return;
     };
+    if trace {
+        eprintln!(
+            "M2_HISTORY_CONSUME command={:?} cursor_before={} entries={}",
+            command.bytes,
+            history.ledger().cursor,
+            history.ledger().entries.len(),
+        );
+    }
     let bytes = command.bytes;
     if bytes[0] == 2 || bytes[1] == 4 {
         return;
@@ -293,6 +302,14 @@ fn advance_history_cursor<S: Send + Sync + 'static>(
                 error,
             });
         }
+    }
+    if trace {
+        eprintln!(
+            "M2_HISTORY_CONSUMED command={:?} cursor_after={} entries={}",
+            command.bytes,
+            history.ledger().cursor,
+            history.ledger().entries.len(),
+        );
     }
 }
 

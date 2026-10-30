@@ -11,13 +11,14 @@
 //!     `_UNK_142925870`），任一不满足 → return；
 //! - 命中 → `*param_3 = 1; param_3[1] = iVar11`（写 `HoveredTerrainStrokeId { tag=1, id }`）。
 //!
-//! MouseTerrainRaycastSsbo is now an actual32-byte mapped provider. Without a graphics owner,
-//! [`MouseTerrainHoverReadback`] 适配资源承载宿主从 SSBO 拷贝的 id/悬停位/距离
-//! retains the existing explicit host input; height sampling uses [`TerrainWaterSample`] 适配（I：WaterMaskSsbo Gap）。
+//! `MouseTerrainRaycastSsbo` is an actual 32-byte mapped provider. Its latest
+//! published copy, canonical `CursorTerrainRaycast`, `WaterRaster` and the
+//! graphics/readback owners are mandatory system parameters.
 use bevy_ecs::prelude::*;
 
 use crate::{
     asset_libraries::ssbo_library::AssetSsboLibrary,
+    render::gpu_readback::GpuReadbacks,
     resources::{cursor_terrain_raycast::CursorTerrainRaycast, world_raster_defs::WaterRaster},
     systems::mode_manager::AppMode,
 };
@@ -35,46 +36,17 @@ pub struct HoveredTerrainStrokeId {
     pub id: i64,
 }
 
-/// Existing explicit host readback input, used when no SSBO library is supplied.
-#[derive(Resource, Clone, Copy, Debug)]
-pub struct MouseTerrainHoverReadback {
-    /// 命中笔画 id（-1 哨兵 = 未命中）。
-    pub id: i32,
-    /// 悬停位（O：decomp `(*pbVar4 & 1)`，仅在高度>0 分支检查）。
-    pub hovered: bool,
-    /// 射线距离（O：decomp `*(float*)(pbVar4 + 8)`；仅高度>0 分支的 0.5 界外阈值）。
-    pub distance: f32,
-}
-
-impl Default for MouseTerrainHoverReadback {
-    fn default() -> Self {
-        Self {
-            id: -1,
-            hovered: false,
-            distance: 0.0,
-        }
-    }
-}
-
-/// 光标高度采样适配（I：`WaterMaskSsbo` 布局 Gap；对应 decomp `FUN_140a14df0` 输出）。
-#[derive(Resource, Clone, Copy, Debug, Default)]
-pub struct TerrainWaterSample {
-    pub level: f32,
-}
-
 /// 界外距离阈值（O：`_UNK_142925870` = 0.5）。
 pub const HOVER_DISTANCE_GATE: f32 = 0.5;
 
 /// `terrain_hover_idx` @0x140aff720（O 两分支门控）。
 pub fn terrain_hover_idx(
     mode: Res<AppMode>,
-    hover: Res<MouseTerrainHoverReadback>,
-    water: Res<TerrainWaterSample>,
     mut hovered: ResMut<HoveredTerrainStrokeId>,
-    library: Option<Res<AssetSsboLibrary>>,
-    cursor: Option<Res<CursorTerrainRaycast>>,
-    water_raster: Option<Res<WaterRaster>>,
-    readbacks: Option<Res<crate::render::gpu_readback::GpuReadbacks>>,
+    library: Res<AssetSsboLibrary>,
+    readbacks: Res<GpuReadbacks>,
+    cursor: Res<CursorTerrainRaycast>,
+    water_raster: Res<WaterRaster>,
 ) {
     // **函数开头无条件复位输出 tag=0**（O：fresh 反编译 `*puVar4 = 0` 在 mode 门之前；
     // miss/门失败帧输出被清）。早期 Rust 不清 → 门失败帧残留上帧命中。
@@ -85,45 +57,20 @@ pub fn terrain_hover_idx(
     if disc >= 0xb || ((0x421u32 >> (disc & 0x1f)) & 1) == 0 {
         return;
     }
-    let has_live_library = library.is_some();
-    if has_live_library {
-        assert!(
-            water_raster.is_some(),
-            "live terrain hover requires WaterRaster"
-        );
-        assert!(
-            cursor.is_some(),
-            "live terrain hover requires CursorTerrainRaycast"
-        );
-    }
-    let id = if let Some(library) = library {
-        match crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::read_terrain_stroke_index(
-            &library, readbacks.as_deref()) {
-            Some(id) => id,
-            None => return,
-        }
-    } else {
-        // Existing host/readback adapter remains usable without a graphics owner.
-        hover.id
+    let id = match crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::read_terrain_stroke_index(
+        &library,
+        Some(&readbacks),
+    ) {
+        Some(id) => id,
+        None => return,
     };
-    let cursor_hovered = cursor
+    let cursor_hovered = cursor.tag & 1 != 0;
+    let distance = cursor.pos.y;
+    let point = cursor.position();
+    let level = water_raster
+        .0
         .as_ref()
-        .map_or(hover.hovered, |cursor| cursor.tag & 1 != 0);
-    let distance = cursor
-        .as_ref()
-        .map_or(hover.distance, |cursor| cursor.pos.y);
-    let level = if let Some(raster) = water_raster.as_deref() {
-        let ray = cursor
-            .as_deref()
-            .expect("live water hover requires CursorTerrainRaycast");
-        let point = ray.position();
-        raster
-            .as_ref()
-            .bilinear_sample_at_world_xz(point.x, point.z, 130.0, 130.0)
-    } else {
-        assert!(!has_live_library, "live terrain hover requires WaterRaster");
-        water.level
-    };
+        .bilinear_sample_at_world_xz(point.x, point.z, 130.0, 130.0);
     // -1 哨兵 → 未命中，不更新。
     if id == -1 {
         return;
@@ -154,6 +101,17 @@ pub fn terrain_hover_idx(
 mod live_water_tests {
     use super::*;
     use crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::MouseTerrainRaycastSsbo;
+    use bevy_ecs::system::RunSystemOnce;
+
+    #[test]
+    fn missing_graphics_or_input_owner_is_a_system_parameter_failure() {
+        let mut world = World::new();
+        world.insert_resource(AppMode::Terrain);
+        world.init_resource::<HoveredTerrainStrokeId>();
+        let result = world.run_system_once(terrain_hover_idx);
+        assert!(result.is_err(), "the legacy host hover fallback must not exist");
+    }
+
     #[test]
     fn live_water_raster_gates_the_same_live_mouse_buffer() {
         let mut world = World::new();

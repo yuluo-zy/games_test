@@ -277,6 +277,13 @@ pub fn insert_starting_edit<M, S>(
     entry: HistoryEntry<M>,
     nonce: u64,
 ) {
+    if std::env::var_os("TG_M2_TRACE_HISTORY").is_some() {
+        eprintln!(
+            "M2_HISTORY_INSERT_START cursor_before={} entries_before={}",
+            ledger.cursor,
+            ledger.entries.len(),
+        );
+    }
     assert!(ledger.cursor >= -1, "assertion failed: self.0 >= -1");
     ledger.cursor += 1;
     ledger.entries.insert(0, entry);

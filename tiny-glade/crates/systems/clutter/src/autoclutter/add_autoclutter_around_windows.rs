@@ -43,7 +43,7 @@ pub fn add_autoclutter_around_windows(
                 for (name, (axis, origin)) in [(DECORATOR_RIGHT, regions[0]), (DECORATOR_LEFT, regions[1])] {
                     let key = ClutterRegionId(utils::calculate_hash(&(name, id as usize, info.decorator_id)));
                     let region = AutoClutterRegion {
-                        source: Some(AutoClutterSource::Id { tag: AutoClutterSourceIdTag::Native0, native_u64_08: wall_id.0, native_u32_10: id }),
+                        source: AutoClutterSource::Id { tag: AutoClutterSourceIdTag::Native0, native_u64_08: wall_id.0, native_u32_10: id },
                         kind: 0, key, center: origin, basis: [axis, Vec2::new(4.0, 2.0)],
                         f34: id as i32, b38: 0, b39: info.u45,
                         candidate_index: ClutterCandidateIndex::NONE, epoch: state.epoch,
@@ -56,7 +56,7 @@ pub fn add_autoclutter_around_windows(
                     for (index, (axis, origin)) in trap_regions(transform.rotation.to_array(), transform.translation).into_iter().enumerate() {
                         let key = ClutterRegionId(utils::calculate_hash(&(TRAP_DOOR, index as i32, id as usize, info.decorator_id)));
                         let region = AutoClutterRegion {
-                            source: Some(AutoClutterSource::Id { tag: AutoClutterSourceIdTag::Native0, native_u64_08: wall_id.0, native_u32_10: id }),
+                            source: AutoClutterSource::Id { tag: AutoClutterSourceIdTag::Native0, native_u64_08: wall_id.0, native_u32_10: id },
                             kind: 0, key, center: origin, basis: [axis, Vec2::splat(1.5)],
                             f34: id as i32, b38: 1, b39: info.u45,
                             candidate_index: ClutterCandidateIndex::NONE, epoch: state.epoch,
@@ -155,11 +155,13 @@ mod tests {
         world.insert_resource(DerivedDecoratorSubtypes::default());
         world.insert_resource(DecoratorMeshLibrary::default());
         world.insert_resource(AutoClutterState { lazy_grid: vec![Vec::new(); 4096], ..Default::default() });
+        world.init_resource::<country_core::systems::ui::signifiers::UiSignifierStream>();
+        world.init_resource::<country_core::resources::gui::DebugGui>();
         world.run_system_once(add_autoclutter_around_windows).unwrap();
         let state = world.resource::<AutoClutterState>();
         assert_eq!(state.regions.len(), 2);
         for region in state.regions.values() {
-            assert!(matches!(&region.source, Some(AutoClutterSource::Id { tag: AutoClutterSourceIdTag::Native0, native_u64_08, native_u32_10: 7 }) if *native_u64_08 == wall.0));
+            assert!(matches!(&region.source, AutoClutterSource::Id { tag: AutoClutterSourceIdTag::Native0, native_u64_08, native_u32_10: 7 } if *native_u64_08 == wall.0));
             assert_eq!((region.kind, region.f34, region.b38, region.b39), (0, 7, 0, 3));
         }
         use country_core::{asset_libraries::ssbo_library::AssetSsboLibrary,
@@ -218,8 +220,10 @@ mod tests {
         }
         world.resource_mut::<DecoratorStorage>().per_wall.clear();
         {
+            world.resource_mut::<country_core::resources::time::GameTime>().frame_count = 1;
+            let tick = world.resource::<country_core::resources::time::GameTime>().frame_count as u8;
             let mut state = world.resource_mut::<AutoClutterState>();
-            state.set_current_tick();
+            state.set_current_tick(tick);
             state.reset_autoclutter_for_new_frame();
         }
         world.run_system_once(add_autoclutter_around_windows).unwrap();

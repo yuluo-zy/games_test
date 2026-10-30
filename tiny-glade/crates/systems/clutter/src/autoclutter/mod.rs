@@ -103,8 +103,8 @@ pub struct ClutterRegionId(pub u64);
 /// 本重建以 key/center/basis 承载载荷几何（近似），candidate_index/epoch 为状态字段。
 #[derive(Clone, Debug)]
 pub struct AutoClutterRegion {
-    /// 原区域来源 union；尚未恢复的生产者保留 None，而非伪造来源。
-    pub source: Option<country_core::components::drawable::AutoClutterSource>,
+    /// 原区域来源 union。所有生产者在 add_region 前都必须提供实际值。
+    pub source: country_core::components::drawable::AutoClutterSource,
     /// +0x00：种类（3=门/预置、4=鸟巢、5=灯笼/树；add_region 判别==4 时释放 Arc）。
     pub kind: u32,
     /// +0x08..：区域键（hashbrown 表键；载荷内 +0x08 为 u64 段）。
@@ -127,7 +127,7 @@ pub struct AutoClutterRegion {
 impl Default for AutoClutterRegion {
     fn default() -> Self {
         Self {
-            source: None,
+            source: country_core::components::drawable::AutoClutterSource::None,
             kind: 3,
             key: ClutterRegionId(0),
             center: Vec3::ZERO,
@@ -181,8 +181,6 @@ pub struct AutoClutterCandidate {
     pub resolved: Option<ResolvedAutoClutterObject>,
     /// +0x00：种类判别（process 按 3/4/5 clone 共享字段）。
     pub kind: u8,
-    /// +0x08：共享引用（Arc 强计数等；process 0x4 分支强计数++、0x5 分支裸指针语义）。
-    pub shared: u64,
     /// +0x10：键/哈希。
     pub key: u64,
     /// +0x18：id/计数。
@@ -223,7 +221,6 @@ impl Default for AutoClutterCandidate {
         Self {
             resolved: None,
             kind: 0,
-            shared: 0,
             key: 0,
             f18: 0,
             f20: 0,
@@ -291,16 +288,10 @@ pub struct ResolvedAutoClutterObject {
 }
 
 #[derive(Clone, Debug)]
-pub enum SpawnShared {
-    /// Legacy reconstruction erased the actual Arc owner. A number alone is
-    /// not an Arc; the manager rejects this unresolved input before ECS writes.
-    ArcStrong(u64),
-    /// Legacy writers store hash salts here and have lost their selected mesh.
-    Prefab(String),
-    /// Actual producer-resolved metadata. Color is the original shutter payload.
+pub enum AutoClutterPayload {
+    /// Actual producer-resolved metadata.
     Mesh {
         metadata: ResolvedClutterMesh,
-        color: Option<country_core::resources::color_id::ColorId>,
     },
     /// 来自区域的实际 mesh、来源和落点，不重建原版指针布局。
     Object(ResolvedAutoClutterObject),
@@ -313,10 +304,12 @@ pub enum SpawnShared {
 #[derive(Clone, Debug)]
 pub struct AutoClutterSpawn {
     pub kind: u8,
-    pub shared: SpawnShared,
+    pub payload: AutoClutterPayload,
     pub f18: u32,
     pub key: u64,
     pub marker: u8,
+    /// Original output +0x34; selector-specific value (ColorId on shutters).
+    pub selector_value: u32,
     pub position: Vec3,
     pub host_id: u64,
     pub f48: u64,
@@ -325,26 +318,6 @@ pub struct AutoClutterSpawn {
     pub f58: u32,
     pub f5c: u32,
     pub scale: f32,
-}
-
-impl Default for AutoClutterSpawn {
-    fn default() -> Self {
-        Self {
-            kind: 0,
-            shared: SpawnShared::ArcStrong(0),
-            f18: 1,
-            key: 0,
-            marker: 5,
-            position: Vec3::ZERO,
-            host_id: 0,
-            f48: 0,
-            f50: 0,
-            f54: 0,
-            f58: 0,
-            f5c: 0,
-            scale: 1.0,
-        }
-    }
 }
 
 /// B system_clutter::autoclutter::WindowShutter: quaternion plus side byte.
@@ -372,18 +345,20 @@ pub struct AutoClutterState {
     pub regions: HashMap<ClutterRegionId, AutoClutterRegion>,
     /// +0x90：epoch。
     pub epoch: u8,
+    /// Reused worlds/cell scratch; not part of the native value layout.
+    pub mark_dirty_scratch: Vec<GlobalId>,
+    /// Reused stale-region key scratch.
+    pub stale_region_scratch: Vec<ClutterRegionId>,
 }
 
 impl AutoClutterState {
-    /// `set_current_tick`（L164）。
-    /// **评审 FIX #8（未实现-需重做）**：PDB 注解该系统签名为
-    /// `void(*)(Res<GameTime>, ResMut<AutoClutterState>, ResMut<InterShapeBrickStitches>)`
-    /// （skeleton mod.rs L3689）——即读取 GameTime 并同时改 AutoClutterState 与
-    /// InterShapeBrickStitches 的独立系统；epoch 来源与 stitch 交互 U。现为方法桩，
-    /// 未还原系统签名与宿主交互。
-    pub fn set_current_tick(&mut self) {
-        // O：tick 由宿主查询索引推进；epoch 逐帧推进（remove_stale_regions 判定）。
-        self.epoch = self.epoch.wrapping_add(1);
+    /// `set_current_tick`（PDB inline L164）。
+    ///
+    /// The inline call in both reset hosts copies the low byte of the real
+    /// `GameTime::frame_count` to `+0x90`. It is a setter, not an incrementing
+    /// system and not an independent Bevy system.
+    pub fn set_current_tick(&mut self, tick: u8) {
+        self.epoch = tick;
     }
 
     /// `add_region`（0x140ee3fd0）：hash_one<&GlobalId> → 区域表（PDB `HashMap::entry`）：
@@ -450,12 +425,19 @@ impl AutoClutterState {
         rect: utils::geometry::rectangle::Rectangle2d,
         key: GlobalId,
     ) {
-        for cell in world_rect_cells_from_aabb(rect.aabb()) {
+        let aabb = rect.aabb();
+        let min = aabb.center() - aabb.half_dims();
+        let max = aabb.center() + aabb.half_dims();
+        let (minimum, end) = read_bush_positions_from_gpu::bush_rect_cells(min, max);
+        for y in minimum[1]..end[1] {
+            for x in minimum[0]..end[0] {
+                let cell = y as usize * 64 + x as usize;
             while self.lazy_grid.len() <= cell {
                 self.lazy_grid.push(Vec::new());
             }
             let bucket = &mut self.lazy_grid[cell];
-            if !bucket.contains(&key) {
+                // `add_region` removes the old rectangle before adding its
+                // replacement, so this cell cannot already contain the new key.
                 bucket.push(key);
             }
         }
@@ -468,9 +450,16 @@ impl AutoClutterState {
         rect: utils::geometry::rectangle::Rectangle2d,
         key: GlobalId,
     ) {
-        for cell in world_rect_cells_from_aabb(rect.aabb()) {
+        let aabb = rect.aabb();
+        let min = aabb.center() - aabb.half_dims();
+        let max = aabb.center() + aabb.half_dims();
+        let (minimum, end) = read_bush_positions_from_gpu::bush_rect_cells(min, max);
+        for y in minimum[1]..end[1] {
+            for x in minimum[0]..end[0] {
+                let cell = y as usize * 64 + x as usize;
             if let Some(bucket) = self.lazy_grid.get_mut(cell) {
                 bucket.retain(|g| *g != key);
+            }
             }
         }
     }
@@ -492,23 +481,27 @@ impl AutoClutterState {
             cell_index < self.lazy_grid.len(),
             "autoclutter mark_dirty: bounds check failed"
         );
-        let globals = self.lazy_grid[cell_index].clone();
-        let mut pending = Vec::new();
-        for global in globals {
+        let mut globals = std::mem::take(&mut self.mark_dirty_scratch);
+        globals.clear();
+        globals.extend_from_slice(&self.lazy_grid[cell_index]);
+        for &global in &globals {
             let key = ClutterRegionId(global);
             // O：`+0x78 != 0` 才查；未命中/表空 → unwrap_failed（无静默跳过）。
-            let region = self
-                .regions
-                .get_mut(&key)
-                .expect("autoclutter mark_dirty: region missing for lazy grid entry");
-            let ci = region.candidate_index;
+            let ci = {
+                let region = self
+                    .regions
+                    .get_mut(&key)
+                    .expect("autoclutter mark_dirty: region missing for lazy grid entry");
+                let ci = region.candidate_index;
+                // O：条目 +0x42 = 0xffff（已消费标记）。
+                region.candidate_index = ClutterCandidateIndex::NONE;
+                ci
+            };
             if ci.get().is_some() {
-                pending.push(ci.0);
+                self.push_pending(ci.0);
             }
-            // O：条目 +0x42 = 0xffff（已消费标记）。
-            region.candidate_index = ClutterCandidateIndex::NONE;
         }
-        self.pending_indices.extend(pending);
+        self.mark_dirty_scratch = globals;
     }
 
     /// `remove_region_from_lazy_grid`（0x140ee4a70）：x0y + Rectangle2d::new/aabb +
@@ -523,16 +516,19 @@ impl AutoClutterState {
 
     /// B 140eecf00：删过期区域时先解除网格关联，并排队删除其候选。
     pub fn remove_stale_regions(&mut self) {
-        let stale: Vec<_> = self.regions.iter()
+        let mut stale = std::mem::take(&mut self.stale_region_scratch);
+        stale.clear();
+        stale.extend(self.regions.iter()
             .filter_map(|(&key, region)| (region.epoch != self.epoch).then_some(key))
-            .collect();
-        for key in stale {
+        );
+        for &key in &stale {
             self.remove_region_from_lazy_grid(&key);
             let region = self.regions.remove(&key).expect("stale region disappeared");
             if let Some(index) = region.candidate_index.get() {
                 self.push_pending(index);
             }
         }
+        self.stale_region_scratch = stale;
     }
 
     /// `flush_candidates_pending_removal`（0x140ee4bf0）：pending 升序（<0x15 用
@@ -560,9 +556,9 @@ impl AutoClutterState {
             let removed = self.region_candidates.swap_remove(idx);
             // **U 登记缝**：判别==4 → Arc 强计数 LOCK 递减、归零 drop_slow（O 真实副作用；
             // Arc payload 合同 U，登记不执行——评审 FIX #5）。
-            if removed.kind == 4 {
-                let _ = removed.shared;
-            }
+            // The owned Arc, when present, lives in `resolved.source` and is
+            // released by dropping the removed candidate itself.
+            let _ = removed;
             if self.region_candidates.len() != idx {
                 // O：被换入候选的 key（+0x88）→ 区域表修正 +0x42。
                 let moved_key = self.region_candidates[idx].region_key;
@@ -593,23 +589,6 @@ impl AutoClutterState {
     }
 }
 
-/// `set_current_tick` 系统包装（PDB L164 注解签名：
-/// `void(*)(Res<GameTime>, ResMut<AutoClutterState>, ResMut<InterShapeBrickStitches>)`）。
-///
-/// **未实现-需重做（U）**：该函数在 B 无独立符号（内联），fresh 反编译不可定点；
-/// 仅 epoch 推进可见（`remove_stale_regions` 判据）。与 `InterShapeBrickStitches`
-/// 的交互（是否清 tick/stitch 槽）未取证，故不注册、不伪造。宿主接线需 core 侧
-/// 提供 `GameTime` tick 字段后按 PDB 签名重建。
-pub fn set_current_tick(
-    _time: bevy_ecs::system::Res<country_core::resources::time::GameTime>,
-    mut state: bevy_ecs::system::ResMut<AutoClutterState>,
-    _stitches: bevy_ecs::system::ResMut<
-        crate::inter_shape_stitches::stitch_bricks::InterShapeBrickStitches,
-    >,
-) {
-    state.set_current_tick();
-}
-
 /// B inline reset in physical hosts140ee5830/833B and141ce1f10/961B:
 /// clear outputs, copy GameTime.frame_count low byte to epoch, clear stitches.
 /// WindowAutoClutterCandidates is consumed by its separate real drain.
@@ -621,24 +600,8 @@ pub fn reset_autoclutter_for_new_frame(
     >,
 ) {
     state.reset_autoclutter_for_new_frame();
-    state.epoch = time.frame_count as u8;
+    state.set_current_tick(time.frame_count as u8);
     stitches.0.clear();
-}
-
-/// Aabb2 → 网格单元列表（O：`Rectangle2d::aabb` → `iter_world_space_rect_cells` 语义；
-/// 经 DirtyTiles::world_rect_cells 的 scale 0x3efc0fc1、bias 32、clamp 63）。
-fn world_rect_cells_from_aabb(aabb: utils::geometry::Aabb2) -> Vec<usize> {
-    let min = aabb.center() - aabb.half_dims();
-    let max = aabb.center() + aabb.half_dims();
-    // 此迭代器与 BushGrid 共用原始 f32 FMA 和半开、上界 63 的裁剪。
-    let (minimum, end) = read_bush_positions_from_gpu::bush_rect_cells(min, max);
-    let mut out = Vec::new();
-    for y in minimum[1]..end[1] {
-        for x in minimum[0]..end[0] {
-            out.push(y as usize * 64 + x as usize);
-        }
-    }
-    out
 }
 
 /// 懒网格格单元（read_bush_positions_from_gpu 共用；stride unknown）。
@@ -702,6 +665,8 @@ pub(crate) mod window_test_helpers {
             vec![metadata(1000), metadata(1001)]));
         world.insert_resource(WindowAutoClutterCandidates(candidates));
         world.insert_resource(GameTime { frame_count: 0x12ab, ..Default::default() });
+        world.init_resource::<country_core::systems::ui::signifiers::UiSignifierStream>();
+        world.init_resource::<country_core::resources::gui::DebugGui>();
         world.init_resource::<Events<PlayClutterSoundCmd>>();
         world
     }
@@ -723,5 +688,16 @@ pub(crate) mod window_test_helpers {
         assert_eq!(world.resource::<AutoClutterState>().epoch, 0xab);
         assert!(world.resource::<InterShapeBrickStitches>().0.is_empty());
         assert_eq!(world.resource::<WindowAutoClutterCandidates>().0[0].key, 43);
+    }
+
+    #[test]
+    fn current_tick_is_the_frame_low_byte_not_an_incrementing_counter() {
+        use country_core::resources::time::GameTime;
+        let mut state = AutoClutterState { epoch: 0xfe, ..Default::default() };
+        state.set_current_tick(0x7f);
+        assert_eq!(state.epoch, 0x7f);
+        let low = GameTime { frame_count: 0x1234_56ab, ..Default::default() }.frame_count as u8;
+        state.set_current_tick(low);
+        assert_eq!(state.epoch, 0xab);
     }
 }

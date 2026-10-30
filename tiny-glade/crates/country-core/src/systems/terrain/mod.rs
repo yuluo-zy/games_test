@@ -95,8 +95,6 @@ pub fn register_terrain_events(world: &mut World) {
     world.init_resource::<deferred_terrain_history::PendingTerrainHistory>();
     world.init_resource::<crate::resources::walls::decorator_archivist::LiveDecoratorArchivist>();
     world.init_resource::<terrain_hover_idx::HoveredTerrainStrokeId>();
-    world.init_resource::<terrain_hover_idx::MouseTerrainHoverReadback>();
-    world.init_resource::<terrain_hover_idx::TerrainWaterSample>();
     // 台阶放置消费面（terrain→stairs/decorator 链；stairs 域消费后清空）。
     world.init_resource::<ui_edit_terrain::StairsPlacementBucket>();
     // 地形编辑历史 pending（ui_edit_terrain case 3 写 TerrainEdit 哨兵 0x…0001）。
@@ -105,8 +103,6 @@ pub fn register_terrain_events(world: &mut World) {
     world.init_resource::<ui_edit_terrain::MouseActivityTimer>();
     world.init_resource::<ui_edit_terrain::TerrainEditUiState>();
     world.init_resource::<ui_edit_terrain::TerrainWidgetResponseTable>();
-    // 宿主 UI 悬停/交互适配（ui_edit 的 cursor tag / hovered id 由宿主写入）。
-    world.init_resource::<ui_draw_terrain::TerrainHoverInput>();
     world.init_resource::<ui_draw_terrain::TerrainDrawState>();
     world.init_resource::<Events<ui_edit_terrain::TerrainWindowFocus>>();
 }

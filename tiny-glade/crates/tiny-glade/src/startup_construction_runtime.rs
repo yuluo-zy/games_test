@@ -75,11 +75,8 @@ fn install_open_adapter_inputs(app: &mut App) {
     app.init_resource::<sys::wall::shapes::calc_shape_height::TimberframeConstructionParamsCache>();
     // 地形聚焦已恢复真实Cursor/Rapier/UiState与Local，不再初始化三份无生产者镜像。
     // 下列兼容资源仍由各原owner逐项审阅；初始化本身不证明工具链已验收。
-    use sys::terrain::{terrain_hover_idx as hover, ui_draw_terrain as draw,
-        ui_edit_terrain as edit, deferred_terrain_history as hist};
-    app.init_resource::<hover::MouseTerrainHoverReadback>();
-    app.init_resource::<hover::TerrainWaterSample>();
-    app.init_resource::<draw::TerrainHoverInput>();
+    use sys::terrain::{ui_draw_terrain as draw, ui_edit_terrain as edit,
+        deferred_terrain_history as hist};
     app.init_resource::<draw::TerrainDrawState>();
     app.init_resource::<edit::TerrainEditUiState>();
     app.init_resource::<edit::TerrainWidgetResponseTable>();

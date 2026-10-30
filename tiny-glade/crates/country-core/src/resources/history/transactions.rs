@@ -266,6 +266,13 @@ impl<M, S> HistoryTransactions<M, S> {
         &mut self,
         app_mode_tag: u32,
     ) -> Result<(), HistoryTransactionError> {
+        if std::env::var_os("TG_M2_TRACE_HISTORY").is_some() {
+            eprintln!(
+                "M2_HISTORY_START mode={app_mode_tag} cursor={} entries={}",
+                self.ledger.cursor,
+                self.ledger.entries.len(),
+            );
+        }
         if app_mode_tag == 13 {
             return Err(HistoryTransactionError::ReplayRecordingForbidden);
         }
@@ -329,6 +336,14 @@ impl<M, S> HistoryTransactions<M, S> {
             .pending
             .as_ref()
             .ok_or(HistoryTransactionError::RecordingNotStarted)?;
+        if std::env::var_os("TG_M2_TRACE_HISTORY").is_some() {
+            eprintln!(
+                "M2_HISTORY_ADD pending_edits={} cursor={} entries={}",
+                current.edits.len(),
+                self.ledger.cursor,
+                self.ledger.entries.len(),
+            );
+        }
         if current.edits.is_empty()
             && self
                 .ledger
@@ -356,6 +371,14 @@ impl<M, S> HistoryTransactions<M, S> {
             .pending
             .take()
             .ok_or(HistoryTransactionError::RecordingNotStarted)?;
+        if std::env::var_os("TG_M2_TRACE_HISTORY").is_some() {
+            eprintln!(
+                "M2_HISTORY_FINISH group_edits={} cursor_before={} entries_before={}",
+                group.edits.len(),
+                self.ledger.cursor,
+                self.ledger.entries.len(),
+            );
+        }
         if group.is_empty() {
             return Ok(None);
         }

@@ -1,8 +1,8 @@
 //! 原 B `populate_autoclutter_regions`（1422d6ed0）。
 //!
-//! 当前恢复过期区域移除、全部订阅合并、脏格失效、候选冲刷和普通组0的真实
-//! mesh 加权选择；未完成的区域落点、墙/碰撞拒绝及候选写入显式失败。
-//! 不按脏格凭空构造区域，也不从丢失的来源或 mesh 填默认值。
+//! 恢复过期区域移除、全部订阅合并、脏格失效、候选冲刷、普通/固定/默认
+//! mesh 选择、真实落点、墙/碰撞拒绝及完整候选写入。区域来源是必填 typed
+//! owner；不按脏格凭空构造区域，也不从丢失的来源或 mesh 填默认值。
 //!
 //! 证据：140eecf00、1422d6ed0、1408b8e90；详见既有 M01 自动杂物报告。
 
@@ -39,6 +39,8 @@ pub struct AutoClutterDirtySubscriptions {
 pub struct PopulateLocal {
     /// 已处理名集合（BTreeSet；pick_clutter_mesh 去重）。
     pub processed_names: std::collections::BTreeSet<String>,
+    /// Reused region snapshot, retained in native table order.
+    pub pending_regions: Vec<(ClutterRegionId, AutoClutterRegion)>,
 }
 
 /// `autoclutter_subscribe_to_tabloids`（Startup，0x1422d6930）。
@@ -80,7 +82,7 @@ pub fn populate_autoclutter_regions(
     water: Res<country_core::resources::world_raster_defs::WaterRaster>,
     (ssbos, readbacks): (Res<AssetSsboLibrary>, Option<Res<GpuReadbacks>>),
     mut sub: ResMut<AutoClutterDirtySubscriptions>,
-    _local: ResMut<PopulateLocal>,
+    mut local: ResMut<PopulateLocal>,
     session: Res<country_core::resources::session::ActiveSession>,
     meshes: Res<ClutterMeshes>,
     bush: Res<BushGrid>,
@@ -116,26 +118,41 @@ pub fn populate_autoclutter_regions(
     state.flush_candidates_pending_removal();
 
     // B 1422d6ed0 遍历真实区域表，不按脏格凭空新建区域。
-    // 区域分支仍缺原始落点与障碍过滤；明确失败，不能伪造候选。
     if state.region_candidates.len() < 0xfffd {
         // 仅扫描一次区域表；保留当前表的遍历顺序，避免逐项重复扫描。
-        let pending: Vec<_> = state.regions.iter()
+        let mut pending = std::mem::take(&mut local.pending_regions);
+        pending.clear();
+        pending.extend(state.regions.iter()
             .filter(|(_, region)| region.candidate_index.0 == 0xffff)
-            .map(|(&key, region)| (key, region.clone())).collect();
-        'regions: for (key, region) in pending {
+            .map(|(&key, region)| (key, region.clone())));
+        'regions: for index in 0..pending.len() {
+            let (key, region) = &pending[index];
             if state.region_candidates.len() >= 0xfffd { break; }
-            if region.b38 <= 4 {
-                let (selected, mut point) = if region.b38 <= 1 {
-                    let (mesh, mut rng) = pick_normal_mesh(&meshes, key, region.b38, region.b39, session.meta.is_halloween2024());
+                let (selected, mut point) = match region.b38 {
+                    0 | 1 => {
+                    let (mesh, mut rng) = pick_normal_mesh(&meshes, *key, region.b38, region.b39, session.meta.is_halloween2024());
                     (mesh, weighted_region_landing(&region, mesh.radius_xz, &mut rng))
-                } else {
-                    let ty = match region.b38 {
-                        2 => ClutterMeshTy::OldenRock,
-                        3 => ClutterMeshTy::OldenTreeLog,
-                        4 => ClutterMeshTy::OldenTreeStump,
-                        _ => unreachable!(),
-                    };
-                    (meshes.mesh(ty), region.rectangle2d().center)
+                    }
+                    2..=4 => {
+                        let ty = match region.b38 {
+                            2 => ClutterMeshTy::OldenRock,
+                            3 => ClutterMeshTy::OldenTreeLog,
+                            4 => ClutterMeshTy::OldenTreeStump,
+                            _ => unreachable!(),
+                        };
+                        (meshes.mesh(ty), region.rectangle2d().center)
+                    }
+                    _ => (
+                        pick_normal_mesh(
+                            &meshes,
+                            *key,
+                            region.b38,
+                            region.b39,
+                            session.meta.is_halloween2024(),
+                        )
+                        .0,
+                        region.rectangle2d().center,
+                    ),
                 };
                 // B 1422d8107..8190：从区域高度向下射出，保留负零方向位。
                 let hit = raycast.raycast_with_max_toi(
@@ -143,7 +160,7 @@ pub fn populate_autoclutter_regions(
                     Vec3::new(-0.0, -1.0, -0.0), f32::MAX, 0x30fb);
                 let building = hit.is_hit() && hit.handle[0] as u8 == 2 && ((hit.handle[0] >> 8) & 1) != 0;
                 if building && region.b38 >= 2 {
-                    state.regions.get_mut(&key).expect("autoclutter region disappeared")
+                    state.regions.get_mut(key).expect("autoclutter region disappeared")
                         .candidate_index = ClutterCandidateIndex(0xfffe);
                     continue;
                 }
@@ -161,7 +178,7 @@ pub fn populate_autoclutter_regions(
                         + grids[3].bilinear_sample_at_world_xz(point.x, point.y, 130.0, 130.0)).clamp(0.0, 1.0) };
                     // 1422d84df..8507：mode 1 且 selector != 1 时需要墙朝向。
                     if path > 0.0 && region.b38 >= 2 {
-                        state.regions.get_mut(&key).expect("autoclutter region disappeared")
+                        state.regions.get_mut(key).expect("autoclutter region disappeared")
                             .candidate_index = ClutterCandidateIndex(0xfffe);
                         continue;
                     }
@@ -174,7 +191,11 @@ pub fn populate_autoclutter_regions(
                             let b = Vec2::from_array(segment.endpoints[1]);
                             let d = b - a;
                             let length2 = d.y * d.y + d.x * d.x;
-                            let length2 = if length2 > 1e-20 { length2 } else { 1e-20 };
+                            let length2 = if length2 > f32::from_bits(0x1e3c_e508) {
+                                length2
+                            } else {
+                                f32::from_bits(0x1e3c_e508)
+                            };
                             let t = ((point.y - a.y) * d.y + (point.x - a.x) * d.x) / length2;
                             // MAXSS 0,t / MINSS 1,t 在无序时都取源 t。
                             let t = if 0.0 > t { 0.0 } else { t };
@@ -192,7 +213,7 @@ pub fn populate_autoclutter_regions(
                             }
                         }
                         let Some(segment) = closest else {
-                            state.regions.get_mut(&key).expect("autoclutter region disappeared")
+                            state.regions.get_mut(key).expect("autoclutter region disappeared")
                                 .candidate_index = ClutterCandidateIndex(0xfffe);
                             continue;
                         };
@@ -217,7 +238,7 @@ pub fn populate_autoclutter_regions(
                     rect.set_orientation_xz(Vec2::new(-forward.y * inv, forward.x * inv));
                     if region.center.y - height > 4.0 || (!building && !terrain_slope_allowed(&terrain, rect)) {
                         // B 在进入放置尝试前写 0xfffe；拒绝保留此状态直到重新标脏。
-                        state.regions.get_mut(&key).expect("autoclutter region disappeared")
+                        state.regions.get_mut(key).expect("autoclutter region disappeared")
                             .candidate_index = ClutterCandidateIndex(0xfffe);
                         continue;
                     }
@@ -227,13 +248,13 @@ pub fn populate_autoclutter_regions(
                     if !building && ((*water).as_ref().bilinear_sample_at_world_xz(point.x, point.y, 130.0, 130.0) > 0.0
                         || (*garden).as_ref().bilinear_sample_at_world_xz(point.x, point.y, 130.0, 130.0) > 0.0
                         || TerrainRockMaskSsbo::sample_mapped_at_world_xz(rock, point.x, point.y) != 0) {
-                        state.regions.get_mut(&key).expect("autoclutter region disappeared")
+                        state.regions.get_mut(key).expect("autoclutter region disappeared")
                             .candidate_index = ClutterCandidateIndex(0xfffe);
                         continue;
                     }
                     if !building && selected.native_flag_46 {
                         if bushes_near_point(&bush, point, selected.radius_xz) {
-                            state.regions.get_mut(&key).expect("autoclutter region disappeared")
+                            state.regions.get_mut(key).expect("autoclutter region disappeared")
                                 .candidate_index = ClutterCandidateIndex(0xfffe);
                             continue;
                         }
@@ -250,7 +271,7 @@ pub fn populate_autoclutter_regions(
                                 rectangle.contains_point_padding(point, Vec2::splat(-0.56))
                             } else { true };
                             if !inside {
-                                state.regions.get_mut(&key).expect("autoclutter region disappeared")
+                                state.regions.get_mut(key).expect("autoclutter region disappeared")
                                     .candidate_index = ClutterCandidateIndex(0xfffe);
                                 continue;
                             }
@@ -267,7 +288,7 @@ pub fn populate_autoclutter_regions(
                         let door_rect = utils::geometry::rectangle::Rectangle3d::new(
                             door_center, Vec3::new(1.5, 2.0, 2.0), Vec2::new(-f.z * inv, f.x * inv));
                         if rect.overlaps_rectangle3d(door_rect) {
-                            state.regions.get_mut(&key).expect("autoclutter region disappeared")
+                            state.regions.get_mut(key).expect("autoclutter region disappeared")
                                 .candidate_index = ClutterCandidateIndex(0xfffe);
                             continue 'regions;
                         }
@@ -286,7 +307,7 @@ pub fn populate_autoclutter_regions(
                         let gate_rect = utils::geometry::rectangle::Rectangle3d::new(center,
                             Vec3::new(width, 2.0, 3.0), planar * inv);
                         if rect.overlaps_rectangle3d(gate_rect) {
-                            state.regions.get_mut(&key).expect("autoclutter region disappeared")
+                            state.regions.get_mut(key).expect("autoclutter region disappeared")
                                 .candidate_index = ClutterCandidateIndex(0xfffe);
                             continue 'regions;
                         }
@@ -309,7 +330,7 @@ pub fn populate_autoclutter_regions(
                             let center = Vec2::new((a.x + b.x) * 0.5, (a.y + b.y) * 0.5);
                             let wall_rect = utils::geometry::Rectangle2d::new(center, Vec2::new(0.56, length), axis);
                             if rect.footprint.overlaps_rectangle2d(wall_rect) {
-                                state.regions.get_mut(&key).expect("autoclutter region disappeared")
+                            state.regions.get_mut(key).expect("autoclutter region disappeared")
                                     .candidate_index = ClutterCandidateIndex(0xfffe);
                                 continue 'regions;
                             }
@@ -317,12 +338,11 @@ pub fn populate_autoclutter_regions(
                     }
                     // 原 1422db2cd：真实物理世界对 mesh 矩形的最后一次拒绝。
                     if raycast.shape_overlaps_with(rect, 0x308c) {
-                        state.regions.get_mut(&key).expect("autoclutter region disappeared")
+                                state.regions.get_mut(key).expect("autoclutter region disappeared")
                             .candidate_index = ClutterCandidateIndex(0xfffe);
                         continue;
                     }
-                    let source = region.source.clone().unwrap_or_else(|| panic!(
-                        "ORIGINAL_IMPLEMENTATION_PENDING: autoclutter region source owner (key={:#x})", key.0));
+                    let source = region.source.clone();
                     assert!(selected.mesh.is_some(), "自动杂物选中的真实 mesh 尚未加载");
                     let index = state.region_candidates.len();
                     assert!(index <= 0xfffd, "自动杂物候选超过原版索引上限");
@@ -342,8 +362,10 @@ pub fn populate_autoclutter_regions(
                             } else { country_core::components::drawable::AutoClutterDestination::Terrain },
                             metadata: selected.into(),
                         }),
-                        forced: if region.b38 <= 1 { 3 } else { 6 },
-                        f40: output_key,
+                        forced: if matches!(region.b38, 2..=4) { 6 } else { 3 },
+                        // B output +0x10 receives the generated tuple hash.
+                        // +0x40 remains its independent source payload word.
+                        key: output_key,
                         f48: u64::from(point.x.to_bits()) | (u64::from(height.to_bits()) << 32),
                         f50: point.y.to_bits(),
                         f54: u64::from(forward.x.to_bits()),
@@ -354,23 +376,36 @@ pub fn populate_autoclutter_regions(
                         priority: region.f34 as u32,
                         ..Default::default()
                     };
-                    state.regions.get_mut(&key).expect("autoclutter region disappeared")
+                    state.regions.get_mut(key).expect("autoclutter region disappeared")
                         .candidate_index = ClutterCandidateIndex(index as u16);
                     state.region_candidates.push(candidate);
                     continue;
                 }
-                // B 143043840 跳表：这些实体槽直接拒绝；建筑与非法槽保持显式待恢复。
+                // B 143043840 跳表。The table is keyed by the hit source byte:
+                // 0/1/3/6/7/8/9/10/13/14 reject, 2 accepts only the flat-roof
+                // byte tested above, 11 is the terrain path already handled,
+                // and 4/5/12/15/16 reach the original unreachable-code panic.
                 let tag = hit.handle[0] as u8;
-                if hit.is_hit() && (matches!(tag, 0 | 1 | 3 | 6 | 7 | 8 | 9 | 10 | 13)
-                    || (tag == 2 && ((hit.handle[0] >> 8) & 1) == 0)) {
-                    state.regions.get_mut(&key).expect("autoclutter region disappeared")
-                        .candidate_index = ClutterCandidateIndex(0xfffe);
-                    continue;
+                match tag {
+                    0 | 1 | 3 | 6 | 7 | 8 | 9 | 10 | 13 | 14 => {
+                        state.regions.get_mut(key).expect("autoclutter region disappeared")
+                            .candidate_index = ClutterCandidateIndex(0xfffe);
+                        continue;
+                    }
+                    2 => {
+                        debug_assert_eq!((hit.handle[0] >> 8) & 1, 0);
+                        state.regions.get_mut(key).expect("autoclutter region disappeared")
+                            .candidate_index = ClutterCandidateIndex(0xfffe);
+                        continue;
+                    }
+                    4 | 5 | 12 | 15 | 16 => {
+                        unreachable!("populate_autoclutter_regions: unreachable hit source {tag}")
+                    }
+                    11 => unreachable!("terrain hit source 11 must be handled before the jump table"),
+                    _ => unreachable!("populate_autoclutter_regions: source byte {tag} is outside the 17-slot jump table"),
                 }
-                panic!("ORIGINAL_IMPLEMENTATION_PENDING: autoclutter hit destination and rejection (key={:#x}, mesh={}, hit={}, tag={})", key.0, selected.mesh_name, hit.discriminant, hit.handle[0] as u8);
             }
-            panic!("ORIGINAL_IMPLEMENTATION_PENDING: autoclutter region placement (key={:#x}, group={}, selector={})", key.0, region.b39, region.b38);
-        }
+        local.pending_regions = pending;
     }
 }
 
@@ -383,11 +418,17 @@ fn wall_landing(point: Vec2, height: f32, a: Vec2, b: Vec2, size: f32) -> (Vec2,
     // 原 xvy 将两个端点都扩成同一个候选高度。
     let vertical = height - height;
     let length2 = (delta.x * delta.x + vertical * vertical) + delta.y * delta.y;
-    let length2 = if length2 > 1e-20 { length2 } else { 1e-20 };
+    let length2 = if length2 > f32::from_bits(0x1e3c_e508) {
+        length2
+    } else {
+        f32::from_bits(0x1e3c_e508)
+    };
     let t = (((point.x - a.x) * delta.x + (height - height) * vertical)
         + (point.y - a.y) * delta.y) / length2;
-    let t = if 0.0 > t { 0.0 } else { t };
-    let t = if 1.0 < t { 1.0 } else { t };
+    // Native conditional order: `0.0 <= t ? t : 0.0`, then `t <= 1.0 ?
+    // t : 1.0`; NaN therefore becomes 0.0 and is not preserved.
+    let t = if 0.0 <= t { t } else { 0.0 };
+    let t = if t <= 1.0 { t } else { 1.0 };
     let offset = size * 0.5 + 0.28 + 0.05;
     (Vec2::new(normal.x * offset + (b.x * t + a.x * (1.0 - t)),
         normal.y * offset + (b.y * t + a.y * (1.0 - t))), normal,
@@ -439,9 +480,14 @@ fn terrain_slope_allowed(terrain: &TerrainHeightsData<TerrainHeightSsbo>, rect: 
     ];
     let min = heights[0].min(heights[1]).min(heights[2]).min(heights[3]);
     let max = heights[0].max(heights[1]).max(heights[2]).max(heights[3]);
-    let threshold = ((rect.top - rect.bottom) * 0.75).min(0.6);
-    // UCOMISS/JBE：大于等于和无序都拒绝。
-    threshold > (max - min)
+    // B 1422d86ae..88ea: `scaled = (top - bottom) * 0.75`, then
+    // `if 0.6 <= scaled { scaled = 0.6 }`. The raw comparison leaves NaN
+    // untouched (NaN <= range is false), unlike `f32::min`.
+    let scaled = (rect.top - rect.bottom) * 0.75;
+    let threshold = if 0.6 <= scaled { 0.6 } else { scaled };
+    // Native rejects when `threshold <= max - min`; NaN/unordered stays
+    // accepted because the comparison is false.
+    !(threshold <= (max - min))
 }
 
 /// B 1422d7755..1422d8090：普通组的九个真实 mesh 和对应权重。
@@ -943,6 +989,14 @@ mod subscribe_tests {
         let zero_height = utils::geometry::rectangle::Rectangle3d::new(Vec3::ZERO,
             Vec3::new(1.0, 0.0, 1.0), Vec2::X);
         assert!(!terrain_slope_allowed(&terrain, zero_height));
+        // Native `0.6 <= scaled` is false for NaN, so the threshold keeps NaN
+        // and `NaN > range` is false: the placement is accepted.
+        let nan_height = utils::geometry::rectangle::Rectangle3d::new(
+            Vec3::new(0.0, f32::NAN, 0.0),
+            Vec3::ONE,
+            Vec2::X,
+        );
+        assert!(terrain_slope_allowed(&terrain, nan_height));
     }
 
     #[test]
@@ -987,6 +1041,23 @@ mod subscribe_tests {
             assert_eq!([point.x.to_bits(), point.y.to_bits(), height.to_bits()], *expected, "输入 {input:?}");
             assert_eq!([normal.x.to_bits(), 0, normal.y.to_bits()], *direction, "输入 {input:?}");
         }
+    }
+
+    #[test]
+    fn wall_landing_clamps_nan_projection_to_zero_like_native_branches() {
+        // Native conditional clamps: `0.0 <= t ? t : 0.0` and
+        // `t <= 1.0 ? t : 1.0`, so a NaN projection becomes 0.0.
+        let (point, normal, height) = wall_landing(
+            Vec2::new(f32::NAN, 0.0),
+            2.0,
+            Vec2::new(0.0, 0.0),
+            Vec2::new(1.0, 0.0),
+            1.0,
+        );
+        let offset = 1.0 * 0.5 + 0.28 + 0.05;
+        assert_eq!(normal, Vec2::new(0.0, 1.0));
+        assert_eq!(point, Vec2::new(0.0, offset));
+        assert_eq!(height, 2.0);
     }
 
     #[test]
@@ -1182,6 +1253,8 @@ mod subscribe_tests {
         world.insert_resource(WaterRaster::new(DirtyTilePublisher::unique()));
         world.insert_resource(GardenRaster::new(DirtyTilePublisher::unique()));
         world.insert_resource(TerrainHeightsData::<TerrainHeightSsbo>::new());
+        world.init_resource::<country_core::systems::ui::signifiers::UiSignifierStream>();
+        world.init_resource::<country_core::resources::gui::DebugGui>();
         world
     }
 
@@ -1227,8 +1300,8 @@ mod subscribe_tests {
         let mut state = AutoClutterState { lazy_grid: vec![Vec::new(); 4096], ..Default::default() };
         for selector in 2..=4u8 {
             let key = ClutterRegionId(u64::from(selector));
-            state.add_region(key, &AutoClutterRegion { key, source: Some(
-                country_core::components::drawable::AutoClutterSource::None), kind: 5,
+            state.add_region(key, &AutoClutterRegion { key,
+                source: country_core::components::drawable::AutoClutterSource::None, kind: 5,
                 center: Vec3::new(f32::from(selector) * 5.0, 1.0, 0.0),
                 basis: [Vec2::X, Vec2::splat(2.0)], b38: selector, b39: 0, ..Default::default() });
         }
@@ -1257,6 +1330,82 @@ mod subscribe_tests {
     }
 
     #[test]
+    fn default_weighted_selector_uses_rectangle_centre_and_marker_three() {
+        let mut world = world();
+        let ty = ClutterMeshTy::BarrelWCandles;
+        let tag = ty as usize;
+        let index = if tag < 29 { tag } else { tag - 1 };
+        let mut fixed = std::array::from_fn(|_| {
+            ClutterMesh::omitted_in_demo("test/omitted", 0, None, false, false)
+        });
+        fixed[index] = ClutterMesh::omitted_in_demo("test/default-selector", 0, None, false, false);
+        fixed[index].mesh = Some(country_core::asset_libraries::Handle::new());
+        fixed[index].bounds =
+            utils::geometry::rectangle::Rectangle3d::new(Vec3::ZERO, Vec3::ONE, Vec2::X);
+        world.insert_resource(ClutterMeshes::from_parts(fixed, vec![]));
+        world.insert_resource(country_core::resources::session::ActiveSession::new(
+            country_core::resources::session::SessionId::new(),
+            Default::default(),
+        ));
+        let key = ClutterRegionId(0x5eed);
+        let center = Vec3::new(2.0, 1.0, -3.0);
+        let mut state =
+            AutoClutterState { lazy_grid: vec![Vec::new(); 4096], ..Default::default() };
+        state.add_region(
+            key,
+            &AutoClutterRegion {
+                key,
+                source: country_core::components::drawable::AutoClutterSource::None,
+                kind: 5,
+                center,
+                basis: [Vec2::X, Vec2::splat(2.0)],
+                b38: 5,
+                b39: 5,
+                ..Default::default()
+            },
+        );
+        world.insert_resource(state);
+        let library = AssetSsboLibrary::new();
+        library.register::<TerrainRockMaskSsbo>(
+            country_core::render::ssbo::MappedStorageBuffer::from_mapping(
+                &mut [],
+                country_core::render::ssbo::rhapsody_boundary::Buffer {
+                    id: 78,
+                    generation: 1,
+                    byte_size: 0x8000,
+                    ..Default::default()
+                },
+            ),
+        );
+        world.insert_resource(library);
+        world.init_resource::<PopulateLocal>();
+        world.init_resource::<LazyGridClutterCell>();
+        world.init_resource::<MeshGroupWeights>();
+        world.init_resource::<DirtyTilesResource>();
+        world.init_resource::<country_core::resources::time::GameTime>();
+        world.init_resource::<country_core::systems::ui_clutter::DeletedAutoClutter>();
+        let mut schedule = Schedule::default();
+        schedule.add_systems(
+            (
+                populate_autoclutter_regions,
+                super::super::process_autoclutter_candidates::process_autoclutter_candidates,
+                super::super::manage_autoclutter_entities::manage_autoclutter_entities,
+            )
+                .chain(),
+        );
+        schedule.run(&mut world);
+        let state = world.resource::<AutoClutterState>();
+        assert_eq!(state.region_candidates.len(), 1);
+        assert_eq!(state.spawn_candidates.len(), 1);
+        assert_eq!(state.spawn_candidates[0].marker, 3);
+        let rectangle_centre = state.regions[&key].rectangle2d().center;
+        assert_eq!(state.spawn_candidates[0].position.x, rectangle_centre.x);
+        assert_eq!(state.spawn_candidates[0].position.z, rectangle_centre.y);
+        let mut query = world.query::<&country_core::components::drawable::AutoClutterConvertableToDecoClutter>();
+        assert_eq!(query.iter(&world).count(), 1);
+    }
+
+    #[test]
     fn flat_roof_hit_preserves_real_wall_destination_to_manager() {
         use country_core::systems::collision::world::{upsert_collider, RaycastGeoSource, RaycastMeshData};
         use country_core::components::drawable::{AutoClutterConvertableToDecoClutter, AutoClutterDestination, AutoClutterSource};
@@ -1278,7 +1427,8 @@ mod subscribe_tests {
         }
         let mut state = AutoClutterState { lazy_grid: vec![Vec::new(); 4096], ..Default::default() };
         let key = ClutterRegionId(51);
-        state.add_region(key, &AutoClutterRegion { key, source: Some(AutoClutterSource::None), kind: 5,
+        state.add_region(key, &AutoClutterRegion { key,
+            source: AutoClutterSource::None, kind: 5,
             center: Vec3::new(0.0, 4.0, 0.0), basis: [Vec2::X, Vec2::ONE],
             b38: 1, b39: 0, ..Default::default() });
         world.insert_resource(state);
@@ -1303,7 +1453,7 @@ mod subscribe_tests {
     }
 
     #[test]
-    fn real_region_reaches_nani_and_missing_source_still_fails() {
+    fn real_region_reaches_nani_from_a_complete_typed_source() {
         let mut world = world();
         let mut fixed = std::array::from_fn(|_| ClutterMesh::omitted_in_demo("test/omitted", 0, None, false, false));
         fixed[6].mesh = Some(country_core::asset_libraries::Handle::new());
@@ -1313,8 +1463,8 @@ mod subscribe_tests {
             country_core::resources::session::SessionId::new(), Default::default()));
         let mut state = AutoClutterState { lazy_grid: vec![Vec::new(); 4096], ..Default::default() };
         let key = ClutterRegionId(51);
-        state.add_region(key, &AutoClutterRegion { key, source: Some(
-            country_core::components::drawable::AutoClutterSource::None), kind: 5,
+        state.add_region(key, &AutoClutterRegion { key,
+            source: country_core::components::drawable::AutoClutterSource::None, kind: 5,
             center: Vec3::new(0.0, 1.0, 0.0), basis: [Vec2::X, Vec2::ONE],
             b38: 0, b39: 0, ..Default::default() });
         world.insert_resource(state);
@@ -1344,22 +1494,6 @@ mod subscribe_tests {
             &country_core::components::drawable::AutoClutterConvertableToDecoClutter,
             &country_core::render::nani::gpu_world::InstanceDataMarker<country_core::render::nani::instance_data::SolidVertexColorInstanceData>)>();
         assert_eq!(query.iter(&world).count(), 1);
-        {
-            let mut state = world.resource_mut::<AutoClutterState>();
-            state.region_candidates.clear();
-            state.spawn_candidates.clear();
-            let region = state.regions.get_mut(&key).unwrap();
-            region.source = None;
-            region.candidate_index = ClutterCandidateIndex(0xffff);
-        }
-        let mut populate = Schedule::default();
-        populate.add_systems(populate_autoclutter_regions);
-        let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| populate.run(&mut world)))
-            .expect_err("未恢复区域必须显式失败");
-        let message = failure.downcast_ref::<String>().map(String::as_str)
-            .or_else(|| failure.downcast_ref::<&str>().copied()).unwrap_or("");
-        assert!(message.contains("ORIGINAL_IMPLEMENTATION_PENDING"), "意外失败：{message}");
-        assert!(world.resource::<AutoClutterState>().region_candidates.is_empty());
     }
 
     fn pending(world: &World) -> Vec<bool> {

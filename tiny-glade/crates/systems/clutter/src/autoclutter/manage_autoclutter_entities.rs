@@ -17,20 +17,32 @@ use country_core::{
 use glam::{Mat3, Quat, Vec3};
 use std::collections::{HashMap, HashSet};
 
-use super::{AutoClutterSpawn, AutoClutterState, ResolvedClutterMesh, SpawnShared, WindowShutter};
+use super::{
+    AutoClutterPayload, AutoClutterSpawn, AutoClutterState, ResolvedClutterMesh, WindowShutter,
+};
 
-fn resolved(spawn: &AutoClutterSpawn) -> (&ResolvedClutterMesh, Option<ColorId>) {
-    match &spawn.shared {
-        SpawnShared::Mesh { metadata, color } => {
-            assert!(spawn.marker <= 2, "window source has invalid selector");
-            assert!(spawn.marker == 2 || color.is_some(), "autoclutter shutter output is missing its actual ColorId payload");
-            (metadata, *color)
+fn resolved(spawn: &AutoClutterSpawn) -> &ResolvedClutterMesh {
+    match &spawn.payload {
+        AutoClutterPayload::Mesh { metadata } => {
+            assert!(
+                matches!(spawn.marker, 0 | 1 | 2),
+                "window mesh output has invalid selector {}",
+                spawn.marker
+            );
+            metadata
         }
-        SpawnShared::Object(object) => {
-            assert!(matches!(spawn.marker, 3 | 5 | 6), "ORIGINAL_IMPLEMENTATION_PENDING: non-window selector {}", spawn.marker);
-            (&object.metadata, None)
+        AutoClutterPayload::Object(object) => {
+            // The original consumer branches on the raw selector byte and
+            // covers every 0..=255 value; the typed object payload is the
+            // non-window source projection, so selector 0..=2 stays with the
+            // window Mesh payload and all higher selectors route here.
+            assert!(
+                spawn.marker >= 3,
+                "window selector {} cannot use an object payload",
+                spawn.marker
+            );
+            &object.metadata
         }
-        _ => panic!("ORIGINAL_IMPLEMENTATION_PENDING: autoclutter selected mesh/source owner erased (kind={}, key={:#x})", spawn.kind, spawn.key),
     }
 }
 
@@ -71,9 +83,6 @@ pub fn manage_autoclutter_entities(
     // Native target map has last-value semantics for duplicate full u64 keys.
     let targets: HashMap<u64, &AutoClutterSpawn> = state.spawn_candidates.iter()
         .map(|spawn| (spawn.key, spawn)).collect();
-    // Review requirement: preflight retained values only, after deduplication.
-    // An overwritten unresolved source row is not a consumer input.
-    for spawn in targets.values() { resolved(spawn); }
 
     let mut live = HashSet::new();
     for (entity, clutter, shutter, mut transform) in &mut query {
@@ -82,16 +91,22 @@ pub fn manage_autoclutter_entities(
             commands.entity(entity).insert(ClutterMarkedForDeletion);
             continue;
         };
+        // B 1422d0f57..0x1422d10ff: a live entity is only rewritten when the
+        // target moved more than 0.1 units. The original evaluates
+        // `0.1 < sqrt(dz*dz + dy*dy + dx*dx)` in exactly this accumulation
+        // order; unordered operands keep the comparison false and skip the
+        // update, mirroring the native branch.
+        let dx = spawn.position.x - transform.translation.x;
+        let dy = spawn.position.y - transform.translation.y;
+        let dz = spawn.position.z - transform.translation.z;
+        if !(0.1 < (dz * dz + dy * dy + dx * dx).sqrt()) {
+            continue;
+        }
         transform.translation = spawn.position;
         let rotation = orientation(spawn);
         if let Some(mut shutter) = shutter {
             shutter.base_rotation = rotation;
-            let (_, color) = resolved(spawn);
-            // Every ordinary Window writer explicitly stores native+34=0;
-            // this is a proven payload, not ColorId::default() for missing data.
-            let color = if spawn.marker == 2 { ColorId(0) }
-                else { color.expect("preflight shutter ColorId") };
-            commands.entity(entity).insert(color);
+            commands.entity(entity).insert(ColorId(spawn.selector_value));
         } else {
             transform.rotation = rotation;
         }
@@ -101,15 +116,15 @@ pub fn manage_autoclutter_entities(
     // 原版先完成差集及羊距离筛选，再按实际待建数量选择延迟区间。
     let pending: Vec<_> = targets.iter().filter_map(|(&key, &spawn)| {
         if live.contains(&key) { return None; }
-        let (metadata, _) = resolved(spawn);
+        let metadata = resolved(spawn);
         sheep.iter().all(|transform|
             metadata.radius_xz + 1.0 <= spawn.position.distance(transform.translation))
             .then_some((key, spawn))
     }).collect();
-    let mut rng = fastrand::Rng::with_seed(utils::rng::init_rng(time.frame_count));
+    let rng = fastrand::Rng::with_seed(utils::rng::init_rng(time.frame_count));
     for (key, spawn) in &pending {
         let key = *key;
-        let (metadata, color) = resolved(spawn);
+        let metadata = resolved(spawn);
         let r = rng.f32();
         let selector_offset = spawn.marker.wrapping_sub(3);
         let transform = Transform { rotation: orientation(spawn),
@@ -130,7 +145,9 @@ pub fn manage_autoclutter_entities(
         });
         // B 1422d1be9：仅 marker >= 3 且 (marker & 6) != 4 插入。
         if spawn.marker >= 3 && (spawn.marker & 6) != 4 {
-            let SpawnShared::Object(object) = &spawn.shared else { unreachable!() };
+            let AutoClutterPayload::Object(object) = &spawn.payload else {
+                unreachable!()
+            };
             entity.insert(AutoClutterConvertableToDecoClutter {
                 source: object.source.clone(), destination: object.destination,
                 mesh_name: object.metadata.mesh_name, bounds: object.metadata.bounds,
@@ -155,9 +172,15 @@ pub fn manage_autoclutter_entities(
             insert_nani::<SolidVertexColorWindowInstanceData>(&mut entity, metadata,
                 transform, GpuWorldSubsetKind::SolidVertexColorWindow);
         }
-        if spawn.marker <= 1 {
+        // O@1422d1133..1160: `marker != 2 && (marker-3 > 3 || marker-3 == 1)`
+        // in raw byte arithmetic receives WindowShutter and the source+34
+        // ColorId. The component's byte is tested only for zero/nonzero by
+        // animation, hence the retained boolean projection.
+        if spawn.marker != 2
+            && (spawn.marker.wrapping_sub(3) > 3 || spawn.marker.wrapping_sub(3) == 1)
+        {
             entity.insert((WindowShutter { base_rotation: transform.rotation,
-                side: spawn.marker != 0 }, color.expect("preflight shutter ColorId")));
+                side: spawn.marker != 0 }, ColorId(spawn.selector_value)));
         }
     }
 }
@@ -167,6 +190,7 @@ mod tests {
     use super::*;
     use crate::autoclutter::{add_autoclutter_on_windows::add_autoclutter_on_windows,
         autoclutter_animation::autoclutter_animation, window_test_helpers::{candidate, world}};
+    use country_core::render::extract::WorldComponentWrite as _;
     use country_core::systems::collision::{WindowAutoClutterCandidates, WindowAutoClutterKind};
 
     fn run(world: &mut World) {
@@ -227,16 +251,120 @@ mod tests {
         let mut world = world(vec![]);
         let metadata = ResolvedClutterMesh::from(world.resource::<ClutterMeshes>().mesh(ClutterMeshTy::DoorBell));
         world.resource_mut::<AutoClutterState>().spawn_candidates.push(AutoClutterSpawn {
-            key: 33, marker: 5, f5c: 1.0f32.to_bits(),
-            shared: SpawnShared::Object(ResolvedAutoClutterObject { metadata,
-                source: AutoClutterSource::None, destination: AutoClutterDestination::Terrain }),
-            ..Default::default()
+            kind: 5,
+            payload: AutoClutterPayload::Object(ResolvedAutoClutterObject {
+                metadata,
+                source: AutoClutterSource::None,
+                destination: AutoClutterDestination::Terrain,
+            }),
+            f18: 2,
+            key: 33,
+            marker: 5,
+            selector_value: 0,
+            position: Vec3::ZERO,
+            host_id: 0,
+            f48: 0,
+            f50: 0,
+            f54: 0,
+            f58: 0,
+            f5c: 1.0f32.to_bits(),
+            scale: 1.0,
         });
         run(&mut world);
         let entity = entity(&mut world);
         assert!(world.get::<InstanceDataMarker<PlantInstanceData>>(entity).is_some());
         assert!(world.get::<AutoClutterConvertableToDecoClutter>(entity).is_none());
         assert!(world.get::<WindowShutter>(entity).is_none());
+    }
+
+    #[test]
+    fn selector_four_keeps_the_original_shutter_and_color_branch() {
+        use crate::autoclutter::ResolvedAutoClutterObject;
+        use country_core::{components::drawable::{AutoClutterDestination, AutoClutterSource},
+            resources::clutter_meshes::{ClutterMeshes, ClutterMeshTy}};
+        let mut world = world(vec![]);
+        let metadata =
+            ResolvedClutterMesh::from(world.resource::<ClutterMeshes>().mesh(ClutterMeshTy::DoorBell));
+        world
+            .resource_mut::<AutoClutterState>()
+            .spawn_candidates
+            .push(AutoClutterSpawn {
+                kind: 4,
+                payload: AutoClutterPayload::Object(ResolvedAutoClutterObject {
+                    metadata,
+                    source: AutoClutterSource::Points(vec![Vec3::ZERO].into()),
+                    destination: AutoClutterDestination::Terrain,
+                }),
+                f18: 1,
+                key: 44,
+                marker: 4,
+                selector_value: 0x0f0e_0d0c,
+                position: Vec3::ZERO,
+                host_id: 0,
+                f48: 0,
+                f50: 0,
+                f54: 0,
+                f58: 0,
+                f5c: 1.0f32.to_bits(),
+                scale: 1.0,
+            });
+        run(&mut world);
+        let entity = entity(&mut world);
+        assert!(world.get::<AutoClutterConvertableToDecoClutter>(entity).is_none());
+        assert!(world.get::<InstanceDataMarker<SolidVertexColorWindowInstanceData>>(entity).is_some());
+        let shutter = world.get::<WindowShutter>(entity).expect("selector 4 must install a shutter");
+        assert!(shutter.side);
+        assert_eq!(world.get::<ColorId>(entity).unwrap().0, 0x0f0e_0d0c);
+    }
+
+    #[test]
+    fn selectors_above_six_follow_the_native_byte_branches() {
+        use crate::autoclutter::ResolvedAutoClutterObject;
+        use country_core::{components::drawable::{AutoClutterDestination, AutoClutterSource},
+            resources::clutter_meshes::{ClutterMeshes, ClutterMeshTy}};
+        for (marker, convertible) in [(7u8, true), (12u8, false), (255u8, true)] {
+            let mut world = world(vec![]);
+            let metadata =
+                ResolvedClutterMesh::from(world.resource::<ClutterMeshes>().mesh(ClutterMeshTy::DoorBell));
+            world
+                .resource_mut::<AutoClutterState>()
+                .spawn_candidates
+                .push(AutoClutterSpawn {
+                    kind: 5,
+                    payload: AutoClutterPayload::Object(ResolvedAutoClutterObject {
+                        metadata,
+                        source: AutoClutterSource::None,
+                        destination: AutoClutterDestination::Terrain,
+                    }),
+                    f18: 1,
+                    key: u64::from(marker) + 0x100,
+                    marker,
+                    selector_value: 0x0a0b_0c0d,
+                    position: Vec3::ZERO,
+                    host_id: 0,
+                    f48: 0,
+                    f50: 0,
+                    f54: 0,
+                    f58: 0,
+                    f5c: 1.0f32.to_bits(),
+                    scale: 1.0,
+                });
+            run(&mut world);
+            let entity = entity(&mut world);
+            assert_eq!(
+                world.get::<AutoClutterConvertableToDecoClutter>(entity).is_some(),
+                convertible,
+                "marker {marker} convertable branch"
+            );
+            assert!(world
+                .get::<InstanceDataMarker<SolidVertexColorWindowInstanceData>>(entity)
+                .is_some());
+            let shutter = world
+                .get::<WindowShutter>(entity)
+                .expect("selectors above six with (marker-3)>3 install a shutter");
+            assert!(shutter.side);
+            assert_eq!(world.get::<ColorId>(entity).unwrap().0, 0x0a0b_0c0d);
+        }
     }
 
     #[test]
@@ -283,9 +411,6 @@ mod tests {
         let key = 0xabcd_ef01_0000_0001;
         let mut world = world(vec![candidate(key, WindowAutoClutterKind::DoorBell),
             candidate(key, WindowAutoClutterKind::WindowShutter { side: false, native_u32_04: 0xfedc_ba98 })]);
-        // Overwritten erased metadata is not an actual retained consumer row.
-        world.resource_mut::<AutoClutterState>().spawn_candidates.push(AutoClutterSpawn {
-            key, shared: SpawnShared::Prefab("erased legacy source".into()), ..Default::default() });
         run(&mut world);
         let entity = entity(&mut world);
         let clutter = world.get::<AutoClutter>(entity).unwrap();
@@ -331,18 +456,62 @@ mod tests {
     }
 
     #[test]
-    fn unresolved_retained_source_fails_before_existing_entity_is_changed() {
-        let mut world = world(vec![candidate(7, WindowAutoClutterKind::DoorBell)]);
-        run(&mut world);
-        let entity = entity(&mut world);
-        let before = *world.get::<Transform>(entity).unwrap();
-        world.resource_mut::<AutoClutterState>().spawn_candidates.clear();
-        world.resource_mut::<AutoClutterState>().spawn_candidates.push(AutoClutterSpawn {
-            key: 8, shared: SpawnShared::ArcStrong(123), ..Default::default() });
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(&mut world)));
-        assert!(result.is_err());
-        assert_eq!(*world.get::<Transform>(entity).unwrap(), before);
-        assert!(world.get::<ClutterMarkedForDeletion>(entity).is_none());
+    fn existing_entities_keep_the_native_point_one_rewrite_gate() {
+        // B 1422d0f57: the rewrite branch is guarded by
+        // `0.1 < sqrt(dz^2 + dy^2 + dx^2)`. Nothing is written inside the
+        // gate, including ColorId and the shutter base rotation.
+        for (offset, rewritten) in [
+            (Vec3::new(0.0, 0.0, 0.0), false),
+            (Vec3::new(0.093_75, 0.0, 0.0), false),
+            (Vec3::new(0.0, 0.093_75, 0.0), false),
+            (Vec3::new(0.0, 0.0, 0.093_75), false),
+            (Vec3::new(0.125, 0.0, 0.0), true),
+            (Vec3::splat(f32::NAN), false),
+        ] {
+            let mut world = world(vec![candidate(17, WindowAutoClutterKind::WindowShutter {
+                side: true,
+                native_u32_04: 0x1234_5678,
+            })]);
+            run(&mut world);
+            let entity = entity(&mut world);
+            let base = Vec3::new(3.0, 7.0, -2.0);
+            let before = *world.get::<Transform>(entity).unwrap();
+            let before_shutter_rotation =
+                world.get::<WindowShutter>(entity).unwrap().base_rotation;
+            let before_color = world.get::<ColorId>(entity).unwrap().0;
+            let target = world
+                .resource::<AutoClutterState>()
+                .spawn_candidates
+                .last()
+                .expect("drained window candidate")
+                .clone();
+            assert_eq!(target.position, base);
+            let mut moved = target.clone();
+            moved.position = base + offset;
+            moved.selector_value = 0;
+            moved.f5c = (-1.0f32).to_bits();
+            world
+                .resource_mut::<AutoClutterState>()
+                .spawn_candidates
+                .push(moved);
+            run(&mut world);
+            let after = *world.get::<Transform>(entity).unwrap();
+            if rewritten {
+                assert_eq!(after.translation, base + offset);
+                assert_ne!(
+                    world.get::<WindowShutter>(entity).unwrap().base_rotation,
+                    before_shutter_rotation
+                );
+                assert_eq!(world.get::<ColorId>(entity).unwrap().0, 0);
+            } else {
+                assert_eq!(after, before);
+                assert_eq!(
+                    world.get::<WindowShutter>(entity).unwrap().base_rotation,
+                    before_shutter_rotation
+                );
+                assert_eq!(world.get::<ColorId>(entity).unwrap().0, before_color);
+            }
+        }
     }
 
     #[test]
@@ -381,6 +550,5 @@ mod tests {
 
 }
 
-use country_core::render::extract::WorldComponentWrite as _;
 
 use country_core::render::extract::ComponentWrite;

@@ -380,6 +380,225 @@ struct BootedSession {
     _boot: std::sync::MutexGuard<'static, ()>,
 }
 
+#[derive(bevy_ecs::prelude::Resource, Clone, Copy, Debug, Default)]
+struct M2TerrainSyntheticInput {
+    active: bool,
+    phase: u8,
+    position: glam::Vec3,
+}
+
+#[derive(bevy_ecs::prelude::Resource, Clone, Copy, Debug, Default)]
+struct M2HistorySyntheticInput {
+    undo: country_core::input::action_set::DigitalActionPhase,
+    redo: country_core::input::action_set::DigitalActionPhase,
+}
+
+fn m2_inject_history_input(
+    input: bevy_ecs::prelude::Res<M2HistorySyntheticInput>,
+    mut actions: bevy_ecs::prelude::ResMut<country_core::input::action_set::ActionSetStates>,
+) {
+    use country_core::input::action_set::DigitalActionState;
+    for (slot, phase) in [(16, input.undo), (17, input.redo)] {
+        actions.digital[slot] = DigitalActionState { phase, timer_seconds: 0.0 };
+    }
+}
+
+fn m2_trace_history_commands(
+    mut commands: bevy_ecs::prelude::EventReader<
+        country_core::systems::mode_manager::HistoryCommand,
+    >,
+) {
+    for command in commands.read() {
+        eprintln!("M2_CHILD_HISTORY_EVENT {:?}", command.bytes);
+    }
+}
+
+/// The test supplies only the already-recovered UI and canonical cursor
+/// inputs. Terrain drawing, W3 submission, W5 readback and rendering remain
+/// in their production schedules.
+fn m2_inject_terrain_input(
+    input: bevy_ecs::prelude::Res<M2TerrainSyntheticInput>,
+    mut mode: bevy_ecs::prelude::ResMut<country_core::systems::mode_manager::AppMode>,
+    mut terrain: bevy_ecs::prelude::ResMut<
+        country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast,
+    >,
+    mut ui: bevy_ecs::prelude::ResMut<country_core::systems::ui::resources::ui_state::UiState>,
+) {
+    if !input.active {
+        return;
+    }
+    *mode = country_core::systems::mode_manager::AppMode::Terrain;
+    terrain.update(Some(input.position));
+    use country_core::systems::{
+        terrain::ui_draw_terrain::{
+            DRAW_CANVAS_ARGUMENT, DRAW_CANVAS_LAYER, DRAW_CANVAS_NAME,
+        },
+        ui::resources::ui_state::{UiInteraction, WidgetId},
+    };
+    let widget = WidgetId::clearing_canvas(DRAW_CANVAS_NAME);
+    // A real picker publishes this canvas before the next frame's history
+    // start. Use the same constructor and retain its Arc as active_params.
+    ui.clearing_canvas_w_layer_and_sound(
+        DRAW_CANVAS_NAME,
+        DRAW_CANVAS_ARGUMENT,
+        DRAW_CANVAS_LAYER,
+    );
+    let params = ui.widget(widget);
+    let payload = ui.widget_context(widget).intersecting();
+    ui.replace_interaction_full(
+        UiInteraction {
+            native_tag: 2,
+            native_phase: input.phase,
+            widget,
+        },
+        params,
+        payload,
+    );
+}
+
+fn run_m2_production_frame(
+    driver: &mut tiny_glade::game_loop::GameFrameDriver,
+    context: &egui::Context,
+    bridge: &mut CoreRenderBridge,
+    capture: Option<(
+        &str,
+        std::sync::Arc<parking_lot::Mutex<Vec<(String, u32, u32, Vec<u8>)>>>,
+    )>,
+) -> Result<Vec<String>> {
+    context.begin_frame(egui::RawInput::default());
+    driver.app_mut().update();
+    let _ = context.end_frame();
+    let world = driver.app_mut().world_mut();
+    if let Some((label, sink)) = capture {
+        let label = label.to_owned();
+        tiny_glade::screenshot::gather_screenshot_requests(
+            world,
+            [tiny_glade::screenshot::ScreenshotRequest {
+                purpose: tiny_glade::screenshot::ScreenshotPurpose::MenuBackground,
+                dimensions: None,
+                sink: tiny_glade::screenshot::ScreenshotSink::Rgba(std::sync::Arc::new(
+                    move |w, h, rgba| sink.lock().push((label.clone(), w, h, rgba)),
+                )),
+                completion: None,
+            }],
+        )?;
+    }
+    let ready = tiny_glade::production_renderer::prepare_headless_gameplay_frame(bridge, world)
+        .context("prepare M2 production world frame")?;
+    bridge.prepare_test_execution()?;
+    let frame = ready.execute(bridge, world)?;
+    let passes = frame
+        .receipt
+        .snapshot
+        .pass_order
+        .iter()
+        .map(ToString::to_string)
+        .collect();
+    tiny_glade::screenshot::finish_screenshot_capture(world)?;
+    world
+        .resource_mut::<country_core::render::RenderTemporalState>()
+        .frame_render_returned();
+    bridge.with_session(|session| session.wait_frame(frame.receipt.frame, 120_000_000_000))?;
+    drop(frame);
+    bridge.collect_completed_frames()?;
+    Ok(passes)
+}
+
+fn copy_test_tree(from: &std::path::Path, to: &std::path::Path) -> Result<()> {
+    std::fs::create_dir_all(to)?;
+    for entry in std::fs::read_dir(from)? {
+        let entry = entry?;
+        let target = to.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_test_tree(&entry.path(), &target)?;
+        } else {
+            std::fs::copy(entry.path(), target)?;
+        }
+    }
+    Ok(())
+}
+
+fn m2_saved_history_values(
+    entries: &[country_core::resources::history::serialized::SavedMultiEdit],
+) -> Result<Vec<serde_json::Value>> {
+    entries
+        .iter()
+        .map(|entry| {
+            let mut value = serde_json::to_value(entry)?;
+            canonicalize_decorator_diff_map(&mut value);
+            Ok(value)
+        })
+        .collect()
+}
+
+fn m2_camera_parameters(
+    world: &bevy_ecs::world::World,
+) -> Result<serde_json::Value> {
+    Ok(serde_json::to_value(
+        world
+            .resource::<country_core::systems::camera_rig::main_camera::MainCamera>()
+            .store_parameters(),
+    )?)
+}
+
+fn m2_first_json_difference(
+    expected: &[serde_json::Value],
+    actual: &[serde_json::Value],
+) -> Option<(String, String, String)> {
+    if expected.len() != actual.len() {
+        return Some((
+            "/length".to_owned(),
+            expected.len().to_string(),
+            actual.len().to_string(),
+        ));
+    }
+    expected
+        .iter()
+        .zip(actual)
+        .enumerate()
+        .find_map(|(index, (expected, actual))| {
+            m6_first_json_difference(expected, actual)
+                .map(|(path, expected, actual)| (format!("/{index}{path}"), expected, actual))
+        })
+}
+
+fn m2_latest_heights(
+    world: &bevy_ecs::world::World,
+) -> Option<(
+    Vec<u16>,
+    Vec<u16>,
+    u64,
+    country_core::render::gpu_readback::TerrainReadbackEpoch,
+)> {
+    use country_core::{
+        render::gpu_readback::GpuReadbacks,
+        resources::terrain_height::{TerrainHeightSsbo, VisualTerrainHeightSsbo},
+    };
+    let readbacks = world.get_resource::<GpuReadbacks>()?;
+    let height = readbacks.get::<TerrainHeightSsbo>()?;
+    let visual = readbacks.get::<VisualTerrainHeightSsbo>()?;
+    let epoch = height.epoch?;
+    if visual.epoch != Some(epoch) {
+        return None;
+    }
+    Some((
+        bytemuck::cast_slice(height.data).to_vec(),
+        bytemuck::cast_slice(visual.data).to_vec(),
+        height.frame.min(visual.frame),
+        epoch,
+    ))
+}
+
+fn contains_ordered_passes(passes: &[String], required: &[&str]) -> bool {
+    passes.iter().try_fold(0, |next, pass| {
+        if required.get(next).is_some_and(|required| pass == required) {
+            Some(next + 1)
+        } else {
+            Some(next)
+        }
+    }) == Some(required.len())
+}
+
 /// 显式诊断已完成但尚待销毁的对象，不改变逐帧采样或后面的稳定性断言。
 fn diagnose_completed_retirement(device: &rhapsody::device::Device, stage: &str) -> Result<()> {
     if !std::env::var_os("TG_RETIREMENT_DRAIN_DIAGNOSTIC").is_some_and(|v| v == "1") {
@@ -589,6 +808,1016 @@ fn m06_diagnostic_plaster_indirect_command_contains_edited_wall() -> Result<()> 
 
 fn shipped_session_production_graph(edit_plaster: bool, diagnostic_nani: bool) -> Result<()> {
     shipped_session_production_graph_with_building(edit_plaster, diagnostic_nani, false)
+}
+
+#[test]
+fn m02_actual_app_terrain_edit_changes_floor_rocky_heights_lighting_and_image() -> Result<()> {
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{
+        render::gpu_readback::GpuReadbacks,
+        resources::terrain_height::{TerrainHeightSsbo, VisualTerrainHeightSsbo},
+    };
+
+    let BootedSession {
+        mut driver,
+        context,
+        mut bridge,
+        shaders: _shaders,
+        device: _device,
+        _boot,
+    } = boot_shipped_session()?;
+    let world = driver.app_mut().world_mut();
+    anyhow::ensure!(
+        tiny_glade::screenshot::shared_texture_capture::installed(world),
+        "M2 production frame has no screenshot owner"
+    );
+    tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)
+        .context("M2 production warmup")?;
+    bridge.accept_gameplay_warmup(
+        world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>(),
+    )?;
+    world.insert_resource(M2TerrainSyntheticInput::default());
+    world.resource_mut::<country_core::systems::terrain::ui_draw_terrain::TerrainDrawState>().state =
+        0;
+    driver.app_mut().add_systems(
+        bevy_app::Update,
+        m2_inject_terrain_input
+            .before(
+                country_core::systems::history::recording::history_start_recording::<
+                    country_core::resources::history::MaybePendingSnapshotId,
+                >,
+            )
+            .before(country_core::systems::terrain::ui_draw_terrain::ui_draw_terrain),
+    );
+
+    let captured = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<
+        (String, u32, u32, Vec<u8>),
+    >::new()));
+    let _ = run_m2_production_frame(
+        &mut driver,
+        &context,
+        &mut bridge,
+        Some(("m2-baseline", captured.clone())),
+    )?;
+
+    let mut baseline = None;
+    for _ in 0..10 {
+        let _ = run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        let world = driver.app().world();
+        if let Some(readbacks) = world.get_resource::<GpuReadbacks>()
+            && let Some(height) = readbacks.get::<TerrainHeightSsbo>()
+            && let Some(visual) = readbacks.get::<VisualTerrainHeightSsbo>()
+        {
+            // Native stores two u16 height cells in every u32 readback word.
+            assert_eq!(height.data.len(), 512 * 512 / 2);
+            assert_eq!(visual.data.len(), 512 * 512 / 2);
+            baseline = Some((
+                bytemuck::cast_slice::<_, u16>(height.data).to_vec(),
+                bytemuck::cast_slice::<_, u16>(visual.data).to_vec(),
+                height.frame.min(visual.frame),
+            ));
+            break;
+        }
+    }
+    let (baseline_height, baseline_visual, baseline_frame) =
+        baseline.context("M2 baseline W5 height readbacks did not arrive")?;
+
+    let next_index_before = driver
+        .app()
+        .world()
+        .resource::<country_core::resources::terrain_editing::TerrainEditingData>()
+        .next_index;
+    let mut production_passes = Vec::<Vec<String>>::new();
+    for (phase, position) in [
+        (3, glam::Vec3::new(-3.0, 0.0, -3.0)),
+        (3, glam::Vec3::new(0.0, 0.0, 0.0)),
+        (3, glam::Vec3::new(3.0, 0.0, 3.0)),
+        (1, glam::Vec3::new(4.0, 0.0, 4.0)),
+    ] {
+        *driver
+            .app_mut()
+            .world_mut()
+            .resource_mut::<M2TerrainSyntheticInput>() = M2TerrainSyntheticInput {
+            active: true,
+            phase,
+            position,
+        };
+        production_passes.push(run_m2_production_frame(
+            &mut driver,
+            &context,
+            &mut bridge,
+            None,
+        )?);
+    }
+    *driver
+        .app_mut()
+        .world_mut()
+        .resource_mut::<M2TerrainSyntheticInput>() = M2TerrainSyntheticInput::default();
+
+    {
+        let world = driver.app().world();
+        let editing =
+            world.resource::<country_core::resources::terrain_editing::TerrainEditingData>();
+        anyhow::ensure!(
+            editing.next_index == next_index_before + 1,
+            "production ui_draw_terrain did not create exactly one stroke: {} -> {}",
+            next_index_before,
+            editing.next_index
+        );
+        let id = editing.last_stroke_id();
+        let stroke = editing
+            .strokes
+            .get(&id)
+            .context("created terrain stroke disappeared")?;
+        anyhow::ensure!(
+            stroke.points.len() >= 3,
+            "terrain UI did not append the dragged points: {:?}",
+            stroke.points
+        );
+        eprintln!(
+            "M02 actual ui_draw_terrain stroke={} points={} height={}",
+            id.0,
+            stroke.points.len(),
+            stroke.height_ws
+        );
+    }
+
+    let mut edited = None;
+    for frame_index in 0..24 {
+        let capture = (frame_index == 0).then_some(("m2-edited", captured.clone()));
+        production_passes.push(run_m2_production_frame(
+            &mut driver,
+            &context,
+            &mut bridge,
+            capture,
+        )?);
+        let world = driver.app().world();
+        if let Some(readbacks) = world.get_resource::<GpuReadbacks>()
+            && let Some(height) = readbacks.get::<TerrainHeightSsbo>()
+            && let Some(visual) = readbacks.get::<VisualTerrainHeightSsbo>()
+            && height.frame.min(visual.frame) > baseline_frame
+        {
+            edited = Some((
+                bytemuck::cast_slice::<_, u16>(height.data).to_vec(),
+                bytemuck::cast_slice::<_, u16>(visual.data).to_vec(),
+                height.frame.min(visual.frame),
+            ));
+            break;
+        }
+    }
+    let (edited_height, edited_visual, edited_frame) =
+        edited.context("M2 edited W5 height readbacks did not arrive")?;
+    anyhow::ensure!(edited_frame > baseline_frame);
+    let height_changes = baseline_height
+        .iter()
+        .zip(&edited_height)
+        .filter(|(before, after)| before != after)
+        .count();
+    let visual_changes = baseline_visual
+        .iter()
+        .zip(&edited_visual)
+        .filter(|(before, after)| before != after)
+        .count();
+    anyhow::ensure!(
+        height_changes > 0,
+        "actual terrain stroke did not change the 512x512 floor height authority"
+    );
+    anyhow::ensure!(
+        visual_changes > 0,
+        "actual terrain stroke did not change the 512x512 visual/rocky height authority"
+    );
+    let required_passes = [
+        "Rasterize Terrain Stroke",
+        "Displace Rocky Terrain",
+        "Visual terrain height",
+        "Read terrain height",
+        "Calculate Terrain Lighting Texture",
+    ];
+    anyhow::ensure!(
+        production_passes
+            .iter()
+            .any(|passes| contains_ordered_passes(passes, &required_passes)),
+        "no production frame contained the ordered terrain chain {required_passes:?}; observed={production_passes:?}"
+    );
+    eprintln!(
+        "M02 W5 frames {baseline_frame}->{edited_frame}, changed floor={height_changes}, visual={visual_changes}"
+    );
+
+    {
+        let world = driver.app_mut().world_mut();
+        for _ in 0..8 {
+            tiny_glade::screenshot::shared_texture_capture::finish(world)?;
+        }
+        tiny_glade::screenshot::shared_texture_capture::shutdown(world)?;
+    }
+    bridge.wait_submits_done(10_000_000_000)?;
+    let images = captured.lock();
+    let baseline_image = images
+        .iter()
+        .find(|(label, _, _, _)| label == "m2-baseline")
+        .context("M2 baseline production image did not arrive")?;
+    let edited_image = images
+        .iter()
+        .find(|(label, _, _, _)| label == "m2-edited")
+        .context("M2 edited production image did not arrive")?;
+    anyhow::ensure!(
+        (baseline_image.1, baseline_image.2) == (edited_image.1, edited_image.2)
+            && baseline_image.3.len() == edited_image.3.len()
+    );
+    let changed_pixels = baseline_image
+        .3
+        .chunks_exact(4)
+        .zip(edited_image.3.chunks_exact(4))
+        .filter(|(before, after)| before != after)
+        .count();
+    anyhow::ensure!(
+        changed_pixels > 0,
+        "terrain edit reached W5 but the visible production image did not change"
+    );
+    let mean = edited_image
+        .3
+        .chunks_exact(4)
+        .map(|px| (u32::from(px[0]) + u32::from(px[1]) + u32::from(px[2])) as f64 / 3.0)
+        .sum::<f64>()
+        / f64::from(edited_image.1 * edited_image.2);
+    let distinct = edited_image
+        .3
+        .chunks_exact(4)
+        .map(|px| u32::from_le_bytes([px[0], px[1], px[2], 0]))
+        .collect::<std::collections::HashSet<_>>()
+        .len();
+    anyhow::ensure!(mean > 40.0 && distinct > 2000);
+    eprintln!(
+        "M02 actual image {}x{} mean_luma={mean:.1} distinct={distinct} changed_pixels={changed_pixels}",
+        edited_image.1, edited_image.2
+    );
+    Ok(())
+}
+
+#[test]
+fn m02_actual_terrain_history_save_new_process_reload_and_image() -> Result<()> {
+    if std::env::var_os("TG_M2_SAVE_CHILD").is_some() {
+        return m02_actual_terrain_save_child();
+    }
+
+    use bevy_ecs::schedule::IntoScheduleConfigs;
+    use country_core::{
+        input::action_set::DigitalActionPhase as Phase,
+        resources::{
+            history::{History, MaybePendingSnapshotId, ReplayBuffer},
+            terrain_editing::TerrainEditingData,
+        },
+        systems::{
+            history::PendingHistoryCommands,
+            mode_manager,
+        },
+    };
+
+    let BootedSession {
+        mut driver,
+        context,
+        mut bridge,
+        shaders: _shaders,
+        device: _device,
+        _boot,
+    } = boot_shipped_session()?;
+    let world = driver.app_mut().world_mut();
+    anyhow::ensure!(
+        tiny_glade::screenshot::shared_texture_capture::installed(world),
+        "M2 persistence production frame has no screenshot owner"
+    );
+    tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)
+        .context("M2 persistence warmup")?;
+    bridge.accept_gameplay_warmup(
+        world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>(),
+    )?;
+    world.insert_resource(M2TerrainSyntheticInput::default());
+    world.insert_resource(M2HistorySyntheticInput::default());
+    world
+        .resource_mut::<country_core::systems::terrain::ui_draw_terrain::TerrainDrawState>()
+        .state = 0;
+    driver.app_mut().add_systems(
+        bevy_app::Update,
+        m2_inject_terrain_input
+            .before(
+                country_core::systems::history::recording::history_start_recording::<
+                    MaybePendingSnapshotId,
+                >,
+            )
+            .before(country_core::systems::terrain::ui_draw_terrain::ui_draw_terrain),
+    );
+    driver.app_mut().add_systems(
+        bevy_app::Update,
+        m2_inject_history_input
+            .after(country_core::systems::backend::input::calculate_input_delta::calculate_input_delta)
+            .before(mode_manager::mode_manager::<
+                country_core::resources::history::EditType,
+                MaybePendingSnapshotId,
+            >),
+    );
+
+    let _ = run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    for (phase, position) in [
+        (3, glam::Vec3::new(-3.0, 0.0, -3.0)),
+        (3, glam::Vec3::new(0.0, 0.0, 0.0)),
+        (3, glam::Vec3::new(3.0, 0.0, 3.0)),
+        (1, glam::Vec3::new(4.0, 0.0, 4.0)),
+    ] {
+        *driver
+            .app_mut()
+            .world_mut()
+            .resource_mut::<M2TerrainSyntheticInput>() =
+            M2TerrainSyntheticInput { active: true, phase, position };
+        let _ = run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    }
+    *driver
+        .app_mut()
+        .world_mut()
+        .resource_mut::<M2TerrainSyntheticInput>() = M2TerrainSyntheticInput::default();
+
+    let (stroke_id, stroke_before_undo) = {
+        let world = driver.app().world();
+        let editing = world.resource::<TerrainEditingData>();
+        let id = editing.last_stroke_id();
+        let stroke = editing
+            .strokes
+            .get(&id)
+            .context("M2 persistence stroke did not commit")?
+            .clone();
+        (id, stroke)
+    };
+
+    let mut edited_heights = None;
+    for _ in 0..24 {
+        let _ = run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        if let Some((floor, visual, frame, epoch)) =
+            m2_latest_heights(driver.app().world())
+            && epoch.session
+                == Some(driver.app().world().resource::<ActiveSession>().id)
+        {
+            edited_heights = Some((floor, visual, frame, epoch));
+            break;
+        }
+    }
+    let (edited_floor, edited_visual, edited_frame, edited_epoch) =
+        edited_heights.context("M2 persistence edited W5 heights did not arrive")?;
+    let committed_cursor = {
+        use country_core::resources::history::EditType;
+        let history = driver.app().world().resource::<History>();
+        anyhow::ensure!(
+            !history.is_recording()
+                && history.ledger().entries.last().is_some_and(|entry| {
+                    entry.edits.iter().any(|edit| {
+                        matches!(
+                            edit,
+                            EditType::Terrain(edit)
+                                if matches!(
+                                    edit.as_ref(),
+                                    country_core::systems::terrain::deferred_terrain_history::TerrainEdit::NewTerrainStroke {
+                                        index,
+                                        ..
+                                    } if *index == stroke_id
+                                )
+                        )
+                    })
+                }),
+            "M2 terrain edit did not finish as the latest canonical history entry: recording={}, cursor={}, entries={}",
+            history.is_recording(),
+            history.ledger().cursor,
+            history.ledger().entries.len(),
+        );
+        history.ledger().cursor
+    };
+
+    *driver
+        .app_mut()
+        .world_mut()
+        .resource_mut::<M2HistorySyntheticInput>() =
+        M2HistorySyntheticInput { undo: Phase::JustPressed, redo: Phase::Idle };
+    let _ = run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver
+        .app_mut()
+        .world_mut()
+        .resource_mut::<M2HistorySyntheticInput>()
+        .undo = Phase::Idle;
+    m6_wait_replay_completion(&mut driver, &context, committed_cursor - 1, "地形撤销")?;
+    anyhow::ensure!(
+        driver
+            .app()
+            .world()
+            .resource::<TerrainEditingData>()
+            .strokes
+            .get(&stroke_id)
+            .is_some_and(|stroke| stroke.height_ws.to_bits() == 0),
+        "地形 undo 未按原版保留 stroke 并把 height_ws 归零"
+    );
+
+    *driver
+        .app_mut()
+        .world_mut()
+        .resource_mut::<M2HistorySyntheticInput>() =
+        M2HistorySyntheticInput { undo: Phase::Idle, redo: Phase::JustPressed };
+    let _ = run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+    driver
+        .app_mut()
+        .world_mut()
+        .resource_mut::<M2HistorySyntheticInput>()
+        .redo = Phase::Idle;
+    m6_wait_replay_completion(&mut driver, &context, committed_cursor, "地形重做")?;
+    anyhow::ensure!(
+        driver
+            .app()
+            .world()
+            .resource::<TerrainEditingData>()
+            .strokes
+            .get(&stroke_id)
+            == Some(&stroke_before_undo),
+        "地形 redo 未逐字段恢复原 stroke"
+    );
+    anyhow::ensure!(
+        driver
+            .app()
+            .world()
+            .resource::<History>()
+            .ledger()
+            .cursor
+            == committed_cursor
+    );
+
+    let captured = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<
+        (String, u32, u32, Vec<u8>),
+    >::new()));
+    let mut final_heights = None;
+    for frame_index in 0..24 {
+        let capture =
+            (frame_index == 0).then_some(("m2-saved", captured.clone()));
+        let _ = run_m2_production_frame(&mut driver, &context, &mut bridge, capture)?;
+        if let Some((floor, visual, frame, epoch)) =
+            m2_latest_heights(driver.app().world())
+            && frame > edited_frame
+            && epoch == edited_epoch
+        {
+            final_heights = Some((floor, visual, frame, epoch));
+            break;
+        }
+    }
+    let (saved_floor, saved_visual, _saved_frame, _saved_epoch) =
+        final_heights.context("M2 redo 后 W5 heights 未发布")?;
+    anyhow::ensure!(
+        saved_floor == edited_floor && saved_visual == edited_visual,
+        "M2 undo/redo 后 GPU 高度与编辑结果未逐 word 恢复"
+    );
+
+    let session = driver.app().world().resource::<ActiveSession>().id;
+    let folder = session.save_folder_path();
+    let recovery = folder.join("m2-save-recovery");
+    std::fs::create_dir_all(&recovery)?;
+    {
+        let world = driver.app().world();
+        let editing = world.resource::<TerrainEditingData>();
+        let terrain = serde_json::json!({
+            "next_index": editing.next_index,
+            "strokes": editing.strokes,
+        });
+        std::fs::write(
+            recovery.join("terrain.json"),
+            serde_json::to_vec_pretty(&terrain)?,
+        )?;
+
+        let history = world.resource::<History>();
+        let entries = history
+            .ledger()
+            .entries
+            .iter()
+            .cloned()
+            .map(country_core::resources::history::serialized::SavedMultiEdit)
+            .collect::<Vec<_>>();
+        let history_json = serde_json::json!({
+            "cursor": history.ledger().cursor,
+            "undo_anchor": history.ledger().undo_anchor,
+            "observed_count_58": history.ledger().observed_count_58,
+            "entries": entries,
+        });
+        std::fs::write(
+            recovery.join("history.json"),
+            serde_json::to_vec_pretty(&history_json)?,
+        )?;
+    }
+    std::fs::write(
+        recovery.join("floor.u16"),
+        bytemuck::cast_slice::<u16, u8>(&saved_floor),
+    )?;
+    std::fs::write(
+        recovery.join("visual.u16"),
+        bytemuck::cast_slice::<u16, u8>(&saved_visual),
+    )?;
+
+    {
+        let world = driver.app_mut().world_mut();
+        for _ in 0..8 {
+            tiny_glade::screenshot::shared_texture_capture::finish(world)?;
+        }
+        tiny_glade::screenshot::shared_texture_capture::shutdown(world)?;
+    }
+    bridge.wait_submits_done(10_000_000_000)?;
+    let saved_image = {
+        let images = captured.lock();
+        images
+            .iter()
+            .find(|(label, _, _, _)| label == "m2-saved")
+            .context("M2 persistence image did not arrive")?
+            .clone()
+    };
+    if std::env::var_os("TG_M2_DUMP_IMAGES").is_some() {
+        std::fs::write(
+            "/private/tmp/m2-saved-camera.json",
+            serde_json::to_vec_pretty(&m2_camera_parameters(driver.app().world())?)?,
+        )?;
+        std::fs::write("/private/tmp/m2-saved.rgba", &saved_image.3)?;
+        std::fs::write(
+            "/private/tmp/m2-saved.json",
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "width": saved_image.1,
+                "height": saved_image.2,
+            }))?,
+        )?;
+    }
+    std::fs::write(recovery.join("image.rgba"), &saved_image.3)?;
+    std::fs::write(
+        recovery.join("authority.json"),
+        serde_json::to_vec_pretty(&serde_json::json!({
+            "session": session,
+            "width": saved_image.1,
+            "height": saved_image.2,
+            "stroke_id": stroke_id,
+        }))?,
+    )?;
+
+    use country_core::systems::save::save_game::{SaveGameCmd, SavingGameComplete};
+    driver.app_mut().world_mut().send_event(SaveGameCmd);
+    let mut saved = false;
+    for _ in 0..600 {
+        context.begin_frame(egui::RawInput::default());
+        driver.app_mut().update();
+        let _ = context.end_frame();
+        if driver
+            .app_mut()
+            .world_mut()
+            .resource_mut::<bevy_ecs::event::Events<SavingGameComplete>>()
+            .drain()
+            .any(|event| event.path == folder)
+        {
+            saved = true;
+            break;
+        }
+    }
+    anyhow::ensure!(
+        saved
+            && folder.join("history.json").is_file()
+            && folder.join("meta.json").is_file(),
+        "M2 terrain production save worker did not finish"
+    );
+    anyhow::ensure!(
+        driver
+            .app()
+            .world()
+            .resource::<ReplayBuffer>()
+            .is_empty()
+            && driver
+                .app()
+                .world()
+                .resource::<PendingHistoryCommands>()
+                .0
+                .is_empty(),
+        "M2 save completed while history replay was still active"
+    );
+    {
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(folder.join("history.json"))?)?;
+        eprintln!(
+            "M2_SAVE_DISK version={:?} history.chain_index={:?} history.history_start={:?} history.snapshots={:?} expected_cursor={committed_cursor}",
+            saved.get("Version"),
+            saved.pointer("/History/chain_index"),
+            saved.pointer("/History/history_start"),
+            saved.pointer("/History/snapshots"),
+        );
+    }
+
+    drop(driver);
+    drop(bridge);
+    drop(_shaders);
+    drop(_device);
+    let status = std::process::Command::new(std::env::current_exe()?)
+        .args([
+            "--exact",
+            "m02_actual_terrain_history_save_new_process_reload_and_image",
+            "--nocapture",
+            "--test-threads=1",
+        ])
+        .env("TG_M2_SAVE_CHILD", "1")
+        .env("TG_M2_SAVE_FOLDER", &folder)
+        .env("TG_M2_SAVE_RECOVERY", &recovery)
+        .env("TG_M2_SAVE_SESSION", serde_json::to_string(&session)?)
+        .env("TG_M2_TRACE_HISTORY", "1")
+        .status()?;
+    anyhow::ensure!(status.success(), "M2 terrain new-process reload failed: {status}");
+    Ok(())
+}
+
+fn m02_actual_terrain_save_child() -> Result<()> {
+    use country_core::{
+        app_loading_state::AppLoadingState,
+        meta_commander::{MetaCommand, MetaCommander},
+        render::gpu_readback::TerrainCopyEpoch,
+        resources::{
+            history::History,
+            session::SessionId,
+            terrain_editing::TerrainEditingData,
+        },
+        systems::history::PendingHistoryCommands,
+    };
+    let session: SessionId =
+        serde_json::from_str(&std::env::var("TG_M2_SAVE_SESSION")?)?;
+    let source =
+        PathBuf::from(std::env::var_os("TG_M2_SAVE_FOLDER").context("缺少 M2 存档目录")?);
+    let recovery =
+        PathBuf::from(std::env::var_os("TG_M2_SAVE_RECOVERY").context("缺少 M2 恢复基准")?);
+    let expected_terrain: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(recovery.join("terrain.json"))?)?;
+    let expected_runtime_history: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(recovery.join("history.json"))?)?;
+    let expected_authority: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(recovery.join("authority.json"))?)?;
+    let expected_floor = std::fs::read(recovery.join("floor.u16"))?;
+    let expected_visual = std::fs::read(recovery.join("visual.u16"))?;
+    let expected_image = std::fs::read(recovery.join("image.rgba"))?;
+    let saved_disk_history: country_core::systems::save::load_game::HistorySectionJson = {
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(source.join("history.json"))?)?;
+        eprintln!(
+            "M2_CHILD_SOURCE version={:?} history.chain_index={:?} history.history_start={:?} history.snapshots={:?}",
+            saved.get("Version"),
+            saved.pointer("/History/chain_index"),
+            saved.pointer("/History/history_start"),
+            saved.pointer("/History/snapshots"),
+        );
+        serde_json::from_value(
+            saved
+                .get("History")
+                .cloned()
+                .context("M2 source save has no History section")?,
+        )
+        .context("M2 source History must decode through the production save schema")?
+    };
+    let expected_saved_entries = m2_saved_history_values(&saved_disk_history.edit_chain)?;
+    let expected_saved_snapshots = saved_disk_history
+        .snapshots
+        .iter()
+        .cloned()
+        .map(serde_json::from_value::<
+            country_core::resources::history::ResolvedHistoryChainSnapshot,
+        >)
+        .collect::<Result<Vec<_>, _>>()
+        .context("M2 source snapshot references")?;
+
+    let BootedSession {
+        mut driver,
+        context,
+        mut bridge,
+        shaders: _shaders,
+        device: _device,
+        _boot,
+    } = boot_shipped_session()?;
+    {
+        let world = driver.app_mut().world_mut();
+        anyhow::ensure!(
+            tiny_glade::screenshot::shared_texture_capture::installed(world),
+            "M2 child production frame has no screenshot owner"
+        );
+        tiny_glade::production_renderer::warm_up_gameplay(bridge.warmup_owners()?, world)
+            .context("M2 child production warmup")?;
+        bridge.accept_gameplay_warmup(
+            world.resource::<tiny_glade::render_bridge::CompletedGameplayWarmup>(),
+        )?;
+    }
+    let mut previous_boot_history = None;
+    let mut stable_boot_frames = 0;
+    for _ in 0..64 {
+        let _ = run_m2_production_frame(&mut driver, &context, &mut bridge, None)?;
+        let history = driver.app().world().resource::<History>();
+        let trace = (
+            history.ledger().cursor,
+            history.ledger().entries.len(),
+            history.is_recording(),
+        );
+        if previous_boot_history == Some(trace) {
+            stable_boot_frames += 1;
+        } else {
+            previous_boot_history = Some(trace);
+            stable_boot_frames = 0;
+        }
+        if stable_boot_frames >= 8 {
+            break;
+        }
+    }
+    anyhow::ensure!(
+        stable_boot_frames >= 8,
+        "M2 child boot session did not settle before Reload"
+    );
+    copy_test_tree(&source, &session.save_folder_path())?;
+    driver
+        .app_mut()
+        .add_systems(bevy_app::Update, m2_trace_history_commands);
+    driver
+        .app_mut()
+        .world_mut()
+        .resource_mut::<MetaCommander>()
+        .extend_script([MetaCommand::load_session(session, false)]);
+    let mut saw_reload = false;
+    let mut loaded = false;
+    let mut previous_load_trace = None;
+    for _ in 0..1200 {
+        context.begin_frame(egui::RawInput::default());
+        driver.app_mut().update();
+        let _ = context.end_frame();
+        let world = driver.app().world();
+        let loading = world
+            .resource::<bevy_state::prelude::State<AppLoadingState>>()
+            .get();
+        saw_reload |= *loading == AppLoadingState::Reload;
+        let manager = world.resource::<LoadGameManager>();
+        let cursor = world.resource::<History>().ledger().cursor;
+        let entries = world.resource::<History>().ledger().entries.len();
+        let trace = (
+            format!("{loading:?}"),
+            format!("{:?}", manager.state),
+            manager.progress_counter,
+            manager.options.is_some(),
+            cursor,
+            entries,
+            world
+                .resource::<country_core::resources::history::ReplayBuffer>()
+                .is_empty(),
+            world
+                .resource::<PendingHistoryCommands>()
+                .0
+                .len(),
+        );
+        if previous_load_trace.as_ref() != Some(&trace) {
+            eprintln!("M2_CHILD_LOAD_TRACE {trace:?}");
+            previous_load_trace = Some(trace);
+        }
+        if saw_reload
+            && *loading == AppLoadingState::Game
+            && world
+                .get_resource::<ActiveSession>()
+                .is_some_and(|active| active.id == session)
+            && world.resource::<LoadGameManager>().options.is_none()
+            && world.resource::<country_core::resources::history::ReplayBuffer>().is_empty()
+            && world.resource::<PendingHistoryCommands>().0.is_empty()
+        {
+            loaded = true;
+            break;
+        }
+    }
+    anyhow::ensure!(loaded, "M2 child did not complete production Reload");
+
+    let captured = std::sync::Arc::new(parking_lot::Mutex::new(Vec::<
+        (String, u32, u32, Vec<u8>),
+    >::new()));
+    let mut heights = None;
+    let mut previous_history_trace = None;
+    for frame_index in 0..256 {
+        let capture_label = match frame_index {
+            8 => Some("m2-reloaded-8"),
+            16 => Some("m2-reloaded-16"),
+            32 => Some("m2-reloaded-32"),
+            48 => Some("m2-reloaded-48"),
+            64 => Some("m2-reloaded-64"),
+            96 => Some("m2-reloaded-96"),
+            128 => Some("m2-reloaded-128"),
+            192 => Some("m2-reloaded-192"),
+            255 => Some("m2-reloaded-255"),
+            _ => None,
+        };
+        let capture = capture_label.map(|label| (label, captured.clone()));
+        let _ = run_m2_production_frame(&mut driver, &context, &mut bridge, capture)?;
+        let history = driver.app().world().resource::<History>();
+        let draw = driver
+            .app()
+            .world()
+            .resource::<country_core::systems::terrain::ui_draw_terrain::TerrainDrawState>();
+        let ui = driver
+            .app()
+            .world()
+            .resource::<country_core::systems::ui::resources::ui_state::UiState>();
+        let mode = driver
+            .app()
+            .world()
+            .resource::<country_core::systems::mode_manager::AppMode>();
+        let cursor = driver
+            .app()
+            .world()
+            .resource::<country_core::resources::cursor_terrain_raycast::CursorTerrainRaycast>();
+        eprintln!(
+            "M2_CHILD_INPUT frame={frame_index} mode={} draw=({},{},{:?},{}) ui=({},{},{:?}) cursor=({},{:?})",
+            mode.native_tag(),
+            draw.state,
+            u8::from(draw.active),
+            draw.drag_distance,
+            draw.records.len(),
+            ui.hover_byte(),
+            ui.click_byte(),
+            ui.active_widget(),
+            cursor.tag,
+            cursor.pos,
+        );
+        let trace = (
+            history.ledger().cursor,
+            history.ledger().entries.len(),
+            history.is_recording(),
+            driver
+                .app()
+                .world()
+                .resource::<country_core::systems::terrain::deferred_terrain_history::PendingTerrainHistory>()
+                .edit
+                .is_some(),
+        );
+        if previous_history_trace != Some(trace) {
+            let tail = history
+                .ledger()
+                .entries
+                .last()
+                .map(|entry| {
+                    serde_json::to_string(
+                        &country_core::resources::history::serialized::SavedMultiEdit(
+                            entry.clone(),
+                        ),
+                    )
+                })
+                .transpose()?;
+            eprintln!(
+                "M2_CHILD_FRAME_HISTORY frame={frame_index} trace={trace:?} tail={tail:?}"
+            );
+            previous_history_trace = Some(trace);
+        }
+        if let Some((floor, visual, frame, epoch)) =
+            m2_latest_heights(driver.app().world())
+            && epoch.session == Some(session)
+            && frame > 0
+        {
+            heights = Some((floor, visual, frame, epoch));
+            if frame_index >= 255 {
+                break;
+            }
+        }
+    }
+    let (floor, visual, frame, epoch) =
+        heights.context("M2 child W5 heights did not arrive")?;
+    if std::env::var_os("TG_M2_DUMP_IMAGES").is_some() {
+        std::fs::write(
+            "/private/tmp/m2-reloaded-camera.json",
+            serde_json::to_vec_pretty(&m2_camera_parameters(driver.app().world())?)?,
+        )?;
+    }
+    anyhow::ensure!(
+        bytemuck::cast_slice::<u16, u8>(&floor) == expected_floor
+            && bytemuck::cast_slice::<u16, u8>(&visual) == expected_visual,
+        "M2 child floor/visual heights differ from saved bytes"
+    );
+    anyhow::ensure!(epoch.session == Some(session));
+    anyhow::ensure!(
+        driver
+            .app()
+            .world()
+            .get_resource::<TerrainCopyEpoch>()
+            .is_none_or(|copy| copy.0.session == Some(session)),
+        "M2 child accepted a terrain copy from a previous session"
+    );
+
+    let actual_terrain = {
+        let editing = driver.app().world().resource::<TerrainEditingData>();
+        serde_json::json!({
+            "next_index": editing.next_index,
+            "strokes": editing.strokes,
+        })
+    };
+    anyhow::ensure!(
+        actual_terrain == expected_terrain,
+        "M2 child terrain strokes/counter differ from saved authority"
+    );
+    let (actual_cursor, actual_undo_anchor, actual_observed_count, actual_entries, actual_snapshots) = {
+        let history = driver.app().world().resource::<History>();
+        let ledger = history.ledger();
+        (
+            ledger.cursor,
+            ledger.undo_anchor,
+            ledger.observed_count_58,
+            ledger
+                .entries
+                .iter()
+                .cloned()
+                .map(country_core::resources::history::serialized::SavedMultiEdit)
+                .collect::<Vec<_>>(),
+            country_core::resources::history::snapshots::resolved_snapshot_references(
+                &ledger.resolved_snapshots,
+            ),
+        )
+    };
+    anyhow::ensure!(
+        actual_cursor == saved_disk_history.chain_index,
+        "M2 child history cursor differs from saved disk: expected={}, actual={actual_cursor}",
+        saved_disk_history.chain_index,
+    );
+    anyhow::ensure!(
+        actual_undo_anchor == saved_disk_history.history_start,
+        "M2 child history start differs from saved disk: expected={}, actual={actual_undo_anchor}",
+        saved_disk_history.history_start,
+    );
+    let expected_observed_count = expected_runtime_history["observed_count_58"]
+        .as_u64()
+        .context("M2 recovery history observed_count_58")?;
+    anyhow::ensure!(
+        actual_observed_count == expected_observed_count as usize,
+        "M2 child observed history counter differs: expected={expected_observed_count}, actual={actual_observed_count}",
+    );
+    anyhow::ensure!(
+        actual_snapshots == expected_saved_snapshots,
+        "M2 child snapshot references differ from saved disk: expected={expected_saved_snapshots:?}, actual={actual_snapshots:?}",
+    );
+    let actual_saved_entries = m2_saved_history_values(&actual_entries)?;
+    if let Some((path, expected, actual)) =
+        m2_first_json_difference(&expected_saved_entries, &actual_saved_entries)
+    {
+        anyhow::bail!(
+            "M2 child typed saved-history entries differ from disk at {path}: expected={expected}, actual={actual}"
+        );
+    }
+    anyhow::ensure!(
+        expected_authority["session"] == serde_json::to_value(session)?
+            && expected_authority["width"].as_u64().is_some()
+            && expected_authority["height"].as_u64().is_some(),
+        "M2 child recovery authority is incomplete"
+    );
+
+    {
+        let world = driver.app_mut().world_mut();
+        for _ in 0..8 {
+            tiny_glade::screenshot::shared_texture_capture::finish(world)?;
+        }
+        tiny_glade::screenshot::shared_texture_capture::shutdown(world)?;
+    }
+    bridge.wait_submits_done(10_000_000_000)?;
+    let image = {
+        let images = captured.lock();
+        if std::env::var_os("TG_M2_DUMP_IMAGES").is_some() {
+            for (label, width, height, rgba) in images.iter() {
+                std::fs::write(format!("/private/tmp/{label}.rgba"), rgba)?;
+                std::fs::write(
+                    format!("/private/tmp/{label}.json"),
+                    serde_json::to_vec_pretty(&serde_json::json!({
+                        "width": width,
+                        "height": height,
+                    }))?,
+                )?;
+            }
+        }
+        images
+            .iter()
+            .rev()
+            .find(|(label, _, _, _)| label == "m2-reloaded-255")
+            .cloned()
+            .context("M2 child production image did not arrive")?
+    };
+    let expected_width = expected_authority["width"]
+        .as_u64()
+        .context("M2 saved width")? as u32;
+    let expected_height = expected_authority["height"]
+        .as_u64()
+        .context("M2 saved height")? as u32;
+    anyhow::ensure!(
+        (image.1, image.2) == (expected_width, expected_height)
+            && image.3.len() == expected_image.len(),
+        "M2 child production image dimensions differ from saved frame"
+    );
+    let changed = image
+        .3
+        .chunks_exact(4)
+        .zip(expected_image.chunks_exact(4))
+        .filter(|(actual, expected)| actual != expected)
+        .count();
+    anyhow::ensure!(
+        changed == 0,
+        "M2 child visible image differs from saved production frame: {changed} pixels"
+    );
+    eprintln!(
+        "M02 save/reload exact: frame={frame}, floor={} bytes, visual={} bytes, image={}x{}, changed_pixels=0",
+        expected_floor.len(),
+        expected_visual.len(),
+        image.1,
+        image.2,
+    );
+    Ok(())
 }
 
 #[test]

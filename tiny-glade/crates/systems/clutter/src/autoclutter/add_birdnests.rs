@@ -15,7 +15,7 @@ use country_core::utils::dirty_tiles::DirtyTiles;
 use std::sync::Mutex;
 use tabloid::Subscriber;
 
-use super::{AutoClutterSpawn, AutoClutterState, ResolvedAutoClutterObject, SpawnShared};
+use super::{AutoClutterPayload, AutoClutterSpawn, AutoClutterState, ResolvedAutoClutterObject};
 
 /// `BirdNestLazySubscriber`（原版 `add_birdnests::BirdNestLazySubscriber`）：`add_birdnests` 的
 /// `ResMut` 参数（校验串 0x142f330c3），由 Startup 系统 [`birdnests_subscribe_to_tabloids`] 经
@@ -112,7 +112,7 @@ pub fn add_birdnests(
         assert!(mesh.mesh.is_some(), "鸟巢实际 mesh 尚未加载");
         state.spawn_candidates.push(AutoClutterSpawn {
             kind: 4,
-            shared: SpawnShared::Object(ResolvedAutoClutterObject {
+            payload: AutoClutterPayload::Object(ResolvedAutoClutterObject {
                 metadata: mesh.into(),
                 source: country_core::components::drawable::AutoClutterSource::Points(candidate.points.clone()),
                 // 原判别为 OnBuilding/无 UV；零仅填充 inactive 坐标字节。
@@ -121,14 +121,19 @@ pub fn add_birdnests(
                     wall: country_core::resources::walls::WallId(candidate.destination_wall),
                 },
             }),
+            f18: 1,
             key: candidate.global_id,
             marker: 3,
+            selector_value: 0,
             position,
+            host_id: candidate.destination_wall,
+            f48: u64::from(position.x.to_bits())
+                | (u64::from(position.y.to_bits()) << 32),
+            f50: u64::from(position.z.to_bits()),
             f54: candidate.forward.x.to_bits(),
             f58: candidate.forward.y.to_bits(),
             f5c: candidate.forward.z.to_bits(),
             scale: 1.0,
-            ..Default::default()
         });
     }
 }

@@ -44,17 +44,6 @@ pub const DRAW_CANVAS_NAME: &str = "terrain_draw";
 /// B state-2 caller 0x140aa025b reads .rdata@0x1429258d8 = 0x3e99999a.
 pub const MORPH_SPACING: f32 = 0.3;
 
-/// 悬停有效性适配（I：UI 悬停上下文 layout Gap；ui_edit_terrain 消费）。
-#[derive(Resource, Clone, Copy, Debug, Default)]
-pub struct TerrainHoverInput {
-    /// 悬停命中（位 0）。
-    pub hovered: bool,
-    /// 命中位置（世界）。
-    pub position: Vec2,
-    /// UI 交互激活标记（O：ui_edit `*pcVar23` = CursorTerrainRaycast.tag；1 = 命中）。
-    pub pressed: bool,
-}
-
 /// DrawState（O：Local；crate 以 Resource 承载以便宿主/测试注入与观测，I；`+0x20..0x40` 8 B 元素 Vec；结尾状态字节回写 `*in_stack_00000068`；
 /// `*in_stack_00000070` = drag 距离浮点槽）。
 #[derive(Resource, Clone, Debug, Default)]
@@ -91,9 +80,9 @@ pub fn ui_draw_terrain(
     mut effects: TerrainDrawEffects,
     mut draw_state: ResMut<TerrainDrawState>,
     mut pending: ResMut<PendingTerrainHistory>,
-    assets: Option<Res<AssetSsboLibrary>>,
+    assets: Res<AssetSsboLibrary>,
     mut archivist: ResMut<LiveDecoratorArchivist>,
-    readbacks: Option<Res<crate::render::gpu_readback::GpuReadbacks>>,
+    readbacks: Res<crate::render::gpu_readback::GpuReadbacks>,
 ) {
     // 门：AppMode::Terrain（O：0x140a9fdf9 `CMP dword [RAX],0xa`）。
     if mode.native_tag() != 10 {
@@ -171,13 +160,10 @@ pub fn ui_draw_terrain(
                 // Both readbacks come from the render thread's latest published
                 // copies; neither inspects the mapping an in-flight GPU frame is
                 // rewriting, so the original lookup order after creation holds.
-                let library = assets.as_deref()
-                    .expect("terrain drawing requires the SSBO library");
-                let readbacks = readbacks.as_deref();
-                let mouse_index = crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::read_terrain_stroke_index(library, readbacks);
-                library.get::<TerrainRockMaskSsbo>()
+                let mouse_index = crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::read_terrain_stroke_index(&assets, Some(&readbacks));
+                assets.get::<TerrainRockMaskSsbo>()
                     .expect("terrain drawing requires TerrainRockMaskSsbo");
-                let samples = TerrainRockMaskSsbo::published(readbacks);
+                let samples = TerrainRockMaskSsbo::published(Some(&readbacks));
                 let on_rock = mouse_index.is_some_and(|index| index != -1)
                     && sample_at_world_xz(bytemuck::cast_slice(samples), cursor.x, cursor.y) != 0;
                 let height = initial_stroke_height(mouse_index, on_rock, draw_state.drag_distance);
@@ -241,6 +227,7 @@ mod recovered_extend_tests {
     fn world(position: glam::Vec3, inside: bool) -> World {
         let mut world = World::new();
         register_terrain_events(&mut world);
+        register_test_buffers(&mut world);
         world.insert_resource(AppMode::Terrain);
         world.insert_resource(CursorTerrainRaycast {
             tag: 1,
@@ -321,6 +308,7 @@ mod typed_history_release_tests {
     fn release_records_an_owned_typed_stroke_once_and_resets_pending() {
         let mut world = World::new();
         register_terrain_events(&mut world);
+        register_test_buffers(&mut world);
         world.insert_resource(AppMode::Terrain);
         world.insert_resource(CursorTerrainRaycast::default());
         world.insert_resource(WaterRaster::new(
@@ -406,6 +394,7 @@ pub(super) fn register_test_buffers(world: &mut World) {
     library.add_new::<crate::systems::render_loop::compute_passes::mouse_read_terrain_stroke_index::MouseTerrainRaycastSsbo>(&device);
     library.add_new::<TerrainRockMaskSsbo>(&device);
     world.insert_resource(library);
+    world.insert_resource(crate::render::gpu_readback::GpuReadbacks::default());
 }
 
 #[cfg(test)]
@@ -930,6 +919,7 @@ mod native_canvas_argument_tests {
         ] {
             let mut world = World::new();
             register_terrain_events(&mut world);
+            register_test_buffers(&mut world);
             world.insert_resource(AppMode::Terrain);
             world.insert_resource(CursorTerrainRaycast {
                 tag: u32::from(hit),
@@ -982,6 +972,7 @@ mod cursor_plane_lifecycle_tests {
     fn world(distance: f32, phase: u8) -> World {
         let mut world = World::new();
         register_terrain_events(&mut world);
+        register_test_buffers(&mut world);
         world.insert_resource(AppMode::Terrain);
         world.insert_resource(CursorTerrainRaycast {
             tag: 1,
@@ -1009,6 +1000,9 @@ mod cursor_plane_lifecycle_tests {
     fn start_sets_raw_plane_before_a_later_missing_ssbo_failure() {
         for bits in [(-1.0_f32).to_bits(), 25.0_f32.to_bits(), 0x8000_0000, 0x7fc0_1234] {
             let mut world = world(f32::from_bits(bits), 3);
+            // Mandatory resource ownership is already present; the branch's
+            // first inner SSBO lookup remains the original failure point.
+            world.insert_resource(AssetSsboLibrary::new());
             let mut schedule = Schedule::default();
             schedule.add_systems(ui_draw_terrain);
             // The original mutates the plane first; preserve that observable
